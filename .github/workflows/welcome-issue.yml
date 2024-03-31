@@ -1,0 +1,19 @@
+name: Welcome Issue
+
+on:
+    issues:
+        types: [opened]
+
+jobs:
+    welcome:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Welcome Issue
+              uses: actions-cool/issues-helper@v3.4.0
+              with:
+                actions: 'create-comment'
+                token: ${{ secrets.GITHUB_TOKEN }}
+                issue-number: ${{ github.event.issue.number }}
+                body: |
+                  您好 @${{ github.event.issue.user.login }}！
+                  感谢您参与 Moonlark 项目，我们会尽快回复您，请留意 GitHub 上的通知。

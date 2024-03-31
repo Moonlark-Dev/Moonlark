@@ -1,0 +1,16 @@
+name: 'Assign issues'
+on:
+  issues:
+    types: [opened]
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: 'Assign issue to XiaoDeng3386'
+        uses: pozil/auto-assign-issue@v1
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          assignees: This-is-XiaoDeng
+          numOfAssignee: 1
