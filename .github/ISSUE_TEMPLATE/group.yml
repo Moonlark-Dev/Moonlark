@@ -1,6 +1,6 @@
 name: 官服节点加入新群
 description: 让官服机器人加入一个新群
-title: "[加入新群] "
+title: "[加群申请] "
 labels: ["加群申请"]
 body:
   - type: markdown
