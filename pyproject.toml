@@ -1,0 +1,33 @@
+[project]
+name = "Moonlark"
+version = "0.1.0"
+description = "A new ChatBot"
+readme = "README.md"
+requires-python = ">=3.10, <4.0"
+
+[tool.nonebot]
+adapters = [
+    { name = "OneBot V11", module_name = "nonebot.adapters.onebot.v11" }
+]
+plugins = []
+plugin_dirs = []
+builtin_plugins = []
+
+[tool.poetry]
+name = "moonlark"
+version = "0.1.0"
+description = "A new ChatBot"
+authors = ["XiaoDeng3386 <1744793737@qq.com>"]
+license = "AGPL-3.0"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+nonebot2 = "^2.2.1"
+
+[tool.poetry.group.dev.dependencies]
+nb-cli = "^1.4.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
