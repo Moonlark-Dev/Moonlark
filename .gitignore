@@ -3,6 +3,10 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# 语言测试插件
+src/plugins/test
+src/lang/zh_hans/test.yaml
+
 # C extensions
 *.so
 

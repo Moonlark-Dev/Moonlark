@@ -1,3 +1,6 @@
 [language]
 version = 'latest'
 author = 'Moonlark-Dev'
+
+[lock]
+enable = false
