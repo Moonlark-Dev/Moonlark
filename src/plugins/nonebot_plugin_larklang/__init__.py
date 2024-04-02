@@ -42,10 +42,14 @@ def get_module_name(module: ModuleType | None) -> str | None:
 
 def get_text(language: str, plugin: str, key: str, *format_) -> str:
     k = key.split(".", 1)
-    data = languages[language].keys[plugin][k[0]][k[1]]
-    text = random.choice(data.text)
-    if data.use_template and "__template__" in languages[language].keys[plugin][k[0]]:
-        text = get_text(language, plugin, f"{k[0]}.__template__", text)
+    try:
+        data = languages[language].keys[plugin][k[0]][k[1]]
+    except KeyError:
+        text = f"<缺失: {plugin}.{key}; {format_}>"
+    else:
+        text = random.choice(data.text)
+        if data.use_template and "__template__" in languages[language].keys[plugin][k[0]]:
+            text = get_text(language, plugin, f"{k[0]}.__template__", text)
     return text.format(*format_)
 
 
