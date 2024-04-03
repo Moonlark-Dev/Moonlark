@@ -2,5 +2,5 @@
 version = 'latest'
 author = 'Moonlark-Dev'
 
-[lock]
-enable = false
+[display]
+description="Moonlark 默认语言，简体中文"

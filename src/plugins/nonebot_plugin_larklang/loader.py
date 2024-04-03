@@ -1,4 +1,5 @@
 from pathlib import Path
+import traceback
 import yaml
 import aiofiles
 from .model import LanguageData, LanguageKey
@@ -15,18 +16,28 @@ class LangLoader:
     async def init(self) -> None:
         self.languages: dict[str, LanguageData] = {}
         for lang in self.lang_list:
-            async with aiofiles.open(lang.joinpath("language.toml"), encoding="utf-8") as f:
-                data = tomllib.loads(await f.read())
-                data["path"] = lang
-                # 拉平 language 字段
-                data.update(data.pop("language"))
-                self.languages[lang.name] = LanguageData(**data)
+            try:
+                await self.init_language(lang)
+            except Exception:
+                logger.warning(f"初始化语言 {lang.name} 失败: {traceback.format_exc()}")
         logger.debug(str(self.languages))
         del self.lang_list
 
+    async def init_language(self, lang: Path) -> None:
+        async with aiofiles.open(lang.joinpath("language.toml"), encoding="utf-8") as f:
+            data = tomllib.loads(await f.read())
+            data["path"] = lang
+            # 拉平 language 字段
+            data.update(data.pop("language"))
+            self.languages[lang.name] = LanguageData(**data)
+
     async def load(self) -> None:
         for lang in self.languages:
-            await self.load_language(self.languages[lang].path)
+            try:
+                await self.load_language(self.languages[lang].path)
+            except Exception:
+                logger.warning(f"加载语言 {lang} 失败: {traceback.format_exc()}")
+                self.languages.pop(lang)
 
     async def load_language(self, lang: Path) -> None:
         for plugin in lang.iterdir():

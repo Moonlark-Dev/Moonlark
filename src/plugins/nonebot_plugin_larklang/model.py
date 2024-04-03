@@ -1,5 +1,7 @@
 from pydantic import BaseModel
+from sqlalchemy.orm import Mapped, mapped_column
 from pathlib import Path
+from nonebot_plugin_orm import Model
 
 class LanguageLockData(BaseModel):
     enable: bool = False
@@ -30,3 +32,6 @@ class LanguageData(BaseModel):
     display: LanguageDisplayData = LanguageDisplayData()
     patch: LanguagePatchData = LanguagePatchData()
 
+class LanguageConfig(Model):
+    user_id: Mapped[str] = mapped_column(primary_key=True)
+    language: Mapped[str]

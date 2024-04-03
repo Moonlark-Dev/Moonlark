@@ -9,7 +9,10 @@ requires-python = ">=3.10, <4.0"
 adapters = [
     { name = "OneBot V11", module_name = "nonebot.adapters.onebot.v11" }
 ]
-plugins = []
+plugins = [
+    "nonebot_plugin_orm",
+    "nonebot_plugin_alconna"
+]
 plugin_dirs = ["src/plugins"]
 builtin_plugins = []
 
@@ -26,6 +29,8 @@ python = "^3.10"
 nonebot2 = {extras = ["fastapi"], version = "^2.2.1"}
 nonebot-adapter-onebot = "^2.4.3"
 aiofiles = "^23.2.1"
+nonebot-plugin-orm = {extras = ["default"], version = "^0.7.1"}
+nonebot-plugin-alconna = "^0.41.1"
 
 [tool.poetry.group.dev.dependencies]
 nb-cli = "^1.4.0"
