@@ -152,6 +152,25 @@ class LangHelper:
             **kwargs
         ), at_sender=at_sender, reply_message=reply_message)
 
+    async def finish(
+            self,
+            key: str,
+            user_id: str | int,
+            *args,
+            matcher: Matcher = Matcher(),
+            at_sender: bool = True,
+            reply_message: bool = False,
+            **kwargs) -> None:
+        await self.send(
+            key,
+            user_id,
+            *args,
+            **kwargs,
+            at_sender=at_sender,
+            reply_message=reply_message
+        )
+        await matcher.finish()
+
     async def reply(
             self,
             key: str,

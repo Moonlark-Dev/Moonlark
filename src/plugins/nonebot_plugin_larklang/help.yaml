@@ -1,7 +1,9 @@
-- name: lang
-  description: help.description
-  information: null
-  usages:
-    - help.usages.list
-    - help.usages.view
-    - help.usages.set
+plugin: larklang
+commands:
+  lang:
+    description: help.description
+    information: null
+    usages:
+      - help.usages.list
+      - help.usages.view
+      - help.usages.set

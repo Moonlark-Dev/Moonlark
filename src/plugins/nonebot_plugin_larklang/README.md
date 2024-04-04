@@ -47,6 +47,21 @@ async def reply(
 ) -> None
 ```
 
+### 回复并结束处理
+
+```python
+async def finish(
+    self,
+    key: str,
+    user_id: str | int,
+    *args,
+    matcher: Matcher = Matcher(),
+    at_sender: bool = True,
+    reply_message: bool = False,
+    **kwargs
+) -> None
+```
+
 ## 许可证
 
 ```

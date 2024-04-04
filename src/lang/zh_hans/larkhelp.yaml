@@ -1,0 +1,14 @@
+list:
+  item: '[✓] {}: {}'
+  info: |
+    命令列表 —— Moonlark
+    {}
+    使用「{__prefix__}help <命令>」获取更多信息
+command:
+  info: |
+    [✓] {}: {}
+    {}
+    用法:
+    {}
+  usage: '{__prefix__}{}'
+  not_found: 命令 {} 不存在，或无可用的帮助信息
