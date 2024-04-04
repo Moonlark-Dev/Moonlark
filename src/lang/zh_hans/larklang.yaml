@@ -14,3 +14,12 @@ lang:
     「本地化语言列表」
     {}
     使用「{__prefix__}lang view <语言>」获取更多信息
+help:
+  description: 本地化
+  usages:
+    set: lang set <语言> (设置语言)
+    view: lang view <语言> (查看语言信息)
+    list: lang (查看语言列表)
+
+
+    

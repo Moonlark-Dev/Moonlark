@@ -1,11 +1,12 @@
+import traceback
 from nonebot.matcher import Matcher
 from types import ModuleType
 from sqlalchemy.exc import NoResultFound
 import random
 import inspect
-from nonebot import get_plugin_by_module_name
+from nonebot import get_plugin_by_module_name, logger
 from nonebot_plugin_orm import get_session
-from .model import LanguageData
+from .model import LanguageData, LanguageKey
 from .model import LanguageConfig
 from .exception import *
 from nonebot import get_plugin_config
@@ -32,16 +33,47 @@ def get_module_name(module: ModuleType | None) -> str | None:
         return
     return plugin.name[15:] if plugin.name.startswith("nonebot_plugin_") else plugin.name
 
-def get_text(language: str, plugin: str, key: str, *args, **kwargs) -> str:
-    k = key.split(".", 1)
+def get_key(language: str, plugin: str, key: list[str]) -> LanguageKey:
+    data = languages[language].keys[plugin]
     try:
-        data = languages[language].keys[plugin][k[0]][k[1]]
+        for k in key:
+            data = data[k]
     except KeyError:
+        raise InvalidKeyException(f"{plugin}::{key}")
+    if not isinstance(data, LanguageKey):
+        raise InvalidKeyException(f"{plugin}::{key}")
+    return data
+
+def apply_template(language: str, plugin: str, key: list[str], text: str) -> str:
+    try:
+        return random.choice(get_key(
+            language,
+            plugin,
+            key[:-1] + ["__template__"]
+        ).text).format(text)
+    except InvalidKeyException:
+        return text
+
+def get_text(language: str, plugin: str, key: str, *args, **kwargs) -> str:
+    k = key.split(".")
+    try:
+        data = get_key(
+            language,
+            plugin,
+            k
+        )
+    except InvalidKeyException:
         text = f"<缺失: {plugin}.{key}; {args}; {kwargs}>"
+        logger.warning(f"获取键失败: {traceback.format_exc()}")
     else:
         text = random.choice(data.text)
-        if data.use_template and "__template__" in languages[language].keys[plugin][k[0]]:
-            text = get_text(language, plugin, f"{k[0]}.__template__", text)
+        if data.use_template:
+            text = apply_template(
+                language,
+                plugin,
+                k,
+                text
+            )
     return text.format(
         *args,
         **kwargs,
