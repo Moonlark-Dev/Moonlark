@@ -13,7 +13,7 @@ async def get_plugin_help(plugin: Plugin) -> dict[str, CommandHelp]:
     path = Path(plugin.module.__file__).parent
     if not path.joinpath("help.yaml").exists():
         return {}
-    async with aiofiles.open(path, encoding="utf-8") as f:
+    async with aiofiles.open(path.joinpath("help.yaml"), encoding="utf-8") as f:
         data = CommandHelpData(**yaml.safe_load(await f.read()))
     help_list = {}
     for key, value in data.commands.items():

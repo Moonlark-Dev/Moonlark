@@ -1,9 +1,8 @@
-plugin: larklang
+plugin: larkhelp
 commands:
-  lang:
+  help:
     description: help.description
     information: help.information
     usages:
       - help.usage_list
-      - help.usage_view
-      - help.usage_set
+      - help.usage_command

@@ -32,7 +32,8 @@ class LangLoader:
             self.languages[lang.name] = LanguageData(**data)
 
     async def load(self) -> None:
-        for lang in self.languages:
+        lang_list = list(self.languages.keys())
+        for lang in lang_list:
             try:
                 await self.load_language(self.languages[lang].path)
             except Exception:

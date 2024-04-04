@@ -31,8 +31,7 @@ async def _(command: str, user_id: str = get_user_id) -> None:
         "command.info",
         user_id,
         command,
-        await helper.text(data.description, user_id),
-        "" if data.information is None else f"\n{await helper.text(data.description, user_id)}\n",
+        await helper.text(data.information, user_id),
         "\n".join([
             await lang.text("command.usage", user_id, await helper.text(
                 usage,

@@ -33,37 +33,19 @@ def get_module_name(module: ModuleType | None) -> str | None:
         return
     return plugin.name[15:] if plugin.name.startswith("nonebot_plugin_") else plugin.name
 
-def get_key(language: str, plugin: str, key: list[str]) -> LanguageKey:
-    data = languages[language].keys[plugin]
-    try:
-        for k in key:
-            data = data[k]
-    except KeyError:
-        raise InvalidKeyException(f"{plugin}::{key}")
-    if not isinstance(data, LanguageKey):
-        raise InvalidKeyException(f"{plugin}::{key}")
-    return data
 
-def apply_template(language: str, plugin: str, key: list[str], text: str) -> str:
+def apply_template(language: str, plugin: str, key: str, text: str) -> str:
     try:
-        return random.choice(get_key(
-            language,
-            plugin,
-            key[:-1] + ["__template__"]
-        ).text).format(text)
-    except InvalidKeyException:
+        return random.choice(languages[language].keys["plugin"][key]["__template__"].text).format(text)
+    except KeyError:
         return text
 
 def get_text(language: str, plugin: str, key: str, *args, **kwargs) -> str:
-    k = key.split(".")
+    k = key.split(".", 1)
     try:
-        data = get_key(
-            language,
-            plugin,
-            k
-        )
-    except InvalidKeyException:
-        text = f"<缺失: {plugin}.{key}; {args}; {kwargs}>"
+        data = languages[language].keys[plugin][k[0]][k[1]]
+    except KeyError:
+        return f"<缺失: {plugin}.{key}; {args}; {kwargs}>"
         logger.warning(f"获取键失败: {traceback.format_exc()}")
     else:
         text = random.choice(data.text)
@@ -71,9 +53,10 @@ def get_text(language: str, plugin: str, key: str, *args, **kwargs) -> str:
             text = apply_template(
                 language,
                 plugin,
-                k,
+                k[0],
                 text
             )
+    logger.debug(f"GetTEXT: {plugin}.{key}; {args}; {kwargs}")
     return text.format(
         *args,
         **kwargs,
