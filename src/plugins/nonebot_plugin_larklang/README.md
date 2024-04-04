@@ -14,6 +14,10 @@ from ..nonebot_plugin_larklang import LangHelper
 lang = LangHelper()
 ```
 
+> LangHelper 的 name 参数为空时 plugin_name 将为模块名（不包含 `nonebot_plugin_`）
+>
+> 对应语言文件位于 `src/lang/<语言，默认为 zh_hans>/<plugin_name>.yaml`
+
 ### 获取文本
 
 ```python
@@ -46,6 +50,43 @@ async def reply(
     **kwargs
 ) -> None
 ```
+
+### 回复并结束处理
+
+```python
+async def finish(
+    self,
+    key: str,
+    user_id: str | int,
+    *args,
+    matcher: Matcher = Matcher(),
+    at_sender: bool = True,
+    reply_message: bool = False,
+    **kwargs
+) -> None
+```
+
+## 创建本地化语言
+
+在 `src/lang` 下创建一个文件夹作为语言文件夹
+
+创建一个 `language.toml`，填入以下内容
+
+```toml
+[language]
+# 版本
+version = 
+# 创作者
+author = 
+
+[display]
+# 简介（可选）
+description = 
+```
+
+> 请自行填写具体内容
+
+之后仿照 `zh_hans` 编写 `yaml` 内容
 
 ## 许可证
 

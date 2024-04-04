@@ -1,11 +1,12 @@
+import traceback
 from nonebot.matcher import Matcher
 from types import ModuleType
 from sqlalchemy.exc import NoResultFound
 import random
 import inspect
-from nonebot import get_plugin_by_module_name
+from nonebot import get_plugin_by_module_name, logger
 from nonebot_plugin_orm import get_session
-from .model import LanguageData
+from .model import LanguageData, LanguageKey
 from .model import LanguageConfig
 from .exception import *
 from nonebot import get_plugin_config
@@ -32,16 +33,30 @@ def get_module_name(module: ModuleType | None) -> str | None:
         return
     return plugin.name[15:] if plugin.name.startswith("nonebot_plugin_") else plugin.name
 
+
+def apply_template(language: str, plugin: str, key: str, text: str) -> str:
+    try:
+        return random.choice(languages[language].keys["plugin"][key]["__template__"].text).format(text)
+    except KeyError:
+        return text
+
 def get_text(language: str, plugin: str, key: str, *args, **kwargs) -> str:
     k = key.split(".", 1)
     try:
         data = languages[language].keys[plugin][k[0]][k[1]]
     except KeyError:
-        text = f"<缺失: {plugin}.{key}; {args}; {kwargs}>"
+        return f"<缺失: {plugin}.{key}; {args}; {kwargs}>"
+        logger.warning(f"获取键失败: {traceback.format_exc()}")
     else:
         text = random.choice(data.text)
-        if data.use_template and "__template__" in languages[language].keys[plugin][k[0]]:
-            text = get_text(language, plugin, f"{k[0]}.__template__", text)
+        if data.use_template:
+            text = apply_template(
+                language,
+                plugin,
+                k[0],
+                text
+            )
+    logger.debug(f"GetTEXT: {plugin}.{key}; {args}; {kwargs}")
     return text.format(
         *args,
         **kwargs,
@@ -119,6 +134,25 @@ class LangHelper:
             *args,
             **kwargs
         ), at_sender=at_sender, reply_message=reply_message)
+
+    async def finish(
+            self,
+            key: str,
+            user_id: str | int,
+            *args,
+            matcher: Matcher = Matcher(),
+            at_sender: bool = True,
+            reply_message: bool = False,
+            **kwargs) -> None:
+        await self.send(
+            key,
+            user_id,
+            *args,
+            **kwargs,
+            at_sender=at_sender,
+            reply_message=reply_message
+        )
+        await matcher.finish()
 
     async def reply(
             self,
