@@ -41,3 +41,19 @@ async def _(command: str, user_id: str = get_user_id) -> None:
         ])
     )
     await help_cmd.finish()
+
+@help_cmd.assign("$main")
+async def _(user_id: str = get_user_id) -> None:
+    await lang.send(
+        "list.info",
+        user_id,
+        "\n".join([
+            await lang.text(
+                "list.item",
+                user_id,
+                key,
+                await LangHelper(value.plugin).text(value.description, user_id)
+            ) for key, value in help_list.items()
+        ]),
+        at_sender=False
+    )
