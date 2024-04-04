@@ -26,7 +26,6 @@ class LanguageData(BaseModel):
     # Language 节
     author: str = "Unknown"
     version: str = "latest"
-    encoding: str = "utf-8"
     # 其他节
     lock: LanguageLockData = LanguageLockData()
     display: LanguageDisplayData = LanguageDisplayData()
