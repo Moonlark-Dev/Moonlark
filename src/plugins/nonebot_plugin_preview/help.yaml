@@ -1,0 +1,8 @@
+plugin: 'preview'
+commands:
+  preview:
+    description: help.description
+    information: help.information
+    usages:
+      - help.usage
+

@@ -1,0 +1,15 @@
+preview:
+  access_denied: 错误：无法访问
+  failed: |
+    # 访问网站时出现错误
+
+    ```python
+    {}
+    ```
+  not_compliance: |
+    失败：截图未通过内容审核
+    {}
+help:
+  information: 截图一个网页 (部分 URL 因特殊原因无法截图)
+  description: 预览网页
+  usage: 'preview <URL>'

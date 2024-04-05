@@ -63,7 +63,7 @@ async def _(user_id: str = get_user_id) -> None:
                     "description": await (plugin_lang := LangHelper(data.plugin)).text(data.description, user_id),
                     "information": await plugin_lang.text(data.information, user_id),
                     "usages": [
-                        await lang.text("list.usage", user_id, await plugin_lang.text(usage, user_id)) for usage in data.usages
+                        (await lang.text("list.usage", user_id, await plugin_lang.text(usage, user_id))).replace("<", "&lt;").replace(">", "&gt;") for usage in data.usages
                     ]
                 } for name, data in help_list.items()
             ]
