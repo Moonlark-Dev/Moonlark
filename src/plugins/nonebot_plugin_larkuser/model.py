@@ -9,6 +9,6 @@ class UserData(Model):
     avatar: Mapped[bytes] = mapped_column(nullable=True, default=None)
     experience: Mapped[int] = mapped_column(default=0)
     vimcoin: Mapped[float] = mapped_column(default=0.0)
-    health: Mapped[float] = mapped_column(default=0.0)
+    health: Mapped[float] = mapped_column(default=100.0)
     favorability: Mapped[float] = mapped_column(default=0.0)
 
