@@ -1,9 +1,8 @@
 list:
-  item: '[✓] {}: {}'
-  info: |
-    命令列表 —— Moonlark
-    {}
-    使用「{__prefix__}help <命令>」获取更多信息
+  title: Moonlark 命令列表
+  footer: 由 Moonlark 生成
+  usage: '{__prefix__}{}'
+  usage_text: '用法:'
 command:
   info: |
     [✓] {}: {}

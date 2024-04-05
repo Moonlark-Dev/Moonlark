@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <!-- MDB -->
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/mdb-ui-kit/7.2.0/mdb.min.css" rel="stylesheet" />
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mdb-ui-kit/7.2.0/mdb.umd.min.js"></script>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+            body {
+                background-image: url('https://www.dmoe.cc/random.php');
+                
+                background-position: center;
+                background-repeat: no-repeat;
+                background-size: cover;
+                padding: 20px;
+                padding-bottom: 0px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="card shadow bg-light bg-opacity-75">
+                <div class="card-body">
+                    <h1 class="text-center">{{ title }}</h1>
+                    {% for command in commands %}
+                        <hr>
+                        <h2>{{ command.name }} <small>{{ command.description }}</small></h2>
+                        <p>{{ command.information }}</p>
+                        <p>
+                            {{ usages_text }}
+                            {% for usage in command.usages %}
+                                <span class="badge bg-light rounded-pill text-dark">
+                                    {{ usage }}
+                                </span>
+                            {% endfor %}
+                        </p>
+                    {% endfor %}
+                </div>
+            </div>
+            <p class="text-center">{{ footer }}</p>
+        </div>
+    </body>
+</html>
