@@ -1,6 +1,6 @@
 list:
   title: Moonlark 命令列表
-  footer: 由 Moonlark 生成
+  footer: 由 Moonlark & nonebot_plugin_larkhelp 生成
   usage: '{__prefix__}{}'
   usage_text: '用法:'
 command:

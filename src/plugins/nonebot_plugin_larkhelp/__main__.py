@@ -1,4 +1,6 @@
-import aiofiles
+from pathlib import Path
+from nonebot_plugin_htmlrender import template_to_pic
+from nonebot_plugin_saa import Image, MessageFactory
 from nonebot import get_driver
 from ..nonebot_plugin_larklang.__main__ import LangHelper
 from ..nonebot_plugin_larkutils import get_user_id
@@ -42,10 +44,6 @@ async def _(command: str, user_id: str = get_user_id) -> None:
     )
     await help_cmd.finish()
 
-from jinja2 import Template
-from pathlib import Path
-from nonebot_plugin_htmlrender import template_to_pic
-from nonebot_plugin_saa import Image, MessageFactory
 
 @help_cmd.assign("$main")
 async def _(user_id: str = get_user_id) -> None:

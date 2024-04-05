@@ -1,0 +1,12 @@
+panel:
+  title: "Moonlark 用户面板"
+  footer: "由 Moonlark & nonebot-plugin-larkuser 生成"
+  uid: "UID: {}"
+  level: "等级: {} ({} / {})"
+  vimcoin: "VimCoin: {}"
+  hp: "生命值: {} / 100"
+  fav: "好感度: {}"
+help:
+  description: 用户面板
+  information: 查看用户信息
+  usage: panel
