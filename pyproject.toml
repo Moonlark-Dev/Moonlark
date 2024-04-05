@@ -13,7 +13,9 @@ adapters = [
 plugins = [
     "nonebot_plugin_orm",
     "nonebot_plugin_alconna",
-    "nonebot_plugin_picstatus"
+    "nonebot_plugin_picstatus",
+    "nonebot_plugin_htmlrender",
+    "nonebot_plugin_saa"
 ]
 plugin_dirs = ["src/plugins"]
 builtin_plugins = []

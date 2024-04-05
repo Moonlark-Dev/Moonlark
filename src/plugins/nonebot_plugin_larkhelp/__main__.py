@@ -1,3 +1,4 @@
+import aiofiles
 from nonebot import get_driver
 from ..nonebot_plugin_larklang.__main__ import LangHelper
 from ..nonebot_plugin_larkutils import get_user_id
@@ -41,18 +42,32 @@ async def _(command: str, user_id: str = get_user_id) -> None:
     )
     await help_cmd.finish()
 
+from jinja2 import Template
+from pathlib import Path
+from nonebot_plugin_htmlrender import template_to_pic
+from nonebot_plugin_saa import Image, MessageFactory
+
 @help_cmd.assign("$main")
 async def _(user_id: str = get_user_id) -> None:
-    await lang.send(
-        "list.info",
-        user_id,
-        "\n".join([
-            await lang.text(
-                "list.item",
-                user_id,
-                key,
-                await LangHelper(value.plugin).text(value.description, user_id)
-            ) for key, value in help_list.items()
-        ]),
-        at_sender=False
-    )
+    template_path = Path(__file__).parent.joinpath("template/index.html.jinja")
+    msg_builder = MessageFactory([Image(await template_to_pic(
+        template_path.parent.as_posix(),
+        template_path.name,
+        dict(
+            title=await lang.text("list.title", user_id),
+            footer=await lang.text("list.footer", user_id),
+            usages_text=await lang.text("list.usage_text", user_id),
+            commands=[
+                {
+                    "name": name,
+                    "description": await (plugin_lang := LangHelper(data.plugin)).text(data.description, user_id),
+                    "information": await plugin_lang.text(data.information, user_id),
+                    "usages": [
+                        await lang.text("list.usage", user_id, await plugin_lang.text(usage, user_id)) for usage in data.usages
+                    ]
+                } for name, data in help_list.items()
+            ]
+    )), "image.png")])
+    await msg_builder.finish()
+
+    
