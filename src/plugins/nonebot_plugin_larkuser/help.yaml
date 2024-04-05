@@ -1,0 +1,7 @@
+plugin: larkuser
+commands:
+  panel:
+    description: help.description
+    information: help.information
+    usages:
+      - help.usage
