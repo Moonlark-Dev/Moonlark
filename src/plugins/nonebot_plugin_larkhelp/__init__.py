@@ -17,5 +17,7 @@ from nonebot import require
 require("nonebot_plugin_larkutils")
 require("nonebot_plugin_alconna")
 require("nonebot_plugin_larklang")
+require("nonebot_plugin_htmlrender")
+require("nonebot_plugin_saa")
 
 from . import __main__
