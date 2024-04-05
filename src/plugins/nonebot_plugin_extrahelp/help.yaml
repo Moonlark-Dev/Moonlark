@@ -1,0 +1,7 @@
+plugin: 'extrahelp'
+commands:
+  status:
+    description: status.description
+    information: status.information
+    usages:
+      - status.usage
