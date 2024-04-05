@@ -12,4 +12,4 @@ preview:
 help:
   information: 截图一个网页 (部分 URL 因特殊原因无法截图)
   description: 预览网页
-  usage: 'preview <URL>'
+  usage: 'preview <URL> (截图URL)'
