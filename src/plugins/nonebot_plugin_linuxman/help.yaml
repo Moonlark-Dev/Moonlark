@@ -1,0 +1,7 @@
+plugin: linuxman
+commands:
+  man:
+    description: h.d
+    information: h.i
+    usages:
+      - h.u
