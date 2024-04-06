@@ -17,8 +17,7 @@ setu = on_alconna(
     Alconna(
         "setu",
         Subcommand("rank")
-    ),
-    use_cmd_start=True
+    )
 )
 last_use = 0
 

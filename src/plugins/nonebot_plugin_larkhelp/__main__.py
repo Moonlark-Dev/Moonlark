@@ -18,8 +18,7 @@ help_cmd = on_alconna(
     Alconna(
         "help",
         Args["command?", str]
-    ),
-    use_cmd_start=True
+    )
 )
 lang = LangHelper()
 

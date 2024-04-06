@@ -12,6 +12,6 @@ preview:
     失败：截图未通过内容审核
     {}
 help:
-  information: 截图一个网页 (部分 URL 因特殊原因无法截图)
+  information: 截图一个网页 (加载不完全请尝试指定 wait)
   description: 预览网页
-  usage: 'preview <URL> (截图URL)'
+  usage: 'preview <URL> [-w|--wait <等待时间>] (截图URL)'
