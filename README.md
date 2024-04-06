@@ -31,14 +31,13 @@ Moonlark 目前还在测试中。
 我们建议您在提交代码时遵循一下几个准则，否则您的拉取请求可能会被审核员标记为 `请求更改`：
 
 - 为了确保稳定性和兼容性，我们建议您在提交代码时：
-    - 使用 [SAA](https://github.com/MountainDash/nonebot-plugin-send-anything-anywhere) 发送消息
     - 使用 [LocalStore](https://github.com/nonebot/plugin-localstore) 储存文件
     - 使用 [ORM](https://github.com/nonebot/plugin-orm) 储存数据
     - 使用 [UserInfo](https://github.com/noneplugin/nonebot-plugin-userinfo) 或 [LarkUser](src/plugins/nonebot_plugin_larkuser) 获取用户信息
     - 使用 [Session](https://github.com/noneplugin/nonebot-plugin-session) 获取群组信息
     - 使用 [LarkLang](src/plugins/nonebot_plugin_larklang) 作为本地化插件
     - 使用 [HtmlRender](https://github.com/kexue-z/nonebot-plugin-htmlrender) 将 MarkDown、HTML 等渲染为图片
-    - 使用 [Alconna](https://github.com/nonebot/plugin-alconna) 解析命令
+    - 使用 [Alconna](https://github.com/nonebot/plugin-alconna) 解析命令和发送消息
 - 在部分耗时操作中（包括但不限于文件读写、网络请求），您需要使用异步以确保它不会阻塞 Moonlark 进程
 - 除用户信息（如昵称等）或由用户提交的内容，所有会被用户看到的文本都需要接入本地化
 - 所有文件都需要使用 `UTF-8` 编码，您可能要在打开文件时指定编码以确保在 Windows 系统下代码能够正常运行
