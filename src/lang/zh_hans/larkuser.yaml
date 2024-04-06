@@ -9,4 +9,4 @@ panel:
 help:
   description: 用户面板
   information: 查看用户信息
-  usage: panel
+  usage: panel (查看面板)

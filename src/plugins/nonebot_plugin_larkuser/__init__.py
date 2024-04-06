@@ -27,3 +27,8 @@ from .level import (
     get_level_by_experience,
     add_exp
 )
+from .vimcoin import (
+    add_vimcoin,
+    use_vimcoin,
+    has_vimcoin
+)

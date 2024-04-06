@@ -41,7 +41,8 @@ async def _(url: str, user_id: str = get_user_id) -> None:
     try:
         pic = await screenshot(url, 3)
     except Exception:
-        await (Image(await md_to_pic(await lang.text("preview.failed", user_id, traceback.format_exc())), "image.png")).finish(reply=True)
+        err = traceback.format_exc()
+        await (Image(await md_to_pic(await lang.text("preview.failed", user_id, err.split("\n")[-2], err), width=1000), "image.png")).finish(reply=True)
     if not (result := await review_image(pic))["compliance"]:
         await lang.finish("preview.not_compliance", user_id, result["message"])
     await MessageFactory([Image(pic, "image.jpg")]).finish(reply=True)
