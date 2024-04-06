@@ -6,15 +6,16 @@ from . import recorder as _recorder
 from .user import get_user
 from ..nonebot_plugin_larklang import LangHelper
 from nonebot_plugin_htmlrender import template_to_pic
-from nonebot_plugin_saa import MessageFactory, Image
+from nonebot_plugin_alconna.uniseg import UniMessage
 from .level import get_level_by_experience
+from nonebot.matcher import Matcher
 
 lang = LangHelper()
 
 @on_command("panel").handle()
-async def _(user_id: str = get_user_id) -> None:
+async def _(matcher: Matcher, user_id: str = get_user_id) -> None:
     user = await get_user(user_id)
-    await MessageFactory([Image(await template_to_pic(
+    await matcher.finish(await UniMessage().image(raw=await template_to_pic(
         Path(__file__).parent.joinpath("template").as_posix(),
         "index.html.jinja",
         {
@@ -36,4 +37,4 @@ async def _(user_id: str = get_user_id) -> None:
             "hp": await lang.text("panel.hp", user_id, round(user.health, 3)),
             "hp_progress": f"{int(user.health)}%"
         }
-    ), "image.png")]).finish(at_sender=True)
+    ), name="image.png").export(), at_sender=True)
