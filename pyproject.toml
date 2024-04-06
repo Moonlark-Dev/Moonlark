@@ -14,8 +14,7 @@ plugins = [
     "nonebot_plugin_orm",
     "nonebot_plugin_alconna",
     "nonebot_plugin_picstatus",
-    "nonebot_plugin_htmlrender",
-    "nonebot_plugin_saa"
+    "nonebot_plugin_htmlrender"
 ]
 plugin_dirs = ["src/plugins"]
 builtin_plugins = []
@@ -37,7 +36,6 @@ nonebot-plugin-orm = {extras = ["default"], version = "^0.7.1"}
 nonebot-plugin-alconna = "^0.41.1"
 nonebot-plugin-picstatus = "^2.0.0.post2"
 nonebot-adapter-discord = "^0.1.6"
-nonebot-plugin-send-anything-anywhere = "^0.6.0"
 nonebot-plugin-htmlrender = "^0.3.1"
 httpx = "^0.27.0"
 

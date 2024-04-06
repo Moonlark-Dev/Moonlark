@@ -15,7 +15,7 @@ require("nonebot_plugin_larklang")
 require("nonebot_plugin_larkutils")
 require("nonebot_plugin_larkuser")
 require("nonebot_plugin_orm")
-require("nonebot_plugin_saa")
+require("nonebot_plugin_alconna")
 require("nonebot_plugin_larksetu")
 
 config = get_plugin_config(Config)
