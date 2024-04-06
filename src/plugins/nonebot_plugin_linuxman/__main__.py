@@ -11,15 +11,14 @@ man = on_alconna(
     Alconna(
         "man",
         Args["name", str],
-        Args["page?", int]
-    ),
-    use_cmd_start=True
+        Args["page", int, 1]
+    )
 )
 
 
 @man.handle()
-async def _(name: str, page: Match[int], user_id: str = get_user_id) -> None:
-    p = page.result if page.available else 1
+async def _(name: str, page: int, user_id: str = get_user_id) -> None:
+    p = page
     async with httpx.AsyncClient(base_url=config.linuxman_url) as client:
         response = await client.get(f"/{name}.{p}.txt")
     if response.status_code == 404:
