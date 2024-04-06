@@ -6,7 +6,7 @@ from .config import Config
 
 __plugin_meta__ = PluginMetadata(
     name="nonebot_plugin_larksetu",
-    description="",
+    description="Moonlark 随机图片",
     usage="",
     config=Config,
 )
