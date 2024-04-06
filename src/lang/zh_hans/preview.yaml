@@ -11,6 +11,7 @@ preview:
   not_compliance: |
     失败：截图未通过内容审核
     {}
+  needarg: 请输入 <URL>
 help:
   information: 截图一个网页 (加载不完全请尝试指定 wait)
   description: 预览网页

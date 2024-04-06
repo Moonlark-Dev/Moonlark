@@ -4,11 +4,12 @@ from .config import Config
 from nonebot import get_plugin_config
 from ..nonebot_plugin_larklang import LangHelper
 from ..nonebot_plugin_larkutils import get_user_id, review_image
-from nonebot_plugin_alconna import Option, Query, on_alconna, Args, Alconna
+from nonebot_plugin_alconna import Option, Query, Reply, UniMsg, on_alconna, Args, Alconna
 from nonebot_plugin_alconna.uniseg import UniMessage
 from .exception import AccessDenied
 from .checker import check_url_protocol
 from nonebot_plugin_htmlrender import get_new_page, md_to_pic
+from nonebot.adapters import Message
 import asyncio
 
 
@@ -16,7 +17,7 @@ config = get_plugin_config(Config)
 preview = on_alconna(
     Alconna(
         "preview",
-        Args["url", str],
+        Args["url", str, ""],
         Option("--wait|-w", Args["wait", int, 3])
     ),
     use_cmd_start=True
@@ -32,10 +33,10 @@ async def screenshot(url: str, wait: int) -> bytes:
             full_page=True
         )
 
-
 @preview.handle()
-async def _(url: str, wait: Query[int] = Query("wait.wait"), user_id: str = get_user_id) -> None:
-    print(wait)
+async def _(url: str, msg: UniMsg, wait: Query[int] = Query("wait.wait"), user_id: str = get_user_id) -> None:
+    if not url:
+        await lang.finish("preview.needarg", user_id)
     try:
         if not check_url_protocol(url):
             url = f"http://{url}"
