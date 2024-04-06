@@ -13,8 +13,7 @@ lang_cmd = on_alconna(
             "view",
             Args["language", str]
         )
-    ),
-    use_cmd_start=True
+    )
 )
 lang = main.LangHelper()
 
