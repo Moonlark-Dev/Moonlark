@@ -15,12 +15,15 @@ async def get_image(match: str, session: async_scoped_session) -> ImageData:
         {"id": image_id}
     )
 
+def parse_text(text: str) -> Text:
+    return Text(text.replace("&#91;", "[").replace("&#93;", "]"))
+
 async def parse_content(content: str, session: async_scoped_session) -> UniMessage:
     length = 0
     message = UniMessage()
     for match in re.finditer(r"\[\[Img:\d+\.\d+\]\]\]", content):
         span = match.span()
-        message.append(Text(content[length:span[0]]))
+        message.append(parse_text(content[length:span[0]]))
         try:
             message.append(Image(
                 raw=(image := await get_image(match.group(), session)).data,
@@ -29,7 +32,7 @@ async def parse_content(content: str, session: async_scoped_session) -> UniMessa
         except Exception:
             logger.warning(f"获取图片失败: {traceback.format_exc()}")
         length = span[1]
-    message.append(Text(content[length:]))
+    message.append(parse_text(content[length:]))
     return message
 
 
