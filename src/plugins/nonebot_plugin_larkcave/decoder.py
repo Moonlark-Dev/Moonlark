@@ -36,7 +36,7 @@ async def parse_content(content: str, session: async_scoped_session) -> UniMessa
     return message
 
 
-async def render_cave(cave: CaveData, session: async_scoped_session, user_id: str) -> UniMessage:
+async def decode_cave(cave: CaveData, session: async_scoped_session, user_id: str) -> UniMessage:
     message = UniMessage(await lang.text(
         "render.header", user_id, cave.id
     ))
