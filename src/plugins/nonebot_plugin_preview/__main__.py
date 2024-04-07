@@ -3,13 +3,12 @@ import traceback
 from .config import Config
 from nonebot import get_plugin_config
 from ..nonebot_plugin_larklang import LangHelper
-from ..nonebot_plugin_larkutils import get_user_id, review_image
-from nonebot_plugin_alconna import Option, Query, Reply, UniMsg, on_alconna, Args, Alconna
+from ..nonebot_plugin_larkutils import get_user_id, review_image, ReplyExtension
+from nonebot_plugin_alconna import Option, Query, UniMsg, on_alconna, Args, Alconna
 from nonebot_plugin_alconna.uniseg import UniMessage
 from .exception import AccessDenied
 from .checker import check_url_protocol
 from nonebot_plugin_htmlrender import get_new_page, md_to_pic
-from nonebot.adapters import Message
 import asyncio
 
 
@@ -20,7 +19,8 @@ preview = on_alconna(
         Args["url", str, ""],
         Option("--wait|-w", Args["wait", int, 3])
     ),
-    use_cmd_start=True
+    use_cmd_start=True,
+    extensions=[ReplyExtension]
 )
 lang = LangHelper()
 
