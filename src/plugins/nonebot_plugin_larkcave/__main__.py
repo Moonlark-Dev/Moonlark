@@ -1,7 +1,6 @@
 from .model import CaveData, ImageData
 from nonebot_plugin_alconna import Alconna, Args, Image, MultiVar, UniMessage, Subcommand, on_alconna, Text, Image
 from typing import Union
-from ..nonebot_plugin_larkutils import ReplyExtension
 
 
 alc = Alconna(
@@ -14,6 +13,5 @@ alc = Alconna(
 )
 cave = on_alconna(
     alc,
-    use_cmd_start=True,
-    extensions=[ReplyExtension]
+    use_cmd_start=True
 )
