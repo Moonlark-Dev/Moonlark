@@ -16,3 +16,5 @@ require("nonebot_plugin_larkutils")
 require("nonebot_plugin_larklang")
 require("nonebot_plugin_larkcave")
 require("nonebot_plugin_orm")
+
+from . import __main__

@@ -70,7 +70,7 @@ async def review_image(image: bytes) -> ReviewResult:
 async def review_text(text: str) -> ReviewResult:
     async with httpx.AsyncClient() as client:
         response = await client.post(
-            f"https://aip.baidubce.com/rest/2.0/solution/v1/img_censor/v2/user_defined?access_token={await get_access_token()}",
+            f"https://aip.baidubce.com/rest/2.0/solution/v1/text_censor/v2/user_defined?access_token={await get_access_token()}",
             data={
                 "text": text
             },

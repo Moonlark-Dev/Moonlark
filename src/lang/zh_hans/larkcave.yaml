@@ -1,8 +1,9 @@
 render:
-  header: '回声洞——（{}）'
+  header: '回声洞 —— ({})'
   footer: '——{}'
 add:
   empty: 投稿失败：无效内容
   review_fail: |
     投稿失败：内容未通过审核
     {}
+  posted: '回声洞 ({}) 投稿成功'

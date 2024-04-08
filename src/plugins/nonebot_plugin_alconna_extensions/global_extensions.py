@@ -1,19 +1,16 @@
-from nonebot_plugin_alconna import Arparma, Extension, UniMessage
+from nonebot.adapters import Bot, Event, Message
+from nonebot import require
 from typing import Any, Dict
+from nonebot_plugin_alconna import Arparma, Extension, UniMessage
 from arclet.alconna.exceptions import (
     ArgumentMissing,
     ParamsUnmatched
 )
-from nonebot.adapters import Bot, Event, Message
-from nonebot import require
 from nonebot_plugin_alconna.uniseg import reply_fetch
 
-require("nonebot_plugin_alconna")
-
+require("nonebot_plugin_larklang")
 from ..nonebot_plugin_larklang import LangHelper
-
 lang = LangHelper()
-
 
 
 class ReplyExtension(Extension):
