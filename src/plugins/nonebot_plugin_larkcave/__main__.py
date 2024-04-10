@@ -27,13 +27,17 @@ alc = Alconna(
         "a|add",
         Args["content", MultiVar(Union[Image, Text])], # type: ignore
     ),
+    Subcommand(
+        "r|remove",
+        Args["cave_id", int],
+    ),
     separators="-"
 )
 cave = on_alconna(
     alc,
-    use_cmd_start=True
+    use_cmd_start=True,
+    skip_for_unmatch=False
 )
-
 
 async def get_cave(session: async_scoped_session) -> CaveData:
     cave_id_list = (await session.scalars(select(CaveData.id).where(CaveData.public))).all()

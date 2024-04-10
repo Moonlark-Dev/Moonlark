@@ -21,3 +21,4 @@ reviewer.secret_key = config.baidu_secret_key
 
 from .user import get_user_id
 from .reviewer import review_image, review_text
+from .superuser import is_superuser
