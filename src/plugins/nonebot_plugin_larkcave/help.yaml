@@ -1,6 +1,6 @@
 plugin: larkcave
 commands:
-  help:
+  cave:
     description: help.d
     details: help.i
     usages:
