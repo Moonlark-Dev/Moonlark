@@ -49,4 +49,7 @@ async def _(session: async_scoped_session, user_id: str = get_user_id) -> None:
     except NoResultFound:
         await lang.finish("cave.noresult", user_id)
         raise
+    except IndexError:
+        await lang.finish("cave.nocave", user_id)
+        raise
     await cave.finish(content)
