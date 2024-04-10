@@ -2,6 +2,6 @@ plugin: 'extrahelp'
 commands:
   status:
     description: status.description
-    information: status.information
+    details: status.details
     usages:
       - status.usage

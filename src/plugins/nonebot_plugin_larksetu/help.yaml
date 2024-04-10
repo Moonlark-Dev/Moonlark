@@ -2,7 +2,7 @@ plugin: larksetu
 commands:
   setu:
     description: h.d
-    information: h.i
+    details: h.i
     usages:
       - h.u1
       - h.u2

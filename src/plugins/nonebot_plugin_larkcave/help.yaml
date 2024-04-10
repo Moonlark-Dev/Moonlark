@@ -2,7 +2,7 @@ plugin: larkcave
 commands:
   help:
     description: help.d
-    information: help.i
+    details: help.i
     usages:
       - help.u1
       - help.u2

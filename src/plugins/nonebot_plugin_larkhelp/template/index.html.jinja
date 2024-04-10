@@ -26,7 +26,7 @@
                     {% for command in commands %}
                         <hr>
                         <h2>{{ command.name }} <small>{{ command.description }}</small></h2>
-                        <p>{{ command.information }}</p>
+                        <p>{{ command.details }}</p>
                         <p>
                             {{ usages_text }}
                             {% for usage in command.usages %}

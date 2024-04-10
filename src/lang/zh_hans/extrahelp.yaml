@@ -1,4 +1,4 @@
 status:
   description: 系统状态
-  information: Moonlark 运行状态
+  details: Moonlark 运行状态
   usage: status (获取运行状态)

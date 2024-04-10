@@ -33,7 +33,7 @@ async def _(command: str, user_id: str = get_user_id) -> None:
         "command.info",
         user_id,
         command,
-        await helper.text(data.information, user_id),
+        await helper.text(data.details, user_id),
         "\n".join([
             await lang.text("command.usage", user_id, await helper.text(
                 usage,
@@ -58,7 +58,7 @@ async def _(user_id: str = get_user_id) -> None:
                 {
                     "name": name,
                     "description": await (plugin_lang := LangHelper(data.plugin)).text(data.description, user_id),
-                    "information": await plugin_lang.text(data.information, user_id),
+                    "details": await plugin_lang.text(data.details, user_id),
                     "usages": [
                         (await lang.text("list.usage", user_id, await plugin_lang.text(usage, user_id))).replace("<", "&lt;").replace(">", "&gt;") for usage in data.usages
                     ]
