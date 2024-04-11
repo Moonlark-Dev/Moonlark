@@ -20,7 +20,7 @@ async def get_cave_id(session: async_scoped_session) -> int:
     return (result + 1) if result is not None else 0
 
 
-@cave.assign("content")
+@cave.assign("add.content")
 async def _(session: async_scoped_session, event: Event, bot: Bot, state: T_State, result: Arparma, user_id: str = get_user_id) -> None:
     try:
         content = cast(list[Image | Text], list(result.subcommands["add"].args["content"]))

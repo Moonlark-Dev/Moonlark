@@ -28,13 +28,18 @@ alc = Alconna(
         Args["content", MultiVar(Union[Image, Text])], # type: ignore
     ),
     Subcommand(
-        "restore",
+        "s|restore",
+        Args["cave_id", int],
+    ),
+    Subcommand(
+        "g|get",
         Args["cave_id", int],
     ),
     Subcommand(
         "r|remove",
         Args["cave_id", int],
     ),
+    # NOTE 写在 cave-r 后面的指令会被 cave-r 匹配，原因不明
     separators="-"
 )
 cave = on_alconna(

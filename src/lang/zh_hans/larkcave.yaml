@@ -19,7 +19,8 @@ help:
   u1: cave (随机条目)
   u2: cave-a <内容> (投稿条目)
   u3: cave-r <ID> (删除条目)
-  u4: cave-restore <ID> (恢复 7 天内删除的条目)
+  u4: cave-s <ID> (恢复 7 天内删除的条目)
+  u5: cave-g <ID> (查看自己投稿的条目)
 remove:
   no_result: 回声洞不存在或已删除！
   no_premission: 权限不足！
@@ -33,4 +34,7 @@ remove:
 restore:
   success: '已恢复回声洞 {}'
   not_found: '无效的回声洞 ID: {}'
+  no_premission: 权限不足
+get:
+  not_found: '未知或已删除的回声洞: {}'
   no_premission: 权限不足

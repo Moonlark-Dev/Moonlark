@@ -10,7 +10,7 @@ from sqlalchemy.exc import NoResultFound
 from datetime import datetime, timedelta
 from ...decoder import decode_cave
 
-@cave.assign("remove")
+@cave.assign("remove.cave_id")
 async def _(
     cave_id: int,
     session: async_scoped_session,
