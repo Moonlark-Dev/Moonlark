@@ -18,6 +18,8 @@ help:
   i: 投稿或查看其他用户投稿的回声洞，所有内容依照 CC-BY-NC-SA 4.0 许可协议授权
   u1: cave (随机条目)
   u2: cave-a <内容> (投稿条目)
+  u3: cave-r <ID> (删除条目)
+  u4: cave-restore <ID> (恢复 7 天内删除的条目)
 remove:
   no_result: 回声洞不存在或已删除！
   no_premission: 权限不足！
@@ -28,3 +30,7 @@ remove:
     回声洞 {} 已删除！
     投稿时间: {}
     如果您想恢复它，请在 {} 天内使用 {__prefix__}cave-restore {}
+restore:
+  success: '已恢复回声洞 {}'
+  not_found: '无效的回声洞 ID: {}'
+  no_premission: 权限不足

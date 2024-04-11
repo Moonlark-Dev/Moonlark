@@ -28,6 +28,10 @@ alc = Alconna(
         Args["content", MultiVar(Union[Image, Text])], # type: ignore
     ),
     Subcommand(
+        "restore",
+        Args["cave_id", int],
+    ),
+    Subcommand(
         "r|remove",
         Args["cave_id", int],
     ),

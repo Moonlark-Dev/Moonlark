@@ -34,7 +34,8 @@ async def _(
     cave_data.public = False
     session.add(RemovedCave(
         id=cave_data.id,
-        expiration_time=datetime.now() + timedelta(days=config.cave_restore_date)
+        expiration_time=datetime.now() + timedelta(days=config.cave_restore_date),
+        superuser=is_superuser
     ))
     post_time = cave_data.time.strftime("%Y-%m-%dT%H:%M:%S")
     await (await decode_cave(cave_data, session, user_id)).send()
