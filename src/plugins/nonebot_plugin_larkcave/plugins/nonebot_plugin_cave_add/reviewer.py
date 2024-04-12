@@ -10,9 +10,8 @@ async def review_cave(content: list[Image | Text], event: Event, bot: Bot, state
         if isinstance(segment, Text):
             text += f"{segment.text}"
         else:
-            if (result := await review_image(cast(bytes, await image_fetch(
-                event, bot, state, segment
-            ))))["compliance"]:
+            image = await image_fetch(event, bot, state, segment)
+            if not (result := await review_image(image.__bytes__()))["compliance"]:
                 return result["message"]
     if (result := await review_text(text))["compliance"]:
         return result["message"]

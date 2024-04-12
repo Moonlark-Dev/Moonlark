@@ -1,5 +1,6 @@
 import base64
 import time
+import traceback
 import aiofiles
 from nonebot.log import logger
 import httpx
@@ -43,13 +44,22 @@ async def get_access_token(force_update=False):
 
 def get_review_result(data: dict) -> ReviewResult:
     logger.debug(data)
-    result: ReviewResult = {
-        "compliance": data["conclusion"] in ["合规", "疑似"],
-        "conclusion": data["conclusion"],
-        "message": data.get("msg")
-    }
-    if not result["compliance"]:
-        logger.warning(f"对象审核不通过: {data}")
+    try:
+        result: ReviewResult = {
+            "compliance": data["conclusion"] in ["合规", "疑似"],
+            "conclusion": data["conclusion"],
+            "message": data.get("msg")
+        }
+        if not result["compliance"]:
+            logger.warning(f"对象审核不通过: {data}")
+    except KeyError:
+        result: ReviewResult = {
+            "compliance": False,
+            "conclusion": "出错",
+            "message": data.get("error_msg")
+        }
+        logger.warning(f"对象审核失败: {traceback.format_exc()}")
+    logger.debug(str(result))
     return result
 
 async def review_image(image: bytes) -> ReviewResult:

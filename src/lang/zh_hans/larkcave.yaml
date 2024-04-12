@@ -3,8 +3,10 @@ render:
   footer: "\n——{}"
 add:
   empty: 投稿失败：无效内容
+  similarity_title: "发现相似的回声洞: \n\n"
+  similarity_footer: "\n\n 相似度: {}%"
   review_fail: |
-    投稿失败：内容未通过审核
+    投稿失败：内容审核失败
     {}
   posted: '回声洞 ({}) 投稿成功'
 cave:

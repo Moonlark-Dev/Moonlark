@@ -16,5 +16,6 @@ require("nonebot_plugin_larkutils")
 require("nonebot_plugin_larklang")
 require("nonebot_plugin_larkcave")
 require("nonebot_plugin_orm")
+require("nonebot_plugin_cave_similarity_check")
 
 from . import __main__
