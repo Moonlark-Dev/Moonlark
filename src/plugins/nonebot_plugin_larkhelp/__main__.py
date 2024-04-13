@@ -24,7 +24,7 @@ lang = LangHelper()
 
 
 @help_cmd.assign("command")
-async def _(command: str, user_id: str = get_user_id) -> None:
+async def _(command: str, user_id: str = get_user_id()) -> None:
     if command not in help_list:
         await lang.finish("command.not_found", user_id, command)
     data = help_list[command]
@@ -45,7 +45,7 @@ async def _(command: str, user_id: str = get_user_id) -> None:
 
 
 @help_cmd.assign("$main")
-async def _(user_id: str = get_user_id) -> None:
+async def _(user_id: str = get_user_id()) -> None:
     template_path = Path(__file__).parent.joinpath("template/index.html.jinja")
     await help_cmd.finish(UniMessage().image(raw=await template_to_pic(
         template_path.parent.as_posix(),

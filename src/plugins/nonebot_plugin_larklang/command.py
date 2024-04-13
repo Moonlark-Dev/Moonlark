@@ -19,7 +19,7 @@ lang = main.LangHelper()
 
 
 @lang_cmd.assign("set")
-async def _(language: str, user_id: str = get_user_id) -> None:
+async def _(language: str, user_id: str = get_user_id()) -> None:
     if language not in main.get_languages():
         await lang.send("global.not_found", user_id, language)
     await main.set_user_language(user_id, language)
@@ -27,7 +27,7 @@ async def _(language: str, user_id: str = get_user_id) -> None:
     await lang_cmd.finish()
 
 @lang_cmd.assign("view")
-async def _(language: str, user_id: str = get_user_id) -> None:
+async def _(language: str, user_id: str = get_user_id()) -> None:
     if language not in main.get_languages():
         await lang.send("global.not_found", user_id, language)
     data = main.get_languages()[language]
@@ -41,7 +41,7 @@ async def _(language: str, user_id: str = get_user_id) -> None:
     )
 
 @lang_cmd.assign("$main")
-async def _(user_id: str = get_user_id) -> None:
+async def _(user_id: str = get_user_id()) -> None:
     await lang.reply(
         "lang.list",
         user_id,

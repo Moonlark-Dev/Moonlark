@@ -17,7 +17,7 @@ man = on_alconna(
 
 
 @man.handle()
-async def _(name: str, page: int, user_id: str = get_user_id) -> None:
+async def _(name: str, page: int, user_id: str = get_user_id()) -> None:
     p = page
     async with httpx.AsyncClient(base_url=config.linuxman_url) as client:
         response = await client.get(f"/{name}.{p}.txt")

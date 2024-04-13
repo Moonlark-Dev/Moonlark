@@ -14,8 +14,8 @@ from ...decoder import decode_cave
 async def _(
     cave_id: int,
     session: async_scoped_session,
-    is_superuser: bool = is_superuser,
-    user_id: str = get_user_id
+    is_superuser: bool = is_superuser(),
+    user_id: str = get_user_id()
 ) -> None:
     try:
         cave_data = await session.get_one(

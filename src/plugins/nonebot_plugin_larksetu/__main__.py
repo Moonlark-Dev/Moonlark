@@ -31,7 +31,7 @@ async def _get_image() -> Optional[ImageWithData]:
             logger.warning(f"获取图片失败: {traceback.format_exc()}")
 
 @setu.assign("$main")
-async def _(session: async_scoped_session, user_id: str = get_user_id) -> None:
+async def _(session: async_scoped_session, user_id: str = get_user_id()) -> None:
     global last_use
     if (remain_time := time.time() - last_use) <= config.setu_cd:
         await lang.finish("setu.cd", user_id, round(remain_time, 2))

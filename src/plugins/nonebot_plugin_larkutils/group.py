@@ -1,3 +1,4 @@
+from typing import Any
 from nonebot_plugin_session import SessionId, SessionIdType
 from nonebot.params import Depends
 
@@ -9,4 +10,6 @@ async def _get_group_id(
     )
 ) -> str:
     return group_id
-get_group_id = Depends(_get_group_id)
+
+def get_group_id() -> Any:
+    return Depends(_get_group_id)

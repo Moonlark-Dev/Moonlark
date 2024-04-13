@@ -11,8 +11,8 @@ from ...lang import lang
 async def _(
     session: async_scoped_session,
     cave_id: int,
-    user_id: str = get_user_id,
-    is_superuser: bool = is_superuser
+    user_id: str = get_user_id(),
+    is_superuser: bool = is_superuser()
 ) -> None:
     try:
         cave_data = await session.get_one(

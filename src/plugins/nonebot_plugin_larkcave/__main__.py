@@ -58,8 +58,8 @@ async def get_cave(session: async_scoped_session) -> CaveData:
 @cave.assign("$main")
 async def _(
     session: async_scoped_session,
-    user_id: str = get_user_id,
-    group_id: str = get_group_id
+    user_id: str = get_user_id(),
+    group_id: str = get_group_id()
 ) -> None:
     if not (group_cd_data := await is_group_cooled(group_id, session))[0]:
         await lang.finish("cave.group_cd", user_id, round(group_cd_data[1] / 60, 3))

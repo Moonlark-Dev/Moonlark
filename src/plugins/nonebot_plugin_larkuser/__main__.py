@@ -13,7 +13,7 @@ from nonebot.matcher import Matcher
 lang = LangHelper()
 
 @on_command("panel").handle()
-async def _(matcher: Matcher, user_id: str = get_user_id) -> None:
+async def _(matcher: Matcher, user_id: str = get_user_id()) -> None:
     user = await get_user(user_id)
     await matcher.finish(await UniMessage().image(raw=await template_to_pic(
         Path(__file__).parent.joinpath("template").as_posix(),

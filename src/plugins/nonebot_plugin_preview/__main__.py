@@ -35,7 +35,7 @@ async def screenshot(url: str, wait: int) -> bytes:
         )
 
 @preview.handle()
-async def _(url: str, msg: UniMsg, wait: Query[int] = Query("wait.wait"), user_id: str = get_user_id) -> None:
+async def _(url: str, msg: UniMsg, wait: Query[int] = Query("wait.wait"), user_id: str = get_user_id()) -> None:
     if not url:
         await lang.finish("preview.needarg", user_id)
     try:

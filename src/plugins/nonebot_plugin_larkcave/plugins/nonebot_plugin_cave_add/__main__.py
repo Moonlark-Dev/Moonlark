@@ -23,7 +23,7 @@ async def get_cave_id(session: async_scoped_session) -> int:
 
 
 @cave.assign("add.content")
-async def _(session: async_scoped_session, event: Event, bot: Bot, state: T_State, result: Arparma, user_id: str = get_user_id) -> None:
+async def _(session: async_scoped_session, event: Event, bot: Bot, state: T_State, result: Arparma, user_id: str = get_user_id()) -> None:
     try:
         content = cast(list[Image | Text], list(result.subcommands["add"].args["content"]))
     except KeyError:
