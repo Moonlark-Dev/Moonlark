@@ -20,7 +20,8 @@ from .lang import lang
 from sqlalchemy.exc import NoResultFound
 from .cool_down import (
     is_group_cooled,
-    on_group_use
+    on_use,
+    is_user_cooled
 )
 
 
@@ -44,7 +45,8 @@ alc = Alconna(
     ),
     Subcommand(
         "c|cd",
-        Option("-s|--set", Args["time", float])
+        Option("-s|--set", Args["time", float]),
+        Option("-u|--user")
     ),
     separators="-"
 )
@@ -66,6 +68,8 @@ async def _(
     user_id: str = get_user_id(),
     group_id: str = get_group_id()
 ) -> None:
+    if not (user_cd_data := await is_user_cooled(user_id, session))[0]:
+        await lang.finish("cave.user_cd", user_id, round(user_cd_data[1] / 60, 3))
     if not (group_cd_data := await is_group_cooled(group_id, session))[0]:
         await lang.finish("cave.group_cd", user_id, round(group_cd_data[1] / 60, 3))
     try:
@@ -77,5 +81,5 @@ async def _(
     except IndexError:
         await lang.finish("cave.nocave", user_id)
         raise
-    await on_group_use(group_id, session)
+    await on_use(group_id, user_id, session)
     await cave.finish(content)
