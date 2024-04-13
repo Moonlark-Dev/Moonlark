@@ -1,12 +1,11 @@
 import random
 from sqlalchemy import select
-from .model import CaveData, ImageData
+from .model import CaveData
 from nonebot_plugin_alconna import (
     Alconna,
     Args,
     Image,
     MultiVar,
-    UniMessage,
     Subcommand,
     on_alconna,
     Text,
@@ -15,10 +14,13 @@ from nonebot_plugin_alconna import (
 from .decoder import decode_cave
 from nonebot_plugin_orm import async_scoped_session
 from typing import Union
-from ..nonebot_plugin_larkutils import get_user_id
+from ..nonebot_plugin_larkutils import get_user_id, get_group_id
 from .lang import lang
-from ..nonebot_plugin_larkuser import get_user
 from sqlalchemy.exc import NoResultFound
+from .cool_down import (
+    is_group_cooled,
+    on_group_use
+)
 
 
 alc = Alconna(
@@ -39,7 +41,6 @@ alc = Alconna(
         "r|remove",
         Args["cave_id", int],
     ),
-    # NOTE 写在 cave-r 后面的指令会被 cave-r 匹配，原因不明
     separators="-"
 )
 cave = on_alconna(
@@ -55,7 +56,13 @@ async def get_cave(session: async_scoped_session) -> CaveData:
 
 
 @cave.assign("$main")
-async def _(session: async_scoped_session, user_id: str = get_user_id) -> None:
+async def _(
+    session: async_scoped_session,
+    user_id: str = get_user_id,
+    group_id: str = get_group_id
+) -> None:
+    if not (group_cd_data := await is_group_cooled(group_id, session))[0]:
+        await lang.finish("cave.group_cd", user_id, round(group_cd_data[1] / 60, 3))
     try:
         cave_data = await get_cave(session)
         content = await decode_cave(cave_data, session, user_id)
@@ -65,4 +72,5 @@ async def _(session: async_scoped_session, user_id: str = get_user_id) -> None:
     except IndexError:
         await lang.finish("cave.nocave", user_id)
         raise
+    await on_group_use(group_id, session)
     await cave.finish(content)

@@ -17,3 +17,8 @@ class ImageData(Model):
     name: Mapped[str] = mapped_column(default="image.png")
     belong: Mapped[int]
 
+
+class GroupData(Model):
+    group_id: Mapped[str] = mapped_column(primary_key=True)
+    last_use: Mapped[datetime] = mapped_column(default=datetime.fromtimestamp(0))
+    cool_down_time: Mapped[float] = mapped_column(default=60)
