@@ -1,4 +1,4 @@
-from nonebot import get_plugin_config, require
+from nonebot import require
 from nonebot.plugin import PluginMetadata
 
 from .config import Config
@@ -10,9 +10,10 @@ __plugin_meta__ = PluginMetadata(
     config=Config,
 )
 
-config = get_plugin_config(Config)
+
 
 require("nonebot_plugin_larkcave")
 require("nonebot_plugin_larkuser")
 
 from . import __main__
+from . import image_api
