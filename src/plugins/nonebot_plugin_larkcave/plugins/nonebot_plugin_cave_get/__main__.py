@@ -24,10 +24,10 @@ async def _(
         await lang.finish("get.not_found", user_id, cave_id)
         await cave.finish()
     if (not cave_data.public) and not is_superuser:
-        await lang.finish("get.no_premission", user_id)
+        await lang.finish("get.no_permission", user_id)
         await cave.finish()
     if not ((cave_data.author == cave_data.author) or is_superuser):
-        await lang.finish("get.no_premission", user_id)
+        await lang.finish("get.no_permission", user_id)
         await cave.finish()
     await cave.finish(content)
 

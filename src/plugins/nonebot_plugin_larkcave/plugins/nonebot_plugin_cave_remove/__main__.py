@@ -26,7 +26,7 @@ async def _(
         await lang.reply("remove.no_result", user_id)
         await cave.finish()
     if not (cave_data.author == user_id or is_superuser):
-        await lang.reply("remove.no_premission", user_id)
+        await lang.reply("remove.no_permission", user_id)
         await cave.finish()
     if not cave_data.public:
         await lang.reply("remove.private", user_id, cave_id)

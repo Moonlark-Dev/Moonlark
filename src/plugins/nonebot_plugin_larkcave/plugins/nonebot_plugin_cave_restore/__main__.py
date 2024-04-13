@@ -26,7 +26,7 @@ async def _(
         await lang.finish("restore.not_found", user_id, cave_id)
         await cave.finish()
     if not ((user_id == cave_data.author and not data.superuser) or is_superuser):
-        await lang.finish("restore.no_premission", user_id)
+        await lang.finish("restore.no_permission", user_id)
         await cave.finish()
     await session.delete(data)
     cave_data.public = True

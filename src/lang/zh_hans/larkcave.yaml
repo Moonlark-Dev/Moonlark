@@ -26,7 +26,7 @@ help:
   u5: cave-g <ID> (查看自己投稿的条目)
 remove:
   no_result: 回声洞不存在或已删除！
-  no_premission: 权限不足！
+  no_permission: 权限不足！
   private: |
     回声洞已被删除！
     如果您想恢复它，可以使用 {__prefix__}cave-restore {}
@@ -37,7 +37,16 @@ remove:
 restore:
   success: '已恢复回声洞 {}'
   not_found: '无效的回声洞 ID: {}'
-  no_premission: 权限不足
+  no_permission: 权限不足
 get:
   not_found: '未知或已删除的回声洞: {}'
-  no_premission: 权限不足
+  no_permission: 权限不足
+cd:
+  no_permission: 权限不足
+  set: 成功修改本群回声洞冷却时间
+  info: |
+    「回声洞群冷却」
+    状态: {}
+    剩余 (分钟): {}
+  info_status_ok: 可用
+  info_status_cooling: 冷却中

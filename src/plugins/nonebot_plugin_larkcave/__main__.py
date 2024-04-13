@@ -6,6 +6,7 @@ from nonebot_plugin_alconna import (
     Args,
     Image,
     MultiVar,
+    Option,
     Subcommand,
     on_alconna,
     Text,
@@ -40,6 +41,10 @@ alc = Alconna(
     Subcommand(
         "r|remove",
         Args["cave_id", int],
+    ),
+    Subcommand(
+        "c|cd",
+        Option("-s|--set", Args["time", float])
     ),
     separators="-"
 )
