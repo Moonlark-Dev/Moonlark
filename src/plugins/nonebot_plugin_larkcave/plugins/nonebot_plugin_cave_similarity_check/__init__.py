@@ -13,3 +13,4 @@ __plugin_meta__ = PluginMetadata(
 require("nonebot_plugin_larkcave")
 
 from .text import check_text_content
+from .image import check_image

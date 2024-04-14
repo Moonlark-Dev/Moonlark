@@ -1,17 +1,19 @@
 from datetime import datetime
-from typing import Union, cast
+from typing import cast
 from nonebot_plugin_alconna import Arparma, Image, Text, UniMessage, image_fetch
 from sqlalchemy import select
+
+from .exception import ReviewFailed, EmptyImage, DuplicateCave
 from ...model import CaveData
 from nonebot_plugin_orm import async_scoped_session
-from ..nonebot_plugin_cave_similarity_check import check_text_content
+from ..nonebot_plugin_cave_similarity_check import check_text_content, check_image
 from sqlalchemy.sql.expression import func
 from ...__main__ import cave
 from ....nonebot_plugin_larkutils import get_user_id
 from ...lang import lang
 from ...decoder import decode_cave
 from .encoder import encode_image, encode_text
-from .reviewer import review_cave
+from .checker import check_cave
 from nonebot.adapters import Event
 from nonebot.adapters import Bot
 from nonebot.typing import T_State
@@ -29,18 +31,21 @@ async def _(session: async_scoped_session, event: Event, bot: Bot, state: T_Stat
     except KeyError:
         await lang.finish("add.empty", user_id)
         return
-    if (message := await review_cave(content, event, bot, state)):
-        await lang.finish("add.review_fail", user_id, message)
+    try:
+        await check_cave(content, event, bot, state, session)
+    except ReviewFailed as e:
+        await lang.finish("add.review_fail", user_id, e.reason)
+    except EmptyImage as e:
+        await lang.finish("add.image_empty", user_id)
+    except DuplicateCave as e:
+        msg = UniMessage(await lang.text("add.similarity_title", user_id))
+        msg.extend(await decode_cave(e.cave, session, user_id))
+        msg.append(Text(await lang.text("add.similarity_footer", user_id, round(e.score * 100, 3))))
+        await cave.finish(msg, reply_message=True)
     cave_id = await get_cave_id(session)
     content = " ".join([
         ((await encode_text(seg.text)) if isinstance(seg, Text) else (await encode_image(cave_id, seg.name, cast(bytes, await image_fetch(event, bot, state, seg)), session))) for seg in content
     ])
-    content_check_result = await check_text_content(content, session)
-    if content_check_result["passed"] is False:
-        msg = UniMessage(await lang.text("add.similarity_title", user_id))
-        msg.extend(await decode_cave(content_check_result["similar_cave"], session, user_id))
-        msg.append(Text(await lang.text("add.similarity_footer", user_id, round(content_check_result["similarity"] * 100, 3))))
-        await cave.finish(msg, reply_message=True)
     session.add(CaveData(
         id=cave_id,
         author=user_id,

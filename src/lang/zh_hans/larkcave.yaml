@@ -8,6 +8,7 @@ add:
   review_fail: |
     投稿失败：内容审核失败
     {}
+  image_empty: 获取消息中的图片时发生错误，请稍后重试
   posted: '回声洞 ({}) 投稿成功'
 cave:
   noresult: |
