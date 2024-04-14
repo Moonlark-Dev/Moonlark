@@ -12,11 +12,15 @@ from nonebot_plugin_alconna import (
     Text,
     Image
 )
+from nonebot.log import logger
 from .decoder import decode_cave
+import traceback
 from nonebot_plugin_orm import async_scoped_session
 from typing import Union
 from ..nonebot_plugin_larkutils import get_user_id, get_group_id
 from .lang import lang
+from .plugins.nonebot_plugin_cave_comment.message import add_cave_message
+from .plugins.nonebot_plugin_cave_comment.get import get_comments
 from sqlalchemy.exc import NoResultFound
 from .cool_down import (
     is_group_cooled,
@@ -41,7 +45,8 @@ alc = Alconna(
     ),
     Subcommand(
         "r|remove",
-        Args["cave_id", int],
+        Option("--comment", Args["comment_id", int]),
+        Args["cave_id?", int]
     ),
     Subcommand(
         "c|cd",
@@ -74,6 +79,7 @@ async def _(
         await lang.finish("cave.group_cd", user_id, round(group_cd_data[1] / 60, 3))
     try:
         cave_data = await get_cave(session)
+        cave_id = cave_data.id
         content = await decode_cave(cave_data, session, user_id)
     except NoResultFound:
         await lang.finish("cave.noresult", user_id)
@@ -81,5 +87,11 @@ async def _(
     except IndexError:
         await lang.finish("cave.nocave", user_id)
         raise
+    try:
+        add_cave_message(cave_id, str((await content.send()).msg_ids[0]["message_id"]))
+    except Exception:
+        logger.error(f"写入回声洞消息队列时发生错误: {traceback.format_exc()}")
+    if (msg := await get_comments(cave_id, session, user_id)):
+        await msg.send()
     await on_use(group_id, user_id, session)
-    await cave.finish(content)
+    await cave.finish()

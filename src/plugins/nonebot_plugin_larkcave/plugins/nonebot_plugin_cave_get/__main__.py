@@ -1,3 +1,5 @@
+import traceback
+from nonebot.log import logger
 from ...decoder import decode_cave
 from ...model import CaveData
 from ...__main__ import cave
@@ -5,6 +7,8 @@ from ....nonebot_plugin_larkutils import get_user_id, is_superuser
 from nonebot_plugin_orm import async_scoped_session
 from sqlalchemy.exc import NoResultFound
 from ...lang import lang
+from ..nonebot_plugin_cave_comment.message import add_cave_message
+from ..nonebot_plugin_cave_comment.get import get_comments
 
 
 @cave.assign("get.cave_id")
@@ -29,7 +33,13 @@ async def _(
     if not ((cave_data.author == cave_data.author) or is_superuser):
         await lang.finish("get.no_permission", user_id)
         await cave.finish()
-    await cave.finish(content)
+    try:
+        add_cave_message(cave_id, str((await content.send()).msg_ids[0]["message_id"]))
+    except Exception:
+        logger.error(f"写入回声洞消息队列时发生错误: {traceback.format_exc()}")
+    if (msg := await get_comments(cave_id, session, user_id)):
+        await msg.send()
+    await cave.finish()
 
 
 

@@ -29,6 +29,7 @@ async def _(
         await lang.finish("restore.no_permission", user_id)
         await cave.finish()
     await session.delete(data)
+    await session.commit()
     cave_data.public = True
     await session.commit()
     await lang.finish("restore.success", user_id, cave_id)

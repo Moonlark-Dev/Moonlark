@@ -37,6 +37,13 @@ remove:
     回声洞 {} 已删除！
     投稿时间: {}
     如果您想恢复它，请在 {} 天内使用 {__prefix__}cave-restore {}
+remove_comment:
+  no_result: '无效的评论 ID: {}'
+  no_permission: 权限不足！
+  info: |
+    {} 评论于回声洞 ({}):
+    {}
+  success: '已删除评论: {}'
 restore:
   success: '已恢复回声洞 {}'
   not_found: '无效的回声洞 ID: {}'
@@ -57,3 +64,11 @@ cd:
     剩余 (分钟): {}
   info_status_ok: 可用
   info_status_cooling: 冷却中
+comment:
+  review_fail: |
+    评论失败：内容审核失败
+    {}
+  success: 评论 ({}) 提交成功
+  title: 回声洞评论 —— ({})
+  footer: 由 Moonlark & nonebot-plugin-cave-comment 生成
+  id: ({})
