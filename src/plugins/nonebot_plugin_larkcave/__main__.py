@@ -45,7 +45,7 @@ alc = Alconna(
     ),
     Subcommand(
         "r|remove",
-        Option("--comment", Args["comment_id", int]),
+        Option("-c|--comment", Args["comment_id", int]),
         Args["cave_id?", int]
     ),
     Subcommand(
