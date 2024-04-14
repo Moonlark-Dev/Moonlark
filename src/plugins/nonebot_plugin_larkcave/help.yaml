@@ -1,0 +1,14 @@
+plugin: larkcave
+commands:
+  cave:
+    description: help.d
+    details: help.i
+    usages:
+      - help.u1
+      - help.u2
+      - help.u3
+      - help.u4
+      - help.u5
+      - help.u6
+      - help.u7
+      - help.u8

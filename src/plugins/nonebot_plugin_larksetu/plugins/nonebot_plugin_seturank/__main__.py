@@ -12,7 +12,7 @@ from sqlalchemy import select
 lang = LangHelper()
 
 @__main__.setu.assign("rank")
-async def _(session: async_scoped_session, user_id: str = get_user_id) -> None:
+async def _(session: async_scoped_session, user_id: str = get_user_id()) -> None:
     result = await session.execute(select(model.UserData))
     data = result.scalars().all()
     sorted_data = sorted(data, key=lambda x: x.count, reverse=True)

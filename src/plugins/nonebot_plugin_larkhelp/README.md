@@ -22,7 +22,7 @@ commands:
     # 简介 （注意：以下所有值都应该为 larklang 本地化键名）
     description: help.description
     # 详细信息
-    information: help.information
+    details: help.details
     # 用法表
     usages:
       - help.usage_list

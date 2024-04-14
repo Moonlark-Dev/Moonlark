@@ -2,6 +2,6 @@ plugin: larkuser
 commands:
   panel:
     description: help.description
-    information: help.information
+    details: help.details
     usages:
       - help.usage

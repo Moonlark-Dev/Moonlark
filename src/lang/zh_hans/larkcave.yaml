@@ -1,0 +1,76 @@
+render:
+  header: "回声洞 —— ({})\n"
+  footer: "\n——{}"
+add:
+  empty: 投稿失败：无效内容
+  similarity_title: "发现相似的回声洞: \n\n"
+  similarity_footer: "\n\n 相似度: {}%"
+  review_fail: |
+    投稿失败：内容审核失败
+    {}
+  image_empty: 获取消息中的图片时发生错误，请稍后重试
+  posted: '回声洞 ({}) 投稿成功'
+cave:
+  noresult: |
+    获取回声洞时出现错误: 所含图片失效
+    请联系管理员以解决此问题
+  nocave: |
+    获取回声洞时出现错误: 没有可用的回声洞
+  group_cd: 群聊冷却中 ... (剩余 {} 分钟)
+  user_cd: 用户冷却中 ... (剩余 {} 分钟)
+help:
+  d: 回声洞
+  i: 投稿或查看其他用户投稿的回声洞，所有内容依照 CC-BY-NC-SA 4.0 许可协议授权
+  u1: cave (随机条目)
+  u2: cave-a <内容> (投稿条目)
+  u3: cave-r <ID> (删除条目)
+  u4: cave-s <ID> (恢复 7 天内删除的条目)
+  u5: cave-g <ID> (查看自己投稿的条目)
+  u6: cave-c [-u|--user] (查看冷却状态)
+  u7: cave-c --set <时间(分钟)> (修改冷却时间)
+  u8: cave-r -c <ID> (删除评论)
+remove:
+  no_result: 回声洞不存在或已删除！
+  no_permission: 权限不足！
+  private: |
+    回声洞已被删除！
+    如果您想恢复它，可以使用 {__prefix__}cave-restore {}
+  success: |
+    回声洞 {} 已删除！
+    投稿时间: {}
+    如果您想恢复它，请在 {} 天内使用 {__prefix__}cave-restore {}
+remove_comment:
+  no_result: '无效的评论 ID: {}'
+  no_permission: 权限不足！
+  info: |
+    {} 评论于回声洞 ({}):
+    {}
+  success: '已删除评论: {}'
+restore:
+  success: '已恢复回声洞 {}'
+  not_found: '无效的回声洞 ID: {}'
+  no_permission: 权限不足
+get:
+  not_found: '未知或已删除的回声洞: {}'
+  no_permission: 权限不足
+cd:
+  no_permission: 权限不足
+  set: 成功修改本群回声洞冷却时间
+  info: |
+    「回声洞群冷却」
+    状态: {}
+    剩余 (分钟): {}
+  info_user: |
+    「回声洞用户冷却」
+    状态: {}
+    剩余 (分钟): {}
+  info_status_ok: 可用
+  info_status_cooling: 冷却中
+comment:
+  review_fail: |
+    评论失败：内容审核失败
+    {}
+  success: 评论 ({}) 提交成功
+  title: 回声洞评论 —— ({})
+  footer: 由 Moonlark & nonebot-plugin-cave-comment 生成
+  id: ({})

@@ -14,6 +14,8 @@ config = get_plugin_config(Config)
 
 require("nonebot_plugin_localstore")
 require("nonebot_plugin_alconna")
+require("nonebot_plugin_session")
+
 
 from . import reviewer
 reviewer.api_key = config.baidu_api_key
@@ -21,4 +23,5 @@ reviewer.secret_key = config.baidu_secret_key
 
 from .user import get_user_id
 from .reviewer import review_image, review_text
-from .reply import ReplyExtension
+from .superuser import is_superuser
+from .group import get_group_id

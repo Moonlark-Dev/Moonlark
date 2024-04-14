@@ -2,7 +2,7 @@ plugin: 'preview'
 commands:
   preview:
     description: help.description
-    information: help.information
+    details: help.details
     usages:
       - help.usage
 

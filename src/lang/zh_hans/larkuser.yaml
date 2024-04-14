@@ -8,5 +8,5 @@ panel:
   fav: "好感度: {}"
 help:
   description: 用户面板
-  information: 查看用户信息
+  details: 查看用户信息
   usage: panel (查看面板)

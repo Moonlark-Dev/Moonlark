@@ -2,7 +2,7 @@ plugin: larklang
 commands:
   lang:
     description: help.description
-    information: help.information
+    details: help.details
     usages:
       - help.usage_list
       - help.usage_view
