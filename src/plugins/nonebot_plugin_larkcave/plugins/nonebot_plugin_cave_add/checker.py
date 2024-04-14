@@ -25,5 +25,5 @@ async def check_cave(content: list[Image | Text], event: Event, bot: Bot, state:
     data = await check_text_content(text, session)
     if data["passed"] == False:
         raise DuplicateCave(data["similar_cave"], data["similarity"])
-    if (result := await review_text(text))["compliance"]:
+    if text and not (result := await review_text(text))["compliance"]:
         raise ReviewFailed(str(result["message"]))
