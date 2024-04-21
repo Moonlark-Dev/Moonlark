@@ -1,0 +1,12 @@
+plugin: 'vote'
+commands:
+  vote:
+    description: help.description
+    details: help.details
+    usages:
+      - help.u1
+      - help.u2
+      - help.u3
+      - help.u4
+      - help.u5
+
