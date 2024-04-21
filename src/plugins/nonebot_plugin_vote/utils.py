@@ -65,24 +65,6 @@ async def get_vote_data(
         return vote
     return None
 
-
-# async def get_confirm_text(state: T_State, user_id: str) -> str:
-#     length = 0
-#     return await lang.text(
-#         "create.confirm",
-#         user_id,
-#         state["title"],
-#         state["content"],
-#         [await lang.text(
-#             "create.short_choice",
-#             user_id,
-#             length := length + 1,
-#             choice
-#         ) for choice in state["choices"]],
-#         state["end_time"].strftime("%Y-%m-%d %H:%M:%S"),
-#         state["private"]
-#     )
-
 def get_percent(count: int, total_count: int) -> int:
     try:
         return round(count / total_count * 100)
