@@ -1,3 +1,2 @@
-unmatched:
-  missing: '失败：缺少参数：{}'
-  unmatched: '失败：无效参数：{}'
+quit:
+  exited: 已退出！

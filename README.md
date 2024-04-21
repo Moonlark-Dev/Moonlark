@@ -50,20 +50,36 @@ Moonlark 目前还在测试中。
 ```bash
 poetry install
 ```
+在运行前，您需要将 [`.env.template`](.env.template) 复制为 `.env` 文件并填写相关环境变量。
 
-为了方便开发，我们建议您进入 Poetry Shell：
+您可以使用任何工具编写 Moonlark 的代码。当然，我们不建议使用如记事本、写字板之类的非专业工具。
 
-```bash
-poetry shell
-```
+### 更新数据库
 
-在第一次运行或更改数据库模型后，您需要更新数据库：
+在修改数据库模板后，您需要更新 ORM 数据库: 
 
 ```bash
 nb orm sync
 ```
 
-您可以使用任何工具编写 Moonlark 的代码。当然，我们不建议使用如记事本、写字板之类的工具。
+由于特殊原因（已知是由 `nonebot-plugin-access-control` 引起的），您可能需要进行以下操作来完成更新:
+
+在数据库（如 `sqlite3 test.db`）执行以下指令:
+
+```sql
+drop table accctrl_permission;
+drop table accctrl_rate_limit_rule;
+drop table accctrl_rate_limit_token;
+```
+
+并在 shell 中执行:
+
+```bash
+nb orm upgrade
+```
+
+
+
 
 ## 许可证
 
