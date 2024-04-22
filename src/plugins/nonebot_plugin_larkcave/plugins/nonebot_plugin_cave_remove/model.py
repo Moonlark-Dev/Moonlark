@@ -6,5 +6,5 @@ from .config import config
 class RemovedCave(Model):
     id: Mapped[int] = mapped_column(primary_key=True)
     expiration_time: Mapped[datetime]
-    superuser: Mapped[bool]  = mapped_column(default=False)
+    superuser: Mapped[bool] = mapped_column(default=False)
 

@@ -52,7 +52,7 @@ poetry install
 ```
 在运行前，您需要将 [`.env.template`](.env.template) 复制为 `.env` 文件并填写相关环境变量。
 
-您可以使用任何工具编写 Moonlark 的代码。当然，我们不建议使用如记事本、写字板之类的非专业工具。
+您可以使用任何工具编写 Moonlark 的代码。当然，我们不建议使用如记事本、写字板之类的非专业编辑器。
 
 ### 更新数据库
 
@@ -64,7 +64,7 @@ nb orm sync
 
 由于特殊原因（已知是由 `nonebot-plugin-access-control` 引起的），您可能需要进行以下操作来完成更新:
 
-在数据库（如 `sqlite3 test.db`）执行以下指令:
+在数据库中执行以下指令:
 
 ```sql
 drop table accctrl_permission;
@@ -78,29 +78,28 @@ drop table accctrl_rate_limit_token;
 nb orm upgrade
 ```
 
-
-
+> 我们暂时没有找到解决这一问题的方法，如果您有解决思路，请提交议题或拉取请求。
 
 ## 许可证
 
-Moonlark 基于 `GNU AFFERO GENERAL PUBLIC LICENSE v3.0 (AGPL-3.0)` 开源。
+Moonlark 遵循 [AGPL-3.0](LICENSE) 许可证开源。
 
 ```
-    Moonlark - A new ChatBot
-    Copyright (C) 2024  Moonlark Development Team
+Moonlark - A new ChatBot
+Copyright (C) 2024  Moonlark Development Team
 
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU Affero General Public License as published
-    by the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published
+by the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU Affero General Public License for more details.
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU Affero General Public License for more details.
 
-    You should have received a copy of the GNU Affero General Public License
-    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+You should have received a copy of the GNU Affero General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ```
 
 ## 鸣谢
