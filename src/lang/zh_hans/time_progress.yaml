@@ -1,0 +1,11 @@
+progress:
+  progress: |
+    现在是: {}
+    =====================
+    {} 年已过去 {}%
+    {} 月已过去 {}%
+    {} 日已过去 {}%
+help:
+  description: 时间进度
+  details: 查看本年/月/日的进度
+  usage: time-progress

@@ -1,0 +1,7 @@
+plugin: time_progress
+commands:
+  time-progress:
+    description: help.description
+    details: help.details
+    usages:
+      - help.usage
