@@ -17,6 +17,7 @@ alc = Alconna(
 calc = on_alconna(alc)
 lang = LangHelper()
 
+
 @calc.handle()
 async def _(expr: list[str], user_id: str = get_user_id()) -> None:
     try:
