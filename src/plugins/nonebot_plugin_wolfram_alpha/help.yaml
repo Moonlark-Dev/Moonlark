@@ -1,0 +1,7 @@
+plugin: wolfram_alpha
+commands:
+  calc:
+    description: help.description
+    details: help.details
+    usages:
+      - help.usage
