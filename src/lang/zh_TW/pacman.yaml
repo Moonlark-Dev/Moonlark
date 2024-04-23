@@ -1,0 +1,11 @@
+search:
+  not_found: '没有找到包: {}'
+image:
+  title: 软件包搜索
+  source: '数据来源: ARCHLINUX.ORG'
+  footer: 由 Moonlark & nonebot-plugin-pacman 生成
+  out_of_date: 过时
+help:
+  description: Linux 包搜索
+  details: 搜索 Arch Linux 包
+  usage: pacman <关键词>
