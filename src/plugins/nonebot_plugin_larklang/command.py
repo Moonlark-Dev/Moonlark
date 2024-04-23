@@ -1,4 +1,5 @@
 from . import __main__ as main
+from nonebot_plugin_orm import async_scoped_session
 from nonebot_plugin_alconna import Args, Subcommand, on_alconna, Alconna
 from ..nonebot_plugin_larkutils import get_user_id
 
@@ -19,10 +20,10 @@ lang = main.LangHelper()
 
 
 @lang_cmd.assign("set")
-async def _(language: str, user_id: str = get_user_id()) -> None:
+async def _(language: str, session: async_scoped_session, user_id: str = get_user_id()) -> None:
     if language not in main.get_languages():
         await lang.send("global.not_found", user_id, language)
-    await main.set_user_language(user_id, language)
+    await main.set_user_language(user_id, language, session)
     await lang.send("set.success", user_id, language)
     await lang_cmd.finish()
 

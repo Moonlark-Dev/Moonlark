@@ -5,8 +5,8 @@ from sqlalchemy.exc import NoResultFound
 import random
 import inspect
 from nonebot import get_plugin_by_module_name, logger
-from nonebot_plugin_orm import get_session
-from .model import LanguageData, LanguageKey
+from nonebot_plugin_orm import get_scoped_session, async_scoped_session
+from .model import LanguageData
 from .model import LanguageConfig
 from .exception import *
 from nonebot import get_plugin_config
@@ -66,8 +66,7 @@ def get_text(language: str, plugin: str, key: str, *args, **kwargs) -> str:
 def get_languages() -> dict[str, LanguageData]:
     return languages
 
-async def set_user_language(user_id: str, language: str) -> None:
-    session = get_session()
+async def set_user_language(user_id: str, language: str, session: async_scoped_session) -> None:
     try:
         data = await session.get_one(
             LanguageConfig,
@@ -84,7 +83,7 @@ async def set_user_language(user_id: str, language: str) -> None:
     await session.commit()
 
 async def get_user_language(user_id: str) -> str:
-    session = get_session()
+    session = get_scoped_session()
     try:
         language = await session.get_one(
             LanguageConfig, 
@@ -95,7 +94,8 @@ async def get_user_language(user_id: str) -> str:
     if language not in languages:
         await set_user_language(
             user_id,
-            language := config.language_index_order[0]
+            language := config.language_index_order[0],
+            session
         )
     return language
 
