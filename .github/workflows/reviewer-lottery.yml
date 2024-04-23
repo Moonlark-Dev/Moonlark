@@ -5,6 +5,7 @@ on:
 
 jobs:
   test:
+    name: Reviewer lottery
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v1
