@@ -34,7 +34,7 @@ vote_image:
   choice_text: 选项
   sponsor: 由 {} 发起
   end_time: '结束时间: {}'
-  footer: 由 Moonlakr & nonebot-plugin-vote 生成
+  footer: 由 Moonlark & nonebot-plugin-vote 生成
 list:
   title: 投票列表
 help:
