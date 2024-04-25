@@ -1,0 +1,6 @@
+calc:
+  failed: 调用 API 时出现错误，请稍后重试
+help:
+  description: 计算器
+  details: 通过 Wolfram|Alpha 计算表达式或回答问题
+  usage: calc <问题> (询问 WolframAlpha)
