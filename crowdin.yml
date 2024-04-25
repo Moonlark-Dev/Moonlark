@@ -1,0 +1,7 @@
+files:
+  - source: /src/lang/zh_hans/*.yaml
+    translation: /src/lang/%locale_with_underscore%/%original_file_name%
+  - source: /README.md
+    translation: /README_%three_letters_code%.md
+  - source: /src/lang/zh_hans/language.toml
+    translation: /src/lang/%locale_with_underscore%/language.toml
