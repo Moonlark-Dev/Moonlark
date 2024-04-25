@@ -17,7 +17,7 @@ cave:
   nocave: |
     获取回声洞时出现错误: 没有可用的回声洞
   group_cd: 群聊冷却中 ... (剩余 {} 分钟)
-  user_cd: 用户冷却中 ... (剩余 {} 分钟)
+  user_cd: User cooldown... ({} minutes remaining)
 help:
   d: 回声洞
   i: 投稿或查看其他用户投稿的回声洞，所有内容依照 CC-BY-NC-SA 4.0 许可协议授权
@@ -26,9 +26,9 @@ help:
   u3: cave-r <ID> (删除条目)
   u4: cave-s <ID> (恢复 7 天内删除的条目)
   u5: cave-g <ID> (查看自己投稿的条目)
-  u6: cave-c [-u|--user] (查看冷却状态)
+  u6: cave-c [-u|--user] (check cooldown)
   u7: cave-c --set <时间(分钟)> (修改冷却时间)
-  u8: cave-r -c <ID> (删除评论)
+  u8: cave-r -c <ID> (delete comment)
 remove:
   no_result: 回声洞不存在或已删除！
   no_permission: 权限不足！
@@ -40,12 +40,12 @@ remove:
     投稿时间: {}
     如果您想恢复它，请在 {} 天内使用 {__prefix__}cave-restore {}
 remove_comment:
-  no_result: '无效的评论 ID: {}'
+  no_result: 'Invalid comment ID: {}'
   no_permission: 权限不足！
   info: |
     {} 评论于回声洞 ({}):
     {}
-  success: '已删除评论: {}'
+  success: 'Comment deleted: {}'
 restore:
   success: '已恢复回声洞 {}'
   not_found: '无效的回声洞 ID: {}'
@@ -64,13 +64,13 @@ cd:
     「回声洞用户冷却」
     状态: {}
     剩余 (分钟): {}
-  info_status_ok: 可用
-  info_status_cooling: 冷却中
+  info_status_ok: Available
+  info_status_cooling: Cooling
 comment:
   review_fail: |
     评论失败：内容审核失败
     {}
-  success: 评论 ({}) 提交成功
+  success: Comment ({}) submitted successfully
   title: 回声洞评论 —— ({})
   footer: 由 Moonlark & nonebot-plugin-cave-comment 生成
   id: ({})
