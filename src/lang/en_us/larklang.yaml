@@ -1,7 +1,7 @@
 global:
-  not_found: '语言 {} 不存在！'
+  not_found: 'Language {} does not exist!'
 set:
-  success: '成功将语言修改为: {}'
+  success: 'Language changed to: {}'
 view:
   info: |
     「语言详细信息」
@@ -15,8 +15,8 @@ lang:
     {}
     使用「{__prefix__}lang view <语言>」获取更多信息
 help:
-  description: 本地化
-  details: Moonlark 本地化设置
+  description: Localization
+  details: Moonlark Localization Settings
   usage_set: lang set <语言> (设置语言)
   usage_view: lang view <语言> (查看语言信息)
   usage_list: lang (查看语言列表)
