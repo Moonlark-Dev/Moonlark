@@ -9,22 +9,24 @@
         <style>
             body {
                 background-image: url('https://www.dmoe.cc/random.php');
-                
                 background-position: center;
                 background-repeat: no-repeat;
                 background-size: cover;
                 padding: 20px;
                 padding-bottom: 0px;
             }
+            .text-style {
+                color: white;
+                text-shadow: 0px 0px 4px black;
+            }
         </style>
     </head>
     <body>
         <div class="container">
+            <h1 class="text-center text-style">{{ title }}</h1>
             <div class="card shadow bg-light bg-opacity-75">
                 <div class="card-body">
-                    <h1 class="text-center">{{ title }}</h1>
                     {% for command in commands %}
-                        <hr>
                         <h2>{{ command.name }} <small>{{ command.description }}</small></h2>
                         <p>{{ command.details }}</p>
                         <p>
@@ -35,6 +37,9 @@
                                 </span>
                             {% endfor %}
                         </p>
+                        {% if not loop.last %}
+                            <hr>
+                        {% endif %}
                     {% endfor %}
                 </div>
             </div>
