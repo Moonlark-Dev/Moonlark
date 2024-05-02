@@ -1,0 +1,18 @@
+list:
+  title: Moonlark 命令列表
+  footer: 由 Moonlark & nonebot_plugin_larkhelp 生成
+  usage: '{__prefix__}{}'
+  usage_text: '用法:'
+command:
+  info: |
+    [✓] {}: {}
+
+    用法:
+    {}
+  usage: '{__prefix__}{}'
+  not_found: 命令 {} 不存在，或无可用的帮助信息
+help:
+  description: 命令帮助
+  details: 获取命令用法
+  usage_list: help (获取命令列表)
+  usage_command: help <命令名> (查看命令帮助)

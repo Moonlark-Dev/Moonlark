@@ -1,0 +1,47 @@
+vote:
+  no_permission: 权限不足！
+  not_found: 投票未知或无法访问！
+choose:
+  voted: 您已经参与过本次投票了！
+  choice_not_found: '无效的选项: {}'
+  success: '已投票: {}'
+  vote_ended: 投票已结束！
+close:
+  success: 投票 {} 已被结束！
+status:
+  open: 进行中
+  closed: 已结束
+create:
+  create_title: 请发送投票标题
+  review_failed: |
+    审核失败，请重新输入
+    {}
+  create_content: |
+    请发送投票内容
+    您可以随时发送“q”退出
+  choice_deleted: '选项已删除: {}'
+  get_choice: |
+    请发送选项内容 (已输入 {} 个)
+    [back]: 回退
+    [save]: 确认
+  need_choice: 投票至少要有两个选项！
+  cancel: 已取消！
+  created: 投票 {} 创建成功
+  short_choice: "{}. {}"
+vote_image:
+  page_title: 投票详情
+  id: 'ID: {}'
+  choice_text: 选项
+  sponsor: 由 {} 发起
+  end_time: '结束时间: {}'
+  footer: 由 Moonlark & nonebot-plugin-vote 生成
+list:
+  title: 投票列表
+help:
+  description: 投票
+  details: Moonlark 投票
+  u1: vote [-a|--all] (获取投票列表)
+  u2: vote create [-g|--global] [-l|--last <持续(小时)>] [标题] (创建投票)
+  u3: vote <投票ID> <选项编号> (参与投票)
+  u4: vote <投票ID> (查看投票详情)
+  u5: vote close <投票ID> (结束投票)

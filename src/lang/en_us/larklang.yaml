@@ -1,0 +1,22 @@
+global:
+  not_found: 'Language {} does not exist!'
+set:
+  success: 'Language changed to: {}'
+view:
+  info: |
+    「语言详细信息」
+    名称: {}
+    作者: {}
+    版本: {}
+    {}
+lang:
+  list: |
+    「本地化语言列表」
+    {}
+    使用「{__prefix__}lang view <语言>」获取更多信息
+help:
+  description: Localization
+  details: Moonlark Localization Settings
+  usage_set: lang set <语言> (设置语言)
+  usage_view: lang view <语言> (查看语言信息)
+  usage_list: lang (查看语言列表)

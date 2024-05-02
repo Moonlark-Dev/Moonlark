@@ -1,0 +1,4 @@
+status:
+  description: System Status
+  details: Moonlark Run Status
+  usage: status (获取运行状态)

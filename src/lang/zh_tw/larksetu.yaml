@@ -1,0 +1,12 @@
+setu:
+  cd: '冷却中 (剩余 {}s)'
+  failed: 获取图片失败，请稍后重试
+  info: |
+    {}
+    作者: {}
+    PID: {}
+h:
+  d: 随机图片
+  i: 随机 Pixiv 插画
+  u1: setu (随机图片)
+  u2: setu rank (查看使用排行)

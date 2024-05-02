@@ -1,0 +1,12 @@
+setu:
+  cd: 'Cooling ({}s remaining)'
+  failed: Failed to fetch image, please try again later
+  info: |
+    by {}
+    Author: {}
+    PID: {}
+h:
+  d: Random Image
+  i: 随机 Pixiv 插画
+  u1: setu (随机图片)
+  u2: setu rank (查看使用排行)
