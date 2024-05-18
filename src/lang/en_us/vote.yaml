@@ -1,47 +1,46 @@
 vote:
-  no_permission: 权限不足！
-  not_found: 投票未知或无法访问！
+  no_permission: No permissions!
+  not_found: Vote is unknown or inaccessible!
 choose:
-  voted: 您已经参与过本次投票了！
-  choice_not_found: '无效的选项: {}'
-  success: '已投票: {}'
-  vote_ended: 投票已结束！
+  voted: You have already participated in this vote!
+  choice_not_found: 'Invalid option: {}'
+  success: 'Voted: {}'
+  vote_ended: Vote ended!
 close:
-  success: 投票 {} 已被结束！
+  success: Vote {} has been finished!
 status:
-  open: 进行中
-  closed: 已结束
+  open: In progress
+  closed: Ended
 create:
-  create_title: 请发送投票标题
+  create_title: Please send vote title
   review_failed: |
-    审核失败，请重新输入
+    Review failed, please re-enter
     {}
   create_content: |
-    请发送投票内容
-    您可以随时发送“q”退出
-  choice_deleted: '选项已删除: {}'
+    Please send voting content, send 'q' to exit
+  choice_deleted: 'Option deleted: {}'
   get_choice: |
-    请发送选项内容 (已输入 {} 个)
-    [back]: 回退
-    [save]: 确认
-  need_choice: 投票至少要有两个选项！
-  cancel: 已取消！
-  created: 投票 {} 创建成功
+    Please send option content ({} typed)
+    [back]: backward
+    [save]: confirm
+  need_choice: Votes must have at least two options!
+  cancel: Canceled!
+  created: Vote {} created successfully
   short_choice: "{}. {}"
 vote_image:
-  page_title: 投票详情
+  page_title: Poll Details
   id: 'ID: {}'
-  choice_text: 选项
-  sponsor: 由 {} 发起
-  end_time: '结束时间: {}'
+  choice_text: Options
+  sponsor: Started by {}
+  end_time: 'End time: {}'
   footer: 由 Moonlark & nonebot-plugin-vote 生成
 list:
-  title: 投票列表
+  title: Vote list
 help:
-  description: 投票
-  details: Moonlark 投票
-  u1: vote [-a|--all] (获取投票列表)
-  u2: vote create [-g|--global] [-l|--last <持续(小时)>] [标题] (创建投票)
-  u3: vote <投票ID> <选项编号> (参与投票)
-  u4: vote <投票ID> (查看投票详情)
-  u5: vote close <投票ID> (结束投票)
+  description: Vote
+  details: Moonlark Votes
+  u1: vote [-a|--all] (get voting list)
+  u2: vote create [-g|--global] [-l|--last <Continue(hours)>] [title] (create vote)
+  u3: vote <Vote ID> <Option> (Vote)
+  u4: vote <Vote ID> (see vote details)
+  u5: vote close <Vote ID> (close vote)
