@@ -9,6 +9,7 @@ from sqlalchemy import select
 
 lang = LangHelper()
 
+
 @__main__.setu.assign("rank")
 async def _(session: async_scoped_session, user_id: str = get_user_id()) -> None:
     result = (await session.execute(select(model.UserData))).scalars().all()
@@ -22,6 +23,3 @@ async def _(session: async_scoped_session, user_id: str = get_user_id()) -> None
         user_id,
         await lang.text("rank.title", user_id)
     ), name="image.png"))
-    
-
-    

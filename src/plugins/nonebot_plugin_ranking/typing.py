@@ -6,11 +6,13 @@ class RankingData(TypedDict):
     data: int | float
     info: str | None
 
+
 class UserDataWithIndex(TypedDict):
     nickname: str
     data: int | float
     index: int
     info: str | None
+
 
 class UserData(TypedDict):
     nickname: str

@@ -1,14 +1,12 @@
 from typing import Optional
 from nonebot_plugin_htmlrender import template_to_pic
 from pathlib import Path
-
 from ..nonebot_plugin_larkutils.html import escape_html
-
 from ..nonebot_plugin_larkuser.model import UserData
 from ..nonebot_plugin_larkuser import get_user
 from .lang import lang
-
 from .typing import RankingData, UserDataWithIndex
+
 
 async def find_user(ranked_data: list[RankingData], user_id: str) -> Optional[UserDataWithIndex]:
     index = 0
@@ -22,6 +20,7 @@ async def find_user(ranked_data: list[RankingData], user_id: str) -> Optional[Us
                 "info": escape_html(data["info"] or await lang.text("image.info", user_id, data["user_id"]))
             }
 
+
 async def get_users(ranked_data: list[RankingData], user_id: str, limit: int = 12) -> list[UserData]:
     users = []
     for data in ranked_data[:limit]:
@@ -31,6 +30,7 @@ async def get_users(ranked_data: list[RankingData], user_id: str, limit: int = 1
             "data": data["data"]
         })
     return users
+
 
 async def generate_image(
         ranked_data: list[RankingData],
