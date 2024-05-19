@@ -1,0 +1,22 @@
+image:
+  footer: 由 nonebot-plugin-sign & Moonlark 生成
+  signdays: 连续签到
+  rank: 排名
+  title: 签到成功！
+  signdays_text: '{} 天'
+  rank_text: 第 {}
+  vim: VimCoin
+  exp: 经验
+  uid: 'UID: {}'
+  fortune: 运势
+  fav: 好感
+  hitokoto: 剑阁峥嵘而崔嵬，一夫当关，万夫莫开。
+sign:
+  signed: 您今天已经签到过了！
+luck:
+  a: 大吉
+  b: 吉
+  c: 小吉
+  d: 末吉
+  e: 凶
+  f: 大凶
