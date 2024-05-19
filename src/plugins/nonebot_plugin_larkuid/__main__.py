@@ -27,6 +27,3 @@ async def _(session: async_scoped_session, code: str, user_id: str = get_user_id
     data.activate_code = None
     await session.commit()
     await lang.finish("command.verified", user_id)
-
-
-

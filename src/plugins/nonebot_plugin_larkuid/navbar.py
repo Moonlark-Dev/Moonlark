@@ -8,6 +8,7 @@ from ..nonebot_plugin_larkuser.model import UserData
 from .session import get_user_data
 from .lang import lang
 
+
 @get_app().get("/script/navbar.js")
 async def _(_request: Request, user: Optional[UserData] = get_user_data()) -> PlainTextResponse:
     user_id = user.user_id if user else "-1"

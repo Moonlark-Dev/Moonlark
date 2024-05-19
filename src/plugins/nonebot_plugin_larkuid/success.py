@@ -7,6 +7,7 @@ from ..nonebot_plugin_larkuser.model import UserData
 from .session import get_user_forcibly
 from .lang import lang
 
+
 @get_app().get("/user/login/verify/success")
 async def _(_request: Request, user: UserData = get_user_forcibly()) -> PlainTextResponse:
     user_id = user.user_id

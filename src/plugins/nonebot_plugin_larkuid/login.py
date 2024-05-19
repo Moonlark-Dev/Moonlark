@@ -8,6 +8,7 @@ from ..nonebot_plugin_larkuser.model import UserData
 from .session import get_user_data, get_user_id
 from .lang import lang
 
+
 @get_app().get("/user/login")
 async def _(request: Request, _user_id: Optional[str] = get_user_id()) -> PlainTextResponse:
     user_id = _user_id or "-1"

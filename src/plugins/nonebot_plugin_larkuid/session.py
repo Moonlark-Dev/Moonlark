@@ -11,6 +11,7 @@ from nonebot_plugin_orm import get_session, get_scoped_session
 import uuid
 from datetime import datetime, timedelta
 
+
 async def create_session(user_id: str, user_agent: str, expiration_time: int) -> tuple[str, str]:
     session_id = str(uuid.uuid4())
     async with get_session() as session:
@@ -37,12 +38,14 @@ async def _get_user_id(request: Request, session_id: Optional[str] = Cookie(None
         )
     except NoResultFound:
         return None
-    if data.user_agent != request.headers.get("User-Agent") or (datetime.now() - (data.expiration_time or datetime.now())).total_seconds() >= 0:
+    if (data.user_agent != request.headers.get("User-Agent") 
+        or (datetime.now() - (data.expiration_time or datetime.now())).total_seconds() >= 0):
         await session.delete(data)
     elif data.activate_code is not None:
         pass
     else:
         return data.user_id
+
 
 def get_user_id() -> Optional[str]:
     return Depends(_get_user_id)
@@ -81,4 +84,3 @@ async def _() -> None:
     for item in result.all():
         await session.delete(item)
     await session.close()
-
