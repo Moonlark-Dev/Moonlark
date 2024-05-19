@@ -32,3 +32,4 @@ from .vimcoin import (
     use_vimcoin,
     has_vimcoin
 )
+
