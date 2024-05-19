@@ -1,4 +1,6 @@
+import base64
 from datetime import date
+from os import getcwd
 from .config import config
 import httpx
 from nonebot import on_fullmatch
@@ -160,7 +162,8 @@ async def _(
         "fortune": {
             "text": await lang.text("image.fortune", user_id),
             "value": await lang.text(f"luck.{get_luck(user_id)}", user_id)
-        }
+        },
+        "avatar": base64.b64encode(user.avatar).decode() if user.avatar is not None else None
     }
     image = await template_to_pic(
         Path(__file__).parent.joinpath("template").as_posix(),
@@ -169,6 +172,6 @@ async def _(
     )
     msg = UniMessage().image(raw=image)
     data.last_sign = date.today()
-    await session.commit()
+    # await session.commit()
     await session.close()
     await matcher.finish(await msg.export(), at_sender=True)
