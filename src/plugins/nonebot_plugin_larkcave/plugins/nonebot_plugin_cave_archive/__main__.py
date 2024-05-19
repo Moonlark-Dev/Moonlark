@@ -68,5 +68,6 @@ async def _() -> None:
         except Exception:
             logger.warning(f"归档回声洞 {data.id} 时出现错误: {traceback.format_exc()}")
     logger.info("回声洞归档检查完成！")
+    await session.close()
 
 
