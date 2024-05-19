@@ -70,7 +70,8 @@ async def get_sign_vim(user_data: UserData, sign_data: SignData) -> float:
         1 + math.sqrt(
             math.sqrt(
                 (1000 + random.random()) * level * max(
-                    user_data.favorability, 0.1) / 5 * min(sign_data.sign_days, 15) / 8 + 1
+                    user_data.favorability, 0.1) / 5 * min(
+                        sign_data.sign_days, 15) / 8 + 1
             )
         ) * 25 * random.random(),
         1
