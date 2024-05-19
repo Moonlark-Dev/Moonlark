@@ -8,9 +8,15 @@ image:
   vim: VimCoin
   exp: 经验
   uid: 'UID: {}'
-  fortune: 今日签
+  fortune: 运势
   fav: 好感
-  # 临时一言
   hitokoto: 剑阁峥嵘而崔嵬，一夫当关，万夫莫开。
 sign:
   signed: 您今天已经签到过了！
+luck:
+  a: 大吉
+  b: 吉
+  c: 小吉
+  d: 末吉
+  e: 凶
+  f: 大凶

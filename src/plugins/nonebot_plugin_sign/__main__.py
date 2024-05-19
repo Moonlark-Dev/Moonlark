@@ -1,4 +1,6 @@
 from datetime import date
+from .config import config
+import httpx
 from nonebot import on_fullmatch
 from nonebot.matcher import Matcher
 import math
@@ -16,8 +18,25 @@ from sqlalchemy.exc import NoResultFound
 from .model import SignData
 from ..nonebot_plugin_larkuser.model import UserData
 from ..nonebot_plugin_larkutils import get_user_id
+from ..nonebot_plugin_jrrp.jrrp import get_luck_value
 
 sign = on_alconna(Alconna("签到"), aliases={"签到", "sign"})
+
+
+def get_luck(user_id: str) -> str:
+    value = get_luck_value(user_id)
+    if 80 < value <= 100:
+        return "a"
+    elif 60 < value <= 80:
+        return "b"
+    elif 40 < value <= 60:
+        return "c"
+    elif 20 < value <= 40:
+        return "d"
+    elif 0 < value <= 20:
+        return "e"
+    else:
+        return "f"
 
 
 async def get_user_data(session: AsyncSession, user_id: str) -> SignData:
@@ -69,6 +88,15 @@ async def get_sign_days(sign_data: SignData) -> int:
     return sign_data.sign_days
 
 
+async def get_hitokoto(user_id: str) -> str:
+    async with httpx.AsyncClient() as client:
+        response = await client.get(
+            config.hitokoto_api
+        )
+    if response.status_code == 200:
+        return response.json()["hitokoto"]
+    return await lang.text("image.hitokoto", user_id)
+
 
 @sign.handle()
 @on_fullmatch(("sign", "签到")).handle()
@@ -84,7 +112,7 @@ async def _(
     templates = {
         "nickname": escape_html(user.nickname),
         "uid": await lang.text("image.uid", user_id, user_id),
-        "hitokoto": await lang.text("image.hitokoto", user_id),
+        "hitokoto": await get_hitokoto(user_id),
         "title": await lang.text("image.title", user_id),
         "footer": await lang.text("image.footer", user_id),
         "signdays": {
@@ -121,7 +149,7 @@ async def _(
         },
         "fortune": {
             "text": await lang.text("image.fortune", user_id),
-            "value": "暂无数据"
+            "value": await lang.text(f"luck.{get_luck(user_id)}", user_id)
         }
     }
     image = await template_to_pic(
@@ -130,8 +158,8 @@ async def _(
         templates
     )
     msg = UniMessage().image(raw=image)
+    data.last_sign = date.today()
     await session.commit()
     await session.close()
     await matcher.finish(await msg.export(), at_sender=True)
-
     
