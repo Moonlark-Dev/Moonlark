@@ -52,6 +52,7 @@ async def get_user_data(session: AsyncSession, user_id: str) -> SignData:
         await session.commit()
         return await get_user_data(session, user_id)
 
+
 async def get_sign_exp(user_data: UserData, sign_data: SignData) -> int:
     level = get_level_by_experience(user_data.experience)
     exp = round(
@@ -62,14 +63,21 @@ async def get_sign_exp(user_data: UserData, sign_data: SignData) -> int:
     user_data.experience += exp
     return exp
 
+
 async def get_sign_vim(user_data: UserData, sign_data: SignData) -> float:
     level = get_level_by_experience(user_data.experience)
     vim = round(
-        1 + math.sqrt(math.sqrt((1000+random.random()) * level * max(user_data.favorability, 0.1) / 5 * min(sign_data.sign_days, 15) / 8 + 1)) * 25 * random.random(),
+        1 + math.sqrt(
+            math.sqrt(
+                (1000+random.random()) * level * max(user_data.favorability, 0.1)
+                / 5 * min(sign_data.sign_days, 15) / 8 + 1
+            )
+        ) * 25 * random.random(),
         1
     )
     user_data.vimcoin += vim
     return vim
+
 
 async def get_sign_fav(user_data: UserData) -> float:
     level = get_level_by_experience(user_data.experience)
@@ -79,6 +87,7 @@ async def get_sign_fav(user_data: UserData) -> float:
     )
     user_data.favorability += fav
     return fav
+
 
 async def get_sign_days(sign_data: SignData) -> int:
     if (date.today() - sign_data.last_sign).days == 1:
@@ -162,4 +171,3 @@ async def _(
     await session.commit()
     await session.close()
     await matcher.finish(await msg.export(), at_sender=True)
-    

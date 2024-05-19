@@ -6,7 +6,3 @@ async def add_fav(user_id: str, count: float) -> None:
         user_id,
         vimcoin=(await get_user(user_id)).favorability + count
     )
-
-
-
-
