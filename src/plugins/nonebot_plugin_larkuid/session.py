@@ -38,8 +38,8 @@ async def _get_user_id(request: Request, session_id: Optional[str] = Cookie(None
         )
     except NoResultFound:
         return None
-    if (data.user_agent != request.headers.get("User-Agent") 
-        or (datetime.now() - (data.expiration_time or datetime.now())).total_seconds() >= 0):
+    if (data.user_agent != request.headers.get("User-Agent") or (
+            datetime.now() - (data.expiration_time or datetime.now())).total_seconds() >= 0):
         await session.delete(data)
     elif data.activate_code is not None:
         pass
