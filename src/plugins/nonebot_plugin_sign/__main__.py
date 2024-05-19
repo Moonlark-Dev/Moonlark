@@ -172,6 +172,6 @@ async def _(
     )
     msg = UniMessage().image(raw=image)
     data.last_sign = date.today()
-    # await session.commit()
+    await session.commit()
     await session.close()
     await matcher.finish(await msg.export(), at_sender=True)
