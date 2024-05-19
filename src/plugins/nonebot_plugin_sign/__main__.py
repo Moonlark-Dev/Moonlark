@@ -56,7 +56,7 @@ async def get_user_data(session: AsyncSession, user_id: str) -> SignData:
 async def get_sign_exp(user_data: UserData, sign_data: SignData) -> int:
     level = get_level_by_experience(user_data.experience)
     exp = round(
-        random.random() * level / 2 * max(user_data.favorability, 0.1) * min(sign_data.sign_days+1, 15) + 1
+        random.random() * level / 2 * max(user_data.favorability, 0.1) * min(sign_data.sign_days + 1, 15) + 1
     )
     if level <= 4:
         exp = round(exp * 1.3)
@@ -69,8 +69,8 @@ async def get_sign_vim(user_data: UserData, sign_data: SignData) -> float:
     vim = round(
         1 + math.sqrt(
             math.sqrt(
-                (1000+random.random()) * level * max(user_data.favorability, 0.1)
-                / 5 * min(sign_data.sign_days, 15) / 8 + 1
+                (1000 + random.random()) * level * max(user_data.favorability, 0.1) / 
+                5 * min(sign_data.sign_days, 15) / 8 + 1
             )
         ) * 25 * random.random(),
         1
