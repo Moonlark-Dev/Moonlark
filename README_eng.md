@@ -9,38 +9,38 @@
 
 [MoonlarkWiKi](https://moonlark-wiki.itcdt.top/wiki/Moonlark) ·
 [Crowdin](https://crowdin.com/project/moonlark) ·
-[English](README_eng.md) ·
-[繁體](README_zho.md)
+[简体中文](README.md) ·
+[繁體中文](README_zho.md)
 
 </div>
 
-## 说明
+## Introduction
 
-Moonlark 是一个开放的、稳定的、非盈利的多功能聊天机器人。
+Moonlark is an open, stable, non-profit, multifunctional chatbot.
 
-Moonlark 是 Moonlark Project 的下一个项目，使用基于 Python3 的 Nonebot2 框架编写。
+Moonlark is the next project from the Moonlark Project, written using the Nonebot2 framework based on Python3.
 
-## 背景
+## Background
 
-如果你没听过 Moonlark，那你可能听过它的另一个名字——XDbot。
+If you did not hear Moonlark, you may have heard another name, XDbot.
 
-为了解决 XDbot2 代码过于混乱且兼容性极差的问题，我们决定开发一个新项目，它便是 Moonlark。
+To address the problem of the XDbot2 code being too confused and incompatible, we decided to develop a new project named Moonlark.
 
-## 使用
+## Usage
 
-Moonlark 目前还在测试中。
+Moonlark is currently in beta.
 
-## 贡献
+## Contribution
 
-您可以通过提交 [议题](https://github.com/Moonlark-Dev/Moonlark/issues/new/choose) 或 [拉取请求](https://github.com/Moonlark-Dev/Moonlark/compare) 参与 Moonlark 项目。
+You can participate in the Moonlark project by submitting [issues](https://github.com/Moonlark-Dev/Moonlark/issues/new/choose) or [pull requests](https://github.com/Moonlark-Dev/Moonlark/compare).
 
-请注意，在参与贡献时，请确保遵守我们的 [贡献者行为守则](CODE_OF_CONDUCT.md)。
+Please note that when participating in contributions, make sure to comply with our [CODE OF CONDUCT](CODE_OF_CONDUCT.md).
 
-有关参与 Moonlark 项目的更多信息请阅读 [Moonlark 贡献说明](CONTRIBUTING.md)。
+For more information on participation in the Moonlark project, please read [Moonlark Contribution Description] (CONTRIBUTING.md).
 
-## 许可证
+## License
 
-Moonlark 遵循 [AGPL-3.0](LICENSE) 许可证开源。
+Moonlark is open source under the [AGPL-3.0](LICENSE) license.
 
 ```
 Moonlark - A new ChatBot
@@ -57,11 +57,11 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU Affero General Public License for more details.
 
 You should have received a copy of the GNU Affero General Public License
-along with this program.  If not, see <https://www.gnu.org/licenses/>.
+along with this program.  If not, see <https://www. gnu. org/licenses/>.
 ```
 
-## 鸣谢
+## Acknowledgments
 
 - [IT Craft Development Team](https://itcdt.top)
 - [Nonebot2](https://nonebot.dev)
-- 所有开发者、贡献者和用户
+- All developers, contributors, and users
