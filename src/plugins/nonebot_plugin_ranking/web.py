@@ -11,23 +11,16 @@ from ..nonebot_plugin_larkuid.session import get_user_id
 from .lang import lang
 
 
-# @get_app().get("/ranking")
-# async def _(request: Request, user_id: Optional[str] = get_user_id()):
-#     return PlainTextResponse(
-#         await template_to_html(
-#             Path(__file__).parent.joinpath("template").as_posix(),
-#             "web.html.jinja"
-#         )
-#     )
-
 class WebRanking(ABC):
     ID: str = ""
     NOTE: bool = False
     NAME: str = ""
     LANG: LangHelper = lang
 
+
     def __init__(self) -> None:
         get_app().get(f"/ranking/{self.ID}")(self.handle)
+
 
     async def handle(self, request: Request, user_id: Optional[str] = get_user_id()):
         user_id = user_id or "-1"
@@ -50,13 +43,7 @@ class WebRanking(ABC):
             media_type="text/html"
         )
 
+
     @abstractmethod
     async def get_sorted_data(self) -> list[WebUserData]:
         ...
-
-    
-
-    
-
-        
-
