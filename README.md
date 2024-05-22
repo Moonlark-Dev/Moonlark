@@ -1,13 +1,18 @@
-# Moonlark
+<div align="center">
+
+  <h1>Moonlark</h1>
 
 [![Python Version from PEP 621 TOML](https://img.shields.io/python/required-version-toml?tomlFilePath=https%3A%2F%2Fgithub.com%2FMoonlark-Dev%2FMoonlark%2Fraw%2Fmain%2Fpyproject.toml)](https://github.com/Moonlark-Dev/Moonlark/blob/main/pyproject.toml)
 [![CodeFactor](https://www.codefactor.io/repository/github/moonlark-dev/moonlark/badge)](https://www.codefactor.io/repository/github/moonlark-dev/moonlark)
 [![GitHub License](https://img.shields.io/github/license/Moonlark-Dev/Moonlark)](LICENSE)
 ![GitHub repo size](https://img.shields.io/github/repo-size/Moonlark-Dev/Moonlark)
-[![wakatime](https://wakatime.com/badge/github/Moonlark-Dev/Moonlark.svg)](https://wakatime.com/badge/github/Moonlark-Dev/Moonlark)
 
-[中文维基](https://moonlark-wiki.itcdt.top/wiki/Moonlark) · 
-[Crowdin](https://crowdin.com/project/moonlark)
+[MoonlarkWiKi](https://moonlark-wiki.itcdt.top/wiki/Moonlark) · 
+[Crowdin](https://crowdin.com/project/moonlark) · 
+[English](README_eng.md) · 
+[繁體](README_zho.md)
+
+</div>
 
 ## 说明
 
