@@ -28,10 +28,10 @@ async def _(matcher: Matcher, user_id: str = get_user_id()) -> None:
                 "panel.level",
                 user_id,
                 (level := get_level_by_experience(user.experience)),
-                user.experience,
-                (level + 1) ** 3
+                user.experience - (level - 1) ** 3,
+                (level) ** 3
             ),
-            "level_progress": f"{int((user.experience - level ** 3) / ((level + 1) ** 3 - level ** 3) * 100)}%",
+            "level_progress": f"{int((user.experience - (level - 1) ** 3) / ((level) ** 3 - (level - 1) ** 3) * 100)}%",
             "vimcoin": await lang.text("panel.vimcoin", user_id, round(user.vimcoin, 3)),
             "fav": await lang.text("panel.fav", user_id, round(user.favorability, 3)),
             "hp": await lang.text("panel.hp", user_id, round(user.health, 3)),

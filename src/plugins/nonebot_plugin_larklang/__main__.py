@@ -45,8 +45,8 @@ def get_text(language: str, plugin: str, key: str, *args, **kwargs) -> str:
     try:
         data = languages[language].keys[plugin][k[0]][k[1]]
     except KeyError:
-        return f"<缺失: {plugin}.{key}; {args}; {kwargs}>"
         logger.warning(f"获取键失败: {traceback.format_exc()}")
+        return f"<缺失: {plugin}.{key}; {args}; {kwargs}>"
     else:
         text = random.choice(data.text)
         if data.use_template:
