@@ -17,10 +17,8 @@ class WebRanking(ABC):
     NAME: str = ""
     LANG: LangHelper = lang
 
-
     def __init__(self) -> None:
         get_app().get(f"/ranking/{self.ID}")(self.handle)
-
 
     async def handle(self, request: Request, user_id: Optional[str] = get_user_id()):
         user_id = user_id or "-1"
@@ -42,7 +40,6 @@ class WebRanking(ABC):
             ),
             media_type="text/html"
         )
-
 
     @abstractmethod
     async def get_sorted_data(self) -> list[WebUserData]:
