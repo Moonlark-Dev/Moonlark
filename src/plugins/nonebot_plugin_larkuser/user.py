@@ -1,11 +1,12 @@
 import datetime
 from typing import Optional
 from .model import UserData
-from nonebot_plugin_orm import get_session
+from nonebot_plugin_orm import AsyncSession, async_scoped_session, get_session
 from sqlalchemy.exc import NoResultFound
 
-async def get_user(user_id: str) -> UserData:
-    session = get_session()
+
+async def get_user(user_id: str, s: Optional[async_scoped_session | AsyncSession] = None) -> UserData:
+    session = s or get_session()
     try:
         return await session.get_one(
             UserData,
