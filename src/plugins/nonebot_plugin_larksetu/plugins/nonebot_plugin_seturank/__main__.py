@@ -42,5 +42,6 @@ class SetuRanking(WebRanking):
             "data": data.count,
             "nickname": (await get_user(data.user_id)).nickname
         } for data in sorted_data]
-    
+
+
 web_ranking = SetuRanking()
