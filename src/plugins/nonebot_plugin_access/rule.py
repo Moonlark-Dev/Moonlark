@@ -25,7 +25,7 @@ async def get_subject_list(
     except ValueError:
         pass
     return subject_list
-    
+
 
 async def is_available(subject: str, name: str, default: bool = True) -> bool:
     async with get_session() as session:
