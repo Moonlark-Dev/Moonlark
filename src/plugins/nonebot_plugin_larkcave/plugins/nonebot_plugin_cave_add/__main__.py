@@ -2,14 +2,12 @@ from datetime import datetime
 from typing import cast
 from nonebot_plugin_alconna import Arparma, Image, Text, UniMessage, image_fetch
 from sqlalchemy import select
-
 from .exception import ReviewFailed, EmptyImage, DuplicateCave
 from ...model import CaveData
 from nonebot_plugin_orm import async_scoped_session
 from ..nonebot_plugin_cave_similarity_check import check_text_content, check_image
 from sqlalchemy.sql.expression import func
 from ...__main__ import cave
-from ...service import plugin_service
 from ....nonebot_plugin_larkutils import get_user_id
 from ...lang import lang
 from ...decoder import decode_cave
@@ -25,7 +23,6 @@ async def get_cave_id(session: async_scoped_session) -> int:
 
 
 @cave.assign("add.content")
-@plugin_service.create_subservice("add").patch_handler()
 async def _(session: async_scoped_session, event: Event, bot: Bot, state: T_State, result: Arparma, user_id: str = get_user_id()) -> None:
     try:
         content = cast(list[Image | Text], list(result.subcommands["add"].args["content"]))

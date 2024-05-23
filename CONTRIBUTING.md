@@ -39,24 +39,6 @@ Moonlark 使用 [ORM 插件](https://github.com/nonebot/plugin-orm) 储存相应
 nb orm sync
 ```
 
-**修改**
-
-> 由于特殊原因（已知是由 `nonebot-plugin-access-control` 引起的），您可能需要进行以下操作来完成进一步初始化。
-
-在数据库中执行以下指令:
-
-```sql
-drop table accctrl_permission;
-drop table accctrl_rate_limit_rule;
-drop table accctrl_rate_limit_token;
-```
-
-**升级**
-
-```bash
-nb orm upgrade
-```
-
 </details>
 
 
