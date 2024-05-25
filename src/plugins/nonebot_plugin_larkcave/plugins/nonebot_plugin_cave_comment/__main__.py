@@ -9,7 +9,6 @@ from ...lang import lang
 from nonebot_plugin_orm import async_scoped_session
 from .poster import post
 from ....nonebot_plugin_larkutils import get_user_id, review_text
-from ...service import plugin_service
 
 
 comment = on_message(rule=to_me())
@@ -24,7 +23,6 @@ async def get_message(event: Event) -> str:
     return event.get_plaintext()
 
 @comment.handle()
-@plugin_service.create_subservice("comment").patch_handler()
 async def _(
     session: async_scoped_session,
     content: str = Depends(get_message),

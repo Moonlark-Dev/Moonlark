@@ -15,7 +15,6 @@ plugins = [
     "nonebot_plugin_alconna",
     "nonebot_plugin_picstatus",
     "nonebot_plugin_htmlrender",
-    "nonebot_plugin_access_control",
     "nonebot_plugin_apscheduler",
     "nonebot_plugin_session"
 ]
