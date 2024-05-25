@@ -1,0 +1,31 @@
+navbar:
+  title: Moonlark
+  status: 网络状态
+  login: 登陆
+  github: GitHub
+login:
+  title: 登陆 Moonlark Union ID
+  uid: 用户 ID
+  uid_text: 输入用户 ID
+  uid_help: 涉及多个子账号时，请使用主账号登陆。
+  save_time: 会话保存时间（天）
+  save_time_720: '720'
+  save_time_1: '1'
+  save_time_14: '14'
+  save_time_30: '30'
+  save_time_180: '180'
+  save_time_360: '360'
+  submit: 提交
+verify:
+  title: 验证
+  tip: 请使用 {} 在 Moonlark 中发送指令（你的请求将在 3 分钟后过期）
+  cmd: '{__prefix__}account verify {}'
+  ok: 确认登陆
+  cancel: 返回
+  cookie: 我们使用 Cookies 来提升您的浏览体验，继续使用我们的网站即表示您同意我们的 Cookie 政策。
+command:
+  not_found: 错误：无效的激活代码
+  verified: 登陆验证成功！
+success:
+  title: 登陆成功
+  message: 很高兴见到你，{}！您已成功登陆！

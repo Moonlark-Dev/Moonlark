@@ -1,20 +1,30 @@
-# Moonlark
+<div align="center">
 
-新一代聊天机器人
+  <h1>Moonlark</h1>
+
+[![Python Version from PEP 621 TOML](https://img.shields.io/python/required-version-toml?tomlFilePath=https%3A%2F%2Fgithub.com%2FMoonlark-Dev%2FMoonlark%2Fraw%2Fmain%2Fpyproject.toml)](https://github.com/Moonlark-Dev/Moonlark/blob/main/pyproject.toml)
+[![CodeFactor](https://www.codefactor.io/repository/github/moonlark-dev/moonlark/badge)](https://www.codefactor.io/repository/github/moonlark-dev/moonlark)
+[![GitHub License](https://img.shields.io/github/license/Moonlark-Dev/Moonlark)](LICENSE)
+![GitHub repo size](https://img.shields.io/github/repo-size/Moonlark-Dev/Moonlark)
+
+[MoonlarkWiKi](https://moonlark-wiki.itcdt.top/wiki/Moonlark) ·
+[Crowdin](https://crowdin.com/project/moonlark) ·
+[English](README_eng.md) ·
+[繁體](README_zho.md)
+
+</div>
+
+## 说明
+
+Moonlark 是一个开放的、稳定的、非盈利的多功能聊天机器人。
+
+Moonlark 是 Moonlark Project 的下一个项目，使用基于 Python3 的 Nonebot2 框架编写。
 
 ## 背景
 
 如果你没听过 Moonlark，那你可能听过它的另一个名字——XDbot。
 
 为了解决 XDbot2 代码过于混乱且兼容性极差的问题，我们决定开发一个新项目，它便是 Moonlark。
-
-## 说明
-
-Moonlark 意为「月雀」，是一个多功能的聊天机器人。
-
-Moonlark 是 Moonlark Projects (XDbot Project) 的下一个项目，使用基于 Python3 的 Nonebot2 框架编写。
-
-Moonlark 是开放的、稳定的、非盈利的，我们希望通过这些来吸引更多人参与 Moonlark 项目或使用 Moonlark。
 
 ## 使用
 
