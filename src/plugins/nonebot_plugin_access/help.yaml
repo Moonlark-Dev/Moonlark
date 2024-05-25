@@ -1,6 +1,6 @@
 plugin: access
 commands:
-  help:
+  access:
     description: help.description
     details: help.details
     usages:

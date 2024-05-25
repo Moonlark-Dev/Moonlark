@@ -7,3 +7,8 @@ help:
   details: Moonlark 权限控制 (仅 SUPERUSER 可用)
   usage1: access {{ban|pardon}} <主体ID> (封禁/解封用户)
   usage2: access {{block|unblock}} <权限> <主体ID> (添加/移除权限)
+web:
+  title: 权限列表
+  info: 这是您在 Moonlark 中的权限配置，已隐藏部分默认设置。
+  have: 您拥有的权限
+  do_not_have: 您没有的权限
