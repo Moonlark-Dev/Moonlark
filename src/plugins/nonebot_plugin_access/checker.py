@@ -1,9 +1,7 @@
 from nonebot import get_driver, logger
-
 from ..nonebot_plugin_larkutils.user import get_user_id
 from .lang import lang
 from .config import config
-from nonebot.rule import Rule
 from nonebot.matcher import matchers, Matcher
 from nonebot_plugin_alconna import MsgTarget, UniMessage
 from nonebot_plugin_orm import get_session
@@ -53,7 +51,6 @@ async def send_fallback(event: Event, result: bool, target: MsgTarget) -> None:
 async def check_access(
         matcher: Matcher,
         event: Event,
-        user_id: str = get_user_id(),
         subject_list: list[str] = Depends(get_subject_list)
 ) -> bool:
     if event.get_type() != "message":
