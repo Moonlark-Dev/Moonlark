@@ -49,6 +49,7 @@ async def send_fallback(event: Event, result: bool, target: MsgTarget) -> None:
             )
         ).send(target)
 
+
 async def check_access(
         matcher: Matcher,
         event: Event,
