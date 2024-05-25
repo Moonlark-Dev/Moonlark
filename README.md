@@ -7,7 +7,7 @@
 [![GitHub License](https://img.shields.io/github/license/Moonlark-Dev/Moonlark)](LICENSE)
 ![GitHub repo size](https://img.shields.io/github/repo-size/Moonlark-Dev/Moonlark)
 
-[MoonlarkWiKi](https://moonlark-wiki.itcdt.top/wiki/Moonlark) · 
+[MoonlarkWiKi](https://moonlark-wiki.itcdt.top/) · 
 [Crowdin](https://crowdin.com/project/moonlark) · 
 [English](README_eng.md) · 
 [繁體](README_zho.md)
