@@ -18,3 +18,10 @@ class UserData(TypedDict):
     nickname: str
     data: int | float
     info: str | None
+
+
+class WebUserData(TypedDict):
+    nickname: str
+    data: int | float
+    info: str | None
+    user_id: str
