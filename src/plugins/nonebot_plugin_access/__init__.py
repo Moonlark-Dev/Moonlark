@@ -9,4 +9,4 @@ __plugin_meta__ = PluginMetadata(
 )
 
 
-from . import rule
+from . import checker
