@@ -32,3 +32,5 @@ from .vimcoin import (
     use_vimcoin,
     has_vimcoin
 )
+from . import recorder
+from .matcher import patch_matcher

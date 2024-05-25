@@ -1,6 +1,8 @@
 import base64
 from datetime import date
 from os import getcwd
+
+from ..nonebot_plugin_larkuser.matcher import patch_matcher
 from .config import config
 import httpx
 from nonebot import on_fullmatch
@@ -23,6 +25,7 @@ from ..nonebot_plugin_larkutils import get_user_id
 from ..nonebot_plugin_jrrp.jrrp import get_luck_value
 
 sign = on_alconna(Alconna("签到"), aliases={"签到", "sign"})
+patch_matcher(sign)
 
 
 def get_luck(user_id: str) -> str:
@@ -111,7 +114,7 @@ async def get_hitokoto(user_id: str) -> str:
 
 
 @sign.handle()
-@on_fullmatch(("sign", "签到")).handle()
+@patch_matcher(on_fullmatch(("sign", "签到"))).handle()
 async def _(
     matcher: Matcher,
     user_id: str = get_user_id()
