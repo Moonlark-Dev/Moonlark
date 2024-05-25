@@ -12,3 +12,4 @@ async def is_user_registered(user_id: str):
             return data.register_time is not None
         except NoResultFound:
             return False
+
