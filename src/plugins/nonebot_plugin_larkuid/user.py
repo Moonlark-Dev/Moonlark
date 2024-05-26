@@ -2,17 +2,15 @@ from datetime import datetime
 from pathlib import Path
 from fastapi import Request
 from fastapi.responses import PlainTextResponse
-from nonebot import get_app
+from nonebot import get_app, require
 from nonebot_plugin_htmlrender import template_to_html
-
-from .utils.gsc_time import get_galactic_time
+from ..nonebot_plugin_larkuser.utils.gsc_time import get_galactic_time
 from ..nonebot_plugin_larklang.__main__ import get_languages, get_user_language
-from .utils.level import get_level_by_experience
-
+from ..nonebot_plugin_larkuser.utils.level import get_level_by_experience
 from ..nonebot_plugin_larkutils.html import escape_html
-from ..nonebot_plugin_larkuid.session import get_user_forcibly
+from .session import get_user_forcibly
 from ..nonebot_plugin_larkuser.model import UserData
-from .lang import lang
+from ..nonebot_plugin_larkuser.lang import lang
 
 
 @get_app().get("/user")
@@ -42,7 +40,7 @@ async def _(_request: Request, user: UserData = get_user_forcibly()):
             } for lang in get_languages().keys()],
             registry=await lang.text("web.registry", user.user_id),
             activate_time=await lang.text("web.activate_time", user.user_id, user.activation_time.strftime("ET %Y-%m-%d")),
-            registry_time=await lang.text("web.registry_time", user.user_id, (user.register_time or now).strftime("ET %Y-%m-%d"))
+            registry_time=await lang.text("web.registry_time", user.user_id, (user.register_time or datetime.fromtimestamp(0)).strftime("ET %Y-%m-%d"))
         ),
         media_type="text/html"
     )

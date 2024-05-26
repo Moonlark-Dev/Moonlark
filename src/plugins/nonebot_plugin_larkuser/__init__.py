@@ -15,7 +15,6 @@ require("nonebot_plugin_userinfo")
 require("nonebot_plugin_larklang")
 require("nonebot_plugin_larkutils")
 require("nonebot_plugin_htmlrender")
-require("nonebot_plugin_larkuid")
 
 config = get_plugin_config(Config)
 
@@ -35,5 +34,4 @@ from .utils.vimcoin import (
 
 from . import __main__
 from . import recorder
-from . import web
 from .matcher import patch_matcher
