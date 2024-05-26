@@ -27,4 +27,3 @@ async def _(content: list[str], user_id: str = get_user_id()) -> None:
             escape_html(censor(text))
         )
     )), reply_message=True)
-

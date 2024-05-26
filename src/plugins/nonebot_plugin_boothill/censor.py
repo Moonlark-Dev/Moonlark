@@ -21,11 +21,11 @@ def censor(string: str) -> str:
                 elif p in ["s"]:
                     text[f] = "小可爱"
                     if f != len(pinyin) - 1:
-                        word_to_remove.append(f+1)
+                        word_to_remove.append(f + 1)
                 elif p in ["b"] and f not in word_to_remove:
                     text[f] = "可爱"
                     if f != 0:
-                        word_to_remove.append(f-1)
+                        word_to_remove.append(f - 1)
                 else:
                     continue
                 break
