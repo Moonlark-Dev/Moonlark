@@ -1,4 +1,4 @@
-from ....nonebot_plugin_larkuser.user import get_user
+from ....nonebot_plugin_larkuser.utils.user import get_user
 from ... import model
 from ....nonebot_plugin_larklang import LangHelper
 from ....nonebot_plugin_larkutils import get_user_id

@@ -12,6 +12,7 @@ from nonebot import require
 require("nonebot_plugin_orm")
 require("nonebot_plugin_alconna")
 require("nonebot_plugin_larkutils")
+require("nonebot_plugin_larkuid")
 
 from .__main__ import LangHelper
 from . import command as _command

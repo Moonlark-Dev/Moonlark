@@ -14,9 +14,9 @@ from nonebot_plugin_orm import AsyncSession, get_session
 from sqlalchemy import select
 from nonebot_plugin_htmlrender import template_to_pic
 from ..nonebot_plugin_larkutils.html import escape_html
-from ..nonebot_plugin_larkuser.level import get_level_by_experience
+from ..nonebot_plugin_larkuser.utils.level import get_level_by_experience
 from pathlib import Path
-from ..nonebot_plugin_larkuser.user import get_user
+from ..nonebot_plugin_larkuser.utils.user import get_user
 from .lang import lang
 from sqlalchemy.exc import NoResultFound
 from .model import SignData
@@ -122,7 +122,7 @@ async def _(
     session = get_session()
     data = await get_user_data(session, user_id)
     user = await get_user(user_id, session)
-    if (date.today() - data.last_sign).days <= 1:
+    if (date.today() - data.last_sign).days < 1:
         await lang.finish("sign.signed", user_id)
     templates = {
         "nickname": escape_html(user.nickname),
