@@ -1,0 +1,7 @@
+plugin: boothill
+commands:
+  boothill:
+    description: help.description
+    details: help.details
+    usages:
+      - help.usage

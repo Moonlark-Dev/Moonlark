@@ -48,6 +48,8 @@ scikit-image = "^0.23.1"
 nonebot-plugin-access-control = "^1.1.5"
 setuptools = "^69.5.1"
 beautifulsoup4 = "^4.12.3"
+pypinyin = "^0.51.0"
+jieba = "^0.42.1"
 
 [tool.poetry.group.dev.dependencies]
 nb-cli = "^1.4.0"
