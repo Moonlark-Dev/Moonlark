@@ -1,6 +1,7 @@
 # 1984-01-01 00:00:00
 GALACTIC_YEAR = 441734400
 
+
 def get_galactic_time(earth_time: float) -> list[int]:
     time_struct: list[float] = [1, 1, 1, 0, 0, 0]
     timestamp = earth_time - GALACTIC_YEAR
