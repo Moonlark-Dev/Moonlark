@@ -39,8 +39,18 @@ async def _(_request: Request, user: UserData = get_user_forcibly()):
                 "selected": lang == await get_user_language(user.user_id)
             } for lang in get_languages().keys()],
             registry=await lang.text("web.registry", user.user_id),
-            activate_time=await lang.text("web.activate_time", user.user_id, user.activation_time.strftime("ET %Y-%m-%d")),
-            registry_time=await lang.text("web.registry_time", user.user_id, (user.register_time or datetime.fromtimestamp(0)).strftime("ET %Y-%m-%d"))
+            activate_time=await lang.text(
+                "web.activate_time",
+                user.user_id,
+                user.activation_time.strftime("ET %Y-%m-%d")
+            ),
+            registry_time=await lang.text(
+                "web.registry_time",
+                user.user_id,
+                (user.register_time or datetime.fromtimestamp(0)).strftime(
+                    "ET %Y-%m-%d"
+                ))
+            
         ),
         media_type="text/html"
     )
