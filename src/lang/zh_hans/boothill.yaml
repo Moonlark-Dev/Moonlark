@@ -1,10 +1,6 @@
-cmd:
-  md: |
-    # 转换结果
-
-    {}
-
-    > 由 Moonlark & nonebot_plugin_boothill 生成
+image:
+  title: 转换结果
+  footer: 由 Moonlark & nonebot_plugin_boothill 生成
 help:
   description: 波提欧
   details: |
