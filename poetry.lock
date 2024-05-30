@@ -192,20 +192,6 @@ astroid = ["astroid (>=1,<2)", "astroid (>=2,<4)"]
 test = ["astroid (>=1,<2)", "astroid (>=2,<4)", "pytest"]
 
 [[package]]
-name = "asyncache"
-version = "0.3.1"
-description = "Helpers to use cachetools with async code."
-optional = false
-python-versions = ">=3.8,<4.0"
-files = [
-    {file = "asyncache-0.3.1-py3-none-any.whl", hash = "sha256:ef20a1024d265090dd1e0785c961cf98b9c32cc7d9478973dcf25ac1b80011f5"},
-    {file = "asyncache-0.3.1.tar.gz", hash = "sha256:9a1e60a75668e794657489bdea6540ee7e3259c483517b934670db7600bf5035"},
-]
-
-[package.dependencies]
-cachetools = ">=5.2.0,<6.0.0"
-
-[[package]]
 name = "beautifulsoup4"
 version = "4.12.3"
 description = "Screen-scraping library"
@@ -734,17 +720,6 @@ testing = ["covdefaults (>=2.3)", "coverage (>=7.3.2)", "diff-cover (>=8.0.1)", 
 typing = ["typing-extensions (>=4.8)"]
 
 [[package]]
-name = "filetype"
-version = "1.2.0"
-description = "Infer file type and MIME type of any file/buffer. No external dependencies."
-optional = false
-python-versions = "*"
-files = [
-    {file = "filetype-1.2.0-py2.py3-none-any.whl", hash = "sha256:7ce71b6880181241cf7ac8697a2f1eb6a8bd9b429f7ad6d27b8db9ba5f1c2d25"},
-    {file = "filetype-1.2.0.tar.gz", hash = "sha256:66b56cd6474bf41d8c54660347d37afcc3f7d1970648de365c102ef77548aadb"},
-]
-
-[[package]]
 name = "greenlet"
 version = "3.0.3"
 description = "Lightweight in-process concurrent programming"
@@ -961,6 +936,25 @@ pillow-heif = ["pillow-heif"]
 pyav = ["av"]
 test = ["fsspec[github]", "pytest", "pytest-cov"]
 tifffile = ["tifffile"]
+
+[[package]]
+name = "importlib-metadata"
+version = "7.1.0"
+description = "Read metadata from Python packages"
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "importlib_metadata-7.1.0-py3-none-any.whl", hash = "sha256:30962b96c0c223483ed6cc7280e7f0199feb01a0e40cfae4d4450fc6fab1f570"},
+    {file = "importlib_metadata-7.1.0.tar.gz", hash = "sha256:b78938b926ee8d5f020fc4772d487045805a55ddbad2ecf21c6d60938dc7fcd2"},
+]
+
+[package.dependencies]
+zipp = ">=0.5"
+
+[package.extras]
+docs = ["furo", "jaraco.packaging (>=9.3)", "jaraco.tidelift (>=1.4)", "rst.linker (>=1.9)", "sphinx (>=3.5)", "sphinx-lint"]
+perf = ["ipython"]
+testing = ["flufl.flake8", "importlib-resources (>=1.3)", "jaraco.test (>=5.4)", "packaging", "pyfakefs", "pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-cov", "pytest-enabler (>=2.2)", "pytest-mypy", "pytest-perf (>=0.9.2)", "pytest-ruff (>=0.2.1)"]
 
 [[package]]
 name = "importlib-resources"
@@ -1592,61 +1586,23 @@ pydantic = ">=1.10.0,<2.5.0 || >2.5.0,<2.5.1 || >2.5.1,<3.0.0"
 typing-extensions = ">=4.0.0,<5.0.0"
 
 [[package]]
-name = "nonebot-plugin-access-control"
-version = "1.1.5"
-description = ""
-optional = false
-python-versions = ">=3.9,<4.0"
-files = [
-    {file = "nonebot_plugin_access_control-1.1.5-py3-none-any.whl", hash = "sha256:cc335d20fe0ff3c9db8be468363ec09040581e0f8827c00cd36685ddaa4f26d0"},
-    {file = "nonebot_plugin_access_control-1.1.5.tar.gz", hash = "sha256:198cae6b1021c6ce917b3874b82908c28f81d10caaa09edd347baec0c463f679"},
-]
-
-[package.dependencies]
-arclet-alconna = ">=1.7.24,<2.0.0"
-nonebot-plugin-access-control-api = ">=1.1.2,<2.0.0"
-nonebot-plugin-apscheduler = ">=0.3.0"
-nonebot-plugin-orm = ">=0.5.0,<1.0.0"
-nonebot-plugin-session = ">=0.2.0,<0.3.0"
-nonebot2 = ">=2.1.0,<3.0.0"
-pytimeparser = ">=0.2.0,<0.3.0"
-shortuuid = ">=1.0.11,<2.0.0"
-ssttkkl-nonebot-utils = ">=0.1.17"
-
-[package.extras]
-cli = ["nb-cli (>=1.2.0)"]
-migrate = ["nonebot-plugin-datastore (>=1.0.0)"]
-
-[[package]]
-name = "nonebot-plugin-access-control-api"
-version = "1.2.0"
-description = ""
-optional = false
-python-versions = "<4.0,>=3.8"
-files = [
-    {file = "nonebot_plugin_access_control_api-1.2.0-py3-none-any.whl", hash = "sha256:bb534cebb07a02c51fdbbc9e222979e143cc891f7b3464b46fcf79b6a0d2629e"},
-    {file = "nonebot_plugin_access_control_api-1.2.0.tar.gz", hash = "sha256:e546fc3390ddbcb0e496297dcd50fb38830cf133112467bc2d12b6a9440dc781"},
-]
-
-[package.dependencies]
-nonebot2 = ">=2.2.0,<3.0.0"
-
-[[package]]
 name = "nonebot-plugin-alconna"
-version = "0.41.1"
+version = "0.46.3"
 description = "Alconna Adapter for Nonebot"
 optional = false
-python-versions = ">=3.8"
+python-versions = ">=3.9"
 files = [
-    {file = "nonebot_plugin_alconna-0.41.1-py3-none-any.whl", hash = "sha256:835ab5f2b3b2688bc90666318ff2f0aab03d2884847b815aa62b218009cc1cf8"},
-    {file = "nonebot_plugin_alconna-0.41.1.tar.gz", hash = "sha256:9041a961d0678dccfc9cbea8e415fd4fae639aabd4b6e6f2e82c99960293b6a3"},
+    {file = "nonebot_plugin_alconna-0.46.3-py3-none-any.whl", hash = "sha256:a6be8aca1c63ca26c4675844f90dd5503bb26057a87036352b037156a21fd979"},
+    {file = "nonebot_plugin_alconna-0.46.3.tar.gz", hash = "sha256:f0fb9ea0169979d95cb1033ee7d54139887e585fe81b818055b68cc3d0626867"},
 ]
 
 [package.dependencies]
-arclet-alconna = ">=1.8.5"
-arclet-alconna-tools = ">=0.7.0"
-nepattern = ">=0.6.5"
-nonebot2 = ">=2.2.1"
+arclet-alconna = ">=1.8.12"
+arclet-alconna-tools = ">=0.7.4"
+importlib-metadata = ">=4.13.0"
+nepattern = ">=0.7.4"
+nonebot-plugin-waiter = ">=0.6.0"
+nonebot2 = ">=2.3.0"
 
 [[package]]
 name = "nonebot-plugin-apscheduler"
@@ -1761,24 +1717,6 @@ py-cpuinfo = ">=9.0.0"
 yarl = ">=1.9.4"
 
 [[package]]
-name = "nonebot-plugin-send-anything-anywhere"
-version = "0.6.1"
-description = "An adaptor for nonebot2 adaptors"
-optional = false
-python-versions = "<4.0,>=3.8"
-files = [
-    {file = "nonebot_plugin_send_anything_anywhere-0.6.1-py3-none-any.whl", hash = "sha256:d1ac0df520f950b61ff27d3abda39c4bb2023797f3b7df2a23517ad53f3a7f29"},
-    {file = "nonebot_plugin_send_anything_anywhere-0.6.1.tar.gz", hash = "sha256:89a695c5e356a423b8641f79082353b50ee431585988de2c2ae77f8ea00ac3e9"},
-]
-
-[package.dependencies]
-anyio = ">=3.3.0,<5.0.0"
-filetype = ">=1.2.0,<2.0.0"
-nonebot2 = ">=2.0.0,<3.0.0"
-pydantic = ">=1.10.0,<2.5.0 || >2.5.0,<2.5.1 || >2.5.1,<3.0.0"
-strenum = ">=0.4.8,<0.5.0"
-
-[[package]]
 name = "nonebot-plugin-session"
 version = "0.2.3"
 description = "Nonebot2 会话信息提取与会话id定义"
@@ -1810,6 +1748,20 @@ emoji = ">=2.0.0,<3.0.0"
 httpx = ">=0.20.0,<1.0.0"
 nonebot2 = ">=2.0.0,<3.0.0"
 strenum = ">=0.4.8,<0.5.0"
+
+[[package]]
+name = "nonebot-plugin-waiter"
+version = "0.6.1"
+description = "An alternative for got-and-reject in Nonebot"
+optional = false
+python-versions = ">=3.9"
+files = [
+    {file = "nonebot_plugin_waiter-0.6.1-py3-none-any.whl", hash = "sha256:0abd678ff7671a2f5cee53b8c96fdbb700a78bbff921e8f37ab1e9388bdc8649"},
+    {file = "nonebot_plugin_waiter-0.6.1.tar.gz", hash = "sha256:ba4da15694ef4eeb23329e7ecde7e9e56df5cbf8e0dc03b8f98747658bbc138f"},
+]
+
+[package.dependencies]
+nonebot2 = ">=2.3.0"
 
 [[package]]
 name = "nonebot2"
@@ -2472,17 +2424,6 @@ text-unidecode = ">=1.3"
 unidecode = ["Unidecode (>=1.1.1)"]
 
 [[package]]
-name = "pytimeparser"
-version = "0.2.0"
-description = "Basic Python module to parse time expressions."
-optional = false
-python-versions = "*"
-files = [
-    {file = "pytimeparser-0.2.0-py2.py3-none-any.whl", hash = "sha256:a21563866ed19d65ec76e84bc42c595e2c180e3bea0bb5b7f7f40a7ec8b8d32a"},
-    {file = "pytimeparser-0.2.0.tar.gz", hash = "sha256:1636bbb896931b5928b909d9ad2397d847e23e33c34d5e919cef3b526b0db56c"},
-]
-
-[[package]]
 name = "pytz"
 version = "2024.1"
 description = "World timezone definitions, modern and historical"
@@ -2801,22 +2742,6 @@ doc = ["jupyterlite-pyodide-kernel", "jupyterlite-sphinx (>=0.12.0)", "jupytext"
 test = ["array-api-strict", "asv", "gmpy2", "hypothesis (>=6.30)", "mpmath", "pooch", "pytest", "pytest-cov", "pytest-timeout", "pytest-xdist", "scikit-umfpack", "threadpoolctl"]
 
 [[package]]
-name = "setuptools"
-version = "69.5.1"
-description = "Easily download, build, install, upgrade, and uninstall Python packages"
-optional = false
-python-versions = ">=3.8"
-files = [
-    {file = "setuptools-69.5.1-py3-none-any.whl", hash = "sha256:c636ac361bc47580504644275c9ad802c50415c7522212252c033bd15f301f32"},
-    {file = "setuptools-69.5.1.tar.gz", hash = "sha256:6c1fccdac05a97e598fb0ae3bbed5904ccb317337a51139dcd51453611bbb987"},
-]
-
-[package.extras]
-docs = ["furo", "jaraco.packaging (>=9.3)", "jaraco.tidelift (>=1.4)", "pygments-github-lexers (==0.0.5)", "rst.linker (>=1.9)", "sphinx (>=3.5)", "sphinx-favicon", "sphinx-inline-tabs", "sphinx-lint", "sphinx-notfound-page (>=1,<2)", "sphinx-reredirects", "sphinxcontrib-towncrier"]
-testing = ["build[virtualenv]", "filelock (>=3.4.0)", "importlib-metadata", "ini2toml[lite] (>=0.9)", "jaraco.develop (>=7.21)", "jaraco.envs (>=2.2)", "jaraco.path (>=3.2.0)", "mypy (==1.9)", "packaging (>=23.2)", "pip (>=19.1)", "pytest (>=6,!=8.1.1)", "pytest-checkdocs (>=2.4)", "pytest-cov", "pytest-enabler (>=2.2)", "pytest-home (>=0.5)", "pytest-mypy", "pytest-perf", "pytest-ruff (>=0.2.1)", "pytest-timeout", "pytest-xdist (>=3)", "tomli", "tomli-w (>=1.0.0)", "virtualenv (>=13.0.0)", "wheel"]
-testing-integration = ["build[virtualenv] (>=1.0.3)", "filelock (>=3.4.0)", "jaraco.envs (>=2.2)", "jaraco.path (>=3.2.0)", "packaging (>=23.2)", "pytest", "pytest-enabler", "pytest-xdist", "tomli", "virtualenv (>=13.0.0)", "wheel"]
-
-[[package]]
 name = "shellingham"
 version = "1.5.4"
 description = "Tool to Detect Surrounding Shell"
@@ -2825,17 +2750,6 @@ python-versions = ">=3.7"
 files = [
     {file = "shellingham-1.5.4-py2.py3-none-any.whl", hash = "sha256:7ecfff8f2fd72616f7481040475a65b2bf8af90a56c89140852d1120324e8686"},
     {file = "shellingham-1.5.4.tar.gz", hash = "sha256:8dbca0739d487e5bd35ab3ca4b36e11c4078f3a234bfce294b0a0291363404de"},
-]
-
-[[package]]
-name = "shortuuid"
-version = "1.0.13"
-description = "A generator library for concise, unambiguous and URL-safe UUIDs."
-optional = false
-python-versions = ">=3.6"
-files = [
-    {file = "shortuuid-1.0.13-py3-none-any.whl", hash = "sha256:a482a497300b49b4953e15108a7913244e1bb0d41f9d332f5e9925dba33a3c5a"},
-    {file = "shortuuid-1.0.13.tar.gz", hash = "sha256:3bb9cf07f606260584b1df46399c0b87dd84773e7b25912b7e391e30797c5e72"},
 ]
 
 [[package]]
@@ -2958,26 +2872,6 @@ postgresql-psycopg2cffi = ["psycopg2cffi"]
 postgresql-psycopgbinary = ["psycopg[binary] (>=3.0.7)"]
 pymysql = ["pymysql"]
 sqlcipher = ["sqlcipher3_binary"]
-
-[[package]]
-name = "ssttkkl-nonebot-utils"
-version = "0.1.20"
-description = ""
-optional = false
-python-versions = "<4.0,>=3.8"
-files = [
-    {file = "ssttkkl_nonebot_utils-0.1.20-py3-none-any.whl", hash = "sha256:3ed1d1f37bd323ee0a384f99dc3bfbf73f4133087940d305f459eb05a1eb9080"},
-    {file = "ssttkkl_nonebot_utils-0.1.20.tar.gz", hash = "sha256:47113153524fc22c971f3d3daad3da71f2408c9448ea058f3744183efe13896d"},
-]
-
-[package.dependencies]
-aiofiles = ">=23.2.1"
-asyncache = ">=0.3.1"
-cachetools = ">=5.3.1"
-nonebot-plugin-localstore = ">=0.3.0"
-nonebot-plugin-send-anything-anywhere = ">=0.3.0"
-nonebot-plugin-session = ">=0.1.0"
-nonebot2 = ">=2.0.0,<3.0.0"
 
 [[package]]
 name = "stack-data"
@@ -3732,7 +3626,22 @@ files = [
 idna = ">=2.0"
 multidict = ">=4.0"
 
+[[package]]
+name = "zipp"
+version = "3.19.0"
+description = "Backport of pathlib-compatible object wrapper for zip files"
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "zipp-3.19.0-py3-none-any.whl", hash = "sha256:96dc6ad62f1441bcaccef23b274ec471518daf4fbbc580341204936a5a3dddec"},
+    {file = "zipp-3.19.0.tar.gz", hash = "sha256:952df858fb3164426c976d9338d3961e8e8b3758e2e059e0f754b8c4262625ee"},
+]
+
+[package.extras]
+docs = ["furo", "jaraco.packaging (>=9.3)", "jaraco.tidelift (>=1.4)", "rst.linker (>=1.9)", "sphinx (>=3.5)", "sphinx-lint"]
+testing = ["big-O", "jaraco.functools", "jaraco.itertools", "jaraco.test", "more-itertools", "pytest (>=6,!=8.1.*)", "pytest-checkdocs (>=2.4)", "pytest-cov", "pytest-enabler (>=2.2)", "pytest-ignore-flaky", "pytest-mypy", "pytest-ruff (>=0.2.1)"]
+
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "646b0ed3c67233e33d71f7ea6a33d3d3b19b4a7755ae0e06f3d14f7c0d05b646"
+content-hash = "6dbbec50c4e33cff54f8b19185d1995321fabe4e40511a68de8f08c749812b7d"

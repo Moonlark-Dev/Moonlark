@@ -4,7 +4,7 @@ from nonebot.params import ArgPlainText
 from nonebot import on_command
 from sqlalchemy import select
 
-from ..nonebot_plugin_larkuser.user import get_user
+from ..nonebot_plugin_larkuser.utils.user import get_user
 
 from .utils import is_user_registered
 from nonebot.typing import T_State

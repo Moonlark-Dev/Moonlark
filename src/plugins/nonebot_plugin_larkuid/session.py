@@ -3,7 +3,7 @@ from nonebot_plugin_apscheduler import scheduler
 from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
 from fastapi import Cookie, Depends, HTTPException, Request, status
-from ..nonebot_plugin_larkuser.user import get_user
+from ..nonebot_plugin_larkuser.utils.user import get_user
 from ..nonebot_plugin_larkuser.model import UserData
 from .model import SessionData
 from nonebot.log import logger
@@ -63,7 +63,7 @@ async def _get_user_forcibly(user_id: Optional[str] = get_user_id()) -> UserData
         return user
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Invalid authentication credentials",
+        detail="Invalid authentication credentials, please login at /user/login.",
     )
 
 
@@ -71,8 +71,20 @@ def get_user_data() -> Optional[UserData]:
     return Depends(_get_user_data)
 
 
-def get_user_forcibly() -> UserData:
-    return Depends(_get_user_forcibly)
+async def _get_registered_user_data(user_data: UserData = Depends(_get_user_forcibly)) -> UserData:
+    if user_data.register_time is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication credentials, please login at /user/login.",
+        )
+    return user_data
+
+
+def get_user_forcibly(need_registered: bool = False) -> UserData:
+    if not need_registered:
+        return Depends(_get_user_forcibly)
+    else:
+        return Depends(_get_registered_user_data)
 
 
 @scheduler.scheduled_job("cron", day="*", id="remove_session")

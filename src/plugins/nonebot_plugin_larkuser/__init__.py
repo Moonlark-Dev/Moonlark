@@ -18,19 +18,20 @@ require("nonebot_plugin_htmlrender")
 
 config = get_plugin_config(Config)
 
-from . import __main__
-from .user import (
+from .utils.user import (
     get_user,
     set_user_data
 )
-from .level import (
+from .utils.level import (
     get_level_by_experience,
     add_exp
 )
-from .vimcoin import (
+from .utils.vimcoin import (
     add_vimcoin,
     use_vimcoin,
     has_vimcoin
 )
+
+from . import __main__
 from . import recorder
 from .matcher import patch_matcher

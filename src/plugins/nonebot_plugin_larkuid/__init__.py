@@ -21,5 +21,7 @@ from . import (
     login,
     verify,
     __main__,
-    success
+    success,
+    user,
+    lang_api
 )

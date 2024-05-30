@@ -1,6 +1,6 @@
 import datetime
 from typing import Optional
-from .model import UserData
+from ..model import UserData
 from nonebot_plugin_orm import AsyncSession, async_scoped_session, get_session
 from sqlalchemy.exc import NoResultFound
 
