@@ -1,0 +1,10 @@
+image:
+  title: 转换结果
+  footer: 由 Moonlark & nonebot_plugin_boothill 生成
+help:
+  description: 波提欧
+  details: |
+    对句子进行一些？？？的处理，仅支持简体中文。
+    
+    「他宝了个腿的。」 ——巡海游侠，波提欧
+  usage: boothill <句子>

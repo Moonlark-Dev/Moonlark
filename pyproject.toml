@@ -47,6 +47,8 @@ numpy = "^1.26.4"
 pillow = "^10.3.0"
 scikit-image = "^0.23.1"
 beautifulsoup4 = "^4.12.3"
+pypinyin = "^0.51.0"
+jieba = "^0.42.1"
 
 [tool.poetry.group.dev.dependencies]
 nb-cli = "^1.4.0"
