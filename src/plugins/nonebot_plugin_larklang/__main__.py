@@ -85,10 +85,10 @@ async def set_user_language(user_id: str, language: str, session: async_scoped_s
 async def get_user_language(user_id: str) -> str:
     session = get_scoped_session()
     try:
-        language = await session.get_one(
+        language = (await session.get_one(
             LanguageConfig, 
             {"user_id": user_id}
-        )
+        )).language
     except NoResultFound:
         language = config.language_index_order[0]
     if language not in languages:
