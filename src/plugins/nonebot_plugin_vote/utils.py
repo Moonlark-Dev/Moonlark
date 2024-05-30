@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import AsyncGenerator, Optional
 from nonebot_plugin_htmlrender import template_to_pic
 from sqlalchemy import select
-from ..nonebot_plugin_larkuser.user import get_user
+from ..nonebot_plugin_larkuser.utils.user import get_user
 from .typing import ChoiceData
 from ..nonebot_plugin_larkutils import get_group_id, escape_html
 from nonebot.typing import T_State

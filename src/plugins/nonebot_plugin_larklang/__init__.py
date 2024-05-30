@@ -15,6 +15,3 @@ require("nonebot_plugin_larkutils")
 
 from .__main__ import LangHelper
 from . import command as _command
-
-
-
