@@ -11,6 +11,9 @@ __plugin_meta__ = PluginMetadata(
 
 require("nonebot_plugin_larkutils")
 require("nonebot_plugin_alconna")
+require("nonebot_plugin_larklang")
 require("nonebot_plugin_orm")
+require("nonebot_plugin_htmlrender")
 
-from . import checker
+from . import checker, web, __main__
+from .api import set_access

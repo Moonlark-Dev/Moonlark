@@ -67,6 +67,15 @@ async def _get_user_forcibly(user_id: Optional[str] = get_user_id()) -> UserData
     )
 
 
+async def _get_user_id_forcibly(user_id: Optional[str] = get_user_id()) -> str:
+    if user_id is not None:
+        return user_id
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Invalid authentication credentials",
+    )
+
+
 def get_user_data() -> Optional[UserData]:
     return Depends(_get_user_data)
 
@@ -85,6 +94,10 @@ def get_user_forcibly(need_registered: bool = False) -> UserData:
         return Depends(_get_user_forcibly)
     else:
         return Depends(_get_registered_user_data)
+
+
+def get_user_id_forcibly() -> str:
+    return Depends(_get_user_id_forcibly)
 
 
 @scheduler.scheduled_job("cron", day="*", id="remove_session")
