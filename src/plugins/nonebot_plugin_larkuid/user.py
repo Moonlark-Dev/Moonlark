@@ -50,7 +50,7 @@ async def _(_request: Request, user: UserData = get_user_forcibly()):
                 (user.register_time or datetime.fromtimestamp(0)).strftime(
                     "ET %Y-%m-%d"
                 )
-            )            
+            )
         ),
         media_type="text/html"
     )
