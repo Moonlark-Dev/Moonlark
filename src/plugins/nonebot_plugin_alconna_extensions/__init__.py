@@ -1,6 +1,7 @@
 from nonebot import get_plugin_config, require
 from nonebot.plugin import PluginMetadata
 from .config import Config
+from nonebot.log import logger
 
 __plugin_meta__ = PluginMetadata(
     name="nonebot_plugin_alconna_extensions",
@@ -16,8 +17,9 @@ require("nonebot_plugin_alconna")
 from nonebot_plugin_alconna.extension import load_from_path
 
 EXTENSIONS = [
-    "src.plugins.nonebot_plugin_alconna_extensions.global_extensions:ReplyExtension",
+    "@reply:ReplyMergeExtension"
     "src.plugins.nonebot_plugin_alconna_extensions.global_extensions:UnmatchedExtension"
 ]
 for extension in EXTENSIONS:
     load_from_path(extension)
+    logger.info(f"已加载插件 {extension}")

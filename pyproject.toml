@@ -25,6 +25,7 @@ builtin_plugins = []
 name = "moonlark"
 version = "0.1.0"
 description = "A new ChatBot"
+package-mode = false
 authors = ["XiaoDeng3386 <1744793737@qq.com>"]
 license = "AGPL-3.0"
 readme = "README.md"
@@ -35,7 +36,7 @@ nonebot2 = {extras = ["fastapi"], version = "^2.2.1"}
 nonebot-adapter-onebot = "^2.4.3"
 aiofiles = "^23.2.1"
 nonebot-plugin-orm = {extras = ["default"], version = "^0.7.1"}
-nonebot-plugin-alconna = "^0.41.1"
+nonebot-plugin-alconna = "^0.46.3"
 nonebot-plugin-picstatus = "^2.0.0.post2"
 nonebot-adapter-discord = "^0.1.6"
 nonebot-plugin-htmlrender = "^0.3.1"
@@ -45,8 +46,6 @@ nonebot-plugin-session = "^0.2.0"
 numpy = "^1.26.4"
 pillow = "^10.3.0"
 scikit-image = "^0.23.1"
-nonebot-plugin-access-control = "^1.1.5"
-setuptools = "^69.5.1"
 beautifulsoup4 = "^4.12.3"
 
 [tool.poetry.group.dev.dependencies]
