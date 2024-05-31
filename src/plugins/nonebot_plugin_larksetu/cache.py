@@ -4,6 +4,7 @@ import traceback
 
 import aiofiles
 from nonebot import get_driver, logger
+from nonebot.compat import type_validate_python
 from nonebot_plugin_localstore import get_cache_dir
 
 from .config import config
@@ -19,7 +20,7 @@ async def get_cache_data() -> list[ImageData]:
         return []
     try:
         async with aiofiles.open(p, encoding="utf-8") as f:
-            return [ImageData(**data) for data in json.loads(await f.read())]
+            return [type_validate_python(ImageData, data) for data in json.loads(await f.read())]
     except Exception:
         logger.warning(f"读取缓存信息失败: {traceback.format_exc}")
     return []

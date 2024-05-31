@@ -4,6 +4,7 @@ from pathlib import Path
 
 import aiofiles
 import yaml
+from nonebot.compat import type_validate_python
 from nonebot.log import logger
 
 from .model import LanguageData, LanguageKey
@@ -33,7 +34,7 @@ class LangLoader:
             data["path"] = lang
             # 拉平 language 字段
             data.update(data.pop("language"))
-            self.languages[lang.name] = LanguageData(**data)
+            self.languages[lang.name] = type_validate_python(LanguageData, data)
 
     async def load(self) -> None:
         lang_list = list(self.languages.keys())
@@ -63,7 +64,7 @@ class LangLoader:
                 elif isinstance(data[cmd][key], dict):
                     if isinstance(data[cmd][key]["text"], str):
                         data[cmd][key]["text"] = [data[cmd][key]["text"]]
-                    data[cmd][key] = LanguageKey(**data[cmd][key])
+                    data[cmd][key] = type_validate_python(LanguageKey, data[cmd][key])
                 else:
                     data[cmd].pop(key)
 
