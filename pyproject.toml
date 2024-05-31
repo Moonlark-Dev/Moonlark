@@ -3,7 +3,7 @@ name = "Moonlark"
 version = "0.1.0"
 description = "A new ChatBot"
 readme = "README.md"
-requires-python = ">=3.10, <4.0"
+requires-python = ">=3.11, <4.0"
 
 [tool.nonebot]
 adapters = [
@@ -59,7 +59,7 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.pyright]
-pythonVersion = "3.10"
+pythonVersion = "3.11"
 pythonPlatform = "All"
 defineConstant = { PYDANTIC_V2 = true }
 typeCheckingMode = "basic"
@@ -67,7 +67,7 @@ reportShadowedImports = false
 exclude = ["**/.venv"]
 
 [tool.basedpyright]
-pythonVersion = "3.10"
+pythonVersion = "3.11"
 pythonPlatform = "All"
 defineConstant = { PYDANTIC_V2 = true }
 typeCheckingMode = "standard"
@@ -77,7 +77,7 @@ exclude = ["**/.venv"]
 [tool.ruff]
 extend-exclude = []
 line-length = 120
-target-version = "py310"
+target-version = "py311"
 
 [tool.ruff.format]
 docstring-code-format = true
@@ -158,7 +158,7 @@ split-on-trailing-comma = true
 
 [tool.black]
 line-length = 120
-target-version = ["py312"]
+target-version = ["py311"]
 include = '\.pyi?$'
 extend-exclude = '''
 '''
