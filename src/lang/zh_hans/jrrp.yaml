@@ -1,18 +1,15 @@
 message:
   __template__: '你今天的人品值是: {{}}{}'
-  # 100
-  msg1: ！100！100！！！
-  # 99
-  msg2: ！可惜不是 100
-  msg3: ，是不错的一天呢！
-  msg4: ，还行啦还行啦。
-  msg5: ''
-  msg6: ，………………
-  msg7: ……………………………………………………………………………………
-  msg8: ，呜哇——
-  msg9: ，呜哇——（没错，是百分制）
-  # 0
-  msg10: '！0！0！！！'
+  perfect_luck: ！100！100！！！
+  almost_perfect: ！可惜不是 100
+  great_day: ，是不错的一天呢！
+  good_day: ，还行啦还行啦。
+  fair_day: ''
+  average_day: ，………………
+  below_average: ……………………………………………………………………………………
+  poor_day: ，呜哇——
+  bad_day: ，呜哇——（没错，是百分制）
+  terrible_luck: '！0！0！！！'
 rank:
   title: 今日人品排行
 help:
