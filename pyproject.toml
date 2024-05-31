@@ -8,7 +8,7 @@ requires-python = ">=3.10, <4.0"
 [tool.nonebot]
 adapters = [
     { name = "OneBot V12", module_name = "nonebot.adapters.onebot.v12" },
-    { name = "OneBot V11", module_name = "nonebot.adapters.onebot.v11" }
+    { name = "OneBot V11", module_name = "nonebot.adapters.onebot.v11" },
 ]
 plugins = [
     "nonebot_plugin_orm",
@@ -16,7 +16,7 @@ plugins = [
     "nonebot_plugin_picstatus",
     "nonebot_plugin_htmlrender",
     "nonebot_plugin_apscheduler",
-    "nonebot_plugin_session"
+    "nonebot_plugin_session",
 ]
 plugin_dirs = ["src/plugins"]
 builtin_plugins = []
@@ -32,10 +32,10 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.10"
-nonebot2 = {extras = ["fastapi"], version = "^2.2.1"}
+nonebot2 = { extras = ["fastapi"], version = "^2.2.1" }
 nonebot-adapter-onebot = "^2.4.3"
 aiofiles = "^23.2.1"
-nonebot-plugin-orm = {extras = ["default"], version = "^0.7.1"}
+nonebot-plugin-orm = { extras = ["default"], version = "^0.7.1" }
 nonebot-plugin-alconna = "^0.46.3"
 nonebot-plugin-picstatus = "^2.0.0.post2"
 nonebot-adapter-discord = "^0.1.6"
@@ -57,3 +57,116 @@ ipykernel = "^6.29.4"
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.pyright]
+pythonVersion = "3.10"
+pythonPlatform = "All"
+defineConstant = { PYDANTIC_V2 = true }
+typeCheckingMode = "standard"
+reportShadowedImports = false
+exclude = ["**/.venv"]
+
+[tool.basedpyright]
+pythonVersion = "3.10"
+pythonPlatform = "All"
+defineConstant = { PYDANTIC_V2 = true }
+typeCheckingMode = "standard"
+reportShadowedImports = false
+exclude = ["**/.venv"]
+
+[tool.ruff]
+extend-exclude = []
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.format]
+docstring-code-format = true
+line-ending = "lf"
+
+[tool.ruff.lint]
+preview = true
+ignore = [
+    "B008",
+    "B905",
+    # "COM812",
+    "E501",
+    "FBT001",
+    "FBT002",
+    "ISC001",
+    "PERF203",
+    "PGH003",
+    "PLC04",
+    "RUF001",
+    "RUF002",
+    "RUF003",
+    "RUF006",
+    "RUF029",
+    "RUF100",
+    "S101",
+    "S311",
+    "S404",
+    "SIM117",
+    "TRY002",
+    "TRY003",
+]
+select = [
+    "A",
+    "ANN001",
+    "ARG",
+    "ASYNC",
+    "B",
+    "C4",
+    "COM",
+    "DTZ",
+    "E",
+    "F",
+    "FBT",
+    "FLY",
+    "FURB",
+    "I",
+    "ISC",
+    "N",
+    "NPY",
+    "PERF",
+    "PIE",
+    "PGH",
+    # "PL",
+    "PT",
+    "PTH",
+    "PYI",
+    "Q",
+    "RET",
+    "RSE",
+    "RUF",
+    "S",
+    "SIM",
+    "SLF",
+    "SLOT",
+    "TCH",
+    "TRY",
+    "YTT",
+]
+
+[tool.ruff.lint.per-file-ignores]
+
+
+[tool.ruff.lint.isort]
+combine-as-imports = true
+detect-same-package = true
+extra-standard-library = ["typing_extensions"]
+split-on-trailing-comma = true
+
+[tool.black]
+line-length = 120
+target-version = ["py312"]
+include = '\.pyi?$'
+extend-exclude = '''
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 120
+length_sort = true
+skip_gitignore = true
+force_sort_within_sections = true
+extra_standard_library = ["typing_extensions"]
