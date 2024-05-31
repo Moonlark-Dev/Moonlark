@@ -29,7 +29,7 @@ def get_luck_type(luck_value: int) -> LuckType:
 async def get_luck_message(user_id: str) -> str:
     luck_value = get_luck_value(user_id)
     return await lang.text(
-        f"message.msg{get_luck_type(luck_value)}",
+        f"message.msg{get_luck_type(luck_value).value}",
         user_id,
         luck_value
     )
