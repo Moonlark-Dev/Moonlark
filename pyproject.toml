@@ -62,7 +62,7 @@ build-backend = "poetry.core.masonry.api"
 pythonVersion = "3.10"
 pythonPlatform = "All"
 defineConstant = { PYDANTIC_V2 = true }
-typeCheckingMode = "standard"
+typeCheckingMode = "basic"
 reportShadowedImports = false
 exclude = ["**/.venv"]
 
