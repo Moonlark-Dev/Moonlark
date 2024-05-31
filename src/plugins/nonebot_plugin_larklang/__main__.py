@@ -36,7 +36,7 @@ def get_module_name(module: ModuleType | None) -> str | None:
 
 def apply_template(language: str, plugin: str, key: str, text: str) -> str:
     try:
-        return random.choice(languages[language].keys["plugin"][key]["__template__"].text).format(text)
+        return random.choice(languages[language].keys[plugin][key]["__template__"].text).format(text)
     except KeyError:
         return text
 

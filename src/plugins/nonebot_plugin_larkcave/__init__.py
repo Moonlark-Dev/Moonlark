@@ -16,7 +16,6 @@ require("nonebot_plugin_larklang")
 require("nonebot_plugin_larkuser")
 require("nonebot_plugin_larkutils")
 require("nonebot_plugin_alconna")
-require("nonebot_plugin_access_control_api")
 
 
 sub_plugins = nonebot.load_plugins(
