@@ -1,5 +1,6 @@
-from nonebot.plugin import PluginMetadata
 from nonebot import require
+from nonebot.plugin import PluginMetadata
+
 from .config import Config
 
 __plugin_meta__ = PluginMetadata(
@@ -15,6 +16,3 @@ require("nonebot_plugin_larkutils")
 require("nonebot_plugin_alconna")
 
 from . import __main__
-
-
-

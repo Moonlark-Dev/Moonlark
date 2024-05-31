@@ -1,2 +1,6 @@
-class NoResultException(Exception): pass
-class PackageNotFound(Exception): pass
+class NoResultException(Exception):
+    pass
+
+
+class PackageNotFound(Exception):
+    pass

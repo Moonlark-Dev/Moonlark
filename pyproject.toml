@@ -65,14 +65,16 @@ defineConstant = { PYDANTIC_V2 = true }
 typeCheckingMode = "basic"
 reportShadowedImports = false
 exclude = ["**/.venv"]
+reportUnusedCallResult = false
 
 [tool.basedpyright]
+typeCheckingMode = "standard"
 pythonVersion = "3.11"
 pythonPlatform = "All"
 defineConstant = { PYDANTIC_V2 = true }
-typeCheckingMode = "standard"
 reportShadowedImports = false
 exclude = ["**/.venv"]
+reportUnusedCallResult = false
 
 [tool.ruff]
 extend-exclude = []

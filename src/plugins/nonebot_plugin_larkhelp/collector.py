@@ -1,9 +1,11 @@
-from pathlib import Path
 import traceback
+from pathlib import Path
+
 import aiofiles
+import yaml
 from nonebot import get_loaded_plugins, logger
 from nonebot.plugin import Plugin
-import yaml
+
 from .model import *
 
 
@@ -18,10 +20,7 @@ async def get_plugin_help(plugin: Plugin) -> dict[str, CommandHelp]:
         data = CommandHelpData(**yaml.safe_load(await f.read()))
     help_list = {}
     for key, value in data.commands.items():
-        help_list[key] = CommandHelp(
-            **data.commands[key],
-            plugin=data.plugin
-        )
+        help_list[key] = CommandHelp(**data.commands[key], plugin=data.plugin)
     return help_list
 
 

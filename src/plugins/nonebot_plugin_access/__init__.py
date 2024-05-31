@@ -1,5 +1,6 @@
 from nonebot import require
 from nonebot.plugin import PluginMetadata
+
 from .config import Config
 
 __plugin_meta__ = PluginMetadata(
@@ -15,5 +16,5 @@ require("nonebot_plugin_larklang")
 require("nonebot_plugin_orm")
 require("nonebot_plugin_htmlrender")
 
-from . import checker, web, __main__
+from . import __main__, checker, web
 from .api import set_access

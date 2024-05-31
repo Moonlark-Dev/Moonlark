@@ -1,24 +1,22 @@
-from nonebot.adapters import Bot, Event, Message
-from nonebot import require
 from typing import Any, Dict
+
+from arclet.alconna.exceptions import ArgumentMissing, ParamsUnmatched
+from nonebot import require
+from nonebot.adapters import Bot, Event, Message
 from nonebot_plugin_alconna import Arparma, Extension, UniMessage
-from arclet.alconna.exceptions import (
-    ArgumentMissing,
-    ParamsUnmatched
-)
 from nonebot_plugin_alconna.uniseg import reply_fetch
 
 require("nonebot_plugin_larklang")
 from ..nonebot_plugin_larklang import LangHelper
+
 lang = LangHelper()
 
 
 class UnmatchedExtension(Extension):
-
     @property
     def priority(self) -> int:
         return 14
-    
+
     @property
     def id(self) -> str:
         return "lark_unmatched"

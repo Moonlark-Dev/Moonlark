@@ -1,17 +1,17 @@
 import asyncio
 from datetime import datetime
-from nonebot.params import ArgPlainText
+
 from nonebot import on_command
+from nonebot.params import ArgPlainText
+from nonebot.typing import T_State
+from nonebot_plugin_orm import async_scoped_session, get_scoped_session
 from sqlalchemy import select
 
+from ..nonebot_plugin_larkuser.model import UserData
 from ..nonebot_plugin_larkuser.utils.user import get_user
-
-from .utils import is_user_registered
-from nonebot.typing import T_State
 from ..nonebot_plugin_larkutils.user import get_user_id
 from .lang import lang
-from ..nonebot_plugin_larkuser.model import UserData
-from nonebot_plugin_orm import async_scoped_session, get_scoped_session
+from .utils import is_user_registered
 
 register = on_command("register")
 
@@ -34,9 +34,7 @@ async def _(state: T_State, gender: str = ArgPlainText(), user_id: str = get_use
     elif gender.lower() == "f":
         state["gender"] = False
     else:
-        await register.reject(await lang.text(
-            "command.invalid", user_id
-        ))
+        await register.reject(await lang.text("command.invalid", user_id))
     await lang.send("input.s", user_id)
 
 
@@ -46,23 +44,16 @@ async def _(state: T_State, ship_code: str = ArgPlainText(), user_id: str = get_
         await lang.finish("command.cancel", user_id)
     session = get_scoped_session()
     if session.scalar(select(UserData).where(UserData.ship_code == ship_code)) is None:
-        await register.reject(await lang.text(
-            "command.invalid", user_id
-        ))
+        await register.reject(await lang.text("command.invalid", user_id))
     if len(ship_code) >= 25:
-        await register.reject(await lang.text(
-            "command.invalid", user_id
-        ))
+        await register.reject(await lang.text("command.invalid", user_id))
     state["ship_code"] = ship_code
     await lang.send(
         "input.c",
         user_id,
         user_id,
-        await lang.text(
-            "gender.male" if state["gender"] else "gender.female",
-            user_id
-        ),
-        state["ship_code"]
+        await lang.text("gender.male" if state["gender"] else "gender.female", user_id),
+        state["ship_code"],
     )
 
 

@@ -1,6 +1,6 @@
-from nonebot import get_plugin_config
+from nonebot import get_plugin_config, require
 from nonebot.plugin import PluginMetadata
-from nonebot import require
+
 from .config import Config
 
 __plugin_meta__ = PluginMetadata(
@@ -18,20 +18,8 @@ require("nonebot_plugin_htmlrender")
 
 config = get_plugin_config(Config)
 
-from .utils.user import (
-    get_user,
-    set_user_data
-)
-from .utils.level import (
-    get_level_by_experience,
-    add_exp
-)
-from .utils.vimcoin import (
-    add_vimcoin,
-    use_vimcoin,
-    has_vimcoin
-)
-
-from . import __main__
-from . import recorder
+from . import __main__, recorder
 from .matcher import patch_matcher
+from .utils.level import add_exp, get_level_by_experience
+from .utils.user import get_user, set_user_data
+from .utils.vimcoin import add_vimcoin, has_vimcoin, use_vimcoin
