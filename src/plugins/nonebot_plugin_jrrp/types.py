@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class LuckType(Enum):
     PERFECT_LUCK = 1        # 100
     ALMOST_PERFECT = 2      # 99

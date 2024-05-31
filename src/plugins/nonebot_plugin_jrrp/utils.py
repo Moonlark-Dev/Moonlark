@@ -2,6 +2,7 @@ from .lang import lang
 from .jrrp import get_luck_value
 from .types import LuckType
 
+
 def get_luck_type(luck_value: int) -> LuckType:
     if luck_value == 100:
         return LuckType.PERFECT_LUCK
@@ -23,6 +24,7 @@ def get_luck_type(luck_value: int) -> LuckType:
         return LuckType.BAD_DAY
     else:
         return LuckType.TERRIBLE_LUCK
+
 
 async def get_luck_message(user_id: str) -> str:
     luck_value = get_luck_value(user_id)

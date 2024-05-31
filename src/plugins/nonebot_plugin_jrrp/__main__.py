@@ -18,4 +18,3 @@ async def _(
         await get_luck_message(user_id),
         at_sender=True
     )
-
