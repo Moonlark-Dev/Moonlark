@@ -1,7 +1,7 @@
 import traceback
 from nonebot.log import logger
 from ...decoder import decode_cave
-from ...model import CaveData
+from ...models import CaveData
 from ...__main__ import cave
 from ....nonebot_plugin_larkutils import get_user_id, is_superuser
 from nonebot_plugin_orm import async_scoped_session

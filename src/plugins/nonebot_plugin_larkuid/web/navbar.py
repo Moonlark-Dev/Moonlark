@@ -6,9 +6,9 @@ from fastapi.responses import PlainTextResponse
 from nonebot import get_app
 from nonebot_plugin_htmlrender import template_to_html
 
-from ..nonebot_plugin_larkuser.model import UserData
-from .lang import lang
-from .session import get_user_data
+from ...nonebot_plugin_larkuser.models import UserData
+from ..lang import lang
+from ..session import get_user_data
 
 
 @get_app().get("/script/navbar.js")
@@ -17,7 +17,7 @@ async def _(_request: Request, user: Optional[UserData] = get_user_data()) -> Pl
     nickname = user.nickname if user else None
     return PlainTextResponse(
         await template_to_html(
-            Path(__file__).parent.joinpath("template").as_posix(),
+            Path(__file__).parent.joinpath("templates").as_posix(),
             "navbar.js.jinja",
             title=await lang.text("navbar.title", user_id),
             nickname=nickname,

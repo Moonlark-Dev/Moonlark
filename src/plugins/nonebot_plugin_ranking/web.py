@@ -10,7 +10,7 @@ from nonebot_plugin_htmlrender import template_to_html
 from ..nonebot_plugin_larklang.__main__ import LangHelper
 from ..nonebot_plugin_larkuid.session import get_user_id
 from .lang import lang
-from .typing import WebUserData
+from .types import WebUserData
 
 
 class WebRanking(ABC):
@@ -27,7 +27,7 @@ class WebRanking(ABC):
         data = await self.get_sorted_data()
         return PlainTextResponse(
             await template_to_html(
-                Path(__file__).parent.joinpath("template").as_posix(),
+                Path(__file__).parent.joinpath("templates").as_posix(),
                 "web.html.jinja",
                 user_id=user_id,
                 index=await lang.text("web.index", user_id, len(data)),

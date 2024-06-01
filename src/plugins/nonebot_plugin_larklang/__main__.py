@@ -10,9 +10,9 @@ from nonebot_plugin_orm import async_scoped_session, get_scoped_session
 from sqlalchemy.exc import NoResultFound
 
 from .config import Config
-from .exception import *
+from .exceptions import *
 from .loader import LangLoader
-from .model import LanguageConfig, LanguageData
+from .models import LanguageConfig, LanguageData
 
 languages = {}
 config = get_plugin_config(Config)

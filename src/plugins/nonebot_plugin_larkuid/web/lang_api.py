@@ -2,9 +2,9 @@ from fastapi import Request
 from nonebot import get_app
 from nonebot_plugin_orm import get_scoped_session
 
-from ..nonebot_plugin_larklang.__main__ import set_user_language
-from ..nonebot_plugin_larkuser.model import UserData
-from .session import get_user_forcibly
+from ...nonebot_plugin_larklang.__main__ import set_user_language
+from ...nonebot_plugin_larkuser.models import UserData
+from ..session import get_user_forcibly
 
 
 @get_app().get("/api/set_language", status_code=204)

@@ -1,6 +1,6 @@
 from typing import Literal, TypedDict
 
-from ...model import CaveData
+from ...models import CaveData
 
 
 class CheckPassedResult(TypedDict):

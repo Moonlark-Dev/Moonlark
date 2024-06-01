@@ -1,5 +1,5 @@
 from datetime import datetime
-from .model import CommentData
+from .models import CommentData
 from nonebot_plugin_orm import async_scoped_session
 from sqlalchemy.sql import func
 from sqlalchemy import select

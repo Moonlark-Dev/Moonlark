@@ -9,7 +9,7 @@ from nonebot_plugin_localstore import get_cache_dir
 
 from .config import config
 from .image import get_new_image
-from .model import ImageData
+from .models import ImageData
 from .types import ImageWithData
 
 cache_dir = get_cache_dir("nonebot_plugin_larksetu")

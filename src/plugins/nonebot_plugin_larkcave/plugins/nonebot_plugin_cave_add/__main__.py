@@ -3,7 +3,7 @@ from typing import cast
 from nonebot_plugin_alconna import Arparma, Image, Text, UniMessage, image_fetch
 from sqlalchemy import select
 from .exception import ReviewFailed, EmptyImage, DuplicateCave
-from ...model import CaveData
+from ...models import CaveData
 from nonebot_plugin_orm import async_scoped_session
 from ..nonebot_plugin_cave_similarity_check import check_text_content, check_image
 from sqlalchemy.sql.expression import func

@@ -1,6 +1,6 @@
 import time
 from nonebot_plugin_alconna import Image, Text
-from ...model import ImageData
+from ...models import ImageData
 from nonebot_plugin_alconna import image_fetch
 from nonebot_plugin_orm import async_scoped_session
 

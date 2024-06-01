@@ -18,4 +18,4 @@ require("nonebot_plugin_larkutils")
 
 from .generator import generate_image
 from .web import WebRanking
-from .typing import *
+from .types import *

@@ -1,7 +1,7 @@
 from nonebot_plugin_alconna import AlconnaMatch, Arparma, Match
 from ...__main__ import cave
 from ...lang import lang
-from ...model import GroupData
+from ...models import GroupData
 from ....nonebot_plugin_larkutils import get_user_id, get_group_id, is_superuser
 from nonebot_plugin_orm import async_scoped_session
 from sqlalchemy.exc import NoResultFound

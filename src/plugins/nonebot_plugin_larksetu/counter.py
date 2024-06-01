@@ -1,7 +1,7 @@
 from nonebot_plugin_orm import async_scoped_session
 from sqlalchemy.exc import NoResultFound
 
-from .model import UserData
+from .models import UserData
 
 
 async def add(user_id: str, session: async_scoped_session) -> None:

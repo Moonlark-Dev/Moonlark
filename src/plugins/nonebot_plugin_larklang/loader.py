@@ -7,7 +7,7 @@ import yaml
 from nonebot.compat import type_validate_python
 from nonebot.log import logger
 
-from .model import LanguageData, LanguageKey
+from .models import LanguageData, LanguageKey
 
 
 class LangLoader:

@@ -53,6 +53,7 @@ jieba = "^0.42.1"
 [tool.poetry.group.dev.dependencies]
 nb-cli = "^1.4.0"
 ipykernel = "^6.29.4"
+ruff = "^0.4.7"
 
 [build-system]
 requires = ["poetry-core"]

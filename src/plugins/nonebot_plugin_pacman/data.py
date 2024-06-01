@@ -5,8 +5,8 @@ import httpx
 from bs4 import BeautifulSoup, ResultSet, Tag
 from nonebot import logger
 
-from .exception import NoResultException, PackageNotFound
-from .typing import PackageData
+from .exceptions import NoResultException, PackageNotFound
+from .types import PackageData
 
 
 async def get_search_result(keyword: str) -> bytes:

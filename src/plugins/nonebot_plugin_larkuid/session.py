@@ -9,9 +9,9 @@ from nonebot_plugin_orm import get_scoped_session, get_session
 from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
 
-from ..nonebot_plugin_larkuser.model import UserData
+from ..nonebot_plugin_larkuser.models import UserData
 from ..nonebot_plugin_larkuser.utils.user import get_user
-from .model import SessionData
+from .models import SessionData
 
 
 async def create_session(user_id: str, user_agent: str, expiration_time: int) -> tuple[str, str]:

@@ -1,14 +1,14 @@
 import json
 from datetime import datetime
 import traceback
-from ..nonebot_plugin_cave_remove.model import RemovedCave
+from ..nonebot_plugin_cave_remove.models import RemovedCave
 from nonebot_plugin_apscheduler import scheduler
 from sqlalchemy import select
 from ..nonebot_plugin_cave_remove.config import config
 from nonebot.log import logger
 from nonebot_plugin_orm import AsyncSession, get_session, get_scoped_session
 from nonebot_plugin_localstore import get_data_dir
-from ...model import CaveData, ImageData
+from ...models import CaveData, ImageData
 from ..nonebot_plugin_cave_comment.get import get_comment_list
 import aiofiles
 import time

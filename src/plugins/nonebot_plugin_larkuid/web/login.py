@@ -6,9 +6,9 @@ from fastapi.responses import FileResponse, PlainTextResponse
 from nonebot import get_app
 from nonebot_plugin_htmlrender import template_to_html
 
-from ..nonebot_plugin_larkuser.model import UserData
-from .lang import lang
-from .session import get_user_data, get_user_id
+from ...nonebot_plugin_larkuser.models import UserData
+from ..lang import lang
+from ..session import get_user_data, get_user_id
 
 
 @get_app().get("/user/login")
@@ -16,7 +16,7 @@ async def _(request: Request, _user_id: Optional[str] = get_user_id()) -> PlainT
     user_id = _user_id or "-1"
     return PlainTextResponse(
         await template_to_html(
-            Path(__file__).parent.joinpath("template").as_posix(),
+            Path(__file__).parent.joinpath("templates").as_posix(),
             "login.html.jinja",
             title=await lang.text("login.title", user_id),
             uid=await lang.text("login.uid", user_id),

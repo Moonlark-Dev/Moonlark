@@ -6,13 +6,13 @@ from fastapi.responses import PlainTextResponse
 from nonebot import get_app, require
 from nonebot_plugin_htmlrender import template_to_html
 
-from ..nonebot_plugin_larklang.__main__ import get_languages, get_user_language
-from ..nonebot_plugin_larkuser.lang import lang
-from ..nonebot_plugin_larkuser.model import UserData
-from ..nonebot_plugin_larkuser.utils.gsc_time import get_galactic_time
-from ..nonebot_plugin_larkuser.utils.level import get_level_by_experience
-from ..nonebot_plugin_larkutils.html import escape_html
-from .session import get_user_forcibly
+from ...nonebot_plugin_larklang.__main__ import get_languages, get_user_language
+from ...nonebot_plugin_larkuser.lang import lang
+from ...nonebot_plugin_larkuser.models import UserData
+from ...nonebot_plugin_larkuser.utils.gsc_time import get_galactic_time
+from ...nonebot_plugin_larkuser.utils.level import get_level_by_experience
+from ...nonebot_plugin_larkutils.html import escape_html
+from ..session import get_user_forcibly
 
 
 @get_app().get("/user")
@@ -21,7 +21,7 @@ async def _(_request: Request, user: UserData = get_user_forcibly()):
     level = get_level_by_experience(user.experience)
     return PlainTextResponse(
         await template_to_html(
-            Path(__file__).parent.joinpath("template").as_posix(),
+            Path(__file__).parent.joinpath("templates").as_posix(),
             "user.html.jinja",
             title=await lang.text("web.title", user.user_id),
             username=escape_html(user.nickname),

@@ -4,10 +4,10 @@ from typing import Optional
 from nonebot_plugin_htmlrender import template_to_pic
 
 from ..nonebot_plugin_larkuser import get_user
-from ..nonebot_plugin_larkuser.model import UserData
+from ..nonebot_plugin_larkuser.models import UserData
 from ..nonebot_plugin_larkutils.html import escape_html
 from .lang import lang
-from .typing import RankingData, UserDataWithIndex
+from .types import RankingData, UserDataWithIndex
 
 
 async def find_user(ranked_data: list[RankingData], user_id: str) -> Optional[UserDataWithIndex]:
@@ -43,4 +43,4 @@ async def generate_image(ranked_data: list[RankingData], user_id: str, title: st
         "me": await find_user(ranked_data, user_id),
         "users": await get_users(ranked_data, user_id, limit),
     }
-    return await template_to_pic(Path(__file__).parent.joinpath("template").as_posix(), "command.html.jinja", templates)
+    return await template_to_pic(Path(__file__).parent.joinpath("templates").as_posix(), "command.html.jinja", templates)

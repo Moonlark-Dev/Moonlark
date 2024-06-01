@@ -1,6 +1,6 @@
 from typing import Optional
 from nonebot_plugin_alconna import UniMessage
-from .model import CommentData
+from .models import CommentData
 from nonebot_plugin_orm import async_scoped_session
 from sqlalchemy import select
 from .image import generate

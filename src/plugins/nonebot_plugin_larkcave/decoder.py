@@ -7,7 +7,7 @@ from nonebot_plugin_orm import async_scoped_session
 
 from ..nonebot_plugin_larkuser import get_user
 from .lang import lang
-from .model import CaveData, ImageData
+from .models import CaveData, ImageData
 
 
 async def get_image(match: str, session: async_scoped_session) -> ImageData:

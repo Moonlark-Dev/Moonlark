@@ -22,7 +22,7 @@ async def _(user_id: str = get_user_id(), content: Message = CommandArg()) -> No
         await UniMessage()
         .image(
             raw=await template_to_pic(
-                Path(__file__).parent.joinpath("template").as_posix(),
+                Path(__file__).parent.joinpath("templates").as_posix(),
                 "index.html.jinja",
                 {
                     "title": await lang.text("image.title", user_id),
