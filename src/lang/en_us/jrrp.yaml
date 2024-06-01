@@ -1,0 +1,19 @@
+message:
+  __template__: '你今天的人品值是: {{}}{}'
+  perfect_luck: '！100！100！！！'
+  almost_perfect: '！可惜不是 100'
+  great_day: '，是不错的一天呢！'
+  good_day: '，还行啦还行啦。'
+  fair_day: ''
+  average_day: '，………………'
+  below_average: '……………………………………………………………………………………'
+  poor_day: '，呜哇——'
+  bad_day: '，呜哇——（没错，是百分制）'
+  terrible_luck: '！0！0！！！'
+rank:
+  title: 今日人品排行
+help:
+  description: 今日人品
+  details: 查询今天的人品值，今天也是幸运的一天～
+  usage1: jrrp (获取今天的人品值)
+  usage2: jrrp --rank (今日人品排名)
