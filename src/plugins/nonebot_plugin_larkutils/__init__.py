@@ -1,6 +1,6 @@
-from nonebot import get_plugin_config
+from nonebot import get_plugin_config, require
 from nonebot.plugin import PluginMetadata
-from nonebot import require
+
 from .config import Config
 
 __plugin_meta__ = PluginMetadata(
@@ -19,12 +19,13 @@ require("nonebot_plugin_session")
 
 
 from . import reviewer
+
 reviewer.api_key = config.baidu_api_key
 reviewer.secret_key = config.baidu_secret_key
 
-from .user import get_user_id
-from .reviewer import review_image, review_text
-from .superuser import is_superuser
 from .group import get_group_id
-from .sql import get_id
 from .html import escape_html
+from .reviewer import review_image, review_text
+from .sql import get_id
+from .superuser import is_superuser
+from .user import get_user_id

@@ -1,7 +1,9 @@
 from pathlib import Path
-from nonebot import require
+
 import nonebot
+from nonebot import require
 from nonebot.plugin import PluginMetadata
+
 from .config import Config
 
 __plugin_meta__ = PluginMetadata(
@@ -19,7 +21,4 @@ require("nonebot_plugin_alconna")
 
 from . import __main__
 
-sub_plugins = nonebot.load_plugins(
-    str(Path(__file__).parent.joinpath("plugins").resolve())
-)
-
+sub_plugins = nonebot.load_plugins(str(Path(__file__).parent.joinpath("plugins").resolve()))

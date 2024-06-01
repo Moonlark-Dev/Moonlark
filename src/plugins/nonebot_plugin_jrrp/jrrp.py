@@ -1,11 +1,11 @@
-from datetime import date
 import random
+from datetime import date
 
 
 def str_to_int(s: str) -> int:
     total = 0
     for i, char in enumerate(s):
-        total += ord(char) * (256 ** i)
+        total += ord(char) * (256**i)
     return total
 
 

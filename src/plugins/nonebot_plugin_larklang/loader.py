@@ -1,15 +1,20 @@
-from pathlib import Path
-import traceback
-import yaml
-import aiofiles
-from .model import LanguageData, LanguageKey
-from nonebot.log import logger
 import tomllib
+import traceback
+from pathlib import Path
+
+import aiofiles
+import yaml
+from nonebot.compat import type_validate_python
+from nonebot.log import logger
+
+from .model import LanguageData, LanguageKey
+
 
 class LangLoader:
-
     def __init__(self, base_path: Path) -> None:
-        self.lang_list = [path for path in base_path.iterdir() if path.is_dir() and path.joinpath("language.toml").exists()]
+        self.lang_list = [
+            path for path in base_path.iterdir() if path.is_dir() and path.joinpath("language.toml").exists()
+        ]
         logger.info(f"在 {base_path.as_posix()} 下找到 {len(self.lang_list)} 个语言")
         logger.debug(str(self.lang_list))
 
@@ -29,7 +34,7 @@ class LangLoader:
             data["path"] = lang
             # 拉平 language 字段
             data.update(data.pop("language"))
-            self.languages[lang.name] = LanguageData(**data)
+            self.languages[lang.name] = type_validate_python(LanguageData, data)
 
     async def load(self) -> None:
         lang_list = list(self.languages.keys())
@@ -47,27 +52,21 @@ class LangLoader:
             async with aiofiles.open(plugin, encoding="utf-8") as f:
                 self.languages[lang.name].keys[plugin.name[:-5]] = yaml.safe_load(await f.read())
                 self.init_keys(self.languages[lang.name].keys[plugin.name[:-5]])
-    
+
     def init_keys(self, data: dict[str, dict]) -> None:
         # NOTE 有点乱，待优化
         for cmd in data.keys():
             for key in data[cmd].keys():
                 if isinstance(data[cmd][key], str):
-                    data[cmd][key] = LanguageKey(
-                        text=[data[cmd][key]]
-                    )
+                    data[cmd][key] = LanguageKey(text=[data[cmd][key]])
                 elif isinstance(data[cmd][key], list):
-                    data[cmd][key] = LanguageKey(
-                        text=data[cmd][key]
-                    )
+                    data[cmd][key] = LanguageKey(text=data[cmd][key])
                 elif isinstance(data[cmd][key], dict):
                     if isinstance(data[cmd][key]["text"], str):
                         data[cmd][key]["text"] = [data[cmd][key]["text"]]
-                    data[cmd][key] = LanguageKey(
-                        **data[cmd][key]
-                    )
+                    data[cmd][key] = type_validate_python(LanguageKey, data[cmd][key])
                 else:
                     data[cmd].pop(key)
-    
+
     def get_languages(self) -> dict[str, LanguageData]:
         return self.languages

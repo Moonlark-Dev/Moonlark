@@ -1,25 +1,20 @@
 from nonebot_plugin_alconna import Alconna, Args, Subcommand, on_alconna
 from nonebot_plugin_orm import async_scoped_session
 from sqlalchemy import select
-from .model import SessionData
-from .lang import lang
-from ..nonebot_plugin_larkutils.user import get_user_id
 
-account = on_alconna(Alconna(
-    "account",
-    Subcommand(
-        "verify",
-        Args["code", str]
-    )
-))
+from ..nonebot_plugin_larkutils.user import get_user_id
+from .lang import lang
+from .model import SessionData
+
+account = on_alconna(Alconna("account", Subcommand("verify", Args["code", str])))
 
 
 @account.assign("code")
 async def _(session: async_scoped_session, code: str, user_id: str = get_user_id()) -> None:
-    result = (await session.scalars(
-        select(SessionData)
-        .where(SessionData.activate_code == code)
-        .where(SessionData.user_id == user_id))
+    result = (
+        await session.scalars(
+            select(SessionData).where(SessionData.activate_code == code).where(SessionData.user_id == user_id)
+        )
     ).all()
     if len(result) != 1:
         await lang.finish("command.not_found", user_id)

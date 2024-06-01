@@ -1,5 +1,6 @@
 from nonebot import require
 from nonebot.plugin import PluginMetadata
+
 from .config import Config
 
 require("nonebot_plugin_larklang")

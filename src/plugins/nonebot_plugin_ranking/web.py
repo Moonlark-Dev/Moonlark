@@ -1,14 +1,16 @@
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Optional
+
 from fastapi import Request
 from fastapi.responses import PlainTextResponse
 from nonebot import get_app
 from nonebot_plugin_htmlrender import template_to_html
-from .typing import WebUserData
+
 from ..nonebot_plugin_larklang.__main__ import LangHelper
 from ..nonebot_plugin_larkuid.session import get_user_id
 from .lang import lang
+from .typing import WebUserData
 
 
 class WebRanking(ABC):
@@ -36,11 +38,10 @@ class WebRanking(ABC):
                 data=await lang.text("web.data", user_id),
                 title=await self.LANG.text(self.NAME, user_id),
                 has_note=self.NOTE,
-                users=data
+                users=data,
             ),
-            media_type="text/html"
+            media_type="text/html",
         )
 
     @abstractmethod
-    async def get_sorted_data(self) -> list[WebUserData]:
-        ...
+    async def get_sorted_data(self) -> list[WebUserData]: ...

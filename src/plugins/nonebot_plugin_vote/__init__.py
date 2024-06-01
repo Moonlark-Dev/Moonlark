@@ -1,6 +1,7 @@
-from nonebot.plugin import PluginMetadata
-from .config import Config
 from nonebot import require
+from nonebot.plugin import PluginMetadata
+
+from .config import Config
 
 __plugin_meta__ = PluginMetadata(
     name="nonebot_plugin_vote",
@@ -15,7 +16,6 @@ require("nonebot_plugin_larkuser")
 require("nonebot_plugin_larklang")
 require("nonebot_plugin_larkutils")
 require("nonebot_plugin_htmlrender")
-
 
 
 from . import __main__

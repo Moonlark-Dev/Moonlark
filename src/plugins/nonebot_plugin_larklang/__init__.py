@@ -1,4 +1,5 @@
-from nonebot.plugin import PluginMetadata
+from nonebot.plugin import PluginMetadata, require
+
 from .config import Config
 
 __plugin_meta__ = PluginMetadata(
@@ -8,10 +9,9 @@ __plugin_meta__ = PluginMetadata(
     config=Config,
 )
 
-from nonebot import require
 require("nonebot_plugin_orm")
 require("nonebot_plugin_alconna")
 require("nonebot_plugin_larkutils")
 
-from .__main__ import LangHelper
 from . import command as _command
+from .__main__ import LangHelper

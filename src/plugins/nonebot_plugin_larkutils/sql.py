@@ -1,4 +1,4 @@
-from nonebot_plugin_orm import async_scoped_session, Model
+from nonebot_plugin_orm import Model, async_scoped_session
 from sqlalchemy import select
 from sqlalchemy.sql import func
 from sqlalchemy.sql._typing import ColumnExpressionArgument

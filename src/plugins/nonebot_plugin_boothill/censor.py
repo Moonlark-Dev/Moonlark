@@ -1,5 +1,5 @@
-import pypinyin
 import jieba
+import pypinyin
 from nonebot.log import logger
 
 
