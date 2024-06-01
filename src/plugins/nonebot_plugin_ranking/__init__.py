@@ -17,5 +17,5 @@ require("nonebot_plugin_htmlrender")
 require("nonebot_plugin_larkutils")
 
 from .generator import generate_image
-from .typing import WebUserData
 from .web import WebRanking
+from .typing import *

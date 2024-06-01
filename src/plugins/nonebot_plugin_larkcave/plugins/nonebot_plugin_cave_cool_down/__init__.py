@@ -11,6 +11,4 @@ __plugin_meta__ = PluginMetadata(
 
 config = get_plugin_config(Config)
 
-require("nonebot_plugin_larkcave")
-
 from . import __main__

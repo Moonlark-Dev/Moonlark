@@ -31,8 +31,8 @@ license = "AGPL-3.0"
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.10"
-nonebot2 = { extras = ["fastapi"], version = "^2.2.1" }
+python = "^3.11"
+nonebot2 = {extras = ["fastapi"], version = "^2.3.1"}
 nonebot-adapter-onebot = "^2.4.3"
 aiofiles = "^23.2.1"
 nonebot-plugin-orm = { extras = ["default"], version = "^0.7.1" }

@@ -17,6 +17,7 @@ require("nonebot_plugin_alconna")
 
 from nonebot_plugin_alconna.extension import load_from_path
 
+
 EXTENSIONS = [
     "@reply:ReplyMergeExtension",
     "src.plugins.nonebot_plugin_alconna_extensions.global_extensions:UnmatchedExtension"

@@ -9,11 +9,11 @@ __plugin_meta__ = PluginMetadata(
     config=Config,
 )
 
-require("nonebot_plugin_larkcave")
+
 require("nonebot_plugin_localstore")
 require("nonebot_plugin_larkutils")
 require("nonebot_plugin_orm")
 require("nonebot_plugin_larkuser")
-require("nonebot_plugin_cave_comment")
+require("nonebot_plugin_larkcave:nonebot_plugin_cave_comment")
 
 from . import __main__
