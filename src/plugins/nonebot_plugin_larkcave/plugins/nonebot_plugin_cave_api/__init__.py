@@ -10,9 +10,6 @@ __plugin_meta__ = PluginMetadata(
     config=Config,
 )
 
-
-
-require("nonebot_plugin_larkcave")
 require("nonebot_plugin_larkuser")
 
 from . import __main__
