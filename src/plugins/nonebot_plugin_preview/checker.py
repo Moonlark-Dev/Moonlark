@@ -1,6 +1,6 @@
 from urllib.parse import urlparse
 
-from .exception import AccessDenied
+from .exceptions import AccessDenied
 
 
 def check_url_protocol(url):

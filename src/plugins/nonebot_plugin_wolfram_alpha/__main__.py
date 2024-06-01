@@ -2,7 +2,7 @@ from nonebot_plugin_alconna import Alconna, Args, MultiVar, UniMessage, on_alcon
 
 from ..nonebot_plugin_larklang import LangHelper
 from ..nonebot_plugin_larkutils.user import get_user_id
-from .exception import ApiError
+from .exceptions import ApiError
 from .wolfram import get_calc
 
 alc = Alconna(

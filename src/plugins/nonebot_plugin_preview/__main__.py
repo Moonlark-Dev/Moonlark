@@ -10,7 +10,7 @@ from ..nonebot_plugin_larklang import LangHelper
 from ..nonebot_plugin_larkutils import get_user_id, review_image
 from .checker import check_url_protocol
 from .config import Config
-from .exception import AccessDenied
+from .exceptions import AccessDenied
 
 config = get_plugin_config(Config)
 preview = on_alconna(

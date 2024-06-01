@@ -3,7 +3,7 @@ import urllib.parse
 import httpx
 
 from .config import config
-from .exception import ApiError
+from .exceptions import ApiError
 
 url_calc = "http://api.wolframalpha.com/v1/simple?appid={1}&i={0}&units=metric"
 

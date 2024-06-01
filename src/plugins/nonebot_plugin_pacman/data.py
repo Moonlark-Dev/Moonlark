@@ -5,7 +5,7 @@ import httpx
 from bs4 import BeautifulSoup, ResultSet, Tag
 from nonebot import logger
 
-from .exception import NoResultException, PackageNotFound
+from .exceptions import NoResultException, PackageNotFound
 from .types import PackageData
 
 

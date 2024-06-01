@@ -6,7 +6,7 @@ from nonebot_plugin_htmlrender import template_to_pic
 from ..nonebot_plugin_larklang import LangHelper
 from ..nonebot_plugin_larkutils.user import get_user_id
 from .data import search_package
-from .exception import NoResultException
+from .exceptions import NoResultException
 
 lang = LangHelper()
 
