@@ -16,6 +16,7 @@ require("nonebot_plugin_jrrp")
 require("nonebot_plugin_larklang")
 require("nonebot_plugin_larkuser")
 require("nonebot_plugin_alconna")
+require("nonebot_plugin_email")
 require("nonebot_plugin_larkuser")
 require("nonebot_plugin_htmlrender")
 
