@@ -12,7 +12,7 @@ from ..nonebot_plugin_larkutils import get_group_id, get_user_id
 from .cool_down import is_group_cooled, is_user_cooled, on_use
 from .decoder import decode_cave
 from .lang import lang
-from .model import CaveData
+from .models import CaveData
 from .plugins.nonebot_plugin_cave_comment.get import get_comments
 from .plugins.nonebot_plugin_cave_comment.message import add_cave_message
 

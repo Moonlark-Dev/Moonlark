@@ -7,7 +7,7 @@ from .lang import lang
 from .jrrp import get_luck_value
 from ..nonebot_plugin_larkutils import get_user_id
 from .__main__ import jrrp
-from ..nonebot_plugin_larkuser.model import UserData
+from ..nonebot_plugin_larkuser.models import UserData
 from ..nonebot_plugin_ranking import (
     generate_image,
     RankingData,

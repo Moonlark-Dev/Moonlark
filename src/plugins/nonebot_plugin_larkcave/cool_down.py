@@ -4,7 +4,7 @@ from nonebot_plugin_orm import async_scoped_session
 from sqlalchemy.exc import NoResultFound
 
 from .config import config
-from .model import GroupData, UserCoolDownData
+from .models import GroupData, UserCoolDownData
 
 
 async def is_group_cooled(group_id: str, session: async_scoped_session) -> tuple[bool, float]:

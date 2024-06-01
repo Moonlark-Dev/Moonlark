@@ -1,4 +1,4 @@
-from ...model import CaveData
+from ...models import CaveData
 
 class ReviewFailed(Exception):
     def __init__(self, reason: str, *args: object) -> None:

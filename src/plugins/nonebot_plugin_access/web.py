@@ -9,7 +9,7 @@ from sqlalchemy import select
 
 from ..nonebot_plugin_larkuid.session import get_user_id_forcibly
 from .lang import lang
-from .model import SubjectData
+from .models import SubjectData
 
 
 @get_app().get("/user/access")
@@ -21,7 +21,7 @@ async def _(_request: Request, user_id: str = get_user_id_forcibly()) -> PlainTe
     ]
     return PlainTextResponse(
         await template_to_html(
-            Path(__file__).parent.joinpath("template").as_posix(),
+            Path(__file__).parent.joinpath("templates").as_posix(),
             "access.html.jinja",
             title=await lang.text("web.title", user_id),
             info=await lang.text("web.info", user_id),

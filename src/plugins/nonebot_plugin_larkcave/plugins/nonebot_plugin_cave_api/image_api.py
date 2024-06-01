@@ -2,7 +2,7 @@ from typing import AsyncGenerator
 from fastapi.responses import Response
 from nonebot import get_app
 from nonebot_plugin_orm import get_session
-from ...model import ImageData, CaveData
+from ...models import ImageData, CaveData
 from fastapi.exceptions import HTTPException
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy import select

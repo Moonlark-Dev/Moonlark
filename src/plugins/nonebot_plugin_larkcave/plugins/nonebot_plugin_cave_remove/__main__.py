@@ -1,11 +1,11 @@
 from ...__main__ import cave
 from ....nonebot_plugin_larkutils import get_user_id, is_superuser
 from ...lang import lang
-from ...model import CaveData
+from ...models import CaveData
 from nonebot_plugin_orm import async_scoped_session
-from .model import RemovedCave
+from .models import RemovedCave
 from ....nonebot_plugin_larkuser import get_user
-from ..nonebot_plugin_cave_comment.model import CommentData
+from ..nonebot_plugin_cave_comment.models import CommentData
 from .config import config
 from sqlalchemy.exc import NoResultFound
 from datetime import datetime, timedelta

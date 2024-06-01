@@ -4,7 +4,7 @@ from .types import RandomCaveResponse
 from ...__main__ import get_cave
 from nonebot_plugin_orm import get_scoped_session
 from ....nonebot_plugin_larkuser import get_user
-from ...model import ImageData
+from ...models import ImageData
 from sqlalchemy import select
 
 app = get_app()

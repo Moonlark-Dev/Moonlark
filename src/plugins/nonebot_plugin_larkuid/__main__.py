@@ -4,7 +4,7 @@ from sqlalchemy import select
 
 from ..nonebot_plugin_larkutils.user import get_user_id
 from .lang import lang
-from .model import SessionData
+from .models import SessionData
 
 account = on_alconna(Alconna("account", Subcommand("verify", Args["code", str])))
 

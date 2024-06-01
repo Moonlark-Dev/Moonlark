@@ -20,7 +20,7 @@ async def _(matcher: Matcher, user_id: str = get_user_id()) -> None:
         await UniMessage()
         .image(
             raw=await template_to_pic(
-                Path(__file__).parent.joinpath("template").as_posix(),
+                Path(__file__).parent.joinpath("templates").as_posix(),
                 "index.html.jinja",
                 {
                     "title": await lang.text("panel.title", user_id),

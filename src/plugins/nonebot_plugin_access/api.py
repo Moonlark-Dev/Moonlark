@@ -4,7 +4,7 @@ from nonebot_plugin_orm import get_scoped_session
 from sqlalchemy import select
 
 from .lang import lang
-from .model import SubjectData
+from .models import SubjectData
 
 
 async def set_access(subject: str, access: str, available: bool, user_id: Optional[str] = None) -> None:

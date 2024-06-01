@@ -1,12 +1,12 @@
 from nonebot_plugin_htmlrender import template_to_pic
 from pathlib import Path
-from .model import CommentData
+from .models import CommentData
 from ...lang import lang
 from ....nonebot_plugin_larkuser import get_user
 
 async def generate(comments: list[CommentData], cave_id: int, user_id: str) -> bytes:
     return await template_to_pic(
-        Path(__file__).parent.joinpath("template").as_posix(),
+        Path(__file__).parent.joinpath("templates").as_posix(),
         "index.html.jinja",
         {
             "title": await lang.text("comment.title", user_id, cave_id),

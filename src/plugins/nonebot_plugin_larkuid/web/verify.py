@@ -11,9 +11,9 @@ from nonebot_plugin_htmlrender import template_to_html
 from nonebot_plugin_orm import get_session
 from sqlalchemy.exc import NoResultFound
 
-from .lang import lang
-from .model import SessionData
-from .session import create_session, get_user_id
+from ..lang import lang
+from ..models import SessionData
+from ..session import create_session, get_user_id
 
 
 async def remove_session(session_id: str) -> None:
@@ -37,7 +37,7 @@ async def _(request: Request, response: Response, uid: str, sessionSaveTime: int
     logger.info(f"已创建 Session: {session_id} ({request.headers['User-Agent']=})")
     response = PlainTextResponse(
         await template_to_html(
-            Path(__file__).parent.joinpath("template").as_posix(),
+            Path(__file__).parent.joinpath("templates").as_posix(),
             "verify.html.jinja",
             title=await lang.text("verify.title", uid),
             tip=await lang.text("verify.tip", uid, uid),

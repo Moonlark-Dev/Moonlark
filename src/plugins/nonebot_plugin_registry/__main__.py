@@ -7,7 +7,7 @@ from nonebot.typing import T_State
 from nonebot_plugin_orm import async_scoped_session, get_scoped_session
 from sqlalchemy import select
 
-from ..nonebot_plugin_larkuser.model import UserData
+from ..nonebot_plugin_larkuser.models import UserData
 from ..nonebot_plugin_larkuser.utils.user import get_user
 from ..nonebot_plugin_larkutils.user import get_user_id
 from .lang import lang

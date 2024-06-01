@@ -4,7 +4,7 @@ from typing import Any, AsyncGenerator
 from .exception import ImageOnlyCave
 from .config import config
 from .types import CheckResult
-from ...model import CaveData
+from ...models import CaveData
 from nonebot_plugin_orm import async_scoped_session
 import difflib
 from sqlalchemy import select

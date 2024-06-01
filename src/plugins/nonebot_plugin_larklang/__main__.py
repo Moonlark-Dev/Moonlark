@@ -12,7 +12,7 @@ from sqlalchemy.exc import NoResultFound
 from .config import Config
 from .exception import *
 from .loader import LangLoader
-from .model import LanguageConfig, LanguageData
+from .models import LanguageConfig, LanguageData
 
 languages = {}
 config = get_plugin_config(Config)

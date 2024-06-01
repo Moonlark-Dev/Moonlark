@@ -7,7 +7,7 @@ from nonebot import get_loaded_plugins, logger
 from nonebot.compat import type_validate_python
 from nonebot.plugin import Plugin
 
-from .model import *
+from .models import *
 
 
 async def get_plugin_help(plugin: Plugin) -> dict[str, CommandHelp]:

@@ -6,7 +6,7 @@ from nonebot_plugin_orm import async_scoped_session
 from nonebot_plugin_userinfo import EventUserInfo, UserInfo
 from sqlalchemy.exc import NoResultFound
 
-from .model import UserData
+from .models import UserData
 
 
 @on_message().handle()

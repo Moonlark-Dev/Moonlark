@@ -5,7 +5,7 @@ from nonebot_plugin_orm import async_scoped_session
 from sqlalchemy import select
 
 from .types import CheckResult
-from ...model import CaveData, ImageData
+from ...models import CaveData, ImageData
 import numpy as np
 from PIL import Image
 

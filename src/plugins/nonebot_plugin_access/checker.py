@@ -10,7 +10,7 @@ from ..nonebot_plugin_larkutils import get_group_id
 from ..nonebot_plugin_larkutils.user import get_user_id
 from .config import config
 from .lang import lang
-from .model import SubjectData
+from .models import SubjectData
 
 
 async def get_subject_list(bot: Bot, group_id: str = get_group_id(), user_id: str = get_user_id()) -> list[str]:

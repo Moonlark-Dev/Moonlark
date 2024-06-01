@@ -1,5 +1,5 @@
 from ....nonebot_plugin_larkuser.utils.user import get_user
-from ... import model
+from ... import models
 from ....nonebot_plugin_larklang import LangHelper
 from ....nonebot_plugin_larkutils import get_user_id
 from ... import __main__
@@ -13,7 +13,7 @@ lang = LangHelper()
 
 @__main__.setu.assign("rank")
 async def _(session: async_scoped_session, user_id: str = get_user_id()) -> None:
-    result = (await session.execute(select(model.UserData))).scalars().all()
+    result = (await session.execute(select(models.UserData))).scalars().all()
     sorted_data = sorted(result, key=lambda x: x.count, reverse=True)
     await __main__.setu.finish(UniMessage().image(raw=await generate_image(
         [{
@@ -34,7 +34,7 @@ class SetuRanking(WebRanking):
 
     async def get_sorted_data(self) -> list[WebUserData]:
         session = get_scoped_session()
-        result = (await session.execute(select(model.UserData))).scalars().all()
+        result = (await session.execute(select(models.UserData))).scalars().all()
         sorted_data = sorted(result, key=lambda x: x.count, reverse=True)
         return [{
             "user_id": data.user_id,

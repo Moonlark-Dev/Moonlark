@@ -1,6 +1,6 @@
 from typing import TypedDict
 
-from .model import ImageData
+from .models import ImageData
 
 
 class ImageWithData(TypedDict):

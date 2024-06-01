@@ -97,7 +97,7 @@ async def get_choice_content(vote_data: Vote, choice_id: int, session: async_sco
 async def generate_vote_image(user_id: str, session: async_scoped_session, vote_data: Vote) -> bytes:
     total_count = len((await session.scalars(select(VoteLog).where(VoteLog.belong == vote_data.id))).all())
     return await template_to_pic(
-        Path(__file__).parent.joinpath("template").as_posix(),
+        Path(__file__).parent.joinpath("templates").as_posix(),
         "index.html.jinja",
         {
             "page_title": await lang.text("vote_image.page_title", user_id),
@@ -136,7 +136,7 @@ async def generate_vote_list(
     user_id: str, group_id: str, session: async_scoped_session, show_all: bool = False
 ) -> bytes:
     return await template_to_pic(
-        Path(__file__).parent.joinpath("template").as_posix(),
+        Path(__file__).parent.joinpath("templates").as_posix(),
         "list.html.jinja",
         {
             "title": await lang.text("list.title", user_id),

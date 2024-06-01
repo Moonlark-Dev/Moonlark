@@ -16,14 +16,14 @@ from sqlalchemy.exc import NoResultFound
 
 from ..nonebot_plugin_jrrp.jrrp import get_luck_value
 from ..nonebot_plugin_larkuser.matcher import patch_matcher
-from ..nonebot_plugin_larkuser.model import UserData
+from ..nonebot_plugin_larkuser.models import UserData
 from ..nonebot_plugin_larkuser.utils.level import get_level_by_experience
 from ..nonebot_plugin_larkuser.utils.user import get_user
 from ..nonebot_plugin_larkutils import get_user_id
 from ..nonebot_plugin_larkutils.html import escape_html
 from .config import config
 from .lang import lang
-from .model import SignData
+from .models import SignData
 
 sign = on_alconna(Alconna("签到"), aliases={"签到", "sign"})
 patch_matcher(sign)
@@ -164,7 +164,7 @@ async def _(matcher: Matcher, user_id: str = get_user_id()) -> None:
         },
         "avatar": base64.b64encode(user.avatar).decode() if user.avatar is not None else None,
     }
-    image = await template_to_pic(Path(__file__).parent.joinpath("template").as_posix(), "index.html.jinja", templates)
+    image = await template_to_pic(Path(__file__).parent.joinpath("templates").as_posix(), "index.html.jinja", templates)
     msg = UniMessage().image(raw=image)
     data.last_sign = date.today()
     await session.commit()

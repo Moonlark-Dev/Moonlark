@@ -1,6 +1,6 @@
-from ..nonebot_plugin_cave_remove.model import RemovedCave
+from ..nonebot_plugin_cave_remove.models import RemovedCave
 from ...lang import lang
-from ...model import CaveData
+from ...models import CaveData
 from nonebot_plugin_orm import async_scoped_session
 from ....nonebot_plugin_larkutils import get_user_id, is_superuser
 from ...__main__ import cave

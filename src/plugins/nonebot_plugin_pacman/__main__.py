@@ -22,7 +22,7 @@ async def _(keyword: str, user_id: str = get_user_id()) -> None:
         await lang.finish("search.not_found", user_id, keyword)
         return
     image = await template_to_pic(
-        Path(__file__).parent.joinpath("template").as_posix(),
+        Path(__file__).parent.joinpath("templates").as_posix(),
         "index.html.jinja",
         {
             "title": await lang.text("image.title", user_id),
