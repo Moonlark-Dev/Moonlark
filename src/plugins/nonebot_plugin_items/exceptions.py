@@ -1,0 +1,3 @@
+class NotUseableError(Exception):
+    pass
+
