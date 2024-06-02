@@ -17,6 +17,6 @@ require("nonebot_plugin_orm")
 
 from .web import create
 from . import __main__
-from .commands import email
+from .commands import email, unread
 
 # TODO Email 物品

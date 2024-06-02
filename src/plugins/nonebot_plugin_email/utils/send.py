@@ -7,9 +7,7 @@ from nonebot_plugin_orm import get_scoped_session
 from sqlalchemy import select
 
 from ...nonebot_plugin_larkuser.models import UserData
-
 from ..models import Email, EmailItem, EmailUser
-
 from ..types import EmailItemData
 
 
