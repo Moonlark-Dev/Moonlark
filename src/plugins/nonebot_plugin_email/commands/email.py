@@ -29,4 +29,3 @@ async def _(user_id: str = get_user_id()) -> None:
         }
     )
     await email.finish(UniMessage().image(raw=image))
-
