@@ -7,4 +7,5 @@ class Config(BaseModel):
     superusers: list[str] = []
     email_expired_days: int = 30
 
+
 config = get_plugin_config(Config)

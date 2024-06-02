@@ -12,5 +12,3 @@ async def remove_email(email_id: int) -> None:
     for item in await session.scalars(select(EmailUser).where(EmailUser.email_id == email_id)):
         await session.delete(item)
     await session.commit()
-
-
