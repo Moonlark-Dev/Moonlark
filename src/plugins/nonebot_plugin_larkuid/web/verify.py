@@ -37,7 +37,7 @@ async def _(request: Request, response: Response, uid: str, sessionSaveTime: int
     logger.info(f"已创建 Session: {session_id} ({request.headers['User-Agent']=})")
     response = PlainTextResponse(
         await template_to_html(
-            Path(__file__).parent.joinpath("templates").as_posix(),
+            Path(__file__).parent.parent.joinpath("templates").as_posix(),
             "verify.html.jinja",
             title=await lang.text("verify.title", uid),
             tip=await lang.text("verify.tip", uid, uid),

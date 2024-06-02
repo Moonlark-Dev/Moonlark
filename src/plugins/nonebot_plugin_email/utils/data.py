@@ -13,7 +13,7 @@ async def get_email_data(email_id: int, user_id: str = "-1") -> EmailData:
     user = await session.scalar(select(EmailUser).where(EmailUser.user_id == user_id, EmailUser.email_id == email_id))
     items = await session.scalars(select(EmailItem).where(EmailItem.belong == email_id))
     return {
-        "id": data.id_,
+        "id": data.id,
         "author": data.author or await lang.text("email.unknown_author", user_id),
         "content": data.content,
         "subject": data.subject,

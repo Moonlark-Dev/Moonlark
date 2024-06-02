@@ -5,7 +5,7 @@ from sqlalchemy.orm import mapped_column, Mapped
 
 
 class Email(Model):
-    id_: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     author: Mapped[Optional[str]] = mapped_column(nullable=True, default=None)
     content: Mapped[str]
     subject: Mapped[str]

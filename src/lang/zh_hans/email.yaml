@@ -7,3 +7,18 @@ email_list:
   email_id: '邮件 ID: {}'
   items: 包含的物品
   footer: 由 Moonlark & nonebot-plugin-email 生成
+create:
+  title: 创建邮件
+  subject: 主题
+  subject_input: 请输入邮件主题
+  content: 内容
+  content_input: 请输入邮件内容
+  receiver: 收件人
+  receiver_input: 请输入收件人
+  sender: 发件人
+  sender_input: 输入发件人显示名称
+  receiver_help: 使用管道符分割，输入“all”为全局邮件。
+  items: 物品列表
+  items_input: 输入邮件物品列表，留空为无物品。
+  items_help: 一行一个, 每行格式为“物品ID|数量|NBT”，数量默认为“1”，NBT 默认为空字典。
+  submit: 提交

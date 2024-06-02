@@ -16,7 +16,7 @@ async def _(request: Request, _user_id: Optional[str] = get_user_id()) -> PlainT
     user_id = _user_id or "-1"
     return PlainTextResponse(
         await template_to_html(
-            Path(__file__).parent.joinpath("templates").as_posix(),
+            Path(__file__).parent.parent.joinpath("templates").as_posix(),
             "login.html.jinja",
             title=await lang.text("login.title", user_id),
             uid=await lang.text("login.uid", user_id),

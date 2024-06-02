@@ -38,11 +38,11 @@
                                 <li>{{ email.id }}</li>
                             </ul>
                         </small>
-                        <p>{{ content }}</p>
+                        <p>{{ email.content }}</p>
                         {% if email.items %}
                             <span class="h5">{{ item }}</span>
                             <ol>
-                                {% for item in email.items %}
+                                {% for item in email.item_list %}
                                     <li>{{ item.name }} <span class="badge bg-info rounded-pill">{{ item.count }}</span></li>
                                 {% endfor %}
                             </ol>

@@ -28,7 +28,7 @@ async def send_email(
         time=datetime.now()
     ))
     await session.flush()
-    email_id = email.id_
+    email_id = email.id
     for item in items:
         session.add(EmailItem(
             belong=email_id,
@@ -45,9 +45,14 @@ async def send_email(
     return email_id
 
 
-async def send_global_email(subject: str, content: str, author: Optional[str] = None) -> int:
+async def send_global_email(
+    subject: str,
+    content: str,
+    author: Optional[str] = None,
+    items: list[EmailItemData] = []
+) -> int:
     session = get_scoped_session()
     receivers = await session.scalars(
         select(UserData.user_id).where(UserData.register_time != None)
     )
-    return await send_email(list(receivers.all()), subject, content, author)
+    return await send_email(list(receivers.all()), subject, content, author, items)

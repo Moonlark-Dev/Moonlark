@@ -21,7 +21,7 @@ async def _(_request: Request, user: UserData = get_user_forcibly()):
     level = get_level_by_experience(user.experience)
     return PlainTextResponse(
         await template_to_html(
-            Path(__file__).parent.joinpath("templates").as_posix(),
+            Path(__file__).parent.parent.joinpath("templates").as_posix(),
             "user.html.jinja",
             title=await lang.text("web.title", user.user_id),
             username=escape_html(user.nickname),
