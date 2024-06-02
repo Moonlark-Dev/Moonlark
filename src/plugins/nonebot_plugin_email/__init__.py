@@ -13,10 +13,12 @@ require("nonebot_plugin_larkutils")
 require("nonebot_plugin_larkuid")
 require("nonebot_plugin_larkuser")
 require("nonebot_plugin_htmlrender")
+require("nonebot_plugin_apscheduler")
 require("nonebot_plugin_orm")
 
 from .web import create
 from . import __main__
+from .utils import cleaner
 from .commands import email, unread
 
 # TODO Email 物品
