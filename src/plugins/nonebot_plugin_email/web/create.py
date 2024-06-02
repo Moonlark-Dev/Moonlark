@@ -4,8 +4,6 @@ from fastapi.responses import PlainTextResponse
 from nonebot import get_app
 from nonebot_plugin_htmlrender import template_to_html
 
-
-
 from ..utils.send import send_email, send_global_email
 from ..utils.web_items import parse_items
 from ..config import config
