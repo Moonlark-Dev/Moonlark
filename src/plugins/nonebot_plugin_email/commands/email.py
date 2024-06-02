@@ -18,12 +18,14 @@ async def _(user_id: str = get_user_id()) -> None:
         {
             "title": await lang.text("email_list.title", user_id),
             "footer": await lang.text("email_list.footer", user_id),
+            "item_claimed": await lang.text("email_list.claimed", user_id),
             "email_list": [{
                 "subject": email["subject"],
                 "time": await lang.text("email_list.time", user_id, email["time"].strftime("%Y-%m-%d %H:%M:%S")),
                 "from": await lang.text("email_list.from", user_id, email["author"]),
                 "id": await lang.text("email_list.email_id", user_id, await mark_email_read(email["id"], user_id)),
                 "content": email["content"].replace("\n", "<br>"),
+                "is_claimed": email["is_claimed"],
                 "item_list": []
             } async for email in get_unread_email(user_id)],
         }

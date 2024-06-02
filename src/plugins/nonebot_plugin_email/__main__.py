@@ -4,7 +4,6 @@ from ..nonebot_plugin_larkuser.matcher import patch_matcher
 
 alc = Alconna(
     "email",
-    Subcommand("view", Args["email_id", int]),
     Subcommand("claim", Args["email_id", int | Literal["all"], "all"]),
     Subcommand("unread", Args["email_id", int | Literal["all"], "all"]),
 )

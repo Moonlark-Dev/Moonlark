@@ -6,6 +6,7 @@ email_list:
   from: '来自: {}'
   email_id: '邮件 ID: {}'
   items: 包含的物品
+  claimed: 已领取
   footer: 由 Moonlark & nonebot-plugin-email 生成
 create:
   title: 创建邮件
