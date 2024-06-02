@@ -1,0 +1,9 @@
+email:
+  unknown_author: 匿名
+email_list:
+  title: 邮件列表
+  time: '时间: {}'
+  from: '来自: {}'
+  email_id: '邮件 ID: {}'
+  items: 包含的物品
+  footer: 由 Moonlark & nonebot-plugin-email 生成
