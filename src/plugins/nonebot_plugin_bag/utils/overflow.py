@@ -2,14 +2,12 @@ import base64
 from datetime import datetime
 import json
 from typing import AsyncGenerator
-from unittest import result
 from nonebot_plugin_orm import get_session
 from sqlalchemy import select
 
 from ...nonebot_plugin_item.base.stack import ItemStack
 from ..config import config
 from ..types import OverflowItem
-from .bag import give_item
 from ...nonebot_plugin_item.utils.string import get_location_by_id
 from ...nonebot_plugin_item.utils.get import get_item
 from ..models import BagOverflow
@@ -48,16 +46,6 @@ async def put_overflow_item(item: ItemStack) -> None:
             user_id=item.user_id,
             time=datetime.now()
         ))
-        await session.commit()
-
-
-async def take_overflow_item(user_id: str, index: int) -> None:
-    async with get_session() as session:
-        result = await session.scalar(select(BagOverflow).where(BagOverflow.id_ == index))
-        if result is None:
-            raise IndexError(f"Item {index} not found.")
-        await give_item(user_id, (await get_overflow_item(index))["item"])
-        await session.delete(result)
         await session.commit()
 
 

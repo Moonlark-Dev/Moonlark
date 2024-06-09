@@ -25,3 +25,7 @@ create:
   submit: 提交
 unread:
   done: 成功将 {} 封邮件标为未读。
+claim:
+  done: 成功领取 {} 个邮件中的 {} 个物品！
+  markdown: '{}. `{}` x{}'
+  no_item: '> 没有可领取的物品。'

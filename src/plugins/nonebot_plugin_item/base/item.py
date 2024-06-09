@@ -1,8 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
-from .stack import ItemStack
-
 from ...nonebot_plugin_larklang.__main__ import LangHelper
 from ..registry import ITEMS
 from .properties import ItemProperties, default

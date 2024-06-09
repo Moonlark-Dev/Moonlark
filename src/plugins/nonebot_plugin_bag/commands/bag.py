@@ -2,6 +2,7 @@ from pathlib import Path
 from nonebot_plugin_alconna import UniMessage
 from nonebot_plugin_htmlrender import template_to_pic
 
+from ...nonebot_plugin_larkutils import escape_html
 from ..utils.item import get_bag_items
 from ...nonebot_plugin_larkutils.user import get_user_id
 from ..__main__ import bag
@@ -30,7 +31,7 @@ async def _(user_id: str = get_user_id()) -> None:
             "size": await lang.text("list.size", user_id, len(item_list), config.bag_max_size, size_percent),
             "size_percent": size_percent,
             "items": [{
-                "name": await item.stack.getName(),
+                "name": escape_html(await item.stack.getName()),
                 "count": await lang.text("list.count", user_id, item.stack.count),
                 "index": await lang.text("list.index", user_id, item.index),
                 "text_color": STAR_COLORS[item.stack.item.getProperties()["star"]]

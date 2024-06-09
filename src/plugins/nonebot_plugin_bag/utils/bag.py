@@ -2,6 +2,11 @@ from nonebot_plugin_orm import get_session
 import base64
 import json
 
+from ..models import BagOverflow
+from .overflow import get_overflow_item
+
+from sqlalchemy import select
+
 from .overflow import put_overflow_item
 
 from ..config import config
@@ -53,3 +58,13 @@ async def give_item(user_id: str, item: ItemStack) -> None:
             break
     if item.count > 0:
         await append_item(user_id, item)
+
+
+async def take_overflow_item(user_id: str, index: int) -> None:
+    async with get_session() as session:
+        result = await session.scalar(select(BagOverflow).where(BagOverflow.id_ == index))
+        if result is None:
+            raise IndexError(f"Item {index} not found.")
+        await give_item(user_id, (await get_overflow_item(index))["item"])
+        await session.delete(result)
+        await session.commit()
