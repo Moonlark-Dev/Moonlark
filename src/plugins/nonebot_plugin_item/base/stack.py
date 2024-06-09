@@ -1,7 +1,8 @@
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Self
 
 from ..exceptions import NotUseableError
 from ..types import DictItemData
+from ...nonebot_plugin_bag.models import Bag
 from .useable import UseableItem
 
 if TYPE_CHECKING:
@@ -10,7 +11,7 @@ if TYPE_CHECKING:
 
 class ItemStack:
 
-    item: Item
+    item: "Item"
     count: int
     data: dict
     user_id: str
@@ -38,3 +39,10 @@ class ItemStack:
         if self.isUseable() and isinstance(self.item, UseableItem):
             return await self.item.useItem(self, *args, **kwargs)
         raise NotUseableError
+    
+    def compare(self, other: Self, ignore_nbt: list = []) -> bool:
+        ignore = {}
+        for key in ignore_nbt:
+            ignore[key] = None
+        return (str(other.item.getLocation()) == str(self.item.getLocation())
+                and (self.data | ignore) == (other.data | ignore))

@@ -1,5 +1,8 @@
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
+
+from .stack import ItemStack
+
 from ...nonebot_plugin_larklang.__main__ import LangHelper
 from ..registry import ITEMS
 from .properties import ItemProperties, default
@@ -16,6 +19,9 @@ class Item(ABC):
     def __init__(self, properties: ItemProperties = default()):
         self.properties = properties
         self.setupLang()
+
+    def getProperties(self) -> ItemProperties:
+        return self.properties
 
     @abstractmethod
     def setupLang(self) -> None:
