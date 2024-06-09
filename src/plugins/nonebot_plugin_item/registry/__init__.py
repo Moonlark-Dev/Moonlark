@@ -6,4 +6,3 @@ if TYPE_CHECKING:
     from ..base.item import Item
 
 ITEMS: registry.Registry["Item"] = registry.Registry()
-

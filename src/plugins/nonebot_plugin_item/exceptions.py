@@ -1,3 +1,2 @@
 class NotUseableError(Exception):
     pass
-

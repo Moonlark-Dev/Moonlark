@@ -16,4 +16,3 @@ class UseableItem(Item, ABC):
     @abstractmethod
     async def useItem(self, stack: "ItemStack", *args, **kwargs) -> Any:
         pass
-

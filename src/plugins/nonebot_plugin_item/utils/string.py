@@ -15,6 +15,4 @@ def get_location_by_id(item_id: str) -> registry.ResourceLocation:
     ValueError: If the item ID is not in the correct format.
     """
     namespace, path = item_id.split(":")
-
-    # Return a ResourceLocation object
     return registry.ResourceLocation(namespace, path)
