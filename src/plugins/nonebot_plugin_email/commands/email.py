@@ -2,6 +2,10 @@ from pathlib import Path
 from nonebot_plugin_alconna import UniMessage
 from nonebot_plugin_htmlrender import template_to_pic
 
+from ...nonebot_plugin_item.utils.string import get_location_by_id
+
+from ...nonebot_plugin_item.utils.get import get_item
+
 from ..utils.read import mark_email_read
 
 from ..utils.unread import get_unread_email
@@ -28,7 +32,12 @@ async def _(user_id: str = get_user_id()) -> None:
                 "is_claimed": email["is_claimed"],
                 "item_list": [
                     {
-                        "name": "",
+                        "name": await (await get_item(
+                            get_location_by_id(item["item_id"]),
+                            user_id,
+                            item["count"],
+                            item["data"]
+                        )).getName(),
                         "count": 0
                     } for item in email["items"]
                 ]

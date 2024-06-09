@@ -23,6 +23,9 @@ class ResourceLocation:
 
     def __str__(self) -> str:
         return f"{self.getNamespace()}:{self.getPath()}"
+    
+    def getItemID(self) -> str:
+        return str(self)
 
 
 class Registry(typing.Generic[T1]):
