@@ -26,7 +26,12 @@ async def _(user_id: str = get_user_id()) -> None:
                 "id": await lang.text("email_list.email_id", user_id, await mark_email_read(email["id"], user_id)),
                 "content": email["content"].replace("\n", "<br>"),
                 "is_claimed": email["is_claimed"],
-                "item_list": []
+                "item_list": [
+                    {
+                        "name": "",
+                        "count": 0
+                    } for item in email["items"]
+                ]
             } async for email in get_unread_email(user_id)],
         }
     )

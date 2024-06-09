@@ -1,4 +1,3 @@
-
 from datetime import datetime
 import json
 from typing import Optional
@@ -51,6 +50,6 @@ async def send_global_email(
 ) -> int:
     session = get_scoped_session()
     receivers = await session.scalars(
-        select(UserData.user_id).where(UserData.register_time != None)
+        select(UserData.user_id).where(UserData.register_time.is_not(None))
     )
     return await send_email(list(receivers.all()), subject, content, author, items)
