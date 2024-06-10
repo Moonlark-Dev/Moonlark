@@ -17,7 +17,7 @@ async def _(_request: Request, user: Optional[UserData] = get_user_data()) -> Pl
     nickname = user.nickname if user else None
     return PlainTextResponse(
         await template_to_html(
-            Path(__file__).parent.joinpath("templates").as_posix(),
+            Path(__file__).parent.parent.joinpath("templates").as_posix(),
             "navbar.js.jinja",
             title=await lang.text("navbar.title", user_id),
             nickname=nickname,

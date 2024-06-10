@@ -14,6 +14,8 @@ from nonebot_plugin_orm import AsyncSession, get_session
 from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
 
+from ..nonebot_plugin_email.utils.unread import get_unread_email_count
+
 from ..nonebot_plugin_jrrp.jrrp import get_luck_value
 from ..nonebot_plugin_larkuser.matcher import patch_matcher
 from ..nonebot_plugin_larkuser.models import UserData
@@ -102,6 +104,10 @@ async def get_sign_days(sign_data: SignData) -> int:
 
 
 async def get_hitokoto(user_id: str) -> str:
+    # 是否有未读邮件
+    if (count := await get_unread_email_count(user_id)) > 0:
+        return await lang.text("image.email_unread", user_id, count)
+    # 获取一言
     async with httpx.AsyncClient() as client:
         response = await client.get(config.hitokoto_api)
     if response.status_code == 200:

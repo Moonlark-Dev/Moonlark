@@ -15,7 +15,7 @@ async def _(_request: Request, user: UserData = get_user_forcibly()) -> PlainTex
     user_id = user.user_id
     return PlainTextResponse(
         await template_to_html(
-            Path(__file__).parent.joinpath("templates").as_posix(),
+            Path(__file__).parent.parent.joinpath("templates").as_posix(),
             "success.html.jinja",
             title=await lang.text("success.title", user_id),
             message=await lang.text("success.message", user_id, user.nickname),
