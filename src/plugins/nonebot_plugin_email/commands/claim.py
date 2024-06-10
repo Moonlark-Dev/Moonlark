@@ -35,8 +35,7 @@ async def _(session: async_scoped_session, email_id: int | Literal["all"], user_
                         await lang.text("claim.markdown", user_id, index := index + 1, await item.getName, item.count)
                         for item in claimed_items
                     ]
-                )
-                or await lang.text("claim.no_item", user_id)
+                ) or await lang.text("claim.no_item", user_id)
             )
         )
     )

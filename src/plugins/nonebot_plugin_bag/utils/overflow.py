@@ -20,13 +20,10 @@ async def get_overflow_item(index: int) -> OverflowItem:
             raise IndexError(f"Item {index} not found.")
         return {
             "item": await get_item(
-                get_location_by_id(item.item_id),
-                item.user_id,
-                item.count,
-                json.loads(base64.b64decode(item.data))
+                get_location_by_id(item.item_id), item.user_id, item.count, json.loads(base64.b64decode(item.data))
             ),
             "index": index,
-            "time": item.time
+            "time": item.time,
         }
 
 
@@ -39,17 +36,21 @@ async def get_overflow_items() -> AsyncGenerator[OverflowItem, None]:
 
 async def put_overflow_item(item: ItemStack) -> None:
     async with get_session() as session:
-        session.add(BagOverflow(
-            item_id=str(item.item.getLocation()),
-            count=item.count,
-            data=base64.b64encode(json.dumps(item.data).encode("utf-8")),
-            user_id=item.user_id,
-            time=datetime.now()
-        ))
+        session.add(
+            BagOverflow(
+                item_id=str(item.item.getLocation()),
+                count=item.count,
+                data=base64.b64encode(json.dumps(item.data).encode("utf-8")),
+                user_id=item.user_id,
+                time=datetime.now(),
+            )
+        )
         await session.commit()
 
 
 async def is_item_takeable(user_id: str, index: int) -> bool:
     item = await get_overflow_item(index)
-    return (item["item"].user_id == user_id
-            or (datetime.now() - item["time"]).total_seconds() >= config.overflow_protect_hours * 3600)
+    return (
+        item["item"].user_id == user_id
+        or (datetime.now() - item["time"]).total_seconds() >= config.overflow_protect_hours * 3600
+    )

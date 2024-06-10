@@ -22,4 +22,3 @@ from .web import create, manage, edit, remove
 from . import __main__
 from .utils import cleaner
 from .commands import email, unread, claim
-
