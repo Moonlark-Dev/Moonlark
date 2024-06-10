@@ -51,4 +51,5 @@ async def put_overflow_item(item: ItemStack) -> None:
 
 async def is_item_takeable(user_id: str, index: int) -> bool:
     item = await get_overflow_item(index)
-    return item["item"].user_id == user_id or (datetime.now() - item["time"]).total_seconds() >= config.overflow_protect_hours * 3600
+    return (item["item"].user_id == user_id
+            or (datetime.now() - item["time"]).total_seconds() >= config.overflow_protect_hours * 3600)

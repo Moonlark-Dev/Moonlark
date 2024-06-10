@@ -12,13 +12,10 @@ from ..__main__ import email
 
 
 @email.assign("claim.email_id")
-async def _(
-    session: async_scoped_session,
-    email_id: int | Literal["all"],
-    user_id: str = get_user_id()
-) -> None:
-    result = await session.scalars(select(EmailUser).where(
-        EmailUser.user_id == user_id, EmailUser.is_claimed.is_not(True)))
+async def _(session: async_scoped_session, email_id: int | Literal["all"], user_id: str = get_user_id()) -> None:
+    result = await session.scalars(
+        select(EmailUser).where(EmailUser.user_id == user_id, EmailUser.is_claimed.is_not(True))
+    )
     claimed_items = []
     email_count = 0
     for email_data in result:
@@ -28,11 +25,18 @@ async def _(
             email_count += 1
     await session.commit()
     index = 0
-    await email.finish(UniMessage().text(
-        await lang.text("claim.done", user_id, email_count, len(claimed_items))).image(
-        raw=await md_to_pic("\n".join([
-            await lang.text("claim.markdown", user_id, index := index + 1, await item.getName, item.count)
-            for item in claimed_items
-        ]) or await lang.text("claim.no_item", user_id)
-    )))
-    
+    await email.finish(
+        UniMessage()
+        .text(await lang.text("claim.done", user_id, email_count, len(claimed_items)))
+        .image(
+            raw=await md_to_pic(
+                "\n".join(
+                    [
+                        await lang.text("claim.markdown", user_id, index := index + 1, await item.getName, item.count)
+                        for item in claimed_items
+                    ]
+                )
+                or await lang.text("claim.no_item", user_id)
+            )
+        )
+    )

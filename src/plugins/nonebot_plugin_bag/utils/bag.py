@@ -52,7 +52,8 @@ async def append_item(user_id: str, item: ItemStack) -> None:
 async def give_item(user_id: str, item: ItemStack) -> None:
     for bag_item in await get_bag_items(user_id):
         if bag_item.stack.compare(item) and bag_item.stack.count < bag_item.stack.item.getProperties()['max_stack']:
-            bag_item.stack.count += (count := min(bag_item.stack.item.getProperties()['max_stack'] - bag_item.stack.count, item.count))
+            bag_item.stack.count += (count := min(
+                bag_item.stack.item.getProperties()['max_stack'] - bag_item.stack.count, item.count))
             item.count -= count
         if item.count == 0:
             break

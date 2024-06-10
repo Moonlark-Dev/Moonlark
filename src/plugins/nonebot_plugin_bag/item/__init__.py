@@ -16,7 +16,7 @@ class BagItem:
         self.stack = stack
         self.index = index
         self.is_locked = False
-    
+
     async def get_item(self, session: AsyncSession) -> Bag:
         result = await session.scalar(select(Bag).where(
             Bag.user_id == self.stack.user_id,
