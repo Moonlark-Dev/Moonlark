@@ -7,6 +7,8 @@ from nonebot_plugin_htmlrender import template_to_html
 from nonebot_plugin_orm import get_scoped_session, get_session
 from sqlalchemy import select
 
+from ..utils.remove import remove_email
+
 
 from ..utils.data import get_email_data
 from ..config import config
@@ -20,13 +22,7 @@ from ...nonebot_plugin_larkuid.session import get_user_id_forcibly
 async def _(request: Request, email_id: int, user_id: str = get_user_id_forcibly()) -> None:
     if user_id not in config.superusers:
         raise HTTPException(status.HTTP_403_FORBIDDEN)
-    session = get_scoped_session()
-    email = await session.get(Email, email_id)
-    if email is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND)
-    await session.delete(email)
-    await session.commit()
-    await session.close()
+    await remove_email(email_id)
 
 
 @get_app().get("/admin/email/{email_id}/remove")
