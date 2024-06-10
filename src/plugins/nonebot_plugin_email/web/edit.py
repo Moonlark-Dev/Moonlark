@@ -52,4 +52,3 @@ async def _(request: Request, email_id: int, user_id: str = get_user_id_forcibly
     )
     await session.close()
     return PlainTextResponse(html, media_type="text/html")
-
