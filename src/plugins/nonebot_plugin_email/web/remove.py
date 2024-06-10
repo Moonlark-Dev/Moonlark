@@ -45,8 +45,7 @@ async def _(request: Request, email_id: int, user_id: str = get_user_id_forcibly
         y=await lang.text("remove.y_", user_id),
         n=await lang.text("remove.n_", user_id),
         c=await lang.text("remove.c", user_id),
-        email=email.subject
+        email=email.subject,
     )
     await session.close()
     return PlainTextResponse(html, media_type="text/html")
-
