@@ -7,7 +7,6 @@ from nonebot_plugin_htmlrender import template_to_html
 from nonebot_plugin_orm import get_session
 from sqlalchemy import select
 
-
 from ..utils.data import get_email_data
 from ..config import config
 from ..models import Email, EmailUser
@@ -29,9 +28,8 @@ async def get_email_list(user_id: str) -> AsyncGenerator[dict[str, str], None]:
             "time": email["time"].strftime("%Y-%m-%d %H:%M:%S"),
             "author": email["author"],
             "receivers": receivers[0] if len(receivers) == 1 else receiver_count,
-            "items": str(len(email["items"]))
+            "items": str(len(email["items"])),
         }
-    
 
 
 @get_app().get("/admin/email/manage")
@@ -50,7 +48,7 @@ async def _(request: Request, page: int = 1, user_id: str = get_user_id_forcibly
             "time": await lang.text("manage.thead_time", user_id),
             "receivers": await lang.text("manage.thead_receivers", user_id),
             "control": await lang.text("manage.thead_control", user_id),
-            "items": await lang.text("manage.thead_item", user_id)
+            "items": await lang.text("manage.thead_item", user_id),
         },
         action={
             "edit": await lang.text("manage.action_edit", user_id),
@@ -64,10 +62,9 @@ async def _(request: Request, page: int = 1, user_id: str = get_user_id_forcibly
             offset := (page - 1) * config.email_manage_page_size,
             end := page * config.email_manage_page_size,
             page,
-            page_count := count // config.email_manage_page_size + 1
+            page_count := count // config.email_manage_page_size + 1,
         ),
         emails=emails[offset:end],
-        page_list=[i+1 for i in range(page_count)]
+        page_list=[i + 1 for i in range(page_count)],
     )
     return PlainTextResponse(html, media_type="text/html")
-
