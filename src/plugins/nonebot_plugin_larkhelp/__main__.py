@@ -40,7 +40,7 @@ async def _(command: str, user_id: str = get_user_id()) -> None:
 
 @help_cmd.assign("$main")
 async def _(user_id: str = get_user_id()) -> None:
-    template_path = Path(__file__).parent.joinpath("template/index.html.jinja")
+    template_path = Path(__file__).parent.joinpath("templates/index.html.jinja")
     await help_cmd.finish(
         UniMessage().image(
             raw=await template_to_pic(
