@@ -14,6 +14,7 @@ from ..__main__ import lang, quick_math
 
 async def get_question(max_level: int, user_id: str, answered: int, point: int) -> tuple[UniMessage, QuestionData]:
     question = await generate_question(user_id, max_level)
+    question["limit_in_sec"] = max(config.qm_min_limit, round(question["limit_in_sec"] * 0.8 ** (point // 250)))
     return (
         UniMessage().image(
             raw=await generate_image(
@@ -26,7 +27,7 @@ async def get_question(max_level: int, user_id: str, answered: int, point: int) 
 
 def get_point(question: QuestionData, start_time: datetime) -> int:
     used_time = (datetime.now() - start_time).total_seconds()
-    return round(question["max_point"] / question["limit_in_sec"] * (question["limit_in_sec"] - used_time))
+    return round(question["max_point"] / question["limit_in_sec"] * max(question["limit_in_sec"] - used_time, 1))
 
 
 @quick_math.assign("$main")
@@ -50,8 +51,8 @@ async def _(user_id: str = get_user_id()) -> None:
         )
         if resp is None:
             break
-        answered += 1
         add_point = get_point(question, send_time)
+        answered += 1
         point += add_point
         await lang.send("answer.right", user_id, add_point)
         if answered % config.qm_change_max_level_count == 0 and max_level != get_max_level():

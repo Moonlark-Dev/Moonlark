@@ -1,0 +1,2 @@
+class GenerateFailed(Exception):
+    pass

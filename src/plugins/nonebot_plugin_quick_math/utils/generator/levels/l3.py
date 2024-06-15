@@ -23,4 +23,6 @@ async def generate_question(user_id: str) -> Question:
         fraction = Fraction(answer).limit_denominator()
         answer = str(answer).replace(".", r"\.")
         answer = f"({answer}|{fraction})"
+    else:
+        answer = int(answer)
     return {"question": question, "answer": str(answer)}

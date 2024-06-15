@@ -1,5 +1,4 @@
 import random
-from fractions import Fraction
 from ....types import Question
 from ....__main__ import lang
 
