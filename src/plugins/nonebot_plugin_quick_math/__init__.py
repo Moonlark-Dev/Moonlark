@@ -13,6 +13,8 @@ require("nonebot_plugin_larklang")
 require("nonebot_plugin_larkutils")
 require("nonebot_plugin_orm")
 require("nonebot_plugin_ranking")
+require("nonebot_plugin_waiter")
 require("nonebot_plugin_htmlrender")
 require("nonebot_plugin_alconna")
 
+from .commands import main

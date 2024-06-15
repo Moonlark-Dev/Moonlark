@@ -49,6 +49,7 @@ scikit-image = "^0.23.1"
 beautifulsoup4 = "^4.12.3"
 pypinyin = "^0.51.0"
 jieba = "^0.42.1"
+nonebot-plugin-waiter = "^0.6.2"
 
 [tool.poetry.group.dev.dependencies]
 nb-cli = "^1.4.0"

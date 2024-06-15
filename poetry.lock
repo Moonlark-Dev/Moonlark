@@ -1733,13 +1733,13 @@ strenum = ">=0.4.8,<0.5.0"
 
 [[package]]
 name = "nonebot-plugin-waiter"
-version = "0.6.1"
+version = "0.6.2"
 description = "An alternative for got-and-reject in Nonebot"
 optional = false
 python-versions = ">=3.9"
 files = [
-    {file = "nonebot_plugin_waiter-0.6.1-py3-none-any.whl", hash = "sha256:0abd678ff7671a2f5cee53b8c96fdbb700a78bbff921e8f37ab1e9388bdc8649"},
-    {file = "nonebot_plugin_waiter-0.6.1.tar.gz", hash = "sha256:ba4da15694ef4eeb23329e7ecde7e9e56df5cbf8e0dc03b8f98747658bbc138f"},
+    {file = "nonebot_plugin_waiter-0.6.2-py3-none-any.whl", hash = "sha256:599251f02d074ab7142e2144f68d63f41104bddcd359051f63979a8163538eac"},
+    {file = "nonebot_plugin_waiter-0.6.2.tar.gz", hash = "sha256:02017a1613d1273be3535b28a4d8e823f2dbaba26fab524bc8207f50a25ec8e4"},
 ]
 
 [package.dependencies]
@@ -3639,4 +3639,4 @@ test = ["big-O", "importlib-resources", "jaraco.functools", "jaraco.itertools", 
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "3461537e8d55c7ac36d49ce39d0d935aa812e36079af49e0f933f5b9d81ae502"
+content-hash = "7cfe98efb67734b326267f95ab464e98566ffe89036e1b9e047a3c5fdd443530"
