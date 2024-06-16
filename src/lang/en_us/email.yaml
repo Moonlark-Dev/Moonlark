@@ -1,7 +1,7 @@
 email:
-  unknown_author: 匿名
+  unknown_author: Anonymous
 email_list:
-  title: 邮件列表
+  title: Email List
   time: '时间: {}'
   from: '来自: {}'
   email_id: '邮件 ID: {}'
