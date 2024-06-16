@@ -25,6 +25,6 @@ async def _(_request: Request, user: Optional[UserData] = get_user_data()) -> Pl
             status=await lang.text("navbar.status", user_id),
             github=await lang.text("navbar.github", user_id),
         ),
-        headers={"Cache-Control": "no-store, no-cache, must-revalidate, max-age=0"}
+        headers={"Cache-Control": "no-store, no-cache, must-revalidate, max-age=0"},
         media_type="application/javascript",
     )
