@@ -1,6 +1,6 @@
 [language]
-version = "latest"
+version = "最新"
 author = "Moonlark-Dev"
 
 [display]
-description = "Moonlark 默认语言，简体中文"
+description = "繁體中文"
