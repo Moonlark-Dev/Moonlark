@@ -16,11 +16,8 @@ from .....nonebot_plugin_openai.utils.chat import fetch_messages
 from ....types import Question
 from ....__main__ import lang
 
-AI_PROMPT = """# OBJECTIVE # You will be given an unsimplified polynomial (expression) with its simplified result (answer). I need to come up with a multiple choice question based on this information, and I'd like you to generate two wrong answers that are completely different from the correctly simplified result, which should look like a random expression but contain no trigonometric functions and no letters.
-# RESPONSE # Output a json list directly containing the two wrong answers you generated. No need to output the curly braces, and don't use any quote wrapping.
-# USER INPUT EXAMPLE # 
-expression = xxx 
-answer = xxx
+AI_PROMPT = """# OBJECTIVE # You will be given the result of a polynomial after simplification. I need a multiple choice question based on this result as an answer, please generate two wrong answers that are completely different from the correct result, it should look like a randomized expression but contain no trigonometric functions and no letters. The wrong answers should be disorienting; their goal is to confuse the respondent and make it difficult for them to pick the correct answer.
+# RESPONSE # Directly output a json list containing the two wrong answers you generated. No need to output the curly braces, and don't wrap them in any quotes.
 # YOUR OUTPUT EXAMPLE #
 ["{wrong_answer_1}","{wrong_answer_2}"]"""
 
@@ -30,7 +27,7 @@ async def get_wrong_answer(
 ) -> list[str]:
     messages = [
         generate_message(AI_PROMPT, "system"),
-        generate_message(f"expression = {question}\nanswer = {right_answer}", "user"),
+        generate_message(f"{right_answer}", "user"),
     ]
     content = re.search(
         r"\[.+\]",
@@ -38,7 +35,7 @@ async def get_wrong_answer(
             messages,
             user_id,
             temperature=0.8,
-            top_p=0.95,
+            top_p=0.9,
         ),
     )
     if content is None and retry > 0:
