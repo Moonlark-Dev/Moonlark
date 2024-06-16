@@ -19,7 +19,7 @@ cave:
   group_cd: 群聊冷却中 ... (剩余 {} 分钟)
   user_cd: User cooldown... ({} minutes remaining)
 help:
-  d: 回声洞
+  d: Echo Cave
   i: 投稿或查看其他用户投稿的回声洞，所有内容依照 CC-BY-NC-SA 4.0 许可协议授权
   u1: cave (随机条目)
   u2: cave-a <内容> (投稿条目)
