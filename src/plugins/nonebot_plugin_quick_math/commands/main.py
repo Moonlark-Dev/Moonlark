@@ -5,6 +5,8 @@ from nonebot_plugin_htmlrender import md_to_pic
 from nonebot_plugin_waiter import prompt_until
 import re
 
+from ..utils.user import update_user_data
+
 from ..utils.image import generate_image
 from ..config import config
 from ..utils.generator import generate_question, get_max_level
@@ -91,6 +93,7 @@ async def _(user_id: str = get_user_id()) -> None:
         if point >= 200 * total_skipping_count:
             total_skipping_count += 1
     total_seconds = (end_time - start_time).total_seconds()
+    diff, record = await update_user_data(user_id, point)
     await quick_math.finish(UniMessage().image(raw=await md_to_pic(
         await lang.text(
             "main.checkout",
@@ -103,6 +106,9 @@ async def _(user_id: str = get_user_id()) -> None:
             total_seconds / answered,
             point / answered,
             point / total_seconds,
-            answered / total_answered * 100
+            answered / total_answered * 100,
+            record,
+            point,
+            diff
         )
     )))
