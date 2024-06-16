@@ -7,3 +7,5 @@ commands:
       - help.usage_list
       - help.usage_view
       - help.usage_set
+      - help.usage_reload
+      
