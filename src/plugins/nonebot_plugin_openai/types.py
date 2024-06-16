@@ -3,5 +3,3 @@ from openai.types.chat.chat_completion_message_param import ChatCompletionMessag
 
 Message = ChatCompletionMessageParam
 Messages = list[Message]
-
-

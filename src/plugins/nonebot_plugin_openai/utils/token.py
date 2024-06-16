@@ -13,7 +13,11 @@ async def is_user_useable(user_id: str) -> bool:
             session.add(User(user_id=user_id))
             await session.commit()
             return True
-        return data.plus is not None or data.free_count > 0 or data.tokens > random.randint(*config.openai_min_allowed_token)
+        return (
+            data.plus is not None
+            or data.free_count > 0
+            or data.tokens > random.randint(*config.openai_min_allowed_token)
+        )
 
 
 def get_used_token(completion: ChatCompletion) -> int:

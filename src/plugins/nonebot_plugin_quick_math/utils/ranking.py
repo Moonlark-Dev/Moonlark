@@ -15,31 +15,39 @@ async def get_user_list(order_by: Any = QuickMathUser.max_point) -> AsyncGenerat
         for user in data:
             yield user
 
+
 class RecordRanking(WebRanking):
     ID = "quick_math_record"
     NAME = "rank.title-1"
     LANG = lang
 
     async def get_sorted_data(self) -> list[WebUserData]:
-        return [{
-            "user_id": user.user_id,
-            "data": user.max_point,
-            "info": None,
-            "nickname": (await get_user(user.user_id)).nickname
-        } async for user in get_user_list()]
+        return [
+            {
+                "user_id": user.user_id,
+                "data": user.max_point,
+                "info": None,
+                "nickname": (await get_user(user.user_id)).nickname,
+            }
+            async for user in get_user_list()
+        ]
 
 
 class TotalRanking(WebRanking):
     ID = "quick_math_total"
     NAME = "rank.title-2"
     LANG = lang
-    
+
     async def get_sorted_data(self) -> list[WebUserData]:
-        return [{
-            "user_id": user.user_id,
-            "data": user.total_point,
-            "info": None,
-            "nickname": (await get_user(user.user_id)).nickname
-        } async for user in get_user_list(QuickMathUser.total_point)]
+        return [
+            {
+                "user_id": user.user_id,
+                "data": user.total_point,
+                "info": None,
+                "nickname": (await get_user(user.user_id)).nickname,
+            }
+            async for user in get_user_list(QuickMathUser.total_point)
+        ]
+
 
 web_ranking = [RecordRanking(), TotalRanking()]

@@ -12,7 +12,7 @@ GENERATOR_LIST: dict[int, GeneratorData] = {
     4: {"limit_in_second": 17, "max_point": 40, "function": l4.generate_question},
     5: {"limit_in_second": 42, "max_point": 50, "function": l5.generate_question},
     6: {"limit_in_second": 68, "max_point": 60, "function": l6.generate_question},
-    7: {"limit_in_second": 72, "max_point": 70, "function": l7.generate_question}
+    7: {"limit_in_second": 72, "max_point": 70, "function": l7.generate_question},
 }
 
 
@@ -20,8 +20,9 @@ def get_difficulty_list(max_level: int) -> list[int]:
     difficulties = []
     for l in range(max_level):
         level = l + 1
-        difficulties.extend([level]*level)
+        difficulties.extend([level] * level)
     return difficulties
+
 
 async def generate_question(user_id: str, max_level: int) -> QuestionData:
     level = random.choice(get_difficulty_list(max_level))
@@ -35,8 +36,9 @@ async def generate_question(user_id: str, max_level: int) -> QuestionData:
         "question": question,
         "max_point": GENERATOR_LIST[level]["max_point"],
         "level": level,
-        "limit_in_sec": GENERATOR_LIST[level]["limit_in_second"]
+        "limit_in_sec": GENERATOR_LIST[level]["limit_in_second"],
     }
+
 
 def get_max_level() -> int:
     return len(GENERATOR_LIST.keys())

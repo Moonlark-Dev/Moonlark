@@ -57,7 +57,7 @@ def parse_int(a: int) -> str:
 async def get_raw_choices(right_answer: str, user_id) -> re.Match[str] | None:
     messages = [
         generate_message(AI_PROMPT.format(QUADRATIC_EXAMPLE if "x_1" in right_answer else LINEAR_EQUATION), "system"),
-        generate_message(right_answer, "user")
+        generate_message(right_answer, "user"),
     ]
     content = re.search(
         r"\[.+\]",
@@ -74,13 +74,13 @@ async def get_raw_choices(right_answer: str, user_id) -> re.Match[str] | None:
 def parse_choice(answer: str) -> list[str]:
     return answer.replace("$", "").replace("_1", "").replace("_2", "").split(", \\quad")
 
+
 def check_same_choice(right_answer: str, choices: list[str]) -> Generator[int, Any, None]:
     parsed_right_answer = parse_choice(right_answer)
     for i, choice in enumerate(choices):
         parsed_choice = parse_choice(choice)
         if parsed_choice[0] in parsed_right_answer and parsed_choice[1] in parsed_right_answer:
             yield i
-    
 
 
 async def generate_question(user_id: str) -> Question:

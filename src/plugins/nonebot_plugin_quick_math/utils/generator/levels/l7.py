@@ -5,17 +5,15 @@ from sympy import Symbol, diff, limit, latex
 from ....types import Question
 from ....__main__ import lang
 
+
 async def generate_limit_question(user_id: str):
     x = Symbol("x")
-    f = choice(
-        [x**2 + 3 * x - 2, x**3 - 2 * x + 1, x**4 - 4 * x**3 + 5 * x**2 + 2 * x - 1]
-    )
+    f = choice([x**2 + 3 * x - 2, x**3 - 2 * x + 1, x**4 - 4 * x**3 + 5 * x**2 + 2 * x - 1])
     a = randint(-10, 10)
     _limit = limit(f, x, a)
     question = await lang.text("question.l7-limit", user_id, a, latex(f))
     answer = latex(_limit)
     return question, answer
-
 
 
 async def generate_question(user_id: str) -> Question:

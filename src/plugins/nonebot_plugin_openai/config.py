@@ -4,6 +4,7 @@ from nonebot import get_plugin_config
 
 class Config(BaseModel):
     """Plugin Config Here"""
+
     openai_api_key: str
     openai_base_url: str
     openai_default_model: str
