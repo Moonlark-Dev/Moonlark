@@ -78,6 +78,7 @@ async def get_user_language(user_id: str) -> str:
         language = config.language_index_order[0]
     if language not in languages:
         await set_user_language(user_id, language := config.language_index_order[0], session)
+    await session.close()
     return language
 
 
