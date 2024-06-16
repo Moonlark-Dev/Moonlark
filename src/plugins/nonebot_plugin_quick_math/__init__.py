@@ -17,4 +17,4 @@ require("nonebot_plugin_waiter")
 require("nonebot_plugin_htmlrender")
 require("nonebot_plugin_alconna")
 
-from .commands import main
+from .commands import main, rank
