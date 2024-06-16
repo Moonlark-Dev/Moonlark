@@ -4,19 +4,19 @@ set:
   success: 'Language changed to: {}'
 view:
   info: |
-    「语言详细信息」
-    名称: {}
-    作者: {}
-    版本: {}
+    Language Details
+    Name: {}
+    Author: {}
+    Version: {}
     {}
 lang:
   list: |
-    「本地化语言列表」
+    Localized Language List
     {}
-    使用「{__prefix__}lang view <语言>」获取更多信息
+    Use "{__prefix__}lang view <language>" for more information
 help:
   description: Localization
   details: Moonlark Localization Settings
-  usage_set: lang set <语言> (设置语言)
-  usage_view: lang view <语言> (查看语言信息)
-  usage_list: lang (查看语言列表)
+  usage_set: lang set <Language > (set language)
+  usage_view: lang view <language > (view language information)
+  usage_list: lang (view language list)
