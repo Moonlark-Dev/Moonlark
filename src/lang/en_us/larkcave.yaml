@@ -1,15 +1,15 @@
 render:
-  header: "Backhole — ({})\n"
+  header: "Echo Cave — ({})\n"
   footer: "\n- {}"
 add:
   empty: 投稿失败：无效内容
-  similarity_title: "Similar echo hole found: \n\n"
+  similarity_title: "Similar echo cave was found: \n\n"
   similarity_footer: "\n\n Similarity: {}%"
   review_fail: |
     Failed to submit: content review failed
     {}
   image_empty: An error occurred while fetching the image in the message, please try again later
-  posted: '回声洞 ({}) 投稿成功'
+  posted: 'Echo cave ({}) submitted successfully'
 cave:
   noresult: |
     获取回声洞时出现错误: 所含图片失效
