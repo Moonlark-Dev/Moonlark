@@ -19,7 +19,8 @@ async def get_question(max_level: int, user_id: str, answered: int, point: int) 
         UniMessage().image(
             raw=await generate_image(
                 user_id, question["question"]["question"], answered, question["limit_in_sec"], question["level"], point
-            )
+            ),
+            name="image.jpg"
         ),
         question,
     )

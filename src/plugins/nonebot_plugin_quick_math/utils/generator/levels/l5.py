@@ -1,7 +1,7 @@
 import copy
 import json
 import random
-from typing import Generator, Optional
+from typing import Any, Generator, Optional
 import sympy as sp
 import re
 
@@ -47,7 +47,11 @@ def quadratic_solver(a: int, b: int, c: int):
 
 
 def parse_int(a: int) -> str:
-    return f"+{a}" if a > 0 else f"{a}"
+    num = {
+        -1: "-",
+        1: "",
+    }.get(a, str(a))
+    return f"+{num}" if a > 0 else f"{num}"
 
 
 async def get_raw_choices(right_answer: str, user_id) -> re.Match[str] | None:
@@ -70,7 +74,7 @@ async def get_raw_choices(right_answer: str, user_id) -> re.Match[str] | None:
 def parse_choice(answer: str) -> list[str]:
     return answer.replace("$", "").replace("_1", "").replace("_2", "").split(", \\quad")
 
-def check_same_choice(right_answer: str, choices: list[str]) -> Generator[int, None]:
+def check_same_choice(right_answer: str, choices: list[str]) -> Generator[int, Any, None]:
     parsed_right_answer = parse_choice(right_answer)
     for i, choice in enumerate(choices):
         parsed_choice = parse_choice(choice)
