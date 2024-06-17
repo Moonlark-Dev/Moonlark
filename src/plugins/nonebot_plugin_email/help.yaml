@@ -1,0 +1,11 @@
+plugin: email
+commands:
+  email:
+    description: help.description
+    details: help.details
+    usages:
+      - help.usage1
+      - help.usage2
+      - help.usage3
+      - help.usage4
+      - help.usage5
