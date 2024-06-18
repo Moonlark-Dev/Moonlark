@@ -58,3 +58,11 @@ remove:
   c: 确定要删除此邮件吗？
   y_: 确定
   n_: 取消
+help:
+  description: 邮件
+  details: 进入 Moonlark 邮箱
+  usage1: email (查看未读邮件)
+  usage2: email claim all (领取全部物品)
+  usage3: email claim <email_id> (领取指定邮件)
+  usage4: email unread all (将所有邮件标为未读)
+  usage5: email unread <email_id> (将邮件标为未读)
