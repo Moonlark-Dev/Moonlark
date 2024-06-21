@@ -4,7 +4,7 @@ from datetime import datetime
 from nonebot import on_command
 from nonebot.params import ArgPlainText
 from nonebot.typing import T_State
-from nonebot_plugin_orm import async_scoped_session, get_scoped_session
+from nonebot_plugin_orm import get_scoped_session
 from sqlalchemy import select
 
 from ..nonebot_plugin_larkuser.models import UserData
@@ -17,7 +17,7 @@ register = on_command("register")
 
 
 @register.handle()
-async def _(state: T_State, user_id: str = get_user_id()) -> None:
+async def _(user_id: str = get_user_id()) -> None:
     if await is_user_registered(user_id):
         await lang.finish("command.registered", user_id)
     await lang.send("command.tip", user_id)
@@ -43,7 +43,7 @@ async def _(state: T_State, ship_code: str = ArgPlainText(), user_id: str = get_
     if ship_code == "cancel":
         await lang.finish("command.cancel", user_id)
     session = get_scoped_session()
-    if session.scalar(select(UserData).where(UserData.ship_code == ship_code)) is None:
+    if await session.scalar(select(UserData).where(UserData.ship_code == ship_code)) is None:
         await register.reject(await lang.text("command.invalid", user_id))
     if len(ship_code) >= 25:
         await register.reject(await lang.text("command.invalid", user_id))

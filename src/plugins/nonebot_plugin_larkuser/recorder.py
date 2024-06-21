@@ -10,7 +10,7 @@ from .models import UserData
 
 
 @on_message().handle()
-async def _(matcher: Matcher, session: async_scoped_session, user: UserInfo = EventUserInfo()) -> None:
+async def _(session: async_scoped_session, user: UserInfo = EventUserInfo()) -> None:
     try:
         user_data = await session.get_one(UserData, {"user_id": user.user_id})
     except NoResultFound:
@@ -23,10 +23,9 @@ async def _(matcher: Matcher, session: async_scoped_session, user: UserInfo = Ev
             )
         )
         await session.commit()
-        await matcher.finish()
+        return
     if user_data.nickname != user.user_name:
         user_data.nickname = user.user_name
     if user.user_avatar and user_data.avatar != user.user_avatar:
         user_data.avatar = await user.user_avatar.get_image()
     await session.commit()
-    await matcher.finish()
