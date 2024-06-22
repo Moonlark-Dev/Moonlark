@@ -14,7 +14,7 @@ require("nonebot_plugin_orm")
 require("nonebot_plugin_userinfo")
 require("nonebot_plugin_larklang")
 require("nonebot_plugin_larkutils")
-require("nonebot_plugin_htmlrender")
+require("nonebot_plugin_render")
 
 config = get_plugin_config(Config)
 

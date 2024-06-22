@@ -1,0 +1,12 @@
+{% extends base %}
+
+{% block body %}
+{% for comment in comments %}
+<span class="h4">{{ comment.author }}</span>
+<small>{{ comment.time }} {{ comment.id }}</small>
+<p style="margin: 10px;">{{ comment.text }}</p>
+{% if not loop.last %}
+<hr>
+{% endif %}
+{% endfor %}
+{% endblock body %}

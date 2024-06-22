@@ -16,6 +16,6 @@ require("nonebot_plugin_item")
 require("nonebot_plugin_larkutils")
 require("nonebot_plugin_larkuser")
 require("nonebot_plugin_alconna")
-require("nonebot_plugin_htmlrender")
+require("nonebot_plugin_render")
 
 from .commands import bag

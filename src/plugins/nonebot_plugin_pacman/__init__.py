@@ -11,7 +11,7 @@ __plugin_meta__ = PluginMetadata(
 )
 
 
-require("nonebot_plugin_htmlrender")
+require("nonebot_plugin_render")
 require("nonebot_plugin_larklang")
 require("nonebot_plugin_larkutils")
 

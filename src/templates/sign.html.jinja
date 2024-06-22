@@ -1,0 +1,52 @@
+{% extends base %}
+
+{% block body %}
+{% if not avatar %}
+<p>
+    <span class="h2">{{ nickname }}</span>
+    {{ uid }}
+</p>
+{% endif %}
+<div class="row">
+    {% if avatar %}
+    <div class="col-4">
+        <img src="data:image;base64,{{ avatar }}" class="rounded-circle" width="100%">
+        <p class="small"></p>
+        <div style="text-align: center;">
+            <span class="h3">{{ nickname }}</span>
+            <br>
+            {{ uid }}
+        </div>
+    </div>
+    <div class="col-4">
+        {% else %}
+        <div class="col">
+            {%endif%}
+            <h3>{{ exp.text }}</h3>
+            <p>{{ exp.origin }} -> {{ exp.now }} (<strong class="text-success">+{{ exp.add }}</strong>)</p>
+            <h3>{{ vim.text }}</h3>
+            <p>{{ vim.origin }} -> {{ vim.now }} (<strong class="text-success">+{{ vim.add }}</strong>)</p>
+            <h3>{{ fav.text }}</h3>
+            <p>{{ fav.origin }} -> {{ fav.now }} (<strong class="text-success">+{{ fav.add }}</strong>)</p>
+        </div>
+        {% if avatar %}
+        <div class="col-4">
+            {% else %}
+            <div class="col">
+                {% endif %}
+                <h3>{{ signdays.text }}</h3>
+                <p>{{ signdays.value }}</p>
+                <h3>{{ rank.text }}</h3>
+                <p>{{ rank.value }}</p>
+                <h3>{{ fortune.text }}</h3>
+                <p>{{ fortune.value }}</p>
+            </div>
+        </div>
+        <div style="text-align: center;">
+            {{ hitokoto }}
+        </div>
+
+    </div>
+</div>
+
+{% endblock body %}

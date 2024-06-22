@@ -4,7 +4,8 @@ from pathlib import Path
 from nonebot import on_command
 from nonebot.matcher import Matcher
 from nonebot_plugin_alconna.uniseg import UniMessage
-from nonebot_plugin_htmlrender import template_to_pic
+
+from ..nonebot_plugin_render.render import render_template
 
 from ..nonebot_plugin_larkutils import get_user_id
 from .lang import lang
@@ -19,12 +20,11 @@ async def _(matcher: Matcher, user_id: str = get_user_id()) -> None:
     await matcher.finish(
         await UniMessage()
         .image(
-            raw=await template_to_pic(
-                Path(__file__).parent.joinpath("templates").as_posix(),
-                "index.html.jinja",
+            raw=await render_template(
+                "panel.html.jinja",
+                await lang.text("panel.title", user_id),
+                user_id,
                 {
-                    "title": await lang.text("panel.title", user_id),
-                    "footer": await lang.text("panel.footer", user_id),
                     "nickname": user.nickname,
                     "user_id": await lang.text("panel.uid", user_id, user_id),
                     "avatar": base64.b64encode(user.avatar).decode() if user.avatar is not None else None,

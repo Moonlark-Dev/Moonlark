@@ -3,7 +3,8 @@ from pathlib import Path
 from nonebot import get_driver
 from nonebot_plugin_alconna import Alconna, Args, on_alconna
 from nonebot_plugin_alconna.uniseg import UniMessage
-from nonebot_plugin_htmlrender import template_to_pic
+
+from ..nonebot_plugin_render.render import render_template
 
 from ..nonebot_plugin_larklang.__main__ import LangHelper
 from ..nonebot_plugin_larkutils import get_user_id
@@ -43,12 +44,11 @@ async def _(user_id: str = get_user_id()) -> None:
     template_path = Path(__file__).parent.joinpath("templates/index.html.jinja")
     await help_cmd.finish(
         UniMessage().image(
-            raw=await template_to_pic(
-                template_path.parent.as_posix(),
-                template_path.name,
+            raw=await render_template(
+                "help.html.jinja",
+                await lang.text("list.title", user_id),
+                user_id,
                 dict(
-                    title=await lang.text("list.title", user_id),
-                    footer=await lang.text("list.footer", user_id),
                     usages_text=await lang.text("list.usage_text", user_id),
                     commands=[
                         {
@@ -59,8 +59,6 @@ async def _(user_id: str = get_user_id()) -> None:
                             "details": await plugin_lang.text(data.details, user_id),
                             "usages": [
                                 (await lang.text("list.usage", user_id, await plugin_lang.text(usage, user_id)))
-                                .replace("<", "&lt;")
-                                .replace(">", "&gt;")
                                 for usage in data.usages
                             ],
                         }

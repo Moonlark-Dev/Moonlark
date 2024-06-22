@@ -9,6 +9,8 @@ from nonebot_plugin_orm import async_scoped_session
 from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
 
+from ..nonebot_plugin_render.render import render_template
+
 from ..nonebot_plugin_larkuser.utils.user import get_user
 from ..nonebot_plugin_larkutils import escape_html, get_group_id, get_id
 from .lang import lang
@@ -96,11 +98,11 @@ async def get_choice_content(vote_data: Vote, choice_id: int, session: async_sco
 
 async def generate_vote_image(user_id: str, session: async_scoped_session, vote_data: Vote) -> bytes:
     total_count = len((await session.scalars(select(VoteLog).where(VoteLog.belong == vote_data.id))).all())
-    return await template_to_pic(
-        Path(__file__).parent.joinpath("templates").as_posix(),
-        "index.html.jinja",
+    return await render_template(
+        "vote.html.jinja",
+        await lang.text("vote_image.page_title", user_id),
+        user_id,
         {
-            "page_title": await lang.text("vote_image.page_title", user_id),
             "open": is_vote_open(vote_data),
             "status": {
                 "open": await lang.text("status.open", user_id),
@@ -108,7 +110,6 @@ async def generate_vote_image(user_id: str, session: async_scoped_session, vote_
             },
             "id": await lang.text("vote_image.id", user_id, vote_data.id),
             "choice_text": await lang.text("vote_image.choice_text", user_id),
-            "footer": await lang.text("vote_image.footer", user_id),
             "title": escape_html(vote_data.title),
             "content": escape_html(vote_data.content),
             "choices": await get_choice(total_count, vote_data, session),
@@ -135,12 +136,11 @@ async def get_vote_list(
 async def generate_vote_list(
     user_id: str, group_id: str, session: async_scoped_session, show_all: bool = False
 ) -> bytes:
-    return await template_to_pic(
-        Path(__file__).parent.joinpath("templates").as_posix(),
-        "list.html.jinja",
+    return await render_template(
+        "vote_list.html.jinja",
+        await lang.text("list.title", user_id),
+        user_id,
         {
-            "title": await lang.text("list.title", user_id),
-            "footer": await lang.text("vote_image.footer", user_id),
             "vote_list": [
                 {
                     "id": vote.id,

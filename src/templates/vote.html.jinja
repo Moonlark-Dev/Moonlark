@@ -1,0 +1,29 @@
+{% extends base %}
+
+{% block body %}
+<span class="h3">{{ title }}</span>
+{% if open %}
+<span class="badge bg-success rounded-pill text-light">{{ status.open }}</span>
+{% else %}
+<span class="badge bg-danger rounded-pill text-light">{{ status.closed }}</span>
+{% endif %}
+<span class="badge bg-light rounded-pill text-dark">{{ id }}</span>
+<p></p>
+<p>{{ content }}</p>
+<h4>{{ choice_text }}</h4>
+<ol>
+    {% for choice in choices%}
+    <li style="margin: 5px;">
+        {{ choice.text }}
+        <span class="badge rounded-pill bg-info">{{ choice.count }}</span>
+        <div class="progress" style="height:20px; width:90%; margin-top: 2px; margin-bottom: 7px;">
+            <div class="progress-bar bg-primary" style="width:{{ choice.percent }}%">
+                {{ choice.percent }}%
+            </div>
+        </div>
+    </li>
+    {% endfor %}
+</ol>
+<span class="badge bg-warning">{{ sponsor }}</span>
+<span class="badge bg-dark text-light">{{ end_time }}</span>
+{% endblock body %}

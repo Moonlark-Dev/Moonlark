@@ -1,0 +1,25 @@
+{% extends base %}
+
+{% block body %}
+{% for package in packages %}
+<p class="h2">
+    <span style="font-size: 38px;">{{ package.name }}</span> <small>{{ package.version }}</small>
+</p>
+<p>
+    <span class="badge bg-success text-light">{{ package.arch }}</span>
+    <span class="badge bg-primary text-light">{{ package.repo }}</span>
+    <span class="badge bg-warning text-light">{{ package.size }}</span>
+    <span class="badge bg-info text-light">{{ package.license }}</span>
+    <span class="badge bg-secondary text-light">{{ package.last_update }}</span>
+    {% if package.out_of_date %}
+    <span class="badge bg-danger text-light">{{ out_of_date }}</span>
+    {% endif %}
+</p>
+
+{{ package.description }}
+
+{% if not loop.last %}
+<hr>
+{% endif %}
+{% endfor %}
+{% endblock body %}
