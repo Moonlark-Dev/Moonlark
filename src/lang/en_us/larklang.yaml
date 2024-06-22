@@ -14,9 +14,13 @@ lang:
     Localized Language List
     {}
     Use "{__prefix__}lang view <language>" for more information
+reload:
+  success: 已成功重载语言列表
+  no_permission: 无权限！
 help:
   description: Localization
   details: Moonlark Localization Settings
   usage_set: lang set <Language > (set language)
   usage_view: lang view <language > (view language information)
   usage_list: lang (view language list)
+  usage_reload: lang reload (重载语言[SU])
