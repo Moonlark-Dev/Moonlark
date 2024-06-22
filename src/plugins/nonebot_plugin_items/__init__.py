@@ -14,3 +14,6 @@ require("nonebot_plugin_larklang")
 require("nonebot_plugin_item")
 
 
+from . import items
+
+
