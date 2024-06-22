@@ -1,10 +1,10 @@
 import asyncio
 from datetime import datetime
 
-from nonebot import on_command
+from nonebot import logger, on_command
 from nonebot.params import ArgPlainText
 from nonebot.typing import T_State
-from nonebot_plugin_orm import get_scoped_session
+from nonebot_plugin_orm import get_scoped_session, get_session
 from sqlalchemy import select
 
 from ..nonebot_plugin_larkuser.models import UserData
@@ -40,10 +40,11 @@ async def _(state: T_State, gender: str = ArgPlainText(), user_id: str = get_use
 
 @register.got("ship_code")
 async def _(state: T_State, ship_code: str = ArgPlainText(), user_id: str = get_user_id()) -> None:
+    logger.debug(f"{ship_code=}")
     if ship_code == "cancel":
         await lang.finish("command.cancel", user_id)
     session = get_scoped_session()
-    if await session.scalar(select(UserData).where(UserData.ship_code == ship_code)) is None:
+    if await session.scalar(select(UserData).where(UserData.ship_code == ship_code)) is not None:
         await register.reject(await lang.text("command.invalid", user_id))
     if len(ship_code) >= 25:
         await register.reject(await lang.text("command.invalid", user_id))
@@ -59,13 +60,15 @@ async def _(state: T_State, ship_code: str = ArgPlainText(), user_id: str = get_
 
 @register.got("confirm")
 async def _(state: T_State, confirm: str = ArgPlainText(), user_id: str = get_user_id()) -> None:
+    logger.debug(f"{confirm=}")
+    logger.debug(f"{state=}")
     if confirm.lower() in ["cancel", "n"]:
         await lang.finish("command.cancel", user_id)
-    session = get_scoped_session()
-    user_data = await get_user(user_id, session)
-    user_data.ship_code = state["ship_code"]
-    user_data.gender = state["gender"]
-    user_data.register_time = datetime.now()
-    await lang.send("command.confirm", user_id, user_data.nickname)
-    await session.commit()
+    async with get_session() as session:
+        user_data = await session.get_one(UserData, user_id)
+        user_data.ship_code = state["ship_code"]
+        user_data.gender = state["gender"]
+        user_data.register_time = datetime.now()
+        await lang.send("command.confirm", user_id, user_data.nickname)
+        await session.commit()
     await register.finish()

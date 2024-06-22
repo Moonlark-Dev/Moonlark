@@ -15,6 +15,8 @@ require("nonebot_plugin_orm")
 require("nonebot_plugin_ranking")
 require("nonebot_plugin_waiter")
 require("nonebot_plugin_htmlrender")
+require("nonebot_plugin_achievement")
+require("nonebot_plugin_larkuser")
 require("nonebot_plugin_alconna")
 
 from .commands import main, rank

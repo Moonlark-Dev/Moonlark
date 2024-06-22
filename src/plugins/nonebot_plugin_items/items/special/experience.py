@@ -14,6 +14,11 @@ class Experience(Item):
         return await self.getText("experience.name", stack.user_id)
 
 
-ITEMS.registry(
-    ResourceLocation("special", "experience"), Experience({"max_stack": 0xFFFFF, "star": 2, "useable": False})
-)
+LOCATION = ResourceLocation("special", "experience")
+
+
+def get_location() -> ResourceLocation:
+    return LOCATION
+
+
+ITEMS.registry(LOCATION, Experience({"max_stack": 0xFFFFF, "star": 2, "useable": False}))

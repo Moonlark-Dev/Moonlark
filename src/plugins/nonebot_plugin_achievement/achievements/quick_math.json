@@ -4,11 +4,11 @@
         "key": "achievements"
     },
     "achievements": {
-        "getting_start": {
+        "getting_started": {
             "required_unlock_count": 10,
             "awards": [
                 {
-                    "id": "special:vimcoin",
+                    "item_id": "special:vimcoin",
                     "count": 10,
                     "data": {}
                 }
@@ -18,7 +18,7 @@
             "required_unlock_count": 1,
             "awards": [
                 {
-                    "id": "special:vimcoin",
+                    "item_id": "special:vimcoin",
                     "count": 10,
                     "data": {}
                 }
@@ -28,7 +28,7 @@
             "required_unlock_count": 100,
             "awards": [
                 {
-                    "id": "special:vimcoin",
+                    "item_id": "special:vimcoin",
                     "count": 15,
                     "data": {}
                 }
@@ -38,7 +38,7 @@
             "required_unlock_count": 1000,
             "awards": [
                 {
-                    "id": "special:vimcoin",
+                    "item_id": "special:vimcoin",
                     "count": 15,
                     "data": {}
                 }
@@ -48,7 +48,7 @@
             "required_unlock_count": 1,
             "awards": [
                 {
-                    "id": "special:vimcoin",
+                    "item_id": "special:vimcoin",
                     "count": 15,
                     "data": {}
                 }
@@ -58,7 +58,7 @@
             "required_unlock_count": 1,
             "awards": [
                 {
-                    "id": "special:vimcoin",
+                    "item_id": "special:vimcoin",
                     "count": 15,
                     "data": {}
                 }
@@ -68,7 +68,7 @@
             "required_unlock_count": 10,
             "awards": [
                 {
-                    "id": "special:vimcoin",
+                    "item_id": "special:vimcoin",
                     "count": 5,
                     "data": {}
                 }
@@ -78,7 +78,7 @@
             "required_unlock_count": 1,
             "awards": [
                 {
-                    "id": "special:vimcoin",
+                    "item_id": "special:vimcoin",
                     "count": 20,
                     "data": {}
                 }
@@ -88,7 +88,7 @@
             "required_unlock_count": 1,
             "awards": [
                 {
-                    "id": "special:vimcoin",
+                    "item_id": "special:vimcoin",
                     "count": 15,
                     "data": {}
                 }

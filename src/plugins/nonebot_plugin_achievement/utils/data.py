@@ -6,7 +6,7 @@ from nonebot_plugin_orm import get_session
 from sqlalchemy import select
 
 from ..types import AchievementUnlockData, UserAchievementData
-
+from nonebot.log import logger
 from ...nonebot_plugin_larklang.__main__ import LangHelper
 
 from ..models import AchievementList, User
@@ -14,7 +14,7 @@ from ...nonebot_plugin_item.registry.registry import ResourceLocation
 
 
 async def get_achievement_list(namespace: Optional[str] = None) -> AsyncGenerator[ResourceLocation, None]:
-    for file in Path(__file__).parent.joinpath("achievements").iterdir():
+    for file in Path(__file__).parent.parent.joinpath("achievements").iterdir():
         if namespace and file.name[:-5] != namespace or not file.name.endswith(".json"):
             continue
         async with aiofiles.open(file, encoding="utf-8") as f:
@@ -24,7 +24,7 @@ async def get_achievement_list(namespace: Optional[str] = None) -> AsyncGenerato
 
 
 async def get_achievement_data(id_: ResourceLocation) -> AchievementList:
-    file = Path(__file__).parent.joinpath(f"achievements/{id_.getNamespace()}.json")
+    file = Path(__file__).parent.parent.joinpath(f"achievements/{id_.getNamespace()}.json")
     async with aiofiles.open(file, encoding="utf-8") as f:
         data = type_validate_json(AchievementList, await f.read())
     data.achievements = {id_.getPath(): data.achievements[id_.getPath()]}
@@ -33,6 +33,7 @@ async def get_achievement_data(id_: ResourceLocation) -> AchievementList:
 
 async def is_achievement_unlocked(id_: ResourceLocation, count: int) -> bool:
     data = (await get_achievement_data(id_)).achievements[id_.getPath()]
+    logger.debug(f"成就 {id_.getItemID()} 需要的解锁次数为: {data.required_unlock_count} ({count=})")
     return count >= data.required_unlock_count
 
 

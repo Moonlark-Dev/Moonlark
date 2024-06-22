@@ -5,43 +5,19 @@ from nonebot_plugin_htmlrender import md_to_pic
 from nonebot_plugin_waiter import prompt_until
 import re
 
-from ..utils.user import update_user_data
+from ...nonebot_plugin_achievement.utils.unlock import unlock_achievement
 
-from ..utils.image import generate_image
+from ..utils.achievement import get_achievement_location, update_achievements_status
+
+from ..utils.point import get_point
+from ..utils.question import get_question
+
+from ..utils.user import update_user_data
 from ..config import config
-from ..utils.generator import generate_question, get_max_level
-from ..types import QuestionData
+from ..utils.generator import get_max_level
 import asyncio
 from ...nonebot_plugin_larkutils.user import get_user_id
 from ..__main__ import lang, quick_math
-
-
-async def get_question(
-    max_level: int, user_id: str, answered: int, point: int, total_skipping_count: int, skipped_question: int
-) -> tuple[UniMessage, QuestionData]:
-    question = await generate_question(user_id, max_level)
-    question["limit_in_sec"] = max(config.qm_min_limit, round(question["limit_in_sec"] * 0.8 ** (point // 250)))
-    return (
-        UniMessage().image(
-            raw=await generate_image(
-                user_id,
-                question["question"]["question"],
-                answered,
-                question["limit_in_sec"],
-                question["level"],
-                point,
-                total_skipping_count,
-                skipped_question,
-            ),
-            name="image.jpg",
-        ),
-        question,
-    )
-
-
-def get_point(question: QuestionData, start_time: datetime) -> int:
-    used_time = (datetime.now() - start_time).total_seconds()
-    return round(question["max_point"] / question["limit_in_sec"] * max(question["limit_in_sec"] - used_time, 1))
 
 
 @quick_math.assign("$main")
@@ -86,6 +62,8 @@ async def _(user_id: str = get_user_id()) -> None:
             point += get_point(question, send_time) // 2
             await lang.send("main.skipped", user_id)
         else:
+            if question["level"] == 7:
+                await unlock_achievement(get_achievement_location("calculus"), user_id)
             add_point = get_point(question, send_time)
             answered += 1
             point += add_point
@@ -96,6 +74,15 @@ async def _(user_id: str = get_user_id()) -> None:
             total_skipping_count += 1
     total_seconds = (end_time - start_time).total_seconds()
     diff, record = await update_user_data(user_id, point)
+    if answered == 0:
+        await quick_math.finish()
+    await update_achievements_status(
+        user_id,
+        answered,
+        point,
+        answered / total_answered,
+        skipped_question
+    )
     await quick_math.finish(
         UniMessage().image(
             raw=await md_to_pic(

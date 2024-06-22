@@ -1,5 +1,7 @@
 from typing import Literal
 from nonebot_plugin_alconna import Alconna, Args, Option, Subcommand, on_alconna
+
+from ..nonebot_plugin_larkuser.matcher import patch_matcher
 from ..nonebot_plugin_larklang import LangHelper
 
 
@@ -9,3 +11,4 @@ quick_math = on_alconna(Alconna(
     Subcommand("award", Option("--claim|-c")),
 ))
 lang = LangHelper()
+patch_matcher(quick_math)

@@ -1,5 +1,7 @@
 import typing
 
+from nonebot import logger
+
 T1 = typing.TypeVar("T1")
 
 
@@ -51,7 +53,10 @@ class Registry(typing.Generic[T1]):
         return self._map[location]
 
     def getKey(self, value: T1) -> ResourceLocation:
+        logger.debug(self.getEntries())
+        logger.debug(self._map.items())
         for first, second in self._map.items():
+            logger.debug(f"{first=} {second=} {value=} {id(second)=} {id(value)=}")
             if value == second:
                 return first
         raise ValueError(value)

@@ -1,6 +1,6 @@
 from typing import Optional
 from nonebot_plugin_orm import Model
-from sqlalchemy.orm import mapped_column, Mapped
+from sqlalchemy.orm import Mapped, mapped_column
 from pydantic import BaseModel
 
 from ..nonebot_plugin_item.types import DictItemData
@@ -22,10 +22,11 @@ class AchievementList(BaseModel):
 
 
 class User(Model):
+    _id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     user_id: Mapped[str]
     achievement_namespace: Mapped[str]
     achievement_path: Mapped[str]
     unlock_progress: Mapped[int]
-    unlocked: bool
+    unlocked: Mapped[bool]
 
 

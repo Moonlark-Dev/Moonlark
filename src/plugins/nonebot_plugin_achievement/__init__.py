@@ -16,4 +16,4 @@ require("nonebot_plugin_larkutils")
 require("nonebot_plugin_email")
 require("nonebot_plugin_htmlrender")
 
-
+from .utils.unlock import unlock_achievement

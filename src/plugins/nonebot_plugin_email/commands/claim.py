@@ -1,8 +1,10 @@
 from typing import Literal
 from nonebot_plugin_alconna import UniMessage
 from nonebot_plugin_htmlrender import md_to_pic
-from nonebot_plugin_orm import async_scoped_session
+from nonebot_plugin_orm import async_scoped_session, get_session
 from sqlalchemy import select
+
+from ...nonebot_plugin_item.utils.merge import merge_items
 
 from ..utils.claim import claim_email
 from ..lang import lang
@@ -12,7 +14,8 @@ from ..__main__ import email
 
 
 @email.assign("claim.email_id")
-async def _(session: async_scoped_session, email_id: int | Literal["all"], user_id: str = get_user_id()) -> None:
+async def _(email_id: int | Literal["all"], user_id: str = get_user_id()) -> None:
+    session = get_session()
     result = await session.scalars(
         select(EmailUser).where(EmailUser.user_id == user_id, EmailUser.is_claimed.is_not(True))
     )
@@ -25,6 +28,8 @@ async def _(session: async_scoped_session, email_id: int | Literal["all"], user_
             email_count += 1
     await session.commit()
     index = 0
+    merge_items(claimed_items)
+    await session.close()
     await email.finish(
         UniMessage()
         .text(await lang.text("claim.done", user_id, email_count, len(claimed_items)))
@@ -32,7 +37,7 @@ async def _(session: async_scoped_session, email_id: int | Literal["all"], user_
             raw=await md_to_pic(
                 "\n".join(
                     [
-                        await lang.text("claim.markdown", user_id, index := index + 1, await item.getName, item.count)
+                        await lang.text("claim.markdown", user_id, index := index + 1, await item.getName(), item.count)
                         for item in claimed_items
                     ]
                 ) or await lang.text("claim.no_item", user_id)

@@ -7,11 +7,13 @@ from ..models import Email, EmailItem, EmailUser
 from ..types import EmailData
 
 
-async def get_email_data(email_id: int, user_id: str = "-1") -> EmailData:
+async def get_email_data(email_id: int, user_id: str = "-1", always_return_items: bool = False) -> EmailData:
     session = get_scoped_session()
     data = await session.get_one(Email, email_id)
     user = await session.scalar(select(EmailUser).where(EmailUser.user_id == user_id, EmailUser.email_id == email_id))
     items = await session.scalars(select(EmailItem).where(EmailItem.belong == email_id))
+    if (user.is_read if user else False) and not always_return_items:
+        items = []
     return {
         "id": data.id,
         "author": data.author or await lang.text("email.unknown_author", user_id),

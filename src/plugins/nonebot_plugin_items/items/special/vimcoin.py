@@ -1,3 +1,5 @@
+from nonebot import logger
+from ....nonebot_plugin_item.base.properties import ItemProperties, default
 from ....nonebot_plugin_item.base.stack import ItemStack
 from ....nonebot_plugin_item.registry.registry import ResourceLocation
 from ....nonebot_plugin_item.registry import ITEMS
@@ -7,11 +9,18 @@ from ...lang import lang
 
 class Vimcoin(Item):
 
+
     def setupLang(self) -> None:
         self.lang = lang
 
     async def getDefaultName(self, stack: ItemStack) -> str:
         return await self.getText("vimcoin.name", stack.user_id)
 
+LOCATION = ResourceLocation("special", "vimcoin")
 
-ITEMS.registry(ResourceLocation("special", "vimcoin"), Vimcoin({"max_stack": 0xFFFF, "star": 3, "useable": False}))
+
+def get_location() -> ResourceLocation:
+    return LOCATION
+
+
+ITEMS.registry(LOCATION, Vimcoin({"max_stack": 0xFFFF, "star": 3, "useable": False}))
