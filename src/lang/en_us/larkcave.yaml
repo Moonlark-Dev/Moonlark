@@ -1,15 +1,15 @@
 render:
-  header: "回声洞 —— ({})\n"
-  footer: "\n——{}"
+  header: "Echo Cave — ({})\n"
+  footer: "\n- {}"
 add:
   empty: 投稿失败：无效内容
-  similarity_title: "发现相似的回声洞: \n\n"
-  similarity_footer: "\n\n 相似度: {}%"
+  similarity_title: "Similar echo cave was found: \n\n"
+  similarity_footer: "\n\n Similarity: {}%"
   review_fail: |
-    投稿失败：内容审核失败
+    Failed to submit: content review failed
     {}
-  image_empty: 获取消息中的图片时发生错误，请稍后重试
-  posted: '回声洞 ({}) 投稿成功'
+  image_empty: An error occurred while fetching the image in the message, please try again later
+  posted: 'Echo cave ({}) submitted successfully'
 cave:
   noresult: |
     获取回声洞时出现错误: 所含图片失效
@@ -19,7 +19,7 @@ cave:
   group_cd: 群聊冷却中 ... (剩余 {} 分钟)
   user_cd: User cooldown... ({} minutes remaining)
 help:
-  d: 回声洞
+  d: Echo Cave
   i: 投稿或查看其他用户投稿的回声洞，所有内容依照 CC-BY-NC-SA 4.0 许可协议授权
   u1: cave (随机条目)
   u2: cave-a <内容> (投稿条目)
@@ -27,11 +27,11 @@ help:
   u4: cave-s <ID> (恢复 7 天内删除的条目)
   u5: cave-g <ID> (查看自己投稿的条目)
   u6: cave-c [-u|--user] (check cooldown)
-  u7: cave-c --set <时间(分钟)> (修改冷却时间)
+  u7: cave-c --set <time (minutes)> (change cooldown time)
   u8: cave-r -c <ID> (delete comment)
 remove:
-  no_result: 回声洞不存在或已删除！
-  no_permission: 权限不足！
+  no_result: The echo hole does not exist or has been deleted!
+  no_permission: Insufficient permissions!
   private: |
     回声洞已被删除！
     如果您想恢复它，可以使用 {__prefix__}cave-restore {}
@@ -41,7 +41,7 @@ remove:
     如果您想恢复它，请在 {} 天内使用 {__prefix__}cave-restore {}
 remove_comment:
   no_result: 'Invalid comment ID: {}'
-  no_permission: 权限不足！
+  no_permission: Insufficient permissions!
   info: |
     {} 评论于回声洞 ({}):
     {}
