@@ -1,0 +1,98 @@
+{
+    "lang": {
+        "plugin": "quick_math",
+        "key": "achievements"
+    },
+    "achievements": {
+        "getting_started": {
+            "required_unlock_count": 10,
+            "awards": [
+                {
+                    "item_id": "special:vimcoin",
+                    "count": 10,
+                    "data": {}
+                }
+            ]
+        },
+        "showing_off": {
+            "required_unlock_count": 1,
+            "awards": [
+                {
+                    "item_id": "special:vimcoin",
+                    "count": 10,
+                    "data": {}
+                }
+            ]
+        },
+        "100_questions_master": {
+            "required_unlock_count": 100,
+            "awards": [
+                {
+                    "item_id": "special:vimcoin",
+                    "count": 15,
+                    "data": {}
+                }
+            ]
+        },
+        "a_little_bit_adds_up": {
+            "required_unlock_count": 1000,
+            "awards": [
+                {
+                    "item_id": "special:vimcoin",
+                    "count": 15,
+                    "data": {}
+                }
+            ]
+        },
+        "math_master": {
+            "required_unlock_count": 1,
+            "awards": [
+                {
+                    "item_id": "special:vimcoin",
+                    "count": 15,
+                    "data": {}
+                }
+            ]
+        },
+        "computing_genius": {
+            "required_unlock_count": 1,
+            "awards": [
+                {
+                    "item_id": "special:vimcoin",
+                    "count": 15,
+                    "data": {}
+                }
+            ]
+        },
+        "escape_artist": {
+            "required_unlock_count": 10,
+            "awards": [
+                {
+                    "item_id": "special:vimcoin",
+                    "count": 5,
+                    "data": {}
+                }
+            ]
+        },
+        "master": {
+            "required_unlock_count": 1,
+            "awards": [
+                {
+                    "item_id": "special:vimcoin",
+                    "count": 20,
+                    "data": {}
+                }
+            ]
+        },
+        "calculus": {
+            "required_unlock_count": 1,
+            "awards": [
+                {
+                    "item_id": "special:vimcoin",
+                    "count": 15,
+                    "data": {}
+                }
+            ]
+        }
+    }
+}

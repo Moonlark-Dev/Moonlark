@@ -2,6 +2,8 @@ from nonebot_plugin_orm import get_session
 import base64
 import json
 
+from ...nonebot_plugin_item.utils.get import get_item
+
 from ..models import BagOverflow
 from .overflow import get_overflow_item
 
@@ -50,15 +52,16 @@ async def append_item(user_id: str, item: ItemStack) -> None:
 
 
 async def give_item(user_id: str, item: ItemStack) -> None:
+    count = item.count
     for bag_item in await get_bag_items(user_id):
         if bag_item.stack.compare(item) and bag_item.stack.count < bag_item.stack.item.getProperties()['max_stack']:
-            bag_item.stack.count += (count := min(
+            bag_item.stack.count += (reduced := min(
                 bag_item.stack.item.getProperties()['max_stack'] - bag_item.stack.count, item.count))
-            item.count -= count
-        if item.count == 0:
+            count -= reduced
+        if count == 0:
             break
-    if item.count > 0:
-        await append_item(user_id, item)
+    if count > 0:
+        await append_item(user_id, await get_item(item.item.getLocation(), user_id, count, item.data))
 
 
 async def take_overflow_item(user_id: str, index: int) -> None:

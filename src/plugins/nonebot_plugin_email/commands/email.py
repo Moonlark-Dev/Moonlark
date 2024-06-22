@@ -38,7 +38,7 @@ async def _(user_id: str = get_user_id()) -> None:
                             item["count"],
                             item["data"]
                         )).getName(),
-                        "count": 0
+                        "count": item["count"]
                     } for item in email["items"]
                 ]
             } async for email in get_unread_email(user_id)],

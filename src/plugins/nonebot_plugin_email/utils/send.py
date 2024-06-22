@@ -1,7 +1,7 @@
 from datetime import datetime
 import json
 from typing import Optional
-
+from nonebot.log import logger
 from nonebot_plugin_orm import get_scoped_session
 from sqlalchemy import select
 
@@ -39,6 +39,7 @@ async def send_email(
             email_id=email_id
         ))
     await session.commit()
+    logger.info(f"Email {email_id} sent to {receivers}")
     return email_id
 
 

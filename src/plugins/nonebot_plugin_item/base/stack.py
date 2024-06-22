@@ -2,7 +2,6 @@ from typing import TYPE_CHECKING, Any, Self
 
 from ..exceptions import NotUseableError
 from ..types import DictItemData
-from ...nonebot_plugin_bag.models import Bag
 from .useable import UseableItem
 
 if TYPE_CHECKING:

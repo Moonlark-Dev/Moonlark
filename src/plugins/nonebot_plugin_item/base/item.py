@@ -23,7 +23,7 @@ class Item(ABC):
 
     @abstractmethod
     def setupLang(self) -> None:
-        pass
+        ...
 
     def getLocation(self):
         return ITEMS.getKey(self)
