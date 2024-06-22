@@ -1,0 +1,13 @@
+{% extends base %}
+
+{% block body %}
+<table class="table table-striped">
+    {% for vote in vote_list %}
+    <tr>
+        <td style="width: 0%;">{{ vote.id }}</td>
+        <td>{{ vote.title }}</td>
+        <td>{{ vote.status }}</td>
+    </tr>
+    {% endfor %}
+</table>
+{% endblock body %}

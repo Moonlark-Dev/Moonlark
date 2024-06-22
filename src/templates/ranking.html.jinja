@@ -1,0 +1,47 @@
+{% extends base %}
+
+{% block header %}
+<style>
+    .num {
+        float: right;
+        margin-top: -10px;
+        font-size: 275%;
+    }
+</style>
+{% if me %}
+<style>
+    .myrank {
+        margin-top: -15px;
+        margin-bottom: -20px;
+    }
+
+    .ranking {
+        margin-bottom: -20px;
+    }
+</style>
+{% endif %}
+{% endblock header %}
+
+{% block card %}
+<div class="card-body ranking">
+    {% for user in users%}
+    <span class="h3">{{ loop.index }}. {{ user.nickname }}</span>
+    <span class="num">{{ user.data }}</span>
+    <br>
+    {{ user.info }}
+    {% if not loop.last %}
+    <hr>
+    {% endif %}
+    {% endfor %}
+</div>
+{% if me %}
+<div class="card bg-primary bg-opacity-50">
+    <div class="card-body myrank">
+        <span class="h3">{{ me.index }}. {{ me.nickname }}</span>
+        <span class="num">{{ me.data }}</span>
+        <br>
+        {{ me.info }}
+    </div>
+</div>
+{% endif %}
+{% endblock card %}

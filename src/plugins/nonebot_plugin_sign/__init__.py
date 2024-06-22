@@ -18,6 +18,6 @@ require("nonebot_plugin_larkuser")
 require("nonebot_plugin_alconna")
 require("nonebot_plugin_email")
 require("nonebot_plugin_larkuser")
-require("nonebot_plugin_htmlrender")
+require("nonebot_plugin_render")
 
 from . import __main__

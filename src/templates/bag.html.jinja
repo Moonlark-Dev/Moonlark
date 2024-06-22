@@ -1,0 +1,25 @@
+{% extends base %}
+
+{% block body %}
+<div class="row">
+    <div class="col-6">
+        <span>{{ size }}</span>
+    </div>
+    <div class="col">
+        <div class="progress" style="height: 18px; margin-top: 3px;">
+            <div class="progress-bar" role="progressbar" style="width: {{ size_percent }};"></div>
+        </div>
+    </div>
+
+</div>
+<hr>
+<div class="row">
+    {% for item in items %}
+    <div class="col-6">
+        <span class="badge bg-info">{{ item.index }}.</span> <span class="text-{{ item.text_color }} fw-bold">{{
+            item.name }}</span>
+        <span class="badge bg-light text-dark rounded-pill">{{ item.count }}</span>
+    </div>
+    {% endfor %}
+</div>
+{% endblock body %}

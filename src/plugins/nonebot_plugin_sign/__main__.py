@@ -14,6 +14,8 @@ from nonebot_plugin_orm import AsyncSession, get_session
 from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
 
+from ..nonebot_plugin_render.render import render_template
+
 from ..nonebot_plugin_email.utils.unread import get_unread_email_count
 
 from ..nonebot_plugin_jrrp.jrrp import get_luck_value
@@ -127,8 +129,6 @@ async def _(matcher: Matcher, user_id: str = get_user_id()) -> None:
         "nickname": escape_html(user.nickname),
         "uid": await lang.text("image.uid", user_id, user_id),
         "hitokoto": await get_hitokoto(user_id),
-        "title": await lang.text("image.title", user_id),
-        "footer": await lang.text("image.footer", user_id),
         "signdays": {
             "text": await lang.text("image.signdays", user_id),
             "value": await lang.text("image.signdays_text", user_id, await get_sign_days(data)),
@@ -170,7 +170,7 @@ async def _(matcher: Matcher, user_id: str = get_user_id()) -> None:
         },
         "avatar": base64.b64encode(user.avatar).decode() if user.avatar is not None else None,
     }
-    image = await template_to_pic(Path(__file__).parent.joinpath("templates").as_posix(), "index.html.jinja", templates)
+    image = await render_template("sign.html.jinja", await lang.text("image.title", user_id), user_id, templates)
     msg = UniMessage().image(raw=image)
     data.last_sign = date.today()
     await session.commit()

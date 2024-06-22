@@ -1,0 +1,31 @@
+{% extends base %}
+{% block body %}
+{% for email in email_list %}
+<span class="h3">{{ email.subject }}</span>
+<br>
+<small>
+    <ul>
+        <li>{{ email.time }}</li>
+        <li>{{ email.from }}</li>
+        <li>{{ email.id }}</li>
+    </ul>
+</small>
+<p>{{ email.content }}</p>
+{% if email.items %}
+<span class="h5">
+    {{ item }}
+    {% if email.is_claimed %}
+    <span class="badge bg-success rounded-pill">{{ item_claimed }}</span>
+    {% endif %}
+</span>
+<ol>
+    {% for item in email.item_list %}
+    <li>{{ item.name }} <span class="badge bg-info rounded-pill">{{ item.count }}</span></li>
+    {% endfor %}
+</ol>
+{% endif %}
+{% if not loop.last %}
+<hr>
+{% endif %}
+{% endfor %}
+{% endblock body %}

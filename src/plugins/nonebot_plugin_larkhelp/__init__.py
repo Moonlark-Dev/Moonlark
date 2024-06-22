@@ -16,6 +16,6 @@ config = get_plugin_config(Config)
 require("nonebot_plugin_larkutils")
 require("nonebot_plugin_alconna")
 require("nonebot_plugin_larklang")
-require("nonebot_plugin_htmlrender")
+require("nonebot_plugin_render")
 
 from . import __main__

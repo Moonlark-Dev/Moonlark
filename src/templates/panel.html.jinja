@@ -1,0 +1,27 @@
+{% extends base %}
+
+{% block body %}
+<h3>{{ nickname }}</h3>
+<p>{{ user_id }}</p>
+<div class="row">
+    {% if avatar %}
+    <div class="col">
+        <img src="data:image;base64,{{ avatar }}" class="rounded-circle" width="100%">
+    </div>
+    {% endif %}
+    <div class="col">
+        {{ level }}<br>
+        <div class="progress" style="height:16px">
+            <div class="progress-bar" style="width:{{ level_progress }}">
+            </div>
+        </div>
+        {{ vimcoin }}<br>
+        {{ fav }}<br>
+        {{ hp }}
+        <div class="progress" style="height:16px">
+            <div class="progress-bar bg-danger" style="width:{{hp_progress}}">
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock body %}

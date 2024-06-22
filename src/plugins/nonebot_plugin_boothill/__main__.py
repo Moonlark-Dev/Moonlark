@@ -6,6 +6,8 @@ from nonebot.params import CommandArg
 from nonebot_plugin_alconna import UniMessage
 from nonebot_plugin_htmlrender import template_to_pic
 
+from ..nonebot_plugin_render.render import render_template
+
 from ..nonebot_plugin_larklang.__main__ import LangHelper
 from ..nonebot_plugin_larkutils.html import escape_html
 from ..nonebot_plugin_larkutils.user import get_user_id
@@ -21,13 +23,12 @@ async def _(user_id: str = get_user_id(), content: Message = CommandArg()) -> No
     await boothill.finish(
         await UniMessage()
         .image(
-            raw=await template_to_pic(
-                Path(__file__).parent.joinpath("templates").as_posix(),
-                "index.html.jinja",
+            raw=await render_template(
+                "boothill.html.jinja",
+                await lang.text("image.title", user_id),
+                user_id,
                 {
-                    "title": await lang.text("image.title", user_id),
-                    "footer": await lang.text("image.footer", user_id),
-                    "content": escape_html(censor(text)).replace("\n", "<br>"),
+                    "content": censor(text),
                 },
             )
         )

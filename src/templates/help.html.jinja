@@ -1,0 +1,19 @@
+{% extends base %}
+
+{% block body %}
+{% for command in commands %}
+<h2>{{ command.name }} <small>{{ command.description }}</small></h2>
+<p>{{ command.details }}</p>
+<p>
+    {{ usages_text }}
+    {% for usage in command.usages %}
+    <span class="badge bg-light rounded-pill text-dark">
+        {{ usage }}
+    </span>
+    {% endfor %}
+</p>
+{% if not loop.last %}
+<hr>
+{% endif %}
+{% endfor %}
+{% endblock body %}
