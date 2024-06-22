@@ -9,3 +9,8 @@ command:
     ===========================
     可用:
     {}
+help:
+  description: 主题
+  details: 设定部分指令的图片渲染主题
+  u1: theme (查看主题列表)
+  u2: theme <name> (更换主题)
