@@ -1,0 +1,3 @@
+unlock_email:
+  subject: 新成就达成
+  content: 您达成了新成就——「{}」
