@@ -3,6 +3,6 @@ commands:
   quick-math:
     description: help.desc
     details: help.details
-    usage:
+    usages:
       - help.u1
       - help.u2
