@@ -5,7 +5,10 @@ from ...nonebot_plugin_achievement import unlock_achievement
 def get_achievement_location(path: str) -> ResourceLocation:
     return ResourceLocation("quick_math", path)
 
-async def update_achievements_status(user_id: str, answered: int, point: int, correct_rate: float, skipped: int) -> None:
+
+async def update_achievements_status(
+    user_id: str, answered: int, point: int, correct_rate: float, skipped: int
+) -> None:
     await unlock_achievement(get_achievement_location("getting_started"), user_id, answered)
     await unlock_achievement(get_achievement_location("100_questions_master"), user_id, answered)
     await unlock_achievement(get_achievement_location("escape_artist"), user_id, skipped)
@@ -18,8 +21,3 @@ async def update_achievements_status(user_id: str, answered: int, point: int, co
         await unlock_achievement(get_achievement_location("computing_genius"), user_id)
     if answered >= 200 and correct_rate >= 1:
         await unlock_achievement(get_achievement_location("master"), user_id)
-
-
-    
-    
-    

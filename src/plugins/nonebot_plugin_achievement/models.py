@@ -10,11 +10,13 @@ class AchievementLangConfig(BaseModel):
     plugin: str
     key: str
 
+
 class AchievementData(BaseModel):
     key: Optional[str] = None
     required_unlock_count: int
     awards: list[DictItemData]
     description: bool = False
+
 
 class AchievementList(BaseModel):
     lang: AchievementLangConfig
@@ -28,5 +30,3 @@ class User(Model):
     achievement_path: Mapped[str]
     unlock_progress: Mapped[int]
     unlocked: Mapped[bool]
-
-

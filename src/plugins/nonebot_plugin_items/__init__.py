@@ -15,5 +15,3 @@ require("nonebot_plugin_item")
 
 
 from . import items
-
-

@@ -18,8 +18,8 @@ GENERATOR_LIST: dict[int, GeneratorData] = {
 
 def get_difficulty_list(max_level: int) -> list[int]:
     difficulties = []
-    for l in range(max_level):
-        level = l + 1
+    for i in range(max_level):
+        level = i + 1
         difficulties.extend([level] * level)
     return difficulties
 

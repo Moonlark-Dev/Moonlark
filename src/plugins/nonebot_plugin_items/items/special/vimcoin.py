@@ -9,12 +9,12 @@ from ...lang import lang
 
 class Vimcoin(Item):
 
-
     def setupLang(self) -> None:
         self.lang = lang
 
     async def getDefaultName(self, stack: ItemStack) -> str:
         return await self.getText("vimcoin.name", stack.user_id)
+
 
 LOCATION = ResourceLocation("special", "vimcoin")
 

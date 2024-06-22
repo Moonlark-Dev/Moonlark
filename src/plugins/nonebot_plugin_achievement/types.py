@@ -7,6 +7,7 @@ class AchievementUnlockData(TypedDict):
     progress: int
     unlocked: bool
 
+
 class UserAchievementData(TypedDict):
     user_id: str
     achievement: AchievementData

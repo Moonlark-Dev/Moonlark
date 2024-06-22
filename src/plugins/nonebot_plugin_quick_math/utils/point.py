@@ -1,6 +1,4 @@
 from ..types import QuestionData
-
-
 from datetime import datetime
 
 
