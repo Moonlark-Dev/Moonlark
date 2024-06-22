@@ -119,3 +119,8 @@ achievements:
   escape_artist: 逃避不可耻
   master: 人形计算机
   calculus: 看！微积分
+help:
+  desc: 快速数学
+  details: 以计算为核心的玩法。找到问题的答案，并在排行榜中获取更高的积分。
+  u1: quick-math (开始挑战)
+  u2: quick-math --rank [{{max|total}}] (积分排行榜)
