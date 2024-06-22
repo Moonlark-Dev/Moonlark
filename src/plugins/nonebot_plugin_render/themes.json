@@ -1,0 +1,4 @@
+{
+    "default": "base/default.html.jinja",
+    "simple": "base/simple.html.jinja"
+}

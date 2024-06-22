@@ -11,5 +11,8 @@ __plugin_meta__ = PluginMetadata(
 
 
 require("nonebot_plugin_htmlrender")
+require("nonebot_plugin_alconna")
+require("nonebot_plugin_larkutils")
 
 from .render import render_template
+from . import __main__

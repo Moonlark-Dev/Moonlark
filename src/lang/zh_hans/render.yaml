@@ -1,2 +1,11 @@
 render:
   footer: 由 Moonlark & {} 生成
+command:
+  success: 完成
+  list: |
+    Moonlark 主题列表
+    ===========================
+    当前: {}
+    ===========================
+    可用:
+    {}
