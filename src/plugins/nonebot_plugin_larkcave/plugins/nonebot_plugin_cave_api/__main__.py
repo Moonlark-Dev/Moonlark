@@ -9,6 +9,7 @@ from sqlalchemy import select
 
 app = get_app()
 
+
 @app.get("/api/cave/random")
 async def _() -> RandomCaveResponse:
     session = get_scoped_session()
@@ -19,10 +20,7 @@ async def _() -> RandomCaveResponse:
         "time": cave.time.timestamp(),
         "author": (await get_user(cave.author)).nickname,
         "images": [
-            {
-                "id": image.id,
-                "name": image.name,
-                "data": base64.b64encode(image.data).decode()
-            } for image in (await session.scalars(select(ImageData).where(ImageData.belong == cave.id))).all()
-        ]
+            {"id": image.id, "name": image.name, "data": base64.b64encode(image.data).decode()}
+            for image in (await session.scalars(select(ImageData).where(ImageData.belong == cave.id))).all()
+        ],
     }

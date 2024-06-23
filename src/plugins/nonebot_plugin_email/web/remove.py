@@ -9,6 +9,7 @@ from ...nonebot_plugin_larkuid.session import get_user_id
 
 app = cast(FastAPI, get_app())
 
+
 @app.delete("/api/emails/{email_id}/remove", status_code=status.HTTP_204_NO_CONTENT)
 async def _(request: Request, email_id: int, user_id: str = get_user_id()) -> None:
     if user_id not in config.superusers:

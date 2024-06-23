@@ -10,20 +10,16 @@ from .config import config
 
 app = get_app()
 
+
 async def get_images() -> AsyncGenerator[ImageData, None]:
     session = get_session()
     image_list = (await session.scalars(select(ImageData.id))).all()
     for image_id in image_list:
-        image = await session.get_one(
-            ImageData,
-            {"id": image_id}
-        )
-        belong = await session.get_one(
-            CaveData,
-            {"id": image.belong}
-        )
+        image = await session.get_one(ImageData, {"id": image_id})
+        belong = await session.get_one(CaveData, {"id": image.belong})
         if belong.public:
             yield image
+
 
 @app.get("/api/cave/images")
 async def _() -> dict[str, str]:
@@ -33,17 +29,12 @@ async def _() -> dict[str, str]:
         response[file_name] = f"{config.cave_api_base_url}/api/get_cave_image/{file_name}"
     return response
 
+
 @app.get("/api/cave/images/{file_name}")
 async def _(file_name: str) -> Response:
     session = get_session()
     try:
-        image = await session.get_one(
-            ImageData,
-            {"id": ".".join(file_name.split(".")[:-1])}
-        )
+        image = await session.get_one(ImageData, {"id": ".".join(file_name.split(".")[:-1])})
     except NoResultFound:
         raise HTTPException(404)
     return Response(image.data)
-
-
-    
