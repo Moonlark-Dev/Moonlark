@@ -1,59 +1,11 @@
 email:
   unknown_author: 匿名
-email_list:
-  title: 邮件列表
-  time: '时间: {}'
-  from: '来自: {}'
-  email_id: '邮件 ID: {}'
-  items: 包含的物品
-  claimed: 已领取
-  footer: 由 Moonlark & nonebot-plugin-email 生成
-__editor__: &editor
-  subject: 主题
-  content: 内容
-  submit: 提交
-edit:
-  title: 编辑邮件内容
-  id: 邮件ID
-  <<: *editor
-create:
-  title: 创建邮件
-  subject_input: 请输入邮件主题
-  content_input: 请输入邮件内容
-  receiver: 收件人
-  receiver_input: 请输入收件人
-  sender: 发件人
-  sender_input: 输入发件人显示名称
-  receiver_help: 使用管道符分割，输入“all”为全局邮件。
-  items: 物品列表
-  items_input: 输入邮件物品列表，留空为无物品。
-  items_help: 一行一个, 每行格式为“物品ID|数量|NBT”，数量默认为“1”，NBT 默认为空字典。
-  <<: *editor
 unread:
   done: 成功将 {} 封邮件标为未读。
 claim:
   done: 成功领取 {} 个邮件中的 {} 个物品！
   markdown: '{}. `{}` x{}'
   no_item: '> 没有可领取的物品。'
-manage:
-  title: 已发送的邮件列表
-  info: 共 {} 封邮件，正在展示第 {} - {} 封（第 {} / {} 页）。
-  thead_id: '#'
-  thead_subject: 主题
-  thead_sender: 发件人
-  thead_receivers: 收件人
-  multi_receiver: 共 {} 位收件人
-  thead_time: 时间
-  thead_item: 物品数量
-  thead_control: 操作
-  action_edit: 编辑
-  action_remove: 删除
-  page_list: 页面：
-remove:
-  title: 删除邮件
-  c: 确定要删除此邮件吗？
-  y_: 确定
-  n_: 取消
 help:
   description: 邮件
   details: 进入 Moonlark 邮箱

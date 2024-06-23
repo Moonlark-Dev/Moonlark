@@ -1,7 +1,10 @@
 from datetime import datetime
-from typing import Optional
+from typing import Literal, Optional
 from nonebot_plugin_orm import Model
+from pydantic import BaseModel
 from sqlalchemy.orm import mapped_column, Mapped
+
+from ..nonebot_plugin_item.types import DictItemData
 
 
 class Email(Model):
@@ -26,3 +29,16 @@ class EmailUser(Model):
     is_read: Mapped[bool] = mapped_column(default=False)
     user_id: Mapped[str]
     email_id: Mapped[int]
+
+
+class EmailDataArgs(BaseModel):
+    subject: str
+    content: str
+    receivers: list[str] | Literal["*"]
+    sender: Optional[str] = None
+    items: list[DictItemData] = []
+
+
+class EmailEditArgs(BaseModel):
+    subject: Optional[str] = None
+    content: Optional[str] = None

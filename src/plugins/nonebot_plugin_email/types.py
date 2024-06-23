@@ -2,6 +2,8 @@ from datetime import datetime
 from typing import Any, TypedDict
 
 
+
+
 class EmailItemData(TypedDict):
     item_id: str
     count: int
@@ -17,3 +19,5 @@ class EmailData(TypedDict):
     items: list[EmailItemData]
     is_read: bool
     is_claimed: bool
+
+

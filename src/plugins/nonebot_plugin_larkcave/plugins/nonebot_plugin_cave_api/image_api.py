@@ -25,7 +25,7 @@ async def get_images() -> AsyncGenerator[ImageData, None]:
         if belong.public:
             yield image
 
-@app.get("/api/get_cave_images")
+@app.get("/api/cave/images")
 async def _() -> dict[str, str]:
     response = {}
     async for image in get_images():
@@ -33,7 +33,7 @@ async def _() -> dict[str, str]:
         response[file_name] = f"{config.cave_api_base_url}/api/get_cave_image/{file_name}"
     return response
 
-@app.get("/api/get_cave_image/{file_name}")
+@app.get("/api/cave/images/{file_name}")
 async def _(file_name: str) -> Response:
     session = get_session()
     try:

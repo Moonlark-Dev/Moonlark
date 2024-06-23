@@ -5,7 +5,7 @@ from nonebot_plugin_orm import AsyncSession, async_scoped_session, get_session
 from sqlalchemy.exc import NoResultFound
 
 
-async def get_user(user_id: str, s: Optional[async_scoped_session | AsyncSession] = None) -> UserData:
+async def get_user(user_id: str, s: Optional[async_scoped_session | AsyncSession] = None, create: bool = True) -> UserData:
     session = s or get_session()
     try:
         return await session.get_one(
@@ -13,6 +13,8 @@ async def get_user(user_id: str, s: Optional[async_scoped_session | AsyncSession
             {'user_id': user_id}
         )
     except NoResultFound:
+        if not create:
+            raise
         data = UserData(
             user_id=user_id,
             nickname="",

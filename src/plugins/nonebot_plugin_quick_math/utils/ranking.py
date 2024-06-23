@@ -1,6 +1,5 @@
-from ...nonebot_plugin_larkuser.utils.user import get_user
-from ...nonebot_plugin_ranking.types import WebUserData
 from ...nonebot_plugin_ranking.web import WebRanking
+from ...nonebot_plugin_ranking.types import RankingData
 from ..models import QuickMathUser
 from ..__main__ import lang
 
@@ -21,13 +20,12 @@ class RecordRanking(WebRanking):
     NAME = "rank.title-1"
     LANG = lang
 
-    async def get_sorted_data(self) -> list[WebUserData]:
+    async def get_sorted_data(self) -> list[RankingData]:
         return [
             {
                 "user_id": user.user_id,
                 "data": user.max_point,
                 "info": None,
-                "nickname": (await get_user(user.user_id)).nickname,
             }
             async for user in get_user_list()
         ]
@@ -38,13 +36,12 @@ class TotalRanking(WebRanking):
     NAME = "rank.title-2"
     LANG = lang
 
-    async def get_sorted_data(self) -> list[WebUserData]:
+    async def get_sorted_data(self) -> list[RankingData]:
         return [
             {
                 "user_id": user.user_id,
                 "data": user.total_point,
                 "info": None,
-                "nickname": (await get_user(user.user_id)).nickname,
             }
             async for user in get_user_list(QuickMathUser.total_point)
         ]

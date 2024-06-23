@@ -9,7 +9,7 @@ from sqlalchemy import select
 
 app = get_app()
 
-@app.get("/api/get_cave")
+@app.get("/api/cave/random")
 async def _() -> RandomCaveResponse:
     session = get_scoped_session()
     cave = await get_cave(session)

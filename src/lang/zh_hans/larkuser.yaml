@@ -12,21 +12,3 @@ help:
   usage: panel (查看面板)
 matcher:
   not_registered: 您无法使用这个指令，请先使用 {__prefix__}register 注册！
-web:
-  title: 用户信息
-  uid: 'UID: {}'
-  level: '等级: {} ({} / {})'
-  vimcoin: 'VimCoin: {}'
-  hp: '生命值: {} / 100'
-  fav: '好感度: {}'
-  total_exp: '总经验: {}'
-  time: 时间
-  earth_time: '地球时间: {}'
-  gsc_time: '银河时间: {}-{}-{}, {}:{}:{}'
-  i18n: 本地化
-  current_lang: '当前语言: '
-  registry: 登记信息 
-  activate_time: '激活时间: {}'
-  registry_time: '注册时间: {}'
-
-
