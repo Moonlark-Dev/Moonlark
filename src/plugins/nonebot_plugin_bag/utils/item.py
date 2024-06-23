@@ -28,10 +28,7 @@ async def get_bag_item(user_id: str, index: int, ignore_lock: bool = False) -> B
         if result is None:
             raise IndexError(f"Item {user_id}->{index} not found.")
         item = await get_item(
-            get_location_by_id(result.item_id),
-            user_id,
-            result.count,
-            json.loads(base64.b64decode(result.data))
+            get_location_by_id(result.item_id), user_id, result.count, json.loads(base64.b64decode(result.data))
         )
         bag_item = BagItem(item, result.bag_index)
         if not ignore_lock:

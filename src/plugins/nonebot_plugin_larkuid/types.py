@@ -11,11 +11,13 @@ class VerifyResponse(TypedDict):
     user_id: str
     nickname: str
 
+
 class BasicUserResponse(TypedDict):
     user_id: str
     nickname: str
     level: int
     avatar: Optional[str]
+
 
 class DetailedUserResponse(BasicUserResponse):
     experience: int
@@ -28,13 +30,16 @@ class DetailedUserResponse(BasicUserResponse):
     health: float
     favorability: float
 
+
 class EarchTimeData(TypedDict):
     timestamp: float
     strftime: str
 
+
 class GalacticTimeData(TypedDict):
     strftime: str
     array: list[int]
+
 
 class TimeResponse(TypedDict):
     earth: EarchTimeData

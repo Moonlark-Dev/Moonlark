@@ -14,18 +14,19 @@ lang = LangHelper()
 
 @__main__.setu.assign("rank")
 async def _(session: async_scoped_session, user_id: str = get_user_id()) -> None:
-    sorted_data = (await session.execute(
-        select(models.UserData).order_by(
-            models.UserData.count.desc()))).scalars().all()
-    await __main__.setu.finish(UniMessage().image(raw=await generate_image(
-        [{
-            "user_id": data.user_id,
-            "info": None,
-            "data": data.count
-        } for data in sorted_data],
-        user_id,
-        await lang.text("rank.title", user_id)
-    ), name="image.png"))
+    sorted_data = (
+        (await session.execute(select(models.UserData).order_by(models.UserData.count.desc()))).scalars().all()
+    )
+    await __main__.setu.finish(
+        UniMessage().image(
+            raw=await generate_image(
+                [{"user_id": data.user_id, "info": None, "data": data.count} for data in sorted_data],
+                user_id,
+                await lang.text("rank.title", user_id),
+            ),
+            name="image.png",
+        )
+    )
 
 
 class SetuRanking(WebRanking):
@@ -37,11 +38,7 @@ class SetuRanking(WebRanking):
         session = get_scoped_session()
         result = (await session.execute(select(models.UserData).order_by(models.UserData.count.desc()))).scalars().all()
         sorted_data = sorted(result, key=lambda x: x.count, reverse=True)
-        return [{
-            "user_id": data.user_id,
-            "info": None,
-            "data": data.count
-        } for data in sorted_data]
+        return [{"user_id": data.user_id, "info": None, "data": data.count} for data in sorted_data]
 
 
 web_ranking = SetuRanking()

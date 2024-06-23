@@ -4,6 +4,7 @@ from pydantic import BaseModel
 
 class Config(BaseModel):
     """Plugin Config Here"""
+
     session_retention_days: int = 3
     unused_session_remove_delay: int = 300
 

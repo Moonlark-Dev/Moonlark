@@ -9,11 +9,7 @@ from ..__main__ import email
 
 
 @email.assign("unread.email_id")
-async def _(
-    session: async_scoped_session,
-    email_id: int | Literal["all"],
-    user_id: str = get_user_id()
-) -> None:
+async def _(session: async_scoped_session, email_id: int | Literal["all"], user_id: str = get_user_id()) -> None:
     count = 0
     for email in await session.scalars(select(EmailUser).where(EmailUser.user_id == user_id)):
         if email.email_id == email_id or email_id == "all":

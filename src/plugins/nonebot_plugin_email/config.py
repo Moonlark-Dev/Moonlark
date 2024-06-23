@@ -4,6 +4,7 @@ from nonebot import get_plugin_config
 
 class Config(BaseModel):
     """Plugin Config Here"""
+
     superusers: list[str] = []
     email_expired_days: int = 30
     email_manage_page_size: int = 30

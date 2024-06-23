@@ -19,7 +19,9 @@ class WebRanking(ABC):
     def __init__(self) -> None:
         get_app().get(f"/rankings/{self.ID}")(self.handle)
 
-    async def handle(self, request: Request, offset: int = 0, limit: int = 20, user_id: str = get_user_id("-1")) -> RankingResponse:
+    async def handle(
+        self, request: Request, offset: int = 0, limit: int = 20, user_id: str = get_user_id("-1")
+    ) -> RankingResponse:
         data = await self.get_sorted_data()
         index = offset
         return {
@@ -32,11 +34,11 @@ class WebRanking(ABC):
                     "data": user["data"],
                     "info": user["info"],
                     "index": offset + (index := index + 1),
-                    "nickname": (await get_user(user["user_id"])).nickname
-                } for user in data[offset:offset + limit]
+                    "nickname": (await get_user(user["user_id"])).nickname,
+                }
+                for user in data[offset : offset + limit]
             ],
         }
-
 
     @abstractmethod
     async def get_sorted_data(self) -> list[RankingData]: ...

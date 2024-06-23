@@ -18,6 +18,7 @@ async def remove_unused_session(session_id: str) -> None:
             await session.delete(data)
             await session.commit()
 
+
 @get_app().post("/api/login")
 async def _(request: Request, data: LoginRequest) -> LoginResponse:
     session_id, activate_code = await create_session(data.user_id, get_identifier(request), data.retention_days)
@@ -25,5 +26,5 @@ async def _(request: Request, data: LoginRequest) -> LoginResponse:
     return {
         "session_id": session_id,
         "activate_code": activate_code,
-        "effective_time": config.unused_session_remove_delay
+        "effective_time": config.unused_session_remove_delay,
     }

@@ -76,13 +76,7 @@ async def _(user_id: str = get_user_id()) -> None:
     diff, record = await update_user_data(user_id, point)
     if answered == 0:
         await quick_math.finish()
-    await update_achievements_status(
-        user_id,
-        answered,
-        point,
-        answered / total_answered,
-        skipped_question
-    )
+    await update_achievements_status(user_id, answered, point, answered / total_answered, skipped_question)
     await quick_math.finish(
         UniMessage().image(
             raw=await md_to_pic(

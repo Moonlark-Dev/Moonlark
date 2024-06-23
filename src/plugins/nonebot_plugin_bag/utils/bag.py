@@ -40,23 +40,26 @@ async def append_item(user_id: str, item: ItemStack) -> None:
     if len(await get_bag_items(user_id)) >= config.bag_max_size:
         return await put_overflow_item(item)
     async with get_session() as session:
-        session.add(Bag(
-            user_id=user_id,
-            item_id=str(item.item.getLocation()),
-            count=item.count,
-            bag_index=await get_free_index(user_id),
-            data=base64.b64encode(json.dumps(item.data).encode("utf-8")),
-            locked=False
-        ))
+        session.add(
+            Bag(
+                user_id=user_id,
+                item_id=str(item.item.getLocation()),
+                count=item.count,
+                bag_index=await get_free_index(user_id),
+                data=base64.b64encode(json.dumps(item.data).encode("utf-8")),
+                locked=False,
+            )
+        )
         await session.commit()
 
 
 async def give_item(user_id: str, item: ItemStack) -> None:
     count = item.count
     for bag_item in await get_bag_items(user_id):
-        if bag_item.stack.compare(item) and bag_item.stack.count < bag_item.stack.item.getProperties()['max_stack']:
-            bag_item.stack.count += (reduced := min(
-                bag_item.stack.item.getProperties()['max_stack'] - bag_item.stack.count, item.count))
+        if bag_item.stack.compare(item) and bag_item.stack.count < bag_item.stack.item.getProperties()["max_stack"]:
+            bag_item.stack.count += (
+                reduced := min(bag_item.stack.item.getProperties()["max_stack"] - bag_item.stack.count, item.count)
+            )
             count -= reduced
         if count == 0:
             break

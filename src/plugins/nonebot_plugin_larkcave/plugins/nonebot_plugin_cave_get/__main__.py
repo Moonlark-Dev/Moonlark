@@ -13,16 +13,10 @@ from ..nonebot_plugin_cave_comment.get import get_comments
 
 @cave.assign("get.cave_id")
 async def _(
-    session: async_scoped_session,
-    cave_id: int,
-    user_id: str = get_user_id(),
-    is_superuser: bool = is_superuser()
+    session: async_scoped_session, cave_id: int, user_id: str = get_user_id(), is_superuser: bool = is_superuser()
 ) -> None:
     try:
-        cave_data = await session.get_one(
-            CaveData,
-            {"id": cave_id}
-        )
+        cave_data = await session.get_one(CaveData, {"id": cave_id})
         content = await decode_cave(cave_data, session, user_id)
     except NoResultFound:
         await lang.finish("get.not_found", user_id, cave_id)
@@ -37,9 +31,6 @@ async def _(
         add_cave_message(cave_id, str((await content.send()).msg_ids[0]["message_id"]))
     except Exception:
         logger.error(f"写入回声洞消息队列时发生错误: {traceback.format_exc()}")
-    if (msg := await get_comments(cave_id, session, user_id)):
+    if msg := await get_comments(cave_id, session, user_id):
         await msg.send()
     await cave.finish()
-
-
-

@@ -15,9 +15,7 @@ async def claim_email(email_id: int, user_id: str) -> list[ItemStack]:
     async with get_session() as session:
         for item in await session.scalars(select(EmailItem).where(EmailItem.belong == email_id)):
             item_list.append(
-                await get_item(
-                    get_location_by_id(item.item_id), user_id, item.count, json.loads(item.data)
-                )
+                await get_item(get_location_by_id(item.item_id), user_id, item.count, json.loads(item.data))
             )
             await give_item(user_id, item_list[-1])
     await mark_email_read(email_id, user_id, True)

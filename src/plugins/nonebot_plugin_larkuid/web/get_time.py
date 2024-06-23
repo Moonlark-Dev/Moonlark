@@ -16,7 +16,6 @@ from ...nonebot_plugin_larkuser.models import UserData
 app = cast(FastAPI, get_app())
 
 
-
 @app.get("/api/time")
 async def _(request: Request) -> TimeResponse:
     now = datetime.now()
@@ -26,8 +25,5 @@ async def _(request: Request) -> TimeResponse:
             "strftime": now.strftime("%Y-%m-%d %H:%M:%S"),
             "timestamp": now.timestamp(),
         },
-        "galactic": {
-            "array": galactic_time,
-            "strftime": "{}-{}-{}, {}:{}:{}".format(*galactic_time)
-        }
+        "galactic": {"array": galactic_time, "strftime": "{}-{}-{}, {}:{}:{}".format(*galactic_time)},
     }

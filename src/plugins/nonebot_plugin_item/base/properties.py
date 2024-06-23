@@ -8,9 +8,5 @@ class ItemProperties(TypedDict):
 
 
 def default() -> ItemProperties:
-    properties: ItemProperties = {
-        'useable': False,
-        'star': 2,
-        'max_stack': 64
-    }
+    properties: ItemProperties = {"useable": False, "star": 2, "max_stack": 64}
     return properties
