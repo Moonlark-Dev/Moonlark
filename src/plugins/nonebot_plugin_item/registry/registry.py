@@ -41,9 +41,7 @@ class Registry(typing.Generic[T1]):
     def getTags(self):
         return self._tagManager
 
-    def registry(
-        self, location: ResourceLocation, value: T1
-    ) -> tuple[ResourceLocation, T1]:
+    def registry(self, location: ResourceLocation, value: T1) -> tuple[ResourceLocation, T1]:
         if location in self._map.keys() or value in self._map.values():
             raise Exception("Duplicate entry")
         self._map[location] = value

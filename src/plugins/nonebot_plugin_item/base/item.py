@@ -22,20 +22,18 @@ class Item(ABC):
         return self.properties
 
     @abstractmethod
-    def setupLang(self) -> None:
-        ...
+    def setupLang(self) -> None: ...
 
     def getLocation(self):
         return ITEMS.getKey(self)
 
     async def getName(self, stack: "ItemStack") -> str:
-        if ("custom_name" in stack.data):
+        if "custom_name" in stack.data:
             return stack.data["custom_name"]
         return await self.getDefaultName(stack)
 
     @abstractmethod
-    async def getDefaultName(self, stack: "ItemStack") -> str:
-        ...
+    async def getDefaultName(self, stack: "ItemStack") -> str: ...
 
     async def getText(self, key: str, user_id: str, *args, **kwargs) -> str:
         """获取 LarkLang I18N 文本
@@ -50,7 +48,7 @@ class Item(ABC):
         return await self.lang.text(key, user_id, *args, **kwargs)
 
     def isUseable(self, stack: "ItemStack") -> bool:
-        if ("useable" in stack.data):
+        if "useable" in stack.data:
             return stack.data["useable"]
         else:
             return self.properties["useable"]

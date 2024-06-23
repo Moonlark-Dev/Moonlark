@@ -19,4 +19,3 @@ require("nonebot_plugin_larksetu")
 config = get_plugin_config(Config)
 
 from . import __main__
-

@@ -57,17 +57,17 @@ async def _get_user_id(request: Request) -> str:
     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
 
 
-    
-
 def get_user_id(default: Optional[str] = None) -> str:
     if default is None:
         return Depends(_get_user_id)
     else:
+
         async def _(request: Request) -> str:
             try:
                 return await _get_user_id(request)
             except HTTPException:
                 return default
+
         return Depends(_)
 
 
@@ -76,6 +76,7 @@ async def _get_existing_user(user_id: str = get_user_id()) -> UserData:
         return await get_user(user_id, create=False)
     except NoResultFound:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
+
 
 async def _get_user_data(user_id: str = get_user_id()) -> UserData:
     return await get_user(user_id)

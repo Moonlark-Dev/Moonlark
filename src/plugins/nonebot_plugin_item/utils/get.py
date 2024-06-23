@@ -4,10 +4,7 @@ from .. import registry
 
 
 async def get_item(
-    location: registry.ResourceLocation,
-    user_id: str,
-    count: int = 1,
-    data: dict[str, Any] = {}
+    location: registry.ResourceLocation, user_id: str, count: int = 1, data: dict[str, Any] = {}
 ) -> ItemStack:
     """通过 location 获取物品
 

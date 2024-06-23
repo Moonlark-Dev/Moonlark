@@ -12,8 +12,8 @@ from ..models import EmailUser
 async def get_unread_email_id(user_id: str) -> ScalarResult[int]:
     session = get_scoped_session()
     return await session.scalars(
-        select(EmailUser.email_id)
-        .where(EmailUser.user_id == user_id, EmailUser.is_read.is_(False)))
+        select(EmailUser.email_id).where(EmailUser.user_id == user_id, EmailUser.is_read.is_(False))
+    )
 
 
 async def get_unread_email(user_id: str) -> AsyncGenerator[EmailData, None]:

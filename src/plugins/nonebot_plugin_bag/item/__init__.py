@@ -18,10 +18,7 @@ class BagItem:
         self.is_locked = False
 
     async def get_item(self, session: AsyncSession) -> Bag:
-        result = await session.scalar(select(Bag).where(
-            Bag.user_id == self.stack.user_id,
-            Bag.bag_index == self.index
-        ))
+        result = await session.scalar(select(Bag).where(Bag.user_id == self.stack.user_id, Bag.bag_index == self.index))
         if result is None:
             raise InvalidBagIndex()
         return result

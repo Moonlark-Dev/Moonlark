@@ -6,6 +6,7 @@
 [![CodeFactor](https://www.codefactor.io/repository/github/moonlark-dev/moonlark/badge)](https://www.codefactor.io/repository/github/moonlark-dev/moonlark)
 [![GitHub License](https://img.shields.io/github/license/Moonlark-Dev/Moonlark)](LICENSE)
 ![GitHub repo size](https://img.shields.io/github/repo-size/Moonlark-Dev/Moonlark)
+[![pre-commit.ci status](https://results.pre-commit.ci/badge/github/Moonlark-Dev/Moonlark/main.svg)](https://results.pre-commit.ci/latest/github/Moonlark-Dev/Moonlark/main)
 
 [MoonlarkWiKi](https://moonlark-wiki.itcdt.top/) · 
 [Crowdin](https://crowdin.com/project/moonlark) · 

@@ -109,9 +109,7 @@ async def generate_vote_image(user_id: str, session: async_scoped_session, vote_
             "title": vote_data.title,
             "content": vote_data.content,
             "choices": await get_choice(total_count, vote_data, session),
-            "sponsor": await lang.text(
-                "vote_image.sponsor", user_id, (await get_user(vote_data.sponsor)).nickname
-            ),
+            "sponsor": await lang.text("vote_image.sponsor", user_id, (await get_user(vote_data.sponsor)).nickname),
             "end_time": await lang.text(
                 "vote_image.end_time", user_id, vote_data.end_time.strftime("%Y-%m-%d %H:%M:%S")
             ),

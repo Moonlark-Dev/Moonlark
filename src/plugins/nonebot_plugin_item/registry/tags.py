@@ -1,5 +1,4 @@
 from enum import Enum
 
 
-class ItemTags(Enum):
-    ...
+class ItemTags(Enum): ...

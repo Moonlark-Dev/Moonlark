@@ -18,11 +18,14 @@ async def get_email_data(email_id: int, user_id: str = "-1") -> EmailData:
         "content": data.content,
         "subject": data.subject,
         "time": data.time,
-        "items": [{
-            "item_id": item.item_id,
-            "count": item.count,
-            "data": json.loads(item.data),
-        } for item in items],
+        "items": [
+            {
+                "item_id": item.item_id,
+                "count": item.count,
+                "data": json.loads(item.data),
+            }
+            for item in items
+        ],
         "is_claimed": user.is_claimed if user else False,
         "is_read": user.is_read if user else False,
     }

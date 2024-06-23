@@ -40,7 +40,8 @@ async def _(email_id: int | Literal["all"], user_id: str = get_user_id()) -> Non
                         await lang.text("claim.markdown", user_id, index := index + 1, await item.getName(), item.count)
                         for item in claimed_items
                     ]
-                ) or await lang.text("claim.no_item", user_id)
+                )
+                or await lang.text("claim.no_item", user_id)
             )
         )
     )

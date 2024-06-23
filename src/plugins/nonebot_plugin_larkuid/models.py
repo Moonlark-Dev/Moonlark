@@ -14,6 +14,7 @@ class SessionData(Model):
     activate_code: Mapped[Optional[str]] = mapped_column(nullable=True)
     expiration_time: Mapped[Optional[datetime]] = mapped_column(nullable=True)
 
+
 class LoginRequest(BaseModel):
     user_id: str
     retention_days: int = config.session_retention_days

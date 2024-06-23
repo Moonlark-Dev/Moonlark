@@ -11,7 +11,7 @@ class Bag(Model):
     item_id: Mapped[str]
     count: Mapped[int]
     locked: Mapped[bool]
-    data: Mapped[bytes]     # b64 json
+    data: Mapped[bytes]  # b64 json
 
 
 class BagOverflow(Model):
@@ -19,5 +19,5 @@ class BagOverflow(Model):
     user_id: Mapped[str]
     item_id: Mapped[str]
     count: Mapped[int]
-    data: Mapped[bytes]     # b64 json
+    data: Mapped[bytes]  # b64 json
     time: Mapped[datetime]

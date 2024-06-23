@@ -1,0 +1,16 @@
+ci:
+  autofix_commit_msg: "格式化代码"
+  autofix_prs: true
+  autoupdate_branch: main
+
+repos:
+  - repo: https://github.com/pycqa/flake8
+    rev: 7.0.0
+    hooks:
+      - id: flake8
+        args: [--select=E9]
+  - repo: https://github.com/psf/black
+    rev: 24.3.0
+    hooks:
+      - id: black
+        args: []

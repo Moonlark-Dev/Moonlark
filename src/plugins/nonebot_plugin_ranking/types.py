@@ -14,9 +14,9 @@ class UserDataWithIndex(TypedDict):
     index: int
     info: str | None
 
+
 class RankingResponse(TypedDict):
     time: float
     total: int
     me: Optional[UserDataWithIndex]
     users: list[UserDataWithIndex]
-

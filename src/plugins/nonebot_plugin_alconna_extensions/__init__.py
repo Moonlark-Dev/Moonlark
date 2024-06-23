@@ -20,7 +20,7 @@ from nonebot_plugin_alconna.extension import load_from_path
 
 EXTENSIONS = [
     "@reply:ReplyMergeExtension",
-    "src.plugins.nonebot_plugin_alconna_extensions.global_extensions:UnmatchedExtension"
+    "src.plugins.nonebot_plugin_alconna_extensions.global_extensions:UnmatchedExtension",
 ]
 for extension in EXTENSIONS:
     load_from_path(extension)

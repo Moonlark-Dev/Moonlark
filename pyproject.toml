@@ -58,6 +58,7 @@ nonebot-plugin-waiter = "^0.6.2"
 nb-cli = "^1.4.0"
 ipykernel = "^6.29.4"
 ruff = "^0.4.7"
+pre-commit = "^3.7.1"
 
 [build-system]
 requires = ["poetry-core"]
