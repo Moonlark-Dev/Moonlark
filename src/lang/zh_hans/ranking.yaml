@@ -1,10 +1,3 @@
 image:
   footer: 由 nonebot-plugin-ranking & Moonlark 生成
   info: 'UID: {}'
-web:
-  index: 已拉取 {} 条数据，正在展示所有排名。
-  ranking: 排名
-  nickname: 昵称
-  uid: UID
-  note: 备注
-  data: 数值
