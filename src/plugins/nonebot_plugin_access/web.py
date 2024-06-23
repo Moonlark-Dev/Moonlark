@@ -1,14 +1,9 @@
-from pathlib import Path
-
 from fastapi import Request
-from fastapi.responses import PlainTextResponse
 from nonebot import get_app
-from nonebot_plugin_htmlrender import template_to_html
-from nonebot_plugin_orm import get_scoped_session, get_session
+from nonebot_plugin_orm import get_session
 from sqlalchemy import select
 
 from ..nonebot_plugin_larkuid.session import get_user_id
-from .lang import lang
 from .models import SubjectData
 
 
