@@ -1,10 +1,6 @@
 from datetime import datetime
-from pathlib import Path
 from typing import AsyncGenerator, Optional
-
-from nonebot.typing import T_State
 from nonebot_plugin_alconna import Match
-from nonebot_plugin_htmlrender import template_to_pic
 from nonebot_plugin_orm import async_scoped_session
 from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
@@ -12,7 +8,7 @@ from sqlalchemy.exc import NoResultFound
 from ..nonebot_plugin_render.render import render_template
 
 from ..nonebot_plugin_larkuser.utils.user import get_user
-from ..nonebot_plugin_larkutils import escape_html, get_group_id, get_id
+from ..nonebot_plugin_larkutils import get_group_id, get_id
 from .lang import lang
 from .model import Choice, Vote, VoteLog
 from .typing import ChoiceData
@@ -66,7 +62,7 @@ async def get_choice(total_count: int, vote_data: Vote, session: async_scoped_se
     choice_list: list[ChoiceData] = [
         {
             "id": choice.id,
-            "text": escape_html(choice.text),
+            "text": choice.text,
             "count": (
                 count := len(
                     (
@@ -110,11 +106,11 @@ async def generate_vote_image(user_id: str, session: async_scoped_session, vote_
             },
             "id": await lang.text("vote_image.id", user_id, vote_data.id),
             "choice_text": await lang.text("vote_image.choice_text", user_id),
-            "title": escape_html(vote_data.title),
-            "content": escape_html(vote_data.content),
+            "title": vote_data.title,
+            "content": vote_data.content,
             "choices": await get_choice(total_count, vote_data, session),
             "sponsor": await lang.text(
-                "vote_image.sponsor", user_id, escape_html((await get_user(vote_data.sponsor)).nickname)
+                "vote_image.sponsor", user_id, (await get_user(vote_data.sponsor)).nickname
             ),
             "end_time": await lang.text(
                 "vote_image.end_time", user_id, vote_data.end_time.strftime("%Y-%m-%d %H:%M:%S")
@@ -144,7 +140,7 @@ async def generate_vote_list(
             "vote_list": [
                 {
                     "id": vote.id,
-                    "title": escape_html(vote.title),
+                    "title": vote.title,
                     "status": await lang.text("status.open" if is_open else "status.closed", user_id),
                 }
                 async for vote, is_open in get_vote_list(show_all, group_id, session)

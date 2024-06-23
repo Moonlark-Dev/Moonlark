@@ -24,7 +24,6 @@ reviewer.api_key = config.baidu_api_key
 reviewer.secret_key = config.baidu_secret_key
 
 from .group import get_group_id
-from .html import escape_html
 from .reviewer import review_image, review_text
 from .sql import get_id
 from .superuser import is_superuser

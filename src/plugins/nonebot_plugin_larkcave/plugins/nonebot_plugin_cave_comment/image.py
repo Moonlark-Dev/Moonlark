@@ -1,6 +1,3 @@
-from nonebot_plugin_htmlrender import template_to_pic
-from pathlib import Path
-
 from ....nonebot_plugin_render.render import render_template
 from .models import CommentData
 from ...lang import lang

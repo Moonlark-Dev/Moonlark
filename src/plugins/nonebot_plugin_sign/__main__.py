@@ -2,14 +2,11 @@ import base64
 import math
 import random
 from datetime import date
-from os import getcwd
-from pathlib import Path
 
 import httpx
 from nonebot import on_fullmatch
 from nonebot.matcher import Matcher
 from nonebot_plugin_alconna import Alconna, UniMessage, on_alconna
-from nonebot_plugin_htmlrender import template_to_pic
 from nonebot_plugin_orm import AsyncSession, get_session
 from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
@@ -24,7 +21,6 @@ from ..nonebot_plugin_larkuser.models import UserData
 from ..nonebot_plugin_larkuser.utils.level import get_level_by_experience
 from ..nonebot_plugin_larkuser.utils.user import get_user
 from ..nonebot_plugin_larkutils import get_user_id
-from ..nonebot_plugin_larkutils.html import escape_html
 from .config import config
 from .lang import lang
 from .models import SignData
@@ -126,7 +122,7 @@ async def _(matcher: Matcher, user_id: str = get_user_id()) -> None:
     if (date.today() - data.last_sign).days < 1:
         await lang.finish("sign.signed", user_id)
     templates = {
-        "nickname": escape_html(user.nickname),
+        "nickname": user.nickname,
         "uid": await lang.text("image.uid", user_id, user_id),
         "hitokoto": await get_hitokoto(user_id),
         "signdays": {
