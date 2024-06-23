@@ -1,47 +1,42 @@
 from abc import ABC, abstractmethod
-from pathlib import Path
-from typing import Optional
-
+import time
 from fastapi import Request
-from fastapi.responses import PlainTextResponse
 from nonebot import get_app
-from nonebot_plugin_htmlrender import template_to_html
 
+from ..nonebot_plugin_larkuser.utils.user import get_user
+from .generator import find_user
 from ..nonebot_plugin_larklang.__main__ import LangHelper
 from ..nonebot_plugin_larkuid.session import get_user_id
 from .lang import lang
-from .types import WebUserData
+from .types import RankingData, RankingResponse
 
 
 class WebRanking(ABC):
     ID: str = ""
-    NOTE: bool = False
     NAME: str = ""
     LANG: LangHelper = lang
 
     def __init__(self) -> None:
-        get_app().get(f"/ranking/{self.ID}")(self.handle)
+        get_app().get(f"/rankings/{self.ID}")(self.handle)
 
-    async def handle(self, request: Request, user_id: Optional[str] = get_user_id()):
-        user_id = user_id or "-1"
+    async def handle(self, request: Request, offset: int = 0, limit: int = 20, user_id: str = get_user_id("-1")) -> RankingResponse:
         data = await self.get_sorted_data()
-        return PlainTextResponse(
-            await template_to_html(
-                Path(__file__).parent.joinpath("templates").as_posix(),
-                "web.html.jinja",
-                user_id=user_id,
-                index=await lang.text("web.index", user_id, len(data)),
-                ranking=await lang.text("web.ranking", user_id),
-                nickname=await lang.text("web.nickname", user_id),
-                uid=await lang.text("web.uid", user_id),
-                note=await lang.text("web.note", user_id),
-                data=await lang.text("web.data", user_id),
-                title=await self.LANG.text(self.NAME, user_id),
-                has_note=self.NOTE,
-                users=data,
-            ),
-            media_type="text/html",
-        )
+        index = offset
+        return {
+            "me": await find_user(data, user_id),
+            "time": time.time(),
+            "total": len(data),
+            "users": [
+                {
+                    "user_id": user["user_id"],
+                    "data": user["data"],
+                    "info": user["info"],
+                    "index": offset + (index := index + 1),
+                    "nickname": (await get_user(user["user_id"])).nickname
+                } for user in data[offset:offset + limit]
+            ],
+        }
+
 
     @abstractmethod
-    async def get_sorted_data(self) -> list[WebUserData]: ...
+    async def get_sorted_data(self) -> list[RankingData]: ...

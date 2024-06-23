@@ -11,8 +11,7 @@ from ..nonebot_plugin_larkuser.models import UserData
 from ..nonebot_plugin_ranking import (
     generate_image,
     RankingData,
-    WebRanking,
-    WebUserData
+    WebRanking
 )
 
 
@@ -50,11 +49,12 @@ async def _(
 
 class JrrpRank(WebRanking):
     ID = "jrrp"
+    NAME = "rank.title"
+    LANG = lang
 
-    async def get_sorted_data(self) -> list[WebUserData]:
+    async def get_sorted_data(self) -> list[RankingData]:
         return sorted([{
             "user_id": data["user_id"],
             "info": None,
             "data": data["data"],
-            "nickname": (await get_user(data["user_id"])).nickname
         } async for data in get_user_list()], key=lambda x: x["data"], reverse=True)

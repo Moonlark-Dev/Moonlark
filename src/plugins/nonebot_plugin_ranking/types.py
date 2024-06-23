@@ -1,4 +1,4 @@
-from typing import TypedDict
+from typing import Optional, TypedDict
 
 
 class RankingData(TypedDict):
@@ -8,20 +8,15 @@ class RankingData(TypedDict):
 
 
 class UserDataWithIndex(TypedDict):
+    user_id: str
     nickname: str
     data: int | float
     index: int
     info: str | None
 
+class RankingResponse(TypedDict):
+    time: float
+    total: int
+    me: Optional[UserDataWithIndex]
+    users: list[UserDataWithIndex]
 
-class UserData(TypedDict):
-    nickname: str
-    data: int | float
-    info: str | None
-
-
-class WebUserData(TypedDict):
-    nickname: str
-    data: int | float
-    info: str | None
-    user_id: str

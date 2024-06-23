@@ -19,6 +19,7 @@ async def find_user(ranked_data: list[RankingData], user_id: str) -> Optional[Us
         if data["user_id"] == user_id:
             return {
                 "nickname": escape_html((await get_user(user_id)).nickname),
+                "user_id": user_id,
                 "data": data["data"],
                 "index": index,
                 "info": escape_html(data["info"] or await lang.text("image.info", user_id, data["user_id"])),

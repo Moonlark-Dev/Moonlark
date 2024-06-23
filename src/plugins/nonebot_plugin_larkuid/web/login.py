@@ -1,35 +1,29 @@
-from pathlib import Path
-from typing import Optional
+import asyncio
+from fastapi import Request
+from nonebot import get_app, logger
+from nonebot_plugin_orm import get_session
 
-from fastapi import Depends, Request
-from fastapi.responses import FileResponse, PlainTextResponse
-from nonebot import get_app
-from nonebot_plugin_htmlrender import template_to_html
-
-from ...nonebot_plugin_larkuser.models import UserData
-from ..lang import lang
-from ..session import get_user_data, get_user_id
+from ..types import LoginResponse
+from ..models import LoginRequest, SessionData
+from ..config import config
+from ..session import create_session, get_identifier
 
 
-@get_app().get("/user/login")
-async def _(request: Request, _user_id: Optional[str] = get_user_id()) -> PlainTextResponse:
-    user_id = _user_id or "-1"
-    return PlainTextResponse(
-        await template_to_html(
-            Path(__file__).parent.parent.joinpath("templates").as_posix(),
-            "login.html.jinja",
-            title=await lang.text("login.title", user_id),
-            uid=await lang.text("login.uid", user_id),
-            uid_text=await lang.text("login.uid_text", user_id),
-            uid_help=await lang.text("login.uid_help", user_id),
-            save_time=await lang.text("login.save_time", user_id),
-            save_time_720=await lang.text("login.save_time_720", user_id),
-            save_time_1=await lang.text("login.save_time_1", user_id),
-            save_time_14=await lang.text("login.save_time_14", user_id),
-            save_time_30=await lang.text("login.save_time_30", user_id),
-            save_time_180=await lang.text("login.save_time_180", user_id),
-            save_time_360=await lang.text("login.save_time_360", user_id),
-            submit=await lang.text("login.submit", user_id),
-        ),
-        media_type="text/html",
-    )
+async def remove_unused_session(session_id: str) -> None:
+    await asyncio.sleep(config.unused_session_remove_delay)
+    async with get_session() as session:
+        data = await session.get(SessionData, session_id)
+        if data is not None and data.activate_code is not None:
+            logger.warning(f"会话 {session_id} 直到过期都未使用，已清理！")
+            await session.delete(data)
+            await session.commit()
+
+@get_app().post("/api/login")
+async def _(request: Request, data: LoginRequest) -> LoginResponse:
+    session_id, activate_code = await create_session(data.user_id, get_identifier(request), data.retention_days)
+    asyncio.create_task(remove_unused_session(session_id))
+    return {
+        "session_id": session_id,
+        "activate_code": activate_code,
+        "effective_time": config.unused_session_remove_delay
+    }

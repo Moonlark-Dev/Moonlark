@@ -1,54 +1,51 @@
-from datetime import datetime
-from pathlib import Path
+import base64
+from typing import Optional, cast
+from sqlalchemy.exc import NoResultFound
+from fastapi import FastAPI, HTTPException, Request, status
+from nonebot import get_app
 
-from fastapi import Request
-from fastapi.responses import PlainTextResponse
-from nonebot import get_app, require
-from nonebot_plugin_htmlrender import template_to_html
-
-from ...nonebot_plugin_larklang.__main__ import get_languages, get_user_language
-from ...nonebot_plugin_larkuser.lang import lang
-from ...nonebot_plugin_larkuser.models import UserData
-from ...nonebot_plugin_larkuser.utils.gsc_time import get_galactic_time
+from ...nonebot_plugin_larkuser.utils.user import get_user
 from ...nonebot_plugin_larkuser.utils.level import get_level_by_experience
-from ...nonebot_plugin_larkutils.html import escape_html
-from ..session import get_user_forcibly
+from ..types import BasicUserResponse, DetailedUserResponse
+from ..session import get_user_data
+from ...nonebot_plugin_larkuser.models import UserData
 
 
-@get_app().get("/user")
-async def _(_request: Request, user: UserData = get_user_forcibly()):
-    now = datetime.now()
-    level = get_level_by_experience(user.experience)
-    return PlainTextResponse(
-        await template_to_html(
-            Path(__file__).parent.parent.joinpath("templates").as_posix(),
-            "user.html.jinja",
-            title=await lang.text("web.title", user.user_id),
-            username=escape_html(user.nickname),
-            uid=await lang.text("web.uid", user.user_id, user.user_id),
-            total_exp=await lang.text("web.total_exp", user.user_id, user.experience),
-            level=await lang.text("web.level", user.user_id, level, user.experience - (level - 1) ** 3, level**3),
-            vimcoin=await lang.text("web.vimcoin", user.user_id, round(user.vimcoin, 3)),
-            fav=await lang.text("web.fav", user.user_id, round(user.favorability, 3)),
-            hp=await lang.text("web.hp", user.user_id, user.health),
-            time=await lang.text("web.time", user.user_id),
-            earth_time=await lang.text("web.earth_time", user.user_id, now.strftime("%Y-%m-%d %H:%M:%S")),
-            gsc_time=await lang.text("web.gsc_time", user.user_id, *get_galactic_time(now.timestamp())),
-            i18n=await lang.text("web.i18n", user.user_id),
-            current_lang=await lang.text("web.current_lang", user.user_id),
-            lang_list=[
-                {"name": lang, "selected": lang == await get_user_language(user.user_id)}
-                for lang in get_languages().keys()
-            ],
-            registry=await lang.text("web.registry", user.user_id),
-            activate_time=await lang.text(
-                "web.activate_time", user.user_id, user.activation_time.strftime("ET %Y-%m-%d")
-            ),
-            registry_time=await lang.text(
-                "web.registry_time",
-                user.user_id,
-                (user.register_time or datetime.fromtimestamp(0)).strftime("ET %Y-%m-%d"),
-            ),
-        ),
-        media_type="text/html",
-    )
+app = cast(FastAPI, get_app())
+
+
+def get_avatar(avatar: bool, user_data: UserData) -> Optional[str]:
+    return base64.b64encode(user_data.avatar).decode() if user_data.avatar is not None and avatar else None
+
+
+@app.get("/api/users/me")
+async def _(request: Request, avatar: bool = True, user_data: UserData = get_user_data()) -> DetailedUserResponse:
+    return {
+        "activation_time": user_data.activation_time.timestamp(),
+        "avatar": get_avatar(avatar, user_data),
+        "total_experience": user_data.experience,
+        "favorability": user_data.favorability,
+        "gender": user_data.gender,
+        "health": user_data.health,
+        "nickname": user_data.nickname,
+        "level": (level := get_level_by_experience(user_data.experience)),
+        "register_time": user_data.register_time.timestamp() if user_data.register_time else None,
+        "ship_code": user_data.ship_code,
+        "vimcoin": user_data.vimcoin,
+        "user_id": user_data.user_id,
+        "experience": user_data.experience - (level - 1) ** 3,
+    }
+
+
+@app.get("/api/users/{user_id}")
+async def _(request: Request, user_id: str, avatar: bool = True) -> BasicUserResponse:
+    try:
+        user_data = await get_user(user_id, create=False)
+    except NoResultFound:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    return {
+        "user_id": user_data.user_id,
+        "nickname": user_data.nickname,
+        "avatar": get_avatar(avatar, user_data),
+        "level": get_level_by_experience(user_data.experience),
+    }
