@@ -4,7 +4,7 @@ from ...nonebot_plugin_render.render import render_template
 from ..utils.item import get_bag_items
 from ...nonebot_plugin_larkutils.user import get_user_id
 from ..__main__ import bag
-from ..lang import lang
+from ..__main__ import lang
 from ..config import config
 
 STAR_COLORS = {1: "secondary", 2: "success", 3: "info", 4: "purple", 5: "warning"}

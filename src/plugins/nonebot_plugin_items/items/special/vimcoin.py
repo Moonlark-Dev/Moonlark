@@ -1,5 +1,5 @@
 from nonebot import logger
-from ....nonebot_plugin_item.base.properties import ItemProperties, default
+from ....nonebot_plugin_item.base.properties import ItemProperties, get_properties
 from ....nonebot_plugin_item.base.stack import ItemStack
 from ....nonebot_plugin_item.registry.registry import ResourceLocation
 from ....nonebot_plugin_item.registry import ITEMS
@@ -23,4 +23,4 @@ def get_location() -> ResourceLocation:
     return LOCATION
 
 
-ITEMS.registry(LOCATION, Vimcoin({"max_stack": 0xFFFF, "star": 3, "useable": False}))
+ITEMS.registry(LOCATION, Vimcoin(get_properties(False, 3, 0xFFF)))

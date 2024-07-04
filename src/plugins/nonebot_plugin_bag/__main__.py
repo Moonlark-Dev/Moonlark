@@ -1,6 +1,8 @@
 from typing import Any
 from nonebot_plugin_alconna import Alconna, Args, MultiVar, Option, Subcommand, on_alconna
 
+from ..nonebot_plugin_larklang.__main__ import LangHelper
+
 from ..nonebot_plugin_larkuser.matcher import patch_matcher
 
 alc = Alconna(
@@ -21,3 +23,4 @@ alc = Alconna(
 )
 bag = on_alconna(alc)
 patch_matcher(bag)
+lang = LangHelper()

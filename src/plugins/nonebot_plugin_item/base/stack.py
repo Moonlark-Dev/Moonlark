@@ -27,6 +27,9 @@ class ItemStack:
     async def getName(self):
         return await self.item.getName(self)
 
+    async def getDescription(self) -> str:
+        return await self.item.getDescription(self)
+
     def getDict(self) -> DictItemData:
         return {"count": self.count, "data": self.data, "item_id": self.item.getLocation().getItemID()}
 
