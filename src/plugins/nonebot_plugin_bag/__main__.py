@@ -11,8 +11,8 @@ alc = Alconna(
         "overflow", Subcommand("show", Args["index", int]), Subcommand("get", Args["index", int], Args["count", int, 0])
     ),
     Subcommand("show", Args["index", int]),  # done
-    Subcommand("drop", Args["index", int], Args["count", int, 0]),
-    Subcommand("tidy"),
+    Subcommand("drop", Args["index", int], Args["count", int, 0]),  # done
+    Subcommand("tidy"),  # done
     Subcommand("move", Args["origin", int], Args["to", int], Args["count", int, 0]),
     Subcommand(
         "use",

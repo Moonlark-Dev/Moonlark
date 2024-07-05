@@ -36,6 +36,12 @@ class ItemStack:
     def getDict(self) -> DictItemData:
         return {"count": self.count, "data": self.data, "item_id": self.item.getLocation().getItemID()}
 
+    def isAddable(self) -> bool:
+        return self.count < self.item.getProperties()["max_stack"]
+
+    def getAddableAmount(self, max_count: int) -> int:
+        return max(0, min(max_count, self.item.getProperties()["max_stack"] - self.count))
+
     async def use(self, *args, **kwargs) -> Any:
         if self.isUseable() and isinstance(self.item, UseableItem):
             return await self.item.useItem(self, *args, **kwargs)
