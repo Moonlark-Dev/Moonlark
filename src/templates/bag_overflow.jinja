@@ -1,0 +1,26 @@
+{% extends base %}
+
+{% block body %}
+<h2>{{ title_protect }}</h2>
+<div class="row">
+    {% for item in my_items %}
+    <div class="col-6">
+        <span class="badge bg-info">{{ item.index }}.</span> <span class="text-{{ item.text_color }} fw-bold">{{
+            item.name }}</span>
+        <span class="badge bg-light text-dark rounded-pill">{{ item.count }}</span>
+    </div>
+    {% endfor %}
+</div>
+<hr>
+<h2>{{ title_getable }}</h2>
+<div class="row">
+    {% for item in items %}
+    <div class="col-6">
+        <span class="badge bg-info">{{ item.index }}.</span> <span class="text-{{ item.text_color }} fw-bold">{{
+            item.name }}</span>
+        <span class="badge bg-light text-dark rounded-pill">{{ item.count }}</span>
+    </div>
+    {% endfor %}
+</div>
+
+{% endblock body %}

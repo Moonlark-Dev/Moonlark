@@ -6,7 +6,7 @@ from ..item import BagItem
 from .item import get_bag_item
 
 
-async def get_item(index: int, user_id: str = get_user_id()) -> BagItem:
+async def get_target_item(index: int, user_id: str = get_user_id()) -> BagItem:
     """获取用户想要丢弃的物品（请使用依赖注入）"""
     try:
         item = await get_bag_item(user_id, index)
@@ -19,7 +19,7 @@ async def get_item(index: int, user_id: str = get_user_id()) -> BagItem:
     return item
 
 
-def get_count(count: int, item: BagItem = Depends(get_item)) -> int:
+def get_count(count: int, item: BagItem = Depends(get_target_item)) -> int:
     if count <= 0:
         return item.stack.count
     return min(count, item.stack.count)

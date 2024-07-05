@@ -18,7 +18,7 @@ alc = Alconna(
         "use",
         Args["index", int],
         Option("--count|-c", Args["count", int, 1]),
-        Args["argv?", MultiVar(Any), []],  # type: ignore
+        Args["argv", MultiVar(Any), []],  # type: ignore
     ),
 )
 bag = on_alconna(alc)
