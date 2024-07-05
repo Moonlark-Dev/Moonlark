@@ -6,14 +6,14 @@ from ..nonebot_plugin_larklang.__main__ import LangHelper
 from ..nonebot_plugin_larkuser.matcher import patch_matcher
 
 alc = Alconna(
-    "bag",  # done
+    "bag",
     Subcommand(
         "overflow", Subcommand("show", Args["index", int]), Subcommand("get", Args["index", int], Args["count", int, 0])
     ),
-    Subcommand("show", Args["index", int]),  # done
-    Subcommand("drop", Args["index", int], Args["count", int, 0]),  # done
-    Subcommand("tidy"),  # done
-    Subcommand("move", Args["origin", int], Args["target", int], Args["count", int, 0]),  # done
+    Subcommand("show", Args["index", int]),
+    Subcommand("drop", Args["index", int], Args["count", int, 0]),
+    Subcommand("tidy"),
+    Subcommand("move", Args["origin", int], Args["target", int], Args["count", int, 0]),
     Subcommand(
         "use",
         Args["index", int],
