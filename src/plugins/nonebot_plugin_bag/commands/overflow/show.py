@@ -13,7 +13,10 @@ from nonebot.params import Depends
 
 @bag.assign("overflow.show")
 async def _(index: int, user_id: str = get_user_id()) -> None:
-    item_data = await get_overflow_item(index)
+    try:
+        item_data = await get_overflow_item(index)
+    except IndexError:
+        await lang.finish("overflow_show.not_found", user_id)
     item = item_data["item"]
     await bag.finish(
         UniMessage().image(

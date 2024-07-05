@@ -12,13 +12,13 @@ from ...config import config
 from ..bag import STAR_COLORS
 
 
-@bag.assign("overflow")
+@bag.assign("overflow.list")
 async def _(user_id: str = get_user_id()) -> None:
     await bag.finish(
         UniMessage().image(
             raw=await render_template(
                 "bag_overflow.html.jinja",
-                await lang.text("overflow.title", user_id),
+                await lang.text("overflow_list.title", user_id),
                 user_id,
                 {
                     "items": [

@@ -17,7 +17,10 @@ from ...config import config
 
 @bag.assign("overflow.get")
 async def _(index: int, count: int, user_id: str = get_user_id()) -> None:
-    item = await get_overflow_item(index)
+    try:
+        item = await get_overflow_item(index)
+    except IndexError:
+        await lang.finish("overflow_show.not_found", user_id)
     if is_item_takeable(user_id, index):
         count = min(max(0, count), item["item"].count)
         if item["item"].count - count <= 0:

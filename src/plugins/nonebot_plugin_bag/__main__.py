@@ -8,7 +8,10 @@ from ..nonebot_plugin_larkuser.matcher import patch_matcher
 alc = Alconna(
     "bag",
     Subcommand(
-        "overflow", Subcommand("show", Args["index", int]), Subcommand("get", Args["index", int], Args["count", int, 0])
+        "overflow",
+        Subcommand("list"),
+        Subcommand("show", Args["index", int]),
+        Subcommand("get", Args["index", int], Args["count", int, 0]),
     ),
     Subcommand("show", Args["index", int]),
     Subcommand("drop", Args["index", int], Args["count", int, 0]),
