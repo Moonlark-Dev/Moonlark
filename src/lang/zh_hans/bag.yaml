@@ -25,3 +25,7 @@ show:
     | 可使用        | {}  |
     | 可多个同时使用 | {}  |
   star: ★
+drop:
+  item_locked: 失败：物品已被锁定
+  item_not_droppable: 错误：物品被标记为「无法丢弃」
+  success: 已丢弃 {} 个 {}（剩余 {} 个）

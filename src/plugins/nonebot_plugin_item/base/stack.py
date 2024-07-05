@@ -21,6 +21,9 @@ class ItemStack:
         self.data = data
         self.user_id = user_id
 
+    def getNbt(self, key: str, default: Any = None) -> Any:
+        return self.data.get(key, default)
+
     def isUseable(self):
         return self.item.isUseable(self)
 
