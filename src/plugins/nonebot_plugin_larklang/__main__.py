@@ -93,6 +93,9 @@ class LangHelper:
         language = await get_user_language(str(user_id))
         return get_text(language, self.plugin_name, key, *args, **kwargs)
 
+    async def is_key_exists(self, key: str, user_id: str | int) -> bool:
+        return not (await self.text(key, user_id)).startswith("<缺失: ")
+
     async def send(
         self,
         key: str,

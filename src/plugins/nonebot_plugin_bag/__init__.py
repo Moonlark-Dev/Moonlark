@@ -17,5 +17,7 @@ require("nonebot_plugin_larkutils")
 require("nonebot_plugin_larkuser")
 require("nonebot_plugin_alconna")
 require("nonebot_plugin_render")
+require("nonebot_plugin_htmlrender")
 
-from .commands import bag
+from .commands import bag, drop, move, show, tidy, use
+from .commands.overflow import get, show, overflow

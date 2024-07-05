@@ -1,3 +1,4 @@
+from ....nonebot_plugin_item.base.properties import get_properties
 from ....nonebot_plugin_item.base.stack import ItemStack
 from ....nonebot_plugin_item.registry.registry import ResourceLocation
 from ....nonebot_plugin_item.registry import ITEMS
@@ -21,4 +22,4 @@ def get_location() -> ResourceLocation:
     return LOCATION
 
 
-ITEMS.registry(LOCATION, Experience({"max_stack": 0xFFFFF, "star": 2, "useable": False}))
+ITEMS.registry(LOCATION, Experience(get_properties(star=2, max_stack=0xFFFFF)))

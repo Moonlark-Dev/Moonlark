@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 
 from ...nonebot_plugin_larklang.__main__ import LangHelper
 from ..registry import ITEMS
-from .properties import ItemProperties, default
+from .properties import ItemProperties, get_properties
 
 if TYPE_CHECKING:
     from .stack import ItemStack
@@ -14,7 +14,7 @@ class Item(ABC):
     properties: ItemProperties
     lang: LangHelper
 
-    def __init__(self, properties: ItemProperties = default()):
+    def __init__(self, properties: ItemProperties = get_properties()):
         self.properties = properties
         self.setupLang()
 
@@ -32,8 +32,12 @@ class Item(ABC):
             return stack.data["custom_name"]
         return await self.getDefaultName(stack)
 
-    @abstractmethod
-    async def getDefaultName(self, stack: "ItemStack") -> str: ...
+    async def getDefaultName(self, stack: "ItemStack") -> str:
+        key = f"{self.getLocation().getPath()}.description"
+        user_id = stack.user_id
+        if await self.lang.is_key_exists(key, user_id):
+            return await self.getText(key, user_id)
+        return await LangHelper("nonebot_plugin_item").text("name.none", user_id)
 
     async def getText(self, key: str, user_id: str, *args, **kwargs) -> str:
         """获取 LarkLang I18N 文本
@@ -52,3 +56,12 @@ class Item(ABC):
             return stack.data["useable"]
         else:
             return self.properties["useable"]
+
+    async def getDefaultDescription(self, user_id: str) -> str:
+        key = f"{self.getLocation().getPath()}.description"
+        if await self.lang.is_key_exists(key, user_id):
+            return await self.getText(key, user_id)
+        return await LangHelper("nonebot_plugin_item").text("description.none", user_id)
+
+    async def getDescription(self, stack: "ItemStack") -> str:
+        return await self.getDefaultDescription(stack.user_id)
