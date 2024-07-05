@@ -46,7 +46,7 @@ help:
   description: 背包
   details: 查看，处理，使用背包中的物品
   usage1: bag (查看背包)
-  usage2: bag overflow (查看 overflow 区物品列表)
+  usage2: bag overflow list (查看 overflow 区物品列表)
   usage3: bag overflow show <INDEX> (查看 overflow 区物品)
   usage4: bag overflow get <INDEX> [count] (获取 overflow 区物品)
   usage5: bag show <INDEX> (查看物品)
