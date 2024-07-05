@@ -1,7 +1,7 @@
 from nonebot_plugin_alconna import UniMessage
 
-from plugins.nonebot_plugin_bag.utils.show import get_item
-from plugins.nonebot_plugin_bag.utils.show import get_star_string
+from ..utils.show import get_item
+from ..utils.show import get_star_string
 from ..item import BagItem
 from ...nonebot_plugin_larkutils.user import get_user_id
 from ..__main__ import bag, lang

@@ -1,5 +1,5 @@
-from plugins.nonebot_plugin_bag.utils.drop import get_item
-from plugins.nonebot_plugin_bag.utils.drop import get_count
+from ..utils.drop import get_item
+from ..utils.drop import get_count
 from ..item import BagItem
 from ...nonebot_plugin_larkutils.user import get_user_id
 from ..__main__ import lang, bag

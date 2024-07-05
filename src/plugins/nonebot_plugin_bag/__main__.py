@@ -13,12 +13,12 @@ alc = Alconna(
     Subcommand("show", Args["index", int]),  # done
     Subcommand("drop", Args["index", int], Args["count", int, 0]),  # done
     Subcommand("tidy"),  # done
-    Subcommand("move", Args["origin", int], Args["target", int], Args["count", int, 0]),
+    Subcommand("move", Args["origin", int], Args["target", int], Args["count", int, 0]),  # done
     Subcommand(
         "use",
         Args["index", int],
         Option("--count|-c", Args["count", int, 1]),
-        Args["argv", MultiVar(Any)],  # type: ignore
+        Args["argv?", MultiVar(Any), []],  # type: ignore
     ),
 )
 bag = on_alconna(alc)

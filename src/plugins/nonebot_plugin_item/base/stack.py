@@ -1,5 +1,7 @@
 from typing import TYPE_CHECKING, Any, Self
 
+from nonebot import logger
+
 from ..exceptions import NotUseableError
 from ..types import DictItemData
 from .useable import UseableItem
@@ -44,7 +46,11 @@ class ItemStack:
 
     async def use(self, *args, **kwargs) -> Any:
         if self.isUseable() and isinstance(self.item, UseableItem):
-            return await self.item.useItem(self, *args, **kwargs)
+            ret = await self.item.useItem(self, *args, **kwargs)
+            if "count" in kwargs and not self.item.getProperties()["multi_use"]:
+                self.count -= kwargs["count"]
+            logger.debug(f"用户 {self.user_id} 使用物品 {self.item.getLocation().getItemID()}，参数 {args}，返回 {ret}")
+            return ret
         raise NotUseableError
 
     def compare(self, other: Self, ignore_nbt: list = []) -> bool:

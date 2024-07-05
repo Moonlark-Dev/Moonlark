@@ -38,3 +38,7 @@ move:
   target_locked: 目标物品被锁定，请稍候重试。
   ok: 已移动 {} 个 {} 到位置 {}
   target_item_error: 只有同类物品可以堆叠
+use:
+  not_enough: 您没有足够的物品，当前持有数量：{}
+  unsupported_count: 此物品不支持 --count 参数
+  not_useable: 此物品不可使用
