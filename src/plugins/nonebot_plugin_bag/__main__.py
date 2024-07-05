@@ -13,7 +13,7 @@ alc = Alconna(
     Subcommand("show", Args["index", int]),  # done
     Subcommand("drop", Args["index", int], Args["count", int, 0]),  # done
     Subcommand("tidy"),  # done
-    Subcommand("move", Args["origin", int], Args["to", int], Args["count", int, 0]),
+    Subcommand("move", Args["origin", int], Args["target", int], Args["count", int, 0]),
     Subcommand(
         "use",
         Args["index", int],

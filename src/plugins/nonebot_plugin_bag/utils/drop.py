@@ -20,6 +20,6 @@ async def get_item(index: int, user_id: str = get_user_id()) -> BagItem:
 
 
 def get_count(count: int, item: BagItem = Depends(get_item)) -> int:
-    if count == 0:
+    if count <= 0:
         return item.stack.count
     return min(count, item.stack.count)

@@ -32,3 +32,9 @@ drop:
 tidy:
   item_locked: 部分物品被锁定，请稍后重试。
   finish: 背包整理完成！
+move:
+  origin_locked: 被移动物品被锁定，请稍候重试。
+  origin_index_error: 无法找到被移动物品。
+  target_locked: 目标物品被锁定，请稍候重试。
+  ok: 已移动 {} 个 {} 到位置 {}
+  target_item_error: 只有同类物品可以堆叠
