@@ -4,3 +4,88 @@ list:
   index: "{}."
   count: "x{}"
   footer: 由 Moonlark & nonebot-plugin-bag 生成
+show:
+  index_error: 物品查找失败！
+  info: |
+    # {}
+
+    | 持有数量 | 星级  | 物品 ID | 背包物品 ID |
+    |---------|------|--------|------------|
+    | {}      | {}   | {}     | {}         |
+
+    ## 简介
+
+    {}
+
+    ## 属性
+
+    | 内容          | 值  |
+    |--------------|-----|
+    | 最大堆叠      | {}  |
+    | 可使用        | {}  |
+    | 可重复使用     | {}  |
+  star: '★'
+drop:
+  item_locked: 失败：物品已被锁定
+  item_not_droppable: 错误：物品被标记为「无法丢弃」
+  success: 已丢弃 {} 个 {}（剩余 {} 个）
+tidy:
+  item_locked: 部分物品被锁定，请稍后重试。
+  finish: 背包整理完成！
+move:
+  origin_locked: 被移动物品被锁定，请稍候重试。
+  origin_index_error: 无法找到被移动物品。
+  target_locked: 目标物品被锁定，请稍候重试。
+  ok: 已移动 {} 个 {} 到位置 {}
+  target_item_error: 只有同类物品可以堆叠
+use:
+  not_enough: 您没有足够的物品，当前持有数量：{}
+  unsupported_count: 此物品不支持 --count 参数
+  not_useable: 此物品不可使用
+help:
+  description: 背包
+  details: 查看，处理，使用背包中的物品
+  usage1: bag (查看背包)
+  usage2: bag overflow list (查看 overflow 区物品列表)
+  usage3: bag overflow show <INDEX> (查看 overflow 区物品)
+  usage4: bag overflow get <INDEX> [count] (获取 overflow 区物品)
+  usage5: bag show <INDEX> (查看物品)
+  usage6: bag drop <INDEX> [count] (丢弃物品)
+  usage7: bag tidy (整理背包)
+  usage8: bag move <from> <to> (移动物品)
+  usage9: bag use <INDEX> [-c|--count <count>] [argv...] (使用物品)
+overflow_list:
+  title_protect: 保护中的物品
+  title_getable: 可获取的物品
+  title: Overflow 物品列表
+overflow_show:
+  not_found: 找不到物品。
+  info: |
+    # {}
+
+    | 数量 | 星级  | 物品 ID | 序号 |
+    |-----|------|--------|------|
+    | {}  | {}   | {}     | {}   |
+
+    ## 简介
+
+    {}
+
+    ## Overflow 信息
+
+    | 内容          | 值      |
+    |--------------|---------|
+    | 原主人        | {}      |
+    | 保护有效      | {}      |
+    | 保护过期时间   | {}      |
+
+    ## 属性
+
+    | 内容          | 值  |
+    |--------------|-----|
+    | 最大堆叠      | {}  |
+    | 可使用        | {}  |
+    | 可重复使用     | {}  |
+overflow_get:
+  done: 完成！
+  failed: 失败：无权限
