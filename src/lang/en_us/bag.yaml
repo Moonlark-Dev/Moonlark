@@ -1,11 +1,11 @@
 list:
-  title: 背包
+  title: Bag
   size: 背包容量：{} / {} ({})
   index: "{}."
   count: "x{}"
   footer: 由 Moonlark & nonebot-plugin-bag 生成
 show:
-  index_error: 物品查找失败！
+  index_error: Item search failed!
   info: |
     # {}
 
@@ -26,8 +26,8 @@ show:
     | 可重复使用     | {}  |
   star: '★'
 drop:
-  item_locked: 失败：物品已被锁定
-  item_not_droppable: 错误：物品被标记为「无法丢弃」
+  item_locked: 'Failed: Item locked'
+  item_not_droppable: 'Error: item marked as ''can''t be dropped'''
   success: 已丢弃 {} 个 {}（剩余 {} 个）
 tidy:
   item_locked: 部分物品被锁定，请稍后重试。

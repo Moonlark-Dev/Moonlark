@@ -1,9 +1,9 @@
 command:
-  set: 已将主体 {} 的 {} 的权限设为 {}！
+  set: Set the {} permission of {} to {}
 access:
-  failed: 您没有权限使用这个指令！
+  failed: You don't have permission to use this command!
 help:
-  description: 权限管理
-  details: Moonlark 权限控制 (仅 SUPERUSER 可用)
-  usage1: access {{ban|pardon}} <主体ID> (封禁/解封用户)
-  usage2: access {{block|unblock}} <权限> <主体ID> (添加/移除权限)
+  description: Permissions Management
+  details: Moonlark permissions control (SUPERUSERS only)
+  usage1: access {{ban|pardon}} <ID> (ban/pardon user)
+  usage2: access {{block|unblock}} <permission> <body ID> (add/remove permission)
