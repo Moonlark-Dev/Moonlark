@@ -9,7 +9,7 @@ quick_math = on_alconna(
     Alconna(
         "quick-math",
         Subcommand("rank", Args["rank_type", Literal["total", "max"], "max"]),
-        Subcommand("award", Option("--claim|-c")),
+        Subcommand("award"),
     )
 )
 lang = LangHelper()

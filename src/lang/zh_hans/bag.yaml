@@ -89,3 +89,5 @@ overflow_show:
 overflow_get:
   done: 完成！
   failed: 失败：无权限
+exc:
+  locked: 物品被锁定，请稍候重试。
