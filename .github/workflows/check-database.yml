@@ -51,7 +51,7 @@ jobs:
           poetry run nb orm revision
           git add -A
           git config --global user.email "chun-awa@itcdt.top"
-            git config --global user.name "chun-awa"
+          git config --global user.name "chun-awa"
           git commit -a -m "Update database versions."
           git push origin database-auto-fix
           gh pr create --head database-auto-fix --base main --title "更新数据库迁移文件" --body "此 Pull Requests 由 GitHub Actions 发起，请仔细检查数据库迁移文件的内容。"
