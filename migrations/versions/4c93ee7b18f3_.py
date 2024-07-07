@@ -33,8 +33,8 @@ def upgrade(name: str = "") -> None:
         info={"bind_key": "nonebot_plugin_pawcoin_exchange"},
     )
     with op.batch_alter_table("nonebot_plugin_quick_math_quickmathuser", schema=None) as batch_op:
-        batch_op.add_column(sa.Column("max_point_this_cycle", sa.Integer(), nullable=False))
-        batch_op.add_column(sa.Column("use_count_this_cycle", sa.Integer(), nullable=False))
+        batch_op.add_column(sa.Column("max_point_this_cycle", sa.Integer(), default=0, nullable=False))
+        batch_op.add_column(sa.Column("use_count_this_cycle", sa.Integer(), default=0, nullable=False))
 
     # ### end Alembic commands ###
 
