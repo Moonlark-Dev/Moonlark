@@ -31,7 +31,8 @@ jobs:
       - name: Check database upgrade
         run: |
           poetry run nb orm upgrade
-          if poetry run nb orm check; then
+          export output=$(poetry run nb orm check)
+          if echo $output | grep "^Error" ; then
             echo "Database check succeeded"
             echo "failed=0" >> $GITHUB_ENV
           else
@@ -40,6 +41,7 @@ jobs:
           fi || true
 
       - name: Install github CLI
+        if: env.failed == 1
         uses: cresta/action-setup-github-cli@v1
       
       - name: Create Pull Request
