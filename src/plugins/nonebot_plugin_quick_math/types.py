@@ -1,4 +1,4 @@
-from typing import Awaitable, Callable, TypedDict
+from typing import Awaitable, Callable, Literal, TypedDict
 
 
 class Question(TypedDict):
@@ -20,3 +20,11 @@ class GeneratorData(TypedDict):
     limit_in_second: int
     max_point: int
     function: GENERATOR_FUNCTION
+
+
+class JsonCycleData(TypedDict):
+    number: int
+    start_time: int
+
+
+LEVEL = Literal["A", "B", "C", "D"]

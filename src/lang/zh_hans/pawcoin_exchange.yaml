@@ -1,0 +1,15 @@
+bag_error:
+  __template__: 错误：{}
+  not_found: 找不到指定物品。
+  locked: 目标物品已锁定。
+  not_enough_item: 物品数量不足（持有：{}）
+count:
+  invalid_count: 无效数量。
+pcc:
+  ok: 成功消耗 {} 个猫爪币，兑换 {}vi！
+  info: |
+    「猫爪币兑换」
+    当前汇率： 1 猫爪币 => {} VimCoin
+    已兑换总数：{}
+    获得的 VimCoin：{}
+    持有猫爪币：{}
