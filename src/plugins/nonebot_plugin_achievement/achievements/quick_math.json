@@ -49,7 +49,7 @@
             "awards": [
                 {
                     "item_id": "special:vimcoin",
-                    "count": 15,
+                    "count": 20,
                     "data": {}
                 }
             ]
@@ -59,7 +59,7 @@
             "awards": [
                 {
                     "item_id": "special:vimcoin",
-                    "count": 15,
+                    "count": 30,
                     "data": {}
                 }
             ]
@@ -79,7 +79,7 @@
             "awards": [
                 {
                     "item_id": "special:vimcoin",
-                    "count": 20,
+                    "count": 30,
                     "data": {}
                 }
             ]
