@@ -26,7 +26,7 @@ jobs:
         run: poetry install
 
       - name: Download .env file
-        run: curl -O .env ${{ secrets.ENV_URL }}
+        run: curl ${{ secrets.ENV_URL }} -O .env 
 
       - name: Check database upgrade
         run: |
