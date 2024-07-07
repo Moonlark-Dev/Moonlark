@@ -12,7 +12,12 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v3
       with:
-        fetch-depth: 0
+        fetch-depth: 0  # 获取所有分支的提交，以便进行比较
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.x'
 
     - name: Check for 'from plugins' imports
       id: check-imports
@@ -21,20 +26,29 @@ jobs:
         result=$(grep -rl '^from plugins' --include='*.py' || echo "")
         echo "Found files with 'from plugins' imports:"
         echo "$result"
-        echo "::set-output name=files::$result"
+        echo "$result" > result_files.txt
         lines=$(grep -rn '^from plugins' --include='*.py' | wc -l)
-        echo "::set-output name=lines::$lines"
         echo "Counting lines..."
         echo "$lines lines found."
+        echo "$lines" > result_lines.txt
+        # Set the outputs using environment files
+        echo "files=$(cat result_files.txt)" >> $GITHUB_ENV
+        echo "lines=$(cat result_lines.txt)" >> $GITHUB_ENV
+
+    - name: Set failure if imports found
+      if: env.files != ''
+      run: |
+        echo "Failing the job due to 'from plugins' imports"
+        exit 1
 
     - name: Comment on PR with line count
-      if: steps.check-imports.outputs.files != ''
+      if: env.files != ''
       uses: actions/github-script@v4
       with:
         github-token: ${{ secrets.GITHUB_TOKEN }}
         script: |
-          const files = `${{ steps.check-imports.outputs.files }}`;
-          const lines = `${{ steps.check-imports.outputs.lines }}`;
+          const files = process.env.files;
+          const lines = process.env.lines;
           const message = `Found 'from plugins' imports in ${lines} lines across the following files:\n${files}`;
           github.issues.createComment({
             issue_number: context.issue.number,
@@ -42,9 +56,3 @@ jobs:
             repo: context.repo.repo,
             body: message
           });
-
-    - name: Set failure if imports found
-      if: steps.check-imports.outputs.files != ''
-      run: |
-        echo "Failing the job due to 'from plugins' imports"
-        exit 1
