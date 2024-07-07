@@ -55,6 +55,8 @@ jobs:
           git commit -a -m "Update database versions."
           git push origin database-auto-fix
           gh pr create --head database-auto-fix --base main --title "更新数据库迁移文件" --body "此 Pull Requests 由 GitHub Actions 发起，请仔细检查数据库迁移文件的内容。"
+        env:
+         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       
       - name: Return failed
         if: env.failed == 1
