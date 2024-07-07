@@ -1,0 +1,63 @@
+name: Check Database Upgrade
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  check-database:
+    runs-on: ubuntu-latest
+    steps:
+      
+      - name: Checkout repository
+        uses: actions/checkout@v2
+      
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.12
+
+      - name: Setup Poetry
+        uses: snok/install-poetry@v1.2.1
+
+      - name: Install dependencies
+        run: poetry install
+
+      - name: Download .env file
+        run: curl -O .env ${{ secrets.ENV_URL }}
+
+      - name: Check database upgrade
+        run: |
+          poetry run nb orm upgrade
+          if poetry run nb orm check; then
+            echo "Database check succeeded"
+            echo "failed=0" >> $GITHUB_ENV
+          else
+            echo "Database check failed"
+            echo "failed=1" >> $GITHUB_ENV
+          fi || true
+
+      - name: Setup GitHub CLI
+        uses: actions/setup-gh@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Create Pull Request
+        if: env.failed == 1
+        run: |
+          git checkout -b database-auto-fix
+          nb orm revision
+          git add -A
+          git commit -a -m "Update database versions."
+          git push origin database-auto-fix
+          gh pr create --head database-auto-fix --base main --title "更新数据库迁移文件" --body "此 Pull Requests 由 GitHub Actions 发起，请仔细检查数据库迁移文件的内容。"
+      
+      - name: Return failed
+        if: env.failed == 1
+        run: exit 1
+
+
+
+
+
