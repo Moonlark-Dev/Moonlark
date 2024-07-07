@@ -12,12 +12,7 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v3
       with:
-        fetch-depth: 0  # 获取所有分支的提交，以便进行比较
-
-    - name: Set up Python
-      uses: actions/setup-python@v2
-      with:
-        python-version: '3.x'
+        fetch-depth: 0
 
     - name: Check for 'from plugins' imports
       id: check-imports
