@@ -48,7 +48,7 @@ jobs:
         if: env.failed == 1
         run: |
           git checkout -b database-auto-fix
-          nb orm revision
+          poetry run nb orm revision
           git add -A
           git commit -a -m "Update database versions."
           git push origin database-auto-fix
