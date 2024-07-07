@@ -32,12 +32,12 @@ jobs:
         run: |
           poetry run nb orm upgrade
           export output=$(poetry run nb orm check)
-          if echo $output | grep "^Error" ; then
-            echo "Database check succeeded"
-            echo "failed=0" >> $GITHUB_ENV
-          else
+          if (echo $output | grep "alembic | Detected ") ; then
             echo "Database check failed"
             echo "failed=1" >> $GITHUB_ENV
+          else
+            echo "Database check succeeded"
+            echo "failed=0" >> $GITHUB_ENV
           fi || true
 
       - name: Install github CLI
