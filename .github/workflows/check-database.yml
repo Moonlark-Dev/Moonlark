@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch: 
 
 jobs:
   check-database:
@@ -38,10 +39,8 @@ jobs:
             echo "failed=1" >> $GITHUB_ENV
           fi || true
 
-      - name: Setup GitHub CLI
-        uses: actions/setup-gh@v1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install github CLI
+        uses: cresta/action-setup-github-cli@v1
       
       - name: Create Pull Request
         if: env.failed == 1
