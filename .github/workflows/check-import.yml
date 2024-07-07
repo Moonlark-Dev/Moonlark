@@ -1,0 +1,46 @@
+name: Check for 'from plugins' imports and comment on PR
+
+on: [pull_request]
+
+jobs:
+  check-imports:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.x'
+
+    - name: Check for 'from plugins' imports
+      id: check-imports
+      run: |
+        echo "Checking for 'from plugins' imports..."
+        result=$(git diff --name-only HEAD~1 HEAD | xargs grep -l 'from plugins' || echo "")
+        echo "Found files with 'from plugins' imports:"
+        echo "$result"
+        echo "::set-output name=files::$result"
+        lines=$(find . -name '*.py' -exec grep -Hn 'from plugins' {} + | wc -l)
+        echo "::set-output name=lines::$lines"
+        echo "Counting lines..."
+        echo "$lines lines found."
+
+    - name: Comment on PR with line count
+      uses: actions/github-script@v4
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        script: |
+          const output = `Found files with 'from plugins' imports:\n${{ steps.check-imports.outputs.files }}`;
+          const lines = `${{ steps.check-imports.outputs.lines }}`;
+          const message = `Found 'from plugins' imports in ${lines} lines across the following files:\n\n${output}`;
+          github.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: message
+          });
