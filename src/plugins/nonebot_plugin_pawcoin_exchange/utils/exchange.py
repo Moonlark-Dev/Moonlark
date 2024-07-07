@@ -3,9 +3,19 @@ import json
 import math
 from typing import Literal
 import aiofiles
+from nonebot_plugin_alconna import Match
 from nonebot_plugin_apscheduler import scheduler
 from nonebot import get_driver, logger
 from nonebot_plugin_localstore import get_data_file
+
+from ...nonebot_plugin_larkuser.utils.vimcoin import add_vimcoin
+from .count import add_exchanged_count
+from .item import get_target_item
+
+from ...nonebot_plugin_bag.exceptions import ItemLockedError
+from ...nonebot_plugin_bag.utils.reduce import ALL, ItemNotEnough, remove_item_from_bag
+from ...nonebot_plugin_items.items.moonlark.pawcoin import get_location
+from ..lang import lang
 
 from .vimcoin import get_total_vimcoin
 
@@ -55,3 +65,26 @@ async def _() -> None:
         await f.write(json.dumps(data))
         await f.truncate()
     logger.info(f"PawCoin 汇率更新完成，最新汇率为 {exchange} ({origin_exchange})")
+
+
+async def remove_pawcoin_form_bag(count: int, user_id: str) -> None:
+    try:
+        await remove_item_from_bag(user_id, get_location(), count or ALL)
+    except ItemLockedError:
+        await lang.finish("bag_error.locked", user_id)
+    except ItemNotEnough as e:
+        await lang.finish("bag_error.not_enough_item", user_id, e.have)
+
+
+async def exchange(index: Match[int], count: int, user_id: str) -> None:
+    if count < 0:
+        await lang.finish("count.invalid_count", user_id)
+    elif index.available and count >= 0:
+        target_item = await get_target_item(index.result, count, user_id)
+        count = count or target_item.stack.count
+        target_item.stack.count -= count
+    else:
+        await remove_pawcoin_form_bag(count, user_id)
+    await add_vimcoin(user_id, vimcoin_count := await get_exchange_vimcoin(count))
+    await add_exchanged_count(user_id, count, vimcoin_count)
+    await lang.finish("pcc.ok", count, vimcoin_count)
