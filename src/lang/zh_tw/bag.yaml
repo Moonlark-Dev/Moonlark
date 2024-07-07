@@ -3,7 +3,6 @@ list:
   size: 背包容量：{} / {} ({})
   index: "{}."
   count: "x{}"
-  footer: 由 Moonlark & nonebot-plugin-bag 生成
 show:
   index_error: 物品查找失败！
   info: |
