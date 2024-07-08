@@ -1,15 +1,10 @@
-import base64
 from datetime import datetime
-from typing import Optional, cast
-from sqlalchemy.exc import NoResultFound
-from fastapi import FastAPI, HTTPException, Request, status
+from typing import cast
+from fastapi import FastAPI, Request
 from nonebot import get_app
 
 from ...nonebot_plugin_larkuser.utils.gsc_time import get_galactic_time
-from ...nonebot_plugin_larkuser.utils.user import get_user
-from ...nonebot_plugin_larkuser.utils.level import get_level_by_experience
-from ..types import BasicUserResponse, DetailedUserResponse, TimeResponse
-from ..session import get_user_data
+from ..types import TimeResponse
 from ...nonebot_plugin_larkuser.models import UserData
 
 
