@@ -16,7 +16,7 @@ async def send_email(
     session = get_scoped_session()
     session.add(email := EmailData(author=author, content=content, subject=subject, time=datetime.now()))
     await session.flush()
-    email_id = email.id
+    email_id = email.email_id
     for item in items:
         session.add(
             EmailItem(belong=email_id, item_id=item["item_id"], count=item["count"], data=json.dumps(item["data"]))

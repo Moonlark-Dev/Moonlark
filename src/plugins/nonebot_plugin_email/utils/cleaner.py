@@ -14,4 +14,4 @@ async def _() -> None:
     t = datetime.now() - timedelta(days=config.email_expired_days)
     result = await session.scalars(select(EmailData).where(EmailData.time < t))
     for email in result:
-        await remove_email(email.id)
+        await remove_email(email.email_id)

@@ -8,7 +8,8 @@ from ..nonebot_plugin_item.types import DictItemData
 
 
 class EmailData(Model):
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    __table_args__ = {"extend_existing": True}
+    email_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     author: Mapped[Optional[str]] = mapped_column(nullable=True, default=None)
     content: Mapped[str]
     subject: Mapped[str]
