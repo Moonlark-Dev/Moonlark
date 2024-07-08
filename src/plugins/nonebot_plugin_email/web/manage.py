@@ -15,7 +15,7 @@ from ...nonebot_plugin_larkuid.session import get_user_id
 
 async def get_email_list(user_id: str) -> AsyncGenerator[dict[str, Any], None]:
     async with get_session() as session:
-        result = await session.scalars(select(EmailData.id))
+        result = await session.scalars(select(EmailData.email_id))
     for email_id in result:
         yield await get_email(user_id, email_id)
 
