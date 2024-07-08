@@ -1752,11 +1752,7 @@ click = ">=8.1,<9.0"
 importlib-resources = {version = ">=6.1,<7.0", markers = "python_version < \"3.12\""}
 nonebot-plugin-localstore = ">=0.6,<1.0"
 nonebot2 = ">=2.2,<3.0"
-sqlalchemy = [
-    {version = ">=2.0,<3.0"},
-    {version = "*", extras = ["aiosqlite"], optional = true, markers = "extra == \"sqlite\""},
-    {version = "*", extras = ["aiomysql"], optional = true, markers = "extra == \"mysql\""},
-]
+sqlalchemy = ">=2.0,<3.0"
 
 [package.extras]
 aiomysql = ["sqlalchemy[aiomysql]"]
@@ -3004,10 +3000,8 @@ files = [
 ]
 
 [package.dependencies]
-aiomysql = {version = ">=0.2.0", optional = true, markers = "extra == \"aiomysql\""}
-aiosqlite = {version = "*", optional = true, markers = "extra == \"aiosqlite\""}
-greenlet = {version = "!=0.4.17", optional = true, markers = "python_version < \"3.13\" and (platform_machine == \"aarch64\" or platform_machine == \"ppc64le\" or platform_machine == \"x86_64\" or platform_machine == \"amd64\" or platform_machine == \"AMD64\" or platform_machine == \"win32\" or platform_machine == \"WIN32\") or extra == \"aiomysql\""}
-typing-extensions = {version = ">=4.6.0", optional = true}
+greenlet = {version = "!=0.4.17", markers = "python_version < \"3.13\" and (platform_machine == \"aarch64\" or platform_machine == \"ppc64le\" or platform_machine == \"x86_64\" or platform_machine == \"amd64\" or platform_machine == \"AMD64\" or platform_machine == \"win32\" or platform_machine == \"WIN32\")"}
+typing-extensions = ">=4.6.0"
 
 [package.extras]
 aiomysql = ["aiomysql (>=0.2.0)", "greenlet (!=0.4.17)"]
@@ -3830,4 +3824,4 @@ test = ["big-O", "importlib-resources", "jaraco.functools", "jaraco.itertools", 
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "166a512f325d69f3a441f91197236947a346b4d20df60f5216a3e3186ae67503"
+content-hash = "9e86b96ef6a4118359d251967bdfbc915acbef4da5c0fa9d630de4383a36a6af"
