@@ -1,18 +1,19 @@
 from typing import Optional, TypedDict
+from typing_extensions import TypedDict as TypedDictExtension
 
 
-class LoginResponse(TypedDict):
+class LoginResponse(TypedDictExtension):
     session_id: str
     activate_code: str
     effective_time: int
 
 
-class VerifyResponse(TypedDict):
+class VerifyResponse(TypedDictExtension):
     user_id: str
     nickname: str
 
 
-class BasicUserResponse(TypedDict):
+class BasicUserResponse(TypedDictExtension):
     user_id: str
     nickname: str
     level: int
@@ -31,16 +32,16 @@ class DetailedUserResponse(BasicUserResponse):
     favorability: float
 
 
-class EarchTimeData(TypedDict):
+class EarchTimeData(TypedDictExtension):
     timestamp: float
     strftime: str
 
 
-class GalacticTimeData(TypedDict):
+class GalacticTimeData(TypedDictExtension):
     strftime: str
     array: list[int]
 
 
-class TimeResponse(TypedDict):
+class TimeResponse(TypedDictExtension):
     earth: EarchTimeData
     galactic: GalacticTimeData
