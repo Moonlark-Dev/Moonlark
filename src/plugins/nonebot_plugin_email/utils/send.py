@@ -6,7 +6,7 @@ from nonebot_plugin_orm import get_scoped_session
 from sqlalchemy import select
 
 from ...nonebot_plugin_larkuser.models import UserData
-from ..models import Email, EmailItem, EmailUser
+from ..models import EmailData, EmailItem, EmailUser
 from ..types import EmailItemData
 
 
@@ -14,7 +14,7 @@ async def send_email(
     receivers: list[str], subject: str, content: str, author: Optional[str] = None, items: list[EmailItemData] = []
 ) -> int:
     session = get_scoped_session()
-    session.add(email := Email(author=author, content=content, subject=subject, time=datetime.now()))
+    session.add(email := EmailData(author=author, content=content, subject=subject, time=datetime.now()))
     await session.flush()
     email_id = email.id
     for item in items:
