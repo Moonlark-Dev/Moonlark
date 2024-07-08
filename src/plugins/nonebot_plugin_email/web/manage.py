@@ -7,7 +7,7 @@ from sqlalchemy import select
 from .get import get_email
 
 from ..config import config
-from ..models import Email
+from ..models import EmailData
 from ..config import config
 from ..lang import lang
 from ...nonebot_plugin_larkuid.session import get_user_id
@@ -15,7 +15,7 @@ from ...nonebot_plugin_larkuid.session import get_user_id
 
 async def get_email_list(user_id: str) -> AsyncGenerator[dict[str, Any], None]:
     async with get_session() as session:
-        result = await session.scalars(select(Email.id))
+        result = await session.scalars(select(EmailData.id))
     for email_id in result:
         yield await get_email(user_id, email_id)
 

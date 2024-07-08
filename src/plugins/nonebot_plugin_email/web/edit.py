@@ -4,7 +4,7 @@ from nonebot import get_app
 from nonebot_plugin_orm import get_scoped_session
 
 from ..models import EmailEditArgs
-from ..models import Email
+from ..models import EmailData
 from ..config import config
 from ...nonebot_plugin_larkuid.session import get_user_id
 
@@ -14,7 +14,7 @@ async def _(request: Request, email_id: int, args: EmailEditArgs, user_id: str =
     if user_id not in config.superusers:
         raise HTTPException(status.HTTP_403_FORBIDDEN)
     session = get_scoped_session()
-    email = await session.get(Email, email_id)
+    email = await session.get(EmailData, email_id)
     if email is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND)
     email.content = args.content or email.content

@@ -7,7 +7,7 @@ from sqlalchemy.orm import mapped_column, Mapped
 from ..nonebot_plugin_item.types import DictItemData
 
 
-class Email(Model):
+class EmailData(Model):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     author: Mapped[Optional[str]] = mapped_column(nullable=True, default=None)
     content: Mapped[str]
