@@ -17,6 +17,7 @@ class EmailData(Model):
 
 
 class EmailItem(Model):
+    __table_args__ = {"extend_existing": True}
     id_: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     belong: Mapped[int]
     item_id: Mapped[str]
@@ -25,6 +26,7 @@ class EmailItem(Model):
 
 
 class EmailUser(Model):
+    __table_args__ = {"extend_existing": True}
     id_: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     is_claimed: Mapped[bool] = mapped_column(default=False)
     is_read: Mapped[bool] = mapped_column(default=False)
