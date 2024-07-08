@@ -59,6 +59,7 @@ nb-cli = "^1.4.0"
 ipykernel = "^6.29.4"
 ruff = "^0.4.7"
 pre-commit = "^3.7.1"
+nonebot-plugin-orm = {extras = ["sqlite"], version = "^0.7.4"}
 
 [build-system]
 requires = ["poetry-core"]
