@@ -31,8 +31,8 @@ jobs:
       - name: Check database upgrade
         run: |
           poetry run nb orm upgrade
-          export output=$(poetry run nb orm check)
-          if (echo $output | grep "alembic | Detected ") ; then
+          poetry run nb orm check 2>error.log
+          if (grep "Error" error.log) ; then
             echo "Database check failed"
             echo "failed=1" >> $GITHUB_ENV
           else
