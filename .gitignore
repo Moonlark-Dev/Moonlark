@@ -7,7 +7,7 @@ __pycache__/
 src/plugins/test
 src/lang/zh_hans/test.yaml
 
-test.db
+*.db
 
 # C extensions
 *.so
