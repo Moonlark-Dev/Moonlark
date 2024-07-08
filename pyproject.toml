@@ -55,6 +55,7 @@ nonebot-plugin-waiter = "^0.6.2"
 nonebot-plugin-orm = "^0.7.4"
 aiosqlite = "^0.20.0"
 aiomysql = "^0.2.0"
+cryptography = "^42.0.8"
 
 [tool.poetry.group.dev.dependencies]
 nb-cli = "^1.4.0"
