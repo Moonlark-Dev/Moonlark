@@ -14,7 +14,7 @@ async def get_user(
     except NoResultFound:
         if not create:
             raise
-        data = UserData(user_id=user_id, nickname="", activation_time=datetime.datetime.now())
+        data = UserData(user_id=user_id, nickname="UNKNOWN", activation_time=datetime.datetime.now())
         session.add(data)
         await session.commit()
     return await get_user(user_id)
@@ -27,6 +27,8 @@ async def set_user_data(
     health: Optional[float] = None,
     favorability: Optional[float] = None,
 ) -> None:
+    if user_id == "-1":
+        return
     session = get_session()
     user = await get_user(user_id)
     if experience:
