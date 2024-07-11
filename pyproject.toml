@@ -9,6 +9,7 @@ requires-python = ">=3.11, <4.0"
 adapters = [
     { name = "OneBot V12", module_name = "nonebot.adapters.onebot.v12" },
     { name = "OneBot V11", module_name = "nonebot.adapters.onebot.v11" },
+    { name = "QQ", module_name = "nonebot.adapters.qq" },
 ]
 plugins = [
     "nonebot_plugin_orm",
@@ -54,6 +55,7 @@ openai = "^1.34.0"
 nonebot-plugin-waiter = "^0.6.2"
 nonebot-plugin-orm = "^0.7.4"
 aiosqlite = "^0.20.0"
+nonebot-adapter-qq = "^1.4.4"
 
 [tool.poetry.group.dev.dependencies]
 nb-cli = "^1.4.0"
