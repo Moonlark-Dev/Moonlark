@@ -17,7 +17,7 @@ class WebRanking(ABC):
     LANG: LangHelper = lang
 
     def __init__(self) -> None:
-        get_app().get(f"/rankings/{self.ID}")(self.handle)
+        get_app().get(f"/api/rankings/{self.ID}")(self.handle)
 
     async def handle(
         self, request: Request, offset: int = 0, limit: int = 20, user_id: str = get_user_id("-1")
