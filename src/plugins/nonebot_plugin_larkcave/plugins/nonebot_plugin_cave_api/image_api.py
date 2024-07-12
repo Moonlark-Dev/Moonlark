@@ -26,7 +26,7 @@ async def _() -> dict[str, str]:
     response = {}
     async for image in get_images():
         file_name = f"{image.id}.{image.name.split('.')[-1]}"
-        response[file_name] = f"{config.cave_api_base_url}/api/images/{file_name}"
+        response[file_name] = f"{config.cave_api_base_url}/api/cave/images/{file_name}"
     return response
 
 
