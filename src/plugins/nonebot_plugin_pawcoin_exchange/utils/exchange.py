@@ -8,7 +8,7 @@ from nonebot_plugin_apscheduler import scheduler
 from nonebot import get_driver, logger
 from nonebot_plugin_localstore import get_data_file
 
-from ...nonebot_plugin_larkuser.utils.vimcoin import add_vimcoin
+from ...nonebot_plugin_larkuser import get_user
 from .count import add_exchanged_count
 from .item import get_target_item
 
@@ -57,14 +57,14 @@ async def get_exchange_vimcoin(count: int) -> float:
 @scheduler.scheduled_job("cron", minute="*", id="update_exchange")
 async def _() -> None:
     origin_exchange = await calculate_exchange()
-    exchange = round(origin_exchange, 3)
+    new_exchange = round(origin_exchange, 3)
     async with aiofiles.open(path, "r+", encoding="utf-8") as f:
         data = json.loads(await f.read())
-        data["exchange"] = exchange
+        data["exchange"] = new_exchange
         await f.seek(0)
         await f.write(json.dumps(data))
         await f.truncate()
-    logger.info(f"PawCoin 汇率更新完成，最新汇率为 {exchange} ({origin_exchange})")
+    logger.info(f"PawCoin 汇率更新完成，最新汇率为 {new_exchange} ({origin_exchange})")
 
 
 async def remove_pawcoin_form_bag(count: int, user_id: str) -> None:
@@ -85,6 +85,7 @@ async def exchange(index: Match[int], count: int, user_id: str) -> None:
         target_item.stack.count -= count
     else:
         await remove_pawcoin_form_bag(count, user_id)
-    await add_vimcoin(user_id, vimcoin_count := await get_exchange_vimcoin(count))
+    user = await get_user(user_id)
+    await user.add_vimcoin(vimcoin_count := await get_exchange_vimcoin(count))
     await add_exchanged_count(user_id, count, vimcoin_count)
     await lang.finish("pcc.ok", count, vimcoin_count)
