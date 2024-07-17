@@ -77,12 +77,12 @@ class MoonlarkUser:
         return self.get_register_time() is not None
 
     async def set_data(
-            self,
-            user_id: str,
-            experience: Optional[int] = None,
-            vimcoin: Optional[float] = None,
-            health: Optional[float] = None,
-            favorability: Optional[float] = None,
+        self,
+        user_id: str,
+        experience: Optional[int] = None,
+        vimcoin: Optional[float] = None,
+        health: Optional[float] = None,
+        favorability: Optional[float] = None,
     ) -> None:
         async with get_session() as session:
             user = await session.get(UserData, self.user_id)

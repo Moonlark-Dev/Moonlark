@@ -13,7 +13,7 @@ from ..utils.user import get_user
 async def _(matcher: Matcher, user_id: str = get_user_id()) -> None:
     user = await get_user(user_id)
     level = user.get_level()
-    level_progress = int((user.experience - (level - 1) ** 3) / (level ** 3 - (level - 1) ** 3) * 100)
+    level_progress = int((user.experience - (level - 1) ** 3) / (level**3 - (level - 1) ** 3) * 100)
     message = UniMessage().image(
         raw=await render_template(
             "panel.html.jinja",
@@ -28,7 +28,7 @@ async def _(matcher: Matcher, user_id: str = get_user_id()) -> None:
                     user_id,
                     level,
                     user.experience - (level - 1) ** 3,
-                    level ** 3,
+                    level**3,
                 ),
                 "level_progress": f"{level_progress}%",
                 "vimcoin": await lang.text("panel.vimcoin", user_id, round(user.get_vimcoin(), 3)),

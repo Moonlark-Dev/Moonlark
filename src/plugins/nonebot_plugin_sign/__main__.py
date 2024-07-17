@@ -70,7 +70,7 @@ async def get_sign_exp(user: MoonlarkUser, sign_data: SignData) -> SignClaimData
         "text": await lang.text("image.exp", user.user_id),
         "now": user.get_experience(),
         "add": exp,
-        "origin": origin_exp
+        "origin": origin_exp,
     }
 
 
@@ -81,12 +81,7 @@ async def get_sign_vim(user_data: MoonlarkUser, sign_data: SignData) -> SignClai
         1
         + math.sqrt(
             math.sqrt(
-                (1000 + random.random())
-                * level
-                * max(user_data.get_fav(), 0.1)
-                / 5
-                * min(sign_data.sign_days, 15)
-                / 8
+                (1000 + random.random()) * level * max(user_data.get_fav(), 0.1) / 5 * min(sign_data.sign_days, 15) / 8
                 + 1
             )
         )
@@ -99,7 +94,7 @@ async def get_sign_vim(user_data: MoonlarkUser, sign_data: SignData) -> SignClai
         "text": await lang.text("image.vim", user_data.user_id),
         "add": vim,
         "origin": origin,
-        "now": user_data.get_vimcoin()
+        "now": user_data.get_vimcoin(),
     }
 
 
@@ -112,7 +107,7 @@ async def get_sign_fav(user_data: MoonlarkUser) -> SignClaimData:
         "text": await lang.text("image.fav", user_data.user_id),
         "add": fav,
         "now": user_data.get_vimcoin(),
-        "origin": origin
+        "origin": origin,
     }
 
 

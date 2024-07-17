@@ -23,7 +23,6 @@ async def get_image(match: str, session: async_scoped_session) -> CaveImage:
         return CaveImage(id_=image_data.id, data=zlib.decompress(await f.read()), name=image_data.name)
 
 
-
 def parse_text(text: str) -> Text:
     return Text(text.replace("&#91;", "[").replace("&#93;", "]"))
 
@@ -33,7 +32,7 @@ async def parse_content(content: str, session: async_scoped_session) -> UniMessa
     message = UniMessage()
     for match in re.finditer(r"\[\[Img:\d+\.\d+]]]", content):
         span = match.span()
-        message.append(parse_text(content[length:span[0]]))
+        message.append(parse_text(content[length : span[0]]))
         try:
             message.append(Image(raw=(image := await get_image(match.group(), session)).data, name=image.name))
         except Exception:

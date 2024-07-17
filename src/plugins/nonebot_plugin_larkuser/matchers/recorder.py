@@ -14,10 +14,7 @@ async def _(session: async_scoped_session, user: UserInfo = EventUserInfo()) -> 
         user_data = await session.get_one(UserData, {"user_id": user.user_id})
     except NoResultFound:
         logger.info(f"识别到新用户 {user.user_id=}")
-        user_data = UserData(
-            user_id=user.user_id,
-            nickname=user.user_name
-        )
+        user_data = UserData(user_id=user.user_id, nickname=user.user_name)
         session.add(user_data)
         return await session.commit()
     if user_data.nickname != user.user_name:

@@ -13,10 +13,7 @@ from ..nonebot_plugin_cave_comment.get import get_comments
 
 @cave.assign("get.cave_id")
 async def _(
-        session: async_scoped_session,
-        cave_id: int,
-        user_id: str = get_user_id(),
-        is_superuser: bool = is_user_superuser()
+    session: async_scoped_session, cave_id: int, user_id: str = get_user_id(), is_superuser: bool = is_user_superuser()
 ) -> None:
     try:
         cave_data = await session.get_one(CaveData, {"id": cave_id})

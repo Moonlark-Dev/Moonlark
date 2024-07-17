@@ -4,7 +4,7 @@ from ...models import ImageData
 import aiofiles
 import zlib
 from ...decoder import data_dir
-from nonebot_plugin_orm import async_scoped_session 
+from nonebot_plugin_orm import async_scoped_session
 
 
 async def encode_text(text: str) -> str:
