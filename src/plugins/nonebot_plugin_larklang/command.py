@@ -1,7 +1,7 @@
 from nonebot_plugin_alconna import Alconna, Args, Subcommand, on_alconna
 from nonebot_plugin_orm import async_scoped_session
 
-from ..nonebot_plugin_larkutils.superuser import is_superuser
+from ..nonebot_plugin_larkutils.superuser import is_user_superuser
 
 from ..nonebot_plugin_larkutils import get_user_id
 from . import __main__ as main
@@ -21,7 +21,7 @@ lang = main.LangHelper()
 
 
 @lang_cmd.assign("reload")
-async def _(user_id: str = get_user_id(), superuser: bool = is_superuser()) -> None:
+async def _(user_id: str = get_user_id(), superuser: bool = is_user_superuser()) -> None:
     if superuser:
         await main.load_languages()
         await lang.finish("reload.success", user_id)

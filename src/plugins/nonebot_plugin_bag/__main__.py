@@ -3,7 +3,7 @@ from nonebot_plugin_alconna import Alconna, Args, MultiVar, Option, Subcommand, 
 
 from ..nonebot_plugin_larklang.__main__ import LangHelper
 
-from ..nonebot_plugin_larkuser.matcher import patch_matcher
+from src.plugins.nonebot_plugin_larkuser import patch_matcher
 
 alc = Alconna(
     "bag",

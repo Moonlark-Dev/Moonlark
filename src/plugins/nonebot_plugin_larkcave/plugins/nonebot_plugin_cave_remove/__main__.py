@@ -1,5 +1,5 @@
 from ...__main__ import cave
-from ....nonebot_plugin_larkutils import get_user_id, is_superuser
+from ....nonebot_plugin_larkutils import get_user_id, is_user_superuser
 from ...lang import lang
 from ...models import CaveData
 from nonebot_plugin_orm import async_scoped_session
@@ -14,7 +14,7 @@ from ...decoder import decode_cave
 
 @cave.assign("remove.comment.comment_id")
 async def _(
-    comment_id: int, session: async_scoped_session, is_superuser: bool = is_superuser(), user_id: str = get_user_id()
+    comment_id: int, session: async_scoped_session, is_user_superuser: bool, user_id: str = get_user_id()
 ) -> None:
     try:
         comment = await session.get_one(CommentData, {"id": comment_id})
@@ -39,7 +39,7 @@ async def _(
 
 @cave.assign("remove.cave_id")
 async def _(
-    cave_id: int, session: async_scoped_session, is_superuser: bool = is_superuser(), user_id: str = get_user_id()
+    cave_id: int, session: async_scoped_session, is_user_superuser: bool, user_id: str = get_user_id()
 ) -> None:
     try:
         cave_data = await session.get_one(CaveData, {"id": cave_id})

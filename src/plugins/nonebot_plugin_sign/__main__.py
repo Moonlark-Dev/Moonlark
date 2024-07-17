@@ -16,7 +16,7 @@ from ..nonebot_plugin_render.render import render_template
 from ..nonebot_plugin_email.utils.unread import get_unread_email_count
 
 from ..nonebot_plugin_jrrp.jrrp import get_luck_value
-from ..nonebot_plugin_larkuser.matcher import patch_matcher
+from src.plugins.nonebot_plugin_larkuser.utils.matcher import patch_matcher
 from ..nonebot_plugin_larkuser.models import UserData
 from ..nonebot_plugin_larkuser.utils.level import get_level_by_experience
 from ..nonebot_plugin_larkuser.utils.user import get_user

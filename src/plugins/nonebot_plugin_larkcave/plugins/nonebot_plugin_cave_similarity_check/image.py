@@ -42,7 +42,7 @@ async def get_image_list(session: async_scoped_session) -> AsyncGenerator[ImageD
 
 async def check_image(posting: bytes, session: async_scoped_session, name: str) -> CheckResult:
     async for image in get_image_list(session):
-        if (score := await compare_images_async(posting, image, name)) >= 0.8:
+        if (score := await compare_images_async(posting, image, name)) >= 0.9:
             return {
                 "passed": False,
                 "similar_cave": await session.get_one(CaveData, {"id": image.belong}),

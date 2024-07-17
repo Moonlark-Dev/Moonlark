@@ -1,5 +1,5 @@
 from pathlib import Path
-
+from sqlalchemy import String
 from nonebot_plugin_orm import Model
 from pydantic import BaseModel
 from sqlalchemy.orm import Mapped, mapped_column
@@ -39,5 +39,5 @@ class LanguageData(BaseModel):
 
 
 class LanguageConfig(Model):
-    user_id: Mapped[str] = mapped_column(primary_key=True)
-    language: Mapped[str]
+    user_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    language: Mapped[str] = mapped_column(String(16))

@@ -12,7 +12,7 @@ async def generate(comments: list[CommentData], cave_id: int, user_id: str) -> b
         {
             "comments": [
                 {
-                    "author": (await get_user(comment.author)).nickname,
+                    "author": (await get_user(comment.author)).get_nickname(),
                     "time": comment.time.strftime("%Y-%m-%d %H:%M:%S"),
                     "id": await lang.text("comment.id", user_id, comment.id),
                     "text": comment.content.replace("<", "&lt;").replace(">", "&gt;"),

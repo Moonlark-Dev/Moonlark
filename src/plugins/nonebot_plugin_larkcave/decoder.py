@@ -23,9 +23,9 @@ def parse_text(text: str) -> Text:
 async def parse_content(content: str, session: async_scoped_session) -> UniMessage:
     length = 0
     message = UniMessage()
-    for match in re.finditer(r"\[\[Img:\d+\.\d+\]\]\]", content):
+    for match in re.finditer(r"\[\[Img:\d+\.\d+]]]", content):
         span = match.span()
-        message.append(parse_text(content[length : span[0]]))
+        message.append(parse_text(content[length:span[0]]))
         try:
             message.append(Image(raw=(image := await get_image(match.group(), session)).data, name=image.name))
         except Exception:
@@ -38,5 +38,5 @@ async def parse_content(content: str, session: async_scoped_session) -> UniMessa
 async def decode_cave(cave: CaveData, session: async_scoped_session, user_id: str) -> UniMessage:
     message = UniMessage(await lang.text("render.header", user_id, cave.id))
     message.extend(await parse_content(cave.content, session))
-    message.append(Text(await lang.text("render.footer", user_id, (await get_user(cave.author)).nickname)))
+    message.append(Text(await lang.text("render.footer", user_id, (await get_user(cave.author)).get_nickname())))
     return message

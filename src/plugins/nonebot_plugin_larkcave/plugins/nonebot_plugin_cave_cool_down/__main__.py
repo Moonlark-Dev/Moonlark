@@ -2,7 +2,7 @@ from nonebot_plugin_alconna import AlconnaMatch, Arparma, Match
 from ...__main__ import cave
 from ...lang import lang
 from ...models import GroupData
-from ....nonebot_plugin_larkutils import get_user_id, get_group_id, is_superuser
+from ....nonebot_plugin_larkutils import get_user_id, get_group_id, is_user_superuser
 from nonebot_plugin_orm import async_scoped_session
 from sqlalchemy.exc import NoResultFound
 from ...cool_down import is_group_cooled, is_user_cooled
@@ -25,7 +25,7 @@ async def _(
     time: Match[float] = AlconnaMatch("time"),
     user_id: str = get_user_id(),
     group_id: str = get_group_id(),
-    is_superuser: bool = is_superuser(),
+        is_user_superuser: bool,
 ) -> None:
     if time.available:
         if is_superuser:
