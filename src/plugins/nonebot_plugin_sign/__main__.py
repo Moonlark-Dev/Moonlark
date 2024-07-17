@@ -4,6 +4,8 @@ import random
 from datetime import date
 
 import httpx
+
+from typing import TypedDict
 from nonebot import on_fullmatch
 from nonebot.matcher import Matcher
 from nonebot_plugin_alconna import Alconna, UniMessage, on_alconna
@@ -12,14 +14,10 @@ from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
 
 from ..nonebot_plugin_render.render import render_template
-
 from ..nonebot_plugin_email.utils.unread import get_unread_email_count
-
 from ..nonebot_plugin_jrrp.jrrp import get_luck_value
 from src.plugins.nonebot_plugin_larkuser.utils.matcher import patch_matcher
-from ..nonebot_plugin_larkuser.models import UserData
-from ..nonebot_plugin_larkuser.utils.level import get_level_by_experience
-from ..nonebot_plugin_larkuser.utils.user import get_user
+from ..nonebot_plugin_larkuser import MoonlarkUser, get_user
 from ..nonebot_plugin_larkutils import get_user_id
 from .config import config
 from .lang import lang
@@ -27,6 +25,13 @@ from .models import SignData
 
 sign = on_alconna(Alconna("签到"), aliases={"签到", "sign"})
 patch_matcher(sign)
+
+
+class SignClaimData(TypedDict):
+    text: str
+    origin: float | int
+    add: float | int
+    now: float | int
 
 
 def get_luck(user_id: str) -> str:
@@ -45,33 +50,40 @@ def get_luck(user_id: str) -> str:
         return "f"
 
 
-async def get_user_data(session: AsyncSession, user_id: str) -> SignData:
+async def get_sign_data(session: AsyncSession, user_id: str) -> SignData:
     try:
         return await session.get_one(SignData, {"user_id": user_id})
     except NoResultFound:
         session.add(SignData(user_id=user_id))
         await session.commit()
-        return await get_user_data(session, user_id)
+        return await get_sign_data(session, user_id)
 
 
-async def get_sign_exp(user_data: UserData, sign_data: SignData) -> int:
-    level = get_level_by_experience(user_data.experience)
-    exp = round(random.random() * level / 2 * max(user_data.favorability, 0.1) * min(sign_data.sign_days + 1, 15) + 1)
+async def get_sign_exp(user: MoonlarkUser, sign_data: SignData) -> SignClaimData:
+    level = user.get_level()
+    origin_exp = user.get_experience()
+    exp = round(random.random() * level / 2 * max(user.get_fav(), 0.1) * min(sign_data.sign_days + 1, 15) + 1)
     if level <= 4:
         exp = round(exp * 1.3)
-    user_data.experience += exp
-    return exp
+    await user.add_experience(exp)
+    return {
+        "text": await lang.text("image.exp", user.user_id),
+        "now": user.get_experience(),
+        "add": exp,
+        "origin": origin_exp
+    }
 
 
-async def get_sign_vim(user_data: UserData, sign_data: SignData) -> float:
-    level = get_level_by_experience(user_data.experience)
+async def get_sign_vim(user_data: MoonlarkUser, sign_data: SignData) -> SignClaimData:
+    level = user_data.get_level()
+    origin = user_data.get_experience()
     vim = round(
         1
         + math.sqrt(
             math.sqrt(
                 (1000 + random.random())
                 * level
-                * max(user_data.favorability, 0.1)
+                * max(user_data.get_fav(), 0.1)
                 / 5
                 * min(sign_data.sign_days, 15)
                 / 8
@@ -82,15 +94,26 @@ async def get_sign_vim(user_data: UserData, sign_data: SignData) -> float:
         * random.random(),
         1,
     )
-    user_data.vimcoin += vim
-    return vim
+    await user_data.add_vimcoin(vim)
+    return {
+        "text": await lang.text("image.vim", user_data.user_id),
+        "add": vim,
+        "origin": origin,
+        "now": user_data.get_vimcoin()
+    }
 
 
-async def get_sign_fav(user_data: UserData) -> float:
-    level = get_level_by_experience(user_data.experience)
+async def get_sign_fav(user_data: MoonlarkUser) -> SignClaimData:
+    level = user_data.get_level()
+    origin = user_data.get_experience()
     fav = round(0.001 * math.sqrt(level), 3)
-    user_data.favorability += fav
-    return fav
+    await user_data.add_fav(fav)
+    return {
+        "text": await lang.text("image.fav", user_data.user_id),
+        "add": fav,
+        "now": user_data.get_vimcoin(),
+        "origin": origin
+    }
 
 
 async def get_sign_days(sign_data: SignData) -> int:
@@ -117,8 +140,8 @@ async def get_hitokoto(user_id: str) -> str:
 @patch_matcher(on_fullmatch(("sign", "签到"))).handle()
 async def _(matcher: Matcher, user_id: str = get_user_id()) -> None:
     session = get_session()
-    data = await get_user_data(session, user_id)
-    user = await get_user(user_id, session)
+    data = await get_sign_data(session, user_id)
+    user = await get_user(user_id)
     if (date.today() - data.last_sign).days < 1:
         await lang.finish("sign.signed", user_id)
     templates = {
@@ -129,24 +152,9 @@ async def _(matcher: Matcher, user_id: str = get_user_id()) -> None:
             "text": await lang.text("image.signdays", user_id),
             "value": await lang.text("image.signdays_text", user_id, await get_sign_days(data)),
         },
-        "exp": {
-            "text": await lang.text("image.exp", user_id),
-            "origin": user.experience,
-            "add": await get_sign_exp(user, data),
-            "now": user.experience,
-        },
-        "vim": {
-            "text": await lang.text("image.vim", user_id),
-            "origin": round(user.vimcoin, 1),
-            "add": await get_sign_vim(user, data),
-            "now": round(user.vimcoin, 1),
-        },
-        "fav": {
-            "text": await lang.text("image.fav", user_id),
-            "origin": round(user.favorability, 3),
-            "add": await get_sign_fav(user),
-            "now": round(user.favorability, 3),
-        },
+        "exp": await get_sign_exp(user, data),
+        "vim": await get_sign_vim(user, data),
+        "fav": await get_sign_fav(user),
         "rank": {
             "text": await lang.text("image.rank", user_id),
             "value": await lang.text(

@@ -22,4 +22,4 @@ config = get_plugin_config(Config)
 from .matchers import recorder, panel
 from .utils.matcher import patch_matcher
 from .utils.level import get_level_by_experience
-from .utils.user import get_user
+from .utils.user import get_user, MoonlarkUser
