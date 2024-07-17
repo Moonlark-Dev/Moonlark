@@ -13,6 +13,7 @@ async def _(session: async_scoped_session, user: UserInfo = EventUserInfo()) -> 
     try:
         user_data = await session.get_one(UserData, {"user_id": user.user_id})
     except NoResultFound:
+        logger.info(f"识别到新用户 {user.user_id=}")
         user_data = UserData(
             user_id=user.user_id,
             nickname=user.user_name
@@ -22,6 +23,7 @@ async def _(session: async_scoped_session, user: UserInfo = EventUserInfo()) -> 
     if user_data.nickname != user.user_name:
         logger.info(f"用户 {user_data.user_id} 修改了其昵称 ({user_data.nickname} => {user.user_name})")
         user_data.nickname = user.user_name
+    logger.debug(f"{user_data.register_time=} {user.user_avatar=}")
     if user.user_avatar and user_data.register_time:
         avatar = await user.user_avatar.get_image()
         if await is_user_avatar_updated(user_data.user_id, avatar):

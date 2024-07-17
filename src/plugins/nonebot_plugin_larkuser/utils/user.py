@@ -43,7 +43,8 @@ class MoonlarkUser:
         return self.avatar
 
     def get_base64_avatar(self) -> Optional[str]:
-        return base64.b64encode(self.get_avatar()).decode()
+        if self.has_avatar():
+            return base64.b64encode(self.get_avatar()).decode()
 
     def has_avatar(self) -> bool:
         return self.get_avatar() is not None

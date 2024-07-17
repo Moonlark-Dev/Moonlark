@@ -31,4 +31,4 @@ async def update_user_avatar(user_id: str, avatar: bytes) -> None:
 
 
 async def is_user_avatar_updated(user_id: str, avatar: bytes) -> bool:
-    return avatar == await get_user_avatar(user_id)
+    return avatar != await get_user_avatar(user_id)
