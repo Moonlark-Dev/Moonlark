@@ -29,5 +29,5 @@ class GroupData(Model):
 
 
 class UserCoolDownData(Model):
-    user_id: Mapped[str] = mapped_column(primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(128), primary_key=True)
     last_use: Mapped[datetime] = mapped_column(default=datetime.fromtimestamp(0))
