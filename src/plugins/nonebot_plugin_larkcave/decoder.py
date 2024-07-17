@@ -1,19 +1,27 @@
 import re
 import traceback
+import zlib
 
+import aiofiles
 from nonebot import logger
+from nonebot_plugin_localstore import get_data_dir
 from nonebot_plugin_alconna import Image, Text, UniMessage
 from nonebot_plugin_orm import async_scoped_session
 
 from ..nonebot_plugin_larkuser import get_user
 from .lang import lang
-from .models import CaveData, ImageData
+from .models import CaveData, ImageData, CaveImage
+
+data_dir = get_data_dir("nonebot_plugin_larkcave")
 
 
-async def get_image(match: str, session: async_scoped_session) -> ImageData:
+async def get_image(match: str, session: async_scoped_session) -> CaveImage:
     image_id = match[6:-3]
     logger.debug(f"获取图片: {image_id}")
-    return await session.get_one(ImageData, {"id": image_id})
+    image_data = await session.get_one(ImageData, float(image_id))
+    async with aiofiles.open(data_dir.joinpath(image_data.file_id), "rb") as f:
+        return CaveImage(id_=image_data.id, data=zlib.decompress(await f.read()), name=image_data.name)
+
 
 
 def parse_text(text: str) -> Text:
