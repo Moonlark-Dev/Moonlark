@@ -25,7 +25,7 @@ async def _(
     time: Match[float] = AlconnaMatch("time"),
     user_id: str = get_user_id(),
     group_id: str = get_group_id(),
-        is_user_superuser: bool,
+    is_superuser: bool = get_user_id(),
 ) -> None:
     if time.available:
         if is_superuser:

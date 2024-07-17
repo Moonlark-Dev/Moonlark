@@ -43,7 +43,7 @@ async def _(
     session: async_scoped_session,
     state: T_State,
     user_id: str = get_user_id(),
-        is_user_superuser: bool,
+    is_superuser: bool = is_user_superuser(),
     group_id: str = get_group_id(),
     vote_data: Optional[Vote] = Depends(get_vote_data),
 ) -> None:
