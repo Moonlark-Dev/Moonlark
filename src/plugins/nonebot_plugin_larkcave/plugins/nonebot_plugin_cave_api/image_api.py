@@ -10,12 +10,13 @@ from sqlalchemy import select
 from .config import config
 from ...models import ImageData, CaveData
 from ...decoder import get_image
+
 app = get_app()
 
 
 async def get_images() -> AsyncGenerator[ImageData, None]:
     session = get_scoped_session()
-    image_list = (await session.scalars(select(ImageData.id)))
+    image_list = await session.scalars(select(ImageData.id))
     for image_id in image_list:
         image = await session.get_one(ImageData, {"id": image_id})
         belong = await session.get_one(CaveData, {"id": image.belong})
