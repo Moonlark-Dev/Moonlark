@@ -6,6 +6,8 @@ from src.plugins.nonebot_plugin_larkuser.utils.avatar import get_user_avatar
 from src.plugins.nonebot_plugin_larkuser.utils.level import get_level_by_experience
 from src.plugins.nonebot_plugin_larkuser.models import UserData
 
+from ..exceptions import UserNotRegistered
+
 
 class MoonlarkUser:
 
@@ -84,6 +86,8 @@ class MoonlarkUser:
         health: Optional[float] = None,
         favorability: Optional[float] = None,
     ) -> None:
+        if not self.is_registered():
+            raise UserNotRegistered
         async with get_session() as session:
             user = await session.get(UserData, self.user_id)
             if user is None:
@@ -116,6 +120,11 @@ class MoonlarkUser:
 
 
 async def get_user(user_id: str) -> MoonlarkUser:
+    """
+    获取 Moonlark 用户
+    :param user_id: 用户 ID
+    :return: 可操作 Moonlark 用户类
+    """
     user = MoonlarkUser(user_id)
     await user.setup_user()
     return user

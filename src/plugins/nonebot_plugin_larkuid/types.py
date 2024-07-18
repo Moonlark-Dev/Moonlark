@@ -27,7 +27,6 @@ class DetailedUserResponse(BasicUserResponse):
     register_time: Optional[float]
     ship_code: Optional[str]
     gender: Optional[int]
-    activation_time: float
     health: float
     favorability: float
 

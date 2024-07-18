@@ -2,16 +2,14 @@ import uuid
 import hashlib
 from datetime import datetime, timedelta
 from typing import Optional
-
-from fastapi import Cookie, Depends, HTTPException, Request, status
+from fastapi import Depends, HTTPException, Request, status
 from nonebot.log import logger
 from nonebot_plugin_apscheduler import scheduler
 from nonebot_plugin_orm import get_scoped_session, get_session
 from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
 
-from ..nonebot_plugin_larkuser.models import UserData
-from ..nonebot_plugin_larkuser.utils.user import get_user
+from ..nonebot_plugin_larkuser import MoonlarkUser, get_user
 from .models import SessionData
 
 
@@ -71,24 +69,24 @@ def get_user_id(default: Optional[str] = None) -> str:
         return Depends(_)
 
 
-async def _get_existing_user(user_id: str = get_user_id()) -> UserData:
+async def _get_existing_user(user_id: str = get_user_id()) -> MoonlarkUser:
     try:
-        return await get_user(user_id, create=False)
+        return await get_user(user_id)
     except NoResultFound:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
 
 
-async def _get_user_data(user_id: str = get_user_id()) -> UserData:
+async def _get_user_data(user_id: str = get_user_id()) -> MoonlarkUser:
     return await get_user(user_id)
 
 
-async def _get_registered_user(user_data: UserData = Depends(_get_existing_user)) -> UserData:
-    if user_data.register_time is None:
+async def _get_registered_user(user_data: MoonlarkUser = Depends(_get_existing_user)) -> MoonlarkUser:
+    if not user_data.is_registered():
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
     return user_data
 
 
-def get_user_data(registered: bool = False) -> UserData:
+def get_user_data(registered: bool = False) -> MoonlarkUser:
     if registered:
         return Depends(_get_registered_user)
     return Depends(_get_user_data)
