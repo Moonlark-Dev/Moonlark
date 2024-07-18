@@ -16,5 +16,6 @@ require("nonebot_plugin_larklang")
 require("nonebot_plugin_orm")
 require("nonebot_plugin_htmlrender")
 
-from . import __main__, checker, web
-from .api import set_access
+from . import __main__, web
+from .utils import checker
+from src.plugins.nonebot_plugin_access.utils.set_access import set_access

@@ -13,7 +13,7 @@ async def find_user(ranked_data: list[RankingData], user_id: str) -> Optional[Us
         index += 1
         if data["user_id"] == user_id:
             return {
-                "nickname": (await get_user(user_id)).nickname,
+                "nickname": (await get_user(user_id)).get_nickname(),
                 "user_id": user_id,
                 "data": data["data"],
                 "index": index,

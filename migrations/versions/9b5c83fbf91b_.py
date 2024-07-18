@@ -1,8 +1,8 @@
-"""init
+"""empty message
 
-迁移 ID: c33242e66c95
+迁移 ID: 9b5c83fbf91b
 父迁移: 
-创建时间: 2024-07-07 19:45:20.628291
+创建时间: 2024-07-18 14:35:31.502379
 
 """
 
@@ -14,7 +14,7 @@ from alembic import op
 import sqlalchemy as sa
 
 
-revision: str = "c33242e66c95"
+revision: str = "9b5c83fbf91b"
 down_revision: str | Sequence[str] | None = None
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
@@ -27,8 +27,8 @@ def upgrade(name: str = "") -> None:
     op.create_table(
         "nonebot_plugin_access_subjectdata",
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
-        sa.Column("subject", sa.String(), nullable=False),
-        sa.Column("name", sa.String(), nullable=False),
+        sa.Column("subject", sa.String(length=256), nullable=False),
+        sa.Column("name", sa.String(length=128), nullable=False),
         sa.Column("available", sa.Boolean(), nullable=False),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_nonebot_plugin_access_subjectdata")),
         info={"bind_key": "nonebot_plugin_access"},
@@ -36,9 +36,9 @@ def upgrade(name: str = "") -> None:
     op.create_table(
         "nonebot_plugin_achievement_user",
         sa.Column("_id", sa.Integer(), autoincrement=True, nullable=False),
-        sa.Column("user_id", sa.String(), nullable=False),
-        sa.Column("achievement_namespace", sa.String(), nullable=False),
-        sa.Column("achievement_path", sa.String(), nullable=False),
+        sa.Column("user_id", sa.String(length=128), nullable=False),
+        sa.Column("achievement_namespace", sa.String(length=32), nullable=False),
+        sa.Column("achievement_path", sa.String(length=32), nullable=False),
         sa.Column("unlock_progress", sa.Integer(), nullable=False),
         sa.Column("unlocked", sa.Boolean(), nullable=False),
         sa.PrimaryKeyConstraint("_id", name=op.f("pk_nonebot_plugin_achievement_user")),
@@ -48,8 +48,8 @@ def upgrade(name: str = "") -> None:
         "nonebot_plugin_bag_bag",
         sa.Column("id_", sa.Integer(), autoincrement=True, nullable=False),
         sa.Column("bag_index", sa.Integer(), nullable=False),
-        sa.Column("user_id", sa.String(), nullable=False),
-        sa.Column("item_id", sa.String(), nullable=False),
+        sa.Column("user_id", sa.String(length=128), nullable=False),
+        sa.Column("item_id", sa.String(length=64), nullable=False),
         sa.Column("count", sa.Integer(), nullable=False),
         sa.Column("locked", sa.Boolean(), nullable=False),
         sa.Column("data", sa.LargeBinary(), nullable=False),
@@ -59,8 +59,8 @@ def upgrade(name: str = "") -> None:
     op.create_table(
         "nonebot_plugin_bag_bagoverflow",
         sa.Column("id_", sa.Integer(), autoincrement=True, nullable=False),
-        sa.Column("user_id", sa.String(), nullable=False),
-        sa.Column("item_id", sa.String(), nullable=False),
+        sa.Column("user_id", sa.String(length=128), nullable=False),
+        sa.Column("item_id", sa.String(length=64), nullable=False),
         sa.Column("count", sa.Integer(), nullable=False),
         sa.Column("data", sa.LargeBinary(), nullable=False),
         sa.Column("time", sa.DateTime(), nullable=False),
@@ -70,8 +70,8 @@ def upgrade(name: str = "") -> None:
     op.create_table(
         "nonebot_plugin_cave_comment_commentdata",
         sa.Column("id", sa.Integer(), nullable=False),
-        sa.Column("author", sa.String(), nullable=False),
-        sa.Column("content", sa.String(), nullable=False),
+        sa.Column("author", sa.String(length=128), nullable=False),
+        sa.Column("content", sa.Text(), nullable=False),
         sa.Column("time", sa.DateTime(), nullable=False),
         sa.Column("belong", sa.Integer(), nullable=False),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_nonebot_plugin_cave_comment_commentdata")),
@@ -86,22 +86,22 @@ def upgrade(name: str = "") -> None:
         info={"bind_key": "nonebot_plugin_cave_remove"},
     )
     op.create_table(
-        "nonebot_plugin_email_email",
-        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
-        sa.Column("author", sa.String(), nullable=True),
-        sa.Column("content", sa.String(), nullable=False),
-        sa.Column("subject", sa.String(), nullable=False),
+        "nonebot_plugin_email_emaildata",
+        sa.Column("email_id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column("author", sa.String(length=128), nullable=True),
+        sa.Column("content", sa.Text(), nullable=False),
+        sa.Column("subject", sa.String(length=256), nullable=False),
         sa.Column("time", sa.DateTime(), nullable=False),
-        sa.PrimaryKeyConstraint("id", name=op.f("pk_nonebot_plugin_email_email")),
+        sa.PrimaryKeyConstraint("email_id", name=op.f("pk_nonebot_plugin_email_emaildata")),
         info={"bind_key": "nonebot_plugin_email"},
     )
     op.create_table(
         "nonebot_plugin_email_emailitem",
         sa.Column("id_", sa.Integer(), autoincrement=True, nullable=False),
         sa.Column("belong", sa.Integer(), nullable=False),
-        sa.Column("item_id", sa.String(), nullable=False),
+        sa.Column("item_id", sa.String(length=64), nullable=False),
         sa.Column("count", sa.Integer(), nullable=False),
-        sa.Column("data", sa.String(), nullable=False),
+        sa.Column("data", sa.Text(), nullable=False),
         sa.PrimaryKeyConstraint("id_", name=op.f("pk_nonebot_plugin_email_emailitem")),
         info={"bind_key": "nonebot_plugin_email"},
     )
@@ -110,7 +110,7 @@ def upgrade(name: str = "") -> None:
         sa.Column("id_", sa.Integer(), autoincrement=True, nullable=False),
         sa.Column("is_claimed", sa.Boolean(), nullable=False),
         sa.Column("is_read", sa.Boolean(), nullable=False),
-        sa.Column("user_id", sa.String(), nullable=False),
+        sa.Column("user_id", sa.String(length=128), nullable=False),
         sa.Column("email_id", sa.Integer(), nullable=False),
         sa.PrimaryKeyConstraint("id_", name=op.f("pk_nonebot_plugin_email_emailuser")),
         info={"bind_key": "nonebot_plugin_email"},
@@ -118,8 +118,8 @@ def upgrade(name: str = "") -> None:
     op.create_table(
         "nonebot_plugin_larkcave_cavedata",
         sa.Column("id", sa.Integer(), nullable=False),
-        sa.Column("author", sa.String(), nullable=False),
-        sa.Column("content", sa.String(), nullable=False),
+        sa.Column("author", sa.String(length=128), nullable=False),
+        sa.Column("content", sa.Text(), nullable=False),
         sa.Column("time", sa.DateTime(), nullable=False),
         sa.Column("public", sa.Boolean(), nullable=False),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_nonebot_plugin_larkcave_cavedata")),
@@ -127,7 +127,7 @@ def upgrade(name: str = "") -> None:
     )
     op.create_table(
         "nonebot_plugin_larkcave_groupdata",
-        sa.Column("group_id", sa.String(), nullable=False),
+        sa.Column("group_id", sa.String(length=128), nullable=False),
         sa.Column("last_use", sa.DateTime(), nullable=False),
         sa.Column("cool_down_time", sa.Float(), nullable=False),
         sa.PrimaryKeyConstraint("group_id", name=op.f("pk_nonebot_plugin_larkcave_groupdata")),
@@ -136,52 +136,50 @@ def upgrade(name: str = "") -> None:
     op.create_table(
         "nonebot_plugin_larkcave_imagedata",
         sa.Column("id", sa.Float(), nullable=False),
-        sa.Column("data", sa.LargeBinary(), nullable=False),
-        sa.Column("name", sa.String(), nullable=False),
+        sa.Column("file_id", sa.String(length=32), nullable=False),
+        sa.Column("name", sa.Text(), nullable=False),
         sa.Column("belong", sa.Integer(), nullable=False),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_nonebot_plugin_larkcave_imagedata")),
         info={"bind_key": "nonebot_plugin_larkcave"},
     )
     op.create_table(
         "nonebot_plugin_larkcave_usercooldowndata",
-        sa.Column("user_id", sa.String(), nullable=False),
+        sa.Column("user_id", sa.String(length=128), nullable=False),
         sa.Column("last_use", sa.DateTime(), nullable=False),
         sa.PrimaryKeyConstraint("user_id", name=op.f("pk_nonebot_plugin_larkcave_usercooldowndata")),
         info={"bind_key": "nonebot_plugin_larkcave"},
     )
     op.create_table(
         "nonebot_plugin_larklang_languageconfig",
-        sa.Column("user_id", sa.String(), nullable=False),
-        sa.Column("language", sa.String(), nullable=False),
+        sa.Column("user_id", sa.String(length=128), nullable=False),
+        sa.Column("language", sa.String(length=16), nullable=False),
         sa.PrimaryKeyConstraint("user_id", name=op.f("pk_nonebot_plugin_larklang_languageconfig")),
         info={"bind_key": "nonebot_plugin_larklang"},
     )
     op.create_table(
         "nonebot_plugin_larksetu_userdata",
-        sa.Column("user_id", sa.String(), nullable=False),
+        sa.Column("user_id", sa.String(length=128), nullable=False),
         sa.Column("count", sa.Integer(), nullable=False),
         sa.PrimaryKeyConstraint("user_id", name=op.f("pk_nonebot_plugin_larksetu_userdata")),
         info={"bind_key": "nonebot_plugin_larksetu"},
     )
     op.create_table(
         "nonebot_plugin_larkuid_sessiondata",
-        sa.Column("session_id", sa.String(), nullable=False),
-        sa.Column("user_id", sa.String(), nullable=False),
-        sa.Column("identifier", sa.String(), nullable=False),
-        sa.Column("activate_code", sa.String(), nullable=True),
+        sa.Column("session_id", sa.String(length=32), nullable=False),
+        sa.Column("user_id", sa.String(length=128), nullable=False),
+        sa.Column("identifier", sa.String(length=256), nullable=False),
+        sa.Column("activate_code", sa.String(length=8), nullable=True),
         sa.Column("expiration_time", sa.DateTime(), nullable=True),
         sa.PrimaryKeyConstraint("session_id", name=op.f("pk_nonebot_plugin_larkuid_sessiondata")),
         info={"bind_key": "nonebot_plugin_larkuid"},
     )
     op.create_table(
         "nonebot_plugin_larkuser_userdata",
-        sa.Column("user_id", sa.String(), nullable=False),
-        sa.Column("nickname", sa.String(), nullable=False),
+        sa.Column("user_id", sa.String(length=128), nullable=False),
+        sa.Column("nickname", sa.String(length=256), nullable=False),
         sa.Column("register_time", sa.DateTime(), nullable=True),
-        sa.Column("ship_code", sa.String(), nullable=True),
+        sa.Column("ship_code", sa.String(length=32), nullable=True),
         sa.Column("gender", sa.Boolean(), nullable=True),
-        sa.Column("activation_time", sa.DateTime(), nullable=False),
-        sa.Column("avatar", sa.LargeBinary(), nullable=True),
         sa.Column("experience", sa.Integer(), nullable=False),
         sa.Column("vimcoin", sa.Float(), nullable=False),
         sa.Column("health", sa.Float(), nullable=False),
@@ -191,7 +189,7 @@ def upgrade(name: str = "") -> None:
     )
     op.create_table(
         "nonebot_plugin_openai_user",
-        sa.Column("user_id", sa.Integer(), nullable=False),
+        sa.Column("user_id", sa.String(length=128), nullable=False),
         sa.Column("tokens", sa.Integer(), nullable=False),
         sa.Column("free_count", sa.Integer(), nullable=False),
         sa.Column("plus", sa.DateTime(), nullable=True),
@@ -199,24 +197,34 @@ def upgrade(name: str = "") -> None:
         info={"bind_key": "nonebot_plugin_openai"},
     )
     op.create_table(
+        "nonebot_plugin_pawcoin_exchange_exchanged",
+        sa.Column("user_id", sa.String(length=128), nullable=False),
+        sa.Column("pawcoin", sa.Integer(), nullable=False),
+        sa.Column("vimcoin", sa.Float(), nullable=False),
+        sa.PrimaryKeyConstraint("user_id", name=op.f("pk_nonebot_plugin_pawcoin_exchange_exchanged")),
+        info={"bind_key": "nonebot_plugin_pawcoin_exchange"},
+    )
+    op.create_table(
         "nonebot_plugin_quick_math_quickmathuser",
-        sa.Column("user_id", sa.String(), nullable=False),
+        sa.Column("user_id", sa.String(length=128), nullable=False),
         sa.Column("total_point", sa.Integer(), nullable=False),
         sa.Column("max_point", sa.Integer(), nullable=False),
         sa.Column("last_use", sa.DateTime(), nullable=False),
+        sa.Column("max_point_this_cycle", sa.Integer(), nullable=False),
+        sa.Column("use_count_this_cycle", sa.Integer(), nullable=False),
         sa.PrimaryKeyConstraint("user_id", name=op.f("pk_nonebot_plugin_quick_math_quickmathuser")),
         info={"bind_key": "nonebot_plugin_quick_math"},
     )
     op.create_table(
         "nonebot_plugin_render_themeconfig",
-        sa.Column("user_id", sa.String(), nullable=False),
-        sa.Column("theme", sa.String(), nullable=False),
+        sa.Column("user_id", sa.String(length=128), nullable=False),
+        sa.Column("theme", sa.String(length=128), nullable=False),
         sa.PrimaryKeyConstraint("user_id", name=op.f("pk_nonebot_plugin_render_themeconfig")),
         info={"bind_key": "nonebot_plugin_render"},
     )
     op.create_table(
         "nonebot_plugin_sign_signdata",
-        sa.Column("user_id", sa.Integer(), nullable=False),
+        sa.Column("user_id", sa.String(length=128), nullable=False),
         sa.Column("sign_days", sa.Integer(), nullable=False),
         sa.Column("last_sign", sa.Date(), nullable=False),
         sa.PrimaryKeyConstraint("user_id", name=op.f("pk_nonebot_plugin_sign_signdata")),
@@ -227,18 +235,18 @@ def upgrade(name: str = "") -> None:
         sa.Column("_id", sa.Integer(), autoincrement=True, nullable=False),
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("belong", sa.Integer(), nullable=False),
-        sa.Column("text", sa.String(), nullable=False),
+        sa.Column("text", sa.Text(), nullable=False),
         sa.PrimaryKeyConstraint("_id", name=op.f("pk_nonebot_plugin_vote_choice")),
         info={"bind_key": "nonebot_plugin_vote"},
     )
     op.create_table(
         "nonebot_plugin_vote_vote",
         sa.Column("id", sa.Integer(), nullable=False),
-        sa.Column("title", sa.String(), nullable=False),
-        sa.Column("content", sa.String(), nullable=False),
-        sa.Column("sponsor", sa.String(), nullable=False),
+        sa.Column("title", sa.Text(), nullable=False),
+        sa.Column("content", sa.Text(), nullable=False),
+        sa.Column("sponsor", sa.String(length=128), nullable=False),
         sa.Column("end_time", sa.DateTime(), nullable=False),
-        sa.Column("group", sa.String(), nullable=True),
+        sa.Column("group", sa.String(length=128), nullable=True),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_nonebot_plugin_vote_vote")),
         info={"bind_key": "nonebot_plugin_vote"},
     )
@@ -246,7 +254,7 @@ def upgrade(name: str = "") -> None:
         "nonebot_plugin_vote_votelog",
         sa.Column("_id", sa.Integer(), autoincrement=True, nullable=False),
         sa.Column("belong", sa.Integer(), nullable=False),
-        sa.Column("user_id", sa.String(), nullable=False),
+        sa.Column("user_id", sa.String(length=128), nullable=False),
         sa.Column("choice", sa.Integer(), nullable=False),
         sa.PrimaryKeyConstraint("_id", name=op.f("pk_nonebot_plugin_vote_votelog")),
         info={"bind_key": "nonebot_plugin_vote"},
@@ -264,6 +272,7 @@ def downgrade(name: str = "") -> None:
     op.drop_table("nonebot_plugin_sign_signdata")
     op.drop_table("nonebot_plugin_render_themeconfig")
     op.drop_table("nonebot_plugin_quick_math_quickmathuser")
+    op.drop_table("nonebot_plugin_pawcoin_exchange_exchanged")
     op.drop_table("nonebot_plugin_openai_user")
     op.drop_table("nonebot_plugin_larkuser_userdata")
     op.drop_table("nonebot_plugin_larkuid_sessiondata")
@@ -275,7 +284,7 @@ def downgrade(name: str = "") -> None:
     op.drop_table("nonebot_plugin_larkcave_cavedata")
     op.drop_table("nonebot_plugin_email_emailuser")
     op.drop_table("nonebot_plugin_email_emailitem")
-    op.drop_table("nonebot_plugin_email_email")
+    op.drop_table("nonebot_plugin_email_emaildata")
     op.drop_table("nonebot_plugin_cave_remove_removedcave")
     op.drop_table("nonebot_plugin_cave_comment_commentdata")
     op.drop_table("nonebot_plugin_bag_bagoverflow")

@@ -6,11 +6,11 @@ from nonebot_plugin_alconna import MsgTarget, UniMessage
 from nonebot_plugin_orm import get_session
 from sqlalchemy import select
 
-from ..nonebot_plugin_larkutils import get_group_id
-from ..nonebot_plugin_larkutils.user import get_user_id
-from .config import config
-from .lang import lang
-from .models import SubjectData
+from src.plugins.nonebot_plugin_larkutils import get_group_id
+from src.plugins.nonebot_plugin_larkutils.user import get_user_id
+from src.plugins.nonebot_plugin_access.config import config
+from src.plugins.nonebot_plugin_access.lang import lang
+from src.plugins.nonebot_plugin_access.models import SubjectData
 
 
 async def get_subject_list(bot: Bot, group_id: str = get_group_id(), user_id: str = get_user_id()) -> list[str]:

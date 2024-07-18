@@ -9,11 +9,11 @@ from nonebot_plugin_orm import async_scoped_session
 from sqlalchemy import select
 
 from ..nonebot_plugin_larkuser import get_user
-from ..nonebot_plugin_larkutils import get_group_id, get_user_id, is_superuser, review_text
+from ..nonebot_plugin_larkutils import get_group_id, get_user_id, is_user_superuser, review_text
 from ..nonebot_plugin_larkutils.extra import parse_exit_input
 from .config import config
 from .lang import lang
-from .model import Choice, Vote, VoteLog
+from .modules import Choice, Vote, VoteLog
 from .utils import (
     create_vote,
     generate_vote_image,
@@ -43,7 +43,7 @@ async def _(
     session: async_scoped_session,
     state: T_State,
     user_id: str = get_user_id(),
-    is_superuser: bool = is_superuser(),
+    is_superuser: bool = is_user_superuser(),
     group_id: str = get_group_id(),
     vote_data: Optional[Vote] = Depends(get_vote_data),
 ) -> None:

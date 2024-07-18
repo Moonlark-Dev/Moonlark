@@ -34,7 +34,7 @@ class WebRanking(ABC):
                     "data": user["data"],
                     "info": user["info"],
                     "index": offset + (index := index + 1),
-                    "nickname": (await get_user(user["user_id"])).nickname,
+                    "nickname": (await get_user(user["user_id"])).get_nickname(),
                 }
                 for user in data[offset : offset + limit]
             ],

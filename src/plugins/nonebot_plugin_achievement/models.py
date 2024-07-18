@@ -4,6 +4,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from pydantic import BaseModel
 
 from ..nonebot_plugin_item.types import DictItemData
+from sqlalchemy import String
 
 
 class AchievementLangConfig(BaseModel):
@@ -25,8 +26,8 @@ class AchievementList(BaseModel):
 
 class User(Model):
     _id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    user_id: Mapped[str]
-    achievement_namespace: Mapped[str]
-    achievement_path: Mapped[str]
+    user_id: Mapped[str] = mapped_column(String(128))
+    achievement_namespace: Mapped[str] = mapped_column(String(32))
+    achievement_path: Mapped[str] = mapped_column(String(32))
     unlock_progress: Mapped[int]
     unlocked: Mapped[bool]

@@ -1,10 +1,11 @@
 from nonebot_plugin_orm import Model
 from pydantic import BaseModel
 from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import String
 
 
 class UserData(Model):
-    user_id: Mapped[str] = mapped_column(primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(128), primary_key=True)
     count: Mapped[int] = mapped_column(default=0)
 
 

@@ -10,6 +10,22 @@ from nonebot.log import logger
 from .models import LanguageData, LanguageKey
 
 
+def init_keys(data: dict[str, dict]) -> None:
+    # NOTE 有点乱，待优化
+    for cmd in data.keys():
+        for key in data[cmd].keys():
+            if isinstance(data[cmd][key], str):
+                data[cmd][key] = LanguageKey(text=[data[cmd][key]])
+            elif isinstance(data[cmd][key], list):
+                data[cmd][key] = LanguageKey(text=data[cmd][key])
+            elif isinstance(data[cmd][key], dict):
+                if isinstance(data[cmd][key]["text"], str):
+                    data[cmd][key]["text"] = [data[cmd][key]["text"]]
+                data[cmd][key] = type_validate_python(LanguageKey, data[cmd][key])
+            else:
+                data[cmd].pop(key)
+
+
 class LangLoader:
     def __init__(self, base_path: Path) -> None:
         self.lang_list = [
@@ -17,9 +33,9 @@ class LangLoader:
         ]
         logger.info(f"在 {base_path.as_posix()} 下找到 {len(self.lang_list)} 个语言")
         logger.debug(str(self.lang_list))
+        self.languages: dict[str, LanguageData] = {}
 
     async def init(self) -> None:
-        self.languages: dict[str, LanguageData] = {}
         for lang in self.lang_list:
             try:
                 await self.init_language(lang)
@@ -51,22 +67,7 @@ class LangLoader:
                 continue
             async with aiofiles.open(plugin, encoding="utf-8") as f:
                 self.languages[lang.name].keys[plugin.name[:-5]] = yaml.safe_load(await f.read())
-                self.init_keys(self.languages[lang.name].keys[plugin.name[:-5]])
-
-    def init_keys(self, data: dict[str, dict]) -> None:
-        # NOTE 有点乱，待优化
-        for cmd in data.keys():
-            for key in data[cmd].keys():
-                if isinstance(data[cmd][key], str):
-                    data[cmd][key] = LanguageKey(text=[data[cmd][key]])
-                elif isinstance(data[cmd][key], list):
-                    data[cmd][key] = LanguageKey(text=data[cmd][key])
-                elif isinstance(data[cmd][key], dict):
-                    if isinstance(data[cmd][key]["text"], str):
-                        data[cmd][key]["text"] = [data[cmd][key]["text"]]
-                    data[cmd][key] = type_validate_python(LanguageKey, data[cmd][key])
-                else:
-                    data[cmd].pop(key)
+                init_keys(self.languages[lang.name].keys[plugin.name[:-5]])
 
     def get_languages(self) -> dict[str, LanguageData]:
         return self.languages

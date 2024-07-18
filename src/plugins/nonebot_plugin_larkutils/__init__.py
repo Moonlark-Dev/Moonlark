@@ -26,5 +26,6 @@ reviewer.secret_key = config.baidu_secret_key
 from .group import get_group_id
 from .reviewer import review_image, review_text
 from .sql import get_id
-from .superuser import is_superuser
+from .gsc_time import get_galactic_time
+from .superuser import is_user_superuser
 from .user import get_user_id

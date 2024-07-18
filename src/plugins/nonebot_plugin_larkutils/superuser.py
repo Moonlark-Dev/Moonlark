@@ -9,5 +9,5 @@ async def _is_superuser(event: Event, bot: Bot) -> bool:
     return await SuperUser()(bot, event)
 
 
-def is_superuser() -> Any:
+def is_user_superuser() -> Any:
     return Depends(_is_superuser)
