@@ -41,5 +41,5 @@ async def _() -> RandomCaveResponse:
             "content": str(cave.content),
             "time": cave.time.timestamp(),
             "author": (await get_user(cave.author)).get_nickname(),
-            "images": [img async for img in get_image_data(cave.id)]
+            "images": [img async for img in get_image_data(cave.id)],
         }
