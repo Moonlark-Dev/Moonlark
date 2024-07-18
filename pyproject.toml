@@ -19,6 +19,7 @@ plugins = [
     "nonebot_plugin_apscheduler",
     "nonebot_plugin_session",
     "nonebot_plugin_waiter",
+    "nonebot_plugin_cnrail",
 ]
 plugin_dirs = ["src/plugins"]
 builtin_plugins = []
@@ -58,6 +59,8 @@ aiosqlite = "^0.20.0"
 nonebot-adapter-qq = "^1.4.4"
 aiomysql = "^0.2.0"
 cryptography = "^42.0.8"
+pyproject-toml = "^0.0.10"
+nonebot-plugin-cnrail = "^0.2.3"
 
 [tool.poetry.group.dev.dependencies]
 nb-cli = "^1.4.0"

@@ -28,7 +28,7 @@ jobs:
       - name: Write .env file
         run:  echo "$MOONLARK_ENV" > .env
         env:
-          MOONLARK_ENV: ${{ secret.ENV }}
+          MOONLARK_ENV: ${{ secrets.ENV }}
 
       - name: Check database upgrade
         run: |
