@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import String, Text
+from sqlalchemy import String, Text, Double
 from nonebot_plugin_orm import Model
 from sqlalchemy.orm import Mapped, mapped_column
 from pydantic import BaseModel
@@ -16,7 +16,7 @@ class CaveData(Model):
 
 
 class ImageData(Model):
-    id: Mapped[float] = mapped_column(primary_key=True)
+    id: Mapped[float] = mapped_column(Double(), primary_key=True)
     file_id: Mapped[str] = mapped_column(String(32))
     name: Mapped[str] = mapped_column(Text())
     belong: Mapped[int]

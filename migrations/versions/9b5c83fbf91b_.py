@@ -135,7 +135,7 @@ def upgrade(name: str = "") -> None:
     )
     op.create_table(
         "nonebot_plugin_larkcave_imagedata",
-        sa.Column("id", sa.Float(), nullable=False),
+        sa.Column("id", sa.Double(), nullable=False),
         sa.Column("file_id", sa.String(length=32), nullable=False),
         sa.Column("name", sa.Text(), nullable=False),
         sa.Column("belong", sa.Integer(), nullable=False),
