@@ -19,6 +19,7 @@ plugins = [
     "nonebot_plugin_apscheduler",
     "nonebot_plugin_session",
     "nonebot_plugin_waiter",
+    "nonebot_plugin_bilichat",
     "nonebot_plugin_cnrail",
 ]
 plugin_dirs = ["src/plugins"]
@@ -62,6 +63,7 @@ cryptography = "^42.0.8"
 pyproject-toml = "^0.0.10"
 nonebot-plugin-cnrail = "^0.2.3"
 nonebot-plugin-picmcstat = "^0.6.1"
+nonebot-plugin-bilichat = "^5.10.4"
 
 [tool.poetry.group.dev.dependencies]
 nb-cli = "^1.4.0"
