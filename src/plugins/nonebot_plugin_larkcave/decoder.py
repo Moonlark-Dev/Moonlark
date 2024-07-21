@@ -21,10 +21,10 @@ async def get_image(image_id: str, session: async_scoped_session) -> CaveImage:
     async with aiofiles.open(data_dir.joinpath(image_data.file_id), "rb") as f:
         return CaveImage(id_=image_data.id, data=zlib.decompress(await f.read()), name=image_data.name)
 
+
 async def get_image_by_match(match: str, session: async_scoped_session) -> CaveImage:
     image_id = match[6:-3]
     return await get_image(image_id, session)
-    
 
 
 def parse_text(text: str) -> Text:
