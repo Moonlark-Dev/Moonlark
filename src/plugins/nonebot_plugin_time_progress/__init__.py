@@ -1,7 +1,6 @@
 from nonebot import require
 from nonebot.plugin import PluginMetadata
 
-from .config import Config
 
 require("nonebot_plugin_larklang")
 require("nonebot_plugin_larkutils")
@@ -12,7 +11,6 @@ __plugin_meta__ = PluginMetadata(
     name="nonebot_plugin_time_progress",
     description="",
     usage="",
-    config=Config,
 )
 
 
