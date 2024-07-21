@@ -15,12 +15,16 @@ from .models import CaveData, ImageData, CaveImage
 data_dir = get_data_dir("nonebot_plugin_larkcave")
 
 
-async def get_image(match: str, session: async_scoped_session) -> CaveImage:
-    image_id = match[6:-3]
+async def get_image(image_id: str, session: async_scoped_session) -> CaveImage:
     logger.debug(f"获取图片: {image_id}")
     image_data = await session.get_one(ImageData, float(image_id))
     async with aiofiles.open(data_dir.joinpath(image_data.file_id), "rb") as f:
         return CaveImage(id_=image_data.id, data=zlib.decompress(await f.read()), name=image_data.name)
+
+
+async def get_image_by_match(match: str, session: async_scoped_session) -> CaveImage:
+    image_id = match[6:-3]
+    return await get_image(image_id, session)
 
 
 def parse_text(text: str) -> Text:
@@ -34,7 +38,7 @@ async def parse_content(content: str, session: async_scoped_session) -> UniMessa
         span = match.span()
         message.append(parse_text(content[length : span[0]]))
         try:
-            message.append(Image(raw=(image := await get_image(match.group(), session)).data, name=image.name))
+            message.append(Image(raw=(image := await get_image_by_match(match.group(), session)).data, name=image.name))
         except Exception:
             logger.warning(f"获取图片失败: {traceback.format_exc()}")
         length = span[1]
