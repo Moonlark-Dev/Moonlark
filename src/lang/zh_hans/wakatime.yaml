@@ -1,0 +1,3 @@
+bind:
+  failed: 绑定失败：用户不存在
+  success: 成功绑定 @{}
