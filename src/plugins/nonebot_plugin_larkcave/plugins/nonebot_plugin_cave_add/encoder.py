@@ -14,7 +14,7 @@ async def encode_text(text: str) -> str:
 async def encode_image(cave_id: int, name: str, data: bytes, session: async_scoped_session) -> str:
     image_id = time.time()
     file_id = uuid.uuid4().hex
-    session.add(ImageData(id=image_id, file_id=file_id, data=data, name=name, belong=cave_id))
+    session.add(ImageData(id=image_id, file_id=file_id, name=name, belong=cave_id))
     async with aiofiles.open(data_dir.joinpath(file_id), "wb") as f:
         await f.write(zlib.compress(data))
     await session.commit()
