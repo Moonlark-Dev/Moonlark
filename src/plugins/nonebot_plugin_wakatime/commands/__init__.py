@@ -1,1 +1,1 @@
-from . import bind, wakatime, rank
+from . import login, wakatime, rank

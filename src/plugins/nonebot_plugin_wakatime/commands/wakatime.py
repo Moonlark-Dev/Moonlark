@@ -4,23 +4,23 @@ from nonebot_plugin_alconna import UniMessage
 from ...nonebot_plugin_render import render_template
 from ...nonebot_plugin_larkutils import get_user_id
 from ..__main__ import matcher, lang
-from ..utils import get_user_durations, get_wakatime_name, get_user_ranking
-from ..models import DurationsProject, DurationsResponse
+from ..utils import get_user_stats, get_user_ranking
+from ..models import StatsProject, StatsResponse
 
 
-async def get_durations(user_id: str = get_user_id()) -> DurationsResponse:
-    if (name := await get_wakatime_name(user_id)) is None or (durations := await get_user_durations(name)) is None:
+async def get_durations(user_id: str = get_user_id()) -> StatsResponse:
+    if (durations := await get_user_stats(user_id)) is None:
         await lang.finish("main.n", user_id)
-        return DurationsResponse()
+        return StatsResponse()
     if len(durations.data.projects) <= 0:
         durations.data.projects = [
-            DurationsProject(name=await lang.text("main.none", user_id), text=await lang.text("main.zero", user_id))
+            StatsProject(name=await lang.text("main.none", user_id), text=await lang.text("main.zero", user_id))
         ]
     return durations
 
 
 @matcher.assign("$main")
-async def _(durations: DurationsResponse = Depends(get_durations), user_id: str = get_user_id()) -> None:
+async def _(durations: StatsResponse = Depends(get_durations), user_id: str = get_user_id()) -> None:
     image = await render_template(
         "wakatime.html.jinja",
         await lang.text("info.title", user_id),

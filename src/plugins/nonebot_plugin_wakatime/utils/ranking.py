@@ -4,16 +4,16 @@ from typing import AsyncGenerator, Optional
 from src.plugins.nonebot_plugin_ranking import RankingData, WebRanking
 
 from ..__main__ import lang
-from .durations import get_user_durations
-from ..models import DurationsData, User
+from .stats import get_user_stats
+from ..models import StatsData, User
 
 
-async def get_user_list() -> AsyncGenerator[tuple[str, DurationsData], None]:
+async def get_user_list() -> AsyncGenerator[tuple[str, StatsData], None]:
     async with get_session() as session:
-        data = await session.scalars(select(User))
-        for user in data:
-            if (durations := await get_user_durations(user.user_name)) is not None:
-                yield user.user_id, durations.data
+        data = await session.scalars(select(User.user_id))
+        for user_id in data:
+            if (durations := await get_user_stats(user_id)) is not None:
+                yield user_id, durations.data
 
 
 async def get_ranking_users() -> AsyncGenerator[RankingData, None]:
