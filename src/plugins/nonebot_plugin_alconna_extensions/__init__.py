@@ -3,11 +3,7 @@ from nonebot.log import logger
 from nonebot.plugin import PluginMetadata
 
 
-__plugin_meta__ = PluginMetadata(
-    name="nonebot_plugin_alconna_extensions",
-    description="",
-    usage=""
-)
+__plugin_meta__ = PluginMetadata(name="nonebot_plugin_alconna_extensions", description="", usage="")
 
 require("nonebot_plugin_alconna")
 

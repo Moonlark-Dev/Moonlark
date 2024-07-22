@@ -22,12 +22,8 @@ async def get_ranking_users() -> AsyncGenerator[RankingData, None]:
             "user_id": user_id,
             "data": round(durations.total_seconds / 3600, 1),
             "info": await lang.text(
-                "ranking.info",
-                user_id,
-                durations.username,
-                durations.human_readable_total,
-                durations.projects[0].name
-            )
+                "ranking.info", user_id, durations.username, durations.human_readable_total, durations.projects[0].name
+            ),
         }
 
 

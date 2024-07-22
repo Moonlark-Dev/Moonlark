@@ -11,8 +11,7 @@ from ..models import DurationsResponse
 async def request_user_durations(user_name: str) -> DurationsResponse:
     async with httpx.AsyncClient() as client:
         response = await client.get(
-            f"https://wakatime.com/api/v1/users/{user_name}/stats/last_7_days",
-            headers=get_authorization_header()
+            f"https://wakatime.com/api/v1/users/{user_name}/stats/last_7_days", headers=get_authorization_header()
         )
     logger.debug(response.text)
     return type_validate_json(DurationsResponse, response.text)

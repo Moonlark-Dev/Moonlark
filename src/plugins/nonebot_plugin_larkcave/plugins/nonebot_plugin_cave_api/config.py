@@ -4,6 +4,7 @@ from nonebot import get_plugin_config
 
 class Config(BaseModel):
     """Plugin Config Here"""
+
     moonlark_api_base: str
 
 
