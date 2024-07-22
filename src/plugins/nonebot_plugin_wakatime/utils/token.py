@@ -29,19 +29,15 @@ async def request_token(code: str) -> TokenResponse:
                 "client_secret": config.wakatime_app_secret,
                 "grant_type": "authorization_code",
                 "code": code,
-                "redirect_uri": get_redirect_uri()
-            }
+                "redirect_uri": get_redirect_uri(),
+            },
         )
     return parse_token_response(response.text)
 
 
 async def update_token(user_id: str, response: TokenResponse) -> None:
     async with get_session() as session:
-        user = User(
-            user_id=user_id,
-            access_token=response.access_token,
-            expired_at=response.expires_in + time.time()
-        )
+        user = User(user_id=user_id, access_token=response.access_token, expired_at=response.expires_in + time.time())
         await session.merge(user)
         await session.commit()
 

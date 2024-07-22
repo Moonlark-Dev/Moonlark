@@ -20,18 +20,14 @@ async def request_login(user_id: str) -> None:
         await lang.finish("login.wait", user_id)
     logining_user_id = user_id
     await lang.send(
-        "login.go",
-        user_id,
-        config.wakatime_app_id,
-        get_redirect_uri(),
-        limit=config.wakatime_login_timeout
+        "login.go", user_id, config.wakatime_app_id, get_redirect_uri(), limit=config.wakatime_login_timeout
     )
 
 
 @get_app().get("/api/wakatime/login")
 async def _(
-        _req: Request,
-        code: Optional[str] = Query(None),
+    _req: Request,
+    code: Optional[str] = Query(None),
 ) -> None:
     global logining_user_code
     if logining_user_id is None or code is None:
