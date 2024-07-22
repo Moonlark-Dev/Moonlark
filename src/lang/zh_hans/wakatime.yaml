@@ -5,6 +5,7 @@ login:
     https://wakatime.com/oauth/authorize?client_id={}&response_type=code&redirect_uri={}&scope=read_stats.projects
   abort: 已取消
   ok: '您已登录到 WakaTime 帐号 @{}'
+  failed: 因未知错误失败，请稍候重试
 main:
   n: 绑定信息无效
   none: 无数据
