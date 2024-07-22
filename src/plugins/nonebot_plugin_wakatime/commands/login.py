@@ -16,5 +16,7 @@ async def _(user_id: str = get_user_id()) -> None:
         await lang.finish("login.abort", user_id)
     await token.update_token(user_id, await token.request_token(code))
     d = await get_user_stats(user_id)
+    if d is None:
+        await lang.finish("login.failed", user_id)
     logger.info(f"用户 {user_id} 已登录到 WakaTime {d.data.username}")
     await lang.finish("login.ok", user_id, d.data.username)
