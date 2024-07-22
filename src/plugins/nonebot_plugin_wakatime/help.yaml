@@ -1,0 +1,9 @@
+plugin: 'wakatime'
+commands:
+  wakatime:
+    description: help.description
+    details: help.details
+    usages:
+      - help.u1
+      - help.u2
+      - help.u3

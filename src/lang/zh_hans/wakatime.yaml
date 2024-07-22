@@ -1,3 +1,25 @@
 bind:
   failed: 绑定失败：用户不存在
   success: 成功绑定 @{}
+main:
+  n: 绑定信息无效
+  none: 无数据
+  zero: 0 hr
+info:
+  user_id: 'UID: {}'
+  title: WakaTime 数据 (近七天)
+  code_time: '时长: {} ({})'
+  rank: '排名: {}'
+  project: '正在创作: {} ({})'
+  time: '数据统计区间:'
+  start: '开始时间: {}'
+  end: '结束时间: {}'
+ranking:
+  title: '近七天 WakaTime 时长排行 (单位: 小时)'
+  info: 'WakaTime @{} | {} | 正在创作: {}'
+help:
+  description: WakaTime
+  details: 在 Moonlark 上查看 WakaTime 时长并参与排行
+  u1: wakatime (查看我的 WakaTime 信息)
+  u2: wakatime bind <用户名> (绑定 WakaTime 账户)
+  u3: wakatime rank (查看 WakaTime 排行榜)

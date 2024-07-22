@@ -8,9 +8,7 @@ from ..models import User
 
 @matcher.assign("bind")
 async def _(user_name: str, user_id: str = get_user_id()) -> None:
-    try:
-        await get_user_durations(user_id)
-    except ValueError:
+    if not await get_user_durations(user_name):
         await lang.finish("bind.failed", user_id, user_name)
     async with get_session() as session:
         user = User(user_id=user_id, user_name=user_name)
