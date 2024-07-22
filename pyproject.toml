@@ -21,6 +21,7 @@ plugins = [
     "nonebot_plugin_waiter",
     "nonebot_plugin_bilichat",
     "nonebot_plugin_cnrail",
+    "nonebot_plugin_picmcstat"
 ]
 plugin_dirs = ["src/plugins"]
 builtin_plugins = []
