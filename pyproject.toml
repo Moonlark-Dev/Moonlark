@@ -13,6 +13,7 @@ adapters = [
 ]
 plugins = [
     "nonebot_plugin_orm",
+    "nonebot_plugin_sentry",
     "nonebot_plugin_alconna",
     "nonebot_plugin_picstatus",
     "nonebot_plugin_htmlrender",
@@ -65,6 +66,7 @@ pyproject-toml = "^0.0.10"
 nonebot-plugin-cnrail = "^0.2.3"
 nonebot-plugin-picmcstat = "^0.6.1"
 nonebot-plugin-bilichat = "^5.10.4"
+nonebot-plugin-sentry = "^2.0.0"
 
 [tool.poetry.group.dev.dependencies]
 nb-cli = "^1.4.0"
