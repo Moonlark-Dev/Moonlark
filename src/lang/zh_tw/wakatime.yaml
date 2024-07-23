@@ -1,0 +1,30 @@
+login:
+  wait: 其他用户正在执行登录操作，请稍后重试
+  go: |
+    请使用浏览器打开以下链接 (请在 {limit}s 内完成):
+    https://wakatime.com/oauth/authorize?client_id={}&response_type=code&redirect_uri={}&scope=read_stats.projects
+  abort: 已取消
+  ok: '您已登录到 WakaTime 帐号 @{}'
+  failed: 因未知错误失败，请稍候重试
+main:
+  n: 绑定信息无效
+  none: 无数据
+  zero: 0 hr
+info:
+  user_id: 'UID: {}'
+  title: WakaTime 数据 (近七天)
+  code_time: '时长: {} ({})'
+  rank: '排名: {}'
+  project: '正在创作: {} ({})'
+  time: '数据统计区间:'
+  start: '开始时间: {}'
+  end: '结束时间: {}'
+ranking:
+  title: '近七天 WakaTime 时长排行 (单位: 小时)'
+  info: 'WakaTime @{} | {} | 正在创作: {}'
+help:
+  description: WakaTime
+  details: 在 Moonlark 上查看 WakaTime 时长并参与排行
+  u1: wakatime (查看我的 WakaTime 信息)
+  u2: wakatime bind <用户名> (绑定 WakaTime 账户)
+  u3: wakatime rank (查看 WakaTime 排行榜)
