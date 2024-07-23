@@ -9,10 +9,8 @@ from nonebot_plugin_htmlrender import get_new_page, md_to_pic
 from ..nonebot_plugin_larklang import LangHelper
 from ..nonebot_plugin_larkutils import get_user_id, review_image
 from .checker import check_url_protocol
-from .config import Config
 from .exceptions import AccessDenied
 
-config = get_plugin_config(Config)
 preview = on_alconna(
     Alconna("preview", Args["url", str], Option("--wait|-w", Args["wait", int, 3])),
     use_cmd_start=True,

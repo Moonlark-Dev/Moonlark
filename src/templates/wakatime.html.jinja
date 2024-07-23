@@ -1,0 +1,28 @@
+{% extends base %}
+
+{% block body %}
+<h3>{{ wakatime }}</h3>
+<p>{{ user_id }}</p>
+
+<hr>
+
+<ul>
+    <li>
+        {{ code_time }}
+        <ul>
+            <li>{{ rank }}</li>
+        </ul>
+    </li>
+    <li>{{ project }}</li>
+</ul>
+
+<hr>
+
+{{ time }}
+
+<ul>
+    <li>{{ start }}</li>
+    <li>{{ end }}</li>
+</ul>
+
+{% endblock body %}
