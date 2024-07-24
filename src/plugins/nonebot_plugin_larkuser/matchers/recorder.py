@@ -8,7 +8,7 @@ from sqlalchemy.exc import NoResultFound
 from ..models import UserData
 
 
-@on_message().handle()
+@on_message(block=False).handle()
 async def _(session: async_scoped_session, user: UserInfo = EventUserInfo()) -> None:
     try:
         user_data = await session.get_one(UserData, {"user_id": user.user_id})
