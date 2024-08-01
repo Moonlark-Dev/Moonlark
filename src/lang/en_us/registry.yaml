@@ -12,7 +12,7 @@ command:
     如果您还没有阅读，请前往 https://github.com/orgs/Moonlark-Dev/discussions/3 阅读后继续使用 Moonlark。
 
     如果您不同意其中的任何条款，请立即停止使用 Moonlark，这是最后的警告。
-  cancel: 已取消
+  cancel: Cancelled
   confirm: 注册成功！欢迎你，{}
   invalid: 输入无效，请重新输入：
 input:
