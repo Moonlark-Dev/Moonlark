@@ -22,7 +22,7 @@ help:
   d: Echo Cave
   i: 投稿或查看其他用户投稿的回声洞，所有内容依照 CC-BY-NC-SA 4.0 许可协议授权
   u1: cave (随机条目)
-  u2: cave-a <内容> (投稿条目)
+  u2: cave-a <content> (submit new echo cave)
   u3: cave-r <ID> (删除条目)
   u4: cave-s <ID> (恢复 7 天内删除的条目)
   u5: cave-g <ID> (查看自己投稿的条目)
@@ -36,9 +36,9 @@ remove:
     回声洞已被删除！
     如果您想恢复它，可以使用 {__prefix__}cave-restore {}
   success: |
-    回声洞 {} 已删除！
-    投稿时间: {}
-    如果您想恢复它，请在 {} 天内使用 {__prefix__}cave-restore {}
+    Echo cave #{0} has been removed!
+    Post time: {1}
+    Please use {__prefix__}cave-restore {3} in {2} days if you want to restore it.
 remove_comment:
   no_result: 'Invalid comment ID: {}'
   no_permission: Insufficient permissions!
