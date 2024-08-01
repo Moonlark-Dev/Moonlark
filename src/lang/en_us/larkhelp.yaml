@@ -15,4 +15,4 @@ help:
   description: Command Help
   details: Get command usage
   usage_list: help (get a list of commands)
-  usage_command: help <命令名> (查看命令帮助)
+  usage_command: help <Command Name> (View Command Help)
