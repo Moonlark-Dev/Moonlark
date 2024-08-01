@@ -30,7 +30,8 @@ poetry install
     - 使用 [LarkUser](src/plugins/nonebot_plugin_larkuser) 获取用户信息
     - 使用 [LarkUtils](src/plugins/nonebot_plugin_larkutils) 获取用户 ID 及群组 ID
     - 使用 [LarkLang](src/plugins/nonebot_plugin_larklang) 作为本地化插件
-    - 使用 [HtmlRender](https://github.com/kexue-z/nonebot-plugin-htmlrender) 将 MarkDown、HTML 等渲染为图片
+    - 使用 [HtmlRender](https://github.com/kexue-z/nonebot-plugin-htmlrender) 渲染 Markdown
+    - 使用 [Render](src/plugins/nonebot_plugin_render) 渲染 Jinja 模板
     - 使用 [Alconna](https://github.com/nonebot/plugin-alconna) 解析命令和发送消息
 - 在部分耗时操作中（包括但不限于文件读写、网络请求），您需要使用异步以确保它不会阻塞 Moonlark 进程
 - 除用户信息（如昵称等）或由用户提交的内容，所有会被用户看到的文本都需要接入本地化
