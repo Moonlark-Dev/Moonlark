@@ -1,3 +1,8 @@
+node_modules/
+sha1.yaml
+nonebot_plugin_sha1/
+
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -6,6 +11,9 @@ __pycache__/
 # 语言测试插件
 src/plugins/test
 src/lang/zh_hans/test.yaml
+
+docs/.vitepress/cache
+docs/.vitepress/dist
 
 *.db
 
