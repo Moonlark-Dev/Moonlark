@@ -1,6 +1,6 @@
 man:
   not_found: '找不到手册 {}({})'
-  empty: '用法: {__prefix__}man <手册> [章节]'
+  empty: 'Usage: {__prefix__}man <manual> [page]'
 h:
   d: 查询 Man
   i: Linux 手册 (ManPage) 查询
