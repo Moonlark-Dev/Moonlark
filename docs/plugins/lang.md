@@ -8,15 +8,10 @@
 
 :::
 
-## Import 位置
+> Import 位置: `src.plugins.nonebot_plugin_larklang`
 
-```python
-src.plugins.nonebot_plugin_larklang
-```
 
-## `class LangHelper`
-
-语言操作类
+## 语言操作类 - `class LangHelper`
 
 ### `def __init__(self, name: str = "") -> None`
 
@@ -347,4 +342,3 @@ Moonlark 默认语言，简体中文
 `language.toml` 有很多保留键，由于这些键名未实现或未测试，这里不做过多说明。
 
 :::
-
