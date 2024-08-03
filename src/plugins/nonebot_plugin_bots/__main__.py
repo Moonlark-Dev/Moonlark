@@ -20,7 +20,7 @@ async def _(bot: Bot, event: Event) -> None:
     if session_id not in sessions:
         sessions[session_id] = bot.self_id, time.time()
         logger.info(f"已将会话 {session_id} 分配给 {bot.self_id}")
-    elif sessions[session_id] != bot.self_id:
+    elif sessions[session_id][0] != bot.self_id:
         raise IgnoredException(f"此群组已分配给帐号 {session_id}")
     else:
         sessions[session_id] = bot.self_id, time.time()
