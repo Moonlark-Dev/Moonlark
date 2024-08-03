@@ -32,6 +32,6 @@ async def _() -> None:
     for key, value in sessions.items():
         if time.time() - value[1] >= config.bots_session_remain:
             expired_sessions.append(key)
-            logger.debug(f'将回收过期会话: {key} ({value})')
+            logger.debug(f"将回收过期会话: {key} ({value})")
     for key in expired_sessions:
         sessions.pop(key)
