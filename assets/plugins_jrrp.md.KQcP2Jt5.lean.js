@@ -1,0 +1,1 @@
+import{_ as a,c as s,o as i,a2 as e}from"./chunks/framework.Sicmpk4x.js";const g=JSON.parse('{"title":"Jrrp","description":"","frontmatter":{},"headers":[],"relativePath":"plugins/jrrp.md","filePath":"plugins/jrrp.md"}'),t={name:"plugins/jrrp.md"},r=e("",15),l=[r];function n(h,p,o,d,c,k){return i(),s("div",null,l)}const _=a(t,[["render",n]]);export{g as __pageData,_ as default};

@@ -1,0 +1,1 @@
+import{_ as a,c as e,o as l,a2 as i}from"./chunks/framework.Sicmpk4x.js";const f=JSON.parse('{"title":"插件表","description":"","frontmatter":{},"headers":[],"relativePath":"plugins/index.md","filePath":"plugins/index.md"}'),t={name:"plugins/index.md"},r=i("",8),h=[r];function n(o,s,c,m,d,p){return l(),e("div",null,h)}const u=a(t,[["render",n]]);export{f as __pageData,u as default};
