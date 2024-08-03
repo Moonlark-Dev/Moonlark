@@ -5,7 +5,7 @@ from nonebot import get_plugin_config
 class Config(BaseModel):
     """Plugin Config Here"""
 
-    bots_session_clear_time: str = "*"
+    bots_session_remain: int = 3 * 60
 
 
 config = get_plugin_config(Config)
