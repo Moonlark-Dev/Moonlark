@@ -21,9 +21,7 @@ jobs:
         run: npm install
 
       - name: Deploy to GitHub Pages
-        uses: JamesIves/github-pages-deploy-action@4.6.3
+        uses: peaceiris/actions-gh-pages@v3
         with:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          BRANCH: gh-pages
-          FOLDER: docs/.vitepress/dist
-          BUILD_SCRIPT: npm run docs:build
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./docs/.vitepress/dist/
