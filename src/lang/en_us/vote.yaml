@@ -33,7 +33,6 @@ vote_image:
   choice_text: Options
   sponsor: Started by {}
   end_time: 'End time: {}'
-  footer: 由 Moonlark & nonebot-plugin-vote 生成
 list:
   title: Vote list
 help:
