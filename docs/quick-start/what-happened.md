@@ -214,10 +214,10 @@ LarkLang 的键由三层组成，即 `xxx1.xxx2.xxx3`。
 [插件帮助][9]
 
 [1]: first-plugin
-[2]: /plugins/larklang
+[2]: /plugins/lang
 [3]: /plugins/render
 [4]: https://nonebot.dev/docs/advanced/plugin-info#%E6%8F%92%E4%BB%B6%E5%85%83%E6%95%B0%E6%8D%AE
-[5]: /plugins/larkutils
+[5]: /plugins/utils
 [6]: https://nonebot.dev/docs/tutorial/matcher
 [7]: https://nonebot.dev/docs/tutorial/event-data
 [8]: https://github.com/nonebot/plugin-alconna

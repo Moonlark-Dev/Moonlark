@@ -55,7 +55,5 @@ from plugins.nonebot_plugin_larkutils import get_user_id
 [3]: https://github.com
 [4]: https://cli.nonebot.dev/
 [5]: https://python-poetry.org/
-[6]: ../plugins
+[6]: /plugins/index
 [7]: create-develop-environment
-
-
