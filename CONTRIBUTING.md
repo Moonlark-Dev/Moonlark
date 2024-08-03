@@ -20,39 +20,18 @@ poetry install
 
 在运行前，您需要将 [`.env.template`](.env.template) 复制为 `.env` 文件并按提示填写相关环境变量。
 
-<details>
-<summary>初始化数据库</summary>
-
-Moonlark 使用 [ORM 插件](https://github.com/nonebot/plugin-orm) 储存相应数据，您可以参考以下步骤进行初始化：
-
-**配置地址**
-
-> 对于开发来说， Sqlite3 已足够使用。
-
-在 `.env` 中设置 `SQLALCHEMY_DATABASE_URL` 为 `sqlite+aiosqlite:///test.db`。
-
-**同步**
-
-使用 `nb-cli` 同步数据库：
-
-```bash
-nb orm sync
-```
-
-</details>
-
-
 ### 代码规范
 
 我们建议您在提交代码时遵循一下几个准则，否则您的拉取请求可能会被审核员标记为 `请求更改`：
 
 - 为了确保稳定性和兼容性，我们建议您在提交代码时：
     - 使用 [LocalStore](https://github.com/nonebot/plugin-localstore) 储存文件
-    - 使用 [ORM](https://github.com/nonebot/plugin-orm) 储存数据
-    - 使用 [UserInfo](https://github.com/noneplugin/nonebot-plugin-userinfo) 或 [LarkUser](src/plugins/nonebot_plugin_larkuser) 获取用户信息
-    - 使用 [Session](https://github.com/noneplugin/nonebot-plugin-session) 获取群组信息
+    - 使用 [ORM](https://github.com/nonebot/plugin-orm) 储存非 BLOB 用户数据
+    - 使用 [LarkUser](src/plugins/nonebot_plugin_larkuser) 获取用户信息
+    - 使用 [LarkUtils](src/plugins/nonebot_plugin_larkutils) 获取用户 ID 及群组 ID
     - 使用 [LarkLang](src/plugins/nonebot_plugin_larklang) 作为本地化插件
-    - 使用 [HtmlRender](https://github.com/kexue-z/nonebot-plugin-htmlrender) 将 MarkDown、HTML 等渲染为图片
+    - 使用 [HtmlRender](https://github.com/kexue-z/nonebot-plugin-htmlrender) 渲染 Markdown
+    - 使用 [Render](src/plugins/nonebot_plugin_render) 渲染 Jinja 模板
     - 使用 [Alconna](https://github.com/nonebot/plugin-alconna) 解析命令和发送消息
 - 在部分耗时操作中（包括但不限于文件读写、网络请求），您需要使用异步以确保它不会阻塞 Moonlark 进程
 - 除用户信息（如昵称等）或由用户提交的内容，所有会被用户看到的文本都需要接入本地化
