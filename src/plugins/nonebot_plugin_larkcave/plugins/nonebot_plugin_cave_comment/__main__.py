@@ -11,7 +11,7 @@ from .poster import post
 from ....nonebot_plugin_larkutils import get_user_id, review_text
 
 
-comment = on_message(rule=to_me())
+comment = on_message(rule=to_me(), block=False)
 
 
 async def get_belong_cave(bot: Bot, event: Event) -> Optional[int]:
