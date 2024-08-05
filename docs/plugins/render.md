@@ -104,6 +104,10 @@ Render 支持主题，主题基模板储存在 `src/templates/base` 中，主题
 
 所有向用户展示的文本都要被本地化。
 
+## 本地文件引用
+
+可以使用 `{% include "xx" %}` 块或 `src=xxx` 引入本地文件。 使用相对引入时，基路径为 `src/templates`。
+
 ## 使用
 
 这是 Boothill 插件中渲染的代码：
