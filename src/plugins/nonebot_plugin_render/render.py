@@ -50,5 +50,5 @@ async def render_template(name: str, title: str, user_id: str, templates: dict) 
     return await html_to_pic(
         await render_template_to_text(name, title, footer, templates, base),
         template_path=Path(getcwd()).joinpath(f"src/templates").as_uri(),
-        viewport=config.render_viewport
+        viewport=config.render_viewport,
     )
