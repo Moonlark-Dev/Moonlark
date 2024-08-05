@@ -19,13 +19,12 @@ async def _(message: Message = CommandArg(), user_id: str = get_user_id()) -> No
         await lang.finish("latex.review_fail", user_id, str(result["message"]), reply_message=True)
     if "\n" not in text and not text.startswith("$"):
         text = f"$ {text} $"
-    await latex.finish(await UniMessage().image(
-        raw=await render_template(
-            "latex.html.jinja",
-            await lang.text("latex.title", user_id),
-            user_id,
-            {
-                "latex_content": text
-            }
+    await latex.finish(
+        await UniMessage()
+        .image(
+            raw=await render_template(
+                "latex.html.jinja", await lang.text("latex.title", user_id), user_id, {"latex_content": text}
+            )
         )
-    ).export())
+        .export()
+    )
