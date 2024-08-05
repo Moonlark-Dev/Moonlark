@@ -9,6 +9,7 @@ from nonebot_plugin_htmlrender import html_to_pic
 from .lang import lang
 from .config import config
 from . import theme
+from os import getcwd
 
 file_loader = FileSystemLoader(Path("./src/templates"))
 env = Environment(
@@ -47,5 +48,7 @@ async def render_template(name: str, title: str, user_id: str, templates: dict) 
     footer = await lang.text("render.footer", user_id, plugin_name)
     base = await get_base(user_id)
     return await html_to_pic(
-        await render_template_to_text(name, title, footer, templates, base), viewport=config.render_viewport
+        await render_template_to_text(name, title, footer, templates, base),
+        template_path=Path(getcwd()).joinpath(f"src/templates").as_uri(),
+        viewport=config.render_viewport
     )
