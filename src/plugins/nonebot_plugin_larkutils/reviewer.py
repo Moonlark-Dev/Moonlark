@@ -38,6 +38,7 @@ async def get_access_token(force_update=False):
 
 def get_review_result(data: dict) -> ReviewResult:
     logger.debug(data)
+    data["msg"] = data["data"][0]["msg"] if data.get("data") else None
     try:
         result: ReviewResult = {
             "compliance": data["conclusion"] in ["合规", "疑似"],
@@ -60,9 +61,7 @@ async def review_image(image: bytes) -> ReviewResult:
             data={"image": base64.b64encode(image).decode()},
             headers={"content-type": "application/x-www-form-urlencoded"},
         )
-    data = response.json()
-    data["msg"] = data["data"][0]["msg"] if data.get("data") else None
-    return get_review_result(data)
+    return get_review_result(response.json())
 
 
 async def review_text(text: str) -> ReviewResult:
