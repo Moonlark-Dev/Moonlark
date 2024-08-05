@@ -1,0 +1,7 @@
+plugin: latex
+commands:
+  latex:
+    description: help.description
+    details: help.details
+    usages:
+      - help.usage

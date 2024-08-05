@@ -1,0 +1,9 @@
+latex:
+  review_fail: |
+    失败: 内容审核未通过
+    {}
+  title: LaTeX
+help:
+  description: 渲染 LaTeX 表达式
+  details: 将 LaTeX 表达式渲染为图片
+  usage: latex <内容>

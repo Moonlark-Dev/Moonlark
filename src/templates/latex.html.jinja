@@ -1,0 +1,18 @@
+{% extends base %}
+
+{% block body %}
+<div>
+{{ latex_content }}
+</div>
+<script id="MathJax-script" async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-svg.min.js"></script>
+<script>
+  MathJax = {
+  tex: {
+    inlineMath: [['$', '$'], ['\\(', '\\)']]
+  },
+  svg: {
+    fontCache: 'global'
+  }
+};
+</script>
+{% endblock body %}
