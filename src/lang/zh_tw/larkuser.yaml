@@ -8,7 +8,19 @@ panel:
   fav: "好感度: {}"
 help:
   description: 用户面板
-  details: 查看用户信息
+  details: 查看用户数据面板
   usage: panel (查看面板)
+help_whoami:
+  description: 我是谁
+  details: 查看用户帐号基本信息
+  usage: whoami (查看帐号信息)
 matcher:
   not_registered: 您无法使用这个指令，请先使用 {__prefix__}register 注册！
+whoami:
+  info: |
+    帐号实际ID: {}
+    主帐号ID: {}
+    查询昵称: {}
+    注册日期: {}
+    超级用户: {}
+    当前群号: {}

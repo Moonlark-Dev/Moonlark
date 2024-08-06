@@ -26,5 +26,5 @@ help:
   description: WakaTime
   details: 在 Moonlark 上查看 WakaTime 时长并参与排行
   u1: wakatime (查看我的 WakaTime 信息)
-  u2: wakatime bind <用户名> (绑定 WakaTime 账户)
+  u2: wakatime login (绑定 WakaTime 账户)
   u3: wakatime rank (查看 WakaTime 排行榜)
