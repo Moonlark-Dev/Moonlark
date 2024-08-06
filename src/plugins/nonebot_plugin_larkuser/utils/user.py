@@ -22,10 +22,10 @@ class MoonlarkUser:
         self.experience = 0
         self.health = 100.0
         self.fav = 0.0
+        self.main_account = True
         self.avatar = None
 
     async def setup_user(self):
-        self.user_id = await get_main_account(self.user_id)
         async with get_session() as session:
             user = await session.get(UserData, self.user_id)
             if user is None:
@@ -39,6 +39,15 @@ class MoonlarkUser:
             self.health = user.health
             self.fav = user.favorability
             self.avatar = await get_user_avatar(self.user_id)
+
+    async def setup_user_id(self) -> None:
+        main_account = await get_main_account(self.user_id)
+        if main_account != self.user_id:
+            self.user_id = main_account
+        self.main_account = False
+
+    def is_main_account(self) -> bool:
+        return self.main_account
 
     def get_nickname(self) -> str:
         return self.nickname

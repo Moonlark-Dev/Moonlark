@@ -12,6 +12,7 @@ __plugin_meta__ = PluginMetadata(
 
 require("nonebot_plugin_alconna")
 require("nonebot_plugin_orm")
+require("nonebot_plugin_larkuser")
 require("nonebot_plugin_apscheduler")
 
 from . import __main__, middlewares
