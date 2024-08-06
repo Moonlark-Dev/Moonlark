@@ -76,7 +76,7 @@ async def get_sign_exp(user: MoonlarkUser, sign_data: SignData) -> SignClaimData
 
 async def get_sign_vim(user_data: MoonlarkUser, sign_data: SignData) -> SignClaimData:
     level = user_data.get_level()
-    origin = user_data.get_experience()
+    origin = user_data.get_vimcoin()
     vim = round(
         1
         + math.sqrt(
@@ -99,14 +99,13 @@ async def get_sign_vim(user_data: MoonlarkUser, sign_data: SignData) -> SignClai
 
 
 async def get_sign_fav(user_data: MoonlarkUser) -> SignClaimData:
-    level = user_data.get_level()
-    origin = user_data.get_experience()
-    fav = round(0.001 * math.sqrt(level), 3)
+    origin = user_data.get_fav()
+    fav = 0.001
     await user_data.add_fav(fav)
     return {
         "text": await lang.text("image.fav", user_data.user_id),
         "add": fav,
-        "now": user_data.get_vimcoin(),
+        "now": user_data.get_fav(),
         "origin": origin,
     }
 

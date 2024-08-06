@@ -26,6 +26,10 @@
 
 获取用户昵称。
 
+##### `def is_main_account(self) -> bool`
+
+用户是否为主帐号。
+
 ##### `def get_avatar(self) -> Optional[bytes]`
 
 获取二进制用户头像。
@@ -126,6 +130,7 @@
 - `health` (float): 血量。
 - `fav` (float): 好感度。
 - `avatar` (`Optional[bytes]`): 用户头像。
+- `main_account` (bool): 用户帐号是否为主帐号。
 
 ### `async def get_user(user_id: str) -> MoonlarkUser`
 

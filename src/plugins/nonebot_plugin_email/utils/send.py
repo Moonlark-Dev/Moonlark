@@ -1,4 +1,5 @@
 from datetime import datetime
+from src.plugins.nonebot_plugin_larkutils import get_main_account
 import json
 from typing import Optional
 from nonebot.log import logger
@@ -33,5 +34,10 @@ async def send_global_email(
     subject: str, content: str, author: Optional[str] = None, items: list[EmailItemData] = []
 ) -> int:
     async with get_session() as session:
-        receivers = await session.scalars(select(UserData.user_id).where(UserData.register_time.is_not(None)))
-        return await send_email(list(receivers.all()), subject, content, author, items)
+        receivers = list(
+            (await session.scalars(select(UserData.user_id).where(UserData.register_time.is_not(None)))).all()
+        )
+        for i in range(len(receivers)):
+            receivers[i] = await get_main_account(receivers[i])
+        receivers = list(set(receivers))
+        return await send_email(receivers, subject, content, author, items)

@@ -5,6 +5,7 @@ from typing import Optional
 from src.plugins.nonebot_plugin_larkuser.utils.avatar import get_user_avatar
 from src.plugins.nonebot_plugin_larkuser.utils.level import get_level_by_experience
 from src.plugins.nonebot_plugin_larkuser.models import UserData
+from src.plugins.nonebot_plugin_larkutils import get_main_account
 
 from ..exceptions import UserNotRegistered
 
@@ -21,6 +22,7 @@ class MoonlarkUser:
         self.experience = 0
         self.health = 100.0
         self.fav = 0.0
+        self.main_account = True
         self.avatar = None
 
     async def setup_user(self):
@@ -37,6 +39,15 @@ class MoonlarkUser:
             self.health = user.health
             self.fav = user.favorability
             self.avatar = await get_user_avatar(self.user_id)
+
+    async def setup_user_id(self) -> None:
+        main_account = await get_main_account(self.user_id)
+        if main_account != self.user_id:
+            self.user_id = main_account
+        self.main_account = False
+
+    def is_main_account(self) -> bool:
+        return self.main_account
 
     def get_nickname(self) -> str:
         return self.nickname

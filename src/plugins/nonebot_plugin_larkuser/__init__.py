@@ -1,4 +1,4 @@
-from nonebot import get_plugin_config, require
+from nonebot import require
 from nonebot.plugin import PluginMetadata
 
 
@@ -16,7 +16,7 @@ require("nonebot_plugin_localstore")
 require("nonebot_plugin_render")
 
 
-from .matchers import recorder, panel
+from .matchers import recorder, panel, whoami
 from .utils.matcher import patch_matcher
 from .utils.level import get_level_by_experience
 from .utils.user import get_user, MoonlarkUser

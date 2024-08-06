@@ -116,3 +116,23 @@ class ReviewResult(TypedDict):      # 也就是一个字典
 4. 系统时
 5. 分钟
 6. 秒
+
+## 帐号
+
+### `async def get_main_account(user_id: str) -> str`
+
+获取帐号的主帐号 ID（没有绑定时将返回传入的 `user_id`）。
+
+#### 参数
+
+- `user_id` (str): 用户 ID。
+
+::: tip
+
+Moonlark 允许用户进行多平台帐号绑定，所以拥有子帐号和主帐号设计。
+
+子帐号和主帐号是每一个帐号的属性，没有绑定主帐号的帐号称为主帐号，绑定了主帐号的主帐号将变为子帐号。
+
+在运行时子帐号需要转换为主帐号再对用户进行操作，不过在 `get_user_id` 和 `get_user` 函数都有类似处理。
+
+:::

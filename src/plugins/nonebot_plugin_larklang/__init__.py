@@ -9,9 +9,9 @@ __plugin_meta__ = PluginMetadata(
     config=Config,
 )
 
-require("nonebot_plugin_orm")
 require("nonebot_plugin_alconna")
 require("nonebot_plugin_larkutils")
+require("nonebot_plugin_localstore")
 
 from . import command as _command
 from .__main__ import LangHelper

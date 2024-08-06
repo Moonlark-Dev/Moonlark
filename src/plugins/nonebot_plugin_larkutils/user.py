@@ -4,11 +4,12 @@ from typing import Any
 from nonebot.adapters import Event
 from nonebot.log import logger
 from nonebot.params import Depends
+from .subaccount import get_main_account
 
 
-def _get_user_id(event: Event) -> str:
+async def _get_user_id(event: Event) -> str:
     try:
-        return event.get_user_id()
+        return await get_main_account(event.get_user_id())
     except Exception:
         logger.error(f"获取用户 ID 失败: {traceback.format_exc()}")
         return "-1"
