@@ -30,32 +30,21 @@
 # ##############################################################################
 
 import aiofiles
-from nonebot_plugin_localstore import get_data_file
+from nonebot_plugin_localstore import get_data_dir
 import json
-from nonebot import get_driver
 
-data_file = get_data_file("nonebot_plugin_larkutils", "subaccounts.json")
-
-
-@get_driver().on_startup
-async def _() -> None:
-    async with aiofiles.open(data_file, "r+", encoding="utf-8") as f:
-        try:
-            json.loads(await f.read())
-        except json.JSONDecoder:
-            await f.truncate(0)
-            await f.write("{}")
+data_file = get_data_dir("nonebot_plugin_larkutils")
 
 
 async def set_main_account(user_id: str, main_account: str) -> None:
-    async with aiofiles.open(data_file, "r", encoding="utf-8") as f:
-        data = json.loads(await f.read())
-    data[user_id] = main_account
-    async with aiofiles.open(data_file, "w", encoding="utf-8") as f:
-        await f.write(json.dumps(data, indent=4, ensure_ascii=False))
+    async with aiofiles.open(data_file.joinpath(user_id), "w", encoding="utf-8") as f:
+        await f.write(main_account)
 
 
 async def get_main_account(user_id: str) -> str:
-    async with aiofiles.open(data_file, "r", encoding="utf-8") as f:
-        data = json.loads(await f.read())
-        return data[user_id]
+    file = data_file.joinpath(user_id)
+    if file.exists():
+        async with aiofiles.open(file, "r", encoding="utf-8") as f:
+            return (await f.read()) or user_id
+    else:
+        return user_id

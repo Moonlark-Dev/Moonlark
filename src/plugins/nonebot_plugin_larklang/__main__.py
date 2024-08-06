@@ -1,4 +1,5 @@
 import inspect
+import aiofiles
 import random
 import traceback
 from pathlib import Path
@@ -6,16 +7,17 @@ from types import ModuleType
 
 from nonebot import get_driver, get_plugin_by_module_name, get_plugin_config, logger
 from nonebot.matcher import Matcher
-from nonebot_plugin_orm import async_scoped_session, get_scoped_session
+from nonebot_plugin_localstore import get_data_dir
 from sqlalchemy.exc import NoResultFound
 
 from .config import Config
 from .exceptions import *
 from .loader import LangLoader
-from .models import LanguageConfig, LanguageData
+from .models import LanguageData
 
 languages = {}
 config = get_plugin_config(Config)
+data_dir = get_data_dir("nonebot_plugin_larklang")
 
 
 @get_driver().on_startup
@@ -71,24 +73,20 @@ def get_languages() -> dict[str, LanguageData]:
     return languages
 
 
-async def set_user_language(user_id: str, language: str, session: async_scoped_session) -> None:
-    try:
-        data = await session.get_one(LanguageConfig, {"user_id": user_id})
-        data.language = language
-    except NoResultFound:
-        session.add(LanguageConfig(user_id=user_id, language=language))
-    await session.commit()
+async def set_user_language(user_id: str, language: str) -> None:
+    async with aiofiles.open(data_dir.joinpath(user_id), "w", encoding="utf-8") as f:
+        await f.write(language)
 
 
 async def get_user_language(user_id: str) -> str:
-    session = get_scoped_session()
-    try:
-        language = (await session.get_one(LanguageConfig, {"user_id": user_id})).language
-    except NoResultFound:
+    file = data_dir.joinpath(user_id)
+    if file.exists():
+        async with aiofiles.open(file, "r", encoding="utf-8") as f:
+            language = await f.read()
+    else:
         language = config.language_index_order[0]
     if language not in languages:
-        await set_user_language(user_id, language := config.language_index_order[0], session)
-    await session.close()
+        await set_user_language(user_id, language := config.language_index_order[0])
     return language
 
 

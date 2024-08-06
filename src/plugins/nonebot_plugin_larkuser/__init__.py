@@ -1,4 +1,4 @@
-from nonebot import get_plugin_config, require
+from nonebot import require
 from nonebot.plugin import PluginMetadata
 
 
