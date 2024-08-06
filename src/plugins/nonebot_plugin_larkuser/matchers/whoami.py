@@ -24,10 +24,7 @@ from ..utils.user import get_user
 
 @on_command("whoami").handle()
 async def _(
-        event: Event,
-        user_id: str = get_user_id(),
-        group_id: str = get_group_id(),
-        is_su: bool = is_user_superuser()
+    event: Event, user_id: str = get_user_id(), group_id: str = get_group_id(), is_su: bool = is_user_superuser()
 ) -> None:
     user = await get_user(user_id)
     register_datetime = user.get_register_time()
@@ -36,12 +33,5 @@ async def _(
     else:
         register_date = None
     await lang.finish(
-        "whoami.info",
-        user_id,
-        event.get_user_id(),
-        user_id,
-        user.get_nickname(),
-        register_date,
-        is_su,
-        group_id
+        "whoami.info", user_id, event.get_user_id(), user_id, user.get_nickname(), register_date, is_su, group_id
     )

@@ -7,13 +7,7 @@ from ..nonebot_plugin_larkutils import get_user_id, set_main_account
 from .lang import lang
 from .models import SessionData
 
-account = on_alconna(
-    Alconna(
-        "account",
-        Subcommand("verify", Args["code", str]),
-        Subcommand("bind", Args["key", str])
-    )
-)
+account = on_alconna(Alconna("account", Subcommand("verify", Args["code", str]), Subcommand("bind", Args["key", str])))
 
 
 @account.assign("code")

@@ -34,8 +34,9 @@ async def send_global_email(
     subject: str, content: str, author: Optional[str] = None, items: list[EmailItemData] = []
 ) -> int:
     async with get_session() as session:
-        receivers = list((await session.scalars(
-            select(UserData.user_id).where(UserData.register_time.is_not(None)))).all())
+        receivers = list(
+            (await session.scalars(select(UserData.user_id).where(UserData.register_time.is_not(None)))).all()
+        )
         for i in range(len(receivers)):
             receivers[i] = await get_main_account(receivers[i])
         receivers = list(set(receivers))

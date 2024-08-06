@@ -55,7 +55,7 @@ async def _(request: Request, user_id: str, current_user: MoonlarkUser = get_use
     c = {
         "activate_code": uuid.uuid4().hex[:8],
         "account": current_user.user_id,
-        "expired_at": time() + config.unused_session_remove_delay
+        "expired_at": time() + config.unused_session_remove_delay,
     }
     bind_cache[user_id] = c
     asyncio.create_task(clean_cache(user_id))
@@ -64,4 +64,3 @@ async def _(request: Request, user_id: str, current_user: MoonlarkUser = get_use
 
 def get_bind_cache(key: str) -> dict:
     return bind_cache[key]
-

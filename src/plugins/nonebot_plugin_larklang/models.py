@@ -33,4 +33,3 @@ class LanguageData(BaseModel):
     lock: LanguageLockData = LanguageLockData()
     display: LanguageDisplayData = LanguageDisplayData()
     patch: LanguagePatchData = LanguagePatchData()
-
