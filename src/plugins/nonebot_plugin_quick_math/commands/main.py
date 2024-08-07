@@ -24,7 +24,7 @@ from ..__main__ import lang, quick_math
 async def _(user_id: str = get_user_id()) -> None:
     point = 0
     answered = 0
-    max_level = 5 if user_id == 479571968 else 1
+    max_level = 1
     total_skipping_count = 1
     skipped_question = 0
     total_answered = 0
