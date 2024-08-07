@@ -29,7 +29,7 @@ Moonlark 是 Moonlark Project 的下一个项目，使用基于 Python3 的 None
 
 ## 使用
 
-Moonlark 目前还在测试中。
+Moonlark 目前还在测试中，你可能会遇到问题和未完成的功能。
 
 ## 贡献
 
