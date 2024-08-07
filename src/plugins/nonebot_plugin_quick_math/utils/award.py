@@ -99,7 +99,7 @@ async def start_new_cycle() -> None:
         await f.write(json.dumps(data))
 
 
-@scheduler.scheduled_job("cron", day="*", id="settlement_quick_math")
+@scheduler.scheduled_job("cron", hour="0", id="settlement_quick_math")
 async def _() -> None:
     cycle = await get_cycle_data()
     async with get_session() as session:
