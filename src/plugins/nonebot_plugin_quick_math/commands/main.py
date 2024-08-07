@@ -57,8 +57,8 @@ async def _(user_id: str = get_user_id()) -> None:
         if resp is None:
             end_time = datetime.now()
             if point > 300:
-              point -= 300
-               continue
+                point -= 300
+                continue
             else:
                 break
         elif resp.extract_plain_text().lower() == "skip" or resp.extract_plain_text().lower == "tg":
