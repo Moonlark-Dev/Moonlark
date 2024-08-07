@@ -17,7 +17,9 @@ async def get_user_theme(user_id: str) -> str:
     if file.exists():
         async with aiofiles.open(file, "r", encoding="UTF-8") as f:
             theme = await f.read()
-    if theme not in await get_themes() or not file.exists():
+        if theme not in await get_themes():
+            theme = config.render_default_theme
+    else:
         theme = config.render_default_theme
     return theme
 
