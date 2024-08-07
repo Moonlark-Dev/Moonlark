@@ -46,7 +46,7 @@ async def get_remain() -> tuple[int, float]:
 
 
 def get_cycle_point(max_point: int, use_count: int) -> float:
-    return round(max_point + (math.log(use_count) + 1) * 7, 3)
+    return round(max_point + (math.log(use_count + 0.1) + 1) * 7, 3)
 
 
 LEVELS = ["A", "B", "C", "D"]
