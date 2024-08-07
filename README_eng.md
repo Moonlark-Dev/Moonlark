@@ -29,7 +29,7 @@ To address the problem of the XDbot2 code being too confused and incompatible, w
 
 ## Usage
 
-Moonlark is currently in beta stage. You may encounter bugs and incomplete features.
+Moonlark 目前还在测试中，你可能会遇到问题和未完成的功能。
 
 ## Contribution
 
