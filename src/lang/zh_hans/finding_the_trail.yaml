@@ -6,3 +6,23 @@ points:
     可兑换 PawCoin: {}/{} ({})
 ranking:
   title: FTT 积分榜
+ftt:
+  start: |
+    步数: {} / {}
+    [w/a/s/d]: 设定方向
+    [b]: 回退 | [c]: 清除
+    [q]: 退出
+  unknown: 未知命令 {}
+  d_1: 上
+  d_2: 下
+  d_3: 左
+  d_4: 右
+  step: |
+    已输入 {} / {} 步，当前指令表: {}
+    还可以继续输入
+  quited: 已退出
+  example: '此地图的参考解法: {}'
+  cannot_move: '在 {} 步出现问题：无法移动'
+  failed: '路线错误，您还可以继续输入'
+  big_failed: '路线错误，游戏结束！'
+  success: '恭喜您，挑战成功（获得 {} 积分）'

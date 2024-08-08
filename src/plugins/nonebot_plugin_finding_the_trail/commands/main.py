@@ -15,4 +15,50 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
+import random
+from nonebot_plugin_alconna import Match
+from ...nonebot_plugin_larkutils import get_user_id
+from ..exceptions import Quited, CannotMove
+from ..utils.fttmap import FttMap
+from ..utils.string import get_command_list_string
+from ..utils.answer import AnswerGetter
 from ..__main__ import ftt, lang
+
+
+@ftt.assign("$main")
+@ftt.assign("seed.map_seed")
+async def _(map_seed: Match[str], user_id: str = get_user_id()) -> None:
+    if map_seed.available:
+        seed = map_seed.result
+    else:
+        seed = random.randint(0, 2**32 - 1)
+    ftt_map = FttMap(seed)
+    points = ftt_map.difficulty["points"]
+    while points >= 2:
+        getter = AnswerGetter(user_id, ftt_map)
+        try:
+            d_list = await getter.get_commands()
+        except Quited:
+            await lang.send("ftt.quited", user_id)
+            break
+        try:
+            result = ftt_map.test_answer(d_list)
+        except CannotMove as e:
+            await lang.send("ftt.cannot_move", user_id, e.step_length + 1)
+            continue
+        if points / 2 >= 2 and not result:
+            points /= 2
+            await lang.send("ftt.failed", user_id)
+        elif not result:
+            await lang.send("ftt.big_failed", user_id)
+            break
+        else:
+            await lang.finish("ftt.success", user_id, points)
+            # TODO 根据时间进行积分调整
+            # TODO 添加积分
+    # TODO 参考答案动画
+    # TODO 错误答案演示
+    await lang.finish("ftt.example", user_id, await get_command_list_string(
+        ftt_map.answer, user_id))
+
+

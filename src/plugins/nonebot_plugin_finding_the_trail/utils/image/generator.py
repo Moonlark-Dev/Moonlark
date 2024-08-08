@@ -32,7 +32,8 @@ BLOCKS = {
     Blocks.PORTAL: Image.open(base_path.joinpath("portal.png")),
 }
 
-def generate_map_image(game_map: "list[list[Blocks]]") -> Image:
+
+def generate_map_image(game_map: list[list[Blocks]]) -> Image:
     """
     生成地图图片
     :param game_map: 游戏地图

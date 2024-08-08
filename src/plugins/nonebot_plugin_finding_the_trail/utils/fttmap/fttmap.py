@@ -20,15 +20,17 @@ import random
 from .difficulties import DIFFICULTIES
 from ..generator.generator import generate
 from .blocks import Blocks
-from ..finder import EndFinder, AnswerFinder
+from ..finder import EndFinder, AnswerFinder, utils
 from .directions import Directions
+from ...exceptions import CannotMove
 
 
 class FttMap:
 
     def __init__(self, seed: str) -> None:
         random.seed(seed)
-        self.difficulty = DIFFICULTIES[random.choice(list(DIFFICULTIES.keys()))]
+        self.difficulty_name = random.choice(list(DIFFICULTIES.keys()))
+        self.difficulty = DIFFICULTIES[self.difficulty_name]
         self.map, self.answer, self.start_pos = self.generate_map()
         self.step_length = len(self.answer)
 
@@ -40,3 +42,17 @@ class FttMap:
             raise ValueError("生成地图时出现错误！")
         answer = AnswerFinder(copy.deepcopy(game_map)).search()
         return game_map, answer, end_finder.get_start_pos()
+
+    def test_answer(self, answer: list[Directions]) -> bool:
+        ftt_map = copy.deepcopy(self.map)
+        pos = copy.deepcopy(self.start_pos)
+        index = 0
+        for step in answer:
+            executor = utils.MovementExecutor(ftt_map, pos, step)
+            ftt_map = executor.get_game_map()
+            if executor.get_moved_pos() == pos:
+                raise CannotMove(index)
+            pos = executor.get_moved_pos()
+            index += 1
+        return ftt_map[pos[0]][pos[1]] == Blocks.END
+

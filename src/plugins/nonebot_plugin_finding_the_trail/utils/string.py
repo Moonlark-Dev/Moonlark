@@ -15,18 +15,9 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
-from nonebot_plugin_alconna import on_alconna, Alconna, Args, Option, Subcommand
-from ..nonebot_plugin_larkuser import patch_matcher
-from ..nonebot_plugin_larklang import LangHelper
+from src.plugins.nonebot_plugin_finding_the_trail.__main__ import lang
+from src.plugins.nonebot_plugin_finding_the_trail.utils.fttmap import Directions
 
-alc = Alconna(
-    "ftt",
-    Option("-s|--seed", Args["map_seed", str]),
-    Subcommand("rank"),
-    Subcommand("points"),
-    Subcommand("exchange", Args["count", int, -1])
-)
-ftt = on_alconna(alc)
-lang = LangHelper()
 
-patch_matcher(ftt)
+async def get_command_list_string(command_list: list[Directions], user_id: str) -> str:
+    return "".join([(await lang.text(f"ftt.d_{d.value}", user_id)) for d in command_list])
