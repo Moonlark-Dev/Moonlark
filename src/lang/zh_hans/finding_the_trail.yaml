@@ -1,0 +1,6 @@
+points:
+  no_points: 未查询到参与记录！
+  info: |
+    挑战次数: {}
+    积分: {}
+    可兑换 PawCoin: {}/{} ({})

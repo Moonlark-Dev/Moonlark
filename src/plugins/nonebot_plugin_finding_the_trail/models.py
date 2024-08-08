@@ -20,7 +20,7 @@ from sqlalchemy import String
 from sqlalchemy.orm import mapped_column, Mapped
 
 
-class User(Model):
+class UserPoint(Model):
     user_id: Mapped[str] = mapped_column(String(128), primary_key=True)
     points: Mapped[int] = mapped_column(default=0)
     count: Mapped[int] = mapped_column(default=0)
