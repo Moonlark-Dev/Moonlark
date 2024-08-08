@@ -15,24 +15,17 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
-from nonebot import get_plugin_config, require
-from nonebot.plugin import PluginMetadata
-from .config import Config
+from nonebot_plugin_alconna import on_alconna, Alconna, Args, Option
+from ..nonebot_plugin_larkuser import patch_matcher
+from ..nonebot_plugin_larklang import LangHelper
 
-__plugin_meta__ = PluginMetadata(
-    name="nonebot-plugin-finding-the-trail",
-    description="Moonlark 迷宫玩法 - 寻津指径",
-    usage="ftt",
-    config=Config,
+alc = Alconna(
+    "ftt",
+    Option("-s|--seed", Args["seed", str]),
+    Option("rank"),
+    Option("points")
 )
+ftt = on_alconna(alc)
+lang = LangHelper()
 
-config = get_plugin_config(Config)
-
-require("nonebot_plugin_alconna")
-require("nonebot_plugin_larklang")
-require("nonebot_plugin_larkutils")
-require("nonebot_plugin_larkuser")
-require("nonebot_plugin_ranking")
-
-from .utils import generator
-
+patch_matcher(ftt)
