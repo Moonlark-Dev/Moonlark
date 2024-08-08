@@ -4,3 +4,5 @@ points:
     挑战次数: {}
     积分: {}
     可兑换 PawCoin: {}/{} ({})
+ranking:
+  title: FTT 积分榜
