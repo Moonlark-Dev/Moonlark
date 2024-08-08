@@ -15,25 +15,14 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
-from nonebot import get_plugin_config, require
-from nonebot.plugin import PluginMetadata
-from .config import Config
+import math
 
-__plugin_meta__ = PluginMetadata(
-    name="nonebot-plugin-finding-the-trail",
-    description="Moonlark 迷宫玩法 - 寻津指径",
-    usage="ftt",
-    config=Config,
-)
 
-config = get_plugin_config(Config)
-
-require("nonebot_plugin_alconna")
-require("nonebot_plugin_larklang")
-require("nonebot_plugin_larkutils")
-require("nonebot_plugin_larkuser")
-require("nonebot_plugin_ranking")
-require("nonebot_plugin_orm")
-
-from .utils import generator
-
+def get_exchangeable_paw_coin_count(points: int, exchanged: int) -> int:
+    """
+    获取可兑换的 PawCoin 数量
+    :param points: 积分总数
+    :param exchanged: 已兑换的积分数量
+    :return: 可兑换的 PawCoin 数量
+    """
+    return int(math.sqrt(points * 0.75)) - exchanged
