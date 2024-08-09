@@ -31,6 +31,8 @@ Moonlark 是 Moonlark Project 的下一个项目，使用基于 Python3 的 None
 
 详见: [使用指南](https://moonlark-wiki.itcdt.top/wiki/%E4%BD%BF%E7%94%A8%E6%8C%87%E5%8D%97)
 
+> Moonlark 仍在测试和开发中，可能会遇到一些不稳定的情况。
+
 ## 贡献
 
 您可以通过提交 [议题](https://github.com/Moonlark-Dev/Moonlark/issues/new/choose) 或 [拉取请求](https://github.com/Moonlark-Dev/Moonlark/compare) 参与 Moonlark 项目。
