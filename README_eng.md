@@ -29,7 +29,9 @@ To address the problem of the XDbot2 code being too confused and incompatible, w
 
 ## Usage
 
-Moonlark 目前还在测试中，你可能会遇到问题和未完成的功能。
+详见: [使用指南](https://moonlark-wiki.itcdt.top/wiki/%E4%BD%BF%E7%94%A8%E6%8C%87%E5%8D%97)
+
+> Moonlark 仍在测试和开发中，可能会遇到一些不稳定的情况。
 
 ## Contribution
 
