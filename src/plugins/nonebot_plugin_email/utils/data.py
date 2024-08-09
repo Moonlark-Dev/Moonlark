@@ -4,10 +4,10 @@ from sqlalchemy import select
 
 from ..lang import lang
 from ..models import EmailData, EmailItem, EmailUser
-from ..types import EmailData
+from ..types import DictEmailData
 
 
-async def get_email_data(email_id: int, user_id: str = "-1") -> EmailData:
+async def get_email_data(email_id: int, user_id: str = "-1") -> DictEmailData:
     session = get_scoped_session()
     data = await session.get_one(EmailData, email_id)
     user = await session.scalar(select(EmailUser).where(EmailUser.user_id == user_id, EmailUser.email_id == email_id))
