@@ -47,4 +47,19 @@ poetry install
 
 ### 使用 Pull Request
 
-见 [说明](src/plugins/nonebot_plugin_larklang/README.md)
+见 [https://moonlark-docs.itcdt.top/plugins/lang.html](https://moonlark-docs.itcdt.top/plugins/lang.html)
+
+> [!IMPORTANT]
+> #### 使用 Crowdin 管理的本地化内容不需要且不能被直接从源码修改
+>
+> 使用 Crowdin 管理的本地化内容路径如下:
+>
+> - `src/lang/en_us/*`
+> - `src/lang/zh_tw/*`
+> - `README_eng.md`
+> - `README_zho.md`
+>
+> 这些文件使用 Crowdin 管理，应该前往 Crowdin 翻译而不是直接从源码更改，否则可能会像这两个 PR 一样引发不必要的误会和异常：
+>
+> - [#146](https://github.com/Moonlark-Dev/Moonlark/pull/146)
+> - [#148](https://github.com/Moonlark-Dev/Moonlark/pull/148)
