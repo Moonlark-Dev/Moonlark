@@ -8,7 +8,7 @@ class EmailItemData(TypedDict):
     data: dict[str, Any]
 
 
-class EmailData(TypedDict):
+class DictEmailData(TypedDict):
     id: int
     author: str
     content: str
