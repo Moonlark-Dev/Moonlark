@@ -6,7 +6,7 @@ body:
 - type: markdown
   attributes:
       value: |
-        如果您的能力允许，我们建议您尝试自己实现您的 Issue 中提出的功能并向 Moonlark 提交 Pull Requests，因为按照我们的开发人员以往的习惯，一个 Issue 从分配到开始执行可能要等待一段较长的时间。
+          如果您的能力允许，我们建议您尝试自己实现您的 Issue 中提出的功能并向 Moonlark 提交 Pull Requests，因为按照我们的开发人员以往的习惯，一个 Issue 从分配到开始执行可能要等待一段较长的时间。
 - type: textarea
   id: "yml-2"
   attributes:
