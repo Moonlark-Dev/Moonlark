@@ -4,20 +4,20 @@ title: "[新功能提案] "
 labels: [· 新功能]
 body:
 - type: markdown
-    attributes:
-      value: |
-        如果您的能力允许，我们建议您尝试自己实现您的 Issue 中提出的功能并向 Moonlark 提交 Pull Requests，因为按照我们的开发人员以往的习惯，一个 Issue 从分配到开始执行可能要等待一段较长的时间。
+  attributes:
+     value: |
+       如果您的能力允许，我们建议您尝试自己实现您的 Issue 中提出的功能并向 Moonlark 提交 Pull Requests，因为按照我们的开发人员以往的习惯，一个 Issue 从分配到开始执行可能要等待一段较长的时间。
 - type: textarea
   id: "yml-2"
   attributes:
     label: 描述
-    description: "详细描述你想添加的功能具体是怎样的。"
+    description: "详细描述你想添加的功能具体是怎样的（谁可以用、要怎么用、用起来怎么样），请尽量避免编写“如题”。"
   validations:
     required: true
 - type: textarea
   id: "yml-3"
   attributes:
     label: 原因
-    description: "描述你为什么需要这项功能"
+    description: "描述你为什么需要这项功能及它可能会在什么场景下使用，可以帮助开发人员理解您的需求。"
   validations:
     required: false
