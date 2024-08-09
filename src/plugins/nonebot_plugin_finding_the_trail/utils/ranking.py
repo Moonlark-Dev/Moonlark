@@ -34,12 +34,8 @@ async def get_sorted_data() -> AsyncGenerator[RankingData, None]:
 
 class FTTRanking(WebRanking):
 
-    def __init__(self):
-        super().__init__(
-            "ftt",
-            "ranking.name",
-            lang
-        )
-
     async def get_sorted_data(self) -> list[RankingData]:
         return [data async for data in get_sorted_data()]
+
+
+r = FTTRanking("ftt", "ranking.name", lang)

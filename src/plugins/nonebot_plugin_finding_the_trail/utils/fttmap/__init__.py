@@ -16,5 +16,3 @@
 # ##############################################################################
 
 from .fttmap import FttMap
-from .blocks import Blocks
-from .directions import Directions

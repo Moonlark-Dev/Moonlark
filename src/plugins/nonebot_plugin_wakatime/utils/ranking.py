@@ -32,12 +32,12 @@ async def get_sorted_ranking_data() -> list[RankingData]:
 
 
 class WakaTimeRanking(WebRanking):
-    ID = "wakatime"
-    NAME = "ranking.info"
-    LANG = lang
 
     async def get_sorted_data(self) -> list[RankingData]:
         return await get_sorted_ranking_data()
+
+
+r = WakaTimeRanking("wakatime", "ranking.info", lang)
 
 
 async def get_user_ranking(user_id: str) -> Optional[int]:

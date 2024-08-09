@@ -16,7 +16,7 @@
 # ##############################################################################
 
 from src.plugins.nonebot_plugin_finding_the_trail.__main__ import lang
-from src.plugins.nonebot_plugin_finding_the_trail.utils.fttmap import Directions
+from .enums import Directions
 
 
 async def get_command_list_string(command_list: list[Directions], user_id: str) -> str:

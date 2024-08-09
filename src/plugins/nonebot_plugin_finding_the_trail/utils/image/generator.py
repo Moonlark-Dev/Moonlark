@@ -17,7 +17,7 @@
 
 from PIL import Image
 from pathlib import Path
-from ..fttmap import Blocks
+from ..enums import Blocks
 
 base_path = Path(__file__).parent.joinpath("assets")
 

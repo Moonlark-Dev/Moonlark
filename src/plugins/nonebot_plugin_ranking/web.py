@@ -7,17 +7,11 @@ from ..nonebot_plugin_larkuser.utils.user import get_user
 from .generator import find_user
 from ..nonebot_plugin_larklang.__main__ import LangHelper
 from ..nonebot_plugin_larkuid.session import get_user_id
-from .lang import lang
 from .types import RankingData, RankingResponse
-from typing import override
 
 
 class WebRanking(ABC):
-    ID: str = ""
-    NAME: str = ""
-    LANG: LangHelper = lang
 
-    @override
     def __init__(self, id_: str, name: str, lang_: LangHelper) -> None:
         """
         初始化 WebRanking 参数

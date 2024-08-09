@@ -17,7 +17,7 @@
 
 # From https://github.com/Moonlark-Dev/XDbot2/blob/master/src/plugins/Core/lib/FindingTheTrail/map.py
 
-from src.plugins.nonebot_plugin_finding_the_trail.utils.fttmap import Blocks
+from ..enums import Blocks
 import random
 
 

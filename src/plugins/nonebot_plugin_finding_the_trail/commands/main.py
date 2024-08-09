@@ -16,6 +16,8 @@
 # ##############################################################################
 
 import random
+import time
+
 from nonebot_plugin_alconna import Match
 from ...nonebot_plugin_larkutils import get_user_id
 from ..exceptions import Quited, CannotMove
@@ -23,6 +25,7 @@ from ..utils.fttmap import FttMap
 from ..utils.string import get_command_list_string
 from ..utils.answer import AnswerGetter
 from ..__main__ import ftt, lang
+from ..utils.points import add_point
 
 
 @ftt.assign("$main")
@@ -34,6 +37,7 @@ async def _(map_seed: Match[str], user_id: str = get_user_id()) -> None:
         seed = random.randint(0, 2**32 - 1)
     ftt_map = FttMap(seed)
     points = ftt_map.difficulty["points"]
+    start_time = time.time()
     while points >= 2:
         getter = AnswerGetter(user_id, ftt_map)
         try:
@@ -53,9 +57,10 @@ async def _(map_seed: Match[str], user_id: str = get_user_id()) -> None:
             await lang.send("ftt.big_failed", user_id)
             break
         else:
+            points *= 0.1 / (time.time() - start_time)
+            points = int(points)
+            await add_point(user_id, points)
             await lang.finish("ftt.success", user_id, points)
-            # TODO 根据时间进行积分调整
-            # TODO 添加积分
     # TODO 参考答案动画
     # TODO 错误答案演示
     await lang.finish("ftt.example", user_id, await get_command_list_string(

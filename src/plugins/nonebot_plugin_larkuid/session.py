@@ -98,4 +98,5 @@ async def _() -> None:
     result = await session.scalars(select(SessionData).where(SessionData.expiration_time <= datetime.now()))
     for item in result.all():
         await session.delete(item)
+    await session.commit()
     await session.close()

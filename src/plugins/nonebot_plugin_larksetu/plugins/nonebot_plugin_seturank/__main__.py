@@ -30,9 +30,6 @@ async def _(session: async_scoped_session, user_id: str = get_user_id()) -> None
 
 
 class SetuRanking(WebRanking):
-    ID: str = "setu"
-    NAME: str = "rank.title"
-    LANG: LangHelper = lang
 
     async def get_sorted_data(self) -> list[RankingData]:
         session = get_scoped_session()
@@ -41,4 +38,4 @@ class SetuRanking(WebRanking):
         return [{"user_id": data.user_id, "info": None, "data": data.count} for data in sorted_data]
 
 
-web_ranking = SetuRanking()
+web_ranking = SetuRanking("setu", "rank.title", lang)

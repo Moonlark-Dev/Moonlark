@@ -30,9 +30,6 @@ async def _(user_id: str = get_user_id()) -> None:
 
 
 class JrrpRank(WebRanking):
-    ID = "jrrp"
-    NAME = "rank.title"
-    LANG = lang
 
     async def get_sorted_data(self) -> list[RankingData]:
         return sorted(
@@ -47,3 +44,6 @@ class JrrpRank(WebRanking):
             key=lambda x: x["data"],
             reverse=True,
         )
+
+
+r = JrrpRank("jrrp", "rank.title", lang)

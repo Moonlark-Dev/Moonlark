@@ -17,8 +17,8 @@
 
 import copy
 
-from src.plugins.nonebot_plugin_finding_the_trail.utils.fttmap.blocks import Blocks
-from src.plugins.nonebot_plugin_finding_the_trail.utils.fttmap.directions import Directions
+from src.plugins.nonebot_plugin_finding_the_trail.utils.enums.blocks import Blocks
+from src.plugins.nonebot_plugin_finding_the_trail.utils.enums.directions import Directions
 from src.plugins.nonebot_plugin_finding_the_trail.utils.finder.utils import get_moveable_directions, NodeData, \
     MovementExecutor, get_back_direction
 

@@ -19,8 +19,7 @@ import copy
 import random
 from typing import TypedDict
 
-from ..fttmap import Directions, Blocks
-from ..fttmap.directions import DIRECTION_LIST
+from ..enums import Directions, Blocks, DIRECTION_LIST
 
 
 def get_moved_pos(pos: list[int], direction: Directions) -> list[int]:

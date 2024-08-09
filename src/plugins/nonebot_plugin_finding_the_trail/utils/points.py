@@ -15,25 +15,16 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
-from nonebot import get_plugin_config, require
-from nonebot.plugin import PluginMetadata
-from .config import Config
+from nonebot_plugin_orm import get_session
+from ..models import UserPoint
 
-__plugin_meta__ = PluginMetadata(
-    name="nonebot-plugin-finding-the-trail",
-    description="Moonlark 迷宫玩法 - 寻津指径",
-    usage="ftt",
-    config=Config,
-)
 
-config = get_plugin_config(Config)
-
-require("nonebot_plugin_alconna")
-require("nonebot_plugin_larklang")
-require("nonebot_plugin_larkutils")
-require("nonebot_plugin_larkuser")
-require("nonebot_plugin_waiter")
-require("nonebot_plugin_ranking")
-require("nonebot_plugin_orm")
-
-from . import commands
+async def add_point(user_id: str, points: int) -> None:
+    async with get_session() as session:
+        user = await session.get(UserPoint, user_id)
+        if user is None:
+            user = UserPoint(user_id=user_id, points=points)
+        else:
+            user.points += points
+        await session.merge(user)
+        await session.commit()

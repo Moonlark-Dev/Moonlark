@@ -17,12 +17,15 @@
 
 from nonebot.internal.adapter import Message
 from nonebot_plugin_alconna import UniMessage
+from typing import  TYPE_CHECKING
 from nonebot_plugin_waiter import prompt
 from .string import get_command_list_string
 from src.plugins.nonebot_plugin_finding_the_trail.__main__ import lang
 from src.plugins.nonebot_plugin_finding_the_trail.exceptions import Quited
-from src.plugins.nonebot_plugin_finding_the_trail.utils.fttmap import Directions, FttMap
+from .enums import Directions
 from src.plugins.nonebot_plugin_finding_the_trail.utils.image import generate_map_image
+if TYPE_CHECKING:
+    from .fttmap import FttMap
 
 DIRECTIONS_DICT = {
     "w": Directions.UP,
@@ -34,7 +37,7 @@ DIRECTIONS_DICT = {
 
 class AnswerGetter:
 
-    def __init__(self, user_id: str, ftt_map: FttMap) -> None:
+    def __init__(self, user_id: str, ftt_map: "FttMap") -> None:
         self.user_id = user_id
         self.map = ftt_map
         self.next_message = ""
