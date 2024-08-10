@@ -14,6 +14,7 @@ app = cast(FastAPI, get_app())
 
 @app.get("/api/users/me")
 async def _(request: Request, avatar: bool = True, user_data: MoonlarkUser = get_user_data()) -> DetailedUserResponse:
+    reg_time = user_data.get_register_time()
     return {
         "avatar": user_data.get_base64_avatar(),
         "total_experience": user_data.get_experience(),
@@ -22,7 +23,7 @@ async def _(request: Request, avatar: bool = True, user_data: MoonlarkUser = get
         "health": user_data.get_health(),
         "nickname": user_data.get_nickname(),
         "level": user_data.get_level(),
-        "register_time": user_data.get_register_time(),
+        "register_time": reg_time.timestamp() if reg_time else None,
         "ship_code": user_data.get_ship_code(),
         "vimcoin": user_data.get_vimcoin(),
         "user_id": user_data.user_id,
