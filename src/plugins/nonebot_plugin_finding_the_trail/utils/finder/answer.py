@@ -34,6 +34,7 @@ class AnswerFinder:
             for col in range(len(self.game_map[row])):
                 if self.game_map[row][col] == Blocks.START:
                     return [row, col]
+        raise ValueError("No start block found")
 
     def init_stack(self) -> list[NodeData]:
         start_pos = self.get_start_pos()

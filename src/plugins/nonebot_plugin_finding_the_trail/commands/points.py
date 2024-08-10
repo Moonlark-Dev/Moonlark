@@ -23,11 +23,12 @@ from ..models import UserPoint
 
 
 @ftt.assign("points")
-async def _(user_id: get_user_id()) -> None:
+async def _(user_id: str = get_user_id()) -> None:
     async with get_session() as session:
         user_point = await session.get(UserPoint, user_id)
         if user_point is None:
             await lang.finish("points.no_points", user_id)
+            return
         await lang.finish(
             "points.info",
             user_id,

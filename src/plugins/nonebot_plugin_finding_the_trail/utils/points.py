@@ -23,8 +23,9 @@ async def add_point(user_id: str, points: int) -> None:
     async with get_session() as session:
         user = await session.get(UserPoint, user_id)
         if user is None:
-            user = UserPoint(user_id=user_id, points=points)
+            user = UserPoint(user_id=user_id, points=points, count=1)
         else:
             user.points += points
+            user.count += 1
         await session.merge(user)
         await session.commit()

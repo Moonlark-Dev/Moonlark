@@ -32,6 +32,8 @@ from ..utils.points import add_point
 async def is_user_continue(user_id: str, d_list: list[Directions]) -> bool:
     while True:
         inp = await prompt(await lang.text("ftt.done", user_id, await get_command_list_string(d_list, user_id)))
+        if inp is None:
+            continue
         text = inp.extract_plain_text().lower()
         if text == "ok":
             return True
@@ -45,7 +47,7 @@ async def _(seed: Match[str], user_id: str = get_user_id()) -> None:
     if seed.available:
         map_seed = seed.result
     else:
-        map_seed = random.randint(0, 2**32 - 1)
+        map_seed = str(random.randint(0, 2**32 - 1))
     ftt_map = FttMap(map_seed)
     points = ftt_map.difficulty["points"]
     start_time = time.time()
@@ -78,7 +80,7 @@ async def _(seed: Match[str], user_id: str = get_user_id()) -> None:
             points *= 10 / (time.time() - start_time)
             points = round(points)
             if seed.available:
-                points = 0
+                points = 1
             await add_point(user_id, points)
             await lang.finish("ftt.success", user_id, points)
     # TODO 参考答案动画

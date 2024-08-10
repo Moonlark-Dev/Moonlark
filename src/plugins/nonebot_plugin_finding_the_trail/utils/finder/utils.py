@@ -104,6 +104,7 @@ class MovementExecutor:
             for col in range(len(self.game_map[row])):
                 if self.game_map[row][col] == Blocks.PORTAL and [row, col] != pos:
                     return [row, col]
+        raise ValueError("Single portal")
 
     def remove_sand(self, origin_pos: list[int]) -> None:
         """
@@ -120,6 +121,7 @@ class MovementExecutor:
     def on_map_changing(self) -> None:
         if not self.is_map_changed():
             self.game_map = copy.deepcopy(self.game_map)
+            self.map_changed = True
 
     def is_map_changed(self) -> bool:
         return self.map_changed
