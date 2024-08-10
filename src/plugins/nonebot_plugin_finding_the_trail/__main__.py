@@ -16,15 +16,16 @@
 # ##############################################################################
 
 from nonebot_plugin_alconna import on_alconna, Alconna, Args, Option, Subcommand
+from typing import Optional
 from ..nonebot_plugin_larkuser import patch_matcher
 from ..nonebot_plugin_larklang import LangHelper
 
 alc = Alconna(
     "ftt",
-    Option("-s|--seed", Args["map_seed", str]),
+    Args["seed?", str],
     Subcommand("rank"),
     Subcommand("points"),
-    Subcommand("exchange", Args["count", int, -1])
+    Subcommand("exchange", Args["count", Optional[int], None])
 )
 ftt = on_alconna(alc)
 lang = LangHelper()

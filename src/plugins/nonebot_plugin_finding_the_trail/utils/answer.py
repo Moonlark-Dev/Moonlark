@@ -15,9 +15,10 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
+import io
 from nonebot.internal.adapter import Message
 from nonebot_plugin_alconna import UniMessage
-from typing import  TYPE_CHECKING
+from typing import TYPE_CHECKING
 from nonebot_plugin_waiter import prompt
 from .string import get_command_list_string
 from src.plugins.nonebot_plugin_finding_the_trail.__main__ import lang
@@ -44,12 +45,13 @@ class AnswerGetter:
         self.command_list = []
 
     async def send(self) -> str:
-        message = self.next_message
-        return (await prompt(message if isinstance(message, str) else await message.export())).extract_plain_text()
+        return (await prompt(self.next_message)).extract_plain_text()
 
     async def get_map_message(self) -> Message:
+        fp = io.BytesIO()
+        generate_map_image(self.map.map).save(fp, "PNG")
         message = (UniMessage()
-                   .image(raw=generate_map_image(self.map.map).save(format="PNG"))
+                   .image(raw=fp.getvalue())
                    .text(await lang.text("ftt.start", self.user_id, len(self.command_list), len(self.map.answer))))
         return await message.export()
 
@@ -69,16 +71,14 @@ class AnswerGetter:
                     d_list.pop(-1)
                 else:
                     self.command_list.pop(-1)
-            else:
-                await lang.send("ftt.unknown", self.user_id, o)
         return d_list
 
     async def get_commands(self) -> list[Directions]:
         self.next_message = await self.get_map_message()
-        while self.command_list != len(self.map.answer):
+        while len(self.command_list) != len(self.map.answer):
             self.command_list.extend(await self.get_input())
             self.next_message = await lang.text(
                 "ftt.step", self.user_id, len(self.command_list), len(self.map.answer),
-                await get_command_list_string(self.command_list, user_id)
+                await get_command_list_string(self.command_list, self.user_id)
             )
         return self.command_list

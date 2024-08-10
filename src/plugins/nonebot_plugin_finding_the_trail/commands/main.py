@@ -17,25 +17,36 @@
 
 import random
 import time
-
+from nonebot_plugin_waiter import prompt
 from nonebot_plugin_alconna import Match
 from ...nonebot_plugin_larkutils import get_user_id
 from ..exceptions import Quited, CannotMove
 from ..utils.fttmap import FttMap
+from ..utils.enums import Directions
 from ..utils.string import get_command_list_string
 from ..utils.answer import AnswerGetter
 from ..__main__ import ftt, lang
 from ..utils.points import add_point
 
 
+async def is_user_continue(user_id: str, d_list: list[Directions]) -> bool:
+    while True:
+        inp = await prompt(await lang.text("ftt.done", user_id, await get_command_list_string(d_list, user_id)))
+        text = inp.extract_plain_text().lower()
+        if text == "ok":
+            return True
+        elif text == "clear":
+            return False
+
+
 @ftt.assign("$main")
-@ftt.assign("seed.map_seed")
-async def _(map_seed: Match[str], user_id: str = get_user_id()) -> None:
-    if map_seed.available:
-        seed = map_seed.result
+@ftt.assign("seed")
+async def _(seed: Match[str], user_id: str = get_user_id()) -> None:
+    if seed.available:
+        map_seed = seed.result
     else:
-        seed = random.randint(0, 2**32 - 1)
-    ftt_map = FttMap(seed)
+        map_seed = random.randint(0, 2**32 - 1)
+    ftt_map = FttMap(map_seed)
     points = ftt_map.difficulty["points"]
     start_time = time.time()
     while points >= 2:
@@ -45,11 +56,18 @@ async def _(map_seed: Match[str], user_id: str = get_user_id()) -> None:
         except Quited:
             await lang.send("ftt.quited", user_id)
             break
+        if not await is_user_continue(user_id, d_list):
+            continue
         try:
             result = ftt_map.test_answer(d_list)
         except CannotMove as e:
-            await lang.send("ftt.cannot_move", user_id, e.step_length + 1)
-            continue
+            if points / 2 >= 2:
+                points /= 2
+                await lang.send("ftt.cannot_move", user_id, e.step_length + 1)
+                continue
+            else:
+                await lang.send("ftt.cannot_move_end", user_id, e.step_length + 1)
+                break
         if points / 2 >= 2 and not result:
             points /= 2
             await lang.send("ftt.failed", user_id)
@@ -57,8 +75,10 @@ async def _(map_seed: Match[str], user_id: str = get_user_id()) -> None:
             await lang.send("ftt.big_failed", user_id)
             break
         else:
-            points *= 0.1 / (time.time() - start_time)
-            points = int(points)
+            points *= 10 / (time.time() - start_time)
+            points = round(points)
+            if seed.available:
+                points = 0
             await add_point(user_id, points)
             await lang.finish("ftt.success", user_id, points)
     # TODO 参考答案动画
