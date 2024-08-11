@@ -30,6 +30,7 @@ async def give_special_item(user_id: str, name: str, count: int) -> None:
             raise ValueError(f"{name} is not a valid special item name")
 """
 
+
 async def give_item_by_list(user_id: str, items: list[DictItemData]) -> None:
     for item_data in items:
         logger.debug(f"Current item: {item_data}")

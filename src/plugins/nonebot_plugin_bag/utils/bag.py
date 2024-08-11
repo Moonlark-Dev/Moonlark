@@ -17,6 +17,7 @@ from .item import get_bag_items, get_items_count
 from ...nonebot_plugin_item.base.stack import ItemStack
 from ..models import Bag
 
+
 async def give_special_item(user_id: str, name: str, count: int) -> None:
     user = await get_user(user_id)
     match name:
@@ -84,6 +85,7 @@ async def give_item(user_id: str, item: ItemStack) -> None:
     if count > 0:
         await append_item(user_id, item, count)
     logger.debug(f"Item added: {item}")
+
 
 async def take_overflow_item(user_id: str, index: int) -> None:
     async with get_session() as session:

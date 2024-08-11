@@ -16,4 +16,3 @@ require("nonebot_plugin_waiter")
 require("nonebot_plugin_render")
 
 from . import __main__
-

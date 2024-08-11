@@ -42,7 +42,9 @@ async def _(width: int, height: int, user_id: str = get_user_id()) -> None:
     description = await get_input(await lang.text("prompt.description", user_id))
     for r in range(height):
         for c in range(width):
-            i = await get_input(await lang.text("prompt.item", user_id, r + 1, c + 1, r * width + c + 1, width * height))
+            i = await get_input(
+                await lang.text("prompt.item", user_id, r + 1, c + 1, r * width + c + 1, width * height)
+            )
             if i == "quit":
                 await lang.finish("bingo.quit", user_id)
             table[r][c] = i
@@ -56,13 +58,8 @@ async def _(width: int, height: int, user_id: str = get_user_id()) -> None:
         {
             "description": description,
             "items": table,
-            "maker": await lang.text("bingo.maker", user_id, (await get_user(user_id)).get_nickname())
-        }
+            "maker": await lang.text("bingo.maker", user_id, (await get_user(user_id)).get_nickname()),
+        },
     )
     message = UniMessage().image(raw=image)
     await matcher.finish(message)
-    
-    
-
-
-
