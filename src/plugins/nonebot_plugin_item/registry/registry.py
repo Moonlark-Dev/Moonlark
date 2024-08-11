@@ -56,7 +56,9 @@ class Registry(typing.Generic[T1]):
         for first, second in self._map.items():
             logger.debug(f"{first=} {second=} {value=} {id(second)=} {id(value)=}")
             if value == second:
+                logger.info(f"Item Found: {second} ({first})")
                 return first
+        logger.warning(f"找不到物品: {value}")
         raise ValueError(value)
 
     def getEntries(self) -> list[tuple[ResourceLocation, T1]]:
