@@ -38,9 +38,7 @@ def generate_map_image(game_map: list[list[Blocks]]) -> Image:
     生成地图图片
     :param game_map: 游戏地图
     """
-    image = Image.new(
-        "RGB", (len(game_map[0]) * 16, len(game_map) * 16), (51, 255, 255)
-    )
+    image = Image.new("RGB", (len(game_map[0]) * 16, len(game_map) * 16), (51, 255, 255))
     for row in range(len(game_map)):
         for column in range(len(game_map[row])):
             item = game_map[row][column]

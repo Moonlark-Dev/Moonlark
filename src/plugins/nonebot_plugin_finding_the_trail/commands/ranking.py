@@ -27,10 +27,10 @@ from ..models import UserPoint
 
 @ftt.assign("ranking")
 async def _(user_id: str = get_user_id()) -> None:
-    await ftt.finish(UniMessage().image(raw=await generate_image(
-        [u async for u in get_sorted_data()],
-        user_id,
-        await lang.text("ranking.title", user_id)
-    )))
-
-
+    await ftt.finish(
+        UniMessage().image(
+            raw=await generate_image(
+                [u async for u in get_sorted_data()], user_id, await lang.text("ranking.title", user_id)
+            )
+        )
+    )

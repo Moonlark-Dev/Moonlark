@@ -38,6 +38,5 @@ async def _(user_id: str = get_user_id()) -> None:
             user_point.exchanged,
             get_exchangeable_paw_coin_count(user_point.points, user_point.exchanged),
             at_sender=False,
-            reply_message=True
+            reply_message=True,
         )
-
