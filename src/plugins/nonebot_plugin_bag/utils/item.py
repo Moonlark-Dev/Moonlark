@@ -63,9 +63,8 @@ async def get_bag_items(user_id: str, ignore_lock: bool = False, ignore_locked_i
                     raise e
     return item_list
 
+
 async def get_items_count(user_id: str) -> int:
     async with get_session() as session:
         result = await session.scalars(select(Bag.bag_index).where(Bag.user_id == user_id))
         return len(result.all())
-
-
