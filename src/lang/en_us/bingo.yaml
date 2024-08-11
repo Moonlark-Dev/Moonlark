@@ -1,0 +1,20 @@
+bingo:
+  too_small: 输入的长宽过小！
+  too_big: 输入的长宽过大！
+  quit: 已退出！
+  review_failed: "审核不通过: {}"
+  maker: '制图: {}'
+prompt:
+  title: |
+    请输入标题：
+    （例：XXX宾果游戏）
+  description: |
+    请输入简介:
+    （例：五个连成一线的话你就是XXXXX。）
+  item: |
+    当前位置: 第 {} 行，第 {} 列，总第 {} / {}
+    请输入表格内容:
+help:
+  des: 宾果游戏生成
+  det: 输入大小与内容，一键生成宾果游戏图片
+  usa: bingo [列数] [行数] (开始创建宾果游戏)
