@@ -1,0 +1,49 @@
+points:
+  no_points: 未查询到参与记录！
+  info: |
+    挑战次数: {}
+    积分: {}
+    可兑换 PawCoin: {}/{} ({})
+ranking:
+  title: FTT 积分榜
+ftt:
+  start: |
+    步数: {} / {}
+    [w/a/s/d]: 设定方向
+    [b]: 回退 | [c]: 清除
+    [q]: 退出
+  unknown: 未知命令 {}
+  d_1: 上
+  d_2: 下
+  d_3: 左
+  d_4: 右
+  done: |
+    已完成指令输入: {}
+    [ok]: 开始
+    [clear]: 重置
+  step: |
+    已输入 {} / {} 步
+    当前指令表: {}
+    还可以继续输入
+  quited: 已退出
+  example: '此地图的参考解法: {}'
+  cannot_move: |
+    在 {} 步出现问题：无法移动
+    您还可以继续输入
+  cannot_move_end: |
+    在 {} 步出现问题：无法移动
+    很遗憾，挑战失败。
+  failed: '路线错误，您还可以继续输入'
+  big_failed: '路线错误，游戏结束！'
+  success: '恭喜您，挑战成功（获得 {} 积分）'
+exchange:
+  no_points: "可兑换数量不足！(可兑换: {})"
+  ok: 已使用积分兑换 {} 个 PawCoin
+help:
+  des: 寻径指津
+  det: 寻径指津玩法
+  u1: ftt (从随机地图开始)
+  u2: ftt <seed> (从指定种子生成地图，无奖励)
+  u3: ftt exchange [count] (将积分兑换为 PawCoin)
+  u4: ftt ranking (积分排名)
+  u5: ftt points (查看积分)
