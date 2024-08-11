@@ -15,18 +15,15 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
-from nonebot import get_plugin_config, require
+from nonebot import require
 from nonebot.plugin import PluginMetadata
-from .config import Config
 
 __plugin_meta__ = PluginMetadata(
     name="nonebot-plugin-finding-the-trail",
     description="Moonlark 迷宫玩法 - 寻津指径",
     usage="ftt",
-    config=Config,
+    config=None,
 )
-
-config = get_plugin_config(Config)
 
 require("nonebot_plugin_alconna")
 require("nonebot_plugin_bag")
