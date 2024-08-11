@@ -85,7 +85,4 @@ async def _(seed: Match[str], user_id: str = get_user_id()) -> None:
             await lang.finish("ftt.success", user_id, points)
     # TODO 参考答案动画
     # TODO 错误答案演示
-    await lang.finish("ftt.example", user_id, await get_command_list_string(
-        ftt_map.answer, user_id))
-
-
+    await lang.finish("ftt.example", user_id, await get_command_list_string(ftt_map.answer, user_id))

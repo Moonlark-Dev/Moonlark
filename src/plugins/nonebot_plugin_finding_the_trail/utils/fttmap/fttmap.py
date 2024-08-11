@@ -55,4 +55,3 @@ class FttMap:
             pos = executor.get_moved_pos()
             index += 1
         return ftt_map[pos[0]][pos[1]] == Blocks.END
-

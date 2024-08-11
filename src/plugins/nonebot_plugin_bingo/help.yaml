@@ -1,0 +1,7 @@
+plugin: bingo
+commands:
+  bingo:
+    description: help.des
+    details: help.det
+    usages:
+      - help.usa

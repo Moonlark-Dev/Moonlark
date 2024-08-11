@@ -40,18 +40,24 @@ async def _get_user_id(request: Request) -> str:
     logger.debug(f"{session_id=}")
     if session_id is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
-    session = get_scoped_session()
+    session = get_session()
     try:
         data = await session.get_one(SessionData, session_id)
     except NoResultFound:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+    user_id = data.user_id
+    tomorrow = datetime.now() + timedelta(days=1)
+    logger.debug(f"{user_id=}")
     if (
         data.identifier != get_identifier(request)
-        or (datetime.now() - (data.expiration_time or datetime.now())).total_seconds() >= 0
+        or (datetime.now() - (data.expiration_time or tomorrow)).total_seconds() > 0
     ):
         await session.delete(data)
+        await session.commit()
     elif data.activate_code is None:
-        return data.user_id
+        await session.close()
+        return user_id
+    await session.close()
     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
 
 

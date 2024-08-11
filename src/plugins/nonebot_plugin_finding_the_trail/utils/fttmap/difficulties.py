@@ -43,7 +43,7 @@ DIFFICULTIES = {
             "step_limit": 12,
             "min_step": 4,
         },
-        "points": 10
+        "points": 10,
     },
     "normal": {
         "map": {
@@ -56,7 +56,7 @@ DIFFICULTIES = {
             "step_limit": 17,
             "min_step": 5,
         },
-        "points": 25
+        "points": 25,
     },
     "hard": {
         "map": {
@@ -69,6 +69,6 @@ DIFFICULTIES = {
             "step_limit": 20,
             "min_step": 7,
         },
-        "points": 100
+        "points": 100,
     },
 }

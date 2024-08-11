@@ -20,8 +20,12 @@ import copy
 
 from src.plugins.nonebot_plugin_finding_the_trail.utils.enums.blocks import Blocks
 from src.plugins.nonebot_plugin_finding_the_trail.utils.enums.directions import Directions
-from src.plugins.nonebot_plugin_finding_the_trail.utils.finder.utils import get_moveable_directions, NodeData, \
-    MovementExecutor, get_back_direction
+from src.plugins.nonebot_plugin_finding_the_trail.utils.finder.utils import (
+    get_moveable_directions,
+    NodeData,
+    MovementExecutor,
+    get_back_direction,
+)
 
 
 class EndFinder:
@@ -47,11 +51,10 @@ class EndFinder:
 
     def init_stack(self) -> list[NodeData]:
         start_pos = self.get_start_pos()
-        return [{
-            "game_map": copy.deepcopy(self.game_map),
-            "pos": start_pos,
-            "answer": [d]
-        } for d in get_moveable_directions(start_pos, self.game_map, [])]
+        return [
+            {"game_map": copy.deepcopy(self.game_map), "pos": start_pos, "answer": [d]}
+            for d in get_moveable_directions(start_pos, self.game_map, [])
+        ]
 
     def search(self) -> bool:
         stack = self.init_stack()
@@ -73,11 +76,7 @@ class EndFinder:
             if len(node["answer"]) >= self.step_limit:
                 continue
             for d in get_moveable_directions(pos, game_map, d_ignore):
-                stack.append({
-                    "game_map": game_map,
-                    "pos": pos,
-                    "answer": node["answer"] + [d]
-                })
+                stack.append({"game_map": game_map, "pos": pos, "answer": node["answer"] + [d]})
         return False
 
     def find_end(self) -> tuple[bool, list[list[Blocks]]]:

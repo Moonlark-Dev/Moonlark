@@ -44,19 +44,20 @@ def apply_template(language: str, plugin: str, key: str, text: str) -> str:
         return text
 
 
-def get_text(language: str, plugin: str, key: str, *args, **kwargs) -> str:
+def get_text(language: str, plugin: str, key: str, *args, retry: bool = True, **kwargs) -> str:
     k = key.split(".", 1)
     try:
         data = languages[language].keys[plugin][k[0]][k[1]]
     except KeyError:
         logger.warning(f"获取键失败: {traceback.format_exc()}")
-        if language in languages and languages[language].patch.patch:
-            return get_text(languages[language].patch.base, plugin, key, *args, **kwargs)
-        for lang in config.language_index_order:
-            text = get_text(lang, plugin, key, *args, **kwargs)
-            if text.startswith("<缺失: ") and text.endswith(">"):
-                continue
-            return text
+        if retry:
+            if language in languages and languages[language].patch.patch:
+                return get_text(languages[language].patch.base, plugin, key, *args, retry=False, **kwargs)
+            for lang in config.language_index_order:
+                text = get_text(lang, plugin, key, *args, retry=False, **kwargs)
+                if text.startswith("<缺失: ") and text.endswith(">"):
+                    continue
+                return text
         return f"<缺失: {plugin}.{key}; {args}; {kwargs}>"
     else:
         text = random.choice(data.text)

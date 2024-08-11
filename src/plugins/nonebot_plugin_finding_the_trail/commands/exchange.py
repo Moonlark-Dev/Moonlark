@@ -37,20 +37,8 @@ async def _(count: Optional[int], user_id: str = get_user_id()) -> None:
             await lang.finish("exchange.no_points", user_id, exchangeable)
         await give_item_by_data(
             user_id,
-            {
-                "experience": 0,
-                "vimcoin": 0,
-                "items": [
-                    {
-                        "item_id": "moonlark:pawcoin",
-                        "count": count,
-                        "data": {}
-                    }
-                ]
-            }
+            {"experience": 0, "vimcoin": 0, "items": [{"item_id": "moonlark:pawcoin", "count": count, "data": {}}]},
         )
         user_point.exchanged += count
         await session.commit()
         await lang.finish("exchange.ok", user_id, count)
-        
-

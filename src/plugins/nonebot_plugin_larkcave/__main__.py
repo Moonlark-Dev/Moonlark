@@ -32,7 +32,7 @@ alc = Alconna(
     ),
     Subcommand("r|remove", Option("-c|--comment", Args["comment_id", int]), Args["cave_id?", int]),
     Subcommand("c|cd", Option("-s|--set", Args["time", float]), Option("-u|--user")),
-    separators="-",
+    separators=["-", " "],
 )
 cave = on_alconna(alc, use_cmd_start=True, skip_for_unmatch=False)
 

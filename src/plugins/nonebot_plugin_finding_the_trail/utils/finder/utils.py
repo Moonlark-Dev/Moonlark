@@ -25,19 +25,17 @@ from ..enums import Directions, Blocks, DIRECTION_LIST
 def get_moved_pos(pos: list[int], direction: Directions) -> list[int]:
     match direction:
         case Directions.UP:
-            return [pos[0]-1, pos[1]]
+            return [pos[0] - 1, pos[1]]
         case Directions.DOWN:
-            return [pos[0]+1, pos[1]]
+            return [pos[0] + 1, pos[1]]
         case Directions.LEFT:
-            return [pos[0], pos[1]-1]
+            return [pos[0], pos[1] - 1]
         case Directions.RIGHT:
-            return [pos[0], pos[1]+1]
+            return [pos[0], pos[1] + 1]
 
 
 def get_moveable_directions(
-        pos: list[int],
-        game_map: list[list[Blocks]],
-        exclude_directions: list[Directions]
+    pos: list[int], game_map: list[list[Blocks]], exclude_directions: list[Directions]
 ) -> list[Directions]:
     d_list = []
     for d in DIRECTION_LIST:
