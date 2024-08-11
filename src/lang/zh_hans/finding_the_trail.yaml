@@ -36,3 +36,14 @@ ftt:
   failed: '路线错误，您还可以继续输入'
   big_failed: '路线错误，游戏结束！'
   success: '恭喜您，挑战成功（获得 {} 积分）'
+exchange:
+  no_points: "可兑换数量不足！(可兑换: {})"
+  ok: 已使用积分兑换 {} 个 PawCoin
+help:
+  des: 寻径指津
+  det: 寻径指津玩法
+  u1: ftt (从随机地图开始)
+  u2: ftt <seed> (从指定种子生成地图，无奖励)
+  u3: ftt exchange [count] (将积分兑换为 PawCoin)
+  u4: ftt ranking (积分排名)
+  u5: ftt points (查看积分)

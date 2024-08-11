@@ -28,7 +28,8 @@ async def get_sorted_data() -> AsyncGenerator[RankingData, None]:
         for user in await session.scalars(select(UserPoint).order_by(UserPoint.points.desc())):
             yield {
                 "user_id": user.user_id,
-                "data": user.points
+                "data": user.points,
+                "info": None
             }
 
 

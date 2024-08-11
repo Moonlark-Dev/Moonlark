@@ -13,3 +13,8 @@ pcc:
     已兑换总数：{}
     获得的 VimCoin：{}
     持有猫爪币：{}
+help:
+  description: 兑换猫爪币
+  details: 将 PawCoin 兑换为 VimCoin
+  u1: pcc [-b|--bag <index>] <count> (兑换)
+  u2: pcc (查看汇率)

@@ -23,7 +23,7 @@ from ..nonebot_plugin_larklang import LangHelper
 alc = Alconna(
     "ftt",
     Args["seed?", str],
-    Subcommand("rank"),
+    Subcommand("ranking"),
     Subcommand("points"),
     Subcommand("exchange", Args["count", Optional[int], None])
 )

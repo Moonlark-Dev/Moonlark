@@ -29,6 +29,7 @@ __plugin_meta__ = PluginMetadata(
 config = get_plugin_config(Config)
 
 require("nonebot_plugin_alconna")
+require("nonebot_plugin_bag")
 require("nonebot_plugin_larklang")
 require("nonebot_plugin_larkutils")
 require("nonebot_plugin_larkuser")

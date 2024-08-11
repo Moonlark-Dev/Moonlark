@@ -1,0 +1,11 @@
+plugin: finding_the_trail
+commands:
+  ftt:
+    description: help.des
+    details: help.det
+    usages:
+      - help.u1
+      - help.u2
+      - help.u3
+      - help.u4
+      - help.u5
