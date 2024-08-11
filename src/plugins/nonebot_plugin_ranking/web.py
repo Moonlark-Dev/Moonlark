@@ -7,16 +7,21 @@ from ..nonebot_plugin_larkuser.utils.user import get_user
 from .generator import find_user
 from ..nonebot_plugin_larklang.__main__ import LangHelper
 from ..nonebot_plugin_larkuid.session import get_user_id
-from .lang import lang
 from .types import RankingData, RankingResponse
 
 
 class WebRanking(ABC):
-    ID: str = ""
-    NAME: str = ""
-    LANG: LangHelper = lang
 
-    def __init__(self) -> None:
+    def __init__(self, id_: str, name: str, lang_: LangHelper) -> None:
+        """
+        初始化 WebRanking 参数
+        :param id_: 排行路径
+        :param name: 排行名称（键名）
+        :param lang_: 插件使用的 LangHelper 对象
+        """
+        self.ID = id_
+        self.NAME = name
+        self.LANG = lang_
         get_app().get(f"/api/rankings/{self.ID}")(self.handle)
 
     async def handle(

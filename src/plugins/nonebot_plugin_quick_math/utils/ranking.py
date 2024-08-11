@@ -16,9 +16,6 @@ async def get_user_list(order_by: Any = QuickMathUser.max_point) -> AsyncGenerat
 
 
 class RecordRanking(WebRanking):
-    ID = "quick_math_record"
-    NAME = "rank.title-1"
-    LANG = lang
 
     async def get_sorted_data(self) -> list[RankingData]:
         return [
@@ -32,9 +29,6 @@ class RecordRanking(WebRanking):
 
 
 class TotalRanking(WebRanking):
-    ID = "quick_math_total"
-    NAME = "rank.title-2"
-    LANG = lang
 
     async def get_sorted_data(self) -> list[RankingData]:
         return [
@@ -47,4 +41,5 @@ class TotalRanking(WebRanking):
         ]
 
 
-web_ranking = [RecordRanking(), TotalRanking()]
+r1 = RecordRanking("quick_math_record", "rank.title-1", lang)
+r2 = TotalRanking("quick_math_total", "rank.title-2", lang)

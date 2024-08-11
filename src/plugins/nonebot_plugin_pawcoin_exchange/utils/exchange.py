@@ -88,4 +88,4 @@ async def exchange(index: Match[int], count: int, user_id: str) -> None:
     user = await get_user(user_id)
     await user.add_vimcoin(vimcoin_count := await get_exchange_vimcoin(count))
     await add_exchanged_count(user_id, count, vimcoin_count)
-    await lang.finish("pcc.ok", count, vimcoin_count)
+    await lang.finish("pcc.ok", user_id, count, vimcoin_count)
