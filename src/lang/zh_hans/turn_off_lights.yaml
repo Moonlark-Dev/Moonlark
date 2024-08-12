@@ -1,0 +1,12 @@
+tol:
+  size_error:  输入的大小不正确
+  msg: |
+    请关掉所有的灯（输入格式：X Y）
+    当前步数: {}
+  quit: 已退出
+  success: '挑战成功！（总步数: {}）'
+  wrong_input: 无效的输入
+help:
+  des: 关灯
+  det: 关掉所有的灯（关灯时周围的四个灯状态也会变化）
+  usage: tol [宽度] [高度] (开始挑战)
