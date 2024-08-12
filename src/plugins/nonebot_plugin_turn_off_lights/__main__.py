@@ -15,11 +15,11 @@ lang = LangHelper()
 
 
 def get_all_lights_stats(game_map: list[list[bool]]) -> list[bool]:
-    l = []
+    lights = []
     for r in game_map:
-        l.extend(r)
-    logger.debug(str(l))
-    return l
+        lights.extend(r)
+    logger.debug(str(lights))
+    return lights
 
 
 @matcher.handle()
