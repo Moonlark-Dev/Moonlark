@@ -1,4 +1,3 @@
-
 def force_update_light_stat(game_map: list[list[bool]], x: int, y: int) -> list[list[bool]]:
     try:
         game_map[y][x] = not game_map[y][x]
