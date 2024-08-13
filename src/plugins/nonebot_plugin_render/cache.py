@@ -18,18 +18,21 @@ def creator(template_name: str):
     def d(func: CACHE_CREATOR_TYPE) -> CACHE_CREATOR_TYPE:
         creator_functions[template_name] = func
         return func
+
     return d
 
 
 async def setup_cache() -> None:
-    await asyncio.sleep(5)    
+    await asyncio.sleep(5)
     languages = get_languages().keys()
     themes = (await get_themes()).keys()
     for template, function in creator_functions.items():
         for lang in languages:
             for theme in themes:
                 image = await function(f"mlsid::--lang={lang};--theme={theme}")
-                f_name = hashlib.sha256(f"mlrc::--template={template};--lang={lang};--theme={theme}".encode()).hexdigest()
+                f_name = hashlib.sha256(
+                    f"mlrc::--template={template};--lang={lang};--theme={theme}".encode()
+                ).hexdigest()
                 async with aiofiles.open(cache_dir.joinpath(f_name), "wb") as f:
                     await f.write(image)
                 logger.debug(f"成功为 {template=} {lang=} {theme=} 创建 Render 缓存！")
@@ -47,4 +50,3 @@ async def get_cache(template: str, lang: str, theme: str) -> Optional[bytes]:
     if path.exists():
         async with aiofiles.open(path, "rb") as f:
             return await f.read()
-
