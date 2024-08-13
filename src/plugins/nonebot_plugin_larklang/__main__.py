@@ -80,6 +80,8 @@ async def set_user_language(user_id: str, language: str) -> None:
 
 
 async def get_user_language(user_id: str) -> str:
+    if user_id.startswith("--lang:"):
+        return user_id[7:]
     file = data_dir.joinpath(user_id)
     if file.exists():
         async with aiofiles.open(file, "r", encoding="utf-8") as f:
