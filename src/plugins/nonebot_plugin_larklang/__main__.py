@@ -8,8 +8,8 @@ from types import ModuleType
 from nonebot import get_driver, get_plugin_by_module_name, get_plugin_config, logger
 from nonebot.matcher import Matcher
 from nonebot_plugin_localstore import get_data_dir
-from sqlalchemy.exc import NoResultFound
 
+from ..nonebot_plugin_larkutils import parse_special_user_id
 from .config import Config
 from .exceptions import *
 from .loader import LangLoader
@@ -80,8 +80,8 @@ async def set_user_language(user_id: str, language: str) -> None:
 
 
 async def get_user_language(user_id: str) -> str:
-    if user_id.startswith("--lang:"):
-        return user_id[7:]
+    if user_id.startswith("mlsid::") and "--lang" in (args := parse_special_user_id(user_id)):
+        return args["--lang"]
     file = data_dir.joinpath(user_id)
     if file.exists():
         async with aiofiles.open(file, "r", encoding="utf-8") as f:

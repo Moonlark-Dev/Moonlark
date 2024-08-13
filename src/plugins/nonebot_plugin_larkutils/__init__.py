@@ -30,3 +30,4 @@ from .gsc_time import get_galactic_time
 from .superuser import is_user_superuser
 from .user import get_user_id
 from .subaccount import get_main_account, set_main_account
+from .user_id import parse_special_user_id

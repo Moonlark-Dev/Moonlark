@@ -1,10 +1,12 @@
 from pathlib import Path
+from typing import Any
 
 from nonebot import get_driver
 from nonebot_plugin_alconna import Alconna, Args, on_alconna
 from nonebot_plugin_alconna.uniseg import UniMessage
 
 from ..nonebot_plugin_render.render import render_template
+from ..nonebot_plugin_render.cache import creator
 
 from ..nonebot_plugin_larklang.__main__ import LangHelper
 from ..nonebot_plugin_larkutils import get_user_id
@@ -39,16 +41,8 @@ async def _(command: str, user_id: str = get_user_id()) -> None:
     await help_cmd.finish()
 
 
-@help_cmd.assign("$main")
-async def _(user_id: str = get_user_id()) -> None:
-    template_path = Path(__file__).parent.joinpath("templates/index.html.jinja")
-    await help_cmd.finish(
-        UniMessage().image(
-            raw=await render_template(
-                "help.html.jinja",
-                await lang.text("list.title", user_id),
-                user_id,
-                dict(
+async def get_templates(user_id: str) -> dict[str, Any]:
+    return dict(
                     usages_text=await lang.text("list.usage_text", user_id),
                     commands=[
                         {
@@ -64,8 +58,28 @@ async def _(user_id: str = get_user_id()) -> None:
                         }
                         for name, data in help_list.items()
                     ],
-                ),
-            ),
+                )
+
+
+
+@creator("help.html.jinja")
+async def render(user_id: str) -> bytes:
+    return await render_template(
+        "help.html.jinja",
+        await lang.text("list.title", user_id),
+        user_id,
+        await get_templates(user_id)
+    )
+
+
+
+@help_cmd.assign("$main")
+async def _(user_id: str = get_user_id()) -> None:
+    template_path = Path(__file__).parent.joinpath("templates/index.html.jinja")
+    await help_cmd.finish(
+        UniMessage().image(
+            raw=await render(user_id),
             name="image.png",
         )
     )
+
