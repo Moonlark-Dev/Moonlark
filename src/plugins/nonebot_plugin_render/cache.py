@@ -41,6 +41,9 @@ async def setup_cache() -> None:
 
 @get_driver().on_startup
 async def _() -> None:
+    for file in cache_dir.iterdir():
+        if file.is_file():
+            file.unlink()
     asyncio.create_task(setup_cache())
 
 
