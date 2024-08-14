@@ -14,7 +14,10 @@ from ...decoder import decode_cave
 
 @cave.assign("remove.comment.comment_id")
 async def _(
-    comment_id: int, session: async_scoped_session, is_user_superuser: bool, user_id: str = get_user_id()
+    comment_id: int,
+    session: async_scoped_session,
+    is_superuser: bool = is_user_superuser(),
+    user_id: str = get_user_id(),
 ) -> None:
     try:
         comment = await session.get_one(CommentData, {"id": comment_id})
@@ -38,7 +41,9 @@ async def _(
 
 
 @cave.assign("remove.cave_id")
-async def _(cave_id: int, session: async_scoped_session, is_user_superuser: bool, user_id: str = get_user_id()) -> None:
+async def _(
+    cave_id: int, session: async_scoped_session, is_superuser: bool = is_user_superuser(), user_id: str = get_user_id()
+) -> None:
     try:
         cave_data = await session.get_one(CaveData, {"id": cave_id})
     except NoResultFound:
