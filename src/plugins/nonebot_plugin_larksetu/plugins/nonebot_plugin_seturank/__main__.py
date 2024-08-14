@@ -1,4 +1,4 @@
-from ....nonebot_plugin_ranking.web import WebRanking
+from ....nonebot_plugin_ranking.web import WebRanking, register
 from ....nonebot_plugin_ranking.types import RankingData
 from ... import models
 from ....nonebot_plugin_larklang import LangHelper
@@ -38,4 +38,4 @@ class SetuRanking(WebRanking):
         return [{"user_id": data.user_id, "info": None, "data": data.count} for data in sorted_data]
 
 
-web_ranking = SetuRanking("setu", "rank.title", lang)
+register(SetuRanking("setu", "rank.title", lang))

@@ -1,7 +1,7 @@
 from nonebot_plugin_orm import get_session
 from sqlalchemy import select
 from typing import AsyncGenerator, Optional
-from src.plugins.nonebot_plugin_ranking import RankingData, WebRanking
+from src.plugins.nonebot_plugin_ranking import RankingData, WebRanking, register
 
 from ..__main__ import lang
 from .stats import get_user_stats
@@ -37,7 +37,7 @@ class WakaTimeRanking(WebRanking):
         return await get_sorted_ranking_data()
 
 
-r = WakaTimeRanking("wakatime", "ranking.info", lang)
+register(WakaTimeRanking("wakatime", "ranking.title", lang))
 
 
 async def get_user_ranking(user_id: str) -> Optional[int]:

@@ -15,5 +15,5 @@ require("nonebot_plugin_render")
 require("nonebot_plugin_larkutils")
 
 from .generator import generate_image
-from .web import WebRanking
+from .web import WebRanking, register
 from .types import *
