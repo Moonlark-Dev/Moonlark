@@ -26,7 +26,7 @@ class WebRanking(ABC):
 
     def get_id(self) -> str:
         return self.ID
-    
+
     async def get_name(self, user_id: str) -> str:
         return await self.LANG.text(self.NAME, user_id)
 
@@ -59,7 +59,6 @@ class WebRanking(ABC):
 rankings: list[WebRanking] = []
 
 
-
 def register(rank: WebRanking) -> WebRanking:
     rankings.append(rank)
     return rank
@@ -69,8 +68,5 @@ def register(rank: WebRanking) -> WebRanking:
 async def _(request: Request, user_id: str = get_user_id("-1")) -> dict[str, dict[str, str]]:
     response = {}
     for r in rankings:
-        response[r.get_id()] = {
-            "uri": f"/api/rankings/{r.get_id()}",
-            "name": await r.get_name(user_id)
-        }
+        response[r.get_id()] = {"uri": f"/api/rankings/{r.get_id()}", "name": await r.get_name(user_id)}
     return response
