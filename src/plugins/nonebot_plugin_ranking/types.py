@@ -19,5 +19,6 @@ class UserDataWithIndex(TypedDict):
 class RankingResponse(TypedDict):
     time: float
     total: int
+    title: str
     me: Optional[UserDataWithIndex]
     users: list[UserDataWithIndex]

@@ -1,4 +1,4 @@
-from ...nonebot_plugin_ranking.web import WebRanking
+from ...nonebot_plugin_ranking.web import WebRanking, register
 from ...nonebot_plugin_ranking.types import RankingData
 from ..models import QuickMathUser
 from ..__main__ import lang
@@ -41,5 +41,5 @@ class TotalRanking(WebRanking):
         ]
 
 
-r1 = RecordRanking("quick_math_record", "rank.title-1", lang)
-r2 = TotalRanking("quick_math_total", "rank.title-2", lang)
+register(RecordRanking("quick_math_record", "rank.title-1", lang))
+register(TotalRanking("quick_math_total", "rank.title-2", lang))

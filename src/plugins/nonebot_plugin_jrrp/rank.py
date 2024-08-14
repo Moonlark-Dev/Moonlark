@@ -8,7 +8,7 @@ from .jrrp import get_luck_value
 from ..nonebot_plugin_larkutils import get_user_id
 from .__main__ import jrrp
 from ..nonebot_plugin_larkuser.models import UserData
-from ..nonebot_plugin_ranking import generate_image, RankingData, WebRanking
+from ..nonebot_plugin_ranking import generate_image, RankingData, WebRanking, register
 
 
 async def get_user_list() -> AsyncGenerator[RankingData, None]:
@@ -46,4 +46,4 @@ class JrrpRank(WebRanking):
         )
 
 
-r = JrrpRank("jrrp", "rank.title", lang)
+register(JrrpRank("jrrp", "rank.title", lang))
