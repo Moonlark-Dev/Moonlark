@@ -1,10 +1,10 @@
 status:
-  description: 系统状态
-  details: '[lgc-NB2Dev/nonebot-plugin-picstatus] 获取 Moonlark 运行状态'
+  description: 系統狀態
+  details: '獲取Moonlark運行狀態'
   usage: status
 train:
-  description: 列车查询
-  details: '[lgc-NB2Dev/nonebot-plugin-cnrail] 查询 12306 列车时刻表'
+  description: 列車查詢
+  details: '[lgc-NB2Dev/nonebot-plugin-cnrail] 查詢 12306 列車時刻表'
   usage: train <列车> (查询列车时刻)
   usage2: train -h (获取插件帮助)
 motd:
