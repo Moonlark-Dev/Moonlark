@@ -1,6 +1,6 @@
 command:
   not_found: 错误：无效的激活代码
-  verified: 登陆验证成功！
+  verified: 登录验证成功！
 sa:
   key_error: 当前没有绑定请求！
   wrong_key: 错误的绑定码！
