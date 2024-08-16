@@ -29,6 +29,8 @@ async def load_data() -> dict:
             return json.loads(await f.read())
     except json.JSONDecodeError:
         return {}
+    except FileNotFoundError:
+        return {}
 
 
 async def on_group_joined(bot_id: str, group_id: str) -> None:

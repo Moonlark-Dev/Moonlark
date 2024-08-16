@@ -18,12 +18,13 @@
 
 from nonebot.adapters.qq.event import GroupAddRobotEvent
 from nonebot.adapters.qq import Bot
-from nonebot import on_notice
+from nonebot import on_type
 from .lang import lang
 from .data import on_group_joined
 
 
-@ (matcher := on_notice(GroupAddRobotEvent)).handle()
+@ (matcher := on_type(GroupAddRobotEvent)).handle()
 async def _(bot: Bot, event: GroupAddRobotEvent) -> None:
     await on_group_joined(bot.self_id, event.group_openid)
-    await matcher.finish(await lang.text("join.message", "mlsid::--lang=default"))
+    msg = await lang.text("join.message", "mlsid::--lang=default")
+    await bot.send_to_group(event.group_openid, msg)
