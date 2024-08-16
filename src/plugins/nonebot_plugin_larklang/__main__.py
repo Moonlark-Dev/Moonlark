@@ -81,7 +81,10 @@ async def set_user_language(user_id: str, language: str) -> None:
 
 async def get_user_language(user_id: str) -> str:
     if user_id.startswith("mlsid::") and "--lang" in (args := parse_special_user_id(user_id)):
-        return args["--lang"]
+        lang = args["--lang"]
+        if lang == "default":
+            lang = config.language_index_order[0]
+        return lang
     file = data_dir.joinpath(user_id)
     if file.exists():
         async with aiofiles.open(file, "r", encoding="utf-8") as f:
