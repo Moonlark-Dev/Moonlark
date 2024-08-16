@@ -23,7 +23,7 @@ from .lang import lang
 from .data import on_group_joined
 
 
-@(matcher := on_notice(GroupAddRobotEvent)).handle()
+@ (matcher := on_notice(GroupAddRobotEvent)).handle()
 async def _(bot: Bot, event: GroupAddRobotEvent) -> None:
     await on_group_joined(bot.self_id, event.group_openid)
     await matcher.finish(await lang.text("join.message", "mlsid::--lang=default"))

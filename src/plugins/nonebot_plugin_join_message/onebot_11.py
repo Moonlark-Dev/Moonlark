@@ -21,7 +21,7 @@ from .lang import lang
 from .data import on_group_joined
 
 
-@(matcher := on_notice(GroupIncreaseNoticeEvent)).handle()
+@ (matcher := on_notice(GroupIncreaseNoticeEvent)).handle()
 async def _(event: GroupIncreaseNoticeEvent) -> None:
     if event.self_id == event.group_id:
         await on_group_joined(str(event.self_id), str(event.group_id))

@@ -22,6 +22,7 @@ import time
 
 file = get_cache_file("nonebot-plugin-join-message", f"groups.json")
 
+
 async def load_data() -> dict:
     try:
         async with aiofiles.open(file, encoding="utf-8") as f:
@@ -29,11 +30,9 @@ async def load_data() -> dict:
     except json.JSONDecodeError:
         return {}
 
+
 async def on_group_joined(bot_id: str, group_id: str) -> None:
     data = await load_data()
-    data[group_id] = {
-        "time": time.time(),
-        "bot": bot_id
-    }
+    data[group_id] = {"time": time.time(), "bot": bot_id}
     async with aiofiles.open(file, "w", encoding="utf-8") as f:
         await f.write(json.dumps(data))
