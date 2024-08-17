@@ -5,7 +5,6 @@ commands:
     details: train.details
     usages:
       - train.usage
-      - train.usage2
   motd:
     description: motd.description
     details: motd.details

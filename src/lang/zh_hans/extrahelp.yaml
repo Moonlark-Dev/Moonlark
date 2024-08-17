@@ -6,7 +6,6 @@ train:
   description: 列车查询
   details: '[lgc-NB2Dev/nonebot-plugin-cnrail] 查询 12306 列车时刻表'
   usage: train <列车> (查询列车时刻)
-  usage2: train -h (获取插件帮助)
 motd:
   description: MC 服务器查询
   details: '[lgc-NB2Dev/nonebot-plugin-picmcstat] 查询 Minecraft 服务器信息'
