@@ -34,7 +34,7 @@ async def _(user_id: str = get_user_id()) -> None:
         total_answered += 1
         return bool(
             re.match(f"^{question['question']['answer']}$", message := msg.extract_plain_text())
-            or ((message.lower() == "skip" or message.lower() == "tg") and total_skipping_count > skipped_question)
+            or (message.lower() in ["skip", "tg"] and total_skipping_count > skipped_question)
         )
 
     await lang.send("main.wait", user_id, config.qm_wait_time)
@@ -57,7 +57,7 @@ async def _(user_id: str = get_user_id()) -> None:
         if resp is None:
             end_time = datetime.now()
             break
-        elif resp.extract_plain_text().lower() == "skip" or resp.extract_plain_text().lower() == "tg":
+        elif resp.extract_plain_text().lower() in ["skip", "tg"]:
             skipped_question += 1
             point += get_point(question, send_time) // 2
             await lang.send("main.skipped", user_id)
