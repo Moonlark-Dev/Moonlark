@@ -38,12 +38,7 @@ def get_result_dict(password: list[int], answer: list[int]) -> dict[str, int]:
     :param password: 用户输入的密码
     :param answer: 正确的密码
     """
-    result = {
-        "right": 0,
-        "wrong": 0,
-        "pos_wrong": 0,
-        "repeated": 0
-    }
+    result = {"right": 0, "wrong": 0, "pos_wrong": 0, "repeated": 0}
     for i in range(len(password)):
         if password[i] == answer[i]:
             if password.count(password[i]) <= 1 < answer.count(answer[i]):
@@ -68,7 +63,3 @@ async def get_failed_result_string(password: list[int], answer: list[int], user_
     result = [(await lang.text(f"result_wrong.{k}", user_id, v)) for k, v in result_dict.items() if v > 0]
     string = (await lang.text("result_wrong.sep", user_id)).join(result)
     return await lang.text("result_wrong.template", user_id, string)
-
-
-
-

@@ -31,7 +31,6 @@ alc = Alconna("defuse-tnt")
 matcher = on_alconna(alc)
 
 
-
 @matcher.assign("$main")
 async def _(user_id: str = get_user_id()) -> None:
     answer = [random.randint(1, 9) for i in range(3)]
@@ -51,16 +50,10 @@ async def _(user_id: str = get_user_id()) -> None:
                 "table_passwd": await lang.text("template.table_passwd", user_id),
                 "table_result": await lang.text("template.table_result", user_id),
                 "history": [
-                    {
-                        "password": item,
-                        "result": await get_failed_result_string(
-                            item,
-                            answer,
-                            user_id
-                        )
-                    } for item in history
-                ]
-            }
+                    {"password": item, "result": await get_failed_result_string(item, answer, user_id)}
+                    for item in history
+                ],
+            },
         )
         message = await prompt(await UniMessage.image(raw=image).export())
         if message is None:
@@ -75,6 +68,3 @@ async def _(user_id: str = get_user_id()) -> None:
             await matcher.send(await get_failed_result_string(password, answer, user_id))
             r -= 1
     await lang.finish("result.failed", user_id, answer)
-
-
-
