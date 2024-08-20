@@ -7,6 +7,7 @@ class Config(BaseModel):
 
     render_default_theme: str = "default"
     render_viewport: dict = {"width": 500, "height": 10}
+    render_cache: bool = True
 
 
 config = get_plugin_config(Config)
