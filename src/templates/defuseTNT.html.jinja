@@ -1,0 +1,26 @@
+{% extends base %}
+
+{% block body %}
+  <h2>{{ title }}</h2>
+  <h3>{{ input }}</h3>
+  <p>{{ remain }}</p>
+  <hr>
+  <table class="table table-striped">
+    <thead>
+      <tr>
+        <td>{{ table_number }}</td>
+        <td>{{ table_passwd }}</td>
+        <td>{{ table_result }}</td>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in history %}
+        <tr>
+          <td>{{ loop.index }}</td>
+          <td>{{ item.password }}</td>
+          <td>{{ item.result }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endblock body %}

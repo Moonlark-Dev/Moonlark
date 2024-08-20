@@ -7,6 +7,7 @@ import hashlib
 from nonebot_plugin_localstore import get_cache_dir
 from ..nonebot_plugin_larklang.__main__ import get_languages
 from .theme import get_themes
+from .config import config
 
 
 CACHE_CREATOR_TYPE = Callable[[str], Awaitable[bytes]]
@@ -44,7 +45,8 @@ async def _() -> None:
     for file in cache_dir.iterdir():
         if file.is_file():
             file.unlink()
-    asyncio.create_task(setup_cache())
+    if config.render_cache:
+        t = asyncio.create_task(setup_cache())
 
 
 async def get_cache(template: str, lang: str, theme: str) -> Optional[bytes]:
