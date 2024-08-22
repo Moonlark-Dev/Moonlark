@@ -10,9 +10,7 @@ __plugin_meta__ = PluginMetadata(
     config=None,
 )
 
-sub_plugins = nonebot.load_plugins(
-    str(Path(__file__).parent.joinpath("plugins").resolve())
-)
+sub_plugins = nonebot.load_plugins(str(Path(__file__).parent.joinpath("plugins").resolve()))
 
 nonebot.require("nonebot_plugin_alconna")
 nonebot.require("nonebot_plugin_minigames:nonebot_plugin_minigames_api")

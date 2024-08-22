@@ -20,18 +20,16 @@ from typing import AsyncGenerator
 from .api import get_user_data_list
 from .lang import lang
 
+
 async def get_rank_user() -> AsyncGenerator[RankingData, None]:
     async for user in get_user_data_list():
-        yield {
-            "user_id": user.user_id,
-            "data": user.total_points,
-            "info": None
-        }
+        yield {"user_id": user.user_id, "data": user.total_points, "info": None}
+
 
 class MiniGamePointRanking(WebRanking):
 
     async def get_sorted_data(self) -> list[RankingData]:
         return sorted([u async for u in get_rank_user()], key=lambda x: x["data"], reverse=True)
 
-register(MiniGamePointRanking("minigame", "rank.title", lang))
 
+register(MiniGamePointRanking("minigame", "rank.title", lang))

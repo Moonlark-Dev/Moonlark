@@ -43,20 +43,15 @@ async def get_user_data(user_id: str) -> UserData:
     """
     async with get_session() as session:
         if not (user := await session.get(User, user_id)):
-            return UserData(
-                user_id=user_id,
-                total_points=0,
-                exchanged_pawcoin=0,
-                seconds=0,
-                count=0
-            )
+            return UserData(user_id=user_id, total_points=0, exchanged_pawcoin=0, seconds=0, count=0)
         return UserData(
             user_id=user.user_id,
             total_points=user.total_points,
             exchanged_pawcoin=user.exchanged_pawcoin,
             seconds=user.seconds,
-            count=user.count
+            count=user.count,
         )
+
 
 async def get_user_list() -> list[str]:
     async with get_session() as session:
@@ -67,6 +62,7 @@ async def get_user_data_list() -> AsyncGenerator[UserData, None]:
     for user_id in await get_user_list():
         yield await get_user_data(user_id)
 
+
 async def exchange_pawcoin(user_id: str, count: int) -> None:
     async with get_session() as session:
         user = await session.get(User, user_id)
@@ -75,4 +71,3 @@ async def exchange_pawcoin(user_id: str, count: int) -> None:
         else:
             user = User(user_id=user_id, exchanged_pawcoin=count)
         await session.merge(user)
-

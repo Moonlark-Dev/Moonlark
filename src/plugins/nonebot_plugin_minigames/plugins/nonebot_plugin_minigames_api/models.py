@@ -38,4 +38,4 @@ class UserData(BaseModel):
     count: int
 
     def get_exchangeable_pawcoin(self) -> int:
-        return int(math.sqrt(self.total_points ** 0.6)) - self.exchanged_pawcoin
+        return int(math.sqrt(self.total_points**0.6)) - self.exchanged_pawcoin

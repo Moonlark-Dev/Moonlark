@@ -26,12 +26,7 @@ from src.plugins.nonebot_plugin_render import render_template
 from src.plugins.nonebot_plugin_bag.utils.give import give_item_by_data
 from .plugins.nonebot_plugin_minigames_api import get_user_data, exchange_pawcoin, get_rank_user
 
-alc = Alconna(
-    "minigame",
-    Subcommand("rank"),
-    Subcommand("exchange", Args["count?", int]),
-    Subcommand("me")
-)
+alc = Alconna("minigame", Subcommand("rank"), Subcommand("exchange", Args["count?", int]), Subcommand("me"))
 matcher = on_alconna(alc)
 lang = LangHelper()
 
@@ -52,20 +47,18 @@ async def _(user_id: str = get_user_id()) -> None:
                     "details": await lang.text(f"{item['id']}.details", user_id),
                     "name": item["name"],
                     "usages": [
-                        await LangHelper(
-                            "nonebot_plugin_larkhelp"
-                        ).text(
-                            "list.usage",
-                            user_id,
-                            await lang.text(
-                                f"{item['id']}.usage{c + 1}", user_id
-                            )
-                        ) for c in range(item["usage"])]
-                } for item in data
+                        await LangHelper("nonebot_plugin_larkhelp").text(
+                            "list.usage", user_id, await lang.text(f"{item['id']}.usage{c + 1}", user_id)
+                        )
+                        for c in range(item["usage"])
+                    ],
+                }
+                for item in data
             ],
-            "usage_text": await LangHelper("nonebot_plugin_larkhelp").text("list.usage_text", user_id)
-        }
+            "usage_text": await LangHelper("nonebot_plugin_larkhelp").text("list.usage_text", user_id),
+        },
     )
+
 
 @matcher.assign("me")
 async def _(user_id: str = get_user_id()) -> None:
@@ -77,17 +70,19 @@ async def _(user_id: str = get_user_id()) -> None:
         user.count,
         user.seconds,
         user.exchanged_pawcoin,
-        user.get_exchangeable_pawcoin() + user.exchanged_pawcoin
+        user.get_exchangeable_pawcoin() + user.exchanged_pawcoin,
     )
+
 
 @matcher.assign("rank")
 async def _(user_id: str = get_user_id()) -> None:
     image = await generate_image(
         sorted([u async for u in get_rank_user()], key=lambda x: x["data"], reverse=True),
         user_id,
-        await lang.text("command.ranking_title", user_id)
+        await lang.text("command.ranking_title", user_id),
     )
     await matcher.finish(UniMessage().image(raw=image))
+
 
 @matcher.assign("exchange")
 async def _(count: Match[int], user_id: str = get_user_id()) -> None:
@@ -102,5 +97,3 @@ async def _(count: Match[int], user_id: str = get_user_id()) -> None:
         {"experience": 0, "vimcoin": 0, "items": [{"item_id": "moonlark:pawcoin", "count": count, "data": {}}]},
     )
     await lang.finish("command.exchange_success", user_id, count)
-
-
