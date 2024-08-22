@@ -70,3 +70,9 @@ class MiniGameSession:
             if not await session.get(User, self.user_id):
                 session.add(User(user_id=self.user_id))
                 await session.commit()
+
+    async def add_count(self) -> None:
+        async with get_session() as session:
+            user = await session.get_one(User, self.user_id)
+            user.count += 1
+            await session.commit()

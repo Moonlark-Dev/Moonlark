@@ -23,10 +23,10 @@ from src.plugins.nonebot_plugin_larkutils import get_user_id
 from nonebot_plugin_alconna import UniMessage
 from src.plugins.nonebot_plugin_render import render_template
 import re
-from src.plugins.nonebot_plugin_defuse_tnt.utils import get_failed_result_string
-from ..nonebot_plugin_larklang import LangHelper
+from src.plugins.nonebot_plugin_minigames.plugins.nonebot_plugin_defuse_tnt.utils import get_failed_result_string
+from .lang import lang
+from ..nonebot_plugin_minigames_api import create_minigame_session
 
-lang = LangHelper()
 alc = Alconna("defuse-tnt")
 matcher = on_alconna(alc)
 
@@ -37,6 +37,7 @@ async def _(user_id: str = get_user_id()) -> None:
     logger.debug(f"Defuse TNT Answer: {answer}")
     r = 6
     history = []
+    session = await create_minigame_session(user_id)
     while r >= 0:
         image = await render_template(
             "defuseTNT.html.jinja",
@@ -58,13 +59,19 @@ async def _(user_id: str = get_user_id()) -> None:
         message = await prompt(await UniMessage.image(raw=image).export())
         if message is None:
             continue
-        password = [int(c) for c in list(message.extract_plain_text()) if re.match("[1-9]", c)]
+        text = message.extract_plain_text()
+        if text.lower().startswith("q"):
+            await session.quit()
+        password = [int(c) for c in list(text) if re.match("[1-9]", c)]
         if len(password) != 3:
             continue
         if password == answer:
-            await lang.finish("result.success", user_id)
+            t = await session.finish()
+            p = await session.add_points(int(r / t * 10))
+            await lang.finish("result.success", user_id, r, 6, t, p)
         else:
             history.append(password)
             await matcher.send(await get_failed_result_string(password, answer, user_id))
             r -= 1
+    await session.finish()
     await lang.finish("result.failed", user_id, answer)

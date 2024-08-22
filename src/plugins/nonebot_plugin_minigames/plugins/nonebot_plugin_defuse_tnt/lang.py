@@ -14,28 +14,7 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
-import math
 
-from nonebot_plugin_orm import Model
-from sqlalchemy.orm import mapped_column, Mapped
-from sqlalchemy import String
-from pydantic import BaseModel
+from src.plugins.nonebot_plugin_larklang import LangHelper
 
-
-class User(Model):
-    user_id: Mapped[str] = mapped_column(String(128), primary_key=True)
-    total_points: Mapped[int] = mapped_column(default=0)
-    exchanged_pawcoin: Mapped[int] = mapped_column(default=0)
-    seconds: Mapped[int] = mapped_column(default=0)
-    count: Mapped[int] = mapped_column(default=0)
-
-
-class UserData(BaseModel):
-    user_id: str
-    total_points: int
-    exchanged_pawcoin: int
-    seconds: int
-    count: int
-
-    def get_exchangeable_pawcoin(self) -> int:
-        return int(math.sqrt(self.total_points ** 0.6)) - self.exchanged_pawcoin
+lang = LangHelper()

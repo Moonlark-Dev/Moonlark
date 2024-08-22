@@ -1,21 +1,23 @@
 from pathlib import Path
-
 import nonebot
-from nonebot import get_plugin_config
 from nonebot.plugin import PluginMetadata
 
-from .config import Config
 
 __plugin_meta__ = PluginMetadata(
     name="nonebot-plugin-minigames",
     description="",
     usage="",
-    config=Config,
+    config=None,
 )
-
-config = get_plugin_config(Config)
 
 sub_plugins = nonebot.load_plugins(
     str(Path(__file__).parent.joinpath("plugins").resolve())
 )
 
+nonebot.require("nonebot_plugin_alconna")
+nonebot.require("nonebot_plugin_minigames:nonebot_plugin_minigames_api")
+nonebot.require("nonebot_plugin_render")
+nonebot.require("nonebot_plugin_larkutils")
+nonebot.require("nonebot_plugin_larklang")
+
+from . import __main__

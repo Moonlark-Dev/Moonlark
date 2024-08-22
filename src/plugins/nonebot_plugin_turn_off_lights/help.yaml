@@ -1,7 +1,0 @@
-plugin: turn_off_lights
-commands:
-  tol:
-    description: help.des
-    details: help.det
-    usages:
-      - help.usage

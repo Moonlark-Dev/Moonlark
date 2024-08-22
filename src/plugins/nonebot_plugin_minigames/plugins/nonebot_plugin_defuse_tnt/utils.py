@@ -29,7 +29,7 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
-from src.plugins.nonebot_plugin_defuse_tnt.__main__ import lang
+from src.plugins.nonebot_plugin_minigames.plugins.nonebot_plugin_defuse_tnt.lang import lang
 
 
 def get_result_dict(password: list[int], answer: list[int]) -> dict[str, int]:
