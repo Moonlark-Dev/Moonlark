@@ -1,0 +1,10 @@
+plugin: minigames
+commands:
+  ftt:
+    description: help.ds
+    details: help.dt
+    usages:
+      - help.u1
+      - help.u2
+      - help.u3
+      - help.u4
