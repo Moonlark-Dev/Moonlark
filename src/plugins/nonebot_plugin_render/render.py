@@ -45,12 +45,12 @@ def get_plugin_name(module: ModuleType | None) -> Optional[str]:
     return plugin.name
 
 
-async def render_template(name: str, title: str, user_id: str, templates: dict) -> bytes:
+async def render_template(name: str, title: str, user_id: str, templates: dict, cache: bool = False) -> bytes:
     module = inspect.getmodule(inspect.stack()[1][0])
     plugin_name = get_plugin_name(module) or "nonebot-plugin-render"
     footer = await lang.text("render.footer", user_id, plugin_name)
     t, base = await get_base(user_id)
-    if c := await get_cache(name, await get_user_language(user_id), t):
+    if cache and (c := await get_cache(name, await get_user_language(user_id), t)):
         return c
     return await html_to_pic(
         await render_template_to_text(name, title, footer, templates, base),
