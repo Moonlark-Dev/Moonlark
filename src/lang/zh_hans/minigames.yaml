@@ -4,7 +4,7 @@ command:
   me_info: |
     总积分: {}
     挑战次数: {}
-    总时长: {}
+    总时长: {}s
     可兑换猫爪币: {}/{}
   ranking_title: 小游戏积分排行
   help_title: 小游戏列表
@@ -14,7 +14,7 @@ help:
   dt: 查看小游戏积分、排名和小游戏列表
   u1: minigame (查看小游戏列表)
   u2: minigame rank (查看积分排行榜)
-  u3: minigame point (查看积分)
+  u3: minigame me (查看积分)
   u4: minigame exchange [数量] (兑换PawCoin)
 
 
