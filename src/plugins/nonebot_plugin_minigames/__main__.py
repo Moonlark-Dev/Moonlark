@@ -47,7 +47,7 @@ async def _(user_id: str = get_user_id()) -> None:
                     "details": await lang.text(f"{item['id']}.details", user_id),
                     "name": item["name"],
                     "usages": [
-                        await LangHelper("nonebot_plugin_larkhelp").text(
+                        await LangHelper("larkhelp").text(
                             "list.usage", user_id, await lang.text(f"{item['id']}.usage{c + 1}", user_id)
                         )
                         for c in range(item["usage"])
@@ -55,7 +55,7 @@ async def _(user_id: str = get_user_id()) -> None:
                 }
                 for item in data
             ],
-            "usage_text": await LangHelper("nonebot_plugin_larkhelp").text("list.usage_text", user_id),
+            "usage_text": await LangHelper("larkhelp").text("list.usage_text", user_id),
         },
     )
 
