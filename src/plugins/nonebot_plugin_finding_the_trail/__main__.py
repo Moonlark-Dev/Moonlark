@@ -25,7 +25,7 @@ alc = Alconna(
     Args["seed?", str],
     Subcommand("ranking"),
     Subcommand("points"),
-    Subcommand("exchange", Args["count", Optional[int], None]),
+    Subcommand("exchange", Args["count?", int]),
 )
 ftt = on_alconna(alc)
 lang = LangHelper()
