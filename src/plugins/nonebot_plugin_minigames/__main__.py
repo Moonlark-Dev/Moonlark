@@ -58,6 +58,7 @@ async def _(user_id: str = get_user_id()) -> None:
             "usage_text": await LangHelper("larkhelp").text("list.usage_text", user_id),
         },
     )
+    await matcher.finish(UniMessage().image(raw=image))
 
 
 @matcher.assign("me")
