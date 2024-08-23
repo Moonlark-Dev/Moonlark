@@ -95,6 +95,10 @@ async def _(count: Match[int], user_id: str = get_user_id()) -> None:
     await exchange_pawcoin(user_id, exchange_count)
     await give_item_by_data(
         user_id,
-        {"experience": 0, "vimcoin": 0, "items": [{"item_id": "moonlark:pawcoin", "count": exchange_count, "data": {}}]},
+        {
+            "experience": 0,
+            "vimcoin": 0,
+            "items": [{"item_id": "moonlark:pawcoin", "count": exchange_count, "data": {}}],
+        },
     )
     await lang.finish("command.exchange_success", user_id, exchange_count)
