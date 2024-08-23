@@ -55,7 +55,7 @@ async def _(user_id: str = get_user_id()) -> None:
                 }
                 for item in data
             ],
-            "usage_text": await LangHelper("larkhelp").text("list.usage_text", user_id),
+            "usages_text": await LangHelper("larkhelp").text("list.usage_text", user_id),
         },
     )
     await matcher.finish(UniMessage().image(raw=image))
@@ -91,10 +91,10 @@ async def _(count: Match[int], user_id: str = get_user_id()) -> None:
     exchangeable = user.get_exchangeable_pawcoin()
     if count.available and not 0 < count.result < exchangeable:
         await lang.finish("command.exchange_not_enough", user_id, exchangeable)
-    count = count.result if count.available else exchangeable
-    await exchange_pawcoin(user_id, count)
+    exchange_count = count.result if count.available else exchangeable
+    await exchange_pawcoin(user_id, exchange_count)
     await give_item_by_data(
         user_id,
-        {"experience": 0, "vimcoin": 0, "items": [{"item_id": "moonlark:pawcoin", "count": count, "data": {}}]},
+        {"experience": 0, "vimcoin": 0, "items": [{"item_id": "moonlark:pawcoin", "count": exchange_count, "data": {}}]},
     )
-    await lang.finish("command.exchange_success", user_id, count)
+    await lang.finish("command.exchange_success", user_id, exchange_count)
