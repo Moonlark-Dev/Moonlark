@@ -62,7 +62,7 @@ async def get_templates(user_id: str) -> dict[str, Any]:
 @creator("help.html.jinja")
 async def render(user_id: str) -> bytes:
     return await render_template(
-        "help.html.jinja", await lang.text("list.title", user_id), user_id, await get_templates(user_id)
+        "help.html.jinja", await lang.text("list.title", user_id), user_id, await get_templates(user_id), True
     )
 
 
