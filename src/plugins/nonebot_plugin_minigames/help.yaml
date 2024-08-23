@@ -1,6 +1,6 @@
 plugin: minigames
 commands:
-  ftt:
+  minigames:
     description: help.ds
     details: help.dt
     usages:
