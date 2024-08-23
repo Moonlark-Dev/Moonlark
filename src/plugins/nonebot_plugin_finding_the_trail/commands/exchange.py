@@ -17,6 +17,7 @@
 
 from nonebot_plugin_orm import get_session
 from typing import Optional
+from nonebot_plugin_alconna import Match
 from ...nonebot_plugin_larkutils import get_user_id
 from ..__main__ import lang, ftt
 from ..utils.exchange import get_exchangeable_paw_coin_count
@@ -25,14 +26,14 @@ from ...nonebot_plugin_bag.utils.give import give_item_by_data
 
 
 @ftt.assign("exchange")
-async def _(count: Optional[int], user_id: str = get_user_id()) -> None:
+async def _(count: Match[int], user_id: str = get_user_id()) -> None:
     async with get_session() as session:
         user_point = await session.get(UserPoint, user_id)
         if user_point is None:
             await lang.finish("points.no_points", user_id)
             return
         exchangeable = get_exchangeable_paw_coin_count(user_point.points, user_point.exchanged)
-        count = count or exchangeable
+        count = count.result if count.available else exchangeable
         if count > exchangeable or count <= 0:
             await lang.finish("exchange.no_points", user_id, exchangeable)
         await give_item_by_data(
