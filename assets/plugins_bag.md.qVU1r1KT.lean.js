@@ -1,0 +1,1 @@
+import{_ as a,c as i,o as s,a2 as e}from"./chunks/framework.Sicmpk4x.js";const u=JSON.parse('{"title":"Bag","description":"","frontmatter":{},"headers":[],"relativePath":"plugins/bag.md","filePath":"plugins/bag.md"}'),t={name:"plugins/bag.md"},l=e("",36),n=[l];function o(h,r,d,p,k,c){return s(),i("div",null,n)}const b=a(t,[["render",o]]);export{u as __pageData,b as default};
