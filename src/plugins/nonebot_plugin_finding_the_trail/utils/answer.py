@@ -67,7 +67,7 @@ class AnswerGetter:
             elif o == "b":
                 if len(d_list) >= 1:
                     d_list.pop(-1)
-                else:
+                elif len(self.command_list) >= 1:
                     self.command_list.pop(-1)
         return d_list
 
