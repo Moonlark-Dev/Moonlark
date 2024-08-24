@@ -4,11 +4,10 @@ from datetime import datetime
 from nonebot import logger, on_command
 from nonebot.params import ArgPlainText
 from nonebot.typing import T_State
-from nonebot_plugin_orm import get_scoped_session, get_session
+from nonebot_plugin_orm import get_session
 from sqlalchemy import select
 
 from ..nonebot_plugin_larkuser.models import UserData
-from ..nonebot_plugin_larkuser.utils.user import get_user
 from ..nonebot_plugin_larkutils.user import get_user_id
 from .lang import lang
 from .utils import is_user_registered
@@ -43,19 +42,19 @@ async def _(state: T_State, ship_code: str = ArgPlainText(), user_id: str = get_
     logger.debug(f"{ship_code=}")
     if ship_code == "cancel":
         await lang.finish("command.cancel", user_id)
-    session = get_scoped_session()
-    if await session.scalar(select(UserData).where(UserData.ship_code == ship_code)) is not None:
-        await register.reject(await lang.text("command.invalid", user_id))
-    if len(ship_code) >= 25:
-        await register.reject(await lang.text("command.invalid", user_id))
-    state["ship_code"] = ship_code
-    await lang.send(
-        "input.c",
-        user_id,
-        user_id,
-        await lang.text("gender.male" if state["gender"] else "gender.female", user_id),
-        state["ship_code"],
-    )
+    async with get_session() as session:
+        if await session.scalar(select(UserData).where(UserData.ship_code == ship_code)) is not None:
+            await register.reject(await lang.text("command.invalid", user_id))
+        if len(ship_code) >= 25:
+            await register.reject(await lang.text("command.invalid", user_id))
+        state["ship_code"] = ship_code
+        await lang.send(
+            "input.c",
+            user_id,
+            user_id,
+            await lang.text("gender.male" if state["gender"] else "gender.female", user_id),
+            state["ship_code"],
+        )
 
 
 @register.got("confirm")

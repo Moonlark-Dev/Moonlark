@@ -5,7 +5,7 @@ from typing import Optional
 from fastapi import Depends, HTTPException, Request, status
 from nonebot.log import logger
 from nonebot_plugin_apscheduler import scheduler
-from nonebot_plugin_orm import get_scoped_session, get_session
+from nonebot_plugin_orm import get_session
 from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
 
