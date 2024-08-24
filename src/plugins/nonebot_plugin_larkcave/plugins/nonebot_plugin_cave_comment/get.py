@@ -1,12 +1,12 @@
 from typing import Optional
 from nonebot_plugin_alconna import UniMessage
 from .models import CommentData
-from nonebot_plugin_orm import async_scoped_session
+from nonebot_plugin_orm import AsyncSession, async_scoped_session
 from sqlalchemy import select
 from .image import generate
 
 
-async def get_comment_list(belong: int, session: async_scoped_session) -> list[CommentData]:
+async def get_comment_list(belong: int, session: async_scoped_session | AsyncSession) -> list[CommentData]:
     return list((await session.scalars(select(CommentData).where(CommentData.belong == belong))).all())
 
 
