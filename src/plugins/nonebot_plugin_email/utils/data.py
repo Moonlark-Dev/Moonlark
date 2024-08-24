@@ -10,7 +10,9 @@ from ..types import DictEmailData
 async def get_email_data(email_id: int, user_id: str = "-1") -> DictEmailData:
     async with get_session() as session:
         data = await session.get_one(EmailData, email_id)
-        user = await session.scalar(select(EmailUser).where(EmailUser.user_id == user_id, EmailUser.email_id == email_id))
+        user = await session.scalar(
+            select(EmailUser).where(EmailUser.user_id == user_id, EmailUser.email_id == email_id)
+        )
         items = await session.scalars(select(EmailItem).where(EmailItem.belong == email_id))
         return {
             "id": data.email_id,

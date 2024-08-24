@@ -33,7 +33,9 @@ class SetuRanking(WebRanking):
 
     async def get_sorted_data(self) -> list[RankingData]:
         async with get_session() as session:
-            result = (await session.execute(select(models.UserData).order_by(models.UserData.count.desc()))).scalars().all()
+            result = (
+                (await session.execute(select(models.UserData).order_by(models.UserData.count.desc()))).scalars().all()
+            )
             sorted_data = sorted(result, key=lambda x: x.count, reverse=True)
             return [{"user_id": data.user_id, "info": None, "data": data.count} for data in sorted_data]
 
