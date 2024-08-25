@@ -1,0 +1,7 @@
+plugin: int
+commands:
+  int:
+    description: help.des
+    details: help.det
+    usages:
+      - help.u1
