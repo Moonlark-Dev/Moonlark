@@ -9,4 +9,4 @@ __plugin_meta__ = PluginMetadata(
 )
 require("nonebot_plugin_alconna")
 
-
+from . import __main__
