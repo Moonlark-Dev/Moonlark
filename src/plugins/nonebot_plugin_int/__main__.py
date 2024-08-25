@@ -46,9 +46,9 @@ def convert(num: int, to: int) -> str:
 
 @matcher.handle()
 async def _(number: str, base: int, to: int, user_id: str = get_user_id()) -> None:
-    if not 0 <= base <= 32:
+    if not 0 <= base <= 36:
         await lang.finish("error.wrong_arg", user_id, base)
-    if not 1 <= to <= 32:
+    if not 1 <= to <= 36:
         await lang.finish("error.wrong_arg", user_id, to)
     try:
         await matcher.finish(convert(int(number, base), to))
