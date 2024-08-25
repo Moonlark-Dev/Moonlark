@@ -16,11 +16,12 @@
 # ##############################################################################
 
 from PIL import Image
-from pathlib import Path
 from ..enums import Blocks
+from ...config import config
+from nonebot_plugin_localstore import get_config_dir
 
-base_path = Path(__file__).parent.joinpath("assets")
-
+# 加载默认资源
+base_path = config.ftt_assets_path or get_config_dir("nonebot-plugin-finding-the-trail")
 BLOCKS = {
     Blocks.NULL: Image.open(base_path.joinpath("stone_bricks.png")),
     Blocks.WALL: Image.open(base_path.joinpath("bricks.png")),

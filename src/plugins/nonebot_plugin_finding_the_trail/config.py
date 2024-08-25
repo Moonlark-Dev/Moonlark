@@ -15,25 +15,14 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
-from nonebot import require
-from nonebot.plugin import PluginMetadata
-from .config import Config
+from pydantic import BaseModel
+from typing import Optional
+from nonebot import get_plugin_config
+from pathlib import Path
 
-__plugin_meta__ = PluginMetadata(
-    name="nonebot-plugin-finding-the-trail",
-    description="Moonlark 迷宫玩法 - 寻津指径",
-    usage="ftt",
-    config=Config,
-)
 
-require("nonebot_plugin_alconna")
-require("nonebot_plugin_bag")
-require("nonebot_plugin_larklang")
-require("nonebot_plugin_localstore")
-require("nonebot_plugin_larkutils")
-require("nonebot_plugin_larkuser")
-require("nonebot_plugin_waiter")
-require("nonebot_plugin_ranking")
-require("nonebot_plugin_orm")
+class Config(BaseModel):
+    ftt_assets_path: Optional[Path]
 
-from . import commands
+
+config = get_plugin_config(Config)
