@@ -19,19 +19,16 @@ from nonebot_plugin_alconna import Alconna, on_alconna, Option, Args
 from ..nonebot_plugin_larkutils import get_user_id
 from ..nonebot_plugin_larklang import LangHelper
 
-alc = Alconna(
-    "int",
-    Args["number", str],
-    Args["base", int, 0],
-    Option("-t", Args["to", int, 10])
-)
+alc = Alconna("int", Args["number", str], Args["base", int, 0], Option("-t", Args["to", int, 10]))
 matcher = on_alconna(alc)
 lang = LangHelper()
+
 
 def num_to_str(num: int) -> str:
     if num >= 10:
         return chr(65 + num - 10)
     return f"{num}"
+
 
 def convert(num: int, to: int) -> str:
     if num < 0:
@@ -44,6 +41,7 @@ def convert(num: int, to: int) -> str:
             break
     return "".join(l[::-1])
 
+
 @matcher.handle()
 async def _(number: str, base: int, to: int, user_id: str = get_user_id()) -> None:
     if not 0 <= base <= 36:
@@ -54,5 +52,3 @@ async def _(number: str, base: int, to: int, user_id: str = get_user_id()) -> No
         await matcher.finish(convert(int(number, base), to))
     except ValueError as e:
         await matcher.finish(str(e))
-
-
