@@ -22,7 +22,7 @@ from pathlib import Path
 
 
 class Config(BaseModel):
-    ftt_assets_path: Optional[Path]
+    ftt_assets_path: Optional[Path] = None
 
 
 config = get_plugin_config(Config)
