@@ -10,4 +10,4 @@ class CommandHelp(BaseModel):
 
 class CommandHelpData(BaseModel):
     plugin: str
-    commands: dict
+    commands: dict[str, str | dict[str, str | list[str]]]

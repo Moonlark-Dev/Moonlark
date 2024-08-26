@@ -9,4 +9,4 @@ require("nonebot_plugin_alconna")
 require("nonebot_plugin_larklang")
 require("nonebot_plugin_render")
 
-from . import __main__
+from . import __main__, api
