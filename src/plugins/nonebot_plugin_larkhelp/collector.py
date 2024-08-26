@@ -15,13 +15,25 @@ async def get_plugin_help(plugin: Plugin) -> dict[str, CommandHelp]:
         return {}
     path = Path(plugin.module.__file__).parent
     if not path.joinpath("help.yaml").exists():
-        # logger.warning(f"插件 {plugin.name} 下没有 help.yaml 文件！")
         return {}
     async with aiofiles.open(path.joinpath("help.yaml"), encoding="utf-8") as f:
         data = type_validate_python(CommandHelpData, yaml.safe_load(await f.read()))
     help_list = {}
     for key, value in data.commands.items():
-        help_list[key] = CommandHelp(**data.commands[key], plugin=data.plugin)
+        if isinstance(value, str):
+            if ";" in value:
+                usage_count = int((l := value.split(";"))[-1])
+                value = l[1]
+            else:
+                usage_count = 1
+            help_list[key] = CommandHelp(
+                plugin=data.plugin,
+                description=f"{value}.description",
+                details=f"{value}.details",
+                usages=[f"{value}.usage{i}" for i in range(1, usage_count + 1)]
+            )
+        else:
+            help_list[key] = CommandHelp(**value, plugin=data.plugin)
     return help_list
 
 
