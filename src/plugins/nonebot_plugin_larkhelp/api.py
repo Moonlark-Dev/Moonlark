@@ -36,5 +36,3 @@ async def _(name: str, user_id: str = get_user_id("-1")) -> dict[str, str | list
         return await get_help_dict(name, user_id)
     except KeyError:
         raise HTTPException(status.HTTP_404_NOT_FOUND)
-
-

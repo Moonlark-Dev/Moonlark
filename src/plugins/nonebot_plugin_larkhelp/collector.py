@@ -30,7 +30,7 @@ async def get_plugin_help(plugin: Plugin) -> dict[str, CommandHelp]:
                 plugin=data.plugin,
                 description=f"{value}.description",
                 details=f"{value}.details",
-                usages=[f"{value}.usage{i}" for i in range(1, usage_count + 1)]
+                usages=[f"{value}.usage{i}" for i in range(1, usage_count + 1)],
             )
         else:
             help_list[key] = CommandHelp(**value, plugin=data.plugin)
