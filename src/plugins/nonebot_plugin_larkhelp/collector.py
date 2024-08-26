@@ -23,7 +23,7 @@ async def get_plugin_help(plugin: Plugin) -> dict[str, CommandHelp]:
         if isinstance(value, str):
             if ";" in value:
                 usage_count = int((l := value.split(";"))[-1])
-                value = l[1]
+                value = l[0] or "help"
             else:
                 usage_count = 1
             help_list[key] = CommandHelp(
