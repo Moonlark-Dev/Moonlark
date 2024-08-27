@@ -18,6 +18,7 @@ import json
 
 import aiofiles
 from nonebot.adapters.onebot.v11.event import FriendAddNoticeEvent, FriendRequestEvent
+from nonebot.adapters.onebot.v12.event import FriendIncreaseEvent
 from nonebot.adapters.qq.event import FriendAddEvent
 from nonebot.adapters.qq import Bot as BotQQ
 from nonebot.adapters.onebot.v11 import Bot as BotOB
@@ -33,6 +34,7 @@ lang = LangHelper()
 friend_add_qq = on_type(FriendAddEvent)
 friend_request = on_type(FriendRequestEvent)
 friend_add_ob = on_type(FriendAddNoticeEvent)
+friend_add_ob12 = on_type(FriendIncreaseEvent)
 data_file = get_data_file("nonebot_plugin_friend_add", "friends.json")
 
 async def get_friends() -> dict[str, float]:
@@ -75,7 +77,7 @@ async def _(bot: BotOB, event: FriendRequestEvent, user_id: str = get_user_id())
     else:
         await event.approve(bot)
 
-
+@friend_add_ob12.handle()
 @friend_add_ob.handle()
 async def _(user_id: str = get_user_id()) -> None:
     user = await get_user(user_id)
