@@ -1,0 +1,14 @@
+chapter__moon_and_lark:
+  name: 月与云雀
+  description: ...
+
+seaside_and_moonlark:
+  name: 海边！云雀？Moonlark！
+  description: ...
+
+
+charactors:
+  lark: 云雀号
+  moonlark: Moonlark
+  moonlark_unknown: 少女
+  mzz: MZZ

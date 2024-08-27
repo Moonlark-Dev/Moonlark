@@ -1,0 +1,7 @@
+executor:
+  choice: "\n[{}]> {}"
+  unknown: 未知选项，请重新输入！
+  continue: 继续
+node:
+  info: "*{}"
+  say: "{}: {}"

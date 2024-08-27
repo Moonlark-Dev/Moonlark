@@ -1,0 +1,20 @@
+from nonebot import require
+from nonebot.plugin import PluginMetadata
+from .config import Config
+
+require("nonebot_plugin_larklang")
+require("nonebot_plugin_larkutils")
+require("nonebot_plugin_localstore")
+require("nonebot_plugin_alconna")
+require("nonebot_plugin_item")
+
+
+__plugin_meta__ = PluginMetadata(
+    name="nonebot-plugin-larkstory",
+    description="",
+    usage="",
+    config=Config,
+)
+
+
+

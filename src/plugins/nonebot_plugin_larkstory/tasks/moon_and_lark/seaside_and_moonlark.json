@@ -1,0 +1,101 @@
+{
+  "number": 1,
+  "requires": [],
+  "type": "main",
+  "characters": [
+    "lark",
+    "moonlark",
+    "moonlark_unknown",
+    "mzz"
+  ],
+  "story": [
+
+    ["info", "1"],
+    ["say", "lark", "1"],
+    ["say", "lark", "2"],
+    ["say", "lark", "3"],
+    ["say", "moonlark", "1"],
+    ["say", "lark", "4"],
+    ["say", "moonlark", "2"],
+    ["info", "2"],
+    ["say", "lark", "5"],
+    ["say", "moonlark", "3"],
+    ["info", "3"],
+    ["info", "4"],
+    ["info", "5"],
+    ["info", "6"],
+
+    ["info", "7"],
+    ["say", "mzz", "1"],
+    [
+      "choice",
+      {
+        "content": "1",
+        "replies": [
+          ["say", "mzz", "2"]
+        ]
+      },
+      {
+        "content": "2",
+        "condition": ["is_same", ["get_user", "get_gender"], false],
+        "replies": [
+          ["say", "mzz", "3"]
+        ]
+      }
+    ],
+    ["say", "mzz", "4"],
+    ["info", "8"],
+    [
+      "choice",
+      {
+        "content": "3"
+      },
+      {
+        "content": "4"
+      }
+    ],
+    ["say", "mzz", "5"],
+    ["info", "9"],
+    ["say", "mzz", "6"],
+    ["info", "10"],
+    ["info", "11"],
+    ["say", "mzz", "7"],
+    ["choice", {"content": "5"}],
+    ["say", "mzz", "8"],
+    ["choice", {"content": "6"}],
+    ["info", "12"],
+    ["choice", {"content": "7"}],
+    ["say", "moonlark_unknown", "1"],
+
+    ["info", "13"],
+    [
+      "choice",
+      {
+        "content": "8",
+        "replies": [
+          ["say", "moonlark_unknown", "4"],
+          ["break", -1]
+        ]
+      },
+      {"content": "9"}
+    ],
+    ["say", "moonlark_unknown", "2"],
+    ["say", "moonlark_unknown", "3"],
+    ["say", "moonlark", "4"],
+    ["info", "14"],
+    [
+      "choice",
+      {"content": "10"},
+      {
+        "content": "11",
+        "replies": [
+          ["say", "mzz", "9"]
+        ]
+      }
+    ],
+    ["say", "mzz", "10"],
+    ["info", "15"]
+    
+  ],
+  "awards": []
+}
