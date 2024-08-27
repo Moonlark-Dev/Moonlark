@@ -72,7 +72,7 @@ async def _(bot: BotOB, event: FriendRequestEvent, user_id: str = get_user_id())
     user = await get_user(user_id)
     if user.get_fav() <= 0.05:
         await event.reject(bot)
-    elif user_id in (friends := await get_friends()) and (datetime.now() - datetime.fromtimestamp(friends[user_id])).total_seconds() < 43200:
+    elif user_id in (friends := await get_friends()) and (datetime.now() - datetime.fromtimestamp(friends[user_id])).total_seconds() < 1800:
         await event.reject(bot)
     else:
         await event.approve(bot)
