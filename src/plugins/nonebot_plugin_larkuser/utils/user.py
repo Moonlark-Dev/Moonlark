@@ -52,6 +52,9 @@ class MoonlarkUser:
     def get_nickname(self) -> str:
         return self.nickname
 
+    def has_nickname(self) -> bool:
+        return bool(self.nickname)
+
     def get_avatar(self) -> Optional[bytes]:
         return self.avatar
 
