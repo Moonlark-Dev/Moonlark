@@ -27,7 +27,7 @@ from nonebot import on_type
 from datetime import datetime
 from ..nonebot_plugin_larklang import LangHelper
 from ..nonebot_plugin_larkuser import get_user
-from ..nonebot_plugin_larkutils import  get_user_id
+from ..nonebot_plugin_larkutils import get_user_id
 from .config import config
 
 lang = LangHelper()
@@ -36,6 +36,7 @@ friend_request = on_type(FriendRequestEvent)
 friend_add_ob = on_type(FriendAddNoticeEvent)
 friend_add_ob12 = on_type(FriendIncreaseEvent)
 data_file = get_data_file("nonebot_plugin_friend_add", "friends.json")
+
 
 async def get_friends() -> dict[str, float]:
     try:
@@ -72,10 +73,14 @@ async def _(bot: BotOB, event: FriendRequestEvent, user_id: str = get_user_id())
     user = await get_user(user_id)
     if user.get_fav() <= 0.05:
         await event.reject(bot)
-    elif user_id in (friends := await get_friends()) and (datetime.now() - datetime.fromtimestamp(friends[user_id])).total_seconds() < 1800:
+    elif (
+        user_id in (friends := await get_friends())
+        and (datetime.now() - datetime.fromtimestamp(friends[user_id])).total_seconds() < 1800
+    ):
         await event.reject(bot)
     else:
         await event.approve(bot)
+
 
 @friend_add_ob12.handle()
 @friend_add_ob.handle()
@@ -90,6 +95,3 @@ async def _(user_id: str = get_user_id()) -> None:
         await lang.finish("text.more_with_nickname", user_id, user.get_nickname())
     else:
         await lang.finish("text.default", user_id)
-
-
-
