@@ -67,5 +67,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 - [IT Craft Development Team](https://itcdt.top)
 - [Nonebot2](https://nonebot.dev)
-- 所有开发者、贡献者和用户
+- [JetBrains](https://jetbrains.com)
+- 所有[开发者](https://github.com/orgs/Moonlark-Dev/people)、[贡献者](https://github.com/Moonlark-Dev/Moonlark/graphs/contributors)和用户
 
