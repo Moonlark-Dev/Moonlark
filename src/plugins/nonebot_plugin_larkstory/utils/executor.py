@@ -15,13 +15,14 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
-from .models import Task, Choice
+import asyncio
 from typing import Any
 from nonebot_plugin_alconna import UniMessage
 from nonebot_plugin_waiter import prompt
 from nonebot.compat import type_validate_python
-from ..lang import lang_text, lang, lang_define
 from ...nonebot_plugin_larkuser import get_user
+from ..lang import lang_text, lang, lang_define
+from .models import Task, Choice
 
 
 
@@ -68,25 +69,47 @@ class Node:
         return await lang_text.text(f"{self.line.executor.path}.{key}", self.user_id, *args, **kwargs)
 
     async def info(self, key: str) -> None:
-        self.line.set_message(await lang.text("node.info", self.user_id, await self.get_text(f"info_{key}")))
-        await self.line.send()
+        text = await self.get_text(f"info_{key}")
+        if (n := self.line.next()) and n[0] == "info":
+            await lang.send("node.info", self.user_id, text)
+            await asyncio.sleep(0.5)
+        else:
+            self.line.set_message(await lang.text("node.info", self.user_id, text))
+            await self.line.send()
+
+    async def sleep(self, sec: int) -> None:
+        await asyncio.sleep(sec)
 
     async def say(self, name: str, key: str) -> None:
-        self.line.set_message(await lang.text(
-            "node.say",
-            self.user_id,
-            await self.get_character_name(name),
-            await self.get_text(f"info_{key}")
-        ))
-        await self.line.send()
+        l_name = await self.get_character_name(name)
+        text = await self.get_text(f"{name}_{key}")
+        if (n := self.line.next()) and n[0] == "say" and n[1] == name:
+            await lang.send(
+                "node.say",
+                self.user_id,
+                l_name,
+                text
+            )
+            await asyncio.sleep(0.75)
+        else:
+            self.line.set_message(await lang.text(
+                "node.say",
+                self.user_id,
+                l_name,
+                text
+            ))
+            await self.line.send()
 
     @staticmethod
     async def is_same(a: Any, b: Any) -> bool:
         return a == b
 
     async def get_user(self, attr: str, user_id: str | None = None):
-        user = await get_user(user_id or self.user_id)
+        user = self.line.executor.user if user_id is None else await get_user(user_id or self.user_id)
         return getattr(user, attr)()
+    
+    async def jump(self, index: int) -> None:
+        raise BreakError(index)
 
 
 class Line:
@@ -108,7 +131,7 @@ class Line:
         while 0 <= self.index < len(self.line):
             await self.execute_current_node()
         if self.index != len(self.line):
-            raise BreakError(self.index - len(self.line))
+            raise BreakError(self.index - len(self.line) if self.index > 0 else self.index)
 
     async def execute_current_node(self) -> Any:
         await self.execute_node(self.line[self.index])
@@ -136,7 +159,11 @@ class Line:
         length = 0
         for choice in choices:
             length += 1
-            content = await lang_text.text(f"{self.executor.path}.choice_{choice.content}")
+            content = await lang_text.text(
+                f"{self.executor.path}.choice_{choice.content}",
+                self.user_id,
+                __nickname__=self.executor.user.get_nickname() if self.executor.user else self.user_id
+            )
             l.append(await lang.text("executor.choice", self.user_id, length, content))
         return l
 
@@ -146,15 +173,19 @@ class Line:
             message = self.message.text("".join(await self.get_choices_list(choices)))
         else:
             message = self.message.text(await self.get_default_choice_text())
-        i = 0
+        if message[0].is_text() and message[0].text.startswith("\n"):
+            message[0].text = message[0].text[1:]
+        i = 1
         while True:
             msg = await prompt(await message.export())
             if msg is not None and (text := msg.extract_plain_text()).isnumeric():
-                if 0 < (i := int(text)) <= len(choices):
+                if 0 < (i := int(text)) <= len(choices) or len(choices) == 0:
                     break
             message = UniMessage().text(await lang.text("executor.unknown", self.user_id))
             continue
-        return choices[i].replies
+        i -= 1
+        self.set_message("")
+        return choices[i].replies if len(choices) > 0 else []
 
     async def send(self) -> None:
         line = Line(await self.get_input(), self.executor)
@@ -181,7 +212,9 @@ class TaskExecutor:
         self.task = task
         self.user_id = user_id
         self.path = path
+        self.user = None
 
     async def execute(self) -> None:
+        self.user = await get_user(self.user_id or self.user_id)
         line = Line(self.task.story, self)
         await line.execute()

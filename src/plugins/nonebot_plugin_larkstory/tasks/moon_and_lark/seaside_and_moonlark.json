@@ -24,6 +24,7 @@
     ["info", "4"],
     ["info", "5"],
     ["info", "6"],
+    ["sleep", 5],
 
     ["info", "7"],
     ["say", "mzz", "1"],
@@ -44,6 +45,7 @@
       }
     ],
     ["say", "mzz", "4"],
+    ["sleep", 5],
     ["info", "8"],
     [
       "choice",
@@ -74,7 +76,7 @@
         "content": "8",
         "replies": [
           ["say", "moonlark_unknown", "4"],
-          ["break", -1]
+          ["jump", -3]
         ]
       },
       {"content": "9"}

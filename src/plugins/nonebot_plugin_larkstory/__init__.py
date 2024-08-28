@@ -8,6 +8,7 @@ require("nonebot_plugin_localstore")
 require("nonebot_plugin_alconna")
 require("nonebot_plugin_item")
 
+from . import commands
 
 __plugin_meta__ = PluginMetadata(
     name="nonebot-plugin-larkstory",

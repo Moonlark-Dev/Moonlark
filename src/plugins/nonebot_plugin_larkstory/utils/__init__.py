@@ -16,3 +16,4 @@
 # ##############################################################################
 
 from .tasks import *
+from .executor import TaskExecutor, BreakError

@@ -5,6 +5,7 @@ import traceback
 from pathlib import Path
 from types import ModuleType
 
+from typing import NoReturn
 from nonebot import get_driver, get_plugin_by_module_name, get_plugin_config, logger
 from nonebot.matcher import Matcher
 from nonebot_plugin_localstore import get_data_dir
@@ -133,7 +134,7 @@ class LangHelper:
         at_sender: bool = True,
         reply_message: bool = False,
         **kwargs,
-    ) -> None:
+    ) -> NoReturn:
         await self.send(key, user_id, *args, **kwargs, at_sender=at_sender, reply_message=reply_message)
         await matcher.finish()
 
