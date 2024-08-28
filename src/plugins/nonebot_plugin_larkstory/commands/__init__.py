@@ -15,4 +15,4 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
-from . import start
+from . import start, list, view, main

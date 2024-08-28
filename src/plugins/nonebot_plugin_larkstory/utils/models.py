@@ -18,6 +18,8 @@
 from typing import Literal, Any, Optional
 from pydantic import BaseModel
 
+from src.plugins.nonebot_plugin_item.types import DictItemData
+
 
 class Task(BaseModel):
     number: int
@@ -25,6 +27,7 @@ class Task(BaseModel):
     type: Literal["main"]
     characters: list[str]
     story: list[list[Any]]
+    awards: list[DictItemData]
 
 
 class Choice(BaseModel):

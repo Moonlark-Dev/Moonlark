@@ -15,12 +15,13 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
+from typing import Literal
 from nonebot_plugin_alconna import Alconna, Subcommand, Args, on_alconna
 
 alc = Alconna(
     "story",
     Subcommand("start", Args["start_number", int]),
-    Subcommand("list"),
+    Subcommand("list", Args["task_type", Literal["available", "all", "finished"], "available"]),
     Subcommand("view", Args["view_number", int]),
 )
 matcher = on_alconna(alc)

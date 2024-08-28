@@ -16,6 +16,7 @@
 # ##############################################################################
 
 from ...nonebot_plugin_larkutils import get_user_id, is_private_message
+from ...nonebot_plugin_bag.utils.give import give_item_by_list
 from ..__main__ import matcher
 from ..lang import lang, lang_define
 from ..utils import (
@@ -36,7 +37,6 @@ async def _(start_number: int, user_id: str = get_user_id(), private: bool = is_
         task_id, task = await get_task_by_number(start_number)
     except ValueError:
         await lang.finish("start_command.not_found", user_id)
-        return
     if not is_task_available(finished_tasks := await get_finished_tasks(user_id), task):
         await lang.finish("start_command.not_available", user_id)
     if str(task_id) in finished_tasks:
@@ -51,4 +51,5 @@ async def _(start_number: int, user_id: str = get_user_id(), private: bool = is_
         # 跳丢了
         await lang.finish("start_command.break", user_id, e.index)
     await append_finished_task(user_id, task_id)
+    await give_item_by_list(user_id, task.awards)
     await lang.finish("start_command.finish", user_id)

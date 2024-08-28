@@ -7,6 +7,7 @@ require("nonebot_plugin_larkutils")
 require("nonebot_plugin_localstore")
 require("nonebot_plugin_alconna")
 require("nonebot_plugin_item")
+require("nonebot_plugin_bag")
 
 from . import commands
 

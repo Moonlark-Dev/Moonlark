@@ -99,5 +99,21 @@
     ["info", "15"]
     
   ],
-  "awards": []
+  "awards": [
+    {
+      "item_id": "special:fav",
+      "count": 5,
+      "data": {}
+    },
+    {
+      "item_id": "special:experience",
+      "count": 20,
+      "data": {}
+    },
+    {
+      "item_id": "special:vimcoin",
+      "count": 15,
+      "data": {}
+    }
+  ]
 }
