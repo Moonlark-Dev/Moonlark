@@ -22,5 +22,5 @@ async def _(view_number: int, user_id: str = get_user_id()) -> None:
         str(task_id) in finished_tasks,
         any([str(id_) == str(task_id) for id_, _ in await get_available_tasks(finished_tasks)]),
         len(task.story),
-        task.type
+        task.type,
     )
