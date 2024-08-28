@@ -6,7 +6,7 @@ from ....nonebot_plugin_item.base.item import Item
 from ...lang import lang
 
 
-class Experience(Item):
+class Fav(Item):
 
     def setupLang(self) -> None:
         self.lang = lang
@@ -22,4 +22,4 @@ def get_location() -> ResourceLocation:
     return LOCATION
 
 
-ITEMS.registry(LOCATION, Experience(get_properties(star=3, max_stack=0xFFFFF)))
+ITEMS.registry(LOCATION, Fav(get_properties(star=3, max_stack=0xFFFFF)))
