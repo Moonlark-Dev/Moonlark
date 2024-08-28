@@ -1,0 +1,42 @@
+executor:
+  choice: "\n[{}]> {}"
+  unknown: 未知选项，请重新输入！
+  continue: "\n[1]> 继续"
+node:
+  info: "*{}"
+  say: "{}: {}"
+start_command:
+  not_found: 找不到任务。
+  not_available: 此任务对您不可用，请先完成前置任务。
+  finished: 此任务已完成，无法重复执行。
+  start: |
+    任务开始：{}
+    {}
+  not_private: 此命令只支持私聊使用！
+  break: '剧情解析出现错误 (1;{})'
+  finish: '[章节完成]'
+list_command:
+  title: |
+    任务列表:
+    {}
+  item: '[{}]> {}'
+view_command:
+  info: |
+    [{}]: {}
+    {}
+    =================
+    完成: {}
+    可用: {}
+    长度: {}
+    类型: {}
+main_command:
+  info: |
+    「关于 Moonlark 的一切」
+    已完成: {} / {}
+help:
+  description: 关于 Moonlark 的一切
+  details: 体验 Moonlark 有关剧情《关于 Moonlark 的一切》
+  usage1: story (查看完成状态)
+  usage2: story list [available|all|finished] (查看任务列表, 默认为 available)
+  usage3: story start <序号> (开启章节)
+  usage4: story view <序号> (查看章节详细信息)
