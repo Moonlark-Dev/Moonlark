@@ -1,3 +1,3 @@
 text:
-  default: 你好，喵~我是由 IT Craft Development Team 下属 Moonlark-Dev 开发的开源多功能机器人 Moonlark。很高兴和你相遇，在往后的日子里请多多指教喵~发送“{__prefix__}help”即可了解我的全部功能！
-  more_with_nickname: {}，很高兴再次见到你。
+  default: "你好，喵~我是由 IT Craft Development Team 下属 Moonlark-Dev 开发的开源多功能机器人 Moonlark。很高兴和你相遇，在往后的日子里请多多指教喵~发送“{__prefix__}help”即可了解我的全部功能！"
+  more_with_nickname: "{}，很高兴再次见到你。"
