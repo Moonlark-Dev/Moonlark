@@ -1,0 +1,3 @@
+plugin: larkstory
+commands:
+  story: help;4

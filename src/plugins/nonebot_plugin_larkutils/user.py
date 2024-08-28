@@ -15,5 +15,16 @@ async def _get_user_id(event: Event) -> str:
         return "-1"
 
 
+async def _is_private_message(event: Event) -> bool:
+    try:
+        return event.get_session_id() == event.get_user_id()
+    except Exception:
+        return False
+
+
 def get_user_id() -> Any:
     return Depends(_get_user_id)
+
+
+def is_private_message() -> bool:
+    return Depends(_is_private_message)

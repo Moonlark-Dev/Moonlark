@@ -25,6 +25,8 @@ async def give_special_item(user_id: str, name: str, count: int) -> None:
             await user.add_experience(count)
         case "vimcoin":
             await user.add_vimcoin(count)
+        case "fav":
+            await user.add_fav(count / 100)
         case _:
             raise ValueError(f"{name} is not a valid special item name")
 
