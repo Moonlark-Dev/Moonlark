@@ -23,6 +23,7 @@ from pathlib import Path
 from ...nonebot_plugin_item.registry import ResourceLocation
 from .models import Task
 
+
 async def get_finished_tasks(user_id: str) -> list[str]:
     file = get_data_file("nonebot-plugin-larkstory", f"{user_id}.json")
     try:
@@ -30,6 +31,7 @@ async def get_finished_tasks(user_id: str) -> list[str]:
             return json.loads(await f.read())
     except (FileNotFoundError, json.JSONDecodeError):
         return []
+
 
 async def append_finished_task(user_id: str, id_: ResourceLocation) -> None:
     finished_task = await get_finished_tasks(user_id)
@@ -43,19 +45,22 @@ def get_task_list() -> list[ResourceLocation]:
     l = []
     for namespace in Path(__file__).parent.parent.joinpath("tasks").iterdir():
         for file in namespace.iterdir():
-             l.append(ResourceLocation(namespace.name, file.name[:-5]))
+            l.append(ResourceLocation(namespace.name, file.name[:-5]))
     return l
+
 
 async def get_task(id_: ResourceLocation) -> Task:
     path = Path(__file__).parent.parent.joinpath("tasks") / id_.getNamespace() / f"{id_.getPath()}.json"
     async with aiofiles.open(path, encoding="utf-8") as f:
         return type_validate_json(Task, await f.read())
 
+
 def is_task_available(finished_tasks: list[str], task: Task) -> bool:
     for required_task in task.requires:
         if required_task not in finished_tasks:
             return False
     return True
+
 
 async def get_available_tasks(finished_tasks: list[str]) -> list[tuple[ResourceLocation, Task]]:
     tasks = []
@@ -64,6 +69,7 @@ async def get_available_tasks(finished_tasks: list[str]) -> list[tuple[ResourceL
         if is_task_available(finished_tasks, task):
             tasks.append((task_id, task))
     return tasks
+
 
 async def get_task_by_number(number: int) -> tuple[ResourceLocation, Task]:
     for task_id in get_task_list():

@@ -26,8 +26,8 @@ class Task(BaseModel):
     characters: list[str]
     story: list[list[Any]]
 
+
 class Choice(BaseModel):
     content: str
     condition: Optional[list[Any]] = None
     replies: list[list[Any]] = []
-

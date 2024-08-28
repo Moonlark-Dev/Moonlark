@@ -18,7 +18,14 @@
 from ...nonebot_plugin_larkutils import get_user_id, is_private_message
 from ..__main__ import matcher
 from ..lang import lang, lang_define
-from ..utils import get_task_by_number, is_task_available, get_finished_tasks, TaskExecutor, BreakError, append_finished_task
+from ..utils import (
+    get_task_by_number,
+    is_task_available,
+    get_finished_tasks,
+    TaskExecutor,
+    BreakError,
+    append_finished_task,
+)
 
 
 @matcher.assign("start")
@@ -45,4 +52,3 @@ async def _(start_number: int, user_id: str = get_user_id(), private: bool = is_
         await lang.finish("start_command.break", user_id, e.index)
     await append_finished_task(user_id, task_id)
     await lang.finish("start_command.finish", user_id)
-

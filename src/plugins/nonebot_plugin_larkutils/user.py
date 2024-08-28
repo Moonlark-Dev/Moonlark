@@ -21,6 +21,7 @@ async def _is_private_message(event: Event) -> bool:
     except Exception:
         return False
 
+
 def get_user_id() -> Any:
     return Depends(_get_user_id)
 

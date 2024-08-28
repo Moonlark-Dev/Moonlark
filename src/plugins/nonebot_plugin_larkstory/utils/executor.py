@@ -25,14 +25,15 @@ from ..lang import lang_text, lang, lang_define
 from .models import Task, Choice
 
 
-
 class BreakError(Exception):
 
     def __init__(self, index: int) -> None:
         self.index = index
 
+
 class IgnoredError(Exception):
     pass
+
 
 class Node:
 
@@ -59,7 +60,7 @@ class Node:
         return a
 
     async def execute(self) -> Any:
-        return await getattr(self, self.command)(* await self.get_args())
+        return await getattr(self, self.command)(*await self.get_args())
 
     async def get_character_name(self, name: str) -> str:
         return await lang_define.text(f"characters.{name}", self.user_id)
@@ -84,20 +85,10 @@ class Node:
         l_name = await self.get_character_name(name)
         text = await self.get_text(f"{name}_{key}")
         if (n := self.line.next()) and n[0] == "say" and n[1] == name:
-            await lang.send(
-                "node.say",
-                self.user_id,
-                l_name,
-                text
-            )
+            await lang.send("node.say", self.user_id, l_name, text)
             await asyncio.sleep(0.75)
         else:
-            self.line.set_message(await lang.text(
-                "node.say",
-                self.user_id,
-                l_name,
-                text
-            ))
+            self.line.set_message(await lang.text("node.say", self.user_id, l_name, text))
             await self.line.send()
 
     @staticmethod
@@ -107,7 +98,7 @@ class Node:
     async def get_user(self, attr: str, user_id: str | None = None):
         user = self.line.executor.user if user_id is None else await get_user(user_id or self.user_id)
         return getattr(user, attr)()
-    
+
     async def jump(self, index: int) -> None:
         raise BreakError(index)
 
@@ -137,7 +128,6 @@ class Line:
         await self.execute_node(self.line[self.index])
         self.index += 1
 
-
     async def get_choices(self) -> list[Choice]:
         n = self.next()
         if n is None:
@@ -162,7 +152,7 @@ class Line:
             content = await lang_text.text(
                 f"{self.executor.path}.choice_{choice.content}",
                 self.user_id,
-                __nickname__=self.executor.user.get_nickname() if self.executor.user else self.user_id
+                __nickname__=self.executor.user.get_nickname() if self.executor.user else self.user_id,
             )
             l.append(await lang.text("executor.choice", self.user_id, length, content))
         return l
@@ -191,7 +181,6 @@ class Line:
         line = Line(await self.get_input(), self.executor)
         return await line.execute()
 
-
     def next(self) -> list[Any] | None:
         if self.index + 1 < len(self.line):
             return self.line[self.index + 1]
@@ -203,7 +192,6 @@ class Line:
             self.index += e.index
         except IgnoredError:
             return
-
 
 
 class TaskExecutor:

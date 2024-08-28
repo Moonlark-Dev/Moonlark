@@ -21,10 +21,6 @@ alc = Alconna(
     "story",
     Subcommand("start", Args["start_number", int]),
     Subcommand("list"),
-    Subcommand("view", Args["view_number", int])
+    Subcommand("view", Args["view_number", int]),
 )
 matcher = on_alconna(alc)
-
-
-
-

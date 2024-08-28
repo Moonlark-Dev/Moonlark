@@ -20,4 +20,3 @@ from ..nonebot_plugin_larklang import LangHelper
 lang = LangHelper()
 lang_define = LangHelper("larkstory_define")
 lang_text = LangHelper("larkstory_text")
-
