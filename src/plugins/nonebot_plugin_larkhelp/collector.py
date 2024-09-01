@@ -22,8 +22,8 @@ async def get_plugin_help(plugin: Plugin) -> dict[str, CommandHelp]:
     for key, value in data.commands.items():
         if isinstance(value, str):
             if ";" in value:
-                usage_count = int((l := value.split(";"))[-1])
-                value = l[0] or "help"
+                usage_count = int(value.split(";")[-1])
+                value = value.split(";")[0] or "help"
             else:
                 usage_count = 1
             help_list[key] = CommandHelp(
