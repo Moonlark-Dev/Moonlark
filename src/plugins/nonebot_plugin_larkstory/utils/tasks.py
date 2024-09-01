@@ -42,11 +42,11 @@ async def append_finished_task(user_id: str, id_: ResourceLocation) -> None:
 
 
 def get_task_list() -> list[ResourceLocation]:
-    l = []
+    task_list = []
     for namespace in Path(__file__).parent.parent.joinpath("tasks").iterdir():
         for file in namespace.iterdir():
-            l.append(ResourceLocation(namespace.name, file.name[:-5]))
-    return l
+            task_list.append(ResourceLocation(namespace.name, file.name[:-5]))
+    return task_list
 
 
 async def get_task(id_: ResourceLocation) -> Task:
