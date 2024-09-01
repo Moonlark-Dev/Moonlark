@@ -145,7 +145,7 @@ class Line:
         return await lang.text("executor.continue", self.user_id)
 
     async def get_choices_list(self, choices: list[Choice]) -> list[str]:
-        l = []
+        choices_list = []
         length = 0
         for choice in choices:
             length += 1
@@ -154,8 +154,8 @@ class Line:
                 self.user_id,
                 __nickname__=self.executor.user.get_nickname() if self.executor.user else self.user_id,
             )
-            l.append(await lang.text("executor.choice", self.user_id, length, content))
-        return l
+            choices_list.append(await lang.text("executor.choice", self.user_id, length, content))
+        return choices_list
 
     async def get_input(self) -> list[list[Any]]:
         choices = await self.get_choices()

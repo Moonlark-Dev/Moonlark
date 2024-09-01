@@ -33,13 +33,13 @@ def num_to_str(num: int) -> str:
 def convert(num: int, to: int) -> str:
     if num < 0:
         return f"-{convert(abs(num), to)}"
-    l = []
+    num_list = []
     while True:
         num, reminder = divmod(num, to)
-        l.append(num_to_str(reminder))
+        num_list.append(num_to_str(reminder))
         if num == 0:
             break
-    return "".join(l[::-1])
+    return "".join(num_list[::-1])
 
 
 @matcher.handle()
