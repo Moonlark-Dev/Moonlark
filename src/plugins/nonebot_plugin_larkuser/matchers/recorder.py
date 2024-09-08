@@ -1,4 +1,5 @@
 from ..utils.avatar import is_user_avatar_updated, update_user_avatar
+from ...nonebot_plugin_larkutils import get_main_account
 from nonebot import on_message
 from nonebot.log import logger
 from nonebot_plugin_orm import async_scoped_session
@@ -8,8 +9,10 @@ from sqlalchemy.exc import NoResultFound
 from ..models import UserData
 
 
-@on_message(block=False).handle()
+@on_message(block=False, priority=5).handle()
 async def _(session: async_scoped_session, user: UserInfo = EventUserInfo()) -> None:
+    if user.user_id != await get_main_account(user.user_id):
+        return
     try:
         user_data = await session.get_one(UserData, {"user_id": user.user_id})
     except NoResultFound:
