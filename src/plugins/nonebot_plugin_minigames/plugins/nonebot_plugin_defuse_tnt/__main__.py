@@ -68,9 +68,7 @@ async def _(user_id: str = get_user_id()) -> None:
             continue
         if password == answer:
             t = await session.finish()
-            p = await session.add_points(
-                40 ** ((r + 5) / 2) * (math.log((x + 120) ** (10 * (r + 1))) ** -1)
-            )
+            p = await session.add_points(40 ** ((r + 5) / 2) * (math.log((x + 120) ** (10 * (r + 1))) ** -1))
             await lang.finish("result.success", user_id, r, 6, t, p)
         else:
             history.append(password)
