@@ -69,7 +69,7 @@ async def _(user_id: str = get_user_id()) -> None:
         if password == answer:
             t = await session.finish()
             p = await session.add_points(
-                math.log(0.01 * t) / math.log(math.tan((6 - r) / (5 * math.pi))) + 10 ** ((r + 5) / 2)
+                40 ** ((r + 5) / 2) * (math.log((x + 120) ** (10 * (r + 1))) ** -1)
             )
             await lang.finish("result.success", user_id, r, 6, t, p)
         else:
