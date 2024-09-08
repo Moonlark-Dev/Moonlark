@@ -15,6 +15,7 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
+import math
 from nonebot_plugin_alconna import Alconna, on_alconna
 import random
 from nonebot_plugin_waiter import prompt
@@ -67,7 +68,7 @@ async def _(user_id: str = get_user_id()) -> None:
             continue
         if password == answer:
             t = await session.finish()
-            p = await session.add_points(int(r / t * 10))
+            p = await session.add_points(40 ** ((r + 5) / 2) * (math.log((x + 120) ** (10 * (r + 1))) ** -1))
             await lang.finish("result.success", user_id, r, 6, t, p)
         else:
             history.append(password)
