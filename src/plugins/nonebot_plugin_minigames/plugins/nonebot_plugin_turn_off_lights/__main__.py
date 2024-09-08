@@ -2,6 +2,7 @@ from .config import config
 from nonebot.log import logger
 import re
 from nonebot_plugin_waiter import prompt
+import math
 from nonebot_plugin_alconna import Alconna, Args, UniMessage, on_alconna
 from src.plugins.nonebot_plugin_larklang import LangHelper
 from src.plugins.nonebot_plugin_larkutils import get_user_id
@@ -46,5 +47,5 @@ async def _(width: int, height: int, user_id: str = get_user_id()) -> None:
         game_map = change_light_stats(game_map, int(m[0]) - 1, int(m[1]) - 1)
         steps += 1
     time = await session.finish()
-    points = await session.add_points(int(width * height / steps / time * 10))
+    points = await session.add_points(int((width * height * 21600) / ((1 + steps - math.sqrt(width * height)) * math.sqrt(time))))
     await lang.finish("tol.success", user_id, steps, points)
