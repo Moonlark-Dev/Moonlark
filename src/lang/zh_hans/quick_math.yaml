@@ -1,8 +1,5 @@
 main:
-  wait: |
-    [Moonlark Quick Math]
-    挑战将在 {}s 后开始，请等待初始化
-  timeout: 您已超时，挑战结束！
+  timeout: 您已超时
   checkout: |
     # Quick Math 挑战结果
 
@@ -24,6 +21,7 @@ main:
     | {}       | {}      | {}          |
 
   wrong: 重试次数过多，挑战结束！
+  respawn_prompt: 您可以在此重生（这将失去本次挑战中的 {} 积分） [Y/n] (20s)
   skipped: |
     已跳过本题
   markdown: |
