@@ -1,8 +1,5 @@
 main:
-  wait: |
-    [Moonlark Quick Math]
-    挑战将在 {}s 后开始，请等待初始化
-  timeout: 您已超时，挑战结束！
+  timeout: 您已超时
   checkout: |
     # Quick Math 挑战结果
 
@@ -23,6 +20,7 @@ main:
     |----------|----------|-------------|
     | {}       | {}      | {}          |
   wrong: 重试次数过多，挑战结束！
+  respawn_prompt: 您可以在此重生（这将失去本次挑战中的 {} 积分） [Y/n] (20s)
   skipped: |
     已跳过本题
   markdown: |
@@ -120,7 +118,7 @@ achievements:
 help:
   desc: 快速数学
   details: 以计算为核心的玩法。找到问题的答案，并在排行榜中获取更高的积分。
-  u1: quick-math (开始挑战)
+  u1: quick-math [-l|--level <开始的等级>] (开始挑战)
   u2: quick-math rank [{{max|total}}] (积分排行榜)
   u3: quick-math award (查看奖励详情)
 award:
