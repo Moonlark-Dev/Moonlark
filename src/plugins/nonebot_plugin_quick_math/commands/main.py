@@ -1,8 +1,8 @@
 from datetime import datetime
 from nonebot.adapters import Message
-from nonebot_plugin_alconna import UniMessage
+from nonebot_plugin_alconna import UniMessage, Match
 from nonebot_plugin_htmlrender import md_to_pic
-from nonebot_plugin_waiter import prompt_until
+from nonebot_plugin_waiter import prompt_until, prompt
 import re
 
 from ...nonebot_plugin_achievement.utils.unlock import unlock_achievement
@@ -21,12 +21,16 @@ from ..__main__ import lang, quick_math
 
 
 @quick_math.assign("$main")
-async def _(user_id: str = get_user_id()) -> None:
+async def _(start_level: Match[int], user_id: str = get_user_id()) -> None:
     point = 0
     answered = 0
-    max_level = 1
+    if start_level.available and 1 <= start_level.result <= get_max_level():
+        max_level = start_level.result
+    else:
+        max_level = 1
     total_skipping_count = 1
     skipped_question = 0
+    is_respawned = False
     total_answered = 0
 
     def check_input(msg: Message) -> bool:
@@ -37,8 +41,9 @@ async def _(user_id: str = get_user_id()) -> None:
             or (message.lower() in ["skip", "tg"] and total_skipping_count > skipped_question)
         )
 
-    await lang.send("main.wait", user_id, config.qm_wait_time)
-    await asyncio.sleep(config.qm_wait_time)
+    for sec in range(config.qm_wait_time):
+        await quick_math.send(str(config.qm_wait_time - sec))
+        await asyncio.sleep(1)
     start_time = datetime.now()
     while True:
         image, question = await get_question(
@@ -56,6 +61,12 @@ async def _(user_id: str = get_user_id()) -> None:
         )
         if resp is None:
             end_time = datetime.now()
+            if point >= 400 and not is_respawned:
+                resp = await prompt(await lang.text("main.respawn_prompt", user_id, point // 2), timeout=20)
+                if resp is None or not resp.extract_plain_text().lower().startswith("y"):
+                    break
+                point -= point // 2
+                is_respawned = True
             break
         elif resp.extract_plain_text().lower() in ["skip", "tg"]:
             skipped_question += 1
@@ -65,6 +76,8 @@ async def _(user_id: str = get_user_id()) -> None:
             if question["level"] == 7:
                 await unlock_achievement(get_achievement_location("calculus"), user_id)
             add_point = get_point(question, send_time)
+            if start_level.available and start_level.result > 1:
+                add_point = int(add_point * 0.8)
             answered += 1
             point += add_point
             await lang.send("answer.right", user_id, add_point)
