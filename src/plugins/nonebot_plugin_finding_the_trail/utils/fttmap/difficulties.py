@@ -36,7 +36,7 @@ DIFFICULTIES = {
         "map": {
             "row": 6,
             "column": 8,
-            "blocks": [(Blocks.WALL, 2 / 15), (Blocks.PISTON, 1 / 15)],
+            "blocks": [(Blocks.WALL, 3 / 15), (Blocks.PISTON, 2 / 15), (Blocks.GOLD_PISTON, 1 / 15)],
             "portal": False,
         },
         "finder": {
@@ -49,7 +49,7 @@ DIFFICULTIES = {
         "map": {
             "row": 9,
             "column": 12,
-            "blocks": [(Blocks.WALL, 0.1), (Blocks.PISTON, 0.1), (Blocks.SAND, 0.1), (Blocks.COBWEB, 0.1)],
+            "blocks": [(Blocks.WALL, 0.1), (Blocks.PISTON, 0.1), (Blocks.SAND, 0.1), (Blocks.COBWEB, 0.1), (Blocks.GOLD_PISTON, 0.1)],
             "portal": False,
         },
         "finder": {
@@ -62,7 +62,7 @@ DIFFICULTIES = {
         "map": {
             "row": 18,
             "column": 24,
-            "blocks": [(Blocks.PISTON, 0.1), (Blocks.SAND, 0.1), (Blocks.COBWEB, 0.1), (Blocks.WALL, 0.2)],
+            "blocks": [(Blocks.PISTON, 0.1), (Blocks.SAND, 0.1), (Blocks.COBWEB, 0.1), (Blocks.WALL, 0.2), (Blocks.GOLD_PISTON, 0.1)],
             "portal": True,
         },
         "finder": {

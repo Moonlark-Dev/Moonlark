@@ -27,3 +27,4 @@ class Blocks(Enum):
     SAND = 5
     PORTAL = 6
     COBWEB = 7
+    GOLD_PISTON = 8

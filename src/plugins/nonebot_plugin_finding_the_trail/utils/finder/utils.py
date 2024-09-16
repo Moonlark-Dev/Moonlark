@@ -91,6 +91,10 @@ class MovementExecutor:
                     break
                 case Blocks.PORTAL:
                     self.pos = self.find_another_portal_pos(p)
+                case Blocks.GOLD_PISTON:
+                    self.pos = p
+                    self.on_map_changing()
+                    self.game_map[p[0]][p[1]] = Blocks.PISTON
 
     def find_another_portal_pos(self, pos: list[int]) -> list[int]:
         """
