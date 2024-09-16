@@ -62,10 +62,7 @@ async def _(start_level: Match[int], user_id: str = get_user_id()) -> None:
         if resp is None:
             end_time = datetime.now()
             if point >= 400 and not is_respawned:
-                resp = await prompt(
-                    await lang.text("main.respawn_prompt", user_id, point // 2),
-                    timeout=20
-                )
+                resp = await prompt(await lang.text("main.respawn_prompt", user_id, point // 2), timeout=20)
                 if resp is None or not resp.extract_plain_text().lower().startswith("y"):
                     break
                 point -= point // 2
