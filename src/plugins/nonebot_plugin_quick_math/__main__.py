@@ -10,8 +10,7 @@ quick_math = on_alconna(
         "quick-math",
         Subcommand("rank", Args["rank_type", Literal["total", "max"], "max"]),
         Subcommand("award"),
-        Option("--level|-l", Args["start_level", int, 1]),
-        Option("--respawn|-r", Args["enable_respawn", bool, True])
+        Option("--level|-l", Args["start_level", int, 1])
     )
 )
 lang = LangHelper()
