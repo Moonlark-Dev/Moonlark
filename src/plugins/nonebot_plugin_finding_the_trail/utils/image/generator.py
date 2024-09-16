@@ -31,10 +31,11 @@ BLOCKS = {
     Blocks.SAND: Image.open(base_path.joinpath("sand.png")),
     Blocks.COBWEB: Image.open(base_path.joinpath("cobweb.png")),
     Blocks.PORTAL: Image.open(base_path.joinpath("portal.png")),
+    Blocks.GOLD_PISTON: Image.open(base_path.joinpath("gold_piston_top.png")),
 }
 
 
-def generate_map_image(game_map: list[list[Blocks]]) -> Image:
+def generate_map_image(game_map: list[list[Blocks]]) -> Image.Image:
     """
     生成地图图片
     :param game_map: 游戏地图
