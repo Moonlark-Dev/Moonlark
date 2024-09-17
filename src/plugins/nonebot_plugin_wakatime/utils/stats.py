@@ -32,8 +32,8 @@ async def get_user_stats(user_id: str) -> Optional[StatsResponse]:
     if d is not None and not d.data.projects:
         d.data.projects = [
             StatsProject(
-                name=await lang.finish("main.none", user_id),
-                text=await lang.finish("main.zero", user_id),
+                name=await lang.text("main.none", user_id),
+                text=await lang.text("main.zero", user_id),
             )
         ]
     return d
