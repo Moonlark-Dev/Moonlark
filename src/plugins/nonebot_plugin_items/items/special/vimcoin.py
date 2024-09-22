@@ -1,4 +1,3 @@
-from nonebot import logger
 from ....nonebot_plugin_item.base.properties import ItemProperties, get_properties
 from ....nonebot_plugin_item.base.stack import ItemStack
 from ....nonebot_plugin_item.registry.registry import ResourceLocation
