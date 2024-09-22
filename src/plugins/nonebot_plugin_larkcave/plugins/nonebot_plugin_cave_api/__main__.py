@@ -8,7 +8,7 @@ from .types import RandomCaveResponse, Image
 from ...__main__ import get_cave
 from ....nonebot_plugin_larkuser import get_user
 from ...models import ImageData
-from ...decoder import get_image_by_match
+from ...decoder import get_image
 
 app = get_app()
 
@@ -21,7 +21,7 @@ async def get_image_data(cave_id: int) -> AsyncGenerator[Image, None]:
     session = get_scoped_session()
     for image in await session.scalars(select(ImageData).where(ImageData.belong == cave_id)):
         try:
-            data = await get_image_by_match(image.id, session)
+            data = await get_image(image.id, session)
         except Exception:
             continue
         yield {
