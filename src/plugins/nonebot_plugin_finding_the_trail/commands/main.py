@@ -49,7 +49,7 @@ async def _(seed: Match[str], user_id: str = get_user_id()) -> None:
     if seed.available:
         map_seed = seed.result
     else:
-        map_seed = str(struct.unpack("I",os.urandom(4))[0])
+        map_seed = str(struct.unpack("I", os.urandom(4))[0])
     ftt_map = FttMap(map_seed)
     points = ftt_map.difficulty["points"]
     start_time = time.time()
