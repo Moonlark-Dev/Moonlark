@@ -17,6 +17,8 @@
 
 import random
 import time
+import os
+import struct
 from nonebot_plugin_waiter import prompt
 from nonebot_plugin_alconna import Match
 from ...nonebot_plugin_larkutils import get_user_id
@@ -47,7 +49,7 @@ async def _(seed: Match[str], user_id: str = get_user_id()) -> None:
     if seed.available:
         map_seed = seed.result
     else:
-        map_seed = str(random.randint(0, 2**32 - 1))
+        map_seed = str(struct.unpack("I",os.urandom(4))[0])
     ftt_map = FttMap(map_seed)
     points = ftt_map.difficulty["points"]
     start_time = time.time()
