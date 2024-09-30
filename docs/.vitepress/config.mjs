@@ -24,7 +24,7 @@ export default defineConfig({
     sidebar: [],
 
     socialLinks: [
-      { icon: 'github', link: 'https://github.com/moonlark/moonlark' }
+      { icon: 'github', link: 'https://github.com/Moonlark-Dev/Moonlark' }
     ]
   }
 })
