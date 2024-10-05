@@ -28,7 +28,7 @@ from src.plugins.nonebot_plugin_finding_the_trail.utils.finder.utils import (
 )
 
 
-class EndFinder:
+class EndFinder(Finder):
 
     def __init__(self, game_map: list[list[Blocks]], step_limit: int, min_step: int = 0) -> None:
         self.step_limit = step_limit
