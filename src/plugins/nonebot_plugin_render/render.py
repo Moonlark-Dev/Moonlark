@@ -1,4 +1,3 @@
-import imp
 from pathlib import Path
 import inspect
 from types import ModuleType
