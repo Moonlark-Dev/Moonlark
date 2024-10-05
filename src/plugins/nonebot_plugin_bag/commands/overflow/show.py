@@ -11,6 +11,7 @@ from nonebot_plugin_htmlrender import md_to_pic
 from nonebot.params import Depends
 from nonebot.log import logger
 
+
 @bag.assign("overflow.show")
 async def _(index: int, user_id: str = get_user_id()) -> None:
     try:

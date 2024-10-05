@@ -31,6 +31,7 @@ from ..__main__ import ftt, lang
 from ..utils.points import add_point
 from nonebot.log import logger
 
+
 async def is_user_continue(user_id: str, d_list: list[Directions]) -> bool:
     while True:
         inp = await prompt(await lang.text("ftt.done", user_id, await get_command_list_string(d_list, user_id)))

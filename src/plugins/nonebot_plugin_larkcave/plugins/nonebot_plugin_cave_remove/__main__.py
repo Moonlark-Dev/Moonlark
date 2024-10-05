@@ -12,6 +12,7 @@ from datetime import datetime, timedelta
 from ...decoder import decode_cave
 from nonebot.log import logger
 
+
 @cave.assign("remove.comment.comment_id")
 async def _(
     comment_id: int,

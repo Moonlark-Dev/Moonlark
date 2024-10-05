@@ -10,6 +10,7 @@ import difflib
 from sqlalchemy import select
 from nonebot.log import logger
 
+
 async def get_public_cave_list(session: async_scoped_session) -> AsyncGenerator[CaveData, None]:
     cave_list = (await session.scalars(select(CaveData.id))).all()
     for cave_id in cave_list:

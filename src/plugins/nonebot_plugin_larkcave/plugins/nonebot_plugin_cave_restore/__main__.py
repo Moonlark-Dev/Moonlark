@@ -7,6 +7,8 @@ from ...__main__ import cave
 from sqlalchemy.exc import NoResultFound
 
 from nonebot.log import logger
+
+
 @cave.assign("restore.cave_id")
 async def _(
     session: async_scoped_session, cave_id: int, user_id: str = get_user_id(), is_superuser: bool = is_user_superuser()

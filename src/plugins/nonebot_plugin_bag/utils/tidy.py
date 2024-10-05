@@ -5,6 +5,7 @@ from ..item import BagItem
 from .item import get_bag_items
 from nonebot.log import logger
 
+
 async def get_item_list(user_id: str = get_user_id()) -> list[BagItem]:
     try:
         return await get_bag_items(user_id)

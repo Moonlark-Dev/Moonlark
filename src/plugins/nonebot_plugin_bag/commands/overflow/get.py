@@ -15,6 +15,7 @@ from ...__main__ import lang
 from ...config import config
 from nonebot import get_driver, logger
 
+
 @bag.assign("overflow.get")
 async def _(index: int, count: int, user_id: str = get_user_id()) -> None:
     try:

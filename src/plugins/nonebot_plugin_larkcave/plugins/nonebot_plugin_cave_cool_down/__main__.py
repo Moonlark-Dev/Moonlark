@@ -8,6 +8,7 @@ from sqlalchemy.exc import NoResultFound
 from ...cool_down import is_group_cooled, is_user_cooled
 from nonebot.log import logger
 
+
 async def set_cool_down(group_id: str, time: float, session: async_scoped_session) -> None:
     try:
         data = await session.get_one(GroupData, {"group_id": group_id})

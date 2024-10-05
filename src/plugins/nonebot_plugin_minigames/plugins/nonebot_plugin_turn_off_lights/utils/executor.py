@@ -1,10 +1,11 @@
 from nonebot.log import logger
 
+
 def force_update_light_stat(game_map: list[list[bool]], x: int, y: int) -> list[list[bool]]:
     try:
         game_map[y][x] = not game_map[y][x]
     except IndexError:
-        
+
         logger.waring(f"{traceback.format_exc()}")
     return game_map
 

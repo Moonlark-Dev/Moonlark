@@ -25,6 +25,7 @@ from ..lang import lang_text, lang, lang_define
 from .models import Task, Choice
 from nonebot.log import logger
 
+
 class BreakError(Exception):
 
     def __init__(self, index: int) -> None:

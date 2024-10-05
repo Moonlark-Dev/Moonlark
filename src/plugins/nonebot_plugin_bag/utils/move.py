@@ -7,6 +7,7 @@ from ..item import BagItem
 from .item import get_bag_item
 from nonebot.log import logger
 
+
 async def get_origin_item(origin: int, user_id: str = get_user_id()) -> BagItem:
     try:
         return await get_bag_item(user_id, origin)

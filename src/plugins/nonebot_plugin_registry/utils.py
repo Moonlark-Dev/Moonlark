@@ -4,6 +4,7 @@ from sqlalchemy.exc import NoResultFound
 from ..nonebot_plugin_larkuser.models import UserData
 from nonebot.log import logger
 
+
 async def is_user_registered(user_id: str):
     async with get_session() as session:
         try:

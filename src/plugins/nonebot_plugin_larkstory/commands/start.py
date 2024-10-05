@@ -29,6 +29,7 @@ from ..utils import (
 )
 from nonebot.log import logger
 
+
 @matcher.assign("start")
 async def _(start_number: int, user_id: str = get_user_id(), private: bool = is_private_message()) -> None:
     if not private:

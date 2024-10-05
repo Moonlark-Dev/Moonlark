@@ -24,6 +24,7 @@ from ...nonebot_plugin_item.registry import ResourceLocation
 from .models import Task
 from nonebot.log import logger
 
+
 async def get_finished_tasks(user_id: str) -> list[str]:
     file = get_data_file("nonebot-plugin-larkstory", f"{user_id}.json")
     try:

@@ -4,6 +4,7 @@ from ...nonebot_plugin_bag.item import BagItem
 from ..lang import lang
 from nonebot.log import logger
 
+
 async def get_target_item(index: int, count: int, user_id: str) -> BagItem:
     try:
         target_item = await get_bag_item(user_id, index)
