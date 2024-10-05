@@ -1,6 +1,6 @@
 import traceback
 from typing import Any
-
+from nonebot.log import logger{logger.warning(traceback.format_exc())}
 from nonebot.adapters import Event
 from nonebot.log import logger
 from nonebot.params import Depends
@@ -19,6 +19,7 @@ async def _is_private_message(event: Event) -> bool:
     try:
         return event.get_session_id() == event.get_user_id()
     except Exception:
+        logger.waring(f"{traceback.format_exc()}")
         return False
 
 

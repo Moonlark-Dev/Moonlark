@@ -1,6 +1,6 @@
 from fastapi import HTTPException, Request, status
 from sqlalchemy.exc import NoResultFound
-from nonebot import get_app
+from nonebot import get_app, logger
 
 from ...nonebot_plugin_larkuid.session import get_user_id
 
@@ -38,3 +38,4 @@ async def _(request: Request, email_id: int, user_id: str = get_user_id()) -> di
         return await get_email(user_id, email_id)
     except NoResultFound:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+        logger.warning(traceback.format_exc())

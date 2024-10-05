@@ -4,7 +4,7 @@ from nonebot_plugin_alconna import Match
 from nonebot_plugin_orm import async_scoped_session
 from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
-
+from nonebot.log import logger
 from ..nonebot_plugin_render.render import render_template
 
 from ..nonebot_plugin_larkuser.utils.user import get_user
@@ -45,6 +45,7 @@ async def get_vote_data(
     try:
         vote = await session.get_one(Vote, {"id": vote_id.result})
     except NoResultFound:
+        logger.waring(f"{traceback.format_exc()}")
         return None
     if vote.group in [None, group_id]:
         return vote
@@ -55,6 +56,7 @@ def get_percent(count: int, total_count: int) -> int:
     try:
         return round(count / total_count * 100)
     except ZeroDivisionError:
+        logger.waring(f"{traceback.format_exc()}")
         return 0
 
 

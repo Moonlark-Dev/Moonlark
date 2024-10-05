@@ -6,7 +6,7 @@ from fastapi import status
 from fastapi.exceptions import HTTPException
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy import select
-
+from nonebot.log import logger
 from .config import config
 from ...models import ImageData, CaveData
 from ...decoder import get_image
@@ -42,9 +42,11 @@ async def _(file_name: str) -> Response:
         image_data = await session.get_one(ImageData, {"id": image_id})
     except NoResultFound:
         raise HTTPException(status.HTTP_404_NOT_FOUND)
+        logger.waring(f"{traceback.format_exc()}")
     try:
         image = await get_image(image_data.id, session)
     except Exception:
         raise HTTPException(status.HTTP_404_NOT_FOUND)
+        logger.waring(f"{traceback.format_exc()}")
     await session.close()
     return Response(image.data)

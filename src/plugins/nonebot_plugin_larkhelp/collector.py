@@ -43,5 +43,6 @@ async def collect_command_help() -> dict[str, CommandHelp]:
         try:
             help_list.update(await get_plugin_help(plugin))
         except Exception:
+            logger.waring(f"{traceback.format_exc()}")
             logger.warning(f"获取插件帮助失败: {traceback.format_exc()}")
     return help_list

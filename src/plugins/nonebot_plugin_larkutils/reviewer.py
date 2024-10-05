@@ -8,7 +8,7 @@ import aiofiles
 import httpx
 from nonebot.log import logger
 from nonebot_plugin_localstore import get_cache_dir
-
+from nonebot.log import logger
 from .types import ReviewResult
 
 plugin_cache_dir: Path = get_cache_dir("nonebot_plugin_preview")
@@ -23,7 +23,8 @@ async def get_access_token(force_update=False):
         if not (force_update or data["expires_in"] < int(time.time())):
             return data["access_token"]
     except FileNotFoundError:
-        pass
+        
+        logger.waring(f"{traceback.format_exc()}")
     url = f"https://aip.baidubce.com/oauth/2.0/token?grant_type=client_credentials&client_id={api_key}&client_secret={secret_key}"
     headers = {"Content-Type": "application/json", "Accept": "application/json"}
     async with httpx.AsyncClient() as client:

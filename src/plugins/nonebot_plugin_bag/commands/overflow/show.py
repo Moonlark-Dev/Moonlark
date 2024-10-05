@@ -9,7 +9,7 @@ from ....nonebot_plugin_larkutils.user import get_user_id
 from ...__main__ import bag, lang
 from nonebot_plugin_htmlrender import md_to_pic
 from nonebot.params import Depends
-
+from nonebot.log import logger
 
 @bag.assign("overflow.show")
 async def _(index: int, user_id: str = get_user_id()) -> None:
@@ -17,6 +17,7 @@ async def _(index: int, user_id: str = get_user_id()) -> None:
         item_data = await get_overflow_item(index)
     except IndexError:
         await lang.finish("overflow_show.not_found", user_id)
+        logger.warning(f"User {user_id}'s overflow show isn't found.  {traceback.format_exc()}")
     item = item_data["item"]
     await bag.finish(
         UniMessage().image(

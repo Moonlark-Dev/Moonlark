@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 
 from nonebot_plugin_orm.env import no_drop_table
 from nonebot_plugin_orm import AlembicConfig, plugin_config
+from nonebot.log import get_driver, logger
 
 # Alembic Config 对象, 它提供正在使用的 .ini 文件中的值.
 config = cast(AlembicConfig, context.config)
@@ -83,8 +84,8 @@ if context.is_offline_mode():
     run_migrations_offline()
 else:
     coro = run_migrations_online()
-
     try:
         asyncio.run(coro)
     except RuntimeError:
+        logger.warning(traceback.format_exc())
         await_only(coro)

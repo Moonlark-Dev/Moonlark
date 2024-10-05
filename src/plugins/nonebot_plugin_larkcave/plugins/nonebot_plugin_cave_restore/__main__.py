@@ -6,7 +6,7 @@ from ....nonebot_plugin_larkutils import get_user_id, is_user_superuser
 from ...__main__ import cave
 from sqlalchemy.exc import NoResultFound
 
-
+from nonebot.log import logger
 @cave.assign("restore.cave_id")
 async def _(
     session: async_scoped_session, cave_id: int, user_id: str = get_user_id(), is_superuser: bool = is_user_superuser()
@@ -16,6 +16,7 @@ async def _(
         cave_data = await session.get_one(CaveData, {"id": cave_id})
     except NoResultFound:
         await lang.finish("restore.not_found", user_id, cave_id)
+        logger.waring(f"{traceback.format_exc()}")
         return
     if not ((user_id == cave_data.author and not data.superuser) or is_superuser):
         await lang.finish("restore.no_permission", user_id)

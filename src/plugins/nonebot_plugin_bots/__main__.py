@@ -16,6 +16,7 @@ async def _(bot: Bot, event: Event) -> None:
     try:
         session_id = event.get_session_id()
     except ValueError:
+        logger.warning(traceback.format_exc())
         return
     if session_id not in sessions:
         sessions[session_id] = bot.self_id, time.time()

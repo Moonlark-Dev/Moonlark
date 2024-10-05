@@ -4,6 +4,7 @@ from ..__main__ import lang
 from ..exceptions import ItemLockedError
 from ..item import BagItem
 from .item import get_bag_item
+from nonebot.log import logger
 
 
 async def get_target_item(index: int, user_id: str = get_user_id()) -> BagItem:
@@ -12,8 +13,10 @@ async def get_target_item(index: int, user_id: str = get_user_id()) -> BagItem:
         item = await get_bag_item(user_id, index)
     except IndexError:
         await lang.finish("show.index_error", user_id, reply_message=True, at_sender=False)
+        logger.warning(f"User {user_id}'s item is unexist. {traceback.format_exc()}")
     except ItemLockedError:
         await lang.finish("drop.item_locked", user_id, reply_message=True, at_sender=False)
+        logger.warning(f"User {user_id}'s item is locked. {traceback.format_exc()}")
     if not item.stack.getNbt("droppable", True):
         await lang.finish("drop.item_not_droppable", user_id, reply_message=True, at_sender=False)
     return item

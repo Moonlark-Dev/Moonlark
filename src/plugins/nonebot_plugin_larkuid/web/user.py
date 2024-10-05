@@ -2,7 +2,7 @@ from typing import cast
 from sqlalchemy.exc import NoResultFound
 from fastapi import FastAPI, HTTPException, Request, status
 from nonebot import get_app
-
+from nonebot.log import logger
 from ...nonebot_plugin_larkuser.utils.user import get_user
 from ..types import BasicUserResponse, DetailedUserResponse
 from ..session import get_user_data
@@ -37,6 +37,7 @@ async def _(request: Request, user_id: str, avatar: bool = True) -> BasicUserRes
         user_data = await get_user(user_id)
     except NoResultFound:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+        logger.waring(f"{traceback.format_exc()}")
     return {
         "user_id": user_data.user_id,
         "nickname": user_data.get_nickname(),

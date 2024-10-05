@@ -44,6 +44,7 @@ async def _get_user_id(request: Request) -> str:
     try:
         data = await session.get_one(SessionData, session_id)
     except NoResultFound:
+        logger.waring(f"{traceback.format_exc()}")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
     user_id = data.user_id
     tomorrow = datetime.now() + timedelta(days=1)
@@ -70,6 +71,7 @@ def get_user_id(default: Optional[str] = None) -> str:
             try:
                 return await _get_user_id(request)
             except HTTPException:
+                logger.waring(f"{traceback.format_exc()}")
                 return default
 
         return Depends(_)
@@ -79,6 +81,7 @@ async def _get_existing_user(user_id: str = get_user_id()) -> MoonlarkUser:
     try:
         return await get_user(user_id)
     except NoResultFound:
+        logger.waring(f"{traceback.format_exc()}")
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
 
 

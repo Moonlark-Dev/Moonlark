@@ -23,7 +23,7 @@ from nonebot.compat import type_validate_python
 from ...nonebot_plugin_larkuser import get_user
 from ..lang import lang_text, lang, lang_define
 from .models import Task, Choice
-
+from nonebot.log import logger
 
 class BreakError(Exception):
 
@@ -189,8 +189,10 @@ class Line:
         try:
             return await Node(self, *node_data).execute()
         except BreakError as e:
+            logger.waring(f"{traceback.format_exc()}")
             self.index += e.index
         except IgnoredError:
+            logger.waring(f"{traceback.format_exc()}")
             return
 
 

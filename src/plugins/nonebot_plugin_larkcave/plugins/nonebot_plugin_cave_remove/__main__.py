@@ -10,7 +10,7 @@ from .config import config
 from sqlalchemy.exc import NoResultFound
 from datetime import datetime, timedelta
 from ...decoder import decode_cave
-
+from nonebot.log import logger
 
 @cave.assign("remove.comment.comment_id")
 async def _(
@@ -23,6 +23,7 @@ async def _(
         comment = await session.get_one(CommentData, {"id": comment_id})
     except NoResultFound:
         await lang.finish("remove_comment.no_result", user_id, comment_id)
+        logger.waring(f"{traceback.format_exc()}")
         return
     if not (comment.author == user_id or is_superuser):
         await lang.reply("remove_comment.no_permission", user_id)
@@ -48,6 +49,7 @@ async def _(
         cave_data = await session.get_one(CaveData, {"id": cave_id})
     except NoResultFound:
         await lang.reply("remove.no_result", user_id)
+        logger.waring(f"{traceback.format_exc()}")
         await cave.finish()
     if not (cave_data.author == user_id or is_superuser):
         await lang.reply("remove.no_permission", user_id)

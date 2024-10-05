@@ -5,7 +5,7 @@ from nonebot import get_plugin_config
 from nonebot_plugin_alconna import Alconna, Args, Option, Query, UniMsg, on_alconna
 from nonebot_plugin_alconna.uniseg import UniMessage
 from nonebot_plugin_htmlrender import get_new_page, md_to_pic
-
+from nonebot.log import logger
 from ..nonebot_plugin_larklang import LangHelper
 from ..nonebot_plugin_larkutils import get_user_id, review_image
 from .checker import check_url_protocol
@@ -35,10 +35,12 @@ async def _(url: str, msg: UniMsg, wait: Query[int] = Query("wait.wait"), user_i
         if not check_url_protocol(url):
             url = f"http://{url}"
     except AccessDenied:
+        logger.waring(f"{traceback.format_exc()}")
         await lang.finish("preview.access_denied", user_id)
     try:
         pic = await screenshot(url, wait.result if wait.available else 3)
     except Exception:
+        logger.waring(f"{traceback.format_exc()}")
         err = traceback.format_exc()
         await preview.finish(
             UniMessage().image(

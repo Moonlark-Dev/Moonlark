@@ -6,13 +6,14 @@ from ....nonebot_plugin_larkutils import get_user_id, get_group_id, is_user_supe
 from nonebot_plugin_orm import async_scoped_session
 from sqlalchemy.exc import NoResultFound
 from ...cool_down import is_group_cooled, is_user_cooled
-
+from nonebot.log import logger
 
 async def set_cool_down(group_id: str, time: float, session: async_scoped_session) -> None:
     try:
         data = await session.get_one(GroupData, {"group_id": group_id})
     except NoResultFound:
         session.add(GroupData(group_id=group_id, cool_down_time=time))
+        logger.waring(f"{traceback.format_exc()}")
     else:
         data.cool_down_time = time
     await session.commit()

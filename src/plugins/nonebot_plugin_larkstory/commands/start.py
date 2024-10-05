@@ -27,7 +27,7 @@ from ..utils import (
     BreakError,
     append_finished_task,
 )
-
+from nonebot.log import logger
 
 @matcher.assign("start")
 async def _(start_number: int, user_id: str = get_user_id(), private: bool = is_private_message()) -> None:
@@ -36,6 +36,7 @@ async def _(start_number: int, user_id: str = get_user_id(), private: bool = is_
     try:
         task_id, task = await get_task_by_number(start_number)
     except ValueError:
+        logger.waring(f"{traceback.format_exc()}")
         await lang.finish("start_command.not_found", user_id)
     if not is_task_available(finished_tasks := await get_finished_tasks(user_id), task):
         await lang.finish("start_command.not_available", user_id)
@@ -49,6 +50,7 @@ async def _(start_number: int, user_id: str = get_user_id(), private: bool = is_
         await executor.execute()
     except BreakError as e:
         # 跳丢了
+        logger.waring(f"{traceback.format_exc()}")
         await lang.finish("start_command.break", user_id, e.index)
     await append_finished_task(user_id, task_id)
     await give_item_by_list(user_id, task.awards)

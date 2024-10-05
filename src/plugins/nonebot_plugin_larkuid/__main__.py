@@ -1,7 +1,7 @@
 from nonebot_plugin_alconna import Alconna, Args, Subcommand, on_alconna
 from nonebot_plugin_orm import async_scoped_session
 from sqlalchemy import select
-
+from nonebot.log import logger
 from .web.sub_account import get_bind_cache
 from ..nonebot_plugin_larkutils import get_user_id, set_main_account
 from .lang import lang
@@ -30,6 +30,7 @@ async def _(key: str, user_id: str = get_user_id()) -> None:
     try:
         data = get_bind_cache(user_id)
     except KeyError:
+        logger.waring(f"{traceback.format_exc()}")
         await lang.finish("sa.key_error", user_id)
         return
     if key != data["activate_code"]:

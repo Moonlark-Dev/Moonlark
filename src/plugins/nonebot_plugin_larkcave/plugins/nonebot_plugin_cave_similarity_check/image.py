@@ -7,7 +7,7 @@ from PIL import UnidentifiedImageError
 from .types import CheckResult
 import numpy as np
 from PIL import Image
-
+from nonebot.log import logger
 from ...models import CaveData, ImageData, CaveImage
 from ...decoder import get_image
 
@@ -26,6 +26,7 @@ def compare_images(image1: bytes, image2: CaveImage, *_) -> float:
     try:  # NOTE 解决数据库内空白图片的问题
         img2 = np.array(Image.open(io.BytesIO(image2.data)))
     except UnidentifiedImageError:
+        logger.waring(f"{traceback.format_exc()}")
         return 0
     return compare_image(np.array(Image.open(io.BytesIO(image1))), img2)
 

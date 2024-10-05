@@ -3,7 +3,7 @@ from nonebot import get_app
 from nonebot_plugin_orm import get_session, get_scoped_session
 from sqlalchemy import select
 from typing import AsyncGenerator
-
+from nonebot.log import logger
 from .types import RandomCaveResponse, Image
 from ...__main__ import get_cave
 from ....nonebot_plugin_larkuser import get_user
@@ -23,6 +23,7 @@ async def get_image_data(cave_id: int) -> AsyncGenerator[Image, None]:
         try:
             data = await get_image(image.id, session)
         except Exception:
+            logger.waring(f"{traceback.format_exc()}")
             continue
         yield {
             "id": float(image.id),

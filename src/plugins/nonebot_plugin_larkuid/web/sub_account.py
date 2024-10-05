@@ -23,7 +23,7 @@ from time import time
 from typing import cast
 from nonebot import get_app
 from src.plugins.nonebot_plugin_larkuser import get_user, MoonlarkUser
-
+from nonebot.log import logger
 from ..session import get_user_data
 from ..config import config
 
@@ -38,7 +38,7 @@ async def clean_cache(key: str) -> None:
         if time() >= bind_cache[key]["expired_at"]:
             bind_cache.pop(key)
     except KeyError:
-        pass
+        logger.waring(f"{traceback.format_exc()}")
 
 
 @app.post("/api/users/{user_id}/sub-account/bind")

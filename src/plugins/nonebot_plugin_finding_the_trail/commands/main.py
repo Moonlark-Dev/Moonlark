@@ -29,7 +29,7 @@ from ..utils.string import get_command_list_string
 from ..utils.answer import AnswerGetter
 from ..__main__ import ftt, lang
 from ..utils.points import add_point
-
+from nonebot.log import logger
 
 async def is_user_continue(user_id: str, d_list: list[Directions]) -> bool:
     while True:
@@ -59,12 +59,14 @@ async def _(seed: Match[str], user_id: str = get_user_id()) -> None:
             d_list = await getter.get_commands()
         except Quited:
             await lang.send("ftt.quited", user_id)
+            logger.warning(traceback.format_exc())
             break
         if not await is_user_continue(user_id, d_list):
             continue
         try:
             result = ftt_map.test_answer(d_list)
         except CannotMove as e:
+            logger.warning(traceback.format_exc())
             if points / 2 >= 2:
                 points /= 2
                 await lang.send("ftt.cannot_move", user_id, e.step_length + 1)

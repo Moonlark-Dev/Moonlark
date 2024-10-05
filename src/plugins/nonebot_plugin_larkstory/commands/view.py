@@ -1,6 +1,6 @@
 from typing import Literal
 from ...nonebot_plugin_larkutils import get_user_id
-
+from nonebot.log import logger
 from ..utils.tasks import get_finished_tasks, get_task_by_number, get_available_tasks
 from ..__main__ import matcher
 from ..lang import lang_define, lang
@@ -12,6 +12,7 @@ async def _(view_number: int, user_id: str = get_user_id()) -> None:
     try:
         task_id, task = await get_task_by_number(view_number)
     except ValueError:
+        logger.waring(f"{traceback.format_exc()}")
         await lang.finish("start_command.not_found", user_id)
     await lang.finish(
         "view_command.info",

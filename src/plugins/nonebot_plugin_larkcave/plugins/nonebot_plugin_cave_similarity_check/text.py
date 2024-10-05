@@ -8,7 +8,7 @@ from ...models import CaveData
 from nonebot_plugin_orm import async_scoped_session
 import difflib
 from sqlalchemy import select
-
+from nonebot.log import logger
 
 async def get_public_cave_list(session: async_scoped_session) -> AsyncGenerator[CaveData, None]:
     cave_list = (await session.scalars(select(CaveData.id))).all()
@@ -34,6 +34,7 @@ async def get_cave_similarity(posting: str, cave: CaveData) -> float:
     try:
         return await get_similarity(posting, parse_text(cave.content))
     except ImageOnlyCave:
+        logger.waring(f"{traceback.format_exc()}")
         return 0
 
 
@@ -48,6 +49,7 @@ async def check_text_content(posting: str, session: async_scoped_session) -> Che
     try:
         content = parse_text(posting)
     except ImageOnlyCave:
+        logger.waring(f"{traceback.format_exc()}")
         return {"passed": True}
     async for cave in get_public_cave_list(session):
         if not (result := await compare_cave_content(content, cave))["passed"]:

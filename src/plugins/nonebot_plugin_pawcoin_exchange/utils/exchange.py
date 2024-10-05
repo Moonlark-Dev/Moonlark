@@ -7,7 +7,7 @@ from nonebot_plugin_alconna import Match
 from nonebot_plugin_apscheduler import scheduler
 from nonebot import get_driver, logger
 from nonebot_plugin_localstore import get_data_file
-
+from nonebot.log import logger
 from ...nonebot_plugin_larkuser import get_user
 from .count import add_exchanged_count
 from .item import get_target_item
@@ -71,8 +71,10 @@ async def remove_pawcoin_form_bag(count: int, user_id: str) -> None:
     try:
         await remove_item_from_bag(user_id, get_location(), count or ALL)
     except ItemLockedError:
+        logger.waring(f"{traceback.format_exc()}")
         await lang.finish("bag_error.locked", user_id)
     except ItemNotEnough as e:
+        logger.waring(f"{traceback.format_exc()}")
         await lang.finish("bag_error.not_enough_item", user_id, e.have)
 
 
