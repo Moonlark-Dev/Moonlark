@@ -27,7 +27,7 @@ from src.plugins.nonebot_plugin_finding_the_trail.utils.finder.utils import (
 )
 
 
-class AnswerFinder:
+class AnswerFinder(Finder):
 
     def __init__(self, game_map: list[list[Blocks]]) -> None:
         self.game_map = game_map
