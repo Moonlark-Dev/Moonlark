@@ -21,6 +21,7 @@ from PIL.Image import Image as ImageType
 from PIL import Image
 from PIL.ImageFont import load_default
 
+
 def draw_number_block(number: int) -> ImageType:
     img = Image.new("RGB", (105, 105), config.mg2048_colors[f"block_{number}"])
     font = load_default(config.mg2048_font_size)
@@ -30,8 +31,10 @@ def draw_number_block(number: int) -> ImageType:
     draw.text(pos, str(number), config.mg2048_colors["word"], font)
     return img
 
+
 def get_null_block() -> ImageType:
     return Image.new("RGB", (105, 105), config.mg2048_colors["null"])
+
 
 def draw_map(game_map: list[list[int]]) -> Image:
     image = Image.new("RGB", (500, 500), config.mg2048_colors["wall"])
@@ -46,5 +49,3 @@ def draw_map(game_map: list[list[int]]) -> Image:
             x += 121
         y += 121
     return image
-
-

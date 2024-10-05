@@ -35,23 +35,19 @@ patch_matcher(cmd)
 async def get_input(game_map: Map2048, user_id: str) -> Directions:
     while True:
         message = await prompt_until(
-            await UniMessage().image(raw=game_map.draw()).text(
-                await lang.text("game.prompt", user_id, game_map.get_score())
-            ).export(),
+            await UniMessage()
+            .image(raw=game_map.draw())
+            .text(await lang.text("game.prompt", user_id, game_map.get_score()))
+            .export(),
             lambda msg: msg.extract_plain_text().lower() in ["w", "s", "a", "d", "q"],
-            retry_prompt=await lang.text("game.input", user_id)
+            retry_prompt=await lang.text("game.input", user_id),
         )
         if message is None:
             continue
         text = message.extract_plain_text().lower()
         if text == "q":
             raise Quited
-        return {
-            "w": Directions.UP,
-            "s": Directions.DOWN,
-            "a": Directions.LEFT,
-            "d": Directions.RIGHT
-        }[text]
+        return {"w": Directions.UP, "s": Directions.DOWN, "a": Directions.LEFT, "d": Directions.RIGHT}[text]
 
 
 @cmd.handle()
@@ -72,4 +68,3 @@ async def _(user_id: str = get_user_id()) -> None:
     t = await session.finish()
     p = await session.add_points(round(game_map.get_score() * 0.8))
     await lang.finish("game.failed", user_id, round(t, 1), p, game_map.get_score())
-
