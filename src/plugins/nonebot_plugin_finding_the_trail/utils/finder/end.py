@@ -28,7 +28,7 @@ from src.plugins.nonebot_plugin_finding_the_trail.utils.finder.utils import (
 )
 
 
-class EndFinder:
+class EndFinder(Finder):
 
     def __init__(self, game_map: list[list[Blocks]], step_limit: int, min_step: int = 0) -> None:
         self.step_limit = step_limit
@@ -42,19 +42,6 @@ class EndFinder:
 
     def get_game_map(self) -> list[list[Blocks]]:
         return self.game_map
-
-    def get_start_pos(self) -> list[int]:
-        for row in range(len(self.game_map)):
-            for col in range(len(self.game_map[row])):
-                if self.game_map[row][col] == Blocks.START:
-                    return [row, col]
-
-    def init_stack(self) -> list[NodeData]:
-        start_pos = self.get_start_pos()
-        return [
-            {"game_map": copy.deepcopy(self.game_map), "pos": start_pos, "answer": [d]}
-            for d in get_moveable_directions(start_pos, self.game_map, [])
-        ]
 
     def search(self) -> bool:
         stack = self.init_stack()
