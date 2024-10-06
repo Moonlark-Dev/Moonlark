@@ -14,4 +14,4 @@ game:
 help:
   description: 2048 小游戏
   details: 数字合成游戏 —— 2048
-  usage1: 2048
+  usage1: '2048'
