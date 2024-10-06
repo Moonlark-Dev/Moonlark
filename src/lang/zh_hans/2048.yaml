@@ -1,0 +1,17 @@
+game:
+  prompt: |
+    得分: {}
+    [w/s/a/d]: 移动
+    [q]: 退出
+  input: 无效输入！
+  cannot_move: 移动失败：该方向上无法移动，请重新输入
+  failed: |
+    挑战结束
+    ==================
+    用时: {}s
+    积分: {}
+    得分: {}
+help:
+  description: 2048 小游戏
+  details: 数字合成游戏 —— 2048
+  usage1: '2048'

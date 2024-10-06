@@ -13,7 +13,8 @@ from .models import LanguageData, LanguageKey
 def init_keys(data: dict[str, dict]) -> None:
     # NOTE 有点乱，待优化
     for cmd in data.keys():
-        for key in data[cmd].keys():
+        keys = data[cmd].keys()
+        for key in keys:
             if isinstance(data[cmd][key], str):
                 data[cmd][key] = LanguageKey(text=[data[cmd][key]])
             elif isinstance(data[cmd][key], list):
