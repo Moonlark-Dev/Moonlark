@@ -26,6 +26,7 @@ from src.plugins.nonebot_plugin_finding_the_trail.utils.finder.utils import (
     MovementExecutor,
     get_back_direction,
 )
+from src.plugins.nonebot_plugin_finding_the_trail.utils.finder import Finder
 
 
 class EndFinder(Finder):
