@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import TypedDict
+from typing_extensions import TypedDict
 from nonebot import get_plugin_config
 
 COLOR = tuple[int, int, int]
