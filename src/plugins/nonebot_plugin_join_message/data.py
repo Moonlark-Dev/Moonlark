@@ -16,6 +16,7 @@
 # ##############################################################################
 
 from nonebot_plugin_localstore import get_cache_file
+from nonebot.log import logger
 import aiofiles
 import json
 import time
@@ -28,8 +29,10 @@ async def load_data() -> dict:
         async with aiofiles.open(file, encoding="utf-8") as f:
             return json.loads(await f.read())
     except json.JSONDecodeError:
+        logger.warning(traceback.format_exc())
         return {}
     except FileNotFoundError:
+        logger.warning(traceback.format_exc())
         return {}
 
 

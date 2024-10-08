@@ -43,6 +43,7 @@ async def get_friends() -> dict[str, float]:
         async with aiofiles.open(data_file, "r", encoding="utf-8") as f:
             return json.loads(await f.read())
     except (FileNotFoundError, json.JSONDecodeError):
+        logger.warning(traceback.format_exc())
         return {}
 
 

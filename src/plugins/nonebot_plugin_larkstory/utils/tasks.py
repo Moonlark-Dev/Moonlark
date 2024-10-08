@@ -22,6 +22,7 @@ import json
 from pathlib import Path
 from ...nonebot_plugin_item.registry import ResourceLocation
 from .models import Task
+from nonebot.log import logger
 
 
 async def get_finished_tasks(user_id: str) -> list[str]:
@@ -30,6 +31,7 @@ async def get_finished_tasks(user_id: str) -> list[str]:
         async with aiofiles.open(file, encoding="utf-8") as f:
             return json.loads(await f.read())
     except (FileNotFoundError, json.JSONDecodeError):
+        logger.waring(f"{traceback.format_exc()}")
         return []
 
 

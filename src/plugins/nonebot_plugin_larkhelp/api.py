@@ -18,7 +18,7 @@
 from nonebot import get_app
 from typing import cast
 from fastapi import FastAPI, HTTPException, status
-
+from nonebot.log import logger
 from ..nonebot_plugin_larkuid.session import get_user_id
 from .__main__ import lang, get_help_list, get_help_dict
 
@@ -35,4 +35,5 @@ async def _(name: str, user_id: str = get_user_id("-1")) -> dict[str, str | list
     try:
         return await get_help_dict(name, user_id)
     except KeyError:
+        logger.waring(f"{traceback.format_exc()}")
         raise HTTPException(status.HTTP_404_NOT_FOUND)

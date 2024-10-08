@@ -5,6 +5,7 @@ from ..__main__ import lang
 from ..exceptions import ItemLockedError
 from ..item import BagItem
 from .item import get_bag_item
+from nonebot.log import logger
 
 
 async def get_origin_item(origin: int, user_id: str = get_user_id()) -> BagItem:
@@ -12,8 +13,10 @@ async def get_origin_item(origin: int, user_id: str = get_user_id()) -> BagItem:
         return await get_bag_item(user_id, origin)
     except ItemLockedError:
         await lang.finish(f"move.origin_locked", user_id)
+        logger.warning(traceback.format_exc())
     except IndexError:
         await lang.finish(f"move.origin_index_error", user_id)
+        logger.warning(traceback.format_exc())
     raise
 
 
@@ -22,6 +25,7 @@ async def get_target_item(target: int, user_id: str = get_user_id()) -> Optional
         return await get_bag_item(user_id, target)
     except ItemLockedError:
         await lang.finish(f"move.target_locked", user_id)
+        logger.warning(traceback.format_exc())
 
 
 async def get_count(

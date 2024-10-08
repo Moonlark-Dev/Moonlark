@@ -55,9 +55,11 @@ async def _(session: async_scoped_session, user_id: str = get_user_id(), group_i
         content = await decode_cave(cave_data, session, user_id)
     except NoResultFound:
         await lang.finish("cave.noresult", user_id)
+        logger.warning(f"User {user_id}'s cave isn't result. traceback.format_exc()")
         raise
     except IndexError:
         await lang.finish("cave.nocave", user_id)
+        logger.warning(f"User {user_id}'s cave is undefined. traceback.format_exc()")
         raise
     try:
         add_cave_message(cave_id, str((await content.send()).msg_ids[0]["message_id"]))

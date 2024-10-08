@@ -1,5 +1,5 @@
 from nonebot_plugin_alconna import Alconna, Args, UniMessage, on_alconna
-
+from nonebot.log import logger
 from ..nonebot_plugin_render.render import render_template
 from ..nonebot_plugin_larklang import LangHelper
 from ..nonebot_plugin_larkutils.user import get_user_id
@@ -17,6 +17,7 @@ async def _(keyword: str, user_id: str = get_user_id()) -> None:
     try:
         packages = await search_package(keyword)
     except NoResultException:
+        logger.waring(f"{traceback.format_exc()}")
         await lang.finish("search.not_found", user_id, keyword)
         return
     image = await render_template(

@@ -32,18 +32,22 @@ async def _(
         content = cast(list[Image | Text], list(result.subcommands["add"].args["content"]))
     except KeyError:
         await lang.finish("add.empty", user_id)
+        logger.waring(f"{traceback.format_exc()}")
         return
     try:
         await check_cave(content, event, bot, state, session)
     except ReviewFailed as e:
         await lang.finish("add.review_fail", user_id, e.reason)
+        logger.waring(f"{traceback.format_exc()}")
     except EmptyImage as e:
         await lang.finish("add.image_empty", user_id)
+        logger.waring(f"{traceback.format_exc()}")
     except DuplicateCave as e:
         msg = UniMessage(await lang.text("add.similarity_title", user_id))
         msg.extend(await decode_cave(e.cave, session, user_id))
         msg.append(Text(await lang.text("add.similarity_footer", user_id, round(e.score * 100, 3))))
         await cave.finish(msg, reply_message=True)
+        logger.waring(f"{traceback.format_exc()}")
     cave_id = await get_cave_id(session)
     content = " ".join(
         [

@@ -1,5 +1,5 @@
 from nonebot_plugin_alconna import Alconna, Args, MultiVar, UniMessage, on_alconna
-
+from nonebot.log import logger
 from ..nonebot_plugin_larklang import LangHelper
 from ..nonebot_plugin_larkutils.user import get_user_id
 from .exceptions import ApiError
@@ -18,4 +18,5 @@ async def _(expr: list[str], user_id: str = get_user_id()) -> None:
     try:
         await calc.finish(UniMessage().image(raw=await get_calc(" ".join(expr))), reply_message=True)
     except ApiError:
+        logger.waring(f"{traceback.format_exc()}")
         await lang.finish("calc.failed", user_id)

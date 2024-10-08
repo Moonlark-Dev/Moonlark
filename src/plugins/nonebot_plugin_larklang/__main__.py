@@ -42,6 +42,7 @@ def apply_template(language: str, plugin: str, key: str, text: str) -> str:
     try:
         return random.choice(languages[language].keys[plugin][key]["__template__"].text).format(text)
     except KeyError:
+        logger.waring(f"{traceback.format_exc()}")
         return text
 
 
@@ -68,6 +69,7 @@ def get_text(language: str, plugin: str, key: str, *args, retry: bool = True, **
     try:
         return text.format(*args, **kwargs, __prefix__=config.command_start[0])
     except IndexError:
+        logger.waring(f"{traceback.format_exc()}")
         return text
 
 

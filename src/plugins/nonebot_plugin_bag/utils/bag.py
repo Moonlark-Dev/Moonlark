@@ -45,6 +45,7 @@ async def get_free_index(user_id: str) -> int:
         try:
             await get_bag_item(user_id, index, ignore_lock=True)
         except IndexError:
+            logger.warning(traceback.format_exc())
             break
         index += 1
     return index

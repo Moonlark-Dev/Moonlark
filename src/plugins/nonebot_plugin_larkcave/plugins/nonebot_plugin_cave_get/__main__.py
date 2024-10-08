@@ -20,6 +20,7 @@ async def _(
         content = await decode_cave(cave_data, session, user_id)
     except NoResultFound:
         await lang.finish("get.not_found", user_id, cave_id)
+        logger.waring(f"{traceback.format_exc()}")
         return
     if (not cave_data.public) and not is_superuser:
         await lang.finish("get.no_permission", user_id)

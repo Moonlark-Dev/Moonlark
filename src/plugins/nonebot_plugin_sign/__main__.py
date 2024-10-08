@@ -12,7 +12,7 @@ from nonebot_plugin_alconna import Alconna, UniMessage, on_alconna
 from nonebot_plugin_orm import AsyncSession, get_session
 from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
-
+from nonebot.log import logger
 from ..nonebot_plugin_render.render import render_template
 from ..nonebot_plugin_email.utils.unread import get_unread_email_count
 from ..nonebot_plugin_jrrp.jrrp import get_luck_value
@@ -54,6 +54,7 @@ async def get_sign_data(session: AsyncSession, user_id: str) -> SignData:
     try:
         return await session.get_one(SignData, {"user_id": user_id})
     except NoResultFound:
+        logger.waring(f"{traceback.format_exc()}")
         session.add(SignData(user_id=user_id))
         await session.commit()
         return await get_sign_data(session, user_id)
