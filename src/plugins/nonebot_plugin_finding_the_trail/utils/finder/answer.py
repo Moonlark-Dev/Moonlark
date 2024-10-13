@@ -19,20 +19,15 @@ import copy
 
 from src.plugins.nonebot_plugin_finding_the_trail.utils.enums.blocks import Blocks
 from src.plugins.nonebot_plugin_finding_the_trail.utils.enums.directions import Directions
-from src.plugins.nonebot_plugin_finding_the_trail.utils.finder.utils import (
+from .utils import (
     get_moveable_directions,
-    NodeData,
     MovementExecutor,
     get_back_direction,
 )
-from src.plugins.nonebot_plugin_finding_the_trail.utils.finder.finder import Finder
+from .finder import Finder
 
 
 class AnswerFinder(Finder):
-
-    def __init__(self, game_map: list[list[Blocks]]) -> None:
-        self.game_map = game_map
-        self.answer = []
 
     def search(self) -> list[Directions]:
         stack = self.init_stack()

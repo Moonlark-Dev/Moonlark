@@ -9,7 +9,7 @@ __plugin_meta__ = PluginMetadata(
     config=Config,
 )
 
-require("nonebot_plugin_minigames_api")
+require("nonebot_plugin_minigames:nonebot_plugin_minigames_api")
 require("nonebot_plugin_larklang")
 require("nonebot_plugin_finding_the_trail")
 require("nonebot_plugin_waiter")

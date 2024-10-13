@@ -8,5 +8,10 @@
     "id": "tol",
     "name": "tol",
     "usage": 1
+  },
+  {
+    "id": "2048",
+    "name": "2048",
+    "usage": 1
   }
 ]
