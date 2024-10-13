@@ -15,13 +15,13 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
-from .end import EndFinder
-from .answer import AnswerFinder
-from src.plugins.nonebot_plugin_finding_the_trail.utils.finder.utils import (
-    get_moveable_directions,
-    NodeData,
-    MovementExecutor,
-    get_back_direction,
-)
+import asyncio
+
+from nonebot_plugin_htmlrender import get_new_page
 
 
+async def screenshot(url: str, wait: int) -> bytes:
+    async with get_new_page() as page:
+        await page.goto(url)
+        await asyncio.sleep(wait)
+        return await page.screenshot(type="jpeg", full_page=True)

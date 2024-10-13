@@ -16,27 +16,17 @@
 # ##############################################################################
 
 
-import copy
-
 from src.plugins.nonebot_plugin_finding_the_trail.utils.enums.blocks import Blocks
 from src.plugins.nonebot_plugin_finding_the_trail.utils.enums.directions import Directions
-from src.plugins.nonebot_plugin_finding_the_trail.utils.finder.utils import (
+from .utils import (
     get_moveable_directions,
-    NodeData,
     MovementExecutor,
     get_back_direction,
 )
-from src.plugins.nonebot_plugin_finding_the_trail.utils.finder import Finder
+from .finder import Finder
 
 
 class EndFinder(Finder):
-
-    def __init__(self, game_map: list[list[Blocks]], step_limit: int, min_step: int = 0) -> None:
-        self.step_limit = step_limit
-        self.min_step = min_step
-        self.game_map = game_map
-        self.end_pos = [0, 0]
-        self.answer = []
 
     def set_end_block(self) -> None:
         self.game_map[self.end_pos[0]][self.end_pos[1]] = Blocks.END

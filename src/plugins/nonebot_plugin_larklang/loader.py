@@ -13,7 +13,7 @@ from .models import LanguageData, LanguageKey
 def init_keys(data: dict[str, dict]) -> None:
     # NOTE 有点乱，待优化
     for cmd in data.keys():
-        keys = data[cmd].keys()
+        keys = list(data[cmd].keys())
         for key in keys:
             if isinstance(data[cmd][key], str):
                 data[cmd][key] = LanguageKey(text=[data[cmd][key]])
@@ -24,7 +24,7 @@ def init_keys(data: dict[str, dict]) -> None:
                     data[cmd][key]["text"] = [data[cmd][key]["text"]]
                 data[cmd][key] = type_validate_python(LanguageKey, data[cmd][key])
             else:
-                data[cmd].pop(key)
+                data[cmd][key] = LanguageKey(text=[str(data[cmd][key])])
 
 
 class LangLoader:

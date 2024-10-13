@@ -1,11 +1,10 @@
-import asyncio
 import traceback
 
-from nonebot import get_plugin_config
 from nonebot_plugin_alconna import Alconna, Args, Option, Query, UniMsg, on_alconna
 from nonebot_plugin_alconna.uniseg import UniMessage
-from nonebot_plugin_htmlrender import get_new_page, md_to_pic
+from nonebot_plugin_htmlrender import md_to_pic
 
+from .preview import screenshot
 from ..nonebot_plugin_larklang import LangHelper
 from ..nonebot_plugin_larkutils import get_user_id, review_image
 from .checker import check_url_protocol
@@ -18,13 +17,6 @@ preview = on_alconna(
     # auto_send_output=True
 )
 lang = LangHelper()
-
-
-async def screenshot(url: str, wait: int) -> bytes:
-    async with get_new_page() as page:
-        await page.goto(url)
-        await asyncio.sleep(wait)
-        return await page.screenshot(type="jpeg", full_page=True)
 
 
 @preview.handle()

@@ -1,5 +1,6 @@
-import asyncio
 from datetime import datetime
+
+from nonebot_plugin_alconna import UniMessage
 
 from nonebot import logger, on_command
 from nonebot.params import ArgPlainText
@@ -7,6 +8,7 @@ from nonebot.typing import T_State
 from nonebot_plugin_orm import get_session
 from sqlalchemy import select
 
+from ..nonebot_plugin_preview.preview import screenshot
 from ..nonebot_plugin_larkuser.models import UserData
 from ..nonebot_plugin_larkutils.user import get_user_id
 from .lang import lang
@@ -20,7 +22,10 @@ async def _(user_id: str = get_user_id()) -> None:
     if await is_user_registered(user_id):
         await lang.finish("command.registered", user_id)
     await lang.send("command.tip", user_id)
-    await asyncio.sleep(5)
+    await UniMessage().image(
+        raw=await screenshot("https://github.com/orgs/Moonlark-Dev/discussions/3", 1),
+        name="image.png"
+    ).send()
     await lang.send("input.g", user_id)
 
 
