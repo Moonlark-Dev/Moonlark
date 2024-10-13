@@ -23,8 +23,7 @@ async def _(user_id: str = get_user_id()) -> None:
         await lang.finish("command.registered", user_id)
     await lang.send("command.tip", user_id)
     await UniMessage().image(
-        raw=await screenshot("https://github.com/orgs/Moonlark-Dev/discussions/3", 1),
-        name="image.png"
+        raw=await screenshot("https://github.com/orgs/Moonlark-Dev/discussions/3", 1), name="image.png"
     ).send()
     await lang.send("input.g", user_id)
 
