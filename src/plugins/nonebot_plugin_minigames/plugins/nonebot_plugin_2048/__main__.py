@@ -26,6 +26,7 @@ from ....nonebot_plugin_larkuser import patch_matcher
 from ....nonebot_plugin_finding_the_trail.utils.enums.directions import Directions
 from ..nonebot_plugin_minigames_api import create_minigame_session
 from nonebot_plugin_alconna import UniMessage
+from io import BytesIO
 
 lang = LangHelper()
 cmd = on_command("2048")
@@ -34,9 +35,11 @@ patch_matcher(cmd)
 
 async def get_input(game_map: Map2048, user_id: str) -> Directions:
     while True:
+        buffer = BytesIO()
+        game_map.draw().save(buffer, format="PNG")
         message = await prompt_until(
             await UniMessage()
-            .image(raw=game_map.draw())
+            .image(raw=buffer.getvalue())
             .text(await lang.text("game.prompt", user_id, game_map.get_score()))
             .export(),
             lambda msg: msg.extract_plain_text().lower() in ["w", "s", "a", "d", "q"],
