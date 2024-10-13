@@ -11,7 +11,3 @@ game:
     用时: {}s
     积分: {}
     得分: {}
-help:
-  description: 2048 小游戏
-  details: 数字合成游戏 —— 2048
-  usage1: 2048
