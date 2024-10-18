@@ -12,7 +12,7 @@ from ..nonebot_plugin_preview.preview import screenshot
 from ..nonebot_plugin_larkuser.models import UserData
 from ..nonebot_plugin_larkutils.user import get_user_id
 from .lang import lang
-from .utils import is_user_registered
+from src.plugins.nonebot_plugin_larkuser.user.utils import is_user_registered
 
 register = on_command("register")
 
