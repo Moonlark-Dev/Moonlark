@@ -7,4 +7,5 @@ class Config(BaseModel):
 
     user_registered_guest: bool = False
 
+
 config = get_plugin_config(Config)

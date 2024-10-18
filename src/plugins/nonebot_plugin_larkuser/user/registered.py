@@ -79,6 +79,7 @@ class MoonlarkRegisteredUser(MoonlarkUser):
 
 guest_users = {}
 
+
 class MoonlarkRegisteredGuest(MoonlarkUser):
 
     async def set_data(
@@ -103,13 +104,10 @@ class MoonlarkRegisteredGuest(MoonlarkUser):
         pass
 
     async def setup_user(self) -> None:
-        user = guest_users.get(self.user_id, {
-            "nickname": f"GUEST-{self.user_id}",
-            "vimcoin": 0,
-            "experience": 0,
-            "health": 0,
-            "favorability": 0
-        })
+        user = guest_users.get(
+            self.user_id,
+            {"nickname": f"GUEST-{self.user_id}", "vimcoin": 0, "experience": 0, "health": 0, "favorability": 0},
+        )
         self.nickname = user["nickname"]
         self.register_time = datetime.now()
         self.ship_code = f"GUEST-{self.user_id}"
@@ -119,10 +117,3 @@ class MoonlarkRegisteredGuest(MoonlarkUser):
         self.health = user["health"]
         self.fav = user["favorability"]
         self.avatar = None
-
-
-
-
-
-
-

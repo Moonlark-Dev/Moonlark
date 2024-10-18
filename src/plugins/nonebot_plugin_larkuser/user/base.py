@@ -116,5 +116,3 @@ class MoonlarkUser(ABC):
 
     async def has_vimcoin(self, count: float) -> bool:
         return self.vimcoin >= count
-
-

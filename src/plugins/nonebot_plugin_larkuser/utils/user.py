@@ -2,6 +2,7 @@ from ..user import *
 from ..config import config
 from ..user.utils import is_user_registered
 
+
 async def get_user(user_id: str) -> MoonlarkUser:
     """
     获取 Moonlark 用户

@@ -24,7 +24,6 @@ class MoonlarkGuestUser(MoonlarkRegisteredUser):
         super().__init__(user_id)
         self.original_user_id = user_id
 
-
     async def setup_user_id(self) -> None:
         self.user_id = -1
         self.main_account = False
@@ -33,5 +32,3 @@ class MoonlarkGuestUser(MoonlarkRegisteredUser):
         await super().setup_user()
         if not self.nickname:
             self.nickname = f"Guest用户-{self.original_user_id}"
-
-
