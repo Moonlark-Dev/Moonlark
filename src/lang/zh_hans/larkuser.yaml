@@ -25,3 +25,8 @@ whoami:
     超级用户: {}
     当前群号: {}
     
+prompt:
+  timeout: 您已超时！
+  unknown: 未知输入（格式检查不通过）
+  retry_too_much: 重试次数过多！
+  quited: 已退出！

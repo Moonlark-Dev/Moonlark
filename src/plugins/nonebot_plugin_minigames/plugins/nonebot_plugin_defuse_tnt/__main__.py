@@ -18,7 +18,7 @@
 import math
 from nonebot_plugin_alconna import Alconna, on_alconna
 import random
-from nonebot_plugin_waiter import prompt
+from src.plugins.nonebot_plugin_larkuser import prompt
 from nonebot.log import logger
 from src.plugins.nonebot_plugin_larkutils import get_user_id
 from nonebot_plugin_alconna import UniMessage
@@ -57,13 +57,12 @@ async def _(user_id: str = get_user_id()) -> None:
                 ],
             },
         )
-        message = await prompt(await UniMessage.image(raw=image).export())
-        if message is None:
-            continue
-        text = message.extract_plain_text()
-        if text.lower().startswith("q"):
-            await session.quit()
-        password = [int(c) for c in list(text) if re.match("[1-9]", c)]
+        password = await prompt(
+            UniMessage.image(raw=image),
+            user_id,
+            checker=lambda msg: len([int(c) for c in list(msg) if re.match("[1-9]", c)]) == 3,
+            parser=lambda msg: [int(c) for c in list(msg) if re.match("[1-9]", c)]
+        )
         if len(password) != 3:
             continue
         if password == answer:

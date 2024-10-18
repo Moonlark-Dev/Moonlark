@@ -11,8 +11,8 @@ __plugin_meta__ = PluginMetadata(
 require("nonebot_plugin_larklang")
 require("nonebot_plugin_larkutils")
 require("nonebot_plugin_render")
-require("nonebot_plugin_waiter")
 require("nonebot_plugin_alconna")
+require("nonebot_plugin_larkuser")
 require("nonebot_plugin_minigames:nonebot_plugin_minigames_api")
 
 from . import __main__
