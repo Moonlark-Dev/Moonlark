@@ -1,0 +1,7 @@
+plugin: holiday
+commands:
+  holiday:
+    description: help.description
+    details: help.details
+    usages:
+      - help.usage

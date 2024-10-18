@@ -1,0 +1,14 @@
+title: 假期查询
+remaining:
+  title: '{} 假期余额'
+  total: 总计
+  statutory: 法定
+  div: '{} / {} 天'
+next:
+  title: 下一个假期
+  date: '{} 月 {} 日'
+  days: '{} 天'
+help:
+  description: 假期查询
+  details: 查看本年假期余额、下一个假期
+  usage: holiday

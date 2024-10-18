@@ -1,0 +1,40 @@
+{% extends base %}
+{% block header %}
+<style>
+    .acontainer {
+        display: grid;
+        grid-template-columns: 1fr auto 1fr;
+        align-items: center;
+        position: relative;
+    }
+    .aleft {
+        justify-self: start;
+    }
+    .acenter {
+        justify-self: center;
+    }
+    .aright {
+        justify-self: end;
+    }
+</style>
+{% endblock header %}
+{% block body %}
+<h3><center>{{ remaining_title }}</center></h3>
+<div class="acontainer">
+    <div class="aleft">{{ total }}</div>
+    <div class="acenter">{{ div_total }}</div>
+    <div class="aright">{{ percent_total }}%</div>
+</div>
+<div class="acontainer">
+    <div class="aleft">{{ statutory }}</div>
+    <div class="acenter">{{ div_statutory }}</div>
+    <div class="aright">{{ percent_statutory }}%</div>
+</div>
+<hr>
+<h3><center>{{ next_title }}</center></h3>
+<div class="acontainer">
+    <div class="aleft">{{ date }}</div>
+    <div class="acenter">{{ name }}</div>
+    <div class="aright">{{ days }}</div>
+</div>
+{% endblock body %}
