@@ -61,7 +61,7 @@ async def _(user_id: str = get_user_id()) -> None:
             UniMessage.image(raw=image),
             user_id,
             checker=lambda msg: len([int(c) for c in list(msg) if re.match("[1-9]", c)]) == 3,
-            parser=lambda msg: [int(c) for c in list(msg) if re.match("[1-9]", c)]
+            parser=lambda msg: [int(c) for c in list(msg) if re.match("[1-9]", c)],
         )
         if len(password) != 3:
             continue

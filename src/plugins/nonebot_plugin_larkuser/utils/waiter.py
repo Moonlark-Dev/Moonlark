@@ -26,14 +26,14 @@ T = TypeVar("T")
 
 
 async def prompt(
-        message: str | UniMessage,
-        user_id: str,
-        checker: Optional[Callable[[str], bool]] = None,
-        retry: int = -1,
-        timeout: int = 5 * 60,
-        parser: Callable[[str], T] = lambda msg: msg,
-        ignore_error_details: bool = True,
-        allow_quit: bool = True
+    message: str | UniMessage,
+    user_id: str,
+    checker: Optional[Callable[[str], bool]] = None,
+    retry: int = -1,
+    timeout: int = 5 * 60,
+    parser: Callable[[str], T] = lambda msg: msg,
+    ignore_error_details: bool = True,
+    allow_quit: bool = True,
 ) -> T:
     if retry == 0:
         if ignore_error_details:
@@ -57,12 +57,6 @@ async def prompt(
             retry - 1,
             timeout,
             parser,
-            ignore_error_details
+            ignore_error_details,
         )
     return parser(text)
-
-
-
-
-
-
