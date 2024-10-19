@@ -15,13 +15,25 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
-import asyncio
+from nonebot_plugin_alconna import UniMessage
+from nonebot import on_command
+from ..nonebot_plugin_preview.preview import screenshot
+from ..nonebot_plugin_larklang import LangHelper
+from ..nonebot_plugin_larkutils import get_user_id
 
-from nonebot_plugin_htmlrender import get_new_page
+matcher = on_command("holiday")
+viewport = {"width": 1440, "height": 900}
+lang = LangHelper()
 
 
-async def screenshot(url: str, wait: int = 1, **kwargs) -> bytes:
-    async with get_new_page(**kwargs) as page:
-        await page.goto(url)
-        await asyncio.sleep(wait)
-        return await page.screenshot(type="jpeg", full_page=True)
+@matcher.handle()
+async def _(user_id: str = get_user_id()) -> None:
+    try:
+        msg = (
+            UniMessage()
+            .image(raw=await screenshot("https://xiayigejiaqi.com/balance?from=itab", viewport=viewport))
+            .image(raw=await screenshot("https://xiayigejiaqi.com/?from=itab", viewport=viewport))
+        )
+    except Exception:
+        await lang.finish("error.failed", user_id)
+    await matcher.finish(await msg.export())
