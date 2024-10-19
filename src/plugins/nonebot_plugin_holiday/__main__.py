@@ -29,9 +29,11 @@ lang = LangHelper()
 @matcher.handle()
 async def _(user_id: str = get_user_id()) -> None:
     try:
-        msg = (UniMessage()
-           .image(raw=await screenshot("https://xiayigejiaqi.com/balance?from=itab", viewport=viewport))
-           .image(raw=await screenshot("https://xiayigejiaqi.com/?from=itab", viewport=viewport)))
+        msg = (
+            UniMessage()
+            .image(raw=await screenshot("https://xiayigejiaqi.com/balance?from=itab", viewport=viewport))
+            .image(raw=await screenshot("https://xiayigejiaqi.com/?from=itab", viewport=viewport))
+        )
     except Exception:
         await lang.finish("error.failed", user_id)
     await matcher.finish(await msg.export())
