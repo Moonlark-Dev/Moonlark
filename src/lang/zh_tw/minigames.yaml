@@ -22,7 +22,7 @@ defuse_tnt:
   usage1: defuse-tnt
 '2048':
   description: 2048 小游戏
-  details: 数字合成游戏 —— 2048
+  details: '（测试中）数字合成游戏 —— 2048'
   usage1: '2048'
 tol:
   description: 关灯挑战
