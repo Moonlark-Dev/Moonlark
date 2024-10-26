@@ -20,6 +20,5 @@ require("nonebot_plugin_waiter")
 from .matchers import recorder, panel, whoami
 from .utils.matcher import patch_matcher
 from .utils.level import get_level_by_experience
-from .user.base import MoonlarkUser
 from .utils.user import get_user, MoonlarkUser
 from .utils.waiter import prompt
