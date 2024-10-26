@@ -12,7 +12,7 @@ async def get_user(user_id: str) -> MoonlarkUser:
     if user_id == -1:
         user = MoonlarkUnknownUser(user_id)
     elif await is_user_registered(user_id):
-        user = MoonlarkUser(user_id)
+        user = MoonlarkRegisteredUser(user_id)
     elif config.user_registered_guest:
         user = MoonlarkRegisteredGuest(user_id)
     else:
