@@ -40,6 +40,8 @@ async def prompt(
             await lang.finish("prompt.retry_too_much", user_id)
         else:
             raise PromptRetryTooMuch
+    if isinstance(message, UniMessage):
+        message = await message.export()
     resp = await waiter_prompt(message, timeout=timeout)
     if resp is None:
         if ignore_error_details:
