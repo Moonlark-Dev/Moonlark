@@ -36,8 +36,7 @@ class Map2048:
         elif number == 4096:
             self.score *= 5
             return True
-        else:
-            return False
+        return False
 
     def draw(self) -> bytes:
         return draw_map(self.map)
@@ -78,7 +77,7 @@ class Map2048:
                         self.map[row][col] = 0
                         if origin == num:
                             if self.add_craft_score(num):
-                                self.map[row - 1][col] = 0
+                                self.map[row + 1][col] = 0
                             break
                     row += 1
 
@@ -92,7 +91,7 @@ class Map2048:
                         self.map[row][col] = 0
                         if origin == num:
                             if self.add_craft_score(num):
-                                self.map[row - 1][col] = 0
+                                self.map[row][col - 1] = 0
                             break
                     col -= 1
 
@@ -107,7 +106,7 @@ class Map2048:
                         self.map[row][col] = 0
                         if origin == num:
                             if self.add_craft_score(num):
-                                self.map[row - 1][col] = 0
+                                self.map[row][col + 1] = 0
                             break
                     col += 1
 
