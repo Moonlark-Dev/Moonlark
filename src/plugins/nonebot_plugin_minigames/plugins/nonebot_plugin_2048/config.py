@@ -41,7 +41,7 @@ class Config(BaseModel):
         "block_1024": (237, 197, 63),
         "block_2048": (255, 0, 0),
     }
-    mg2048_font_size: int = 24
+    mg2048_font_size: int = 72
 
 
 config = get_plugin_config(Config)
