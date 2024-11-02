@@ -27,7 +27,6 @@ class Map2048:
         self.map = [[0 for _ in range(4)] for _ in range(4)]
         self.score = 0
         self.put_number()
-        self.put_number()
 
     def add_craft_score(self, number: int) -> bool:
         self.score += number * 7
