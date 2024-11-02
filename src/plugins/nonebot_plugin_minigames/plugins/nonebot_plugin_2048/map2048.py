@@ -73,7 +73,7 @@ class Map2048:
         for row in range(1, len(self.map)):
             row = len(self.map) - row
             for col in range(len(self.map[row])):
-                while row < 4:
+                while row < 3:
                     num = self.map[row][col]
                     if (origin := self.map[row + 1][col]) in [0, num]:
                         self.map[row + 1][col] += num
@@ -102,7 +102,7 @@ class Map2048:
         for row in range(len(self.map)):
             for col in range(len(self.map[row])):
                 col = len(self.map[row]) - col
-                while col < 4:
+                while col < 3:
                     num = self.map[row][col]
                     if (origin := self.map[row][col + 1]) in [0, num]:
                         self.map[row][col + 1] += num
