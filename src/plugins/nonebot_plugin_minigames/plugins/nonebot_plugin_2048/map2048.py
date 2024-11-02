@@ -81,7 +81,7 @@ class Map2048:
                         if origin == num:
                             if self.add_craft_score(num):
                                 self.map[current_row + 1][col] = 0
-                    current_row += 1
+                    current_row -= 1
 
     def move_left(self) -> None:
         for row in range(len(self.map)):
@@ -108,7 +108,7 @@ class Map2048:
                         if origin == num:
                             if self.add_craft_score(num):
                                 self.map[row][col + 1] = 0
-                    col += 1
+                    col -= 1
 
     def get_score(self) -> int:
         return self.score
