@@ -26,7 +26,7 @@ def draw_number_block(number: int) -> ImageType:
     img = Image.new("RGB", (105, 105), config.mg2048_colors[f"block_{number}"])
     font = load_default(config.mg2048_font_size)
     length = font.getlength(str(number))
-    pos = (105 - config.mg2048_font_size) / 2, (105 - length) / 2
+    pos = (105 - length) / 2, (105 - config.mg2048_font_size) / 2
     draw = ImageDraw(img)
     draw.text(pos, str(number), config.mg2048_colors["word"], font)
     return img
@@ -48,5 +48,5 @@ def draw_map(game_map: list[list[int]]) -> Image:
                 image.paste(draw_number_block(block), (x, y))
             x += 121
         y += 121
-        x = 0
+        x = 16
     return image

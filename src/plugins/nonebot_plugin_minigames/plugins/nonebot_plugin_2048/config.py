@@ -28,7 +28,7 @@ class Config(BaseModel):
     mg2048_colors: Colors = {
         "wall": (184, 175, 158),
         "null": (204, 192, 178),
-        "word": (255, 247, 235),
+        "word": (0x2B, 0x2D, 0x30),
         "block_2": (238, 228, 218),
         "block_4": (236, 224, 200),
         "block_8": (242, 177, 121),
