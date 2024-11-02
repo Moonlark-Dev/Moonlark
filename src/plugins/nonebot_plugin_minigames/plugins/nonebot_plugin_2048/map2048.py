@@ -16,7 +16,7 @@
 # ##############################################################################
 import copy
 import random
-
+from nonebot.log import logger
 from src.plugins.nonebot_plugin_finding_the_trail.utils.enums import Directions
 from src.plugins.nonebot_plugin_minigames.plugins.nonebot_plugin_2048.image import draw_map
 
@@ -39,6 +39,7 @@ class Map2048:
         return False
 
     def draw(self) -> bytes:
+        logger.debug(str(self.map))
         return draw_map(self.map)
 
     def put_number(self, number: int = 2) -> None:
