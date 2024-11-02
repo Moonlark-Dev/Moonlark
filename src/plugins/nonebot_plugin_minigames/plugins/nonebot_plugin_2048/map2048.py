@@ -16,7 +16,7 @@
 # ##############################################################################
 import copy
 import random
-
+from nonebot.log import logger
 from src.plugins.nonebot_plugin_finding_the_trail.utils.enums import Directions
 from src.plugins.nonebot_plugin_minigames.plugins.nonebot_plugin_2048.image import draw_map
 
@@ -36,10 +36,10 @@ class Map2048:
         elif number == 4096:
             self.score *= 5
             return True
-        else:
-            return False
+        return False
 
     def draw(self) -> bytes:
+        logger.debug(str(self.map))
         return draw_map(self.map)
 
     def put_number(self, number: int = 2) -> None:
@@ -78,7 +78,7 @@ class Map2048:
                         self.map[row][col] = 0
                         if origin == num:
                             if self.add_craft_score(num):
-                                self.map[row - 1][col] = 0
+                                self.map[row + 1][col] = 0
                             break
                     row += 1
 
@@ -92,7 +92,7 @@ class Map2048:
                         self.map[row][col] = 0
                         if origin == num:
                             if self.add_craft_score(num):
-                                self.map[row - 1][col] = 0
+                                self.map[row][col - 1] = 0
                             break
                     col -= 1
 
@@ -107,7 +107,7 @@ class Map2048:
                         self.map[row][col] = 0
                         if origin == num:
                             if self.add_craft_score(num):
-                                self.map[row - 1][col] = 0
+                                self.map[row][col + 1] = 0
                             break
                     col += 1
 
