@@ -70,18 +70,10 @@ class Map2048:
                     current_row -= 1
 
     def move_down(self) -> None:
-        for row in range(1, len(self.map)):
-            for col in range(len(self.map[0])):
-                current_row = len(self.map) - row
-                while current_row > 0:
-                    num = self.map[current_row][col]
-                    if (origin := self.map[current_row + 1][col]) in [0, num]:
-                        self.map[current_row + 1][col] += num
-                        self.map[current_row][col] = 0
-                        if origin == num:
-                            if self.add_craft_score(num):
-                                self.map[current_row + 1][col] = 0
-                    current_row -= 1
+        # 将地图反过来
+        self.map = self.map[::-1]
+        self.move_up()
+        self.map = self.map[::-1]
 
     def move_left(self) -> None:
         for row in range(len(self.map)):
@@ -97,18 +89,11 @@ class Map2048:
                     col -= 1
 
     def move_right(self) -> None:
-        for row in range(len(self.map)):
-            for col in range(1, len(self.map[0])):
-                current_col = len(self.map[0]) - col
-                while current_col > 3:
-                    num = self.map[row][current_col]
-                    if (origin := self.map[row][current_col + 1]) in [0, num]:
-                        self.map[row][current_col + 1] += num
-                        self.map[row][current_col] = 0
-                        if origin == num:
-                            if self.add_craft_score(num):
-                                self.map[row][current_col + 1] = 0
-                    current_col -= 1
+        for r in range(len(self.map)):
+            self.map[r] = self.map[r][::-1]
+        self.move_left()
+        for r in range(len(self.map)):
+            self.map[r] = self.map[r][::-1]
 
     def get_score(self) -> int:
         return self.score
