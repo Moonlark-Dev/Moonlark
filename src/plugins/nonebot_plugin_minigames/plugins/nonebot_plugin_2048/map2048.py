@@ -41,7 +41,7 @@ class Map2048:
         logger.debug(str(self.map))
         return draw_map(self.map)
 
-    def put_number(self, number: int = 2) -> None:
+    def put_number(self) -> None:
         free_pos = []
         for row in range(len(self.map)):
             for col in range(len(self.map[row])):
@@ -50,7 +50,10 @@ class Map2048:
         if not free_pos:
             raise ValueError("地图已满")
         target_pos = random.choice(free_pos)
-        self.map[target_pos[0]][target_pos[1]] = number
+        if random.random() <= 0.1:
+            self.map[target_pos[0]][target_pos[1]] = 4
+        else:
+            self.map[target_pos[0]][target_pos[1]] = 2
 
     def move_up(self) -> None:
         for row in range(1, len(self.map)):
