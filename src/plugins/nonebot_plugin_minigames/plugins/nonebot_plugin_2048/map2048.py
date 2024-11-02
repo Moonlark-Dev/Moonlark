@@ -98,7 +98,7 @@ class Map2048:
 
     def move_right(self) -> None:
         for row in range(len(self.map)):
-            for col in range(len(self.map[row])):
+            for col in range(1, len(self.map[row])):
                 col = len(self.map[row]) - col
                 while col < 3:
                     num = self.map[row][col]
