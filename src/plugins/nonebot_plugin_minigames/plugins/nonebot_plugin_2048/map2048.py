@@ -54,6 +54,7 @@ class Map2048:
             self.map[target_pos[0]][target_pos[1]] = 4
         else:
             self.map[target_pos[0]][target_pos[1]] = 2
+
     def move_up(self) -> None:
         for row in range(1, len(self.map)):
             for col in range(len(self.map[row])):
