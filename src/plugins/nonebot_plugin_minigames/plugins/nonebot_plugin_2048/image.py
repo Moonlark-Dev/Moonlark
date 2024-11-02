@@ -48,4 +48,5 @@ def draw_map(game_map: list[list[int]]) -> Image:
                 image.paste(draw_number_block(block), (x, y))
             x += 121
         y += 121
+        x = 0
     return image
