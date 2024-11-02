@@ -27,6 +27,7 @@ class Map2048:
         self.map = [[0 for _ in range(4)] for _ in range(4)]
         self.score = 0
         self.put_number()
+        self.put_number()
 
     def add_craft_score(self, number: int) -> bool:
         self.score += number * 7
@@ -64,7 +65,7 @@ class Map2048:
                             if self.add_craft_score(num):
                                 self.map[row - 1][col] = 0
                             break
-                        row -= 1
+                    row -= 1
 
     def move_down(self) -> None:
         for row in range(1, len(self.map)):
@@ -79,7 +80,7 @@ class Map2048:
                             if self.add_craft_score(num):
                                 self.map[row - 1][col] = 0
                             break
-                        row += 1
+                    row += 1
 
     def move_left(self) -> None:
         for row in range(len(self.map)):
@@ -93,7 +94,7 @@ class Map2048:
                             if self.add_craft_score(num):
                                 self.map[row - 1][col] = 0
                             break
-                        col -= 1
+                    col -= 1
 
     def move_right(self) -> None:
         for row in range(len(self.map)):
@@ -108,7 +109,7 @@ class Map2048:
                             if self.add_craft_score(num):
                                 self.map[row - 1][col] = 0
                             break
-                        col += 1
+                    col += 1
 
     def get_score(self) -> int:
         return self.score
