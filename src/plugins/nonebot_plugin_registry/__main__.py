@@ -13,6 +13,7 @@ from ..nonebot_plugin_larkuser.models import UserData
 from ..nonebot_plugin_larkutils.user import get_user_id
 from .lang import lang
 from src.plugins.nonebot_plugin_larkuser.user.utils import is_user_registered
+from nonebot_plugin_userinfo import EventUserInfo, UserInfo
 
 register = on_command("register")
 
@@ -62,16 +63,22 @@ async def _(state: T_State, ship_code: str = ArgPlainText(), user_id: str = get_
 
 
 @register.got("confirm")
-async def _(state: T_State, confirm: str = ArgPlainText(), user_id: str = get_user_id()) -> None:
+async def _(state: T_State, confirm: str = ArgPlainText(), user_id: str = get_user_id(), user: UserInfo = EventUserInfo()) -> None:
     logger.debug(f"{confirm=}")
     logger.debug(f"{state=}")
     if confirm.lower() in ["cancel", "n"]:
         await lang.finish("command.cancel", user_id)
     async with get_session() as session:
-        user_data = await session.get_one(UserData, user_id)
+        user_data = await session.get(UserData, user_id)
+        if user_data is None:
+            user_data = UserData(
+                user_id=user.user_id,
+                nickname=user.user_name
+            )
         user_data.ship_code = state["ship_code"]
         user_data.gender = state["gender"]
         user_data.register_time = datetime.now()
         await lang.send("command.confirm", user_id, user_data.nickname)
+        await session.merge(user_data)
         await session.commit()
     await register.finish()
