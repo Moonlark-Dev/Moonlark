@@ -1,4 +1,5 @@
 from ..utils.avatar import is_user_avatar_updated, update_user_avatar
+from ..utils.user import get_user
 from ...nonebot_plugin_larkutils import get_main_account
 from nonebot import on_message
 from nonebot.log import logger
@@ -9,21 +10,20 @@ from sqlalchemy.exc import NoResultFound
 from ..models import UserData
 
 
-@on_message(block=False, priority=5).handle()
+async def checker(user: UserInfo = EventUserInfo()) -> bool:
+    u = await get_user(user.user_id)
+    return u.is_main_account() and u.get_config_key("lock_nickname_and_avatar", False)
+
+
+@on_message(block=False, priority=5, rule=checker).handle()
 async def _(session: async_scoped_session, user: UserInfo = EventUserInfo()) -> None:
-    if user.user_id != await get_main_account(user.user_id):
-        return
     try:
         user_data = await session.get_one(UserData, {"user_id": user.user_id})
     except NoResultFound:
-        logger.info(f"识别到新用户 {user.user_id=}")
-        user_data = UserData(user_id=user.user_id, nickname=user.user_name)
-        session.add(user_data)
-        return await session.commit()
+        return
     if user_data.nickname != user.user_name:
         logger.info(f"用户 {user_data.user_id} 修改了其昵称 ({user_data.nickname} => {user.user_name})")
         user_data.nickname = user.user_name
-    logger.debug(f"{user_data.register_time=} {user.user_avatar=}")
     if user.user_avatar and user_data.register_time:
         avatar = await user.user_avatar.get_image()
         if await is_user_avatar_updated(user_data.user_id, avatar):

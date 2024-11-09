@@ -14,5 +14,6 @@ require("nonebot_plugin_larkutils")
 require("nonebot_plugin_larkuser")
 require("nonebot_plugin_preview")
 require("nonebot_plugin_alconna")
+require("nonebot_plugin_userinfo")
 
 from . import __main__
