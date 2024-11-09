@@ -63,7 +63,9 @@ async def _(state: T_State, ship_code: str = ArgPlainText(), user_id: str = get_
 
 
 @register.got("confirm")
-async def _(state: T_State, confirm: str = ArgPlainText(), user_id: str = get_user_id(), user: UserInfo = EventUserInfo()) -> None:
+async def _(
+    state: T_State, confirm: str = ArgPlainText(), user_id: str = get_user_id(), user: UserInfo = EventUserInfo()
+) -> None:
     logger.debug(f"{confirm=}")
     logger.debug(f"{state=}")
     if confirm.lower() in ["cancel", "n"]:
@@ -71,10 +73,7 @@ async def _(state: T_State, confirm: str = ArgPlainText(), user_id: str = get_us
     async with get_session() as session:
         user_data = await session.get(UserData, user_id)
         if user_data is None:
-            user_data = UserData(
-                user_id=user.user_id,
-                nickname=user.user_name
-            )
+            user_data = UserData(user_id=user.user_id, nickname=user.user_name)
         user_data.ship_code = state["ship_code"]
         user_data.gender = state["gender"]
         user_data.register_time = datetime.now()

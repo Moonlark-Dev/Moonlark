@@ -43,7 +43,6 @@ class MoonlarkUser(ABC):
         self.main_account = True
         self.config = {}
 
-
     @abstractmethod
     async def setup_user(self):
         pass
@@ -106,7 +105,7 @@ class MoonlarkUser(ABC):
         vimcoin: Optional[float] = None,
         health: Optional[float] = None,
         favorability: Optional[float] = None,
-        config: Optional[dict] = None
+        config: Optional[dict] = None,
     ) -> None:
         pass
 

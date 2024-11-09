@@ -37,7 +37,7 @@ class MoonlarkRegisteredUser(MoonlarkUser):
         vimcoin: Optional[float] = None,
         health: Optional[float] = None,
         favorability: Optional[float] = None,
-        config: Optional[dict] = None
+        config: Optional[dict] = None,
     ) -> None:
         if not self.is_registered():
             raise UserNotRegistered
@@ -95,7 +95,7 @@ class MoonlarkRegisteredGuest(MoonlarkUser):
         vimcoin: Optional[float] = None,
         health: Optional[float] = None,
         favorability: Optional[float] = None,
-        config: Optional[dict] = None
+        config: Optional[dict] = None,
     ) -> None:
         user = {}
         if experience:
@@ -115,7 +115,14 @@ class MoonlarkRegisteredGuest(MoonlarkUser):
     async def setup_user(self) -> None:
         user = guest_users.get(
             self.user_id,
-            {"nickname": f"GUEST-{self.user_id}", "vimcoin": 0, "experience": 0, "health": 0, "favorability": 0, "config": {}},
+            {
+                "nickname": f"GUEST-{self.user_id}",
+                "vimcoin": 0,
+                "experience": 0,
+                "health": 0,
+                "favorability": 0,
+                "config": {},
+            },
         )
         self.nickname = user["nickname"]
         self.register_time = datetime.now()
