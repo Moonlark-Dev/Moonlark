@@ -14,6 +14,7 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
+import base64
 from datetime import datetime
 from typing import Optional
 
@@ -24,6 +25,7 @@ from src.plugins.nonebot_plugin_larkuser.models import UserData
 from src.plugins.nonebot_plugin_larkuser.user.base import MoonlarkUser
 from src.plugins.nonebot_plugin_larkuser.utils.avatar import get_user_avatar
 from src.plugins.nonebot_plugin_larkutils import get_main_account
+import json
 
 
 class MoonlarkRegisteredUser(MoonlarkUser):
@@ -35,6 +37,7 @@ class MoonlarkRegisteredUser(MoonlarkUser):
         vimcoin: Optional[float] = None,
         health: Optional[float] = None,
         favorability: Optional[float] = None,
+        config: Optional[dict] = None
     ) -> None:
         if not self.is_registered():
             raise UserNotRegistered
@@ -50,6 +53,8 @@ class MoonlarkRegisteredUser(MoonlarkUser):
                 user.health = health
             if favorability:
                 user.favorability = favorability
+            if config:
+                user.config = base64.b64encode(json.dumps(config).encode())
             await session.commit()
         await self.setup_user()
 
@@ -73,6 +78,7 @@ class MoonlarkRegisteredUser(MoonlarkUser):
             self.health = user.health
             self.fav = user.favorability
             self.avatar = await get_user_avatar(self.user_id)
+            self.config = json.loads(base64.b64decode(user.config))
         if not self.nickname:
             self.nickname = f"用户-{self.user_id}"
 
@@ -89,6 +95,7 @@ class MoonlarkRegisteredGuest(MoonlarkUser):
         vimcoin: Optional[float] = None,
         health: Optional[float] = None,
         favorability: Optional[float] = None,
+        config: Optional[dict] = None
     ) -> None:
         user = {}
         if experience:
@@ -99,6 +106,8 @@ class MoonlarkRegisteredGuest(MoonlarkUser):
             user["health"] = health
         if favorability:
             user["favorability"] = favorability
+        if config:
+            user["config"] = config
 
     async def setup_user_id(self) -> None:
         pass
@@ -106,7 +115,7 @@ class MoonlarkRegisteredGuest(MoonlarkUser):
     async def setup_user(self) -> None:
         user = guest_users.get(
             self.user_id,
-            {"nickname": f"GUEST-{self.user_id}", "vimcoin": 0, "experience": 0, "health": 0, "favorability": 0},
+            {"nickname": f"GUEST-{self.user_id}", "vimcoin": 0, "experience": 0, "health": 0, "favorability": 0, "config": {}},
         )
         self.nickname = user["nickname"]
         self.register_time = datetime.now()
@@ -117,3 +126,4 @@ class MoonlarkRegisteredGuest(MoonlarkUser):
         self.health = user["health"]
         self.fav = user["favorability"]
         self.avatar = None
+        self.config = user["config"]

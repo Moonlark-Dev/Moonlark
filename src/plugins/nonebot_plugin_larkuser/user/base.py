@@ -15,27 +15,34 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
+from typing import Any
 import base64
 from datetime import datetime
-from typing import Optional
+from typing import Optional, TypeVar
 from abc import ABC, abstractmethod
 from src.plugins.nonebot_plugin_larkuser.utils.level import get_level_by_experience
+
+T = TypeVar("T")
 
 
 class MoonlarkUser(ABC):
 
     def __init__(self, user_id: str):
         self.user_id = user_id
-        self.nickname = ""
+
         self.register_time: Optional[datetime] = None
         self.ship_code: Optional[str] = None
         self.gender: Optional[bool] = None
+        self.avatar: Optional[bytes] = None
+
+        self.nickname = ""
         self.vimcoin = 0.0
         self.experience = 0
         self.health = 100.0
         self.fav = 0.0
         self.main_account = True
-        self.avatar: Optional[bytes] = None
+        self.config = {}
+
 
     @abstractmethod
     async def setup_user(self):
@@ -99,6 +106,7 @@ class MoonlarkUser(ABC):
         vimcoin: Optional[float] = None,
         health: Optional[float] = None,
         favorability: Optional[float] = None,
+        config: Optional[dict] = None
     ) -> None:
         pass
 
@@ -116,3 +124,10 @@ class MoonlarkUser(ABC):
 
     async def has_vimcoin(self, count: float) -> bool:
         return self.vimcoin >= count
+
+    def get_config_key(self, key: str, default: Optional[T] = None) -> T:
+        return self.config.get(key, default)
+
+    async def set_config_key(self, key: str, value: Any) -> None:
+        self.config[key] = value
+        await self.set_data(self.user_id, config=self.config)

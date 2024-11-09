@@ -29,6 +29,7 @@ class MoonlarkUnknownUser(MoonlarkUser):
         vimcoin: Optional[float] = None,
         health: Optional[float] = None,
         favorability: Optional[float] = None,
+        config: Optional[dict] = None
     ) -> NoReturn:
         raise TypeError("无法对未知用户（-1）执行此操作！")
 

@@ -15,3 +15,5 @@ class UserData(Model):
     vimcoin: Mapped[float] = mapped_column(default=0.0)
     health: Mapped[float] = mapped_column(default=100.0)
     favorability: Mapped[float] = mapped_column(default=0.0)
+    config: Mapped[bytes] = mapped_column(default=b'e30=')
+
