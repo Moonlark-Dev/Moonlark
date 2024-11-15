@@ -34,7 +34,7 @@ def upgrade(name: str = "") -> None:
     )
     op.create_table(
         "nonebot_plugin_larklang_languagekeycache",
-        sa.Column("id_", sa.Integer(), nullable=False, auto_incresement=True),
+        sa.Column("id_", sa.Integer(), nullable=False, autoincrement=True),
         sa.Column("language", sa.String(length=16), nullable=False),
         sa.Column("plugin", sa.String(length=20), nullable=False),
         sa.Column("key", sa.String(length=32), nullable=False),

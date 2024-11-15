@@ -102,7 +102,7 @@ class LangLoader:
                 continue
             async with aiofiles.open(plugin, encoding="utf-8") as f:
                 keys = KeysParser(yaml.safe_load(await f.read()), self.format).get_keys()
-            await self.commit_keys(lang.name, plugin[:-5], keys)
+            await self.commit_keys(lang.name, plugin.name[:-5], keys)
 
     async def commit_keys(self, langugage: str, plugin: str, keys: dict[str, LanguageKey]) -> None:
         for key, value in keys.items():
