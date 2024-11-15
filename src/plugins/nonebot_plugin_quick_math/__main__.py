@@ -9,7 +9,8 @@ quick_math = on_alconna(
     Alconna(
         "quick-math",
         Subcommand("rank", Args["rank_type", Literal["total", "max"], "max"]),
-        Subcommand("award"),
+        Subcommand("points"),
+        Subcommand("exchange", Args["count?", int]),
         Option("--level|-l", Args["start_level", int, 1]),
     )
 )

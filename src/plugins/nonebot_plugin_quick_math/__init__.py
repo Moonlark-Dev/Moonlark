@@ -19,6 +19,7 @@ require("nonebot_plugin_achievement")
 require("nonebot_plugin_localstore")
 require("nonebot_plugin_larkuser")
 require("nonebot_plugin_alconna")
+require("nonebot_plugin_finding_the_trail")
 require("nonebot_plugin_apscheduler")
 
-from .commands import main, rank, award
+from .commands import main, rank

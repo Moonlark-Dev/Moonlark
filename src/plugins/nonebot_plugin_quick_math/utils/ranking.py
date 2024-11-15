@@ -34,10 +34,10 @@ class TotalRanking(WebRanking):
         return [
             {
                 "user_id": user.user_id,
-                "data": user.total_point,
+                "data": user.experience,
                 "info": None,
             }
-            async for user in get_user_list(QuickMathUser.total_point)
+            async for user in get_user_list(QuickMathUser.experience)
         ]
 
 
