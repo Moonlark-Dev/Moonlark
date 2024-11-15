@@ -30,17 +30,13 @@ class KeysParser:
             for key, value in self.keys.items():
                 if key.startswith(t) and value.use_template:
                     format_keys[key] = LanguageKey(
-                        text=[
-                            self.keys[f"{t}.__template__"].text[0].format(v, **f)
-                            for v in value.text
-                        ],
-                        use_template=False
+                        text=[self.keys[f"{t}.__template__"].text[0].format(v, **f) for v in value.text],
+                        use_template=False,
                     )
         for key, value in format_keys.items():
             self.keys[key] = value
         for t in templates:
             self.keys.pop(f"{t}.__template__")
-
 
     def set_key(self, key: str, value: LanguageKey) -> None:
         string_key = ".".join(self.key + [key])
@@ -51,7 +47,7 @@ class KeysParser:
             if isinstance(value, str):
                 self.set_key(key, LanguageKey(text=[value]))
             elif isinstance(value, list):
-                 self.set_key(key, LanguageKey(text=value))
+                self.set_key(key, LanguageKey(text=value))
             elif isinstance(value, dict):
                 if "text" in value:
                     if not isinstance(value["text"], list):
@@ -66,6 +62,7 @@ class KeysParser:
 
     def get_keys(self) -> dict[str, LanguageKey]:
         return self.keys
+
 
 class LangLoader:
     def __init__(self, base_path: Path, format_: Any) -> None:
@@ -109,12 +106,9 @@ class LangLoader:
 
     async def commit_keys(self, langugage: str, plugin: str, keys: dict[str, LanguageKey]) -> None:
         for key, value in keys.items():
-            self.session.add(LanguageKeyCache(
-                language=langugage,
-                plugin=plugin,
-                key=key,
-                text=json.dumps(value).encode()
-            ))
+            self.session.add(
+                LanguageKeyCache(language=langugage, plugin=plugin, key=key, text=json.dumps(value).encode())
+            )
 
     def get_languages(self) -> dict[str, LanguageData]:
         return self.languages

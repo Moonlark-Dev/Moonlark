@@ -5,10 +5,12 @@ from typing import Optional
 from sqlalchemy import String
 from sqlalchemy.orm import Mapped, mapped_column
 
+
 class DisplaySetting(Model):
     user_id: Mapped[str] = mapped_column(String(128), primary_key=True)
     language: Mapped[str] = mapped_column(String(16), default="zh_hans")
     theme: Mapped[str] = mapped_column(String(16), default="default")
+
 
 class LanguageKeyCache(Model):
     id_: Mapped[int] = mapped_column(primary_key=True, auto_incresement=True)
@@ -37,5 +39,3 @@ class LanguageData(BaseModel):
     # 其他节
     display: LanguageDisplayData = LanguageDisplayData()
     patch: Optional[str] = None
-
-

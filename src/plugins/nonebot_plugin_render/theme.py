@@ -25,16 +25,14 @@ async def get_user_theme(user_id: str) -> str:
         theme = config.render_default_theme
     return theme
 
+
 async def set_theme(user_id: str, theme: str) -> None:
     async with get_session() as session:
         user = await session.get(DisplaySetting, user_id)
         if user is None:
-            user = DisplaySetting(
-                user_id=user_id,
-                theme=theme
-            )
+            user = DisplaySetting(user_id=user_id, theme=theme)
         else:
-            user.theme=theme
+            user.theme = theme
         await session.merge(user)
         await session.commit()
 

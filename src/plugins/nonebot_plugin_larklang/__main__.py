@@ -19,11 +19,7 @@ import copy
 
 languages = {}
 config = get_plugin_config(Config)
-builtin_format = {
-    "__prefix__": config.command_start[0]
-}
-
-
+builtin_format = {"__prefix__": config.command_start[0]}
 
 
 @get_driver().on_startup
@@ -55,10 +51,7 @@ def apply_template(language: str, plugin: str, key: str, text: str) -> str:
 
 
 async def get_text(language: Optional[str], plugin: str, key: str, session: AsyncSession, *args, **kwargs) -> str:
-    expr = select(LanguageKeyCache.text).where(
-        LanguageKeyCache.plugin == plugin,
-        LanguageKeyCache.key == key
-    )
+    expr = select(LanguageKeyCache.text).where(LanguageKeyCache.plugin == plugin, LanguageKeyCache.key == key)
     if language is not None:
         expr = expr.where(LanguageKeyCache.language == language)
     data = (await session.scalars(expr)).first()
@@ -72,6 +65,7 @@ async def get_text(language: Optional[str], plugin: str, key: str, session: Asyn
         return text.format(*args, **kwargs, **builtin_format)
     except IndexError:
         return text
+
 
 def get_languages() -> dict[str, LanguageData]:
     return languages
