@@ -1,20 +1,28 @@
 from pathlib import Path
 from pydantic import BaseModel
+from nonebot_plugin_orm import Model
+from typing import Optional
+from sqlalchemy import String
+from sqlalchemy.orm import Mapped, mapped_column
 
 
-class LanguageLockData(BaseModel):
-    enable: bool = False
-    price: int = 0
+class DisplaySetting(Model):
+    user_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    language: Mapped[str] = mapped_column(String(16), default="zh_hans")
+    theme: Mapped[str] = mapped_column(String(16), default="default")
+
+
+class LanguageKeyCache(Model):
+    id_: Mapped[int] = mapped_column(primary_key=True, auto_incresement=True)
+    language: Mapped[str] = mapped_column(String(16))
+    plugin: Mapped[str] = mapped_column(String(20))
+    key: Mapped[str] = mapped_column(String(32))
+    text: Mapped[bytes]
 
 
 class LanguageDisplayData(BaseModel):
     hidden: bool = False
     description: str = ""
-
-
-class LanguagePatchData(BaseModel):
-    patch: bool = False
-    base: str = "zh_hans"
 
 
 class LanguageKey(BaseModel):
@@ -25,11 +33,9 @@ class LanguageKey(BaseModel):
 class LanguageData(BaseModel):
     # 由 Moonlark 自动填入
     path: Path
-    keys: dict[str, dict[str, dict[str, LanguageKey]]] = {}
     # Language 节
     author: str = "Unknown"
     version: str = "latest"
     # 其他节
-    lock: LanguageLockData = LanguageLockData()
     display: LanguageDisplayData = LanguageDisplayData()
-    patch: LanguagePatchData = LanguagePatchData()
+    patch: Optional[str] = None
