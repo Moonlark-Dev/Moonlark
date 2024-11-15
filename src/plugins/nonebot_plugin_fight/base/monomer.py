@@ -19,6 +19,7 @@ from abc import ABC, abstractmethod
 import random
 from .team import Team
 
+
 class Monomer(ABC):
 
     def __init__(self, team: Team):

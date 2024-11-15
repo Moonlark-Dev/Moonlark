@@ -8,6 +8,3 @@ __plugin_meta__ = PluginMetadata(
     usage="",
     config=Config,
 )
-
-
-

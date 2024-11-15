@@ -16,8 +16,10 @@
 # ##############################################################################
 
 from typing import Awaitable, Optional, Callable, TYPE_CHECKING
+
 if TYPE_CHECKING:
     from .monomer import Monomer
+
 
 class Team:
 
