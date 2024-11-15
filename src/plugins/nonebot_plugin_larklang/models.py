@@ -15,8 +15,8 @@ class DisplaySetting(Model):
 class LanguageKeyCache(Model):
     id_: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     language: Mapped[str] = mapped_column(String(16))
-    plugin: Mapped[str] = mapped_column(String(20))
-    key: Mapped[str] = mapped_column(String(32))
+    plugin: Mapped[str] = mapped_column(String(32))
+    key: Mapped[str] = mapped_column(String(64))
     text: Mapped[bytes]
 
 
