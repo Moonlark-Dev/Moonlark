@@ -11,9 +11,9 @@ from ...nonebot_plugin_ranking import generate_image
 async def _(rank_type: Literal["total", "max"], user_id: str = get_user_id()) -> None:
     image = await generate_image(
         [
-            {"user_id": user.user_id, "data": user.max_point if rank_type == "max" else user.total_point, "info": None}
+            {"user_id": user.user_id, "data": user.max_point if rank_type == "max" else user.experience, "info": None}
             async for user in get_user_list(
-                QuickMathUser.max_point if rank_type == "max" else QuickMathUser.total_point
+                QuickMathUser.max_point if rank_type == "max" else QuickMathUser.experience
             )
         ],
         user_id,
