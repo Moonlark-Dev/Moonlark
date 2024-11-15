@@ -10,4 +10,3 @@ class QuickMathUser(Model):
     max_point: Mapped[int] = mapped_column(default=0)
     last_use: Mapped[datetime]
     exchanged: Mapped[int] = mapped_column(defalut=0)
-

@@ -12,9 +12,7 @@ async def _(rank_type: Literal["total", "max"], user_id: str = get_user_id()) ->
     image = await generate_image(
         [
             {"user_id": user.user_id, "data": user.max_point if rank_type == "max" else user.experience, "info": None}
-            async for user in get_user_list(
-                QuickMathUser.max_point if rank_type == "max" else QuickMathUser.experience
-            )
+            async for user in get_user_list(QuickMathUser.max_point if rank_type == "max" else QuickMathUser.experience)
         ],
         user_id,
         await lang.text(f"rank.title-{1 if rank_type == 'max' else 2}", user_id),
