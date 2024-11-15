@@ -22,4 +22,4 @@ require("nonebot_plugin_alconna")
 require("nonebot_plugin_finding_the_trail")
 require("nonebot_plugin_apscheduler")
 
-from .commands import main, rank
+from .commands import main, rank, points, exchange
