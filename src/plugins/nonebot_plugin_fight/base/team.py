@@ -23,10 +23,11 @@ if TYPE_CHECKING:
 
 class Team:
 
-    def __init__(self, team_id: str = "team.a", team_skill: None = None) -> None:
+    def __init__(self, team_id: str = "team.a", selectable: bool = True, team_skill: None = None) -> None:
         self.team_id = team_id
         self.team_skill = team_skill
         self.team_skill_power = 0
+        self.selectable = selectable
         self.skill_point = 3
         self.monomers = []
 
@@ -34,5 +35,11 @@ class Team:
         self.monomers.append(monomer)
         return self
 
+    def is_selectable(self) -> bool:
+        return self.selectable
+
     def get_team_id(self) -> str:
         return self.team_id
+
+    def get_monomers(self) -> list["Monomer"]:
+        return self.monomers

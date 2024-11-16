@@ -34,6 +34,9 @@ class Monomer(ABC):
     async def setup(self) -> None:
         pass
 
+    def is_selectable(self) -> bool:
+        return self.team.is_selectable()
+
     def reduce_action_value(self, value: float) -> None:
         self.reduced_action_value += value
 
@@ -46,6 +49,12 @@ class Monomer(ABC):
     @abstractmethod
     async def on_action(self, teams: list[Team]) -> None:
         pass
+
+    async def is_actionable(self) -> bool:
+        return self.health > 0
+
+    def get_team(self) -> Team:
+        return self.team
 
     # TODO type_ 改为 Enum
     async def attacked(self, type_: str, harm: int, monomer: "Monomer") -> float:
