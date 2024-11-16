@@ -169,9 +169,9 @@ async def _(matcher: Matcher, user_id: str = get_user_id()) -> None:
         },
         "avatar": base64.b64encode(user.avatar).decode() if user.avatar is not None else None,
     }
-    image = await render_template("sign.html.jinja", await lang.text("image.title", user_id), user_id, templates)
     msg = UniMessage().image(raw=image)
     data.last_sign = date.today()
     await session.commit()
     await session.close()
+    image = await render_template("sign.html.jinja", await lang.text("image.title", user_id), user_id, templates)
     await matcher.finish(await msg.export(), at_sender=True)
