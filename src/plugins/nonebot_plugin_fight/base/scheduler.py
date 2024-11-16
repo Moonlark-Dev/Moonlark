@@ -1,11 +1,12 @@
 from .team import Team
 from .monomer import Monomer
 
+
 class Scheduler:
 
     def __init__(self, teams: list[Team]) -> None:
         self.teams = teams
-    
+
     def get_monomers(self) -> list[Monomer]:
         monomers = []
         for team in self.teams:
@@ -22,11 +23,13 @@ class Scheduler:
             m.reduce_action_value(action_monomer.get_action_value())
         action_monomer.reset_action_value()
         return action_monomer
-    
+
     async def loop(self) -> None:
         while self.is_continuable():
             action_monomer = self.get_action_monomer()
-            await action_monomer.on_action([t for t in self.teams if t != action_monomer.get_team() and t.is_selectable()])
+            await action_monomer.on_action(
+                [t for t in self.teams if t != action_monomer.get_team() and t.is_selectable()]
+            )
 
     def is_continuable(self) -> bool:
         return len(self.get_actionable_team()) > 1
