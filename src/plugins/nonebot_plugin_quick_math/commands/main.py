@@ -67,6 +67,7 @@ async def _(start_level: Match[int], user_id: str = get_user_id()) -> None:
                     break
                 point -= point // 2
                 is_respawned = True
+                continue
             break
         elif resp.extract_plain_text().lower() in ["skip", "tg"]:
             skipped_question += 1

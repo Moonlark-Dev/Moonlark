@@ -1,33 +1,38 @@
 import inspect
-import aiofiles
+import json
+from typing import Optional
 import random
-import traceback
 from pathlib import Path
 from types import ModuleType
-
 from typing import NoReturn
 from nonebot import get_driver, get_plugin_by_module_name, get_plugin_config, logger
 from nonebot.matcher import Matcher
-from nonebot_plugin_localstore import get_data_dir
-
 from ..nonebot_plugin_larkutils import parse_special_user_id
 from .config import Config
 from .exceptions import *
 from .loader import LangLoader
-from .models import LanguageData
+from .models import LanguageData, LanguageKeyCache, DisplaySetting
+from nonebot_plugin_orm import get_session, AsyncSession
+from sqlalchemy import select
+import copy
+
 
 languages = {}
 config = get_plugin_config(Config)
-data_dir = get_data_dir("nonebot_plugin_larklang")
+builtin_format = {"__prefix__": config.command_start[0]}
 
 
 @get_driver().on_startup
 async def load_languages() -> None:
     global languages
-    loader = LangLoader(Path(config.language_dir))
+    async with get_session() as session:
+        for item in await session.scalars(select(LanguageKeyCache)):
+            await session.delete(item)
+        await session.commit()
+    loader = LangLoader(Path(config.language_dir), builtin_format)
     await loader.init()
     await loader.load()
-    languages = loader.get_languages().copy()
+    languages = copy.deepcopy(loader.get_languages())
 
 
 def get_module_name(module: ModuleType | None) -> str | None:
@@ -45,28 +50,19 @@ def apply_template(language: str, plugin: str, key: str, text: str) -> str:
         return text
 
 
-def get_text(language: str, plugin: str, key: str, *args, retry: bool = True, **kwargs) -> str:
-    k = key.split(".", 1)
+async def get_text(language: Optional[str], plugin: str, key: str, session: AsyncSession, *args, **kwargs) -> str:
+    expr = select(LanguageKeyCache.text).where(LanguageKeyCache.plugin == plugin, LanguageKeyCache.key == key)
+    if language is not None:
+        expr = expr.where(LanguageKeyCache.language == language)
+    data = (await session.scalars(expr)).first()
+    if data is None:
+        if language is not None:
+            return await get_text(None, plugin, key, session, *args, **kwargs)
+        else:
+            return f"[缺失: {plugin}.{key} ({args}; {kwargs})]"
+    text = random.choice(json.loads(data))
     try:
-        data = languages[language].keys[plugin][k[0]][k[1]]
-    except KeyError:
-        logger.warning(f"获取键失败: {traceback.format_exc()}")
-        if retry:
-            if language in languages and languages[language].patch.patch:
-                return get_text(languages[language].patch.base, plugin, key, *args, retry=False, **kwargs)
-            for lang in config.language_index_order:
-                text = get_text(lang, plugin, key, *args, retry=False, **kwargs)
-                if text.startswith("<缺失: ") and text.endswith(">"):
-                    continue
-                return text
-        return f"<缺失: {plugin}.{key}; {args}; {kwargs}>"
-    else:
-        text = random.choice(data.text)
-        if data.use_template:
-            text = apply_template(language, plugin, k[0], text)
-    logger.debug(f"GetTEXT: {plugin}.{key}; {args}; {kwargs}")
-    try:
-        return text.format(*args, **kwargs, __prefix__=config.command_start[0])
+        return text.format(*args, **kwargs, **builtin_format)
     except IndexError:
         return text
 
@@ -76,22 +72,28 @@ def get_languages() -> dict[str, LanguageData]:
 
 
 async def set_user_language(user_id: str, language: str) -> None:
-    async with aiofiles.open(data_dir.joinpath(user_id), "w", encoding="utf-8") as f:
-        await f.write(language)
+    async with get_session() as session:
+        user = await session.get(DisplaySetting, user_id)
+        if user is None:
+            user = DisplaySetting(user_id=user_id, language=language)
+        else:
+            user.language = language
+        await session.merge(user)
+        await session.commit()
 
 
-async def get_user_language(user_id: str) -> str:
+async def get_user_language(user_id: str, session: AsyncSession) -> str:
     if user_id.startswith("mlsid::") and "--lang" in (args := parse_special_user_id(user_id)):
         lang = args["--lang"]
         if lang == "default":
-            lang = config.language_index_order[0]
+            lang = "zh_hans"
         return lang
-    file = data_dir.joinpath(user_id)
-    if file.exists():
-        async with aiofiles.open(file, "r", encoding="utf-8") as f:
-            language = await f.read()
-    else:
-        language = config.language_index_order[0]
+    async with get_session() as session:
+        user = await session.get(DisplaySetting, user_id)
+        if user is not None:
+            language = user.language
+        else:
+            language = "zh_hans"
     if language not in languages:
         await set_user_language(user_id, language := config.language_index_order[0])
     return language
@@ -105,8 +107,11 @@ class LangHelper:
             raise InvalidPluginNameException(self.plugin_name)
 
     async def text(self, key: str, user_id: str | int, *args, **kwargs) -> str:
-        language = await get_user_language(str(user_id))
-        return get_text(language, self.plugin_name, key, *args, **kwargs)
+        session = get_session()
+        language = await get_user_language(str(user_id), session)
+        text = await get_text(language, self.plugin_name, key, session, *args, **kwargs)
+        await session.close()
+        return text
 
     async def is_key_exists(self, key: str, user_id: str | int) -> bool:
         return not (await self.text(key, user_id)).startswith("<缺失: ")
