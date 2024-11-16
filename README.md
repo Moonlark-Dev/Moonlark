@@ -19,9 +19,7 @@
 
 **Moonlark** 是一个开源、稳定、非盈利的多功能聊天机器人，旨在提供一系列有趣且实用或娱乐的功能，满足不同用户的需求。项目基于 Python3 和 Nonebot2 框架开发，能够为 QQ、Discord 等聊天平台的用户提供服务。
 
-## 使用
-
-详见: [使用指南](https://moonlark-wiki.itcdt.top/wiki/%E4%BD%BF%E7%94%A8%E6%8C%87%E5%8D%97)
+如果您想立刻开始使用 Moonlark，请阅读我们的 [使用指南](https://moonlark-wiki.itcdt.top/wiki/%E4%BD%BF%E7%94%A8%E6%8C%87%E5%8D%97)，我们在这里提供了详细的开始使用的方法。
 
 
 ## 贡献
