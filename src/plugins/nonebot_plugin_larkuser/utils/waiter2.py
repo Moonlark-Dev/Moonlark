@@ -26,9 +26,17 @@ from nonebot.adapters import Event
 
 T = TypeVar("T")
 
+
 class WaitUserInput:
 
-    def __init__(self, prompt_text: str, user_id: str, matcher: Matcher, checker: Optional[Callable[[str], bool]], default: str = "") -> None:
+    def __init__(
+        self,
+        prompt_text: str,
+        user_id: str,
+        matcher: Matcher,
+        checker: Optional[Callable[[str], bool]],
+        default: str = "",
+    ) -> None:
         self.prompt_text = prompt_text
         self.user_id = user_id
         self.matcher = matcher
@@ -44,7 +52,9 @@ class WaitUserInput:
     async def handle_message(self, event: Event, user_id: str = get_user_id()) -> None:
         text = event.get_plaintext()
         if not self.checker(text):
-            await lang.finish("prompt.unknown", user_id, at_sender=False, reply_message=True, matcher=self.message_matcher)
+            await lang.finish(
+                "prompt.unknown", user_id, at_sender=False, reply_message=True, matcher=self.message_matcher
+            )
         self.answer = text
 
     async def wait(self, timeout: int = 30) -> None:
@@ -60,5 +70,3 @@ class WaitUserInput:
         if self.answer is not None:
             return parser(self.answer)
         raise ValueError("No input!")
-
-

@@ -61,5 +61,3 @@ async def prompt(
             ignore_error_details,
         )
     return parser(text)
-
-

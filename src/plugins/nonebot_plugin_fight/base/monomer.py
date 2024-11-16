@@ -80,13 +80,7 @@ class Monomer(ABC):
         real_harm = round(harm * (self.get_defuse() / monomer.get_defuse()))
         self.reduce_balance_value(int(real_harm / 2 * (monomer.get_attack_value() / self.get_attack_value())))
         self.health -= real_harm
-        await self.team.scheduler.post_attack_event(
-            self,
-            monomer,
-            real_harm,
-            type_,
-            False
-        )
+        await self.team.scheduler.post_attack_event(self, monomer, real_harm, type_, False)
         return real_harm
 
     def get_attack_value(self) -> int:

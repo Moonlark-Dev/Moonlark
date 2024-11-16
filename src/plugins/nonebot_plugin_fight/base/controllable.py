@@ -1,6 +1,7 @@
 import copy
 
 from ..types import ACTION_EVENT  #  Moonlark - A new ChatBot
+
 #  Copyright (C) 2024  Moonlark Development Team
 #
 #  This program is free software: you can redistribute it and/or modify
@@ -36,7 +37,6 @@ from .monomer import Monomer, Team, ACTION_EVENT
 from abc import ABC
 
 
-
 class ControllableMonomer(Monomer, ABC):
 
     def __init__(self, team: Team, controller: str) -> None:
@@ -58,27 +58,17 @@ class ControllableMonomer(Monomer, ABC):
         events = self.team.get_action_events()
         l = 0
         template_body = {
-            "action_log": [
-                await self.parse_event(event)
-                for event in events
-            ],
+            "action_log": [await self.parse_event(event) for event in events],
             "monomers": [
                 {
                     "index": (l := l + 1),
                     "name": await monomer.get_name(self.user_id),
-                    "team": await monomer.get_team().get_team_name(self.user_id)
-                } for monomer in self.get_team().scheduler.get_sorted_monomers()
+                    "team": await monomer.get_team().get_team_name(self.user_id),
+                }
+                for monomer in self.get_team().scheduler.get_sorted_monomers()
             ],
             "me": {},
-
         }
 
     async def on_action(self, teams: list[Team]) -> None:
         pass
-
-
-
-
-
-
-

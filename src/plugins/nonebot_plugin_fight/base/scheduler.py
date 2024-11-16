@@ -17,14 +17,16 @@ class Scheduler:
         for t in self.teams:
             await t.get_event(event)
 
-    async def post_attack_event(self, target: Monomer, origin: Monomer, harm: int, harm_type: str, missed: bool = False) -> None:
+    async def post_attack_event(
+        self, target: Monomer, origin: Monomer, harm: int, harm_type: str, missed: bool = False
+    ) -> None:
         data = {
             "type": "harm.single",
             "origin": origin,
             "target": target,
             "harm_value": harm,
             "harm_type": harm_type,
-            "harm_missed": missed
+            "harm_missed": missed,
         }
         await self.post_action_event(data)
 

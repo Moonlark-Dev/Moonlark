@@ -26,7 +26,14 @@ if TYPE_CHECKING:
 
 class Team:
 
-    def __init__(self, type_: Literal["Controllable", "Other"], scheduler: "Scheduler", team_id: str = "team.a", selectable: bool = True, team_skill: None = None) -> None:
+    def __init__(
+        self,
+        type_: Literal["Controllable", "Other"],
+        scheduler: "Scheduler",
+        team_id: str = "team.a",
+        selectable: bool = True,
+        team_skill: None = None,
+    ) -> None:
         self.team_id = team_id
         self.team_type = type_
         self.team_skill = team_skill
