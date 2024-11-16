@@ -13,6 +13,13 @@ class Scheduler:
             monomers += team.get_monomers()
         return monomers
 
+    async def setup(self) -> None:
+        for m in self.get_monomers():
+            await m.setup(self.get_selectable_teams())
+
+    def get_selectable_teams(self, monomer: Monomer) -> list[Team]:
+        return [t for t in self.teams if t != monomer.get_team() and t.is_selectable()]
+
     def get_actionable_monomers(self) -> list[Monomer]:
         return [m for m in self.get_monomers() if m.is_actionable()]
 
@@ -27,9 +34,7 @@ class Scheduler:
     async def loop(self) -> None:
         while self.is_continuable():
             action_monomer = self.get_action_monomer()
-            await action_monomer.on_action(
-                [t for t in self.teams if t != action_monomer.get_team() and t.is_selectable()]
-            )
+            await action_monomer.on_action(self.get_selectable_teams(action_monomer))
 
     def is_continuable(self) -> bool:
         return len(self.get_actionable_team()) > 1

@@ -31,7 +31,7 @@ class Monomer(ABC):
         self.team = team.register_monomer(self)
         self.name = None
 
-    async def setup(self) -> None:
+    async def setup(self, teams: list[Team]) -> None:
         pass
 
     def is_selectable(self) -> bool:
