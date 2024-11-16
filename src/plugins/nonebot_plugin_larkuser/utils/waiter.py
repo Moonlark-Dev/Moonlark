@@ -18,7 +18,6 @@
 from nonebot_plugin_waiter import prompt as waiter_prompt
 from typing import Optional, Callable, TypeVar
 from nonebot_plugin_alconna import UniMessage
-from datetime import datetime
 from ..lang import lang
 from ..exceptions import PromptRetryTooMuch, PromptTimeout
 
@@ -49,7 +48,7 @@ async def prompt(
         else:
             raise PromptTimeout
     text = resp.extract_plain_text()
-    if text.lower() == "q":
+    if text.lower() == "q" and allow_quit:
         await lang.finish("prompt.quited", user_id)
     if not checker(text):
         return await prompt(
@@ -62,3 +61,5 @@ async def prompt(
             ignore_error_details,
         )
     return parser(text)
+
+

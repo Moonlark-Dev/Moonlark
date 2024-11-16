@@ -1,0 +1,19 @@
+log:
+  missed: 未击中
+  action:
+    title: 行动队列
+    number: 序号
+    name: 名称
+    stat: 状态
+  stat:
+    title: 状态和效果
+    hp: 生命值
+    balance: 平衡
+    power: 充能
+    skill: 技能点
+
+stat: '❤{}({}%) 🛡{} ⛓{}'
+skill_point: '{} / {}'
+hp:
+  normal: '{} / {} ({}%)'
+  plus: '{} / {} ({}%) + {}'

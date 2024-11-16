@@ -1,0 +1,75 @@
+{% extends base %}
+
+{% block body %}
+    <!-- 行动日志 -->
+    <ul>
+        {% for item in action_log %}
+            <li>
+                {% if item.type == "harm.single" %}
+                    <strong>{{ item.origin_name }}</strong>
+                    ({{ item.origin_team }})
+                    &nbsp;
+                    <strong>{{ item.target_name }}</strong>
+                    ({{ item.target_team }})
+                    &nbsp; - &nbsp;
+                    {{ item.harm_value }}({{ item.harm_type }})
+                    {% if item.harm_missed %}
+                        <i>{{ lang.missed }}</i>
+                    {% endif %}
+                {% elif item.type == "normal" %}
+                    {{ item.message }}
+                {% endif %}
+            </li>
+        {% endfor %}
+    </ul>
+    <hr>
+    <!-- 行动队列 -->
+    <h3>{{ lang.action_title }}</h3>
+    <table>
+        <thead>
+            <tr>
+                <td>{{ lang.action_num }}</td>
+                <td>{{ lang.action_name }}</td>
+                <td>{{ lang.action_stat }}</td>
+            </tr>
+        </thead>
+        <tbody>
+            {% for monomer in monomers %}
+                <tr>
+                    <td>{{ monomer.index }}</td>
+                    <td><strong>{{ monomer.name }}</strong></td>
+                    <td>({{ monomer.team }})</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <!-- 状态和效果 -->
+    <h3>{{ lang.stat_title }}</h3>
+    <table>
+        <thead>
+            <tr>
+                <td>{{ lang.stat_hp }}</td>
+                <td>{{ lang.stat_balance }}</td>
+                <td>{{ lang.stat_power }}</td>
+                <td>{{ lang.stat_skill }}</td>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>{{ me.health }}</td>
+                <td>{{ me.balance }}</td>
+                <td>{{ me.power }}</td>
+                <td>{{ me.team_skill_point }}</td>
+            </tr>
+        </tbody>
+    </table>
+    <ul>
+        {% for item in buff_log %}
+            <li>
+                <strong>{{ item.name }}</strong>
+                &nbsp;
+                {{ item.messsage }}
+            </li>
+        {% endfor %}
+    </ul>
+{% endblock body %}

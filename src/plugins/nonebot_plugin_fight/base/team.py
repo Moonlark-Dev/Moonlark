@@ -15,25 +15,45 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
-from typing import Awaitable, Optional, Callable, TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
+import copy
+from ..types import ACTION_EVENT
 
 if TYPE_CHECKING:
     from .monomer import Monomer
+    from .scheduler import Scheduler
 
 
 class Team:
 
-    def __init__(self, team_id: str = "team.a", selectable: bool = True, team_skill: None = None) -> None:
+    def __init__(self, type_: Literal["Controllable", "Other"], scheduler: "Scheduler", team_id: str = "team.a", selectable: bool = True, team_skill: None = None) -> None:
         self.team_id = team_id
+        self.team_type = type_
         self.team_skill = team_skill
         self.max_skill_point = 5
         self.team_skill_power = 0
         self.selectable = selectable
         self.skill_point = 3
         self.monomers = []
+        self.scheduler: "Scheduler" = scheduler.register_team(self)
+        self.action_logs = []
+
+    async def get_team_name(self, user_id: str) -> str:
+        return self.team_id
 
     def get_skill_points(self) -> int:
         return self.skill_point
+
+    def get_action_events(self) -> list[ACTION_EVENT]:
+        events = copy.deepcopy(self.action_logs)
+        self.action_logs.clear()
+        return events
+
+    async def get_event(self, event: ACTION_EVENT) -> None:
+        if self.team_type == "Controllable":
+            self.action_logs.append(event)
+        for m in self.monomers:
+            await m.on_event(event)
 
     def reduce_skill_points(self, count: int = 1) -> int:
         self.skill_point -= count

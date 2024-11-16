@@ -14,4 +14,24 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
+from typing import TypedDict, Literal, TYPE_CHECKING
 
+if TYPE_CHECKING:
+    from src.plugins.nonebot_plugin_fight.base.monomer import Monomer
+
+
+class AttackEvent(TypedDict):
+    type: Literal["harm.single"]
+    origin: "Monomer"
+    target: "Monomer"
+    harm_value: int
+    harm_type: str
+    harm_missed: bool
+
+
+class MessageActionEvent(TypedDict):
+    type: Literal["normal"]
+    message: str
+
+
+ACTION_EVENT = MessageActionEvent | AttackEvent

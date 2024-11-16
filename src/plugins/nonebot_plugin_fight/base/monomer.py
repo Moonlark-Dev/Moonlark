@@ -18,6 +18,7 @@
 from abc import ABC, abstractmethod
 import random
 from .team import Team
+from ..types import ACTION_EVENT
 
 
 class Monomer(ABC):
@@ -29,7 +30,12 @@ class Monomer(ABC):
         self.speed = 97
         self.reduced_action_value = 0
         self.team = team.register_monomer(self)
-        self.name = None
+        self.balance = 100
+        self.defuse = 20
+
+    @abstractmethod
+    async def get_name(self, user_id: str) -> str:
+        return ""
 
     async def setup(self, teams: list[Team]) -> None:
         pass
@@ -50,12 +56,47 @@ class Monomer(ABC):
     async def on_action(self, teams: list[Team]) -> None:
         pass
 
+    async def action(self, teams: list[Team]) -> None:
+        await self.on_action(teams)
+
     async def is_actionable(self) -> bool:
-        return self.health > 0
+        return self.health > 0 and self.balance > 0
 
     def get_team(self) -> Team:
         return self.team
 
+    def reduce_balance_value(self, value: int) -> int:
+        self.balance -= value
+        return self.balance
+
+    def get_defuse(self) -> int:
+        return round(self.defuse * (self.balance / 100))
+
     # TODO type_ 改为 Enum
     async def attacked(self, type_: str, harm: int, monomer: "Monomer") -> float:
+        if monomer in self.team.get_monomers():
+            self.reduce_balance_value(5)
+            return 0
+        real_harm = round(harm * (self.get_defuse() / monomer.get_defuse()))
+        self.reduce_balance_value(int(real_harm / 2 * (monomer.get_attack_value() / self.get_attack_value())))
+        self.health -= real_harm
+        await self.team.scheduler.post_attack_event(
+            self,
+            monomer,
+            real_harm,
+            type_,
+            False
+        )
+        return real_harm
+
+    def get_attack_value(self) -> int:
+        return self.attack
+
+    async def on_event(self, event: ACTION_EVENT) -> None:
         pass
+
+    async def on_attack(self, type_: str, base_harm: int, target: "Monomer") -> float:
+        harm = base_harm
+        if random.random() <= self.critical_strike[0]:
+            harm *= self.critical_strike[1]
+        return await target.attacked(type_, harm, self)
