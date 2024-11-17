@@ -15,35 +15,21 @@
 
 </div>
 
-## Introduction
+## 简介
 
-Moonlark is an open, stable, non-profit, multifunctional chatbot.
+**Moonlark** 是一个开源、稳定、非盈利的多功能聊天机器人，旨在提供一系列有趣且实用或娱乐的功能，满足不同用户的需求。项目基于 Python3 和 Nonebot2 框架开发，能够为 QQ、Discord 等聊天平台的用户提供服务。
 
-Moonlark is the next project from the Moonlark Project, written using the Nonebot2 framework based on Python3.
-
-## Background
-
-If you did not hear Moonlark, you may have heard another name, XDbot.
-
-To address the problem of the XDbot2 code being too confused and incompatible, we decided to develop a new project named Moonlark.
-
-## Usage
-
-详见: [使用指南](https://moonlark-wiki.itcdt.top/wiki/%E4%BD%BF%E7%94%A8%E6%8C%87%E5%8D%97)
-
-> Moonlark 仍在测试和开发中，可能会遇到一些不稳定的情况。
+如果您想立刻开始使用 Moonlark，请阅读我们的 [使用指南](https://moonlark-wiki.itcdt.top/wiki/%E4%BD%BF%E7%94%A8%E6%8C%87%E5%8D%97)，我们在这里提供了详细的开始使用的方法。
 
 ## Contribution
 
-You can participate in the Moonlark project by submitting [issues](https://github.com/Moonlark-Dev/Moonlark/issues/new/choose) or [pull requests](https://github.com/Moonlark-Dev/Moonlark/compare).
-
-Please note that when participating in contributions, make sure to comply with our [CODE OF CONDUCT](CODE_OF_CONDUCT.md).
+You can participate in the Moonlark project by submitting [issues](https://github.com/Moonlark-Dev/Moonlark/issues/new/choose) or [pull requests](https://github.com/Moonlark-Dev/Moonlark/compare).Please note that when participating in contributions, make sure to comply with our [CODE OF CONDUCT](CODE_OF_CONDUCT.md).
 
 For more information on participation in the Moonlark project, please read [Moonlark Contribution Description] (CONTRIBUTING.md).
 
 ## License
 
-Moonlark is open source under the [AGPL-3.0](LICENSE) license.
+Moonlark 在 [AGPL-3.0](LICENSE) 许可证下开源。
 
 ```
 Moonlark - A new ChatBot
