@@ -62,7 +62,7 @@ class ControllableMonomer(Monomer, ABC):
         return await render_template(
             "fight_log.html.jinja",
             await lang.text("log.title", self.user_id),
-            self.user_id
+            self.user_id,
             template_body
         )
 
