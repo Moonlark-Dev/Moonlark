@@ -11,7 +11,7 @@ log:
     balance: 平衡
     power: 充能
     skill: 技能点
-
+  title: 战况
 stat: '❤{}({}%) 🛡{} ⛓{}'
 skill_point: '{} / {}'
 hp:

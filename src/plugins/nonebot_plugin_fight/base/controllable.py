@@ -17,24 +17,12 @@ from ..types import ACTION_EVENT  #  Moonlark - A new ChatBot
 #  You should have received a copy of the GNU Affero General Public License
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
-#
-#  This program is free software: you can redistribute it and/or modify
-#  it under the terms of the GNU Affero General Public License as published
-#  by the Free Software Foundation, either version 3 of the License, or
-#  (at your option) any later version.
-#
-#  This program is distributed in the hope that it will be useful,
-#  but WITHOUT ANY WARRANTY; without even the implied warranty of
-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#  GNU Affero General Public License for more details.
-#
-#  You should have received a copy of the GNU Affero General Public License
-#  along with this program.  If not, see <https://www.gnu.org/licenses/>.
-# ##############################################################################
 
 from ...nonebot_plugin_larkuser.utils.waiter2 import WaitUserInput
 from .monomer import Monomer, Team, ACTION_EVENT
+from ..lang import lang
 from abc import ABC
+from ...nonebot_plugin_render import render_template
 
 
 class ControllableMonomer(Monomer, ABC):
@@ -54,7 +42,7 @@ class ControllableMonomer(Monomer, ABC):
             event["origin_name"] = await origin.get_name(self.user_id)
         return event
 
-    async def get_fight_stats(self) -> None:
+    async def get_fight_stats(self) -> bytes:
         events = self.team.get_action_events()
         l = 0
         template_body = {
@@ -67,8 +55,18 @@ class ControllableMonomer(Monomer, ABC):
                 }
                 for monomer in self.get_team().scheduler.get_sorted_monomers()
             ],
-            "me": {},
+            "me": {}, # TODO
+            "lang": {} # TODO
         }
+        # TODO
+        return await render_template(
+            "fight_log.html.jinja",
+            await lang.text("log.title", self.user_id),
+            self.user_id
+            template_body
+        )
+
+
 
     async def on_action(self, teams: list[Team]) -> None:
         pass
