@@ -44,12 +44,13 @@ class Team:
         self.monomers = []
         self.scheduler: "Scheduler" = scheduler.register_team(self)
         self.action_logs = []
+    
+    def get_skill_point(self) -> tuple[int, int]:
+        self.skill_point = min(5, max(0, self.skill_point))
+        return self.skill_point, 5
 
     async def get_team_name(self, user_id: str) -> str:
         return self.team_id
-
-    def get_skill_points(self) -> int:
-        return self.skill_point
 
     def get_action_events(self) -> list[ACTION_EVENT]:
         events = copy.deepcopy(self.action_logs)

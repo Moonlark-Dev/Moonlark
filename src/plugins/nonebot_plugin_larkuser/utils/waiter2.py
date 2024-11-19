@@ -21,6 +21,7 @@ from ...nonebot_plugin_larkutils import get_user_id
 from typing import Optional, Callable, TypeVar
 from nonebot.matcher import Matcher
 import asyncio
+from nonebot_plugin_alconna import UniMessage
 from datetime import datetime
 from nonebot.adapters import Event
 
@@ -31,15 +32,13 @@ class WaitUserInput:
 
     def __init__(
         self,
-        prompt_text: str,
+        prompt_text: UniMessage,
         user_id: str,
-        matcher: Matcher,
         checker: Optional[Callable[[str], bool]],
         default: str = "",
     ) -> None:
         self.prompt_text = prompt_text
         self.user_id = user_id
-        self.matcher = matcher
         self.default = default
         self.checker = checker
         self.answer = None
@@ -51,14 +50,18 @@ class WaitUserInput:
 
     async def handle_message(self, event: Event, user_id: str = get_user_id()) -> None:
         text = event.get_plaintext()
-        if not self.checker(text):
+        try:
+            result = self.checker(text)
+        except Exception:
+            result = False
+        if not result:
             await lang.finish(
                 "prompt.unknown", user_id, at_sender=False, reply_message=True, matcher=self.message_matcher
             )
         self.answer = text
 
     async def wait(self, timeout: int = 30) -> None:
-        await self.matcher.send(self.prompt_text)
+        await self.prompt_text.send()
         start_time = datetime.now()
         while self.answer is None and (datetime.now() - start_time).total_seconds() <= timeout:
             await asyncio.sleep(0.1)

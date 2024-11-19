@@ -37,8 +37,8 @@
             {% for monomer in monomers %}
                 <tr>
                     <td>{{ monomer.index }}</td>
-                    <td><strong>{{ monomer.name }}</strong></td>
-                    <td>({{ monomer.team }})</td>
+                    <td><strong>{{ monomer.name }}</strong>({{ monomer.team }})</td>
+                    <td>{{ monomer.stat }}</td>
                 </tr>
             {% endfor %}
         </tbody>

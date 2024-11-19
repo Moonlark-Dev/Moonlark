@@ -34,6 +34,14 @@ class Monomer(ABC):
         self.defuse = 20
 
     @abstractmethod
+    def get_max_hp(self) -> int:
+        return 100
+
+    def get_hp(self) -> int:
+        self.health = max(0, min(self.get_max_hp(), self.health))
+        return self.health
+
+    @abstractmethod
     async def get_name(self, user_id: str) -> str:
         return ""
 
@@ -60,7 +68,7 @@ class Monomer(ABC):
         await self.on_action(teams)
 
     async def is_actionable(self) -> bool:
-        return self.health > 0 and self.balance > 0
+        return self.get_hp() > 0 and self.balance > 0
 
     def get_team(self) -> Team:
         return self.team
