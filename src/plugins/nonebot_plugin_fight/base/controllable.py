@@ -55,17 +55,12 @@ class ControllableMonomer(Monomer, ABC):
                 }
                 for monomer in self.get_team().scheduler.get_sorted_monomers()
             ],
-            "me": {}, # TODO
-            "lang": {} # TODO
+            "me": {},  # TODO
+            "lang": {},  # TODO
         }
         return await render_template(
-            "fight_log.html.jinja",
-            await lang.text("log.title", self.user_id),
-            self.user_id,
-            template_body
+            "fight_log.html.jinja", await lang.text("log.title", self.user_id), self.user_id, template_body
         )
-
-
 
     async def on_action(self, teams: list[Team]) -> None:
         pass
