@@ -58,7 +58,6 @@ class ControllableMonomer(Monomer, ABC):
             "me": {}, # TODO
             "lang": {} # TODO
         }
-        # TODO
         return await render_template(
             "fight_log.html.jinja",
             await lang.text("log.title", self.user_id),
