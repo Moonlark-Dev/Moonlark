@@ -91,7 +91,14 @@ class ControllableMonomer(Monomer, ABC):
             await on_simple_attack(teams)
             self.team.add_skill_points()
         elif result == 2:
-            pass
+            if self.team.get_skill_point()[0] >= 1:
+                await self.on_special_skill(teams)
+                self.team.reduce_skill_points()
+            else:
+                await lang.send("option.no_skill_point", self.user_id)
+                await self.on_action(teams)
+        elif result == 9:
+            await lang.send("option.skipped", self.user_id)
         else:
             pass
     
