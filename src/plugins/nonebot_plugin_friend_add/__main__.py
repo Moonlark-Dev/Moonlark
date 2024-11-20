@@ -71,7 +71,7 @@ async def _(bot: BotQQ, event: FriendAddEvent, user_id: str = get_user_id()) -> 
 @friend_request.handle()
 async def _(bot: BotOB, event: FriendRequestEvent, user_id: str = get_user_id()) -> None:
     user = await get_user(user_id)
-    if user.get_fav() <= 0.05:
+    if user.get_fav() <= 0.007:
         await event.reject(bot)
     elif (
         user_id in (friends := await get_friends())
