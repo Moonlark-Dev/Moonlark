@@ -20,7 +20,7 @@ from .monomer import Monomer, Team, ACTION_EVENT
 from ..lang import lang
 import copy
 from typing import Optional
-from ..types import ACTION_EVENT  
+from ..types import ACTION_EVENT
 from abc import ABC
 from nonebot_plugin_alconna import UniMessage
 from ...nonebot_plugin_render import render_template
@@ -96,7 +96,7 @@ class ControllableMonomer(Monomer, ABC):
         await UniMessage().image(raw=await self.get_fight_stats()).send()
         await self.choose_skill()
 
-    async def choose_skill(self,teams: list[Team]) -> None:
+    async def choose_skill(self, teams: list[Team]) -> None:
         waiter = WaitUserInput(
             UniMessage.text(text=await lang.text("controllable.options", self.user_id)),  # 细节等更多东西做出来再优化
             self.user_id,
@@ -129,16 +129,14 @@ class ControllableMonomer(Monomer, ABC):
 
     async def select_monomer(self, teams: list[Team]) -> Optional[Monomer]:
         if len(teams) == 0:
-            return None     # no monomer to select
+            return None  # no monomer to select
         while (team := await self.choose_team(teams)) is not None:
             while (monomer := await self.choose_monomer(team)) is not None:
                 return monomer
-        
-    
+
     async def choose_monomer(self, team: Team) -> Optional[Monomer]:
         pass
 
     async def choose_team(self, teams: list[Team]) -> Optional[Team]:
         if len(teams) == 1:
             return teams[0]
-        
