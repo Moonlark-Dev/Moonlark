@@ -136,7 +136,8 @@ class ControllableMonomer(Monomer, ABC):
                 return monomer
 
     async def choose_monomer(self, team: Team) -> Optional[Monomer]:
-        pass
+        text = await lang.text("select.monomer", self.user_id)
+        # TODO
 
     async def choose_team(self, teams: list[Team]) -> Optional[Team]:
         if len(teams) == 1:

@@ -25,3 +25,6 @@ controllable:
 option:
   skipped: 已跳过本回合
   no_skill_point: 没有可用的技能点
+select:
+  item: '[{}] {} ({})'
+  monomer: "选择单位"
