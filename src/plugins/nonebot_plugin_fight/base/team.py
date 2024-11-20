@@ -44,7 +44,7 @@ class Team:
         self.monomers = []
         self.scheduler: "Scheduler" = scheduler.register_team(self)
         self.action_logs = []
-    
+
     def get_skill_point(self) -> tuple[int, int]:
         self.skill_point = min(5, max(0, self.skill_point))
         return self.skill_point, 5
