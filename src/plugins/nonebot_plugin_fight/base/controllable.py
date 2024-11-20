@@ -94,7 +94,8 @@ class ControllableMonomer(Monomer, ABC):
 
     async def on_action(self, teams: list[Team]) -> None:
         await UniMessage().image(raw=await self.get_fight_stats()).send()
-        await self.choose_skill()
+        while await self.choose_skill():
+            pass
 
     async def choose_skill(self, teams: list[Team]) -> None:
         waiter = WaitUserInput(
@@ -114,7 +115,7 @@ class ControllableMonomer(Monomer, ABC):
                 self.team.reduce_skill_points()
             else:
                 await lang.send("option.no_skill_point", self.user_id)
-                await self.choose_skill(teams)
+                return True
         else:
             await lang.send("option.skipped", self.user_id)
             self.team.add_skill_points()
