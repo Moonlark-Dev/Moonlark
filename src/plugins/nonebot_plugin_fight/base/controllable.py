@@ -1,7 +1,4 @@
-import copy
-
-from ..types import ACTION_EVENT  #  Moonlark - A new ChatBot
-
+#  Moonlark - A new ChatBot
 #  Copyright (C) 2024  Moonlark Development Team
 #
 #  This program is free software: you can redistribute it and/or modify
@@ -21,6 +18,9 @@ from ..types import ACTION_EVENT  #  Moonlark - A new ChatBot
 from ...nonebot_plugin_larkuser.utils.waiter2 import WaitUserInput
 from .monomer import Monomer, Team, ACTION_EVENT
 from ..lang import lang
+import copy
+from typing import Optional
+from ..types import ACTION_EVENT  
 from abc import ABC
 from nonebot_plugin_alconna import UniMessage
 from ...nonebot_plugin_render import render_template
@@ -94,6 +94,9 @@ class ControllableMonomer(Monomer, ABC):
 
     async def on_action(self, teams: list[Team]) -> None:
         await UniMessage().image(raw=await self.get_fight_stats()).send()
+        await self.choose_skill()
+
+    async def choose_skill(self,teams: list[Team]) -> None:
         waiter = WaitUserInput(
             UniMessage.text(text=await lang.text("controllable.options", self.user_id)),  # 细节等更多东西做出来再优化
             self.user_id,
@@ -111,11 +114,10 @@ class ControllableMonomer(Monomer, ABC):
                 self.team.reduce_skill_points()
             else:
                 await lang.send("option.no_skill_point", self.user_id)
-                await self.on_action(teams)
-        elif result == 9:
-            await lang.send("option.skipped", self.user_id)
+                await self.choose_skill(teams)
         else:
-            pass
+            await lang.send("option.skipped", self.user_id)
+            self.team.add_skill_points()
 
     @abstractmethod
     async def on_simple_attack(self, teams: list[Team]) -> None:
@@ -125,8 +127,18 @@ class ControllableMonomer(Monomer, ABC):
     async def on_special_skill(self, teams: list[Team]) -> None:
         pass
 
-    async def select_monomer(self, teams: list[Team]) -> Monomer:
+    async def select_monomer(self, teams: list[Team]) -> Optional[Monomer]:
+        if len(teams) == 0:
+            return None     # no monomer to select
+        while (team := await self.choose_team(teams)) is not None:
+            while (monomer := await self.choose_monomer(team)) is not None:
+                return monomer
+        
+    
+    async def choose_monomer(self, team: Team) -> Optional[Monomer]:
+        pass
+
+    async def choose_team(self, teams: list[Team]) -> Optional[Team]:
         if len(teams) == 1:
-            team = teams[0]
-        elif len(teams) == 0:
-            raise ValueError
+            return teams[0]
+        
