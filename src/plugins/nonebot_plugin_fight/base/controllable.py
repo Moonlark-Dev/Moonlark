@@ -124,3 +124,9 @@ class ControllableMonomer(Monomer, ABC):
     @abstractmethod
     async def on_special_skill(self, teams: list[Team]) -> None:
         pass
+
+    async def select_monomer(self, teams: list[Team]) -> Monomer:
+        if len(teams) == 1:
+            team = teams[0]
+        elif len(teams) == 0:
+            raise ValueError
