@@ -27,4 +27,6 @@ option:
   no_skill_point: 没有可用的技能点
 select:
   item: '[{}] {} ({})'
-  monomer: "选择单位"
+  monomer: "选择单位（发送“0”返回）："
+  team: "选择队伍（发送“0”返回）："
+  

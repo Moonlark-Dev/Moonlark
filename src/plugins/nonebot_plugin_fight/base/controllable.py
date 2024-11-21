@@ -53,13 +53,7 @@ class ControllableMonomer(Monomer, ABC):
                     "index": (l := l + 1),
                     "name": await monomer.get_name(self.user_id),
                     "team": await monomer.get_team().get_team_name(self.user_id),
-                    "stat": await lang.text(
-                        "stat",
-                        self.user_id,
-                        monomer.get_hp(),
-                        round(monomer.get_hp() / monomer.get_max_hp()),
-                        monomer.balance,
-                    ),
+                    "stat": await self.get_monomer_stat(monomer)
                 }
                 for monomer in self.get_team().scheduler.get_sorted_monomers()
             ],
@@ -134,11 +128,43 @@ class ControllableMonomer(Monomer, ABC):
         while (team := await self.choose_team(teams)) is not None:
             while (monomer := await self.choose_monomer(team)) is not None:
                 return monomer
+    
+    async def get_monomer_stat(self, monomer: Monomer) -> str:
+        return await lang.text(
+                        "stat",
+                        self.user_id,
+                        monomer.get_hp(),
+                        round(monomer.get_hp() / monomer.get_max_hp()),
+                        monomer.balance,
+                    )
 
     async def choose_monomer(self, team: Team) -> Optional[Monomer]:
-        text = await lang.text("select.monomer", self.user_id)
-        # TODO
+        text = [await lang.text("select.monomer", self.user_id)]
+        monomers = team.get_monomers()
+        length = 1
+        for monomer in monomers:
+            if monomer.is_selectable():
+                text.append(await lang.text("select.item", self.user_id, length, await monomer.get_name(self.user_id), await self.get_monomer_stat(monomer)))
+            length += 1
+        waiter = WaitUserInput("\n".join(text), self.user_id, lambda string: 0 <= int(string) <= length and (string == "0" or monomers[int(string) - 1].is_selectable()), "0")
+        await waiter.wait()
+        answer = waiter.get(lambda message: int(message))
+        if answer == 0 or not (monomer := monomers[answer - 1]).is_selectable():
+            return None
+        return monomer
 
     async def choose_team(self, teams: list[Team]) -> Optional[Team]:
         if len(teams) == 1:
             return teams[0]
+        text = [await lang.text("select.team", self.user_id)]
+        length = 1
+        for team in teams:
+            if team.is_selectable():
+                text.append(await lang.text("select.item", self.user_id, length, await team.get_team_name(self.user_id), len([m for m in team.get_monomers() if m.is_selectable()])))
+            length += 1
+        waiter = WaitUserInput("\n".join(text), self.user_id, lambda string: 0 <= int(string) <= length and (string == "0" or teams[int(string) - 1].is_selectable()), "0")
+        await waiter.wait()
+        answer = waiter.get(lambda message: int(message))
+        if answer == 0 or not (team := teams[answer - 1]).is_selectable():
+            return None
+        return team
