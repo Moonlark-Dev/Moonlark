@@ -38,7 +38,6 @@ async def _(session: async_scoped_session, user_id: str = get_user_id()) -> None
         await lang.finish("setu.cd", user_id, round(remain_time, 2))
     if not (image := await _get_image()):
         await lang.finish("setu.failed", user_id)
-        raise
     # await MessageFactory([
     #     Image(image["image"], f"image.{image['data'].ext}"),
     #     Text(await lang.text(

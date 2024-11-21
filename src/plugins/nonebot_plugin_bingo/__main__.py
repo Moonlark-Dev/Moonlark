@@ -14,10 +14,8 @@ lang = LangHelper()
 async def create_empty_list(width: int, height: int, user_id: str) -> list[list[str]]:
     if width <= 0 or height <= 0:
         await lang.finish("bingo.too_small", user_id)
-        raise
     if width * height > config.bingo_max_prompt_count:
         await lang.finish("bingo.too_big", user_id)
-        raise
     return [["" for _ in range(width)] for _ in range(height)]
 
 

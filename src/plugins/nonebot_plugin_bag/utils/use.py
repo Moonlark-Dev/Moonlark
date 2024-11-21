@@ -13,4 +13,4 @@ async def get_item(index: int, user_id: str = get_user_id()) -> BagItem:
         await lang.finish("show.index_error", user_id, reply_message=True, at_sender=False)
     except ItemLockedError:
         await lang.finish("drop.item_locked", user_id, reply_message=True, at_sender=False)
-    raise
+    raise SystemError()

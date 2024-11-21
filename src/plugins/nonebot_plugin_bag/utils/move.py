@@ -14,7 +14,7 @@ async def get_origin_item(origin: int, user_id: str = get_user_id()) -> BagItem:
         await lang.finish(f"move.origin_locked", user_id)
     except IndexError:
         await lang.finish(f"move.origin_index_error", user_id)
-    raise
+    raise SystemError("Other type of error when getting item")
 
 
 async def get_target_item(target: int, user_id: str = get_user_id()) -> Optional[BagItem]:
