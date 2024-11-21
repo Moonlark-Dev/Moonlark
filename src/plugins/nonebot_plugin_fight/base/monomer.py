@@ -31,7 +31,7 @@ class Monomer(ABC):
         self.reduced_action_value = 0
         self.team = team.register_monomer(self)
         self.balance = 100
-        self.final_skill_power = [0, 230]     # CURRENT, MAX | 目前考虑是不是只有 Controllable 有这个东西
+        self.final_skill_power = [0, 230]  # CURRENT, MAX | 目前考虑是不是只有 Controllable 有这个东西
         self.defuse = 20
 
     async def power_final_skill(self, value: int = 17) -> int:
@@ -39,7 +39,6 @@ class Monomer(ABC):
         if self.final_skill_power[0] >= self.final_skill_power[1]:
             event_data: FinalSkillPowered = {"type": "me.final_skill.powered"}
             await self.on_event(event_data)
-
 
     @abstractmethod
     def get_max_hp(self) -> int:
