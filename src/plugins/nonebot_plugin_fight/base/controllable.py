@@ -66,7 +66,7 @@ class ControllableMonomer(Monomer, ABC):
                     round(self.get_hp() / self.get_max_hp() * 100),
                 ),
                 "balance": self.balance,
-                "power": 0,  # TODO 跟随大招系统制作
+                "power": round(self.get_power_percent() * 100),
                 "team_skill_point": await lang.text("skill_point", self.user_id, *self.team.get_skill_point()),
             },
             "lang": {

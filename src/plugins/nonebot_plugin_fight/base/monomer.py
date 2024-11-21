@@ -18,7 +18,7 @@
 from abc import ABC, abstractmethod
 import random
 from .team import Team
-from ..types import ACTION_EVENT
+from ..types import ACTION_EVENT, FinalSkillPowered
 
 
 class Monomer(ABC):
@@ -31,7 +31,15 @@ class Monomer(ABC):
         self.reduced_action_value = 0
         self.team = team.register_monomer(self)
         self.balance = 100
+        self.final_skill_power = [0, 230]     # CURRENT, MAX | 目前考虑是不是只有 Controllable 有这个东西
         self.defuse = 20
+
+    async def power_final_skill(self, value: int = 17) -> int:
+        self.final_skill_power[0] += value
+        if self.final_skill_power[0] >= self.final_skill_power[1]:
+            event_data: FinalSkillPowered = {"type": "me.final_skill.powered"}
+            await self.on_event(event_data)
+
 
     @abstractmethod
     def get_max_hp(self) -> int:
@@ -66,6 +74,9 @@ class Monomer(ABC):
 
     async def action(self, teams: list[Team]) -> None:
         await self.on_action(teams)
+
+    def get_power_percent(self) -> float:
+        return min(self.power_final_skill[0] / self.power_final_skill[1], 1)
 
     async def is_actionable(self) -> bool:
         return self.get_hp() > 0 and self.balance > 0

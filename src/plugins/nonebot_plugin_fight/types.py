@@ -33,5 +33,8 @@ class MessageActionEvent(TypedDict):
     type: Literal["normal"]
     message: str
 
+class FinalSkillPowered(TypedDict):
+    type: Literal["me.final_skill.powered"]
 
-ACTION_EVENT = MessageActionEvent | AttackEvent
+
+ACTION_EVENT = MessageActionEvent | AttackEvent | FinalSkillPowered
