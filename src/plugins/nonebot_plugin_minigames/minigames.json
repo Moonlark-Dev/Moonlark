@@ -13,5 +13,10 @@
     "id": "2048",
     "name": "2048",
     "usage": 1
+  },
+  {
+    "id": "manual_copy",
+    "name": "manual-copy",
+    "usage": 1
   }
 ]
