@@ -18,6 +18,7 @@ from ..nonebot_plugin_email.utils.unread import get_unread_email_count
 from ..nonebot_plugin_jrrp.jrrp import get_luck_value
 from src.plugins.nonebot_plugin_larkuser.utils.matcher import patch_matcher
 from ..nonebot_plugin_larkuser import get_user
+from ..nonebot_plugin_larkuser.utils.waiter import prompt, PromptTimeout, PromptRetryTooMuch
 from ..nonebot_plugin_larkuser.user.base import MoonlarkUser
 from ..nonebot_plugin_larkutils import get_user_id
 from .config import config
@@ -111,10 +112,39 @@ async def get_sign_fav(user_data: MoonlarkUser) -> SignClaimData:
     }
 
 
-async def get_sign_days(sign_data: SignData) -> int:
+async def resign(sign_data: SignData, user: MoonlarkUser) -> bool:
+    if (days := (date.today() - sign_data.last_sign).days - 1) >= 15:
+        return False
+    needed_vimcoin = days * 30
+    if user.has_vimcoin(needed_vimcoin):
+        return False
+    try:
+        await prompt(
+            await lang.text("resign.prompt", sign_data.user_id, days, needed_vimcoin),
+            sign_data.user_id,
+            retry=1,
+            parser=lambda message: message.lower().startswith("y"),
+            ignore_error_details=False,
+            allow_quit=False,
+        )
+    except (PromptTimeout, PromptRetryTooMuch):
+        return False
+    got_vimcoin = 0
+    got_experience = 0
+    for _ in range(days):
+        sign_data.sign_days += 1
+        got_vimcoin += (await get_sign_vim(user, sign_data))["add"]
+        got_experience += (await get_sign_exp(user, sign_data))["add"]
+    await lang.send("resign.success", user.user_id, days, got_vimcoin, got_experience)
+    await user.add_fav(0.001)
+    sign_data.sign_days += 1
+    return True
+
+
+async def get_sign_days(sign_data: SignData, user: MoonlarkUser) -> int:
     if (date.today() - sign_data.last_sign).days == 1:
         sign_data.sign_days += 1
-    else:
+    elif not await resign(sign_data, user):
         sign_data.sign_days = 1
     return sign_data.sign_days
 
@@ -140,13 +170,13 @@ async def _(matcher: Matcher, user_id: str = get_user_id()) -> None:
     if (date.today() - data.last_sign).days < 1:
         await lang.finish("sign.signed", user_id)
     templates = {
+        "signdays": {
+            "text": await lang.text("image.signdays", user_id),
+            "value": await lang.text("image.signdays_text", user_id, await get_sign_days(data, user)),
+        },
         "nickname": user.nickname,
         "uid": await lang.text("image.uid", user_id, user_id),
         "hitokoto": await get_hitokoto(user_id),
-        "signdays": {
-            "text": await lang.text("image.signdays", user_id),
-            "value": await lang.text("image.signdays_text", user_id, await get_sign_days(data)),
-        },
         "exp": await get_sign_exp(user, data),
         "vim": await get_sign_vim(user, data),
         "fav": await get_sign_fav(user),
