@@ -20,26 +20,22 @@ from .config import config
 from typing import TypedDict, Optional
 import asyncio
 
+
 class QuestionData(TypedDict):
     origin: str
     text: str
     length: int
+
 
 async def request_question() -> Optional[QuestionData]:
     async with httpx.AsyncClient() as client:
         request = await client.get(config.manual_copy_api)
     if request.status_code == 200:
         data = request.json()
-        return {
-            "origin": data["from"],
-            "text": data["hitokoto"],
-            "length": data["length"]
-        }
+        return {"origin": data["from"], "text": data["hitokoto"], "length": data["length"]}
+
 
 async def get_question() -> QuestionData:
     while (question := await request_question()) is not None:
         await asyncio.sleep(1)
     return question
-
-
-

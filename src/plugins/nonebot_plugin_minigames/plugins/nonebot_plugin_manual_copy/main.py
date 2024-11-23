@@ -37,6 +37,3 @@ async def _(user_id: str = get_user_id()) -> None:
     t = await session.finish()
     points = await session.add_points(round(question["length"] / t * 100))
     await lang.finish("finish", user_id, round(t, 3), points)
-
-
-
