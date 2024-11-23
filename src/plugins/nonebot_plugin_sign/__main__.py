@@ -125,7 +125,7 @@ async def resign(sign_data: SignData, user: MoonlarkUser) -> bool:
             retry=1,
             parser=lambda message: message.lower().startswith("y"),
             ignore_error_details=False,
-            allow_quit=False
+            allow_quit=False,
         )
     except (PromptTimeout, PromptRetryTooMuch):
         return False
