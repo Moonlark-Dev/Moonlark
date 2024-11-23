@@ -28,3 +28,7 @@ tol:
   description: 关灯挑战
   details: 尝试关掉所有的灯（一盏灯被开启或关闭时它上、下、左、右边的灯的状态也会发生改变）
   usage1: tol
+manual_copy:
+  description: 打字机
+  details: 尽量快速地通过输入屏幕上的文本（较简单）
+  usage1: manual-copy
