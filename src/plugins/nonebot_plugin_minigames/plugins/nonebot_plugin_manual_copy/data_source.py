@@ -36,6 +36,6 @@ async def request_question() -> Optional[QuestionData]:
 
 
 async def get_question() -> QuestionData:
-    while (question := await request_question()) is not None:
+    while (question := await request_question()) is None:
         await asyncio.sleep(1)
     return question
