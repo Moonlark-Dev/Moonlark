@@ -7,8 +7,13 @@ from sqlalchemy import String
 from .config import config
 
 
-class User(Model):
-    user_id: Mapped[str] = mapped_column(String(128), primary_key=True)
-    tokens: Mapped[int] = mapped_column(default=config.openai_free_token)
-    free_count: Mapped[int] = mapped_column(default=0)
-    plus: Mapped[Optional[datetime]] = mapped_column(nullable=True, default=None)
+class SessionMessage(Model):
+    message_id: Mapped[int] = mapped_column(autoincrement=True, primary_key=True)
+    session_id: Mapped[int]
+    content: Mapped[bytes]
+    role: Mapped[str] = mapped_column(String(32))
+
+class GptUser(Model):
+    user_id: Mapped[str] = mapped_column(primary_key=True)
+    session_id: Mapped[Optional[int]] = mapped_column(nullable=True)
+    used_token: Mapped[int] = mapped_column(default=0)
