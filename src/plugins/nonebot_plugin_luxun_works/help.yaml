@@ -1,0 +1,3 @@
+plugin: luxun_works
+commands:
+  help: help;1

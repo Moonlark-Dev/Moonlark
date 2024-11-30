@@ -5,3 +5,8 @@ result:
   
   {}
   ——《{}》
+empty: 错误：请输入具体的内容。
+help:
+  description: 鲁迅说没说
+  details: 鲁迅到底说没说过？从鲁迅先生的作品中模糊搜索他的一句话。
+  usage1: luxun-said <内容>

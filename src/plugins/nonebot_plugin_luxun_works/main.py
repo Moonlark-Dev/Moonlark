@@ -64,7 +64,9 @@ lang = LangHelper()
 
 @on_command("luxun-said").handle()
 async def _(message: Message = CommandArg(), user_id: str = get_user_id()) -> None:
-    result = await match(message.extract_plain_text())
+    if not (text := message.extract_plain_text()):
+         await lang.finish("empty", user_id)
+    result = await match(text)
     if result[1] is None:
          await lang.finish("result.failed", user_id)
     await lang.finish("result.found", user_id, round(result[0]*100), result[1]["window"], result[1]["book"])
