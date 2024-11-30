@@ -13,4 +13,3 @@ require("nonebot_plugin_larklang")
 require("nonebot_plugin_larkutils")
 
 from . import main
-
