@@ -10,13 +10,13 @@ from typing import AsyncGenerator, TypedDict, Optional
 import aiofiles
 from pathlib import Path
 
-
+"""
 def compare_string(target: str, origin: str) -> float:
     diffs = [0.0]
     for i in range(max(len(origin) - len(target), 1)):
         diffs.append(difflib.SequenceMatcher(None, target, origin[i : len(target) + i]).ratio())
     return max(*diffs)
-
+"""
 
 class ChunkData(TypedDict):
     id: str
@@ -46,17 +46,14 @@ async def get_works() -> AsyncGenerator[ChunkData, None]:
         path = Path(__file__).parent / "data" / file
         async with aiofiles.open(path.as_posix(), encoding="utf-8") as f:
             chunks = json.loads(await f.read())
-        _cache = None
         for chunk in chunks:
-            if chunk["window"] != _cache:
-                _cache = chunk["window"]
-                yield chunk
+            yield chunk
 
 
 async def match(query: str) -> tuple[float, Optional[ChunkData]]:
     _cache = (config.luxun_min_diff, None)
     async for chunk in get_works():
-        if (diff := compare_string(query, chunk["window"])) >= _cache[0]:
+        if (diff := difflib.SequenceMatcher(None, query, chunk["chunk"]).ratio()) >= _cache[0]:
             _cache = (diff, chunk)
     return _cache
 
