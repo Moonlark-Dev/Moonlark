@@ -50,7 +50,7 @@ async def prompt(
     text = resp.extract_plain_text()
     if text.lower() == "q" and allow_quit:
         await lang.finish("prompt.quited", user_id)
-    if not checker(text):
+    if checker is not None and not checker(text):
         return await prompt(
             await lang.text("prompt.unknown", user_id),
             user_id,
