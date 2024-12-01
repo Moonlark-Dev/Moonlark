@@ -116,7 +116,7 @@ async def resign(sign_data: SignData, user: MoonlarkUser) -> bool:
     if (days := (date.today() - sign_data.last_sign).days - 1) >= 15:
         return False
     needed_vimcoin = days * 30
-    if user.has_vimcoin(needed_vimcoin):
+    if not await user.has_vimcoin(needed_vimcoin):
         return False
     try:
         await prompt(
