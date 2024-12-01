@@ -20,6 +20,7 @@ def compare_string(target: str, origin: str) -> float:
     return max(*diffs)
 """
 
+
 class ChunkData(TypedDict):
     id: str
     book: str
@@ -44,11 +45,11 @@ DATA_FILE_LIST = [
 
 
 def get_works_sync(file: str) -> Generator[ChunkData, None, None]:
-     path = Path(__file__).parent / "data" / file
-     with open(path.as_posix(), encoding="utf-8") as f:
-          chunks = json.loads(f.read())
-     for chunk in chunks:
-          yield chunk
+    path = Path(__file__).parent / "data" / file
+    with open(path.as_posix(), encoding="utf-8") as f:
+        chunks = json.loads(f.read())
+    for chunk in chunks:
+        yield chunk
 
 
 def match_sync(query: str, file: str) -> tuple[float, Optional[ChunkData]]:
