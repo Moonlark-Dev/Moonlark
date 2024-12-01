@@ -43,7 +43,8 @@ class KeysParser:
         self.keys[string_key] = value
 
     def parse(self, data: dict[str, Any]) -> None:
-        for key, value in data.items():
+        for _key, value in data.items():
+            key = str(_key)
             if isinstance(value, str):
                 self.set_key(key, LanguageKey(text=[value]))
             elif isinstance(value, list):
