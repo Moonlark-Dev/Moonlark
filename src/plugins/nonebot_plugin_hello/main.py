@@ -8,6 +8,7 @@ from nonebot.adapters import Message, Event
 
 lang = LangHelper()
 
+
 @on_type(PokeNotifyEvent, block=False).handle()
 async def _(user_id: str = get_user_id()) -> None:
     if not event.get_plaintext():
@@ -20,6 +21,7 @@ async def _(user_id: str = get_user_id()) -> None:
             await lang.send("poke.like", user_id)
         await user.set_config_key("poke_count", user.get_config_key("poke_count", 0) + 1)
 
+
 @on_message(rule=to_me(), block=False).handle()
 async def _(event: Event, user_id: str = get_user_id()) -> None:
     if not event.get_plaintext():
@@ -31,6 +33,3 @@ async def _(event: Event, user_id: str = get_user_id()) -> None:
         elif user.get_fav() <= 0.01:
             await lang.send("at.like", user_id)
         await user.set_config_key("at_count", user.get_config_key("at_count", 0) + 1)
-
-
-
