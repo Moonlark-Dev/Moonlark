@@ -59,11 +59,9 @@ async def _(session: async_scoped_session, user_id: str = get_user_id(), group_i
     except IndexError:
         await lang.finish("cave.nocave", user_id)
         raise
-    try:
-        add_cave_message(cave_id, str((await content.send()).msg_ids[0]["message_id"]))
-    except Exception:
-        logger.error(f"写入回声洞消息队列时发生错误: {traceback.format_exc()}")
+    cave_message = await content.send()
     if msg := await get_comments(cave_id, session, user_id):
         await msg.send()
     await on_use(group_id, user_id, session)
+    add_cave_message(cave_id, str(cave_message.msg_ids[0]["message_id"]))
     await cave.finish()
