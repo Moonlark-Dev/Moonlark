@@ -12,6 +12,26 @@ command:
     如果您还没有阅读，请前往 https://github.com/orgs/Moonlark-Dev/discussions/3 阅读后继续使用 Moonlark。
 
     如果您不同意其中的任何条款，请立即停止使用 Moonlark，这是最后的警告。
+  tip_without_url: |
+    在开始之前，我们相信您已经阅读并接受《Moonlark 最终许可协议》中的所有内容，它总结起来无非是这几点：
+
+    1. 您在使用 Moonlark 时应遵守最终许可协议和相关法律法规；
+    2. 您不能使用 Moonlark 进行任何违法活动和任何可能侵犯他人合法权益的目的；
+    3. 您需要承担所有由于不当使用 Moonlark 造成的后果及责任；
+    4. Moonlark 在运行时需要收集数据，您应当允许 Moonlark 收集和使用相关数据；
+    5. 在您没有同意《Moonlark 最终许可协议》时，您没有权利使用 Moonlark。
+
+    具体的协议内容如下，如果您不同意其中的任何条款，请立即停止使用 Moonlark，这是最后的警告。
+  tip_failed_to_send_content: |
+    在开始之前，我们相信您已经阅读并接受《Moonlark 最终许可协议》中的所有内容，它总结起来无非是这几点：
+
+    1. 您在使用 Moonlark 时应遵守最终许可协议和相关法律法规；
+    2. 您不能使用 Moonlark 进行任何违法活动和任何可能侵犯他人合法权益的目的；
+    3. 您需要承担所有由于不当使用 Moonlark 造成的后果及责任；
+    4. Moonlark 在运行时需要收集数据，您应当允许 Moonlark 收集和使用相关数据；
+    5. 在您没有同意《Moonlark 最终许可协议》时，您没有权利使用 Moonlark。
+
+    协议内容发送失败，请自行前往 GitHub 搜索 Moonlark-Dev/Moonlark 仓库后进入 Discussions 阅读 《Moonlark 最终许可协议》。
   cancel: Cancelled
   confirm: 注册成功！欢迎你，{}
   invalid: 输入无效，请重新输入：
