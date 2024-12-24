@@ -44,6 +44,7 @@ async def get_cave(session: async_scoped_session) -> CaveData:
     cave_id = random.choice(cave_id_list)
     return await session.get_one(CaveData, {"id": cave_id})
 
+
 async def send_cave(session: async_scoped_session, user_id: str) -> None:
     try:
         cave_data = await get_cave(session)
