@@ -62,6 +62,7 @@ async def send_cave(session: async_scoped_session, user_id: str) -> None:
     try:
         add_cave_message(cave_id, str(cave_message.msg_ids[0]["message_id"]))
     except TypeError:
+        # Ignore exception mentioned in issue 325, which is caused by f**king QQ
         pass
 
 
