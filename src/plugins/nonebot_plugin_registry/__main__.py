@@ -10,9 +10,12 @@ from sqlalchemy import select
 
 from ..nonebot_plugin_preview.preview import screenshot
 from ..nonebot_plugin_larkuser.models import UserData
+from nonebot.exception import ActionFailed
 from ..nonebot_plugin_larkutils.user import get_user_id
 from .lang import lang
 from src.plugins.nonebot_plugin_larkuser.user.utils import is_user_registered
+import traceback
+from nonebot.log import logger
 from nonebot_plugin_userinfo import EventUserInfo, UserInfo
 
 register = on_command("register")
@@ -22,10 +25,17 @@ register = on_command("register")
 async def _(user_id: str = get_user_id()) -> None:
     if await is_user_registered(user_id):
         await lang.finish("command.registered", user_id)
-    await lang.send("command.tip", user_id)
-    await UniMessage().image(
-        raw=await screenshot("https://github.com/orgs/Moonlark-Dev/discussions/3", 1), name="image.png"
-    ).send()
+    try:
+        await lang.send("command.tip", user_id)
+    except ActionFailed:
+        logger.warning("发送最终许可协议 URL 失败，尝试以截图形式发送")
+        try:
+            await UniMessage().text(await lang.text("command.tip_without_url", user_id)).image(
+                raw=await screenshot("https://github.com/orgs/Moonlark-Dev/discussions/3", 1), name="image.png"
+            ).send()
+        except Exception:
+            await lang.send("command.tip_failed_to_send_content", user_id)
+            logger.error(f"以截图形式发送 EUAL 失败: {traceback.format_exc()}")
     await lang.send("input.g", user_id)
 
 
