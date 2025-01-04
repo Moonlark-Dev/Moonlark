@@ -13,7 +13,7 @@ async def _(user_id: str = get_user_id()) -> None:
     """获取用户可用信息"""
     pass
 
+
 @matcher.assign("prompt")
 async def _(prompt: str, reset: Match[bool], user_id: str = get_user_id()) -> None:
     pass
-

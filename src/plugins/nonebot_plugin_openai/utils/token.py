@@ -22,7 +22,7 @@ async def reduce_token(user_id: str, count: int) -> None:
         if (user := await session.get(GptUser, user_id)) is not None:
             user.used_token += count
         else:
-            user = GptUser(user_id=user_id,used_token=count)
+            user = GptUser(user_id=user_id, used_token=count)
         await session.merge(user)
         await session.commit()
 

@@ -13,6 +13,7 @@ class SessionMessage(Model):
     content: Mapped[bytes]
     role: Mapped[str] = mapped_column(String(32))
 
+
 class GptUser(Model):
     user_id: Mapped[str] = mapped_column(primary_key=True)
     session_id: Mapped[Optional[int]] = mapped_column(nullable=True)
