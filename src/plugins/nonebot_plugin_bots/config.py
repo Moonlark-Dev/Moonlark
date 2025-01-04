@@ -9,5 +9,4 @@ class Config(BaseModel):
     bots_list: dict[str, str] = {}
 
 
-
 config = get_plugin_config(Config)

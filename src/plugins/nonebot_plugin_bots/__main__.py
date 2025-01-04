@@ -25,10 +25,7 @@ async def bots_status(_: Request) -> dict[str, BotStatus]:
         try:
             bot = get_bot(user_id)
         except KeyError:
-            bots[code] = {
-                "user_id": user_id,
-                "online": False
-            }
+            bots[code] = {"user_id": user_id, "online": False}
             continue
         try:
             if isinstance(bot, QQBot):
@@ -41,12 +38,7 @@ async def bots_status(_: Request) -> dict[str, BotStatus]:
                 good = False
         except ActionFailed:
             good = False
-        bots[code] = {
-            "user_id": user_id,
-            "adapter_name": bot.adapter.get_name(),
-            "online": True,
-            "good": good
-        }
+        bots[code] = {"user_id": user_id, "adapter_name": bot.adapter.get_name(), "online": True, "good": good}
     return bots
 
 
@@ -74,4 +66,3 @@ async def _() -> None:
             logger.debug(f"将回收过期会话: {key} ({value})")
     for key in expired_sessions:
         sessions.pop(key)
-
