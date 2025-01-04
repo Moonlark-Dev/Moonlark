@@ -1,4 +1,6 @@
 import base64
+import traceback
+from nonebot.log import logger
 from nonebot import get_app
 from nonebot_plugin_orm import get_session, get_scoped_session
 from sqlalchemy import select
@@ -23,7 +25,7 @@ async def get_image_data(cave_id: int) -> AsyncGenerator[Image, None]:
         try:
             data = await get_image(image.id, session)
         except Exception:
-            continue
+            logger.error(f"获取 CAVE 图片信息失败 ({image.id=}): {traceback.format_exc()}")
         yield {
             "id": float(image.id),
             "name": str(image.name),

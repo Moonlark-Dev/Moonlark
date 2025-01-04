@@ -1,6 +1,7 @@
 render:
   header: "回声洞 —— ({})\n"
   footer: "\n——{}"
+failed_to_send: '消息被平台屏蔽，请稍后重试。'
 add:
   empty: 投稿失败：无效内容
   similarity_title: "发现相似的回声洞: \n\n"

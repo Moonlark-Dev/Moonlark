@@ -7,6 +7,8 @@ from nonebot_plugin_alconna import Alconna, Args, Image, MultiVar, Option, Subco
 from nonebot_plugin_orm import async_scoped_session
 from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
+from nonebot.exception import ActionFailed
+
 
 from ..nonebot_plugin_larkutils import get_group_id, get_user_id
 from .cool_down import is_group_cooled, is_user_cooled, on_use
@@ -43,12 +45,7 @@ async def get_cave(session: async_scoped_session) -> CaveData:
     return await session.get_one(CaveData, {"id": cave_id})
 
 
-@cave.assign("$main")
-async def _(session: async_scoped_session, user_id: str = get_user_id(), group_id: str = get_group_id()) -> None:
-    if not (user_cd_data := await is_user_cooled(user_id, session))[0]:
-        await lang.finish("cave.user_cd", user_id, round(user_cd_data[1] / 60, 3))
-    if not (group_cd_data := await is_group_cooled(group_id, session))[0]:
-        await lang.finish("cave.group_cd", user_id, round(group_cd_data[1] / 60, 3))
+async def send_cave(session: async_scoped_session, user_id: str) -> None:
     try:
         cave_data = await get_cave(session)
         cave_id = cave_data.id
@@ -59,11 +56,29 @@ async def _(session: async_scoped_session, user_id: str = get_user_id(), group_i
     except IndexError:
         await lang.finish("cave.nocave", user_id)
         raise
-    try:
-        add_cave_message(cave_id, str((await content.send()).msg_ids[0]["message_id"]))
-    except Exception:
-        logger.error(f"写入回声洞消息队列时发生错误: {traceback.format_exc()}")
+    cave_message = await content.send()
     if msg := await get_comments(cave_id, session, user_id):
         await msg.send()
     await on_use(group_id, user_id, session)
+    try:
+        add_cave_message(cave_id, str(cave_message.msg_ids[0]["message_id"]))
+    except TypeError:
+        # Ignore exception mentioned in issue 325, which is caused by f**king QQ
+        pass
+
+
+@cave.assign("$main")
+async def _(session: async_scoped_session, user_id: str = get_user_id(), group_id: str = get_group_id()) -> None:
+    if not (user_cd_data := await is_user_cooled(user_id, session))[0]:
+        await lang.finish("cave.user_cd", user_id, round(user_cd_data[1] / 60, 3))
+    if not (group_cd_data := await is_group_cooled(group_id, session))[0]:
+        await lang.finish("cave.group_cd", user_id, round(group_cd_data[1] / 60, 3))
+    for _ in range(3):
+        try:
+            await send_cave(session, user_id)
+        except ActionFailed:
+            continue
+        break
+    else:
+        await lang.finish("failed_to_send", user_id)
     await cave.finish()
