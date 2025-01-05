@@ -15,8 +15,8 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
-from typing import TypedDict, Literal
-
+from typing import Literal
+from typing_extensions import TypedDict
 
 class OnlineBotStatus(TypedDict):
     user_id: str
