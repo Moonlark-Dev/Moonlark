@@ -127,7 +127,7 @@ class ControllableTeam(Team):
             }
         return event  # type: ignore
 
-    async def get_monomer_stat(self, monomer: Monomer) -> str:
+    async def get_monomer_stat(self, monomer: "Monomer") -> str:
         if not monomer.is_selectable():
             k = "stat_unselectable"
         elif monomer.has_shield():
