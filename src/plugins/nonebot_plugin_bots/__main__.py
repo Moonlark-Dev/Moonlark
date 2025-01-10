@@ -29,7 +29,7 @@ async def bots_status(_: Request) -> dict[str, BotStatus]:
             continue
         try:
             if isinstance(bot, QQBot):
-                good = await bot.ready()
+                good = bot.ready
             elif isinstance(bot, V11Bot):
                 good = (await bot.get_status())["good"]
             elif isinstance(bot, V12Bot):
