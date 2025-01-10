@@ -40,7 +40,7 @@ class WaitUserInput:
         self.prompt_text = prompt_text
         self.user_id = user_id
         self.default = default
-        self.checker = checker
+        self.checker = checker or (lambda _: True)
         self.answer = None
         self.message_matcher = on_message(block=True, rule=self.check_user)
         self.message_matcher.handle()(self.handle_message)
@@ -48,16 +48,14 @@ class WaitUserInput:
     async def check_user(self, user_id: str = get_user_id()):
         return user_id == self.user_id
 
-    async def handle_message(self, event: Event, user_id: str = get_user_id()) -> None:
+    async def handle_message(self, matcher: Matcher, event: Event, user_id: str = get_user_id()) -> None:
         text = event.get_plaintext()
         try:
             result = self.checker(text)
         except Exception:
             result = False
         if not result:
-            await lang.finish(
-                "prompt.unknown", user_id, at_sender=False, reply_message=True, matcher=self.message_matcher
-            )
+            await lang.finish("prompt.unknown", user_id, at_sender=False, reply_message=True, matcher=matcher)
         self.answer = text
 
     async def wait(self, timeout: int = 30) -> None:

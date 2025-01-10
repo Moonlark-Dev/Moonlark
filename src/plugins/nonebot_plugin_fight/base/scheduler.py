@@ -7,28 +7,29 @@ from ..types import ACTION_EVENT
 class Scheduler:
 
     def __init__(self) -> None:
-        self.teams = []
+        self.teams: list[Team] = []
 
     def register_team(self, team: Team) -> "Scheduler":
+        if len(self.teams) > 1:
+            raise ValueError("The number of teams is limited to 2.")
         self.teams.append(team)
         return self
 
     async def post_action_event(self, event: ACTION_EVENT):
         for t in self.teams:
-            await t.get_event(event)
+            await t.got_event(event)
 
     async def post_attack_event(
         self, target: Monomer, origin: Monomer, harm: int, harm_type: str, missed: bool = False
     ) -> None:
-        data = {
+        await self.post_action_event({
             "type": "harm.single",
             "origin": origin,
             "target": target,
             "harm_value": harm,
             "harm_type": harm_type,
             "harm_missed": missed,
-        }
-        await self.post_action_event(data)
+        })
 
     def get_monomers(self) -> list[Monomer]:
         monomers = []

@@ -43,33 +43,4 @@
             {% endfor %}
         </tbody>
     </table>
-    <!-- 状态和效果 -->
-    <h3>{{ lang.stat_title }}</h3>
-    <table>
-        <thead>
-            <tr>
-                <td>{{ lang.stat_hp }}</td>
-                <td>{{ lang.stat_balance }}</td>
-                <td>{{ lang.stat_power }}</td>
-                <td>{{ lang.stat_skill }}</td>
-            </tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td>{{ me.health }}</td>
-                <td>{{ me.balance }}</td>
-                <td>{{ me.power }}</td>
-                <td>{{ me.team_skill_point }}</td>
-            </tr>
-        </tbody>
-    </table>
-    <ul>
-        {% for item in buff_log %}
-            <li>
-                <strong>{{ item.name }}</strong>
-                &nbsp;
-                {{ item.messsage }}
-            </li>
-        {% endfor %}
-    </ul>
 {% endblock body %}

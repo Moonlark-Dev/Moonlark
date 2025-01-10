@@ -15,9 +15,13 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING
 import copy
+from ..lang import lang
+from src.plugins.nonebot_plugin_fight.base.scheduler import Scheduler
 from ..types import ACTION_EVENT
+from typing import Any
+from nonebot.matcher import Matcher
 
 if TYPE_CHECKING:
     from .monomer import Monomer
@@ -28,14 +32,13 @@ class Team:
 
     def __init__(
         self,
-        type_: Literal["Controllable", "Other"],
         scheduler: "Scheduler",
         team_id: str = "team.a",
         selectable: bool = True,
         team_skill: None = None,
     ) -> None:
         self.team_id = team_id
-        self.team_type = type_
+        self.team_type = "Other"
         self.team_skill = team_skill
         self.max_skill_point = 5
         self.team_skill_power = 0
@@ -57,7 +60,7 @@ class Team:
         self.action_logs.clear()
         return events
 
-    async def get_event(self, event: ACTION_EVENT) -> None:
+    async def got_event(self, event: ACTION_EVENT) -> None:
         if self.team_type == "Controllable":
             self.action_logs.append(event)
         for m in self.monomers:
@@ -89,3 +92,47 @@ class Team:
 
     def get_monomers(self) -> list["Monomer"]:
         return self.monomers
+
+
+
+
+class ControllableTeam(Team):
+
+    def __init__(self, scheduler: Scheduler, matcher: Matcher, user_id: str, team_id: str = "team.a", selectable: bool = True, team_skill: None = None) -> None:
+        super().__init__(scheduler, team_id, selectable, team_skill)
+        self.user_id = user_id
+        self.matcher = matcher
+        self.team_type = "Controllable"
+
+    def get_user_id(self) -> str:
+        return self.user_id
+
+    async def parse_event(self, event: ACTION_EVENT) -> dict[str, Any]:
+        if event["type"] == "harm.single":
+            return {
+                "type": "harm.single",
+                "target_team": await event["target"].team.get_team_name(self.user_id),
+                "target_name": await event["target"].get_name(self.user_id),
+                "origin_team": await event["origin"].team.get_team_name(self.user_id),
+                "origin_name": await event["origin"].get_name(self.user_id),
+                "harm_value": event["harm_value"],
+                "harm_type": event["harm_type"],
+                "harm_missed": event["harm_missed"],
+            }
+        return event # type: ignore
+    
+    async def get_monomer_stat(self, monomer: Monomer) -> str:
+        if not monomer.is_selectable():
+            k = "stat_unselectable"
+        elif monomer.has_shield(): 
+            k = "stat_with_shield"
+        else:
+            k = "stat"
+        return await lang.text(
+            k,
+            self.user_id,
+            round(monomer.get_hp() / monomer.get_max_hp()),
+            monomer.balance,
+            action_value=monomer.get_action_value(),
+            shield=monomer.get_shield()
+        )

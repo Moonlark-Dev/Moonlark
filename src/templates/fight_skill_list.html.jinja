@@ -1,0 +1,36 @@
+{% extends base %}
+
+{% block body %}
+<div class="row">
+    <div class="col">
+        <h3>{{ lang.myteam }}</h3>
+        <ul>
+            {% for monomer in monomers_current_team %}
+            <li>
+                <span class="badge bg-info">{{ monomer.index }}</span> <strong>{{ monomer.name }}</strong> {{
+                monomer.stat }}
+                <ul>
+                    {% for skill in monomer.skills %}
+                    <li>
+                        <span class="badge bg-success rounded-pill">{{ skill.index }}</span> <strong>{{
+                            skill.name }}</strong> {{ skill.info }}
+                    </li>
+                    {% endfor %}
+                </ul>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    <div class="col">
+        <h3>{{ lang.another_name }} <span class="badge bg-danger">{{ another_name }}</span></h3>
+        <ul>
+            {% for monomer in monomers_another_team %}
+            <li>
+                <span class="badge bg-warning">{{ monomer.index }}</span> <strong>{{ monomer.name }}</strong> {{
+                monomer.stat }}
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+{% endblock body %}
