@@ -43,9 +43,11 @@ class SkillInfo(TypedDict):
     instant: bool
     target_type: Literal["self", "enemy", "none"]
 
+
 class ActionCommand(TypedDict):
     skill_index: int
     target: Optional["Monomer"]
     skill_info: SkillInfo
+
 
 ACTION_EVENT = MessageActionEvent | AttackEvent

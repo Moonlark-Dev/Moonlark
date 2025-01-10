@@ -21,7 +21,6 @@ from .team import Team
 from ..types import ACTION_EVENT
 
 
-
 class Monomer(ABC):
 
     def __init__(self, team: Team):
@@ -40,7 +39,7 @@ class Monomer(ABC):
 
     def get_shield(self) -> int:
         return self.shield
-    
+
     def has_shield(self) -> bool:
         return self.shield > 0
 
@@ -136,7 +135,8 @@ class Monomer(ABC):
 
     def get_focus(self) -> int:
         return self.focus
-    
+
+
 def get_miss_percent(origin: Monomer, target: Monomer) -> float:
     "Calculate the miss percent that influenced by FOCUS value."
     return (origin.get_focus() - target.get_focus()) / 1000 + 0.05

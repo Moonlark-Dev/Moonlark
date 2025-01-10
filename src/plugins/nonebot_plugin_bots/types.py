@@ -18,6 +18,7 @@
 from typing import Literal
 from typing_extensions import TypedDict
 
+
 class OnlineBotStatus(TypedDict):
     user_id: str
     online: Literal[True]

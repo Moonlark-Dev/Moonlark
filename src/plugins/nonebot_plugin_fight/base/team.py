@@ -94,11 +94,17 @@ class Team:
         return self.monomers
 
 
-
-
 class ControllableTeam(Team):
 
-    def __init__(self, scheduler: Scheduler, matcher: Matcher, user_id: str, team_id: str = "team.a", selectable: bool = True, team_skill: None = None) -> None:
+    def __init__(
+        self,
+        scheduler: Scheduler,
+        matcher: Matcher,
+        user_id: str,
+        team_id: str = "team.a",
+        selectable: bool = True,
+        team_skill: None = None,
+    ) -> None:
         super().__init__(scheduler, team_id, selectable, team_skill)
         self.user_id = user_id
         self.matcher = matcher
@@ -119,12 +125,12 @@ class ControllableTeam(Team):
                 "harm_type": event["harm_type"],
                 "harm_missed": event["harm_missed"],
             }
-        return event # type: ignore
-    
+        return event  # type: ignore
+
     async def get_monomer_stat(self, monomer: Monomer) -> str:
         if not monomer.is_selectable():
             k = "stat_unselectable"
-        elif monomer.has_shield(): 
+        elif monomer.has_shield():
             k = "stat_with_shield"
         else:
             k = "stat"
@@ -134,5 +140,5 @@ class ControllableTeam(Team):
             round(monomer.get_hp() / monomer.get_max_hp()),
             monomer.balance,
             action_value=monomer.get_action_value(),
-            shield=monomer.get_shield()
+            shield=monomer.get_shield(),
         )
