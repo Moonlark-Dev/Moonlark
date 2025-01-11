@@ -17,180 +17,282 @@
 
 from ...nonebot_plugin_larkuser.utils.waiter2 import WaitUserInput
 from .monomer import Monomer, Team, ACTION_EVENT
+from .team import ControllableTeam
+import re
 from ..lang import lang
-import copy
-from typing import Optional
-from ..types import ACTION_EVENT
-from abc import ABC
+from typing import Any, Optional, Awaitable, Callable
+from ..types import ACTION_EVENT, SkillInfo, ActionCommand
+from abc import ABC, abstractmethod
 from nonebot_plugin_alconna import UniMessage
 from ...nonebot_plugin_render import render_template
 
 
 class ControllableMonomer(Monomer, ABC):
 
-    def __init__(self, team: Team, controller: str) -> None:
+    def __init__(self, team: ControllableTeam) -> None:
         super().__init__(team)
-        self.user_id = controller
+        if not isinstance(self.team, ControllableTeam):
+            raise ValueError("The team must be an instance of ControllableTeam.")
+        self.user_id = self.team.get_user_id()
+        self.action_commands: list[ActionCommand] = []
+        self.tiggered_commands = []
+        self.skills: list[Callable[[Optional[Monomer], Team], Awaitable[None]]] = []
 
-    async def parse_event(self, origin_event: ACTION_EVENT) -> dict[str, str | int]:
-        event = copy.deepcopy(origin_event)
-        if event["type"] == "harm.single":
-            origin = event.pop("origin")
-            target = event.pop("target")
-            event["target_team"] = await target.team.get_team_name(self.user_id)
-            event["target_name"] = await target.get_name(self.user_id)
-            event["origin_team"] = await origin.team.get_team_name(self.user_id)
-            event["origin_name"] = await origin.get_name(self.user_id)
-        return event
+    def append_action_command(self, command: ActionCommand) -> None:
+        self.action_commands.append(command)
 
-    async def get_fight_stats(self) -> bytes:
-        events = self.team.get_action_events()
-        l = 0
+    @abstractmethod
+    async def get_skill_info_list(self) -> list[SkillInfo]:
+        return []
+
+    def tigger_command_after(self, command: ActionCommand, after: ActionCommand | None) -> None:
+        self.tiggered_commands.append((command, after))
+
+    async def on_action(self, teams: list[Team]) -> None:
+        while len(self.action_commands) > 0:
+            command = self.action_commands.pop(0)
+            func = self.skills[command["skill_index"]]
+            await func(command["target"], teams[0])
+            if command["skill_info"]["occupy_round"]:
+                break
+
+
+def get_monomer_indexs(monomer: ControllableMonomer, monomers: list[ControllableMonomer]) -> list[int]:
+    indexs = []
+    for i, m in enumerate(monomers):
+        if m == monomer:
+            indexs.append(i)
+    return indexs
+
+
+class ControllableRoundBoundary(Monomer):
+
+    def __init__(self, team: ControllableTeam) -> None:
+        super().__init__(team)
+        if not isinstance(self.team, ControllableTeam):
+            raise ValueError("The team must be an instance of ControllableTeam.")
+        self.team: ControllableTeam = team
+        self.user_id = self.team.get_user_id()
+
+    def sort_momomers_by_action_rank(self) -> list[ControllableMonomer]:
+        monomers = []
+        controllable_monomers = []
+        scheduler = self.get_team().scheduler
+        for monomer in self.team.get_monomers():
+            if isinstance(monomer, ControllableMonomer):
+                controllable_monomers.append(monomer)
+        for monomer in scheduler.get_sorted_monomers():
+            if monomer in controllable_monomers:
+                monomers.append(monomer)
+            elif isinstance(monomer, ControllableRoundBoundary):
+                break
+        return monomers
+
+    def is_selectable(self) -> bool:
+        return False
+
+    async def get_skill_info(self, skill: SkillInfo) -> str:
+        return " ".join(
+            t
+            for t in [
+                await lang.text("skill_stat.cost", self.user_id, skill["cost"]) if skill["cost"] > 0 else "",
+                await lang.text("skill_stat.not_occupy_round", self.user_id) if skill["occupy_round"] == 0 else "",
+            ]
+            if t
+        )
+
+    async def on_action(self, teams: list[Team]) -> None:
+        self.reset_speed()
+        monomers = self.sort_momomers_by_action_rank()
+        skills = await fetch_skills_from_monomers(monomers)
         template_body = {
-            "action_log": [await self.parse_event(event) for event in events],
-            "monomers": [
+            "monomers_current_team": [
                 {
-                    "index": (l := l + 1),
+                    "index": ", ".join(map(str, get_monomer_indexs(monomer, monomers))),
                     "name": await monomer.get_name(self.user_id),
-                    "team": await monomer.get_team().get_team_name(self.user_id),
-                    "stat": await self.get_monomer_stat(monomer),
+                    "stat": await self.team.get_monomer_stat(monomer),
+                    "skills": [
+                        {"index": i + 1, "name": skill["name"], "info": await self.get_skill_info(skill)}
+                        for i, skill in enumerate(skills)
+                        if skill["monomer"] == monomer
+                    ],
                 }
-                for monomer in self.get_team().scheduler.get_sorted_monomers()
+                for monomer in monomers
             ],
-            "me": {
-                "health": await lang.text(
-                    "hp.normal",
-                    self.user_id,
-                    self.get_hp(),
-                    self.get_max_hp(),
-                    round(self.get_hp() / self.get_max_hp() * 100),
-                ),
-                "balance": self.balance,
-                "power": round(self.get_power_percent() * 100),
-                "team_skill_point": await lang.text("skill_point", self.user_id, *self.team.get_skill_point()),
+            "another_name": await teams[0].get_team_name(self.user_id),
+            "monomers_another_team": [
+                {
+                    "index": teams[0].get_monomers().index(monomer) + 1,
+                    "name": await monomer.get_name(self.user_id),
+                    "stat": await self.team.get_monomer_stat(monomer),
+                }
+                for monomer in teams[0].get_monomers()
+                if monomer.is_selectable()
+            ],
+            "lang": {
+                "another_name": await lang.text("action.another_name", self.user_id),
+                "myteam": await lang.text("action.myteam", self.user_id),
             },
+        }
+        image = await render_template(
+            "fight_skill_list.html.jinja", await lang.text("action.title", self.user_id), self.user_id, template_body
+        )
+        message = UniMessage().image(raw=image)
+        commands = []
+        while True:
+            waiter = WaitUserInput(
+                message,
+                self.user_id,
+                lambda string: re.match(r"^[0-9a-z \.]+$", string) is not None
+                and parse_action_command(string, skills, monomers, teams[0]) is not None,
+            )
+            await waiter.wait()
+            commands = waiter.get(lambda string: parse_action_command(string, skills, monomers, teams[0]))
+            if commands is None or not self.check_action_commands(commands, monomers, teams[0]):
+                message = UniMessage.text(text=await lang.text("action.invalid", self.user_id))
+                continue
+            break
+        self.process_commands(commands)
+
+    def process_commands(self, commands: list[ActionCommand]) -> None:
+        for command in commands:
+            if not isinstance(command["skill_info"]["monomer"], ControllableMonomer):
+                continue
+            if not command["skill_info"]["instant"]:
+                command["skill_info"]["monomer"].append_action_command(command)
+            else:
+                command["skill_info"]["monomer"].tigger_command_after(
+                    command, commands[commands.index(command) - 1] if commands.index(command) > 0 else None
+                )
+
+    def reset_speed(self) -> int:
+        total_speed = 0
+        for monomer in self.team.get_monomers():
+            total_speed += monomer.speed
+        self.speed = round(total_speed / len(self.team.get_monomers()) * 0.9)
+        return self.speed
+
+    async def get_sorted_momoners_stat(self) -> list[dict[str, Any]]:
+        index = 0
+        return [
+            {
+                "index": (index := index + 1),
+                "name": await monomer.get_name(self.user_id),
+                "team": await monomer.get_team().get_team_name(self.user_id),
+                "stat": await self.team.get_monomer_stat(monomer),
+            }
+            for monomer in self.team.scheduler.get_sorted_monomers()
+            if not isinstance(monomer, ControllableRoundBoundary)
+        ]
+
+    async def get_fight_log(self) -> UniMessage:
+        events = self.team.get_action_events()
+        template_body = {
+            "action_log": [await self.team.parse_event(event) for event in events],
+            "monomers": await self.get_sorted_momoners_stat(),
             "lang": {
                 "missed": await lang.text("log.missed", self.user_id),
                 "action_title": await lang.text("log.action.title", self.user_id),
                 "action_num": await lang.text("log.action.number", self.user_id),
                 "action_stat": await lang.text("log.action.stat", self.user_id),
-                "stat_title": await lang.text("log.stat.title", self.user_id),
-                "stat_hp": await lang.text("log.stat.hp", self.user_id),
-                "stat_balance": await lang.text("log.stat.balance", self.user_id),
-                "stat_power": await lang.text("log.stat.power", self.user_id),
-                "stat_team_skill_point": await lang.text("log.stat.skill", self.user_id),
             },
-            "buff_log": [],  # TODO 等待 Buff 系统
         }
-        return await render_template(
+        image = await render_template(
             "fight_log.html.jinja", await lang.text("log.title", self.user_id), self.user_id, template_body
         )
+        return UniMessage().image(raw=image)
 
-    async def on_action(self, teams: list[Team]) -> None:
-        await UniMessage().image(raw=await self.get_fight_stats()).send()
-        while await self.choose_skill():
-            pass
-
-    async def choose_skill(self, teams: list[Team]) -> None:
-        waiter = WaitUserInput(
-            UniMessage.text(text=await lang.text("controllable.options", self.user_id)),  # 细节等更多东西做出来再优化
-            self.user_id,
-            lambda s: int(s) in [1, 2, 9],
-            "9",
-        )
-        await waiter.wait()
-        result = await waiter.get(lambda m: int(m))
-        if result == 1:
-            await on_simple_attack(teams)
-            self.team.add_skill_points()
-        elif result == 2:
-            if self.team.get_skill_point()[0] >= 1:
-                await self.on_special_skill(teams)
-                self.team.reduce_skill_points()
-            else:
-                await lang.send("option.no_skill_point", self.user_id)
-                return True
-        else:
-            await lang.send("option.skipped", self.user_id)
-            self.team.add_skill_points()
-
-    @abstractmethod
-    async def on_simple_attack(self, teams: list[Team]) -> None:
-        pass
-
-    @abstractmethod
-    async def on_special_skill(self, teams: list[Team]) -> None:
-        pass
-
-    async def select_monomer(self, teams: list[Team]) -> Optional[Monomer]:
-        if len(teams) == 0:
-            return None  # no monomer to select
-        while (team := await self.choose_team(teams)) is not None:
-            while (monomer := await self.choose_monomer(team)) is not None:
-                return monomer
-
-    async def get_monomer_stat(self, monomer: Monomer) -> str:
-        return await lang.text(
-            "stat",
-            self.user_id,
-            monomer.get_hp(),
-            round(monomer.get_hp() / monomer.get_max_hp()),
-            monomer.balance,
-        )
-
-    async def choose_monomer(self, team: Team) -> Optional[Monomer]:
-        text = [await lang.text("select.monomer", self.user_id)]
-        monomers = team.get_monomers()
-        length = 1
+    def check_action_commands(
+        self, commands: list[ActionCommand], monomers: list[ControllableMonomer], enemy_team: Team
+    ) -> bool:
+        monomer_action_count = {}
+        points, max_skill_point = self.team.get_skill_point()
+        for command in commands:
+            if command["skill_info"]["instant"] or not command["skill_info"]["occupy_round"]:
+                continue
+            monomer_action_count[command["skill_info"]["monomer"]] = 1 + monomer_action_count.get(
+                command["skill_info"]["monomer"], 0
+            )
+        for monomer, count in monomer_action_count.items():
+            if monomers.count(monomer) < count:
+                return False
+        for command in commands:
+            if not command["skill_info"]["instant"]:
+                break
+            points -= command["skill_info"]["cost"]
+            points = min(points, max_skill_point)
+            if points < 0:
+                return False
         for monomer in monomers:
-            if monomer.is_selectable():
-                text.append(
-                    await lang.text(
-                        "select.item",
-                        self.user_id,
-                        length,
-                        await monomer.get_name(self.user_id),
-                        await self.get_monomer_stat(monomer),
-                    )
-                )
-            length += 1
-        waiter = WaitUserInput(
-            "\n".join(text),
-            self.user_id,
-            lambda string: 0 <= int(string) <= length and (string == "0" or monomers[int(string) - 1].is_selectable()),
-            "0",
-        )
-        await waiter.wait()
-        answer = waiter.get(lambda message: int(message))
-        if answer == 0 or not (monomer := monomers[answer - 1]).is_selectable():
-            return None
-        return monomer
+            for command in [
+                cmd for cmd in commands if cmd["skill_info"]["monomer"] == monomer and not cmd["skill_info"]["instant"]
+            ]:
+                points -= command["skill_info"]["cost"]
+                if points < 0:
+                    return False
+                if command["skill_info"]["cost"] == 0 and command["skill_info"]["occupy_round"]:
+                    points += 1
+                points = min(points, max_skill_point)
+                for cmd in [cmd for cmd in commands[commands.index(command) :]]:
+                    if not cmd["skill_info"]["instant"]:
+                        break
+                    points -= command["skill_info"]["cost"]
+                    points = min(points, max_skill_point)
+                    if points < 0:
+                        return False
+        return True
 
-    async def choose_team(self, teams: list[Team]) -> Optional[Team]:
-        if len(teams) == 1:
-            return teams[0]
-        text = [await lang.text("select.team", self.user_id)]
-        length = 1
-        for team in teams:
-            if team.is_selectable():
-                text.append(
-                    await lang.text(
-                        "select.item",
-                        self.user_id,
-                        length,
-                        await team.get_team_name(self.user_id),
-                        len([m for m in team.get_monomers() if m.is_selectable()]),
-                    )
-                )
-            length += 1
-        waiter = WaitUserInput(
-            "\n".join(text),
-            self.user_id,
-            lambda string: 0 <= int(string) <= length and (string == "0" or teams[int(string) - 1].is_selectable()),
-            "0",
-        )
-        await waiter.wait()
-        answer = waiter.get(lambda message: int(message))
-        if answer == 0 or not (team := teams[answer - 1]).is_selectable():
+
+async def fetch_skills_from_monomers(monomers: list[ControllableMonomer]) -> list[SkillInfo]:
+    skills = []
+    processed_monomer = []
+    for monomer in monomers:
+        if monomer in processed_monomer or not isinstance(monomer, ControllableMonomer):
+            continue
+        processed_monomer.append(monomer)
+        for skill in await monomer.get_skill_info_list():
+            skills.append(skill)
+    return skills
+
+
+def parse_action_command(
+    string: str, skills: list[SkillInfo], monomers: list[ControllableMonomer], enemy_team: Team
+) -> Optional[list[ActionCommand]]:
+    unparsed_commands = [s for s in string.split(" ") if s != ""]
+    commands: list[ActionCommand] = []
+    while len(unparsed_commands) == 0:
+        command = unparsed_commands.pop(0)
+        if command in ["fin", "finish", "ok", "k"]:
+            return commands
+        elif command.replace(".", "", 1).isdigit():
+            skill_index, target_index = map(int, command.split("."))
+        elif command.isdigit():
+            skill_index = int(command)
+            target_index = None
+        else:
             return None
-        return team
+        skill_index -= 1
+        if skill_index < 0 or skill_index >= len(skills):
+            return None
+        skill = skills[skill_index]
+        if (
+            skill["target_type"] != "none"
+            and target_index is None
+            and len(unparsed_commands) > 0
+            and unparsed_commands[0].isdigit()
+        ):
+            target_index = int(unparsed_commands.pop(0))
+        elif target_index is None:
+            return None
+        try:
+            if skill["target_type"] == "self":
+                target = monomers[target_index]
+            elif skill["target_type"] == "enemy":
+                target = enemy_team.get_monomers()[target_index]
+            else:
+                target = None
+        except IndexError:
+            return None
+        offset = len([s for s in skills if s["monomer"] == monomers[0] and skills.index(s) < skill_index])
+        commands.append({"skill_index": skill_index - offset, "target": target, "skill_info": skill})
+    return commands
