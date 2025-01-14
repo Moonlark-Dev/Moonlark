@@ -1,6 +1,9 @@
+from nonebot_plugin_orm import get_session
 from typing import Literal
+from sqlalchemy import select
 
 from ..types import Message, Messages
+from ..models import SessionMessage
 
 
 def generate_message(content: str, role: Literal["system", "user", "assistant"] = "system") -> Message:
@@ -17,3 +20,11 @@ def generate_message(content: str, role: Literal["system", "user", "assistant"] 
         return {"role": "assistant", "content": content}
     else:
         raise ValueError(f"Invalid role: {role}")
+
+
+async def get_session_messages(session_id: int) -> list[Message]:
+    async with get_session() as session:
+        result = await session.scalars(
+            select(SessionMessage).where(SessionMessage.session_id == session_id).order_by(SessionMessage.message_id)
+        )
+        return [generate_message(message.content.decode(), message.role) for message in result]
