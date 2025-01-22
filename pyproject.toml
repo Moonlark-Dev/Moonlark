@@ -41,7 +41,7 @@ python = "^3.11"
 nonebot2 = {extras = ["fastapi"], version = "^2.3.1"}
 nonebot-adapter-onebot = "^2.4.3"
 aiofiles = "^23.2.1"
-nonebot-plugin-alconna = "^0.48.0"
+nonebot-plugin-alconna = "^0.54.2"
 nonebot-plugin-picstatus = "^2.0.0.post2"
 nonebot-adapter-discord = "^0.1.6"
 nonebot-plugin-htmlrender = "^0.3.1"
