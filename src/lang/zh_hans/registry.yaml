@@ -63,3 +63,12 @@ input:
 gender:
   male: 男性
   female: 女性
+invite:
+  unknown: 邀请码无效！
+  inviter_email:
+    subject: 邀请用户成功
+    content: 您已成功使用您的邀请码邀请了用户 {}, 这是您的报酬。
+  invited_email:
+    subject: 注册成功！
+    content: |
+      欢迎使用 Moonlark！根据您的注册信息，您是通过 {} 的邀请加入 Moonlark 的。我们为您准备了一份礼物，期待您的探索之旅！
