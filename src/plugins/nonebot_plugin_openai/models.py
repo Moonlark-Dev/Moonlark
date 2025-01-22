@@ -15,6 +15,6 @@ class SessionMessage(Model):
 
 
 class GptUser(Model):
-    user_id: Mapped[str] = mapped_column(primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(128), primary_key=True)
     session_id: Mapped[Optional[int]] = mapped_column(nullable=True)
     used_token: Mapped[int] = mapped_column(default=0)
