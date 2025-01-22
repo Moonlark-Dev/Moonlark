@@ -29,7 +29,7 @@ register = on_command("register")
 
 @register.handle()
 async def _(state: T_State, message: Message = CommandArg(), user_id: str = get_user_id()) -> None:
-    if (text := message.extract_plain_text()):
+    if text := message.extract_plain_text():
         if await is_user_registered(user := base58_decode(text)):
             state["invite_user"] = user
         await lang.finish("invite.unknown", user_id)
@@ -88,51 +88,22 @@ async def gain_invite(user_id: str, invited_user_id: str, invited_user_data: Use
         await lang.text("invite.inviter_email.subject", user_id),
         await lang.text("invite.inviter_email.content", user_id, invited_user_data.user_displayname or invited_user_id),
         items=[
-            {
-                "item_id": "special:vimcoin",
-                "count": 200,
-                "data": {}
-            },
-            {
-                "item_id": "special:experience",
-                "count": 10,
-                "data": {}
-            },
-            
-            {
-                "item_id": "special:fav",
-                "count": 1,
-                "data": {}
-            },
-            
-        ]
+            {"item_id": "special:vimcoin", "count": 200, "data": {}},
+            {"item_id": "special:experience", "count": 10, "data": {}},
+            {"item_id": "special:fav", "count": 1, "data": {}},
+        ],
     )
     await send_email(
         [user_id],
         await lang.text("invite.invited_email.subject", invited_user_id),
         await lang.text("invite.invited_email.content", invited_user_id, user_id),
         items=[
-            {
-                "item_id": "special:vimcoin",
-                "count": 30,
-                "data": {}
-            },
-            {
-                "item_id": "special:experience",
-                "count": 5,
-                "data": {}
-            },
-            
-            {
-                "item_id": "special:fav",
-                "count": 7,
-                "data": {
-                    "multiple": 1000        # 0.007
-                }
-            },
-            
-        ]
+            {"item_id": "special:vimcoin", "count": 30, "data": {}},
+            {"item_id": "special:experience", "count": 5, "data": {}},
+            {"item_id": "special:fav", "count": 7, "data": {"multiple": 1000}},  # 0.007
+        ],
     )
+
 
 @register.got("confirm")
 async def _(
