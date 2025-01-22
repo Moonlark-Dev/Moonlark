@@ -36,7 +36,7 @@ async def give_item_by_list(user_id: str, items: list[DictItemData]) -> None:
         logger.debug(f"Current item: {item_data}")
         location = get_location_by_id(item_data["item_id"])
         if location.getNamespace() == "special":
-            await give_special_item(user_id, location.getPath(), item_data["count"])
+            await give_special_item(user_id, location.getPath(), item_data["count"], item_data["data"])
             continue
         logger.debug(f"Location got: {location}")
         item = await get_item(location, user_id, item_data["count"], item_data["data"])
