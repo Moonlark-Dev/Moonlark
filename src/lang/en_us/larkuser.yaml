@@ -10,6 +10,7 @@ help:
   description: 用户面板
   details: 查看用户数据面板
   usage: panel (查看面板)
+  usage_invite: panel i (查看邀请指令)
 help_whoami:
   description: 我是谁
   details: 查看用户帐号基本信息
@@ -29,3 +30,8 @@ prompt:
   unknown: 未知输入（格式检查不通过）
   retry_too_much: 重试次数过多！
   quited: 已退出！
+invite:
+  generate: |
+    被邀请的用户只需执行以下指令即可 (在您的邀请下) 完成注册：
+
+    {__prefix__}register {}

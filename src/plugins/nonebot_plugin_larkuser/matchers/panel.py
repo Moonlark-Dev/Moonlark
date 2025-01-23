@@ -43,6 +43,7 @@ async def get_user_info(matcher: Matcher, user_id: str) -> None:
     )
     await matcher.finish(await message.export(), at_sender=True)
 
+
 @patch_matcher(on_command("panel")).handle()
 async def _(matcher: Matcher, message: Message = CommandArg(), user_id: str = get_user_id()) -> None:
     text = message.extract_plain_text()
