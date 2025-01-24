@@ -43,7 +43,13 @@ async def bots_status(_: Request) -> dict[str, BotStatus]:
         except ActionFailed:
             good = False
             nickname = None
-        bots[code] = {"user_id": user_id, "adapter_name": bot.adapter.get_name(), "online": True, "good": good, "nickname": nickname}
+        bots[code] = {
+            "user_id": user_id,
+            "adapter_name": bot.adapter.get_name(),
+            "online": True,
+            "good": good,
+            "nickname": nickname,
+        }
     return bots
 
 
