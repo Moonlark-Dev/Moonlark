@@ -1,0 +1,4 @@
+help:
+  description: GitHub 链接解析
+  details: 预览 GitHub 链接内容
+  usage: github <链接/仓库>
