@@ -15,7 +15,7 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
-from typing import Literal
+from typing import Literal, Optional
 from typing_extensions import TypedDict
 
 
@@ -24,6 +24,7 @@ class OnlineBotStatus(TypedDict):
     online: Literal[True]
     adapter_name: str
     good: bool
+    nickname: Optional[str]
 
 
 class OfflineBotStatus(TypedDict):
