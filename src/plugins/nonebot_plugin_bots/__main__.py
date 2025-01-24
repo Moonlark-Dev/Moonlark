@@ -30,15 +30,20 @@ async def bots_status(_: Request) -> dict[str, BotStatus]:
         try:
             if isinstance(bot, QQBot):
                 good = bot.ready
+                nickname = bot.self_info.username
             elif isinstance(bot, V11Bot):
                 good = (await bot.get_status())["good"]
+                nickname = (await bot.get_login_info()).get("nickname")
             elif isinstance(bot, V12Bot):
                 good = (await bot.get_status())["good"]
+                nickname = (await bot.get_self_info())["user_name"]
             else:
                 good = False
+                nickname = None
         except ActionFailed:
             good = False
-        bots[code] = {"user_id": user_id, "adapter_name": bot.adapter.get_name(), "online": True, "good": good}
+            nickname = None
+        bots[code] = {"user_id": user_id, "adapter_name": bot.adapter.get_name(), "online": True, "good": good, "nickname": nickname}
     return bots
 
 
