@@ -1,4 +1,5 @@
 {
     "default": "base/default.html.jinja",
-    "simple": "base/simple.html.jinja"
+    "simple": "base/simple.html.jinja",
+    "redpacket": "base/redpacket.html.jinja"
 }
