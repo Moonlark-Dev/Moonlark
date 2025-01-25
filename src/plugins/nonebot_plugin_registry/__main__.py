@@ -32,7 +32,8 @@ async def _(state: T_State, message: Message = CommandArg(), user_id: str = get_
     if text := message.extract_plain_text():
         if await is_user_registered(user := base58_decode(text)):
             state["invite_user"] = user
-        await lang.finish("invite.unknown", user_id)
+        else:
+            await lang.finish("invite.unknown", user_id)
     if await is_user_registered(user_id):
         await lang.finish("command.registered", user_id)
     try:
