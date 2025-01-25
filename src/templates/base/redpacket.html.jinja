@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/mdb-ui-kit/7.2.0/mdb.min.css" rel="stylesheet" />
+    <script type="text/javascript"
+        src="https://cdnjs.cloudflare.com/ajax/libs/mdb-ui-kit/7.2.0/mdb.umd.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            background-image: linear-gradient(45deg, #F1441D, #F86B1D);
+            color: #F9A633 !important;
+            
+            padding: 75px;
+            padding-bottom: 15px;
+        }
+        .text-style {
+            color: #FBB612;
+            text-shadow: 3px 3px 10px #82111F;
+            font-size: 75px;
+        }
+        .custom_card {
+            background-color: #A61B29;
+        }
+        .bg-light {
+            background-color: #EF6F46 !important;
+        }
+        h2 {
+            color: #FBB612 !important;
+            text-shadow: 0px 0px 2px #82111F;
+        }
+        h3 {
+            color: #FBB612 !important;
+            text-shadow: 0px 0px 2px #82111F;
+        }
+        p {
+            color: #F86B1D !important;
+        }
+        .text-dark {
+            color: #F9A633 !important;
+        }
+    </style>
+    {% block header %}
+    
+    {% endblock header %}
+</head>
+<body>
+    <div class="container">
+        
+        <div class="card shadow custom_card">
+            <h1 class="text-center text-style">{{ main_title }}</h1>
+            {% block card %}
+            <div class="card-body">
+                {% block body %}
+
+                {% endblock body %}
+            </div>
+            {% endblock card %}
+        </div>
+        <p class="text-center">
+            {{ footer }}
+        </p>
+    </div>
+    <style>
+    
+        body::before {
+            content: "二〇二五";
+            color: #F9A633;
+            font-size: 130px;
+            float:left;
+            position: fixed;
+            font-size: 100px;
+            top: 10px;
+            left: 50px;
+        }
+    </style>
+</body>
+</html>
