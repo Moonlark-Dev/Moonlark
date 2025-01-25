@@ -1,8 +1,6 @@
 import random
-import traceback
 from typing import Union
-
-from nonebot.log import logger
+from nonebot import on_fullmatch
 from nonebot_plugin_alconna import Alconna, Args, Image, MultiVar, Option, Subcommand, Text, on_alconna
 from nonebot_plugin_orm import async_scoped_session
 from sqlalchemy import select
@@ -45,11 +43,11 @@ async def get_cave(session: async_scoped_session) -> CaveData:
     return await session.get_one(CaveData, {"id": cave_id})
 
 
-async def send_cave(session: async_scoped_session, user_id: str) -> None:
+async def send_cave(session: async_scoped_session, user_id: str, group_id: str, reverse: bool = False) -> None:
     try:
         cave_data = await get_cave(session)
         cave_id = cave_data.id
-        content = await decode_cave(cave_data, session, user_id)
+        content = await decode_cave(cave_data, session, user_id, cave_id == 398 or reverse)
     except NoResultFound:
         await lang.finish("cave.noresult", user_id)
         raise
@@ -67,18 +65,29 @@ async def send_cave(session: async_scoped_session, user_id: str) -> None:
         pass
 
 
-@cave.assign("$main")
-async def _(session: async_scoped_session, user_id: str = get_user_id(), group_id: str = get_group_id()) -> None:
+async def handle_get_cave(
+    session: async_scoped_session, user_id: str = get_user_id(), group_id: str = get_group_id(), reverse: bool = False
+) -> None:
     if not (user_cd_data := await is_user_cooled(user_id, session))[0]:
         await lang.finish("cave.user_cd", user_id, round(user_cd_data[1] / 60, 3))
     if not (group_cd_data := await is_group_cooled(group_id, session))[0]:
         await lang.finish("cave.group_cd", user_id, round(group_cd_data[1] / 60, 3))
     for _ in range(3):
         try:
-            await send_cave(session, user_id)
+            await send_cave(session, user_id, group_id, reverse)
         except ActionFailed:
             continue
         break
     else:
         await lang.finish("failed_to_send", user_id)
     await cave.finish()
+
+
+@cave.assign("$main")
+async def _(session: async_scoped_session, user_id: str = get_user_id(), group_id: str = get_group_id()) -> None:
+    await handle_get_cave(session, user_id, group_id, False)
+
+
+@on_fullmatch("evac\\").handle()
+async def _(session: async_scoped_session, user_id: str = get_user_id(), group_id: str = get_group_id()) -> None:
+    await handle_get_cave(session, user_id, group_id, True)
