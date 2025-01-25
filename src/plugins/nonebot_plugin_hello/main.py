@@ -1,4 +1,3 @@
-
 import copy
 import random
 from nonebot import on_message, on_type
@@ -15,6 +14,7 @@ lang = LangHelper()
 from datetime import datetime
 from typing import Literal, TypedDict
 
+
 def get_current_time_segement_name() -> Literal["morning", "afternoon", "night", "midnight"]:
     current_hour = datetime.now().hour
     if 5 <= current_hour < 12:
@@ -26,6 +26,7 @@ def get_current_time_segement_name() -> Literal["morning", "afternoon", "night",
     else:
         return "midnight"
 
+
 class AtGreetingsData(TypedDict):
     updated_day: int
     morning: bool
@@ -35,9 +36,11 @@ class AtGreetingsData(TypedDict):
     night: bool
     night_count: int
 
+
 class AtData(TypedDict):
     count: int
     greetings: AtGreetingsData
+
 
 DEFAULT_AT_GREETINGS: AtGreetingsData = {
     "updated_day": 0,
@@ -49,6 +52,7 @@ DEFAULT_AT_GREETINGS: AtGreetingsData = {
     "night_count": 0,
 }
 
+
 @on_message(rule=to_me(), block=False).handle()
 async def _(event: Event, user_id: str = get_user_id()) -> None:
     if event.get_plaintext():
@@ -57,13 +61,10 @@ async def _(event: Event, user_id: str = get_user_id()) -> None:
     fav = user.get_fav()
     if fav < 0.007 or not user.is_registered():
         await lang.finish("at.unregistered", user_id)
-    at_data: AtData = user.get_config_key("at_data", {
-        "count": 0,
-        "greetings": copy.deepcopy(DEFAULT_AT_GREETINGS)
-    })
+    at_data: AtData = user.get_config_key("at_data", {"count": 0, "greetings": copy.deepcopy(DEFAULT_AT_GREETINGS)})
     if (day := datetime.now().day) != at_data["greetings"]["updated_day"]:
         at_data["greetings"] = copy.deepcopy(DEFAULT_AT_GREETINGS)
-        at_data["greetings"]["updated_day"] = day        
+        at_data["greetings"]["updated_day"] = day
     time_segment_name = get_current_time_segement_name()
     if time_segment_name != "midnight":
         at_data["greetings"][f"{time_segment_name}_count"] += 1
@@ -72,7 +73,11 @@ async def _(event: Event, user_id: str = get_user_id()) -> None:
         await lang.send("at.unregistered", user_id)
     elif time_segment_name == "midnight":
         await lang.send("at.special.midnight", user_id)
-    elif random.random() <= 0.05 or at_data["greetings"][f"{time_segment_name}_count"] == 20 and not at_data["greetings"][time_segment_name]:
+    elif (
+        random.random() <= 0.05
+        or at_data["greetings"][f"{time_segment_name}_count"] == 20
+        and not at_data["greetings"][time_segment_name]
+    ):
         await lang.send(f"at.special.{time_segment_name}", user_id)
         if not at_data["greetings"][time_segment_name]:
             at_data["greetings"][time_segment_name] = True
@@ -81,10 +86,8 @@ async def _(event: Event, user_id: str = get_user_id()) -> None:
         await lang.send("at.normal", user_id)
     await user.set_config_key("at_data", at_data)
 
+
 @on_type(PokeNotifyEvent, block=False).handle()
 async def _(user_id: str = get_user_id()) -> None:
     pass
     # TODO 画个饼，防止以后没东西想写。
-
-
-    
