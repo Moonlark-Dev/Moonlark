@@ -45,14 +45,19 @@ async def parse_content(content: str, session: async_scoped_session) -> UniMessa
     message.append(parse_text(content[length:]))
     return message
 
+
 def reverse_cave_message(message: UniMessage) -> UniMessage:
     for segment in message:
         if isinstance(segment, Text):
-            segment.text = segment.text[::-1].replace("\\", "__LOVE_XXTG666__").replace("/", "\\").replace("__LOVE_XXTG666__", "/")
+            segment.text = (
+                segment.text[::-1].replace("\\", "__LOVE_XXTG666__").replace("/", "\\").replace("__LOVE_XXTG666__", "/")
+            )
     return message
 
 
-async def decode_cave(cave: CaveData, session: async_scoped_session, user_id: str, use_special: bool = False) -> UniMessage:
+async def decode_cave(
+    cave: CaveData, session: async_scoped_session, user_id: str, use_special: bool = False
+) -> UniMessage:
     message = UniMessage(await lang.text("render.header", user_id, cave.id))
     message.extend(await parse_content(cave.content, session))
     message.append(Text(await lang.text("render.footer", user_id, (await get_user(cave.author)).get_nickname())))

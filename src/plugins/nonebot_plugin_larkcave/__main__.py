@@ -65,7 +65,9 @@ async def send_cave(session: async_scoped_session, user_id: str, group_id: str, 
         pass
 
 
-async def handle_get_cave(session: async_scoped_session, user_id: str = get_user_id(), group_id: str = get_group_id(), reverse: bool = False) -> None:
+async def handle_get_cave(
+    session: async_scoped_session, user_id: str = get_user_id(), group_id: str = get_group_id(), reverse: bool = False
+) -> None:
     if not (user_cd_data := await is_user_cooled(user_id, session))[0]:
         await lang.finish("cave.user_cd", user_id, round(user_cd_data[1] / 60, 3))
     if not (group_cd_data := await is_group_cooled(group_id, session))[0]:
@@ -80,10 +82,12 @@ async def handle_get_cave(session: async_scoped_session, user_id: str = get_user
         await lang.finish("failed_to_send", user_id)
     await cave.finish()
 
+
 @cave.assign("$main")
 async def _(session: async_scoped_session, user_id: str = get_user_id(), group_id: str = get_group_id()) -> None:
     await handle_get_cave(session, user_id, group_id, False)
-    
+
+
 @on_fullmatch("evac\\").handle()
 async def _(session: async_scoped_session, user_id: str = get_user_id(), group_id: str = get_group_id()) -> None:
     await handle_get_cave(session, user_id, group_id, True)
