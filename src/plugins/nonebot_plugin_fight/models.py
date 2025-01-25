@@ -6,7 +6,6 @@ from sqlalchemy.orm import mapped_column, Mapped
 from sqlalchemy import String, Text
 
 
-
 class ControllableCharacter(Model):
     character_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     user_id: Mapped[str] = mapped_column(String(128))
@@ -29,12 +28,14 @@ class WeaponData(Model):
     user_id: Mapped[str] = mapped_column(String(128))
     damage: Mapped[int]
 
+
 class EquipmentData(Model):
     equipment_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     equipment_type: Mapped[int]
     experience: Mapped[int]
     user_id: Mapped[str] = mapped_column(String(128))
     gains: Mapped[bytes]
+
 
 class PlayerTeam(Model):
     user_id: Mapped[str] = mapped_column(String(128), primary_key=True)
