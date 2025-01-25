@@ -47,12 +47,14 @@ async def parse_content(content: str, session: async_scoped_session) -> UniMessa
 
 
 def reverse_cave_message(message: UniMessage) -> UniMessage:
+    new_message = UniMessage()
     for segment in message:
         if isinstance(segment, Text):
-            segment.text = (
-                segment.text[::-1].replace("\\", "__LOVE_XXTG666__").replace("/", "\\").replace("__LOVE_XXTG666__", "/")
-            )
-    return message
+            for line in segment.text.splitlines():
+                new_message.append(Text(f"{line[::-1]}\n"))
+        else:
+            new_message.append(segment)
+    return new_message
 
 
 async def decode_cave(
