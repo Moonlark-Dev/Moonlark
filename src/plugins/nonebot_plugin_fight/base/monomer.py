@@ -18,7 +18,7 @@
 from abc import ABC, abstractmethod
 import random
 from .team import Team
-from ..types import ACTION_EVENT, FinalSkillPowered
+from ..types import ACTION_EVENT
 
 
 class Monomer(ABC):
@@ -31,14 +31,23 @@ class Monomer(ABC):
         self.reduced_action_value = 0
         self.team = team.register_monomer(self)
         self.balance = 100
-        self.final_skill_power = [0, 230]  # CURRENT, MAX | 目前考虑是不是只有 Controllable 有这个东西
+        self.final_skill_power = [0, 230]
+        self.focus = 100
         self.defuse = 20
+        self.shield = 0
+        self.unset_speed = self.speed
 
-    async def power_final_skill(self, value: int = 17) -> int:
+    def get_shield(self) -> int:
+        return self.shield
+
+    def has_shield(self) -> bool:
+        return self.shield > 0
+
+    async def power_final_skill(self, value: int = 17) -> float:
         self.final_skill_power[0] += value
         if self.final_skill_power[0] >= self.final_skill_power[1]:
-            event_data: FinalSkillPowered = {"type": "me.final_skill.powered"}
-            await self.on_event(event_data)
+            self.final_skill_power[0] = self.final_skill_power[1]
+        return self.final_skill_power[0] / self.final_skill_power[1]
 
     @abstractmethod
     def get_max_hp(self) -> int:
@@ -73,12 +82,13 @@ class Monomer(ABC):
 
     async def action(self, teams: list[Team]) -> None:
         await self.on_action(teams)
+        self.speed = self.unset_speed
 
     def get_power_percent(self) -> float:
-        return min(self.power_final_skill[0] / self.power_final_skill[1], 1)
+        return min(self.final_skill_power[0] / self.final_skill_power[1], 1)
 
     async def is_actionable(self) -> bool:
-        return self.get_hp() > 0 and self.balance > 0
+        return self.get_hp() > 0 and self.balance > 0 and self.get_action_value() > 0
 
     def get_team(self) -> Team:
         return self.team
@@ -90,15 +100,21 @@ class Monomer(ABC):
     def get_defuse(self) -> int:
         return round(self.defuse * (self.balance / 100))
 
-    # TODO type_ 改为 Enum
-    async def attacked(self, type_: str, harm: int, monomer: "Monomer") -> float:
+    def break_shield(self, harm: int) -> int:
+        if self.has_shield():
+            self.shield -= harm
+            harm = max(0, harm - self.shield)
+            self.shield = max(0, self.shield)
+        return harm
+
+    async def attacked(self, type_: str, harm: int, monomer: "Monomer", missed: bool) -> float:
         if monomer in self.team.get_monomers():
             self.reduce_balance_value(5)
             return 0
         real_harm = round(harm * (self.get_defuse() / monomer.get_defuse()))
         self.reduce_balance_value(int(real_harm / 2 * (monomer.get_attack_value() / self.get_attack_value())))
-        self.health -= real_harm
-        await self.team.scheduler.post_attack_event(self, monomer, real_harm, type_, False)
+        self.health -= self.break_shield(real_harm)
+        await self.team.scheduler.post_attack_event(self, monomer, real_harm, type_, True)
         return real_harm
 
     def get_attack_value(self) -> int:
@@ -109,6 +125,18 @@ class Monomer(ABC):
 
     async def on_attack(self, type_: str, base_harm: int, target: "Monomer") -> float:
         harm = base_harm
-        if random.random() <= self.critical_strike[0]:
+        missed = False
+        if random.random() <= get_miss_percent(self, target):
+            harm *= 0.4
+            missed = True
+        elif random.random() <= self.critical_strike[0]:
             harm *= self.critical_strike[1]
-        return await target.attacked(type_, harm, self)
+        return await target.attacked(type_, round(harm), self, missed)
+
+    def get_focus(self) -> int:
+        return self.focus
+
+
+def get_miss_percent(origin: Monomer, target: Monomer) -> float:
+    "Calculate the miss percent that influenced by FOCUS value."
+    return (origin.get_focus() - target.get_focus()) / 1000 + 0.05

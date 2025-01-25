@@ -14,10 +14,11 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
-from typing import TypedDict, Literal, TYPE_CHECKING
+from typing import TypedDict, Literal, TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
     from src.plugins.nonebot_plugin_fight.base.monomer import Monomer
+    from .base.controllable import ControllableMonomer
 
 
 class AttackEvent(TypedDict):
@@ -34,8 +35,19 @@ class MessageActionEvent(TypedDict):
     message: str
 
 
-class FinalSkillPowered(TypedDict):
-    type: Literal["me.final_skill.powered"]
+class SkillInfo(TypedDict):
+    name: str
+    monomer: "Monomer"
+    occupy_round: bool
+    cost: int
+    instant: bool
+    target_type: Literal["self", "enemy", "none"]
 
 
-ACTION_EVENT = MessageActionEvent | AttackEvent | FinalSkillPowered
+class ActionCommand(TypedDict):
+    skill_index: int
+    target: Optional["Monomer"]
+    skill_info: SkillInfo
+
+
+ACTION_EVENT = MessageActionEvent | AttackEvent

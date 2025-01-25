@@ -16,9 +16,10 @@ from .item import get_bag_item
 from .item import get_bag_items, get_items_count
 from ...nonebot_plugin_item.base.stack import ItemStack
 from ..models import Bag
+from typing import Any
 
 
-async def give_special_item(user_id: str, name: str, count: int) -> None:
+async def give_special_item(user_id: str, name: str, count: int, data: dict[str, Any]) -> None:
     user = await get_user(user_id)
     match name:
         case "experience":
@@ -26,7 +27,7 @@ async def give_special_item(user_id: str, name: str, count: int) -> None:
         case "vimcoin":
             await user.add_vimcoin(count)
         case "fav":
-            await user.add_fav(count / 100)
+            await user.add_fav(count / data.get("multiple", 100))
         case _:
             raise ValueError(f"{name} is not a valid special item name")
 
@@ -73,7 +74,7 @@ async def append_item(user_id: str, item: ItemStack, count: int) -> None:
 
 async def give_item(user_id: str, item: ItemStack) -> None:
     if item.item.getLocation().getNamespace() == "special":
-        return await give_special_item(user_id, item.item.getLocation().getPath(), item.count)
+        return await give_special_item(user_id, item.item.getLocation().getPath(), item.count, item.data)
     count = item.count
     logger.debug(f"{item=}")
     for bag_item in await get_bag_items(user_id):
