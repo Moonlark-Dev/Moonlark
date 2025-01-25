@@ -1,0 +1,23 @@
+at:
+  unregistered:
+    - 你好，我是 Moonlark, 有什么我可以帮到你的吗？
+    - 遇到问题了吗？试试对 Moonlark 使用 /help 指令吧！
+  normal:
+    - Moonlark 一直在这里，喵~ 🐾
+    - Moonlark 随时待命，喵喵！
+  special:
+    morning: 早上好，主人！希望您今天心情愉快，喵~
+    afternoon:
+      - 主人! 要来一起尝点岩浆吗?
+      - 晚上吃什么呢……？
+    night: 欸，主人还没有睡吗？那 Moonlark 也要打起精神来，喵！
+    midnight: 唔（哈欠）……主人也要早点休息喵……
+poke:
+  normal:
+    - 喵？
+    - 唔？请问有什么可以帮到主人的吗？
+  special:
+    - 下一餐吃什么呢……？
+    - 等下去哪玩呢————去找主人吧！
+  special_time:
+    midnight: '（没有醒）唔唔……主人……嘿嘿……'
