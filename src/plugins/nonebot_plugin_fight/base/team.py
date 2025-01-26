@@ -122,7 +122,7 @@ class ControllableTeam(Team):
                 "origin_team": await event["origin"].team.get_team_name(self.user_id),
                 "origin_name": await event["origin"].get_name(self.user_id),
                 "harm_value": event["harm_value"],
-                "harm_type": event["harm_type"],
+                "harm_type": await lang.text(f'harm_type._{event["harm_type"].value}', self.user_id),
                 "harm_missed": event["harm_missed"],
             }
         return event  # type: ignore

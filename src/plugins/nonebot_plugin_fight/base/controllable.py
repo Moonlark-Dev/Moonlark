@@ -36,7 +36,7 @@ class ControllableMonomer(Monomer, ABC):
         self.user_id = self.team.get_user_id()
         self.action_commands: list[ActionCommand] = []
         self.tiggered_commands = []
-        self.skills: list[Callable[[Optional[Monomer], Team], Awaitable[None]]] = []
+        self.skills: list[Callable[[None, Team], Awaitable[None]] | Callable[[Monomer, Team], Awaitable[None]]] = []
 
     def append_action_command(self, command: ActionCommand) -> None:
         self.action_commands.append(command)
@@ -52,7 +52,7 @@ class ControllableMonomer(Monomer, ABC):
         while len(self.action_commands) > 0:
             command = self.action_commands.pop(0)
             func = self.skills[command["skill_index"]]
-            await func(command["target"], teams[0])
+            await func(command["target"], teams[0]) # type: ignore
             if command["skill_info"]["occupy_round"]:
                 break
 

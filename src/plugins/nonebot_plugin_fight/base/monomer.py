@@ -17,13 +17,16 @@
 
 from abc import ABC, abstractmethod
 import random
+from typing import TYPE_CHECKING
 from .team import Team
-from ..types import ACTION_EVENT
+from ..types import ACTION_EVENT, AttackTypes, BuffData, BuffTypes
+
 
 
 class Monomer(ABC):
 
     def __init__(self, team: Team):
+        self.buff_list: list[BuffData] = []
         self.health = 100
         self.attack = 20
         self.critical_strike = (0.05, 1.50)
@@ -61,6 +64,10 @@ class Monomer(ABC):
     async def get_name(self, user_id: str) -> str:
         return ""
 
+    async def add_buff(self, buff: BuffData, force: bool = False) -> bool:
+        self.buff_list.append(buff)
+        return True
+
     async def setup(self, teams: list[Team]) -> None:
         pass
 
@@ -80,12 +87,29 @@ class Monomer(ABC):
     async def on_action(self, teams: list[Team]) -> None:
         pass
 
+    def clean_buff(self) -> None:
+        removeable_index = []
+        for i in range(len(self.buff_list)):
+            if self.buff_list[i]["remain_rounds"] < 0:
+                removeable_index.append(i)
+        for index in removeable_index[::-1]:
+            self.buff_list.pop(index)
+
     async def action(self, teams: list[Team]) -> None:
+        for i in range(len(self.buff_list)):
+            self.buff_list[i]["remain_rounds"] -= 1
+        self.clean_buff()
         await self.on_action(teams)
         self.speed = self.unset_speed
 
     def get_power_percent(self) -> float:
         return min(self.final_skill_power[0] / self.final_skill_power[1], 1)
+    
+    def is_final_skill_powered(self) -> bool:
+        return self.final_skill_power[0] >= self.final_skill_power[1]
+    
+    def reset_final_skill_power(self) -> None:
+        self.final_skill_power[0] = 0
 
     async def is_actionable(self) -> bool:
         return self.get_hp() > 0 and self.balance > 0 and self.get_action_value() > 0
@@ -107,11 +131,17 @@ class Monomer(ABC):
             self.shield = max(0, self.shield)
         return harm
 
-    async def attacked(self, type_: str, harm: int, monomer: "Monomer", missed: bool) -> float:
+    async def attacked(self, type_: AttackTypes, harm: int, monomer: "Monomer", missed: bool) -> float:
+        for buff in self.buff_list:
+            if buff["buff_type"] == BuffTypes.lunar_eclipse_cracks and type_ == AttackTypes.ME:
+                harm += round(harm * 0.15)
         if monomer in self.team.get_monomers():
-            self.reduce_balance_value(5)
+            self.reduce_balance_value(15)
             return 0
-        real_harm = round(harm * (self.get_defuse() / monomer.get_defuse()))
+        if type_ == AttackTypes.real:
+            real_harm = harm
+        else:
+            real_harm = round(harm * (self.get_defuse() / monomer.get_defuse()))
         self.reduce_balance_value(int(real_harm / 2 * (monomer.get_attack_value() / self.get_attack_value())))
         self.health -= self.break_shield(real_harm)
         await self.team.scheduler.post_attack_event(self, monomer, real_harm, type_, True)
@@ -123,15 +153,17 @@ class Monomer(ABC):
     async def on_event(self, event: ACTION_EVENT) -> None:
         pass
 
-    async def on_attack(self, type_: str, base_harm: int, target: "Monomer") -> float:
+    async def on_attack(self, type_: AttackTypes, base_harm: float, target: "Monomer") -> tuple[float, bool, bool]:
         harm = base_harm
         missed = False
+        critical = False
         if random.random() <= get_miss_percent(self, target):
             harm *= 0.4
             missed = True
         elif random.random() <= self.critical_strike[0]:
             harm *= self.critical_strike[1]
-        return await target.attacked(type_, round(harm), self, missed)
+            critical = True
+        return await target.attacked(type_, round(harm), self, missed), critical, missed
 
     def get_focus(self) -> int:
         return self.focus

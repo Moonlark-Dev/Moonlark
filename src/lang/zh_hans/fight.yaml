@@ -13,6 +13,13 @@ skill_stat:
   cost: '💰{}'
   not_occupy_round: '🔄'
 skill_point: '{} / {}'
+harm_type:
+  _1: 风
+  _2: 火
+  _3: 电
+  _4: 冰
+  _5: ME
+  _6: 真
 hp:
   normal: '{} / {} ({}%)'
   plus: '{} / {} ({}%) + {}'
@@ -21,3 +28,17 @@ action:
   myteam: 我方队伍 (按行动顺序排序)
   title: 行动面板
   invalid: 无效输入，请检查输入内容
+characters:
+  moonlark:
+    name: Moonlark
+    skills:
+      common: 射击！
+      skill: 蚀月轰击
+      final_skill: 月殒天冲
+buff:
+  lunar_eclipse_cracks:
+    name: 月蚀裂痕
+    description: 受到 ME 属性伤害 +15%
+  moonlark_cold_down:
+    name: 过载
+    description: Moonlark 下回合普攻伤害 -30%
