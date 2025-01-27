@@ -1,0 +1,11 @@
+network:
+  failed: '调用翻译 API 时出现错误，请稍后重试: {}'
+review_unpassed: '内容审核未通过: {}'
+help_t:
+  description: 翻译器
+  details: 翻译文本（默认英到中）
+  usage1: t <文本...> [-s|--sorce <源语言>] [-t|--target <目标语言>]
+help_raw:
+  description: 生草机
+  details: 基于翻译，一键生草（一种植物），仅支持中文。
+  usage1: raw <文本...>
