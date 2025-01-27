@@ -14,7 +14,7 @@ class TranslateResponse(BaseModel):
 
 async def post_translate_api(text: str, source_lang: str, target_lang: str) -> TranslateResponse:
     async with httpx.AsyncClient(base_url=config.translate_deeplx_url) as client:
-        response = await client.post("/translate", data={
+        response = await client.post("/translate", json={
             "text": text,
             "source_lang": source_lang,
             "target_lang": target_lang
