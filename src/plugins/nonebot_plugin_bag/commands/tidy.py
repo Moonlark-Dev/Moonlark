@@ -2,7 +2,7 @@ from ..utils.give import give_item_by_list
 from ..utils.tidy import get_item_list
 from ..item import BagItem
 from nonebot.params import Depends
-from ...nonebot_plugin_larkutils.user import get_user_id
+from nonebot_plugin_larkutils.user import get_user_id
 from ..__main__ import bag, lang
 
 

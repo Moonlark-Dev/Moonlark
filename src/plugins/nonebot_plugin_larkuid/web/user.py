@@ -3,10 +3,10 @@ from sqlalchemy.exc import NoResultFound
 from fastapi import FastAPI, HTTPException, Request, status
 from nonebot import get_app
 
-from ...nonebot_plugin_larkuser.utils.user import get_user
+from nonebot_plugin_larkuser.utils.user import get_user
 from ..types import BasicUserResponse, DetailedUserResponse
 from ..session import get_user_data
-from ...nonebot_plugin_larkuser.user.base import MoonlarkUser
+from nonebot_plugin_larkuser.user.base import MoonlarkUser
 
 app = cast(FastAPI, get_app())
 

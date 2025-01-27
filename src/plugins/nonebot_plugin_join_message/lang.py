@@ -15,6 +15,6 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
-from src.plugins.nonebot_plugin_larklang import LangHelper
+from nonebot_plugin_larklang import LangHelper
 
 lang = LangHelper()

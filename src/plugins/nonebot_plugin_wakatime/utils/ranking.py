@@ -1,7 +1,7 @@
 from nonebot_plugin_orm import get_session
 from sqlalchemy import select
 from typing import AsyncGenerator, Optional
-from src.plugins.nonebot_plugin_ranking import RankingData, WebRanking, register
+from nonebot_plugin_ranking import RankingData, WebRanking, register
 
 from ..__main__ import lang
 from .stats import get_user_stats

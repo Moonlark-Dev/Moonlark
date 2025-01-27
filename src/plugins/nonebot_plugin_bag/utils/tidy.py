@@ -1,4 +1,4 @@
-from ...nonebot_plugin_larkutils.user import get_user_id
+from nonebot_plugin_larkutils.user import get_user_id
 from ..__main__ import lang
 from ..exceptions import ItemLockedError
 from ..item import BagItem

@@ -1,7 +1,7 @@
 from nonebot.permission import SUPERUSER
 from nonebot_plugin_alconna import Alconna, Args, Subcommand, on_alconna
 
-from ..nonebot_plugin_larkutils.user import get_user_id
+from nonebot_plugin_larkutils.user import get_user_id
 from .utils import set_access
 
 alc = Alconna(

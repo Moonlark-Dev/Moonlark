@@ -3,8 +3,8 @@ from nonebot.matcher import Matcher
 from nonebot.adapters import Message
 from nonebot.params import CommandArg
 from nonebot_plugin_alconna.uniseg import UniMessage
-from src.plugins.nonebot_plugin_render.render import render_template
-from src.plugins.nonebot_plugin_larkutils import get_user_id
+from nonebot_plugin_render.render import render_template
+from nonebot_plugin_larkutils import get_user_id
 
 from ..lang import lang
 from ..utils.matcher import patch_matcher

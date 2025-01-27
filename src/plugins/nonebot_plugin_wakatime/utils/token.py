@@ -6,8 +6,8 @@ from nonebot_plugin_orm import get_session
 from nonebot import logger
 
 from .login import get_redirect_uri
-from src.plugins.nonebot_plugin_wakatime.config import config
-from src.plugins.nonebot_plugin_wakatime.models import TokenResponse, User
+from nonebot_plugin_wakatime.config import config
+from nonebot_plugin_wakatime.models import TokenResponse, User
 
 
 def parse_token_response(content: str) -> TokenResponse:

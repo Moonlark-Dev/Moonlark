@@ -17,9 +17,9 @@
 
 from nonebot_plugin_orm import get_session
 from sqlalchemy.exc import NoResultFound
-from src.plugins.nonebot_plugin_larkutils import get_main_account
+from nonebot_plugin_larkutils import get_main_account
 
-from src.plugins.nonebot_plugin_larkuser.models import UserData
+from nonebot_plugin_larkuser.models import UserData
 
 
 async def is_user_registered(user_id: str, include_subaccount: bool = True):

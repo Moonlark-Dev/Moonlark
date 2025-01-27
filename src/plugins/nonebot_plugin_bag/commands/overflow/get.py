@@ -9,7 +9,7 @@ from ...utils.bag import give_item
 
 
 from ...utils.overflow import get_overflow_item, is_item_takeable
-from ....nonebot_plugin_larkutils.user import get_user_id
+from nonebot_plugin_larkutils.user import get_user_id
 from ...__main__ import bag
 from ...__main__ import lang
 from ...config import config

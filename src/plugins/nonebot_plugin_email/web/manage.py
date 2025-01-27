@@ -10,7 +10,7 @@ from ..config import config
 from ..models import EmailData
 from ..config import config
 from ..lang import lang
-from ...nonebot_plugin_larkuid.session import get_user_id
+from nonebot_plugin_larkuid.session import get_user_id
 
 
 async def get_email_list(user_id: str) -> AsyncGenerator[dict[str, Any], None]:

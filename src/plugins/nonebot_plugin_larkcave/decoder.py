@@ -8,7 +8,7 @@ from nonebot_plugin_localstore import get_data_dir
 from nonebot_plugin_alconna import Image, Text, UniMessage
 from nonebot_plugin_orm import async_scoped_session
 
-from ..nonebot_plugin_larkuser import get_user
+from nonebot_plugin_larkuser import get_user
 from .lang import lang
 from .models import CaveData, ImageData, CaveImage
 

@@ -15,7 +15,7 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
-from src.plugins.nonebot_plugin_larkuser.user.registered import MoonlarkRegisteredUser
+from nonebot_plugin_larkuser.user.registered import MoonlarkRegisteredUser
 
 
 class MoonlarkGuestUser(MoonlarkRegisteredUser):

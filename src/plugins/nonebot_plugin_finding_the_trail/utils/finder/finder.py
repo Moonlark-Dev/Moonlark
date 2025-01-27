@@ -17,7 +17,7 @@
 
 import copy
 from abc import ABC
-from src.plugins.nonebot_plugin_finding_the_trail.utils.enums import Blocks
+from nonebot_plugin_finding_the_trail.utils.enums import Blocks
 from .utils import NodeData, get_moveable_directions
 
 

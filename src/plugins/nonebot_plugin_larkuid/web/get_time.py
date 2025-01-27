@@ -3,7 +3,7 @@ from typing import cast
 from fastapi import FastAPI, Request
 from nonebot import get_app
 
-from src.plugins.nonebot_plugin_larkutils.gsc_time import get_galactic_time
+from nonebot_plugin_larkutils.gsc_time import get_galactic_time
 from ..types import TimeResponse
 
 app = cast(FastAPI, get_app())

@@ -2,9 +2,9 @@ import copy
 import random
 from nonebot import on_message, on_type
 from nonebot.rule import to_me
-from ..nonebot_plugin_larklang import LangHelper
-from ..nonebot_plugin_larkuser import get_user
-from ..nonebot_plugin_larkutils import get_user_id
+from nonebot_plugin_larklang import LangHelper
+from nonebot_plugin_larkuser import get_user
+from nonebot_plugin_larkutils import get_user_id
 from nonebot.adapters.onebot.v11.event import PokeNotifyEvent
 from nonebot.adapters import Message, Event
 

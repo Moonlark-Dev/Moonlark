@@ -4,8 +4,8 @@ from pathlib import Path
 import aiofiles
 from nonebot_plugin_localstore import get_data_dir
 from .config import config
-from ..nonebot_plugin_larkutils import parse_special_user_id
-from ..nonebot_plugin_larklang.models import DisplaySetting
+from nonebot_plugin_larkutils import parse_special_user_id
+from nonebot_plugin_larklang.models import DisplaySetting
 
 
 async def get_themes() -> dict[str, str]:

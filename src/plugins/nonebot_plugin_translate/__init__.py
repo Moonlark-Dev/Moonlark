@@ -11,7 +11,7 @@ require("nonebot_plugin_larkutils")
 require("nonebot_plugin_alconna")
 require("nonebot_plugin_larklang")
 
-from ..nonebot_plugin_larkutils import get_user_id, review_text
+from nonebot_plugin_larkutils import get_user_id, review_text
 from nonebot_plugin_alconna import Alconna, Args, Option, on_alconna, MultiVar
 from nonebot.matcher import Matcher
 from . import network

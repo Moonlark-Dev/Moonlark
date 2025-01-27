@@ -1,8 +1,8 @@
-from ....nonebot_plugin_item.base.properties import get_properties
-from ....nonebot_plugin_item.base.stack import ItemStack
-from ....nonebot_plugin_item.registry.registry import ResourceLocation
-from ....nonebot_plugin_item.registry import ITEMS
-from ....nonebot_plugin_item.base.item import Item
+from nonebot_plugin_items.base.properties import get_properties
+from nonebot_plugin_items.base.stack import ItemStack
+from nonebot_plugin_items.registry.registry import ResourceLocation
+from nonebot_plugin_items.registry import ITEMS
+from nonebot_plugin_items.base.item import Item
 from ...lang import lang
 
 

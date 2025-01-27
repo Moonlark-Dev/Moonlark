@@ -3,10 +3,10 @@ import time
 from fastapi import Request
 from nonebot import get_app
 
-from ..nonebot_plugin_larkuser.utils.user import get_user
+from nonebot_plugin_larkuser.utils.user import get_user
 from .generator import find_user
-from ..nonebot_plugin_larklang.__main__ import LangHelper
-from ..nonebot_plugin_larkuid.session import get_user_id
+from nonebot_plugin_larklang.__main__ import LangHelper
+from nonebot_plugin_larkuid.session import get_user_id
 from .types import RankingData, RankingResponse
 
 

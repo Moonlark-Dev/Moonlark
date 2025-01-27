@@ -5,7 +5,7 @@ import asyncio
 import aiofiles
 import hashlib
 from nonebot_plugin_localstore import get_cache_dir
-from ..nonebot_plugin_larklang.__main__ import get_languages
+from nonebot_plugin_larklang.__main__ import get_languages
 from .theme import get_themes
 from .config import config
 

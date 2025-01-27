@@ -34,6 +34,6 @@ require("nonebot_plugin_jrrp")
 ### 获取用户人品值
 
 ```python
-from src.plugins.nonebot_plugin_jrrp.jrrp import get_luck_value
+from nonebot_plugin_jrrp.jrrp import get_luck_value
 jrrp = get_luck_value("1234567890")
 ```

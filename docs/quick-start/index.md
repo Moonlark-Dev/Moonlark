@@ -20,13 +20,13 @@
 ### 正确
 
 ```python
-from src.plugins.nonebot_plugin_larkutils import get_user_id
+from nonebot_plugin_larkutils import get_user_id
 ```
 
 #### 使用相对路径导入
 
 ```python
-from ..nonebot_plugin_larkutils import get_user_id
+from nonebot_plugin_larkutils import get_user_id
 ```
 
 ### 错误

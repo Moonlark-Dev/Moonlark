@@ -6,7 +6,7 @@ from jinja2 import Environment, FileSystemLoader
 from nonebot import get_plugin_by_module_name
 from nonebot_plugin_htmlrender import html_to_pic
 from nonebot_plugin_orm import get_session
-from ..nonebot_plugin_larklang.__main__ import get_user_language
+from nonebot_plugin_larklang.__main__ import get_user_language
 from .lang import lang
 from .config import config
 from .cache import get_cache

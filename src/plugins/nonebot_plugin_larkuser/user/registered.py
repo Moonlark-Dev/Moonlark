@@ -20,11 +20,11 @@ from typing import Optional
 
 from nonebot_plugin_orm import get_session
 
-from src.plugins.nonebot_plugin_larkuser.exceptions import UserNotRegistered
-from src.plugins.nonebot_plugin_larkuser.models import UserData
-from src.plugins.nonebot_plugin_larkuser.user.base import MoonlarkUser
-from src.plugins.nonebot_plugin_larkuser.utils.avatar import get_user_avatar
-from src.plugins.nonebot_plugin_larkutils import get_main_account
+from nonebot_plugin_larkuser.exceptions import UserNotRegistered
+from nonebot_plugin_larkuser.models import UserData
+from nonebot_plugin_larkuser.user.base import MoonlarkUser
+from nonebot_plugin_larkuser.utils.avatar import get_user_avatar
+from nonebot_plugin_larkutils import get_main_account
 import json
 
 

@@ -8,13 +8,13 @@ from sqlalchemy.exc import NoResultFound
 from nonebot.exception import ActionFailed
 
 
-from ..nonebot_plugin_larkutils import get_group_id, get_user_id
+from nonebot_plugin_larkutils import get_group_id, get_user_id
 from .cool_down import is_group_cooled, is_user_cooled, on_use
 from .decoder import decode_cave
 from .lang import lang
 from .models import CaveData
-from .plugins.nonebot_plugin_cave_comment.get import get_comments
-from .plugins.nonebot_plugin_cave_comment.message import add_cave_message
+from .plugins.comment.get import get_comments
+from .plugins.comment.message import add_cave_message
 
 alc = Alconna(
     "cave",

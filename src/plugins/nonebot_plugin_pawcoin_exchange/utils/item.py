@@ -1,6 +1,6 @@
-from ...nonebot_plugin_bag.exceptions import ItemLockedError
-from ...nonebot_plugin_bag.utils.item import get_bag_item
-from ...nonebot_plugin_bag.item import BagItem
+from nonebot_plugin_bag.exceptions import ItemLockedError
+from nonebot_plugin_bag.utils.item import get_bag_item
+from nonebot_plugin_bag.item import BagItem
 from ..lang import lang
 
 

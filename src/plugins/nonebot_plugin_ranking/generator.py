@@ -1,8 +1,8 @@
 from typing import Optional
 
-from ..nonebot_plugin_render.render import render_template
-from ..nonebot_plugin_larkuser import get_user
-from ..nonebot_plugin_larkuser.models import UserData
+from nonebot_plugin_render.render import render_template
+from nonebot_plugin_larkuser import get_user
+from nonebot_plugin_larkuser.models import UserData
 from .lang import lang
 from .types import RankingData, UserDataWithIndex
 
