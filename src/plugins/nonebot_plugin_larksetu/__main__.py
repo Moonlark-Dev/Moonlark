@@ -7,8 +7,8 @@ from nonebot_plugin_alconna import Alconna, Subcommand, on_alconna
 from nonebot_plugin_alconna.uniseg import UniMessage
 from nonebot_plugin_orm import async_scoped_session
 
-from ..nonebot_plugin_larklang import LangHelper
-from ..nonebot_plugin_larkutils import get_user_id
+from nonebot_plugin_larklang import LangHelper
+from nonebot_plugin_larkutils import get_user_id
 from . import counter
 from .cache import get_image
 from .config import config

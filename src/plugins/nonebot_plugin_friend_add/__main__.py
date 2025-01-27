@@ -25,9 +25,9 @@ from nonebot.adapters.onebot.v11 import Bot as BotOB
 from nonebot_plugin_localstore import get_data_file
 from nonebot import on_type
 from datetime import datetime
-from ..nonebot_plugin_larklang import LangHelper
-from ..nonebot_plugin_larkuser import get_user
-from ..nonebot_plugin_larkutils import get_user_id
+from nonebot_plugin_larklang import LangHelper
+from nonebot_plugin_larkuser import get_user
+from nonebot_plugin_larkutils import get_user_id
 from .config import config
 
 lang = LangHelper()

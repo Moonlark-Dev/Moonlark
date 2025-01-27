@@ -16,7 +16,7 @@
 # ##############################################################################
 
 from nonebot_plugin_orm import get_session
-from ...nonebot_plugin_larkutils import get_user_id
+from nonebot_plugin_larkutils import get_user_id
 from ..__main__ import lang, ftt
 from ..utils.exchange import get_exchangeable_paw_coin_count
 from ..models import UserPoint

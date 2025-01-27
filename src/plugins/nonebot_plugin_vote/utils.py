@@ -5,10 +5,10 @@ from nonebot_plugin_orm import async_scoped_session
 from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
 
-from ..nonebot_plugin_render.render import render_template
+from nonebot_plugin_render.render import render_template
 
-from ..nonebot_plugin_larkuser.utils.user import get_user
-from ..nonebot_plugin_larkutils import get_group_id, get_id
+from nonebot_plugin_larkuser.utils.user import get_user
+from nonebot_plugin_larkutils import get_group_id, get_id
 from .lang import lang
 from .modules import Choice, Vote, VoteLog
 from .typing import ChoiceData

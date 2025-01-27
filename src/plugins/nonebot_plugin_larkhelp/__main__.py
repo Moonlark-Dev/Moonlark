@@ -5,11 +5,11 @@ from nonebot import get_driver
 from nonebot_plugin_alconna import Alconna, Args, on_alconna
 from nonebot_plugin_alconna.uniseg import UniMessage
 
-from ..nonebot_plugin_render.render import render_template
-from ..nonebot_plugin_render.cache import creator
+from nonebot_plugin_render.render import render_template
+from nonebot_plugin_render.cache import creator
 
-from ..nonebot_plugin_larklang.__main__ import LangHelper
-from ..nonebot_plugin_larkutils import get_user_id
+from nonebot_plugin_larklang.__main__ import LangHelper
+from nonebot_plugin_larkutils import get_user_id
 from .models import CommandHelp
 from .collector import collect_command_help
 

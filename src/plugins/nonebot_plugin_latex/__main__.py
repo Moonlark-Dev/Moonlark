@@ -2,9 +2,9 @@ from nonebot import on_command
 from nonebot.adapters import Message
 from nonebot.params import CommandArg
 
-from ..nonebot_plugin_larklang import LangHelper
-from ..nonebot_plugin_larkutils import get_user_id, review_text
-from ..nonebot_plugin_render.render import render_template
+from nonebot_plugin_larklang import LangHelper
+from nonebot_plugin_larkutils import get_user_id, review_text
+from nonebot_plugin_render.render import render_template
 
 from nonebot_plugin_alconna import UniMessage
 

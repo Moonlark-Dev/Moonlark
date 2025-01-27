@@ -1,12 +1,12 @@
 from datetime import datetime
-from src.plugins.nonebot_plugin_larkutils import get_main_account
+from nonebot_plugin_larkutils import get_main_account
 import json
 from typing import Optional
 from nonebot.log import logger
 from nonebot_plugin_orm import get_session
 from sqlalchemy import select
 
-from ...nonebot_plugin_larkuser.models import UserData
+from nonebot_plugin_larkuser.models import UserData
 from ..models import EmailData, EmailItem, EmailUser
 from ..types import EmailItemData
 

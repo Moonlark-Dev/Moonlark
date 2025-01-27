@@ -2,8 +2,8 @@ from concurrent.futures import ProcessPoolExecutor
 import difflib
 import asyncio
 from .config import config
-from ..nonebot_plugin_larkutils import get_user_id
-from ..nonebot_plugin_larklang import LangHelper
+from nonebot_plugin_larkutils import get_user_id
+from nonebot_plugin_larklang import LangHelper
 from nonebot import on_command
 from nonebot.adapters import Message
 from nonebot.params import CommandArg
@@ -11,14 +11,6 @@ import json
 from typing import Generator, TypedDict, Optional
 import aiofiles
 from pathlib import Path
-
-"""
-def compare_string(target: str, origin: str) -> float:
-    diffs = [0.0]
-    for i in range(max(len(origin) - len(target), 1)):
-        diffs.append(difflib.SequenceMatcher(None, target, origin[i : len(target) + i]).ratio())
-    return max(*diffs)
-"""
 
 
 class ChunkData(TypedDict):

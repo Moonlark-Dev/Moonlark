@@ -1,7 +1,7 @@
 from nonebot_plugin_alconna import Alconna, on_alconna, Args, Option, Match
-from ..nonebot_plugin_larklang import LangHelper
-from ..nonebot_plugin_larkutils import get_user_id
-from ..nonebot_plugin_larkuser import patch_matcher
+from nonebot_plugin_larklang import LangHelper
+from nonebot_plugin_larkutils import get_user_id
+from nonebot_plugin_larkuser import patch_matcher
 
 lang = LangHelper()
 matcher = on_alconna(Alconna("cg", Args["prompt?"]), Option("-r|--reset"))

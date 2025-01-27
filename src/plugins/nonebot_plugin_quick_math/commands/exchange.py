@@ -17,12 +17,12 @@
 
 from nonebot_plugin_orm import get_session
 from nonebot_plugin_alconna import Match
-from ...nonebot_plugin_larkutils import get_user_id
+from nonebot_plugin_larkutils import get_user_id
 from ..__main__ import quick_math
-from ...nonebot_plugin_finding_the_trail.utils.exchange import get_exchangeable_paw_coin_count
-from ...nonebot_plugin_finding_the_trail.__main__ import lang
+from nonebot_plugin_finding_the_trail.utils.exchange import get_exchangeable_paw_coin_count
+from nonebot_plugin_finding_the_trail.__main__ import lang
 from ..models import QuickMathUser
-from ...nonebot_plugin_bag.utils.give import give_item_by_data
+from nonebot_plugin_bag.utils.give import give_item_by_data
 
 
 @quick_math.assign("exchange")

@@ -1,9 +1,9 @@
 from typing import Literal
 from nonebot.log import logger
-from ...nonebot_plugin_item.types import DictItemData
-from ...nonebot_plugin_item.utils.string import get_location_by_id
-from ...nonebot_plugin_item.utils.get import get_item
-from ...nonebot_plugin_larkuser import get_user
+from nonebot_plugin_items.types import DictItemData
+from nonebot_plugin_items.utils.string import get_location_by_id
+from nonebot_plugin_items.utils.get import get_item
+from nonebot_plugin_larkuser import get_user
 from ..types import GivenItemsData
 from .bag import give_item, give_special_item
 

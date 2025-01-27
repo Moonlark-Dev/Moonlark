@@ -2,10 +2,10 @@ from nonebot_plugin_orm import get_session
 from nonebot.log import logger
 from sqlalchemy import select
 
-from ...nonebot_plugin_email.utils.send import send_email
+from nonebot_plugin_email.utils.send import send_email
 from .data import get_achievement_data, get_achievement_name, is_achievement_unlocked
 from ..models import User
-from ...nonebot_plugin_item.registry.registry import ResourceLocation
+from nonebot_plugin_items.registry.registry import ResourceLocation
 from ..__main__ import lang
 
 

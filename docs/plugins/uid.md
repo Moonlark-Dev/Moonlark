@@ -58,7 +58,7 @@ require("nonebot_plugin_larkuid")
 ### 获取用户 ID 并返回
 
 ```python
-from src.plugins.nonebot_plugin_larkuid.session import get_user_id
+from nonebot_plugin_larkuid.session import get_user_id
 
 from nonebot import get_app
 from fastapi import Request, FastAPI

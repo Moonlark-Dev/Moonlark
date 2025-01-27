@@ -17,7 +17,7 @@
 
 from .end import EndFinder
 from .answer import AnswerFinder
-from src.plugins.nonebot_plugin_finding_the_trail.utils.finder.utils import (
+from nonebot_plugin_finding_the_trail.utils.finder.utils import (
     get_moveable_directions,
     NodeData,
     MovementExecutor,

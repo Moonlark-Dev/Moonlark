@@ -9,17 +9,17 @@ from nonebot.typing import T_State
 from nonebot_plugin_orm import get_session
 from sqlalchemy import select
 
-from ..nonebot_plugin_email.utils.send import send_email
+from nonebot_plugin_email.utils.send import send_email
 
-from ..nonebot_plugin_preview.preview import screenshot
-from ..nonebot_plugin_larkuser.models import UserData
-from ..nonebot_plugin_larkuser.utils.base58 import base58_decode
-from ..nonebot_plugin_larkuser import get_user
+from nonebot_plugin_preview.preview import screenshot
+from nonebot_plugin_larkuser.models import UserData
+from nonebot_plugin_larkuser.utils.base58 import base58_decode
+from nonebot_plugin_larkuser import get_user
 from nonebot.exception import ActionFailed
 
-from ..nonebot_plugin_larkutils.user import get_user_id
+from nonebot_plugin_larkutils.user import get_user_id
 from .lang import lang
-from src.plugins.nonebot_plugin_larkuser.user.utils import is_user_registered
+from nonebot_plugin_larkuser.user.utils import is_user_registered
 import traceback
 from nonebot.log import logger
 from nonebot_plugin_userinfo import EventUserInfo, UserInfo
@@ -32,7 +32,8 @@ async def _(state: T_State, message: Message = CommandArg(), user_id: str = get_
     if text := message.extract_plain_text():
         if await is_user_registered(user := base58_decode(text)):
             state["invite_user"] = user
-        await lang.finish("invite.unknown", user_id)
+        else:
+            await lang.finish("invite.unknown", user_id)
     if await is_user_registered(user_id):
         await lang.finish("command.registered", user_id)
     try:

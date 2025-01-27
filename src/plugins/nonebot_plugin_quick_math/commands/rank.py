@@ -1,10 +1,10 @@
 from typing import Literal
 from nonebot_plugin_alconna import UniMessage
 from ..utils.ranking import get_user_list
-from ...nonebot_plugin_larkutils import get_user_id
+from nonebot_plugin_larkutils import get_user_id
 from ..models import QuickMathUser
 from ..__main__ import lang, quick_math
-from ...nonebot_plugin_ranking import generate_image
+from nonebot_plugin_ranking import generate_image
 
 
 @quick_math.assign("rank")

@@ -1,6 +1,6 @@
 from nonebot_plugin_orm import get_session
 from openai.types.chat.chat_completion import ChatCompletion
-from ...nonebot_plugin_larkuser import get_user
+from nonebot_plugin_larkuser import get_user
 import random
 
 from ..models import GptUser

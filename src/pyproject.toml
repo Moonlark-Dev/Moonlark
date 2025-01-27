@@ -1,0 +1,91 @@
+[project]
+name = "moonlark_custom_plugins"
+version = "0.1.12"
+description = "Moonlark 中的自定义插件"
+requires-python = ">=3.11, <4.0"
+
+
+[tool.poetry.dependencies]
+python = "^3.11"
+nonebot2 = {extras = ["fastapi"], version = "^2.3.1"}
+
+httpx = {extras = ["socks"], version = "^0.27.0"}
+aiofiles = "^23.2.1"
+numpy = "^1.26.4"
+pillow = "^10.3.0"
+scikit-image = "^0.23.1"
+beautifulsoup4 = "^4.12.3"
+pypinyin = "^0.51.0"
+jieba = "^0.42.1"
+sympy = "^1.12.1"
+openai = "^1.34.0"
+aiosqlite = "^0.20.0"
+aiomysql = "^0.2.0"
+cryptography = "^44.0.0"
+pyproject-toml = "^0.0.10"
+
+nonebot-adapter-qq = "^1.4.4"
+nonebot-adapter-onebot = "^2.4.3"
+nonebot-plugin-htmlrender = "^0.3.1"
+nonebot-plugin-alconna = "^0.54.2"
+nonebot-plugin-picstatus = "^2.0.0.post2"
+nonebot-plugin-orm = "^0.7.6"
+nonebot-plugin-session = "^0.2.3"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+
+[tool.poetry]
+packages = [
+    { include = "nonebot_plugin_access", from = "./plugins" },
+    { include = "nonebot_plugin_achievement", from = "./plugins" },
+    { include = "nonebot_plugin_alconna_extensions", from = "./plugins" },
+    { include = "nonebot_plugin_bag", from = "./plugins" },
+    { include = "nonebot_plugin_bingo", from = "./plugins" },
+    { include = "nonebot_plugin_boothill", from = "./plugins" },
+    { include = "nonebot_plugin_bots", from = "./plugins" },
+    { include = "nonebot_plugin_email", from = "./plugins" },
+    { include = "nonebot_plugin_extrahelp", from = "./plugins" },
+    { include = "nonebot_plugin_fight", from = "./plugins" },
+    { include = "nonebot_plugin_finding_the_trail", from = "./plugins" },
+    { include = "nonebot_plugin_friend_add", from = "./plugins" },
+    { include = "nonebot_plugin_hello", from = "./plugins" },
+    { include = "nonebot_plugin_holiday", from = "./plugins" },
+    { include = "nonebot_plugin_int", from = "./plugins" },
+    { include = "nonebot_plugin_items", from = "./plugins" },
+    { include = "nonebot_plugin_join_message", from = "./plugins" },
+    { include = "nonebot_plugin_jrrp", from = "./plugins" },
+    { include = "nonebot_plugin_larkcave", from = "./plugins" },
+    { include = "nonebot_plugin_larkhelp", from = "./plugins" },
+    { include = "nonebot_plugin_larklang", from = "./plugins" },
+    { include = "nonebot_plugin_larksetu", from = "./plugins" },
+    { include = "nonebot_plugin_larkuid", from = "./plugins" },
+    { include = "nonebot_plugin_larkuser", from = "./plugins" },
+    { include = "nonebot_plugin_larkuid", from = "./plugins" },
+    { include = "nonebot_plugin_larkuser", from = "./plugins" },
+    { include = "nonebot_plugin_larkutils", from = "./plugins" },
+    { include = "nonebot_plugin_latex", from = "./plugins" },
+    { include = "nonebot_plugin_linuxman", from = "./plugins" },
+    { include = "nonebot_plugin_luxun_works", from = "./plugins" },
+    { include = "nonebot_plugin_minigame_api", from = "./plugins" },
+    { include = "nonebot_plugin_openai", from = "./plugins" },
+    { include = "nonebot_plugin_pacman", from = "./plugins" },
+    { include = "nonebot_plugin_pawcoin_exchange", from = "./plugins" },
+    { include = "nonebot_plugin_preview", from = "./plugins" },
+    { include = "nonebot_plugin_quick_math", from = "./plugins" },
+    { include = "nonebot_plugin_ranking", from = "./plugins" },
+    { include = "nonebot_plugin_registry", from = "./plugins" },
+    { include = "nonebot_plugin_render", from = "./plugins" },
+    { include = "nonebot_plugin_sign", from = "./plugins" },
+    { include = "nonebot_plugin_time_progress", from = "./plugins" },
+    { include = "nonebot_plugin_translate", from = "./plugins" },
+    { include = "nonebot_plugin_vote", from = "./plugins" },
+    { include = "nonebot_plugin_wakatime", from = "./plugins" },
+    { include = "nonebot_plugin_wolfram_alpha", from = "./plugins" },
+    { include = "nonebot_plugin_2048", from = "./plugins" },
+    { include = "nonebot_plugin_defuse_tnt", from = "./plugins" },
+    { include = "nonebot_plugin_turn_off_lights", from = "./plugins" }
+]

@@ -17,7 +17,7 @@
 
 from typing import Optional, NoReturn
 
-from src.plugins.nonebot_plugin_larkuser.user.base import MoonlarkUser
+from nonebot_plugin_larkuser.user.base import MoonlarkUser
 
 
 class MoonlarkUnknownUser(MoonlarkUser):

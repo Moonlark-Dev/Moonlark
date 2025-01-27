@@ -19,7 +19,7 @@ from nonebot import get_app
 from typing import cast
 from fastapi import FastAPI, HTTPException, status
 
-from ..nonebot_plugin_larkuid.session import get_user_id
+from nonebot_plugin_larkuid.session import get_user_id
 from .__main__ import lang, get_help_list, get_help_dict
 
 app = cast(FastAPI, get_app())

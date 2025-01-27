@@ -17,7 +17,7 @@
 
 from nonebot import on_message
 from ..lang import lang
-from ...nonebot_plugin_larkutils import get_user_id
+from nonebot_plugin_larkutils import get_user_id
 from typing import Optional, Callable, TypeVar
 from nonebot.matcher import Matcher
 import asyncio

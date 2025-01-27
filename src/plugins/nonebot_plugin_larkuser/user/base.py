@@ -20,7 +20,7 @@ import base64
 from datetime import datetime
 from typing import Optional, TypeVar
 from abc import ABC, abstractmethod
-from src.plugins.nonebot_plugin_larkuser.utils.level import get_level_by_experience
+from nonebot_plugin_larkuser.utils.level import get_level_by_experience
 
 T = TypeVar("T")
 

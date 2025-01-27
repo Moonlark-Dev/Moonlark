@@ -1,7 +1,7 @@
 from nonebot import logger
 from nonebot_plugin_orm import get_session
 
-from ...nonebot_plugin_larkutils import get_user_id
+from nonebot_plugin_larkutils import get_user_id
 from ..__main__ import matcher, lang
 from ..utils import login, token, get_user_stats
 from ..models import User

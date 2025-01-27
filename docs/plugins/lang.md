@@ -189,7 +189,7 @@ await lang.reply("xxx2.xxx3", user_id)
 在插件中使用以下方法初始化一个 `LangHelper`：
 
 ```python
-from src.plugins.nonebot_plugin_larklang import LangHelper
+from nonebot_plugin_larklang import LangHelper
 lang = LangHelper()
 ```
 

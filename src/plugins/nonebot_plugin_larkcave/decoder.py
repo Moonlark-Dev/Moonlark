@@ -8,7 +8,7 @@ from nonebot_plugin_localstore import get_data_dir
 from nonebot_plugin_alconna import Image, Text, UniMessage
 from nonebot_plugin_orm import async_scoped_session
 
-from ..nonebot_plugin_larkuser import get_user
+from nonebot_plugin_larkuser import get_user
 from .lang import lang
 from .models import CaveData, ImageData, CaveImage
 
@@ -46,8 +46,23 @@ async def parse_content(content: str, session: async_scoped_session) -> UniMessa
     return message
 
 
-async def decode_cave(cave: CaveData, session: async_scoped_session, user_id: str) -> UniMessage:
+def reverse_cave_message(message: UniMessage) -> UniMessage:
+    new_message = UniMessage()
+    for segment in message:
+        if isinstance(segment, Text):
+            for line in segment.text.splitlines():
+                new_message.append(Text(f"{line[::-1]}\n"))
+        else:
+            new_message.append(segment)
+    return new_message
+
+
+async def decode_cave(
+    cave: CaveData, session: async_scoped_session, user_id: str, use_special: bool = False
+) -> UniMessage:
     message = UniMessage(await lang.text("render.header", user_id, cave.id))
     message.extend(await parse_content(cave.content, session))
     message.append(Text(await lang.text("render.footer", user_id, (await get_user(cave.author)).get_nickname())))
+    if use_special:
+        message = reverse_cave_message(message)
     return message

@@ -8,9 +8,9 @@ from nonebot_plugin_alconna import Alconna, Args, Arparma, Match, Option, Subcom
 from nonebot_plugin_orm import async_scoped_session
 from sqlalchemy import select
 
-from ..nonebot_plugin_larkuser import get_user
-from ..nonebot_plugin_larkutils import get_group_id, get_user_id, is_user_superuser, review_text
-from ..nonebot_plugin_larkutils.extra import parse_exit_input
+from nonebot_plugin_larkuser import get_user
+from nonebot_plugin_larkutils import get_group_id, get_user_id, is_user_superuser, review_text
+from nonebot_plugin_larkutils.extra import parse_exit_input
 from .config import config
 from .lang import lang
 from .modules import Choice, Vote, VoteLog

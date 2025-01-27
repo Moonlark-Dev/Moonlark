@@ -18,11 +18,11 @@
 from nonebot_plugin_orm import get_session
 from typing import Optional
 from nonebot_plugin_alconna import Match
-from ...nonebot_plugin_larkutils import get_user_id
+from nonebot_plugin_larkutils import get_user_id
 from ..__main__ import lang, ftt
 from ..utils.exchange import get_exchangeable_paw_coin_count
 from ..models import UserPoint
-from ...nonebot_plugin_bag.utils.give import give_item_by_data
+from nonebot_plugin_bag.utils.give import give_item_by_data
 
 
 @ftt.assign("exchange")

@@ -3,7 +3,7 @@ from typing import Any
 from nonebot_plugin_alconna import UniMessage
 
 from ..utils.use import get_item
-from ...nonebot_plugin_larkutils.user import get_user_id
+from nonebot_plugin_larkutils.user import get_user_id
 from ..item import BagItem
 from ..__main__ import bag, lang
 from nonebot.params import Depends

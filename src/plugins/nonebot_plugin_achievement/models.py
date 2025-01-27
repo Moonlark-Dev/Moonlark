@@ -3,7 +3,7 @@ from nonebot_plugin_orm import Model
 from sqlalchemy.orm import Mapped, mapped_column
 from pydantic import BaseModel
 
-from ..nonebot_plugin_item.types import DictItemData
+from nonebot_plugin_items.types import DictItemData
 from sqlalchemy import String
 
 

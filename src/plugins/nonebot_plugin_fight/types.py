@@ -14,11 +14,13 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
-from typing import TypedDict, Literal, TYPE_CHECKING, Optional
+from typing import Any, TypedDict, Literal, TYPE_CHECKING, Optional
+
 
 if TYPE_CHECKING:
-    from src.plugins.nonebot_plugin_fight.base.monomer import Monomer
-    from .base.controllable import ControllableMonomer
+    from nonebot_plugin_fight.base.monomer import Monomer
+    from nonebot_plugin_fight.base.equipment import Equipment
+    from nonebot_plugin_fight.base.weapon import Weapon
 
 
 class AttackEvent(TypedDict):
@@ -51,3 +53,13 @@ class ActionCommand(TypedDict):
 
 
 ACTION_EVENT = MessageActionEvent | AttackEvent
+
+
+class CharacterData(TypedDict):
+    experience: int
+    current_hp: int
+    fav: float
+    buff: list[dict[str, Any]]
+    weapon: "Weapon"
+    equipment: "Equipment"
+    talent_level: dict[str, int]

@@ -17,9 +17,9 @@
 
 from nonebot_plugin_alconna import UniMessage
 from nonebot import on_command
-from ..nonebot_plugin_preview.preview import screenshot
-from ..nonebot_plugin_larklang import LangHelper
-from ..nonebot_plugin_larkutils import get_user_id
+from nonebot_plugin_preview.preview import screenshot
+from nonebot_plugin_larklang import LangHelper
+from nonebot_plugin_larkutils import get_user_id
 
 matcher = on_command("holiday")
 viewport = {"width": 1440, "height": 900}

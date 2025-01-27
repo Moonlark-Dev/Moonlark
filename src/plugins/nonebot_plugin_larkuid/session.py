@@ -9,8 +9,8 @@ from nonebot_plugin_orm import get_session
 from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
 
-from ..nonebot_plugin_larkuser import get_user
-from ..nonebot_plugin_larkuser.user.base import MoonlarkUser
+from nonebot_plugin_larkuser import get_user
+from nonebot_plugin_larkuser.user.base import MoonlarkUser
 from .models import SessionData
 
 

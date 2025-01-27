@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import mapped_column, Mapped
 from sqlalchemy import String, Text
 
-from ..nonebot_plugin_item.types import DictItemData
+from nonebot_plugin_items.types import DictItemData
 
 
 class EmailData(Model):

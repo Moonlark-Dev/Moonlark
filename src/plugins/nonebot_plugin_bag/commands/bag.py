@@ -1,8 +1,8 @@
 from nonebot_plugin_alconna import UniMessage
 
-from ...nonebot_plugin_render.render import render_template
+from nonebot_plugin_render.render import render_template
 from ..utils.item import get_bag_items
-from ...nonebot_plugin_larkutils.user import get_user_id
+from nonebot_plugin_larkutils.user import get_user_id
 from ..__main__ import bag
 from ..__main__ import lang
 from ..config import config

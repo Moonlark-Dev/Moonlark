@@ -1,5 +1,5 @@
-from ...nonebot_plugin_item.registry.registry import ResourceLocation
-from ...nonebot_plugin_achievement import unlock_achievement
+from nonebot_plugin_items.registry.registry import ResourceLocation
+from nonebot_plugin_achievement import unlock_achievement
 
 
 def get_achievement_location(path: str) -> ResourceLocation:
