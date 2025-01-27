@@ -12,14 +12,14 @@ class TranslateResponse(BaseModel):
     code: int
     data: str
 
+
 async def post_translate_api(text: str, source_lang: str, target_lang: str) -> TranslateResponse:
     async with httpx.AsyncClient(base_url=config.translate_deeplx_url) as client:
-        response = await client.post("/translate", json={
-            "text": text,
-            "source_lang": source_lang,
-            "target_lang": target_lang
-        })
+        response = await client.post(
+            "/translate", json={"text": text, "source_lang": source_lang, "target_lang": target_lang}
+        )
     return type_validate_json(TranslateResponse, response.text)
+
 
 async def translate(text: str, source_lang: str, target_lang: str, user_id: str) -> TranslateResponse:
     try:
