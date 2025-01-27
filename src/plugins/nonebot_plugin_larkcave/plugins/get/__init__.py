@@ -38,4 +38,3 @@ async def _(
     if msg := await get_comments(cave_id, session, user_id):
         await msg.send()
     await cave.finish()
-

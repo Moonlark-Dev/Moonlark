@@ -18,7 +18,6 @@ require("nonebot_plugin_larkutils")
 require("nonebot_plugin_alconna")
 
 
-
 load_plugin("nonebot_plugin_larkcave.plugins.similarity_check")
 load_plugin("nonebot_plugin_larkcave.plugins.comment")
 load_plugin("nonebot_plugin_larkcave.plugins.add")
