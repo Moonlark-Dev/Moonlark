@@ -21,7 +21,7 @@ from .team import ControllableTeam
 import re
 from ..lang import lang
 from typing import Any, Optional, Awaitable, Callable
-from ..types import ACTION_EVENT, SkillInfo, ActionCommand
+from ..types import SkillInfo, ActionCommand
 from abc import ABC, abstractmethod
 from nonebot_plugin_alconna import UniMessage
 from nonebot_plugin_render import render_template
