@@ -1,7 +1,7 @@
 import random
 from ..base.monomer import Monomer
-from src.plugins.nonebot_plugin_fight.base.team import ControllableTeam, Team
-from src.plugins.nonebot_plugin_fight.types import AttackTypes, BuffTypes, CharacterData, SkillInfo
+from ..base.team import ControllableTeam, Team
+from ..types import AttackTypes, BuffTypes, CharacterData, SkillInfo
 from ..base.character import Character
 
 
