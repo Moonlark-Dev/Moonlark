@@ -3,9 +3,9 @@ from nonebot.adapters import Message
 from nonebot.params import CommandArg
 from nonebot_plugin_alconna import UniMessage
 
-from ..nonebot_plugin_render.render import render_template
-from ..nonebot_plugin_larklang.__main__ import LangHelper
-from ..nonebot_plugin_larkutils.user import get_user_id
+from nonebot_plugin_render.render import render_template
+from nonebot_plugin_larklang.__main__ import LangHelper
+from nonebot_plugin_larkutils.user import get_user_id
 from .censor import censor
 
 boothill = on_command("boothill")

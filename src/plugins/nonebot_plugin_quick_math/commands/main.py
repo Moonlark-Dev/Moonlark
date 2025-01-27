@@ -5,7 +5,7 @@ from nonebot_plugin_htmlrender import md_to_pic
 from nonebot_plugin_waiter import prompt_until, prompt
 import re
 
-from ...nonebot_plugin_achievement.utils.unlock import unlock_achievement
+from nonebot_plugin_achievement.utils.unlock import unlock_achievement
 
 from ..utils.achievement import get_achievement_location, update_achievements_status
 
@@ -16,7 +16,7 @@ from ..utils.user import update_user_data
 from ..config import config
 from ..utils.generator import get_max_level
 import asyncio
-from ...nonebot_plugin_larkutils.user import get_user_id
+from nonebot_plugin_larkutils.user import get_user_id
 from ..__main__ import lang, quick_math
 
 

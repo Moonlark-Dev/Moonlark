@@ -18,7 +18,7 @@
 from typing import TYPE_CHECKING
 import copy
 from ..lang import lang
-from src.plugins.nonebot_plugin_fight.base.scheduler import Scheduler
+from nonebot_plugin_fight.base.scheduler import Scheduler
 from ..types import ACTION_EVENT
 from typing import Any
 from nonebot.matcher import Matcher

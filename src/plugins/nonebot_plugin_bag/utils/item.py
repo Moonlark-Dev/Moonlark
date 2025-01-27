@@ -5,8 +5,8 @@ from nonebot_plugin_orm import get_session
 from sqlalchemy import select
 from ..exceptions import ItemLockedError
 from ..item import BagItem
-from ...nonebot_plugin_item.utils.string import get_location_by_id
-from ...nonebot_plugin_item.utils.get import get_item
+from nonebot_plugin_items.utils.string import get_location_by_id
+from nonebot_plugin_items.utils.get import get_item
 from ..models import Bag
 
 

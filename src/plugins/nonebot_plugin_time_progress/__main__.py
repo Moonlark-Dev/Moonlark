@@ -3,8 +3,8 @@ from typing import Literal
 
 from nonebot_plugin_alconna import Alconna, Args, on_alconna
 
-from ..nonebot_plugin_larklang.__main__ import LangHelper
-from ..nonebot_plugin_larkutils.user import get_user_id
+from nonebot_plugin_larklang.__main__ import LangHelper
+from nonebot_plugin_larkutils.user import get_user_id
 from .utils import calculate_percentage_of_day, calculate_percentage_of_month, calculate_percentage_of_year
 
 alc = Alconna("time-progress")

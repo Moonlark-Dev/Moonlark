@@ -1,8 +1,8 @@
 from nonebot.params import Depends
 from nonebot_plugin_alconna import UniMessage
 
-from ...nonebot_plugin_render import render_template
-from ...nonebot_plugin_larkutils import get_user_id
+from nonebot_plugin_render import render_template
+from nonebot_plugin_larkutils import get_user_id
 from ..__main__ import matcher, lang
 from ..utils import get_user_stats, get_user_ranking
 from ..models import StatsProject, StatsResponse

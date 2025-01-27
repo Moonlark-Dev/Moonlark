@@ -88,8 +88,8 @@ from nonebot import on_command
 from nonebot.adapters import Message
 from nonebot.params import CommandArg
 
-from ..nonebot_plugin_larklang import LangHelper
-from ..nonebot_plugin_larkutils import get_user_id
+from nonebot_plugin_larklang import LangHelper
+from nonebot_plugin_larkutils import get_user_id
 
 sha1 = on_command("sha1")
 lang = LangHelper()

@@ -1,5 +1,5 @@
 from .item import get_bag_items
-from ...nonebot_plugin_item.registry.registry import ResourceLocation
+from nonebot_plugin_items.registry.registry import ResourceLocation
 from ..item import BagItem
 
 ALL = -1

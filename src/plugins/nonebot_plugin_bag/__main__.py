@@ -1,9 +1,9 @@
 from typing import Any
 from nonebot_plugin_alconna import Alconna, Args, MultiVar, Option, Subcommand, on_alconna
 
-from ..nonebot_plugin_larklang.__main__ import LangHelper
+from nonebot_plugin_larklang.__main__ import LangHelper
 
-from src.plugins.nonebot_plugin_larkuser import patch_matcher
+from nonebot_plugin_larkuser import patch_matcher
 
 alc = Alconna(
     "bag",

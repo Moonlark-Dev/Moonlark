@@ -7,7 +7,7 @@ from types import ModuleType
 from typing import NoReturn
 from nonebot import get_driver, get_plugin_by_module_name, get_plugin_config, logger
 from nonebot.matcher import Matcher
-from ..nonebot_plugin_larkutils import parse_special_user_id
+from nonebot_plugin_larkutils import parse_special_user_id
 from .config import Config
 from .exceptions import *
 from .loader import LangLoader

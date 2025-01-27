@@ -93,8 +93,8 @@ from nonebot import on_command
 from nonebot.adapters import Message
 from nonebot.params import CommandArg
 
-from ..nonebot_plugin_larklang import LangHelper
-from ..nonebot_plugin_larkutils import get_user_id
+from nonebot_plugin_larklang import LangHelper
+from nonebot_plugin_larkutils import get_user_id
 ```
 
 > 尽量避免使用通配符导入

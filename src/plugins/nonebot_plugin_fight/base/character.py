@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
-from typing import Any, Coroutine, Optional
-from src.plugins.nonebot_plugin_fight.base.team import ControllableTeam
-from src.plugins.nonebot_plugin_fight.types import CharacterData
+from typing import Optional
+from ..base.team import ControllableTeam
+from ..types import CharacterData
 from .controllable import ControllableMonomer
 from ..lang import lang
 

@@ -5,11 +5,11 @@ from nonebot_plugin_orm import get_session
 from .utils.exchange import exchange
 from .lang import lang
 from .models import Exchanged
-from ..nonebot_plugin_bag.utils.reduce import get_bag_item_count
-from ..nonebot_plugin_items.items.moonlark.pawcoin import get_location
+from nonebot_plugin_bag.utils.reduce import get_bag_item_count
+from nonebot_plugin_items.items.moonlark.pawcoin import get_location
 from .utils.exchange import get_exchange_data
-from ..nonebot_plugin_bag.utils.item import get_bag_items
-from ..nonebot_plugin_larkutils.user import get_user_id
+from nonebot_plugin_bag.utils.item import get_bag_items
+from nonebot_plugin_larkutils.user import get_user_id
 
 
 alc = Alconna("pcc", Option("-b|--bag", Args["index", int]), Args["count?", int | Literal["all", "*"]])

@@ -1,8 +1,8 @@
 from typing import Literal
 from nonebot_plugin_alconna import Alconna, Args, Subcommand, on_alconna, Option
 
-from src.plugins.nonebot_plugin_larkuser.utils.matcher import patch_matcher
-from ..nonebot_plugin_larklang import LangHelper
+from nonebot_plugin_larkuser.utils.matcher import patch_matcher
+from nonebot_plugin_larklang import LangHelper
 
 
 quick_math = on_alconna(

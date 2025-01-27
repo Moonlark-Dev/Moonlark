@@ -1,9 +1,9 @@
 from nonebot_plugin_alconna import Alconna, Args, on_alconna, UniMessage
 from nonebot_plugin_waiter import prompt
-from src.plugins.nonebot_plugin_larklang import LangHelper
-from src.plugins.nonebot_plugin_larkuser import get_user
-from src.plugins.nonebot_plugin_larkutils import get_user_id, review_text
-from src.plugins.nonebot_plugin_render import render_template
+from nonebot_plugin_larklang import LangHelper
+from nonebot_plugin_larkuser import get_user
+from nonebot_plugin_larkutils import get_user_id, review_text
+from nonebot_plugin_render import render_template
 from .config import config
 
 alc = Alconna("bingo", Args["width", int, 5], Args["height", int, 5])

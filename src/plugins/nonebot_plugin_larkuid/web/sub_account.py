@@ -22,8 +22,8 @@ from fastapi import FastAPI, Request, HTTPException, status
 from time import time
 from typing import cast
 from nonebot import get_app
-from src.plugins.nonebot_plugin_larkuser import get_user
-from ...nonebot_plugin_larkuser.user.base import MoonlarkUser
+from nonebot_plugin_larkuser import get_user
+from nonebot_plugin_larkuser.user.base import MoonlarkUser
 
 from ..session import get_user_data
 from ..config import config

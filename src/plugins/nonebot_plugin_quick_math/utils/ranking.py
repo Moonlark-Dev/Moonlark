@@ -1,5 +1,5 @@
-from ...nonebot_plugin_ranking.web import WebRanking, register
-from ...nonebot_plugin_ranking.types import RankingData
+from nonebot_plugin_ranking.web import WebRanking, register
+from nonebot_plugin_ranking.types import RankingData
 from ..models import QuickMathUser
 from ..__main__ import lang
 

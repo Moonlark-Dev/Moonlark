@@ -15,7 +15,7 @@ require("nonebot_plugin_larkuser")
 require("nonebot_plugin_htmlrender")
 require("nonebot_plugin_apscheduler")
 require("nonebot_plugin_bag")
-require("nonebot_plugin_item")
+require("nonebot_plugin_items")
 require("nonebot_plugin_orm")
 
 from .web import create, manage, edit, remove

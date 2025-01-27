@@ -1,7 +1,7 @@
 from nonebot_plugin_orm import get_session
 from sqlalchemy import select
 
-from ...nonebot_plugin_larkuser.models import UserData
+from nonebot_plugin_larkuser.models import UserData
 
 
 async def get_total_vimcoin() -> float:

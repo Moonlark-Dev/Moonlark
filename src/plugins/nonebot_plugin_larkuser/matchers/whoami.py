@@ -17,7 +17,7 @@
 
 from nonebot import on_command
 from nonebot.adapters import Event
-from src.plugins.nonebot_plugin_larkutils import get_user_id, get_group_id, is_user_superuser
+from nonebot_plugin_larkutils import get_user_id, get_group_id, is_user_superuser
 from ..lang import lang
 from ..utils.user import get_user
 

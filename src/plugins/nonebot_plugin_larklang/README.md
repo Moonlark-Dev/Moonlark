@@ -9,7 +9,7 @@ from nonebot import require
 
 reqiure("nonebot_plugin_larklang")
 
-from ..nonebot_plugin_larklang import LangHelper
+from nonebot_plugin_larklang import LangHelper
 
 lang = LangHelper()
 ```

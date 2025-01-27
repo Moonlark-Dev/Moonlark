@@ -18,4 +18,4 @@ require("nonebot_plugin_htmlrender")
 
 from . import __main__, web
 from .utils import checker
-from src.plugins.nonebot_plugin_access.utils.set_access import set_access
+from nonebot_plugin_access.utils.set_access import set_access

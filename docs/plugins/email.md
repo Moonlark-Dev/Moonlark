@@ -34,7 +34,7 @@ require('nonebot_plugin_email')
 以下是 QuickMath 插件中向用户发送邮件的代码:
 
 ```python
-from src.plugins.nonebot_plugin_email.utils.send import send_email 
+from nonebot_plugin_email.utils.send import send_email 
 await send_email(
     
     # 收件人（只有一个）

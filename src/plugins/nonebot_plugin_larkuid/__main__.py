@@ -3,7 +3,7 @@ from nonebot_plugin_orm import async_scoped_session
 from sqlalchemy import select
 
 from .web.sub_account import get_bind_cache
-from ..nonebot_plugin_larkutils import get_user_id, set_main_account
+from nonebot_plugin_larkutils import get_user_id, set_main_account
 from .lang import lang
 from .models import SessionData
 

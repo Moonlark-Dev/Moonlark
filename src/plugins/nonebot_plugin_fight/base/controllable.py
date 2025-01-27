@@ -15,7 +15,7 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
-from ...nonebot_plugin_larkuser.utils.waiter2 import WaitUserInput
+from nonebot_plugin_larkuser.utils.waiter2 import WaitUserInput
 from .monomer import Monomer, Team, ACTION_EVENT
 from .team import ControllableTeam
 import re
@@ -24,7 +24,7 @@ from typing import Any, Optional, Awaitable, Callable
 from ..types import ACTION_EVENT, SkillInfo, ActionCommand
 from abc import ABC, abstractmethod
 from nonebot_plugin_alconna import UniMessage
-from ...nonebot_plugin_render import render_template
+from nonebot_plugin_render import render_template
 
 
 class ControllableMonomer(Monomer, ABC):

@@ -8,7 +8,7 @@ from sqlalchemy import select
 from ..exceptions import ItemLockedError
 
 from ..models import Bag
-from ...nonebot_plugin_item.base.stack import ItemStack
+from nonebot_plugin_items.base.stack import ItemStack
 
 
 class BagItem:

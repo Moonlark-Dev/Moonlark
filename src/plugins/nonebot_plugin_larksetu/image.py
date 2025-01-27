@@ -2,7 +2,7 @@ import httpx
 from nonebot import logger
 from nonebot.compat import type_validate_python
 
-from ..nonebot_plugin_larkutils import review_image
+from nonebot_plugin_larkutils import review_image
 from .config import config
 from .exception import NoImageInResponse
 from .models import LoliconResponse

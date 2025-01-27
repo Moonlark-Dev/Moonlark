@@ -21,4 +21,4 @@ require("nonebot_plugin_alconna")
 
 from . import __main__
 
-sub_plugins = nonebot.load_plugins(str(Path(__file__).parent.joinpath("plugins").resolve()))
+nonebot.load_plugin("nonebot_plugin_larksetu.plugins.nonebot_plugin_seturank")
