@@ -5,7 +5,7 @@ from nonebot_plugin_orm import get_session
 from ..models import EmailEditArgs
 from ..models import EmailData
 from ..config import config
-from ...nonebot_plugin_larkuid.session import get_user_id
+from nonebot_plugin_larkuid.session import get_user_id
 
 
 @get_app().put("/api/emails/{email_id}/edit", status_code=status.HTTP_204_NO_CONTENT)

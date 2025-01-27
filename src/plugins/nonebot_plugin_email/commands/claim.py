@@ -5,12 +5,12 @@ from nonebot_plugin_orm import async_scoped_session, get_session
 from sqlalchemy import select
 from nonebot.log import logger
 
-from ...nonebot_plugin_item.utils.merge import merge_items
+from nonebot_plugin_items.utils.merge import merge_items
 
 from ..utils.claim import claim_email
 from ..lang import lang
 from ..models import EmailUser
-from ...nonebot_plugin_larkutils.user import get_user_id
+from nonebot_plugin_larkutils.user import get_user_id
 from ..__main__ import email
 
 

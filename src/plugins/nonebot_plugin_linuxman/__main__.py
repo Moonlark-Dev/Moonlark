@@ -3,8 +3,8 @@ from nonebot_plugin_alconna import Alconna, Args, Arparma, Match, on_alconna
 from nonebot_plugin_alconna.uniseg import UniMessage
 from nonebot_plugin_htmlrender import text_to_pic
 
-from ..nonebot_plugin_larklang import LangHelper
-from ..nonebot_plugin_larkutils import get_user_id
+from nonebot_plugin_larklang import LangHelper
+from nonebot_plugin_larkutils import get_user_id
 from .config import config
 
 lang = LangHelper()

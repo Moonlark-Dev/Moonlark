@@ -17,8 +17,8 @@
 
 from nonebot_plugin_orm import get_session
 from nonebot_plugin_alconna import UniMessage
-from ...nonebot_plugin_larkutils import get_user_id
-from ...nonebot_plugin_ranking import generate_image
+from nonebot_plugin_larkutils import get_user_id
+from nonebot_plugin_ranking import generate_image
 from ..__main__ import lang, ftt
 from ..utils.exchange import get_exchangeable_paw_coin_count
 from ..utils.ranking import get_sorted_data

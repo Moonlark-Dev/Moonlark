@@ -185,7 +185,7 @@ require("nonebot_plugin_larkuser")
 ### 获取用户
 
 ```python
-from src.plugins.nonebot_plugin_larkuser import get_user
+from nonebot_plugin_larkuser import get_user
 
 # 获取 ID 为 1234567890 的用户
 user = await get_user("1234567890")

@@ -17,8 +17,8 @@
 
 from nonebot_plugin_alconna import on_alconna, Alconna, Args, Option, Subcommand
 from typing import Optional
-from ..nonebot_plugin_larkuser import patch_matcher
-from ..nonebot_plugin_larklang import LangHelper
+from nonebot_plugin_larkuser import patch_matcher
+from nonebot_plugin_larklang import LangHelper
 
 alc = Alconna(
     "ftt",

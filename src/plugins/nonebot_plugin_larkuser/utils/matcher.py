@@ -1,6 +1,6 @@
 from nonebot.matcher import Matcher
 
-from ...nonebot_plugin_larkutils.user import get_user_id
+from nonebot_plugin_larkutils import get_user_id
 from ..lang import lang
 from .user import get_user
 

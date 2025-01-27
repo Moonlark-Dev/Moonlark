@@ -19,9 +19,9 @@ import random
 
 from .difficulties import DIFFICULTIES
 from ..generator.generator import generate
-from src.plugins.nonebot_plugin_finding_the_trail.utils.enums.blocks import Blocks
+from nonebot_plugin_finding_the_trail.utils.enums.blocks import Blocks
 from ..finder import EndFinder, AnswerFinder, utils
-from src.plugins.nonebot_plugin_finding_the_trail.utils.enums.directions import Directions
+from nonebot_plugin_finding_the_trail.utils.enums.directions import Directions
 from ...exceptions import CannotMove
 
 

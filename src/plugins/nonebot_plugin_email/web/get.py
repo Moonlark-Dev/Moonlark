@@ -2,7 +2,7 @@ from fastapi import HTTPException, Request, status
 from sqlalchemy.exc import NoResultFound
 from nonebot import get_app
 
-from ...nonebot_plugin_larkuid.session import get_user_id
+from nonebot_plugin_larkuid.session import get_user_id
 
 from ..config import config
 from ..models import EmailUser

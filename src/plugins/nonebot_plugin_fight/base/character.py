@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
-from src.plugins.nonebot_plugin_fight.base.team import ControllableTeam
-from src.plugins.nonebot_plugin_fight.types import CharacterData
+from nonebot_plugin_fight.base.team import ControllableTeam
+from nonebot_plugin_fight.types import CharacterData
 from .controllable import ControllableMonomer
 
 

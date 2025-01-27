@@ -3,7 +3,7 @@ from nonebot_plugin_alconna import UniMessage
 from ..utils.show import get_item
 from ..utils.show import get_star_string
 from ..item import BagItem
-from ...nonebot_plugin_larkutils.user import get_user_id
+from nonebot_plugin_larkutils.user import get_user_id
 from ..__main__ import bag, lang
 from nonebot_plugin_htmlrender import md_to_pic
 from nonebot.params import Depends

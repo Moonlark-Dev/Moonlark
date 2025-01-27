@@ -5,8 +5,8 @@ from nonebot_plugin_alconna.uniseg import UniMessage
 from nonebot_plugin_htmlrender import md_to_pic
 
 from .preview import screenshot
-from ..nonebot_plugin_larklang import LangHelper
-from ..nonebot_plugin_larkutils import get_user_id, review_image
+from nonebot_plugin_larklang import LangHelper
+from nonebot_plugin_larkutils import get_user_id, review_image
 from .checker import check_url_protocol
 from .exceptions import AccessDenied
 

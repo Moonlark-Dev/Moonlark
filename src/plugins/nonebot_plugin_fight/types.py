@@ -18,9 +18,9 @@ from typing import Any, TypedDict, Literal, TYPE_CHECKING, Optional
 
 
 if TYPE_CHECKING:
-    from src.plugins.nonebot_plugin_fight.base.monomer import Monomer
-    from src.plugins.nonebot_plugin_fight.base.equipment import Equipment
-    from src.plugins.nonebot_plugin_fight.base.weapon import Weapon
+    from nonebot_plugin_fight.base.monomer import Monomer
+    from nonebot_plugin_fight.base.equipment import Equipment
+    from nonebot_plugin_fight.base.weapon import Weapon
 
 
 class AttackEvent(TypedDict):

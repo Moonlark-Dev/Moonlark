@@ -21,7 +21,7 @@ import os
 import struct
 from nonebot_plugin_waiter import prompt
 from nonebot_plugin_alconna import Match
-from ...nonebot_plugin_larkutils import get_user_id
+from nonebot_plugin_larkutils import get_user_id
 from ..exceptions import Quited, CannotMove
 from ..utils.fttmap import FttMap
 from ..utils.enums import Directions

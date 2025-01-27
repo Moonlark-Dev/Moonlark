@@ -1,9 +1,9 @@
 from datetime import datetime
 from typing import TypedDict
 
-from ..nonebot_plugin_item.types import DictItemData
+from nonebot_plugin_items.types import DictItemData
 
-from ..nonebot_plugin_item.base.stack import ItemStack
+from nonebot_plugin_items.base.stack import ItemStack
 
 
 class OverflowItem(TypedDict):

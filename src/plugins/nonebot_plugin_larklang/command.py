@@ -1,7 +1,7 @@
 from nonebot_plugin_alconna import Alconna, Args, Subcommand, on_alconna
 
-from ..nonebot_plugin_larkutils.superuser import is_user_superuser
-from ..nonebot_plugin_larkutils import get_user_id
+from nonebot_plugin_larkutils.superuser import is_user_superuser
+from nonebot_plugin_larkutils import get_user_id
 from . import __main__ as main
 
 lang_cmd = on_alconna(

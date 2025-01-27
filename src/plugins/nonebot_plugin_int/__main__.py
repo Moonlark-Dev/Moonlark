@@ -16,8 +16,8 @@
 # ##############################################################################
 
 from nonebot_plugin_alconna import Alconna, on_alconna, Option, Args
-from ..nonebot_plugin_larkutils import get_user_id
-from ..nonebot_plugin_larklang import LangHelper
+from nonebot_plugin_larkutils import get_user_id
+from nonebot_plugin_larklang import LangHelper
 
 alc = Alconna("int", Args["number", str], Args["base", int, 0], Option("-t", Args["to", int, 10]))
 matcher = on_alconna(alc)

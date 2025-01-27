@@ -7,10 +7,10 @@ from sqlalchemy import select
 
 from ..types import AchievementUnlockData, UserAchievementData
 from nonebot.log import logger
-from ...nonebot_plugin_larklang.__main__ import LangHelper
+from nonebot_plugin_larklang.__main__ import LangHelper
 
 from ..models import AchievementList, User
-from ...nonebot_plugin_item.registry.registry import ResourceLocation
+from nonebot_plugin_items.registry.registry import ResourceLocation
 
 
 async def get_achievement_list(namespace: Optional[str] = None) -> AsyncGenerator[ResourceLocation, None]:

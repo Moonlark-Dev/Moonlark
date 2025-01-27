@@ -1,12 +1,12 @@
-from ....nonebot_plugin_ranking.web import WebRanking, register
-from ....nonebot_plugin_ranking.types import RankingData
+from nonebot_plugin_ranking.web import WebRanking, register
+from nonebot_plugin_ranking.types import RankingData
 from ... import models
-from ....nonebot_plugin_larklang import LangHelper
-from ....nonebot_plugin_larkutils import get_user_id
+from nonebot_plugin_larklang import LangHelper
+from nonebot_plugin_larkutils import get_user_id
 from ... import __main__
 from nonebot_plugin_orm import async_scoped_session, get_session
 from nonebot_plugin_alconna.uniseg import UniMessage
-from ....nonebot_plugin_ranking import generate_image
+from nonebot_plugin_ranking import generate_image
 from sqlalchemy import select
 
 lang = LangHelper()

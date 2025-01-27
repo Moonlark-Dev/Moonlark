@@ -5,7 +5,7 @@ from nonebot import get_app
 from ..utils.remove import remove_email
 from ..config import config
 from ..config import config
-from ...nonebot_plugin_larkuid.session import get_user_id
+from nonebot_plugin_larkuid.session import get_user_id
 
 app = cast(FastAPI, get_app())
 

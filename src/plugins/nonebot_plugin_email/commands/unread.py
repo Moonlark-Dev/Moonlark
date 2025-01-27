@@ -4,7 +4,7 @@ from sqlalchemy import select
 
 from ..models import EmailUser
 from ..lang import lang
-from ...nonebot_plugin_larkutils.user import get_user_id
+from nonebot_plugin_larkutils.user import get_user_id
 from ..__main__ import email
 
 

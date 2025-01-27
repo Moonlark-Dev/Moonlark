@@ -16,8 +16,8 @@
 # ##############################################################################
 
 
-from src.plugins.nonebot_plugin_finding_the_trail.utils.enums.blocks import Blocks
-from src.plugins.nonebot_plugin_finding_the_trail.utils.enums.directions import Directions
+from nonebot_plugin_finding_the_trail.utils.enums.blocks import Blocks
+from nonebot_plugin_finding_the_trail.utils.enums.directions import Directions
 from .utils import (
     get_moveable_directions,
     MovementExecutor,

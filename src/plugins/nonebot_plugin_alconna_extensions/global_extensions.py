@@ -7,9 +7,9 @@ from nonebot_plugin_alconna import Arparma, Extension, UniMessage
 from nonebot_plugin_alconna.uniseg import reply_fetch
 
 require("nonebot_plugin_larklang")
-from ..nonebot_plugin_larklang import LangHelper
+from nonebot_plugin_larklang import LangHelper
 
-lang = LangHelper()
+lang = LangHelper("alconna_extensions")
 
 
 class UnmatchedExtension(Extension):

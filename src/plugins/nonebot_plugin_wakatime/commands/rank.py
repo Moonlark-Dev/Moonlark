@@ -1,9 +1,9 @@
 from nonebot_plugin_alconna import UniMessage
 
-from ...nonebot_plugin_ranking import generate_image
+from nonebot_plugin_ranking import generate_image
 from ..utils import get_sorted_ranking_data
 from ..__main__ import lang, matcher
-from ...nonebot_plugin_larkutils import get_user_id
+from nonebot_plugin_larkutils import get_user_id
 
 
 @matcher.assign("rank")

@@ -2,7 +2,7 @@ from nonebot_plugin_alconna import Alconna, Args, Match, on_alconna
 
 from .theme import get_user_theme, get_themes, set_theme
 from .lang import lang
-from ..nonebot_plugin_larkutils.user import get_user_id
+from nonebot_plugin_larkutils.user import get_user_id
 
 theme = on_alconna(Alconna("theme", Args["name?", str]))
 

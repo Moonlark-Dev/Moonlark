@@ -3,11 +3,11 @@ from sqlalchemy import select
 from nonebot_plugin_orm import get_session
 from nonebot.log import logger
 from .read import mark_email_read
-from ...nonebot_plugin_bag.utils.give import give_item_by_list
-from ...nonebot_plugin_item.utils.string import get_location_by_id
-from ...nonebot_plugin_item.utils.get import get_item
+from nonebot_plugin_bag.utils.give import give_item_by_list
+from nonebot_plugin_items.utils.string import get_location_by_id
+from nonebot_plugin_items.utils.get import get_item
 from ..models import EmailItem
-from ...nonebot_plugin_item.base.stack import ItemStack
+from nonebot_plugin_items.base.stack import ItemStack
 
 """
 async def claim_email(email_id: int, user_id: str) -> list[ItemStack]:

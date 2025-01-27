@@ -5,7 +5,7 @@ from ..utils.move import get_origin_item
 from ..utils.move import get_target_item
 from ..utils.move import get_count
 from ..item import BagItem
-from ...nonebot_plugin_larkutils.user import get_user_id
+from nonebot_plugin_larkutils.user import get_user_id
 from ..__main__ import bag, lang
 
 

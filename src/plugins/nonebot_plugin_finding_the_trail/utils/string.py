@@ -15,7 +15,7 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
-from src.plugins.nonebot_plugin_finding_the_trail.__main__ import lang
+from nonebot_plugin_finding_the_trail.__main__ import lang
 from .enums import Directions
 
 

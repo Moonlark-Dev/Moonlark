@@ -3,7 +3,7 @@ from nonebot import get_app
 from nonebot_plugin_orm import get_session
 from sqlalchemy import select
 
-from ..nonebot_plugin_larkuid.session import get_user_id
+from nonebot_plugin_larkuid.session import get_user_id
 from .models import SubjectData
 
 

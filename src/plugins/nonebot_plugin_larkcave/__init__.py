@@ -1,7 +1,4 @@
-from pathlib import Path
-
-import nonebot
-from nonebot import require
+from nonebot import require, load_plugin
 from nonebot.plugin import PluginMetadata
 
 from .config import Config
@@ -21,4 +18,14 @@ require("nonebot_plugin_larkutils")
 require("nonebot_plugin_alconna")
 
 
-sub_plugins = nonebot.load_plugins(str(Path(__file__).parent.joinpath("plugins").resolve()))
+
+load_plugin("nonebot_plugin_larkcave.plugins.similarity_check")
+load_plugin("nonebot_plugin_larkcave.plugins.comment")
+load_plugin("nonebot_plugin_larkcave.plugins.add")
+load_plugin("nonebot_plugin_larkcave.plugins.remove")
+load_plugin("nonebot_plugin_larkcave.plugins.restore")
+load_plugin("nonebot_plugin_larkcave.plugins.archive")
+load_plugin("nonebot_plugin_larkcave.plugins.cool_down")
+load_plugin("nonebot_plugin_larkcave.plugins.get")
+
+from . import __main__
