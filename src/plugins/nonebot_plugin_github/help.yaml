@@ -1,7 +1,7 @@
 plugin: github
 commands:
-  pacman:
+  github:
     description: help.description
     details: help.details
     usages:
-      - help.usage
+      - help.usage1

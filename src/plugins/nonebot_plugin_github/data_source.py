@@ -1,27 +1,7 @@
-from nonebot_plugin_alconna import Alconna, Args, UniMessage, on_alconna
 import re
 import httpx
-from nonebot.plugin.on import on_keyword
-from ..nonebot_plugin_render.render import render_template
-from ..nonebot_plugin_larklang import LangHelper
-from ..nonebot_plugin_larkutils.user import get_user_id
-
-lang = LangHelper()
-
-alc = Alconna("github", Args["url", str])
-github_command = on_alconna(alc)
-github_keyword = on_keyword({"/"})
-
-
-@github_command.handle()
-async def _(url: str):
-    await github_handler(github_command, url)
-
-
-@github_keyword.handle()
-async def _(url: str):
-    await github_handler(github_keyword, url)
-
+from nonebot_plugin_render.render import render_template
+from nonebot_plugin_larkutils.user import get_user_id
 
 # 直接把消息内容调用 parse_github
 async def github_handler(matcher, url):
@@ -88,7 +68,8 @@ async def parse_github(url):
                 "state": response["state"],
                 "comments": response["comments"],
                 "updated_at": response["updated_at"],
-                "avatar": response["user"]["avatar_url"]
+                "avatar": response["user"]["avatar_url"],
+                "body": response["body"]
             }
         case "discussions":
             return {
@@ -99,6 +80,7 @@ async def parse_github(url):
                 "number": response["number"],
                 "labels": response["labels"],
                 "state": response["state"],
+                "body":  response["body"],
                 "comments": response["comments"],
                 "updated_at": response["updated_at"],
                 "category": response["category"]["name"],
@@ -116,6 +98,7 @@ async def parse_github(url):
                 "comments": response["comments"],
                 "updated_at": response["updated_at"],
                 "avatar": response["user"]["avatar_url"],
+                "body": response["body"],
                 "from": response["head"]["label"],
                 "to": response["base"]["label"]
             }
