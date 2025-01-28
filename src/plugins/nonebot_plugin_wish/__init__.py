@@ -20,6 +20,7 @@ from nonebot.params import CommandArg
 
 lang = LangHelper()
 
+
 @patch_matcher(on_command("wish")).handle()
 async def _(message: Message = CommandArg(), user_id: str = get_user_id()) -> None:
     text = message.extract_plain_text()
@@ -30,5 +31,3 @@ async def _(message: Message = CommandArg(), user_id: str = get_user_id()) -> No
         await lang.finish("empty", user_id)
     await user.set_config_key("desire_25", text)
     await lang.finish("done", user_id)
-
-
