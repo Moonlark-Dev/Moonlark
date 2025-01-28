@@ -1,6 +1,6 @@
 [project]
 name = "moonlark_custom_plugins"
-version = "0.1.12"
+version = "0.1.13"
 description = "Moonlark 中的自定义插件"
 requires-python = ">=3.11, <4.0"
 
