@@ -29,6 +29,7 @@ async def _(message: Message = CommandArg(), user_id: str = get_user_id()) -> No
     elif not text:
         await lang.finish("empty", user_id)
     await user.set_config_key("desire_25", text)
+    await user.add_fav(0.0015)
     await lang.finish("done", user_id)
 
 
