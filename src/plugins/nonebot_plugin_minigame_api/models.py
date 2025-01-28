@@ -23,6 +23,7 @@ from pydantic import BaseModel
 
 
 class User(Model):
+    __tablename__ = "nonebot_plugin_minigames_api_user"
     user_id: Mapped[str] = mapped_column(String(128), primary_key=True)
     total_points: Mapped[int] = mapped_column(default=0)
     exchanged_pawcoin: Mapped[int] = mapped_column(default=0)
