@@ -2375,7 +2375,7 @@ files = [
 
 [[package]]
 name = "moonlark-custom-plugins"
-version = "0.1.15"
+version = "0.1.16"
 description = "Moonlark 中的自定义插件"
 optional = false
 python-versions = "^3.11"

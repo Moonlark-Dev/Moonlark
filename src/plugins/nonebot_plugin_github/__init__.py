@@ -24,7 +24,7 @@ from . import data_source
 
 
 github_command = on_alconna(Alconna("github", Args["url", str]))
-github_keyword = on_keyword({"/"}, block=False)
+github_keyword = on_keyword({"/"}, block=False, priority=5)
 lang = LangHelper()
 
 
