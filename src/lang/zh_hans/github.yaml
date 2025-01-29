@@ -20,6 +20,6 @@ user:
   public_repos: 公开的存储库
   location: 位置
 pull:
-  wants_to_merge: 想要将分支
+  wants: 想要将分支
   into: 合并到
   merged: 已合并
