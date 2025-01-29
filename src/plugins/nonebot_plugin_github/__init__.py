@@ -16,6 +16,7 @@ require("nonebot_plugin_larkutils")
 
 from nonebot_plugin_alconna import Alconna, Args, on_alconna, UniMessage
 from nonebot import on_keyword
+from nonebot.adapters import Event
 from nonebot_plugin_larklang import LangHelper
 from nonebot_plugin_render import render_template
 from nonebot_plugin_larkutils import get_user_id
@@ -81,5 +82,6 @@ async def _(url: str, user_id: str = get_user_id()):
 
 
 @github_keyword.handle()
-async def _(url: str, user_id: str = get_user_id()):
+async def _(event: Event, user_id: str = get_user_id()):
+    url = event.get_plaintext()
     await github_handler(github_keyword, url, user_id)
