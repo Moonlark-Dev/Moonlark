@@ -3,13 +3,14 @@ import httpx
 from nonebot_plugin_render.render import render_template
 from nonebot_plugin_larkutils.user import get_user_id
 
+
 def rreplace(s, old, new, count=1):
     return new.join(s.rsplit(old, count))
 
 
 def extract_github_path(url):
     url = rreplace(url, "/pull/", "/pulls/")
-    pattern = r'^(?:https?://)?(?:www\.)?github\.com/([^?#]+)'
+    pattern = r"^(?:https?://)?(?:www\.)?github\.com/([^?#]+)"
     match = re.search(pattern, url, re.IGNORECASE)
     if match:
         return match.group(1)
@@ -24,7 +25,7 @@ def extract_github_section(url: str):
             return "user"
         case 2:
             return "repo"
-    pattern = r'^([^/]+)/([^/]+)/([^/]+)/?.*$'
+    pattern = r"^([^/]+)/([^/]+)/([^/]+)/?.*$"
     match = re.match(pattern, url.strip())
     if match:
         return match.groups()[2]
@@ -50,7 +51,7 @@ async def parse_github(url):
                 "forks": response["forks_count"],
                 "issues": response["open_issues_count"],
                 "language": response["language"],
-                "avatar": response["owner"]["avatar_url"]
+                "avatar": response["owner"]["avatar_url"],
             }
         case "issues":
             return {
@@ -64,7 +65,7 @@ async def parse_github(url):
                 "comments": response["comments"],
                 "updated_at": response["updated_at"],
                 "avatar": response["user"]["avatar_url"],
-                "body": response["body"]
+                "body": response["body"],
             }
         case "discussions":
             return {
@@ -75,11 +76,11 @@ async def parse_github(url):
                 "number": response["number"],
                 "labels": response["labels"],
                 "state": response["state"],
-                "body":  response["body"],
+                "body": response["body"],
                 "comments": response["comments"],
                 "updated_at": response["updated_at"],
                 "category": response["category"]["name"],
-                "avatar": response["user"]["avatar_url"]
+                "avatar": response["user"]["avatar_url"],
             }
         case "pulls":
             return {
@@ -95,11 +96,11 @@ async def parse_github(url):
                 "avatar": response["user"]["avatar_url"],
                 "body": response["body"],
                 "from": response["head"]["label"],
-                "to": response["base"]["label"]
+                "to": response["base"]["label"],
             }
         case "user":
             return {
-                "type": response["type"].lower(), # 可能是 user 或 organization
+                "type": response["type"].lower(),  # 可能是 user 或 organization
                 "login": response["login"],
                 "name": response["name"],
                 "bio": response["bio"],
