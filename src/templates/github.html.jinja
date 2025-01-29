@@ -30,37 +30,25 @@
 {{ data.repo }}<strong>#{{ data.number }}</strong>
 <hr>
 <div class="row">
-    <div class="col-2">
+    <div class="col-1">
         <img src="{{ data.avatar }}" class="rounded-circle" width="100%">
     </div>
-    <div class="col-10">
+    <div class="col-11">
         <h4>{{ data.user }}</h4>
         <pre>{{ data.body }}</pre>
     </div>
 </div>
 <hr>
-<ul>
-    <li>
-        {{ text.issues.state }}
-        {% if data.state == "open" %}
-            <span class="badge bg-success">{{ text.issues.open }}</span>
-        {% else %}
-            <span class="badge bg-secondary">{{ text.issues.closed }}</span>
-        {% endif %}
-    </li>
-    <li>
-        {{ text.issues.labels }}
-        <ul>
-            {% for label in data.labels %}
-            <li>{{ label }}</li>
-            {% endfor %}
-        </ul>
-    </li>
-    <li>
-        {{ text.issues.updated_at }}
-        {{ data.updated_at}}
-    </li>
-</ul>
+<span class="badge bg-dark">{{ data.updated_at }}</span>
+{% if data.state == "open" %}
+<span class="badge bg-info">{{ text.issues.open }}</span>
+{% else %}
+<span class="badge bg-secondary">{{ text.issues.closed }}</span>
+{% endif %}
+{% for label in data.labels %}
+<span class="badge text-light" style="background-color: {{label.color}};">{{ label.name }}</span>
+{% endfor %}
+
 
 
 {% else if data.type == "discussion" %}
@@ -68,50 +56,83 @@
 {{ data.repo }}<strong>#{{ data.number }}</strong>
 <hr>
 <div class="row">
-    <div class="col-2">
+    <div class="col-1">
         <img src="{{ data.avatar }}" class="rounded-circle" width="100%">
     </div>
-    <div class="col-10">
+    <div class="col-11">
         <h4>{{ data.user }}</h4>
-        <small>{{ data.updated_at }} at {{ data.category }}</small>
-        <br>
+        <small>{{ text.discussion.at }} {{ data.category }}</small>
+        <hr>
         <pre>{{ data.body }}</pre>
     </div>
 </div>
 <hr>
-<ul>
-    <li>
-        {{ text.issues.state }}
-        {% if data.state == "open" %}
-            <span class="badge bg-success">{{ text.issues.open }}</span>
-        {% else %}
-            <span class="badge bg-secondary">{{ text.issues.closed }}</span>
-        {% endif %}
-    </li>
-    <li>
-        {{ text.issues.labels }}
-        <ul>
-            {% for label in data.labels %}
-            <li>{{ label }}</li>
-            {% endfor %}
-        </ul>
-    </li>
-</ul>
+<span class="badge bg-dark">{{ data.updated_at }}</span>
+{% if data.state == "open" %}
+<span class="badge bg-info">{{ text.issues.open }}</span>
+{% else %}
+<span class="badge bg-secondary">{{ text.issues.closed }}</span>
+{% endif %}
+{% for label in data.labels %}
+<span class="badge text-light" style="background-color: {{label.color}};">{{ label.name }}</span>
+{% endfor %}
 
-{% else if data.type == "pull" %}
-<h2>{{ data.title }}</h2>
-{{ data.repo }}<strong>#{{ data.number }}</strong>
 
+{% else if data.type == "user" or data.type == "organization" %}
 <div class="row">
     <div class="col-2">
         <img src="{{ data.avatar }}" class="rounded-circle" width="100%">
     </div>
     <div class="col-10">
-        <p><span class="h4">{{ data.user }}</span> {{ text.pull.want_to_merge}} {{data.from}} {{text.pull.into}} {{ data.to }}</p>
+        <span class="h2">{{ data.name }}</span> {{ data.login }}
+        <pre>{{ bio }}</pre>
+
+
+    </div>
+</div>
+<table>
+    <thead>
+        <tr>
+            <td>{{ text.user.followers }}</td>
+            <td>{{ text.user.following }}</td>
+            <td>{{ text.user.public_repos }}</td>
+            <td>{{ text.user.location }}</td>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>{{ data.followers }}</td>
+            <td>{{ data.following }}</td>
+            <td>{{ data.public_repos }}</td>
+            <td>{{ text.location }}</td>
+        </tr>
+    </tbody>
+</table>
+
+{% else if data.type == "pull" %}
+<h2>{{ data.title }}</h2>
+{{ data.repo }}<strong>#{{ data.number }}</strong>
+<hr>
+<div class="row">
+    <div class="col-1">
+        <img src="{{ data.avatar }}" class="rounded-circle" width="100%">
+    </div>
+    <div class="col-11">
+        <h4>{{ data.user }}</h4>
+        {{ text.pull.wants_to_merge }} {{data.from}} {{ttext.pull.into}} {{data.to}}
+        <br>
         <pre>{{ data.body }}</pre>
     </div>
 </div>
-{{text.pull.updated_at}}{{data.updated_at}}
-
+<hr>
+<span class="badge bg-dark">{{ data.updated_at }}</span>
+{% if data.state == "open" %}
+<span class="badge bg-info">{{ text.issues.open }}</span>
+{% else %}
+<span class="badge bg-success">{{ text.pull.merged }}</span>
+{% endif %}
+{% for label in data.labels %}
+<span class="badge text-light" style="background-color: {{label.color}};">{{ label.name }}</span>
+{% endfor %}
 {% endif %}
 {% endblock body %}

@@ -3,11 +3,6 @@ import httpx
 from nonebot_plugin_render.render import render_template
 from nonebot_plugin_larkutils.user import get_user_id
 
-# 直接把消息内容调用 parse_github
-async def github_handler(matcher, url):
-    pass
-
-
 def rreplace(s, old, new, count=1):
     return new.join(s.rsplit(old, count))
 
