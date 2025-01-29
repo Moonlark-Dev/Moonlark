@@ -1,4 +1,4 @@
-from nonebot import require
+from nonebot import logger, require
 from nonebot.plugin import PluginMetadata
 
 
@@ -30,6 +30,7 @@ lang = LangHelper()
 
 async def github_handler(matcher, url: str, user_id: str, reply_unknown_url: bool) -> None:
     data = await data_source.parse_github(url)
+    logger.debug(str(data))
     if data is None or data["type"] == "none":
         if reply_unknown_url:
             await lang.finish("unknown_url", user_id)
