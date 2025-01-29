@@ -72,7 +72,9 @@ plugins = [
     "nonebot_plugin_wolfram_alpha",
     "nonebot_plugin_2048",
     "nonebot_plugin_defuse_tnt",
-    "nonebot_plugin_turn_off_lights"
+    "nonebot_plugin_turn_off_lights",
+    "nonebot_plugin_github"
+    
 ]
 plugin_dirs = []
 builtin_plugins = []
