@@ -28,12 +28,12 @@ github_keyword = on_keyword({"/"}, block=False, priority=5)
 lang = LangHelper()
 
 
-async def github_handler(matcher, url: str, user_id: str) -> None:
+async def github_handler(matcher, url: str, user_id: str, reply_unknown_url: bool) -> None:
     data = await data_source.parse_github(url)
     if data is None or data["type"] == "none":
-        if matcher == github_command:
+        if reply_unknown_url:
             await lang.finish("unknown_url", user_id)
-        await matcher.finish()
+        return
     await matcher.finish(
         await UniMessage()
         .image(
@@ -78,10 +78,10 @@ async def github_handler(matcher, url: str, user_id: str) -> None:
 
 @github_command.handle()
 async def _(url: str, user_id: str = get_user_id()):
-    await github_handler(github_command, url, user_id)
+    await github_handler(github_command, url, user_id, True)
 
 
 @github_keyword.handle()
 async def _(event: Event, user_id: str = get_user_id()):
     url = event.get_plaintext()
-    await github_handler(github_keyword, url, user_id)
+    await github_handler(github_keyword, url, user_id, False)
