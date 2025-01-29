@@ -14,3 +14,10 @@ repos:
     hooks:
       - id: black
         args: []
+  - repo: local
+    hooks:
+      - id: update-requirements
+        name: Update requirements with poetry
+        entry: poetry update
+        language: system
+        types: [python]
