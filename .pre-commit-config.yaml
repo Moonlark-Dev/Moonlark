@@ -14,10 +14,9 @@ repos:
     hooks:
       - id: black
         args: []
-  - repo: local
+  - repo: https://github.com/python-poetry/poetry
+    rev: '2.0.1'
     hooks:
-      - id: update-requirements
-        name: Update requirements with poetry
-        entry: poetry update
-        language: system
-        types: [python]
+      - id: poetry-check
+      - id: poetry-lock
+      - id: poetry-install
