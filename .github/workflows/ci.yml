@@ -39,12 +39,12 @@ jobs:
       
       - name: 'Check and incremental package version number'
         run: |
-          CHANGED_PY_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -E '^src/plugins/.*\.py$')
+          CHANGED_PY_FILES=$(git diff --name-only ${{ github.base_ref }}...HEAD | grep -E '^src/plugins/.*\.py$')
           if [ -z "$CHANGED_PY_FILES" ]; then
             echo "No Python files in src/plugins/ have changed."
             exit 0
           fi
-          if [ -z $(git diff origin/${{ github.base_ref }}...HEAD | grep '+version = ') ]; then
+          if [ -z $(git diff ${{ github.base_ref }}...HEAD | grep '+version = ') ]; then
             echo "Version number has been changed"
             exit 0
           fi
