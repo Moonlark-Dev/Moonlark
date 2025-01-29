@@ -1,0 +1,84 @@
+name: CI
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+# jobs:
+#   update-pr:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: Checkout code
+#         uses: actions/checkout@v4
+#         with:
+#           ref: ${{ github.head_ref }}
+#           fetch-depth: 0
+
+#       - name: Modify files
+#         run: |
+#           echo "New line" >> example.txt
+
+#       - name: Commit and push changes
+#         run: |
+#           git config --global user.name "github-actions[bot]"
+#           git config --global user.email "github-actions[bot]@users.noreply.github.com"
+#           git add .
+#           git commit -m "Auto update from GitHub Actions"
+#           git push origin HEAD:${{ github.head_ref }}
+
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+      
+      - name: 'Check and incremental package version number'
+        run: |
+          CHANGED_PY_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -E '^src/plugins/.*\.py$')
+          if [ -z "$CHANGED_PY_FILES" ]; then
+            echo "No Python files in src/plugins/ have changed."
+            exit 0
+          fi
+          if [ -z $(git diff origin/${{ github.base_ref }}...HEAD | grep '+version = ') ]; then
+            echo "Version number has been changed"
+            exit 0
+          fi
+
+          cd src
+          VERSION=$(grep -E '^version\s*=\s*".+"' pyproject.toml | cut -d '"' -f2)
+          echo "Current version: $VERSION"
+          OLD_VERSION=$VERSION
+          IFS='.' read -r -a VERSION_PARTS <<< "$OLD_VERSION"
+          NEW_VERSION="${VERSION_PARTS[0]}.${VERSION_PARTS[1]}.$((VERSION_PARTS[2] + 1))"
+          echo "New version: $NEW_VERSION"
+          sed -i "s/^version = \"$OLD_VERSION\"/version = \"$NEW_VERSION\"/" pyproject.toml
+      
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.11
+  
+      - name: Setup Poetry
+        uses: snok/install-poetry@v1.2.1
+
+      - name: Install and update requirements
+        run: |
+          poetry lock
+          poetry install
+          poetry update
+      
+      - name: Commit and push changes
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -m "Auto update from GitHub Actions"
+          git push origin HEAD:${{ github.head_ref }}
+  
+
+
