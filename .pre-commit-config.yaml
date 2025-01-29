@@ -19,4 +19,5 @@ repos:
     hooks:
       - id: poetry-check
       - id: poetry-lock
+        args: ["--regenerate"]
       - id: poetry-install
