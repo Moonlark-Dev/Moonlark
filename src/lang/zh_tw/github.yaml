@@ -1,0 +1,25 @@
+help:
+  description: GitHub 链接解析
+  details: 预览 GitHub 链接内容
+  usage1: github <链接/仓库>
+unknown_url: '解析失败: 无法识别的 URL 或仓库'
+title: GitHub 解析结果
+repo:
+  star: 星标
+  forks: 复刻
+  issues: 议题
+  language: 编程语言
+issues:
+  open: 开放
+  closed: 已关闭
+discussion:
+  at: 分类
+user:
+  followers: 关注者
+  followeing: 关注中
+  public_repos: 公开的存储库
+  location: 位置
+pull:
+  wants_to_merge: 想要将分支
+  into: 合并到
+  merged: 已合并
