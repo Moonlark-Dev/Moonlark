@@ -3,7 +3,7 @@
 {% if data.type == "repo" %}
 <div class="row">
     <div class="col-2">
-        <img src="{{ data.avatar }}" class="rounded-circle" />
+        <img src="{{ data.avatar }}" class="rounded-circle img-fluid" />
     </div>
     <div class="col-10">
         <h2>{{ data.repo }}</h2>
@@ -31,7 +31,7 @@
 <hr>
 <div class="row">
     <div class="col-2">
-        <img src="{{ data.avatar }}" class="rounded-circle" />
+        <img src="{{ data.avatar }}" class="rounded-circle img-fluid" />
     </div>
     <div class="col-10">
         <h4>{{ data.user }}</h4>
@@ -57,7 +57,7 @@
 <hr>
 <div class="row">
     <div class="col-2">
-        <img src="{{ data.avatar }}" class="rounded-circle" />
+        <img src="{{ data.avatar }}" class="img-fluid rounded-circle" />
     </div>
     <div class="col-10">
         <h4>{{ data.user }}</h4>
@@ -81,7 +81,7 @@
 {% elif data.type == "user" or data.type == "organization" %}
 <div class="row">
     <div class="col-2">
-        <img src="{{ data.avatar }}" class="rounded-circle" width="100%">
+        <img src="{{ data.avatar }}" class="rounded-circle img-fluid"  />
     </div>
     <div class="col-10">
         <span class="h2">{{ data.name }}</span> {{ data.login }}
@@ -115,12 +115,11 @@
 <hr>
 <div class="row">
     <div class="col-1">
-        <img src="{{ data.avatar }}" class="rounded-circle" width="100%">
+        <img src="{{ data.avatar }}" class="rounded-circle img-fluid">
     </div>
     <div class="col-11">
         <h4>{{ data.user }}</h4>
         {{ text.pull.wants_to_merge }} {{data.from}} {{text.pull.into}} {{data.to}}
-        <br>
         <pre>{{ data.body }}</pre>
     </div>
 </div>
