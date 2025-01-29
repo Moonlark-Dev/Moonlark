@@ -25,7 +25,7 @@
     </div>
 </div>
 
-{% else if data.type == "issue" %}
+{% elif data.type == "issue" %}
 <h2>{{ data.title }}</h2>
 {{ data.repo }}<strong>#{{ data.number }}</strong>
 <hr>
@@ -51,7 +51,7 @@
 
 
 
-{% else if data.type == "discussion" %}
+{% elif data.type == "discussion" %}
 <h2>{{ data.title }}</h2>
 {{ data.repo }}<strong>#{{ data.number }}</strong>
 <hr>
@@ -78,7 +78,7 @@
 {% endfor %}
 
 
-{% else if data.type == "user" or data.type == "organization" %}
+{% elif data.type == "user" or data.type == "organization" %}
 <div class="row">
     <div class="col-2">
         <img src="{{ data.avatar }}" class="rounded-circle" width="100%">
@@ -109,7 +109,7 @@
     </tbody>
 </table>
 
-{% else if data.type == "pull" %}
+{% elif data.type == "pull" %}
 <h2>{{ data.title }}</h2>
 {{ data.repo }}<strong>#{{ data.number }}</strong>
 <hr>
