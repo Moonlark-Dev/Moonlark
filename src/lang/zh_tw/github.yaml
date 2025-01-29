@@ -13,13 +13,13 @@ issues:
   open: 开放
   closed: 已关闭
 discussion:
-  at: 分类
+  at: '分类: '
 user:
   followers: 关注者
-  followeing: 关注中
+  following: 关注中
   public_repos: 公开的存储库
   location: 位置
 pull:
-  wants_to_merge: 想要将分支
+  want: 想要将分支
   into: 合并到
   merged: 已合并
