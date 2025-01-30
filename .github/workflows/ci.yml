@@ -51,6 +51,11 @@ jobs:
           poetry install
           poetry update
       
+      - name: Check and update database migrations file
+        run: |
+          poetry run nb orm check | grep '没有检测到新的升级操作' && exit 0
+          poetry run nb orm revision
+      
       - name: Commit and push changes
         run: |
           git config --global user.name "github-actions[bot]"
