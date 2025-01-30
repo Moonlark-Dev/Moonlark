@@ -23,6 +23,7 @@ plugins = [
     "nonebot_plugin_bilichat",
     "nonebot_plugin_cnrail",
     "nonebot_plugin_picmcstat",
+    "nonebot_plugin_fakepic",
 
     # Custom plugins
     "nonebot_plugin_access",
@@ -95,6 +96,7 @@ nonebot-plugin-picmcstat = "^0.6.1"
 nonebot-plugin-bilichat = "^5.10.4"
 nonebot-plugin-sentry = "^2.0.0"
 moonlark-custom-plugins = {path = "src", develop = true}
+nonebot-plugin-fakepic = "^0.2.2"
 
 [tool.poetry.group.dev.dependencies]
 nb-cli = "^1.4.0"

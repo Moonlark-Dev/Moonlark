@@ -2842,6 +2842,24 @@ nonebot2 = ">=2.2.0"
 pytz = ">=2023.3.post1"
 
 [[package]]
+name = "nonebot-plugin-fakepic"
+version = "0.2.2"
+description = "A nonebot plugin for fake chat screenshots"
+optional = false
+python-versions = "<4.0,>=3.10"
+groups = ["main"]
+files = [
+    {file = "nonebot_plugin_fakepic-0.2.2-py3-none-any.whl", hash = "sha256:be77728a1eee2f32ca44aa3d32046a62470765a0e674eb40a01790aef464fe07"},
+    {file = "nonebot_plugin_fakepic-0.2.2.tar.gz", hash = "sha256:9ce303d416dd7d2ceeb1d223143864509c5b32a16132b214ebd717cd7705fdfc"},
+]
+
+[package.dependencies]
+httpx = ">=0.27.0"
+nonebot-adapter-onebot = ">=2.3.1"
+nonebot2 = ">=2.3.2"
+pil_utils = "0.1.10"
+
+[[package]]
 name = "nonebot-plugin-htmlrender"
 version = "0.3.5"
 description = "通过浏览器渲染图片"
@@ -2914,22 +2932,22 @@ sqlite = ["sqlalchemy[aiosqlite]"]
 
 [[package]]
 name = "nonebot-plugin-picmcstat"
-version = "0.6.3"
+version = "0.6.1"
 description = "A NoneBot2 plugin generates a pic from a Minecraft server's MOTD"
 optional = false
 python-versions = "<4.0,>=3.9"
 groups = ["main"]
 files = [
-    {file = "nonebot_plugin_picmcstat-0.6.3-py3-none-any.whl", hash = "sha256:c73da0d1d474b7a088d12b37a48f4a1a6e2f2793eff5e14b7d19bd3c9535885e"},
-    {file = "nonebot_plugin_picmcstat-0.6.3.tar.gz", hash = "sha256:2ea1eec5fba35910e9d33ce208835f5e2cbd966bed9ec9765e0d817b6d4fa0a8"},
+    {file = "nonebot_plugin_picmcstat-0.6.1-py3-none-any.whl", hash = "sha256:74a4c18a2444b4ff249508208511c8c6372f204a4585620f38f7c90fc2ecefd8"},
+    {file = "nonebot_plugin_picmcstat-0.6.1.tar.gz", hash = "sha256:f9449479d7a96675ff4d4fa5d42998e79ba8868dd5543e16ee73f1d99c304afc"},
 ]
 
 [package.dependencies]
 dnspython = ">=2.6.1"
 mcstatus = ">=11.1.1"
-nonebot-plugin-alconna = ">=0.52.3"
-nonebot2 = ">=2.3.3"
-pil-utils = ">=0.1.12"
+nonebot-plugin-alconna = ">=0.48.0"
+nonebot2 = ">=2.3.1"
+pil-utils = ">=0.1.10"
 punycode = ">=0.2.1"
 
 [[package]]
@@ -3229,21 +3247,21 @@ ptyprocess = ">=0.5"
 
 [[package]]
 name = "pil-utils"
-version = "0.1.12"
+version = "0.1.10"
 description = "A simple PIL wrapper and text-to-image tool"
 optional = false
-python-versions = "<4.0,>=3.9"
+python-versions = ">=3.8,<4.0"
 groups = ["main"]
 files = [
-    {file = "pil_utils-0.1.12-py3-none-any.whl", hash = "sha256:8d7703dc1634549386f5b0a6c1e4cf6664b08967c071c861add1aa9b18df1612"},
-    {file = "pil_utils-0.1.12.tar.gz", hash = "sha256:faf854e0c4ec3db4804127c36e2cab8b0dcd2b3f6f238b636f972661c4b06583"},
+    {file = "pil_utils-0.1.10-py3-none-any.whl", hash = "sha256:ff9459d7b4336e9b07a5e11e06b12a6e477ae68eae0124ac5710b28ae5d4d6d8"},
+    {file = "pil_utils-0.1.10.tar.gz", hash = "sha256:4e6d08cc39cba3f65eb17847662d2c1e68e2ac12503e4a73e57d980b2dc77cda"},
 ]
 
 [package.dependencies]
 bbcode = ">=1.1.0,<2.0.0"
 fonttools = ">=4.0.0,<5.0.0"
 matplotlib = ">=3.0.0,<4.0.0"
-numpy = ">=1.21.0"
+numpy = ">=1.20.0,<2.0.0"
 opencv-python-headless = ">=4.0.0,<5.0.0"
 Pillow = ">=10.0.0,<11.0.0"
 
@@ -5659,4 +5677,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.11"
-content-hash = "20dfa59141d525cea2b7d5ff587f9b14ce78363e3e4d7f8d44dbb07934aabc6f"
+content-hash = "7b1bd9103314bdfe3281346ca58a0dcec3ba9c5b988b9669d4552d13492cfd7f"
