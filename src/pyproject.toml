@@ -1,7 +1,7 @@
 [project]
 name = "moonlark_custom_plugins"
-version = "0.1.12"
-description = "Moonlark 中的自定义插件"
+version = "0.2.0"
+description = "Moonlark 中的自定义插件 (本插件必须使用 --editable 安装)"
 requires-python = ">=3.11, <4.0"
 
 
@@ -87,5 +87,6 @@ packages = [
     { include = "nonebot_plugin_wolfram_alpha", from = "./plugins" },
     { include = "nonebot_plugin_2048", from = "./plugins" },
     { include = "nonebot_plugin_defuse_tnt", from = "./plugins" },
-    { include = "nonebot_plugin_turn_off_lights", from = "./plugins" }
+    { include = "nonebot_plugin_turn_off_lights", from = "./plugins" },
+    { include = "nonebot_plugin_github", from = "./plugins" }
 ]

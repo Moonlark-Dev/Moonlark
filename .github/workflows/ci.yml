@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+# jobs:
+#   update-pr:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: Checkout code
+#         uses: actions/checkout@v4
+#         with:
+#           ref: ${{ github.head_ref }}
+#           fetch-depth: 0
+
+#       - name: Modify files
+#         run: |
+#           echo "New line" >> example.txt
+
+#       - name: Commit and push changes
+#         run: |
+#           git config --global user.name "github-actions[bot]"
+#           git config --global user.email "github-actions[bot]@users.noreply.github.com"
+#           git add .
+#           git commit -m "Auto update from GitHub Actions"
+#           git push origin HEAD:${{ github.head_ref }}
+
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+      
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.11
+  
+      - name: Setup Poetry
+        uses: snok/install-poetry@v1.2.1
+
+      - name: Install and update requirements
+        run: |
+          poetry lock
+          poetry install
+          poetry update
+      
+      - name: Check and update database migrations file
+        run: |
+          cp .env.template .env
+          poetry run nb orm upgrade
+          poetry run nb orm check | grep '没有检测到新的升级操作' && exit 0
+          poetry run nb orm revision
+      
+      - name: Commit and push changes
+        run: |
+          git add .
+          if ! git diff --cached --quiet; then
+            git config --global user.name "github-actions[bot]"
+            git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit -m "Auto update from GitHub Actions"
+            git push origin HEAD:${{ github.head_ref }}
+          else
+            echo "No changes to commit."
+          fi
+
+

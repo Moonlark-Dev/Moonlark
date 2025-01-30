@@ -72,7 +72,9 @@ plugins = [
     "nonebot_plugin_wolfram_alpha",
     "nonebot_plugin_2048",
     "nonebot_plugin_defuse_tnt",
-    "nonebot_plugin_turn_off_lights"
+    "nonebot_plugin_turn_off_lights",
+    "nonebot_plugin_github"
+    
 ]
 plugin_dirs = []
 builtin_plugins = []
@@ -92,7 +94,7 @@ nonebot-plugin-cnrail = "^0.2.3"
 nonebot-plugin-picmcstat = "^0.6.1"
 nonebot-plugin-bilichat = "^5.10.4"
 nonebot-plugin-sentry = "^2.0.0"
-moonlark-custom-plugins = {path = "src"}
+moonlark-custom-plugins = {path = "src", develop = true}
 
 [tool.poetry.group.dev.dependencies]
 nb-cli = "^1.4.0"

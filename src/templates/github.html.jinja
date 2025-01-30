@@ -1,0 +1,136 @@
+{% extends base %}
+{% block body %}
+{% if data.type == "repo" %}
+<div class="row">
+    <div class="col-2">
+        <img src="{{ data.avatar }}" class="rounded-circle img-fluid" />
+    </div>
+    <div class="col-10">
+        <h2>{{ data.repo }}</h2>
+        {{ data.description }}
+    </div>
+</div>
+<div class="row">
+    <div class="col">
+        <h3>{{ text.repo.star }}</h3>
+        <p>{{ data.stars }}</p>
+        <h3>{{ text.repo.forks }}</h3>
+        <p>{{ data.forks }}</p>
+    </div>
+    <div class="col">
+        <h3>{{ text.repo.issues }}</h3>
+        <p>{{ data.issues }}</p>
+        <h3>{{ text.repo.language }}</h3>
+        <p>{{ data.language }}</p>
+    </div>
+</div>
+
+{% elif data.type == "issue" %}
+<h2>{{ data.title }}</h2>
+{{ data.repo }}<strong>#{{ data.number }}</strong>
+<hr>
+<div class="row">
+    <div class="col-2">
+        <img src="{{ data.avatar }}" class="rounded-circle img-fluid" />
+    </div>
+    <div class="col-10">
+        <h4>{{ data.user }}</h4>
+        <pre>{{ data.body }}</pre>
+    </div>
+</div>
+<hr>
+<span class="badge bg-dark">{{ data.updated_at }}</span>
+{% if data.state == "open" %}
+<span class="badge bg-info">{{ text.issues.open }}</span>
+{% else %}
+<span class="badge bg-secondary">{{ text.issues.closed }}</span>
+{% endif %}
+{% for label in data.labels %}
+<span class="badge text-light" style="background-color: {{label.color}};">{{ label.name }}</span>
+{% endfor %}
+
+
+
+{% elif data.type == "discussion" %}
+<h2>{{ data.title }}</h2>
+{{ data.repo }}<strong>#{{ data.number }}</strong>
+<hr>
+<div class="row">
+    <div class="col-2">
+        <img src="{{ data.avatar }}" class="img-fluid rounded-circle" />
+    </div>
+    <div class="col-10">
+        <h4>{{ data.user }}</h4>
+        <small>{{ text.discussion.at }} {{ data.category }}</small>
+        <hr>
+        <pre>{{ data.body }}</pre>
+    </div>
+</div>
+<hr>
+<span class="badge bg-dark">{{ data.updated_at }}</span>
+{% if data.state == "open" %}
+<span class="badge bg-info">{{ text.issues.open }}</span>
+{% else %}
+<span class="badge bg-secondary">{{ text.issues.closed }}</span>
+{% endif %}
+{% for label in data.labels %}
+<span class="badge text-light" style="background-color: {{label.color}};">{{ label.name }}</span>
+{% endfor %}
+
+
+{% elif data.type == "user" or data.type == "organization" %}
+<div class="row">
+    <div class="col-2">
+        <img src="{{ data.avatar }}" class="rounded-circle img-fluid"  />
+    </div>
+    <div class="col-10">
+        <h2>{{ data.name }}</h2>
+        {{ data.login }}
+    </div>
+</div>
+<table>
+    <thead>
+        <tr>
+            <td>{{ text.user.followers }}</td>
+            <td>{{ text.user.following }}</td>
+            <td>{{ text.user.public_repos }}</td>
+            <td>{{ text.user.location }}</td>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>{{ data.followers }}</td>
+            <td>{{ data.following }}</td>
+            <td>{{ data.public_repos }}</td>
+            <td>{{ text.location }}</td>
+        </tr>
+    </tbody>
+</table>
+<p>{{data.bio}}</p>
+
+{% elif data.type == "pull" %}
+<h2>{{ data.title }}</h2>
+{{ data.repo }}<strong>#{{ data.number }}</strong>
+<hr>
+<div class="row">
+    <div class="col-2">
+        <img src="{{ data.avatar }}" class="rounded-circle img-fluid">
+    </div>
+    <div class="col-10">
+        <h4>{{ data.user }}</h4>
+        {{ text.pull.wants_to_merge }} {{data.from}} {{text.pull.into}} {{data.to}}
+        <pre>{{ data.body }}</pre>
+    </div>
+</div>
+<hr>
+<span class="badge bg-dark">{{ data.updated_at }}</span>
+{% if data.state == "open" %}
+<span class="badge bg-info">{{ text.issues.open }}</span>
+{% else %}
+<span class="badge bg-success">{{ text.pull.merged }}</span>
+{% endif %}
+{% for label in data.labels %}
+<span class="badge text-light" style="background-color: {{label.color}};">{{ label.name }}</span>
+{% endfor %}
+{% endif %}
+{% endblock body %}
