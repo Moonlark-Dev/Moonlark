@@ -1,8 +1,10 @@
 import random
+
 from ..base.monomer import Monomer
 from ..base.team import ControllableTeam, Team
 from ..types import AttackTypes, BuffTypes, CharacterData, SkillInfo
 from ..base.character import Character
+from ..utils import level
 
 
 class Moonlark(Character):
@@ -14,6 +16,17 @@ class Moonlark(Character):
             self.skill_special
         ]
         self.final_skill_power = [0, 100]
+        self.level = level.character.get_current_level(data["experience"])["level"]
+        self.weapon_level = level.weapon.get_current_level(data["weapon"]["experience"])["level"]
+        self.attack = (50 + 5 * self.weapon_level) * (1 + 0.017 * self.level)
+        self.critical_strike = (
+            0.20 + 0.0015 * self.level + 0.00018 * self.weapon_level,
+            1.30 + 0.005 * self.level
+        )
+
+    
+    def get_max_hp(self) -> int:
+        return round(980 + 50 * self.level + (self.level ** 1.5))
 
     async def skill_common_attack(self, monomer: Monomer, _team: Team) -> None:
         await self.power_final_skill(20)
@@ -24,7 +37,7 @@ class Moonlark(Character):
         origin_focus = self.focus
         origin_critical_strike_rate = self.critical_strike[0]
         have_missed = False
-        for i in range(3):
+        for _i in range(3):
             is_cirtical, is_missed = (await self.on_attack(AttackTypes.ME, h, monomer))[1:]
             self.focus *= 0.95
             self.critical_strike = self.critical_strike[0] * 1.01, self.critical_strike[1]

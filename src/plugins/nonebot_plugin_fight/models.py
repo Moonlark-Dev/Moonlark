@@ -18,16 +18,8 @@ class ControllableCharacter(Model):
     weapon: Mapped[int]
     equipment: Mapped[bytes] = mapped_column(default=b"{}")
     talent_level: Mapped[bytes]
-
-
-class WeaponData(Model):
-    weapon_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    weapon_type: Mapped[int]
-    experience: Mapped[int]
-    talent_level: Mapped[bytes]
-    user_id: Mapped[str] = mapped_column(String(128))
-    damage: Mapped[int]
-
+    weapon_experience: Mapped[int]
+    weapon_damage: Mapped[int]
 
 class EquipmentData(Model):
     equipment_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)

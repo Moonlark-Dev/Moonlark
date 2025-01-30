@@ -19,9 +19,8 @@ from typing import Any, TypedDict, Literal, TYPE_CHECKING, Optional
 
 
 if TYPE_CHECKING:
-    from nonebot_plugin_fight.base.monomer import Monomer
-    from nonebot_plugin_fight.base.equipment import Equipment
-    from nonebot_plugin_fight.base.weapon import Weapon
+    from .base.monomer import Monomer
+    from .base.equipment import Equipment
 
 
 class AttackTypes(Enum):
@@ -74,11 +73,24 @@ class BuffData(TypedDict):
     data: dict[Any, Any]
 
 
+class WeaponData(TypedDict):
+    experience: int
+    talent_level: dict[str, int]
+
 class CharacterData(TypedDict):
     experience: int
     current_hp: int
     fav: float
     buff: list["BuffData"]
-    weapon: "Weapon"
-    equipment: "Equipment"
+    weapon: WeaponData
+    equipment: list["Equipment"]
     talent_level: dict[str, int]
+
+
+class CurrentLevel(TypedDict):
+    level: int
+    current_exp: int
+    exp_to_next: int
+    progress: float
+
+
