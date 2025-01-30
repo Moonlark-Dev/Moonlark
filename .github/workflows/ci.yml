@@ -37,27 +37,6 @@ jobs:
           ref: ${{ github.head_ref }}
           fetch-depth: 0
       
-      - name: 'Check and incremental package version number'
-        run: |
-          CHANGED_PY_FILES=$(git diff --name-only ${{ github.base_ref }}...HEAD | grep -E '^src/plugins/.*\.py$')
-          if [ -z "$CHANGED_PY_FILES" ]; then
-            echo "No Python files in src/plugins/ have changed."
-            exit 0
-          fi
-          if [ -z $(git diff ${{ github.base_ref }}...HEAD | grep '+version = ') ]; then
-            echo "Version number has been changed"
-            exit 0
-          fi
-
-          cd src
-          VERSION=$(grep -E '^version\s*=\s*".+"' pyproject.toml | cut -d '"' -f2)
-          echo "Current version: $VERSION"
-          OLD_VERSION=$VERSION
-          IFS='.' read -r -a VERSION_PARTS <<< "$OLD_VERSION"
-          NEW_VERSION="${VERSION_PARTS[0]}.${VERSION_PARTS[1]}.$((VERSION_PARTS[2] + 1))"
-          echo "New version: $NEW_VERSION"
-          sed -i "s/^version = \"$OLD_VERSION\"/version = \"$NEW_VERSION\"/" pyproject.toml
-      
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
@@ -72,13 +51,23 @@ jobs:
           poetry install
           poetry update
       
+      - name: Check and update database migrations file
+        run: |
+          cp .env.template .env
+          poetry run nb orm upgrade
+          poetry run nb orm check | grep '没有检测到新的升级操作' && exit 0
+          poetry run nb orm revision
+      
       - name: Commit and push changes
         run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add .
-          git commit -m "Auto update from GitHub Actions"
-          git push origin HEAD:${{ github.head_ref }}
-  
+          if ! git diff --cached --quiet; then
+            git config --global user.name "github-actions[bot]"
+            git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit -m "Auto update from GitHub Actions"
+            git push origin HEAD:${{ github.head_ref }}
+          else
+            echo "No changes to commit."
+          fi
 
 
