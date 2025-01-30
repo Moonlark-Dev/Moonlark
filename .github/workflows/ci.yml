@@ -53,6 +53,7 @@ jobs:
       
       - name: Check and update database migrations file
         run: |
+          cp .env.template .env
           poetry run nb orm check | grep '没有检测到新的升级操作' && exit 0
           poetry run nb orm revision
       
