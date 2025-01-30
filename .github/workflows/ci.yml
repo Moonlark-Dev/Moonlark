@@ -37,27 +37,6 @@ jobs:
           ref: ${{ github.head_ref }}
           fetch-depth: 0
       
-      - name: 'Check and incremental package version number'
-        run: |
-          CHANGED_PY_FILES=$(git diff --name-only ${{ github.base_ref }}...HEAD | grep -E '^src/plugins/.*\.py$')
-          if [ -z "$CHANGED_PY_FILES" ]; then
-            echo "No Python files in src/plugins/ have changed."
-            exit 0
-          fi
-          if [ -z $(git diff ${{ github.base_ref }}...HEAD | grep '+version = ') ]; then
-            echo "Version number has been changed"
-            exit 0
-          fi
-
-          cd src
-          VERSION=$(grep -E '^version\s*=\s*".+"' pyproject.toml | cut -d '"' -f2)
-          echo "Current version: $VERSION"
-          OLD_VERSION=$VERSION
-          IFS='.' read -r -a VERSION_PARTS <<< "$OLD_VERSION"
-          NEW_VERSION="${VERSION_PARTS[0]}.${VERSION_PARTS[1]}.$((VERSION_PARTS[2] + 1))"
-          echo "New version: $NEW_VERSION"
-          sed -i "s/^version = \"$OLD_VERSION\"/version = \"$NEW_VERSION\"/" pyproject.toml
-      
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
