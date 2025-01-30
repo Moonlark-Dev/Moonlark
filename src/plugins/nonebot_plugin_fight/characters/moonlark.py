@@ -11,22 +11,15 @@ class Moonlark(Character):
 
     def __init__(self, team: ControllableTeam, data: CharacterData) -> None:
         super().__init__(team, data)
-        self.skills = [
-            self.skill_common_attack,
-            self.skill_special
-        ]
+        self.skills = [self.skill_common_attack, self.skill_special]
         self.final_skill_power = [0, 100]
         self.level = level.character.get_current_level(data["experience"])["level"]
         self.weapon_level = level.weapon.get_current_level(data["weapon"]["experience"])["level"]
         self.attack = (50 + 5 * self.weapon_level) * (1 + 0.017 * self.level)
-        self.critical_strike = (
-            0.20 + 0.0015 * self.level + 0.00018 * self.weapon_level,
-            1.30 + 0.005 * self.level
-        )
+        self.critical_strike = (0.20 + 0.0015 * self.level + 0.00018 * self.weapon_level, 1.30 + 0.005 * self.level)
 
-    
     def get_max_hp(self) -> int:
-        return round(980 + 50 * self.level + (self.level ** 1.5))
+        return round(980 + 50 * self.level + (self.level**1.5))
 
     async def skill_common_attack(self, monomer: Monomer, _team: Team) -> None:
         await self.power_final_skill(20)
@@ -45,11 +38,9 @@ class Moonlark(Character):
                 self.focus *= 0.8
                 have_missed = True
         if not have_missed:
-            await monomer.add_buff({
-                "buff_type": BuffTypes.lunar_eclipse_cracks,
-                "data": {},
-                "remain_rounds": 2 if is_cirtical else 3
-            })
+            await monomer.add_buff(
+                {"buff_type": BuffTypes.lunar_eclipse_cracks, "data": {}, "remain_rounds": 2 if is_cirtical else 3}
+            )
         self.focus = origin_focus
         self.critical_strike = origin_critical_strike_rate, self.critical_strike[1]
 
@@ -58,7 +49,7 @@ class Moonlark(Character):
         if self.is_final_skill_powered() and self.skill_final not in self.skills:
             self.skills.append(self.skill_final)
         return percent
-    
+
     def reset_final_skill_power(self) -> None:
         if self.skill_final in self.skills:
             self.skills.pop(self.skills.index(self.skill_final))
@@ -83,14 +74,10 @@ class Moonlark(Character):
                 if monomer_index + 1 < len(monomers):
                     await self.on_attack(AttackTypes.ME, harm * 0.16, monomers[monomer_index + 1])
                 await self.on_attack(AttackTypes.ME, harm * 0.8, monomer)
-                await self.add_buff({
-                    "buff_type": BuffTypes.moonlark_cold_down,
-                    "remain_rounds": 1,
-                    "data": {}
-                }, True)
+                await self.add_buff({"buff_type": BuffTypes.moonlark_cold_down, "remain_rounds": 1, "data": {}}, True)
                 buff["remain_rounds"] -= 1
         monomer.clean_buff()
-    
+
     async def skill_final(self, monomer: Monomer, team: Team) -> None:
         if not self.is_final_skill_powered():
             return
@@ -101,16 +88,12 @@ class Moonlark(Character):
             if buff["buff_type"] == BuffTypes.lunar_eclipse_cracks:
                 await self.on_attack(AttackTypes.real, harm * 0.5, monomer)
         for monomer in team.monomers:
-            await monomer.add_buff({
-                "buff_type": BuffTypes.lunar_eclipse_cracks,
-                "data": {},
-                "remain_rounds": 1
-            })
+            await monomer.add_buff({"buff_type": BuffTypes.lunar_eclipse_cracks, "data": {}, "remain_rounds": 1})
 
     @staticmethod
     def get_character_id() -> tuple[int, str]:
         return 1, "moonlark"
-    
+
     async def get_skill_info_list(self) -> list[SkillInfo]:
         l: list[SkillInfo] = [
             {
@@ -119,7 +102,7 @@ class Moonlark(Character):
                 "occupy_round": True,
                 "instant": False,
                 "name": await self.get_text("skills.common"),
-                "target_type": "enemy"
+                "target_type": "enemy",
             },
             {
                 "cost": 1,
@@ -127,20 +110,18 @@ class Moonlark(Character):
                 "occupy_round": True,
                 "instant": False,
                 "name": await self.get_text("skills.skill"),
-                "target_type": "enemy"
-            }
+                "target_type": "enemy",
+            },
         ]
         if self.skill_final in self.skills:
-            l.append({
-                "cost": 0,
-                "monomer": self,
-                "occupy_round": False,
-                "instant": True,
-                "name": await self.get_text("skills.final_skill"),
-                "target_type": "enemy"
-            })
+            l.append(
+                {
+                    "cost": 0,
+                    "monomer": self,
+                    "occupy_round": False,
+                    "instant": True,
+                    "name": await self.get_text("skills.final_skill"),
+                    "target_type": "enemy",
+                }
+            )
         return l
-
-
-    
-

@@ -22,7 +22,6 @@ from .team import Team
 from ..types import ACTION_EVENT, AttackTypes, BuffData, BuffTypes
 
 
-
 class Monomer(ABC):
 
     def __init__(self, team: Team):
@@ -104,10 +103,10 @@ class Monomer(ABC):
 
     def get_power_percent(self) -> float:
         return min(self.final_skill_power[0] / self.final_skill_power[1], 1)
-    
+
     def is_final_skill_powered(self) -> bool:
         return self.final_skill_power[0] >= self.final_skill_power[1]
-    
+
     def reset_final_skill_power(self) -> None:
         self.final_skill_power[0] = 0
 

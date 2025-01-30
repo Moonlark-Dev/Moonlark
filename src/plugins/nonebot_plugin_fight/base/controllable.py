@@ -52,7 +52,7 @@ class ControllableMonomer(Monomer, ABC):
         while len(self.action_commands) > 0:
             command = self.action_commands.pop(0)
             func = self.skills[command["skill_index"]]
-            await func(command["target"], teams[0]) # type: ignore
+            await func(command["target"], teams[0])  # type: ignore
             if command["skill_info"]["occupy_round"]:
                 break
 

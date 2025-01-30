@@ -31,6 +31,7 @@ class AttackTypes(Enum):
     ME = 5
     real = 6
 
+
 class AttackEvent(TypedDict):
     type: Literal["harm.single"]
     origin: "Monomer"
@@ -62,10 +63,12 @@ class ActionCommand(TypedDict):
 
 ACTION_EVENT = MessageActionEvent | AttackEvent
 
+
 class BuffTypes(Enum):
     # buff_id, is_gain, keep
     lunar_eclipse_cracks = "lunar_eclipse_cracks", False, True
     moonlark_cold_down = "moonlark_cold_down", False, False
+
 
 class BuffData(TypedDict):
     buff_type: BuffTypes
@@ -76,6 +79,7 @@ class BuffData(TypedDict):
 class WeaponData(TypedDict):
     experience: int
     talent_level: dict[str, int]
+
 
 class CharacterData(TypedDict):
     experience: int
@@ -92,5 +96,3 @@ class CurrentLevel(TypedDict):
     current_exp: int
     exp_to_next: int
     progress: float
-
-

@@ -21,6 +21,7 @@ class ControllableCharacter(Model):
     weapon_experience: Mapped[int]
     weapon_damage: Mapped[int]
 
+
 class EquipmentData(Model):
     equipment_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     equipment_type: Mapped[int]
