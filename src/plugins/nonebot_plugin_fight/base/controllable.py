@@ -21,7 +21,7 @@ from .team import ControllableTeam
 import re
 from ..lang import lang
 from typing import Any, Optional, Awaitable, Callable
-from ..types import ACTION_EVENT, SkillInfo, ActionCommand
+from ..types import SkillInfo, ActionCommand
 from abc import ABC, abstractmethod
 from nonebot_plugin_alconna import UniMessage
 from nonebot_plugin_render import render_template
@@ -36,7 +36,7 @@ class ControllableMonomer(Monomer, ABC):
         self.user_id = self.team.get_user_id()
         self.action_commands: list[ActionCommand] = []
         self.tiggered_commands = []
-        self.skills: list[Callable[[Optional[Monomer], Team], Awaitable[None]]] = []
+        self.skills: list[Callable[[None, Team], Awaitable[None]] | Callable[[Monomer, Team], Awaitable[None]]] = []
 
     def append_action_command(self, command: ActionCommand) -> None:
         self.action_commands.append(command)
@@ -52,7 +52,7 @@ class ControllableMonomer(Monomer, ABC):
         while len(self.action_commands) > 0:
             command = self.action_commands.pop(0)
             func = self.skills[command["skill_index"]]
-            await func(command["target"], teams[0])
+            await func(command["target"], teams[0])  # type: ignore
             if command["skill_info"]["occupy_round"]:
                 break
 

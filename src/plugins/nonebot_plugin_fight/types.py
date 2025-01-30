@@ -14,13 +14,22 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
+from enum import Enum
 from typing import Any, TypedDict, Literal, TYPE_CHECKING, Optional
 
 
 if TYPE_CHECKING:
-    from nonebot_plugin_fight.base.monomer import Monomer
-    from nonebot_plugin_fight.base.equipment import Equipment
-    from nonebot_plugin_fight.base.weapon import Weapon
+    from .base.monomer import Monomer
+    from .base.equipment import Equipment
+
+
+class AttackTypes(Enum):
+    wind = 1
+    fire = 2
+    electricity = 3
+    ice = 4
+    ME = 5
+    real = 6
 
 
 class AttackEvent(TypedDict):
@@ -28,7 +37,7 @@ class AttackEvent(TypedDict):
     origin: "Monomer"
     target: "Monomer"
     harm_value: int
-    harm_type: str
+    harm_type: AttackTypes
     harm_missed: bool
 
 
@@ -55,11 +64,35 @@ class ActionCommand(TypedDict):
 ACTION_EVENT = MessageActionEvent | AttackEvent
 
 
+class BuffTypes(Enum):
+    # buff_id, is_gain, keep
+    lunar_eclipse_cracks = "lunar_eclipse_cracks", False, True
+    moonlark_cold_down = "moonlark_cold_down", False, False
+
+
+class BuffData(TypedDict):
+    buff_type: BuffTypes
+    remain_rounds: int
+    data: dict[Any, Any]
+
+
+class WeaponData(TypedDict):
+    experience: int
+    talent_level: dict[str, int]
+
+
 class CharacterData(TypedDict):
     experience: int
     current_hp: int
     fav: float
-    buff: list[dict[str, Any]]
-    weapon: "Weapon"
-    equipment: "Equipment"
+    buff: list["BuffData"]
+    weapon: WeaponData
+    equipment: list["Equipment"]
     talent_level: dict[str, int]
+
+
+class CurrentLevel(TypedDict):
+    level: int
+    current_exp: int
+    exp_to_next: int
+    progress: float

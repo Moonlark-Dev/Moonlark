@@ -1,7 +1,7 @@
 from .team import Team
 from .monomer import Monomer
 
-from ..types import ACTION_EVENT
+from ..types import ACTION_EVENT, AttackTypes
 
 
 class Scheduler:
@@ -20,7 +20,7 @@ class Scheduler:
             await t.got_event(event)
 
     async def post_attack_event(
-        self, target: Monomer, origin: Monomer, harm: int, harm_type: str, missed: bool = False
+        self, target: Monomer, origin: Monomer, harm: int, harm_type: AttackTypes, missed: bool = False
     ) -> None:
         await self.post_action_event(
             {
