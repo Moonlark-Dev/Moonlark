@@ -2381,7 +2381,7 @@ optional = false
 python-versions = "^3.11"
 groups = ["main"]
 files = []
-develop = false
+develop = true
 
 [package.dependencies]
 aiofiles = "^23.2.1"
@@ -5659,4 +5659,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.11"
-content-hash = "4f60c85784de0ffb0f7ef34581e087f9b21652988c6920695f0f75d49b97105a"
+content-hash = "20dfa59141d525cea2b7d5ff587f9b14ce78363e3e4d7f8d44dbb07934aabc6f"

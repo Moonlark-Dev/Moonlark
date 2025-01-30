@@ -1,7 +1,7 @@
 [project]
 name = "moonlark_custom_plugins"
-version = "0.1.19"
-description = "Moonlark 中的自定义插件"
+version = "0.2.0"
+description = "Moonlark 中的自定义插件 (本插件必须使用 --editable 安装)"
 requires-python = ">=3.11, <4.0"
 
 
