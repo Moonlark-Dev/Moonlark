@@ -20,4 +20,4 @@ require("nonebot_plugin_email")
 require("nonebot_plugin_larkuser")
 require("nonebot_plugin_render")
 
-from . import __main__
+from .__main__ import is_user_signed

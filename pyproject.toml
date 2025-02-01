@@ -74,8 +74,8 @@ plugins = [
     "nonebot_plugin_2048",
     "nonebot_plugin_defuse_tnt",
     "nonebot_plugin_turn_off_lights",
-    "nonebot_plugin_github"
-    
+    "nonebot_plugin_github",
+    "nonebot_plugin_schedule"
 ]
 plugin_dirs = []
 builtin_plugins = []

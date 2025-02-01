@@ -1,0 +1,52 @@
+{
+    "jrrp": {
+        "award": [
+            {
+                "item_id": "special:vimcoin",
+                "count": 18,
+                "data": {}
+            }
+        ],
+        "completion_required": 1
+    },
+    "cave": {
+        "award": [
+            {
+                "item_id": "special:vimcoin",
+                "count": 23,
+                "data": {}
+            }
+        ],
+        "completion_required": 1
+    },
+    "at": {
+        "award": [
+            {
+                "item_id": "special:vimcoin",
+                "count": 12,
+                "data": {}
+            }
+        ],
+        "completion_required": 1
+    },
+    "ftt": {
+        "award": [
+            {
+                "item_id": "special:vimcoin",
+                "count": 10,
+                "data": {}
+            }
+        ],
+        "completion_required": 1
+    },
+    "quick_math": {
+        "award": [
+            {
+                "item_id": "special:vimcoin",
+                "count": 20,
+                "data": {}
+            }
+        ],
+        "completion_required": 120
+    }
+}

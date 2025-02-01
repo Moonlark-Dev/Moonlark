@@ -3,6 +3,7 @@ from typing import Union
 from nonebot import on_fullmatch
 from nonebot_plugin_alconna import Alconna, Args, Image, MultiVar, Option, Subcommand, Text, on_alconna
 from nonebot_plugin_orm import async_scoped_session
+from nonebot_plugin_schedule.utils import complete_schedule
 from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
 from nonebot.exception import ActionFailed
@@ -85,6 +86,7 @@ async def handle_get_cave(
 
 @cave.assign("$main")
 async def _(session: async_scoped_session, user_id: str = get_user_id(), group_id: str = get_group_id()) -> None:
+    await complete_schedule(user_id, "cave")
     await handle_get_cave(session, user_id, group_id, False)
 
 

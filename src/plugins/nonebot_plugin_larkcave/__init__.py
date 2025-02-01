@@ -16,7 +16,7 @@ require("nonebot_plugin_larkuser")
 require("nonebot_plugin_localstore")
 require("nonebot_plugin_larkutils")
 require("nonebot_plugin_alconna")
-
+require("nonebot_plugin_schedule")
 
 load_plugin("nonebot_plugin_larkcave.plugins.similarity_check")
 load_plugin("nonebot_plugin_larkcave.plugins.comment")

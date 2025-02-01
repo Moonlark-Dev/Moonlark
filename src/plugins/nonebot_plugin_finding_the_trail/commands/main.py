@@ -19,6 +19,7 @@ import random
 import time
 import os
 import struct
+from nonebot_plugin_schedule.utils import complete_schedule
 from nonebot_plugin_waiter import prompt
 from nonebot_plugin_alconna import Match
 from nonebot_plugin_larkutils import get_user_id
@@ -84,6 +85,8 @@ async def _(seed: Match[str], user_id: str = get_user_id()) -> None:
             if seed.available:
                 points = 1
             await add_point(user_id, points)
+            if ftt_map.difficulty_name != "easy":
+                await complete_schedule(user_id, "ftt")
             await lang.finish("ftt.success", user_id, points)
     # TODO 参考答案动画
     # TODO 错误答案演示

@@ -1,0 +1,21 @@
+command:
+  title: 每日任务
+  finished: 可领取
+  collected: 已完成
+  unfinished: 未完成
+  award: 任务奖励
+collect:
+  done: 已确认完成 {} 个任务！
+  need_sign: 主人需要先签到才能继续操作喵。
+
+task_jrrp:
+  name: 每日人品
+  description: 使用 {__prefix__}jrrp 计算一次今日人品。
+
+task_cave:
+  name: 回声洞
+  description: 使用 {__prefix__}cave 阅读一条回声洞。
+
+task_at:
+  name: 问候
+  description: 与 Moonlark 交互 1 次（提及 Moonlark 后不附带任何消息可以和 Moonlark 打招呼）。

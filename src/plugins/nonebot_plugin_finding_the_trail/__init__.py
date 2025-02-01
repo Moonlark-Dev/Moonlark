@@ -35,5 +35,6 @@ require("nonebot_plugin_larkuser")
 require("nonebot_plugin_waiter")
 require("nonebot_plugin_ranking")
 require("nonebot_plugin_orm")
+require("nonebot_plugin_schedule")
 
 from . import commands
