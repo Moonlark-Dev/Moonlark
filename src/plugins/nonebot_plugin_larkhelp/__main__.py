@@ -1,4 +1,7 @@
+import asyncio
+from nonebot_plugin_larklang.__main__ import load_languages
 from pathlib import Path
+import sys
 from typing import Any, Optional
 
 from nonebot import get_driver
@@ -17,7 +20,7 @@ help_list = {}
 
 
 @get_driver().on_startup
-async def _() -> None:
+async def setup_help_list() -> None:
     global help_list
     help_list = await collect_command_help()
 
@@ -69,6 +72,26 @@ async def get_templates(user_id: str) -> dict[str, Any]:
     )
 
 
+async def generate_markdown() -> str:
+    await setup_help_list()
+    await load_languages()
+    user_id = f"mlsid::--lang={sys.argv[1]}"
+    text = await lang.text("markdown.title", user_id)
+    for command in (await get_templates(user_id))["commands"]:
+        text += await lang.text(
+            "markdown.command", user_id, command["name"], command["description"], command["details"]
+        )
+        for usage in command["usages"]:
+            text += await lang.text("markdown.usage", user_id, usage)
+    return text
+
+
+def generate_help_markdown() -> None:
+    # nb larkhelp-generate <lang> <file>
+    with open(Path(sys.argv[2]), "w", encoding="utf-8") as f:
+        f.write(asyncio.run(generate_markdown()))
+
+
 @creator("help.html.jinja")
 async def render(user_id: str) -> bytes:
     return await render_template(
@@ -78,7 +101,6 @@ async def render(user_id: str) -> bytes:
 
 @help_cmd.assign("$main")
 async def _(user_id: str = get_user_id()) -> None:
-    template_path = Path(__file__).parent.joinpath("templates/index.html.jinja")
     await help_cmd.finish(
         UniMessage().image(
             raw=await render(user_id),

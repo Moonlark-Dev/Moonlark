@@ -43,5 +43,5 @@ buff:
     name: 过载
     description: Moonlark 下回合普攻伤害 -30%
 weapon:
-  '0':
+  id_0:
     name: Moonlark 的手枪

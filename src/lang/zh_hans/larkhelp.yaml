@@ -16,3 +16,18 @@ help:
   details: 获取命令用法
   usage1: help (获取命令列表)
   usage2: help <命令名> (查看命令帮助)
+
+markdown:
+  title: |
+    # Moonlark 指令列表
+
+    > 由 Moonlark & nonebot-plugin-larkhelp 生成
+
+  command: |
+    ## `{}`: {}
+
+    {}
+
+    ### 用法
+  
+  usage: "- `{}`\n"
