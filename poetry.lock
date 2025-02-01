@@ -2713,14 +2713,14 @@ typing-extensions = ">=4.0.0,<5.0.0"
 
 [[package]]
 name = "nonebot-adapter-qq"
-version = "1.6.1"
+version = "1.6.2"
 description = "QQ adapter for nonebot2"
 optional = false
 python-versions = "<4.0,>=3.9"
 groups = ["main"]
 files = [
-    {file = "nonebot_adapter_qq-1.6.1-py3-none-any.whl", hash = "sha256:82ea3124a8d419f868999d22cf8dfe196013e513f76254402cabb356596591d2"},
-    {file = "nonebot_adapter_qq-1.6.1.tar.gz", hash = "sha256:752ed57be8dd5956590d6fb8286afbf6afc2805dd924dff132f02bcd75d19ebf"},
+    {file = "nonebot_adapter_qq-1.6.2-py3-none-any.whl", hash = "sha256:6ee7a7ae19a2efd2a9f83437c71f9849c23d4a71d01b6b3fb63177eb791440eb"},
+    {file = "nonebot_adapter_qq-1.6.2.tar.gz", hash = "sha256:5674a4df4e5c98a0d59b1ec484735e6b6e891673c1773f48041b395090cbc319"},
 ]
 
 [package.dependencies]
@@ -3154,14 +3154,14 @@ files = [
 
 [[package]]
 name = "openai"
-version = "1.60.2"
+version = "1.61.0"
 description = "The official Python library for the openai API"
 optional = false
 python-versions = ">=3.8"
 groups = ["main"]
 files = [
-    {file = "openai-1.60.2-py3-none-any.whl", hash = "sha256:993bd11b96900b9098179c728026f016b4982ded7ee30dfcf4555eab1171fff9"},
-    {file = "openai-1.60.2.tar.gz", hash = "sha256:a8f843e10f2855713007f491d96afb2694b11b5e02cb97c7d01a0be60bc5bb51"},
+    {file = "openai-1.61.0-py3-none-any.whl", hash = "sha256:e8c512c0743accbdbe77f3429a1490d862f8352045de8dc81969301eb4a4f666"},
+    {file = "openai-1.61.0.tar.gz", hash = "sha256:216f325a24ed8578e929b0f1b3fb2052165f3b04b0461818adaa51aa29c71f8a"},
 ]
 
 [package.dependencies]

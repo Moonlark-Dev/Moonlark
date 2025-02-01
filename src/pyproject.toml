@@ -90,3 +90,7 @@ packages = [
     { include = "nonebot_plugin_turn_off_lights", from = "./plugins" },
     { include = "nonebot_plugin_github", from = "./plugins" }
 ]
+
+
+[tool.poetry.plugins.nb_scripts]
+larkhelp-generate = "nonebot_plugin_larkhelp.__main__:generate_help_markdown"
