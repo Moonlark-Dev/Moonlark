@@ -72,18 +72,18 @@ async def get_templates(user_id: str) -> dict[str, Any]:
     )
 
 
-
 async def generate_markdown() -> str:
     await setup_help_list()
     await load_languages()
     user_id = f"mlsid::--lang={lang}"
     text = await lang.text("markdown.title", user_id)
     for command in (await get_templates(user_id))["commands"]:
-        text += await lang.text("markdown.command", user_id, command["name"], command["description"], command["details"])
+        text += await lang.text(
+            "markdown.command", user_id, command["name"], command["description"], command["details"]
+        )
         for usage in command["usages"]:
             text += await lang.text("markdown.usage", user_id, usage)
     return text
-
 
 
 def generate_help_markdown() -> None:
