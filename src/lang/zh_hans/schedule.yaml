@@ -1,0 +1,34 @@
+command:
+  title: 每日任务
+  finished: 可领取
+  collected: 已完成
+  unfinished: 未完成
+  award: 任务奖励
+collect:
+  done: 已确认完成 {} 个任务！
+  need_sign: 主人需要先签到才能继续操作喵。
+help:
+  description: 每日任务
+  details: 查看每日任务或领取每日任务奖励，每日刷新，部分功能仅在签到后可用。
+  usage1: schdeule (查看每日任务列表)
+  usage2: schdeule collect (领取可领取的奖励)
+
+task_jrrp:
+  name: 每日人品
+  description: 使用 {__prefix__}jrrp 计算一次今日人品。
+
+task_cave:
+  name: 回声洞
+  description: 使用 {__prefix__}cave 阅读一条回声洞。
+
+task_at:
+  name: 问候
+  description: 与 Moonlark 交互 1 次（提及 Moonlark 后不附带任何消息可以和 Moonlark 打招呼）。
+
+task_ftt:
+  name: 寻径指津
+  description: 完成一次 Normal 难度及以上的 FTT。
+
+task_quick_math:
+  name: 速算
+  description: 在 QuickMath 中拿到累计 120 分。

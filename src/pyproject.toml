@@ -88,7 +88,8 @@ packages = [
     { include = "nonebot_plugin_2048", from = "./plugins" },
     { include = "nonebot_plugin_defuse_tnt", from = "./plugins" },
     { include = "nonebot_plugin_turn_off_lights", from = "./plugins" },
-    { include = "nonebot_plugin_github", from = "./plugins" }
+    { include = "nonebot_plugin_github", from = "./plugins" },
+    { include = "nonebot_plugin_schedule", from = "./plugins" }
 ]
 
 

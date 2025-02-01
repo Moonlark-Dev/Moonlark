@@ -1,5 +1,6 @@
 from nonebot_plugin_items.registry.registry import ResourceLocation
 from nonebot_plugin_achievement import unlock_achievement
+from nonebot_plugin_schedule.utils import complete_schedule
 
 
 def get_achievement_location(path: str) -> ResourceLocation:
@@ -13,6 +14,7 @@ async def update_achievements_status(
     await unlock_achievement(get_achievement_location("100_questions_master"), user_id, answered)
     await unlock_achievement(get_achievement_location("escape_artist"), user_id, skipped)
     await unlock_achievement(get_achievement_location("a_little_bit_adds_up"), user_id, point)
+    await complete_schedule("user_id", "quick_math", point)
     if point >= 200:
         await unlock_achievement(get_achievement_location("showing_off"), user_id)
     if point >= 1000:

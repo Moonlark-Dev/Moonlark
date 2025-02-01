@@ -161,6 +161,12 @@ async def get_hitokoto(user_id: str) -> str:
     return await lang.text("image.hitokoto", user_id)
 
 
+async def is_user_signed(user_id: str) -> bool:
+    async with get_session() as session:
+        data = await get_sign_data(session, user_id)
+        return (date.today() - data.last_sign).days < 1
+
+
 @sign.handle()
 @patch_matcher(on_fullmatch(("sign", "签到"))).handle()
 async def _(matcher: Matcher, user_id: str = get_user_id()) -> None:

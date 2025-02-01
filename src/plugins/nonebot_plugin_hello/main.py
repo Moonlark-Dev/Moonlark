@@ -7,6 +7,7 @@ from nonebot_plugin_larkuser import get_user
 from nonebot_plugin_larkutils import get_user_id
 from nonebot.adapters.onebot.v11.event import PokeNotifyEvent
 from nonebot.adapters import Message, Event
+from nonebot_plugin_schedule.utils import complete_schedule
 
 lang = LangHelper()
 
@@ -57,6 +58,7 @@ DEFAULT_AT_GREETINGS: AtGreetingsData = {
 async def _(event: Event, user_id: str = get_user_id()) -> None:
     if event.get_plaintext():
         return
+    await complete_schedule(user_id, "at")
     user = await get_user(user_id)
     fav = user.get_fav()
     if fav < 0.007 or not user.is_registered():
@@ -82,6 +84,8 @@ async def _(event: Event, user_id: str = get_user_id()) -> None:
         if not at_data["greetings"][time_segment_name]:
             at_data["greetings"][time_segment_name] = True
             await user.add_fav(0.0002)
+    elif at_data["greetings"][f"{time_segment_name}_count"] >= 20 and random.random() <= 0.05:
+        await lang.send("at.busy", user_id)
     else:
         await lang.send("at.normal", user_id)
     await user.set_config_key("at_data", at_data)

@@ -1,0 +1,3 @@
+plugin: schedule
+commands:
+  schedule: help;2
