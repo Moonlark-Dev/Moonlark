@@ -24,3 +24,11 @@ task_cave:
 task_at:
   name: 问候
   description: 与 Moonlark 交互 1 次（提及 Moonlark 后不附带任何消息可以和 Moonlark 打招呼）。
+
+task_ftt:
+  name: 寻径指津
+  description: 完成一次 Normal 难度及以上的 FTT。
+
+task_quick_math:
+  name: 速算
+  description: 在 QuickMath 中拿到累计 120 分。
