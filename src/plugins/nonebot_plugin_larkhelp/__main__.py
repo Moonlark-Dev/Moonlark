@@ -75,7 +75,7 @@ async def get_templates(user_id: str) -> dict[str, Any]:
 async def generate_markdown() -> str:
     await setup_help_list()
     await load_languages()
-    user_id = f"mlsid::--lang={lang}"
+    user_id = f"mlsid::--lang={sys.argv[1]}"
     text = await lang.text("markdown.title", user_id)
     for command in (await get_templates(user_id))["commands"]:
         text += await lang.text(
@@ -88,7 +88,7 @@ async def generate_markdown() -> str:
 
 def generate_help_markdown() -> None:
     # nb larkhelp-generate <lang> <file>
-    with open(Path(sys.argv[3]), "w", encoding="utf-8") as f:
+    with open(Path(sys.argv[2]), "w", encoding="utf-8") as f:
         f.write(asyncio.run(generate_markdown()))
 
 
