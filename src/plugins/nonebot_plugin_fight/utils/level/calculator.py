@@ -39,4 +39,3 @@ class LevelCalculator:
         progress = round((current_exp / exp_to_next * 100), 2) if exp_to_next > 0 else 100.0
 
         return {"level": level, "current_exp": current_exp, "exp_to_next": exp_to_next, "progress": progress}
-
