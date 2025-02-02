@@ -1,0 +1,100 @@
+{% extends base %}
+
+
+{% block body %}
+
+<span class="h2">{{ c.name }}</span>
+<span class="badge bg-{{ c.star_color }}">{% for _ in range(c.star) %}⭐{% endfor %}</span>
+{% if c.greeting %}<p>{{ c.greeting }}</p>{% endif %}
+<hr>
+<table>
+    <tbody>
+        <tr>
+            <td>生命值:</td>
+            <td>{{ c.hp }}/{{ c.max_hp }}</td>
+            <td>
+                <div class="progress" style="height:16px">
+                    <div class="progress-bar bg-danger" style="width:{{ c.weapon_lv.progress }}%">
+                    </div>
+                </div>
+            </td>
+        </tr>
+        <tr>
+            <td>角色等级:</td>
+            <td>{{ c.level.level }}</td>
+            <td>
+                <div class="progress" style="height:16px">
+                    <div class="progress-bar" style="width:{{ c.level.progress }}%">
+                        {{ c.level.current_exp }}/{{ c.level.exp_to_next }}
+                    </div>
+                </div>
+            </td>
+        </tr>
+    </tbody>
+</table>
+
+{# 如果有，在此表左侧添加立绘 #}
+<table>
+    <tbody>
+        <tr>
+            <td>攻击力:</td>
+            <td>{{ c.attack }}</td>
+            <td>防御力:</td>
+            <td>{{ c.defuse }}</td>
+        </tr>
+        <tr>
+            <td>暴击率:</td>
+            <td>{{ c.crit_rate }}</td>
+            <td>暴击伤害:</td>
+            <td>{{ c.crit_damage }}</td>
+        </tr>
+        <tr>
+            <td>速度:</td>
+            <td>{{ c.speed }}</td>
+            <td>能量上限:</td>
+            <td>{{ c.max_power }}</td>
+        </tr>
+    </tbody>
+</table>
+
+<hr>
+<h2>武器</h2>
+<table>
+    <tbody>
+        <tr>
+            <td>武器等级:</td>
+            <td>{{ c.weapon_lv.level }}</td>
+            <td>
+                <div class="progress" style="height:16px">
+                    <div class="progress-bar bg-info" style="width:{{ c.weapon_lv.progress }}%">
+                        {{ c.weapon_lv.current_exp }}/{{ c.weapon_lv.exp_to_next }}
+                    </div>
+                </div>
+            </td>
+        </tr>
+        <tr>
+            <td>受损级:</td>
+            <td>{{ c.weapon.damage }}</td>
+            <td>
+                {% if c.weapon.damage <= 100 %}
+                <span class="badge bg-success">崭新</span>
+                {% elif c.weapon.damage <= 200 %}
+                <span class="badge bg-success">微损</span>
+                {% elif c.weapon.damage <= 500 %}
+                <span class="badge bg-warning">受损</span>
+                {% elif c.weapon.damage <= 1000 %}
+                <span class="badge bg-danger">女生自用九九新</span>
+                {% else %}
+                <span class="badge bg-success">叙利亚崭新出土</span>
+                {% endif %}
+            </td>
+        </tr>
+    </tbody>
+</table>
+<p>{{ c.weapon.story }}</p>
+
+
+
+
+
+{% endblock body %}
