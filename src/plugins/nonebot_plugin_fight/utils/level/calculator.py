@@ -39,12 +39,3 @@ class LevelCalculator:
         progress = round((current_exp / exp_to_next * 100), 2) if exp_to_next > 0 else 100.0
 
         return {"level": level, "current_exp": current_exp, "exp_to_next": exp_to_next, "progress": progress}
-
-    def print_level_table(self, max_level: int = 10) -> str:
-        """生成等级经验对照表"""
-        table = ["等级 | 总经验        | 升级所需经验"]
-        for lv in range(max_level + 1):
-            total = self.get_total_exp(lv)
-            next_exp = self.get_exp_to_next_level(lv) if lv < self.max_level else 0
-            table.append(f"{lv:3} | {total:<12} | {next_exp:<12}")
-        return "\n".join(table)
