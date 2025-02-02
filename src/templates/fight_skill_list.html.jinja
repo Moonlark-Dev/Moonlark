@@ -13,7 +13,7 @@
                     {% for skill in monomer.skills %}
                     <li>
                         <span class="badge bg-success rounded-pill">{{ skill.index }}</span> <strong>{{
-                            skill.name }}</strong> {{ skill.info }}
+                            skill.name }}</strong><br>{{ skill.info }}
                     </li>
                     {% endfor %}
                 </ul>
@@ -26,8 +26,8 @@
         <ul>
             {% for monomer in monomers_another_team %}
             <li>
-                <span class="badge bg-warning">{{ monomer.index }}</span> <strong>{{ monomer.name }}</strong> {{
-                monomer.stat }}
+                <span class="badge bg-warning">{{ monomer.index }}</span> <strong>{{ monomer.name }}</strong>
+                <br>{{ monomer.stat }}
             </li>
             {% endfor %}
         </ul>
