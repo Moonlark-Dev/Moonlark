@@ -269,18 +269,19 @@ files = [
 
 [[package]]
 name = "beautifulsoup4"
-version = "4.12.3"
+version = "4.13.0"
 description = "Screen-scraping library"
 optional = false
 python-versions = ">=3.6.0"
 groups = ["main"]
 files = [
-    {file = "beautifulsoup4-4.12.3-py3-none-any.whl", hash = "sha256:b80878c9f40111313e55da8ba20bdba06d8fa3969fc68304167741bbf9e082ed"},
-    {file = "beautifulsoup4-4.12.3.tar.gz", hash = "sha256:74e3d1928edc070d21748185c46e3fb33490f22f52a3addee9aee0f4f7781051"},
+    {file = "beautifulsoup4-4.13.0-py3-none-any.whl", hash = "sha256:9c4c3dfa67aba55f6cd03769c441b21e6a369797fd6766e4b4c6b3399aae2735"},
+    {file = "beautifulsoup4-4.13.0.tar.gz", hash = "sha256:b6e5afb3a2b1472c8db751a92eabf7834e5c7099f990c5e4b35f1f16b60bae64"},
 ]
 
 [package.dependencies]
 soupsieve = ">1.2"
+typing-extensions = "*"
 
 [package.extras]
 cchardet = ["cchardet"]
@@ -738,23 +739,23 @@ rich = "*"
 
 [[package]]
 name = "cookit"
-version = "0.8.5"
+version = "0.9.1"
 description = "A toolkit for self use."
 optional = false
 python-versions = "<4.0,>=3.9"
 groups = ["main"]
 files = [
-    {file = "cookit-0.8.5-py3-none-any.whl", hash = "sha256:0b4ee7cd45e8a098bc356264e92590fa13409dc93de59ade2339639ba2d78141"},
-    {file = "cookit-0.8.5.tar.gz", hash = "sha256:1b8c62eeb28d5502abb2d5594cdf4c3f6cadaa8897c1f0640675badc579581f7"},
+    {file = "cookit-0.9.1-py3-none-any.whl", hash = "sha256:913f2e4f05aec31283e9551d86f5940360c0ef40fe75deb5c819cbd174d52559"},
+    {file = "cookit-0.9.1.tar.gz", hash = "sha256:6a1d3434e1f0765576e1bd7db284673aeed9533914be321f322e94ba6b12add1"},
 ]
 
 [package.dependencies]
-fleep = ">=1.0.1"
 pydantic = {version = ">=1.10.0,<2.5.0 || >2.5.0,<2.5.1 || >2.5.1,<3.0.0", optional = true, markers = "extra == \"pydantic\""}
 typing-extensions = ">=4.12.2"
 
 [package.extras]
-all = ["cookit[jinja,loguru,nonebot,playwright,pydantic]"]
+all = ["cookit[common,jinja,loguru,nonebot,playwright,pydantic]"]
+common = ["fleep (>=1.0.1)"]
 jinja = ["jinja2 (>=3.1.4)"]
 loguru = ["loguru (>=0.7.2)"]
 nonebot = ["cookit[nonebot-alconna]"]
@@ -1041,17 +1042,6 @@ files = [
 docs = ["furo (>=2024.8.6)", "sphinx (>=8.1.3)", "sphinx-autodoc-typehints (>=3)"]
 testing = ["covdefaults (>=2.3)", "coverage (>=7.6.10)", "diff-cover (>=9.2.1)", "pytest (>=8.3.4)", "pytest-asyncio (>=0.25.2)", "pytest-cov (>=6)", "pytest-mock (>=3.14)", "pytest-timeout (>=2.3.1)", "virtualenv (>=20.28.1)"]
 typing = ["typing-extensions (>=4.12.2)"]
-
-[[package]]
-name = "fleep"
-version = "1.0.1"
-description = "File format determination library"
-optional = false
-python-versions = ">=3.1"
-groups = ["main"]
-files = [
-    {file = "fleep-1.0.1.tar.gz", hash = "sha256:c8f62b258ee5364d7f6c1ed1f3f278e99020fc3f0a60a24ad1e10846e31d104c"},
-]
 
 [[package]]
 name = "fonttools"
