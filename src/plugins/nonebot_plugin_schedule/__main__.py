@@ -26,7 +26,7 @@ async def _(session: async_scoped_session, user_id: str = get_user_id()) -> None
             result.collected = True
             await give_item_by_list(user_id, task["award"])
     await session.commit()
-    await lang.finish("collecnt.done", user_id, collected_tasks)
+    await lang.finish("collect.done", user_id, collected_tasks)
 
 
 @matcher.assign("$main")
