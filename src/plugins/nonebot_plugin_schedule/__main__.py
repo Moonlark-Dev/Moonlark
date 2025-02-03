@@ -1,4 +1,4 @@
-from nonebot_plugin_alconna import Alconna, on_alconna, Subcommand
+from nonebot_plugin_alconna import Alconna, on_alconna, Subcommand, UniMessage
 from nonebot_plugin_larkutils import get_user_id
 from nonebot_plugin_orm import async_scoped_session
 from nonebot_plugin_render import render_template
@@ -61,3 +61,4 @@ async def _(session: async_scoped_session, user_id: str = get_user_id()) -> None
             ],
         },
     )
+    await matcher.finish(UniMessage().image(raw=image))
