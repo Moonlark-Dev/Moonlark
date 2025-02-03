@@ -10,7 +10,7 @@
     </div>
     <div class="col-4 h2" style="text-align: right;">
         {% if task.status %}
-            {{ task.status.completed_count }}/{{ task.completion_required }}
+            {{ task.status.completed_count }} / {{ task.completion_required }}
             {% if task.status.completed_count >= task.completion_required and not task.status.collected %}
                 <span class="badge bg-success">{{ text.finished }}</span>
             {% elif task.status.collected %}
