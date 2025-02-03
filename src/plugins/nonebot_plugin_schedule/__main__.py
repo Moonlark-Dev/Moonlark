@@ -55,7 +55,7 @@ async def _(session: async_scoped_session, user_id: str = get_user_id()) -> None
                         ],
                         user_id,
                     ),
-                    "completion_required": task["completion_required"]
+                    "completion_required": task["completion_required"],
                 }
                 for task_id, task in (await get_schedule_list()).items()
             ],
