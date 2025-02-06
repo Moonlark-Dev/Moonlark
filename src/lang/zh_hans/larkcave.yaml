@@ -75,3 +75,6 @@ comment:
   title: 回声洞评论 —— ({})
   footer: 由 Moonlark & nonebot-plugin-cave-comment 生成
   id: ({})
+stat:
+  other: 其他
+  tip: 正在统计数据，请稍后……
