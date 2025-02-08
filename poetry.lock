@@ -2381,6 +2381,7 @@ beautifulsoup4 = "^4.12.3"
 cryptography = "^44.0.0"
 httpx = {version = "^0.27.0", extras = ["socks"]}
 jieba = "^0.42.1"
+matplotlib = "^3.10.0"
 nonebot-adapter-onebot = "^2.4.3"
 nonebot-adapter-qq = "^1.4.4"
 nonebot-plugin-alconna = "^0.54.2"

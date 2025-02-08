@@ -23,6 +23,7 @@ aiosqlite = "^0.20.0"
 aiomysql = "^0.2.0"
 cryptography = "^44.0.0"
 pyproject-toml = "^0.0.10"
+matplotlib = "^3.10.0"
 
 nonebot-adapter-qq = "^1.4.4"
 nonebot-adapter-onebot = "^2.4.3"
