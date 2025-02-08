@@ -31,6 +31,7 @@ alc = Alconna(
         "g|get",
         Args["cave_id", int],
     ),
+    Subcommand("s|statisics"),
     Subcommand("r|remove", Option("-c|--comment", Args["comment_id", int]), Args["cave_id?", int]),
     Subcommand("c|cd", Option("-s|--set", Args["time", float]), Option("-u|--user")),
     separators=["-", " "],
