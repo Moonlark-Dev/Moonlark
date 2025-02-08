@@ -52,12 +52,9 @@ async def _(user_id: str = get_user_id()) -> None:
                     "result": await lang.text("thead.result", user_id),
                     "wrong": await lang.text("thead.wrong", user_id),
                     "pos": await lang.text("thead.pos", user_id),
-                    "more": await lang.text("thead.more", user_id)
+                    "more": await lang.text("thead.more", user_id),
                 },
-                "history": [
-                    {"password": item, "result": get_result_dict(item, answer)}
-                    for item in history
-                ],
+                "history": [{"password": item, "result": get_result_dict(item, answer)} for item in history],
             },
         )
         password = await prompt(
