@@ -20,15 +20,15 @@ from nonebot_plugin_alconna import UniMessage
 from ...lang import lang
 from ...__main__ import cave
 from .data import merge_small_poster, set_nickname_for_posters, get_poster_data
+from .image import render_pie
 
 
 @cave.assign("statisics")
 async def _(session: async_scoped_session, user_id: str = get_user_id()) -> None:
     await lang.send("stat.tip", user_id)
     data = await merge_small_poster(await set_nickname_for_posters(await get_poster_data(session)), user_id)
-    # TODO 在这里绘图，或者建个 image.py 调函数，然后把下面 None 换掉
-    # NOTE 如果要加依赖的话记得 -c src/pyproject.toml 然后 poetry install，别写到根目录那个 pyproject.toml 去了
-    await cave.finish(UniMessage().image(raw=None))
+    img = await render_pie(data, user_id)
+    await cave.finish(UniMessage().image(raw=img))
 
 
 
