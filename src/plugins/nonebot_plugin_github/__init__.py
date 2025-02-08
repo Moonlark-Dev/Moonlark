@@ -1,4 +1,5 @@
 from nonebot import logger, require
+from nonebot.exception import FinishedException
 from nonebot.plugin import PluginMetadata
 
 
@@ -29,6 +30,15 @@ lang = LangHelper()
 
 
 async def github_handler(matcher, url: str, user_id: str, reply_unknown_url: bool) -> None:
+    try:
+        await _github_handler(matcher, url, user_id, reply_unknown_url)
+    except FinishedException:
+        pass
+    except Exception:
+        await matcher.finish(await lang.text("error", user_id))
+
+
+async def _github_handler(matcher, url: str, user_id: str, reply_unknown_url: bool) -> None:
     data = await data_source.parse_github(url)
     logger.debug(str(data))
     if data is None or data["type"] == "none":

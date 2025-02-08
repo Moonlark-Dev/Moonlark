@@ -15,6 +15,7 @@ from nonebot_plugin_larklang.__main__ import LangHelper
 from nonebot_plugin_larkutils import get_user_id
 from .models import CommandHelp
 from .collector import collect_command_help
+from nonebot.exception import FinishedException
 
 help_list = {}
 
@@ -101,9 +102,14 @@ async def render(user_id: str) -> bytes:
 
 @help_cmd.assign("$main")
 async def _(user_id: str = get_user_id()) -> None:
-    await help_cmd.finish(
-        UniMessage().image(
-            raw=await render(user_id),
-            name="image.png",
+    try:
+        await help_cmd.finish(
+            UniMessage().image(
+                raw=await render(user_id),
+                name="image.png",
+            )
         )
-    )
+    except FinishedException:
+        pass
+    except Exception:
+        await help_cmd.finish(await lang.text("command.error", user_id))
