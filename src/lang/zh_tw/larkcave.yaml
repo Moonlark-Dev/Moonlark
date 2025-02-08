@@ -30,6 +30,7 @@ help:
   u6: cave-c [-u|--user] (查看冷却状态)
   u7: cave-c --set <时间(分钟)> (修改冷却时间)
   u8: cave-r -c <ID> (删除评论)
+  u9: cave-s (统计投稿者)
 remove:
   no_result: 回声洞不存在或已删除！
   no_permission: 权限不足！
@@ -75,3 +76,7 @@ comment:
   title: 回声洞评论 —— ({})
   footer: 由 Moonlark & nonebot-plugin-cave-comment 生成
   id: ({})
+stat:
+  other: 其他
+  tip: 正在统计数据，请稍后……
+  title: 回声洞投稿统计
