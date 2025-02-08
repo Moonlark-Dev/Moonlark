@@ -21,8 +21,8 @@
       {% for item in history %}
         <tr>
           <td>{{ loop.index }}</td>
-          {% for char in password %}
-            <td>{{ item.password }}</td>
+          {% for char in item.password %}
+            <td>{{ char }}</td>
           {% endfor %}
           <td>{{ item.result.right }}</td>
           <td>{{ item.result.pos_wrong }}</td>
