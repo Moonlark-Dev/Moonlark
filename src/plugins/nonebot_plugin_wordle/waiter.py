@@ -30,4 +30,3 @@ class Waiter3(WaitUserInput):
 
     def check_group(self, group_id: str = get_group_id()) -> bool:
         return group_id == self.session_id
-    
