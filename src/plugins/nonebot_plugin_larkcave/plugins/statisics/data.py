@@ -5,7 +5,6 @@ from nonebot_plugin_larkuser import get_user
 from ...lang import lang
 
 
-
 async def get_poster_data(session: async_scoped_session) -> dict[str, int]:
     posters = {}
     for poster in await session.scalars(select(CaveData.author).where(CaveData.public == True)):
@@ -14,7 +13,7 @@ async def get_poster_data(session: async_scoped_session) -> dict[str, int]:
         else:
             posters[poster] = 1
     return posters
-    
+
 
 async def set_nickname_for_posters(data: dict[str, int]) -> dict[str, int]:
     posters = {}
@@ -24,6 +23,7 @@ async def set_nickname_for_posters(data: dict[str, int]) -> dict[str, int]:
             posters[nickname] += count
         posters[nickname] = count
     return posters
+
 
 async def merge_small_poster(data: dict[str, int], sender_id: str) -> dict[str, int]:
     posters = {}
@@ -36,5 +36,3 @@ async def merge_small_poster(data: dict[str, int], sender_id: str) -> dict[str, 
             posters[other_key_name] = count
         posters[key] = count
     return posters
-
-

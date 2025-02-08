@@ -29,6 +29,3 @@ async def _(session: async_scoped_session, user_id: str = get_user_id()) -> None
     data = await merge_small_poster(await set_nickname_for_posters(await get_poster_data(session)), user_id)
     img = await render_pie(data, user_id)
     await cave.finish(UniMessage().image(raw=img))
-
-
-
