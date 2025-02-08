@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 from io import BytesIO
 from ...lang import lang
 
-plt.rcParams["font.sans-serif"] = ["??????"]
+plt.rcParams["font.sans-serif"] = ["Sarasa Gothic SC"]
 plt.rcParams["axes.unicode_minus"] = False
 
 
