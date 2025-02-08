@@ -33,7 +33,7 @@ async def github_handler(matcher, url: str, user_id: str, reply_unknown_url: boo
     try:
         await _github_handler(matcher, url, user_id, reply_unknown_url)
     except FinishedException:
-        pass
+        raise
     except Exception:
         await matcher.finish(await lang.text("error", user_id))
 

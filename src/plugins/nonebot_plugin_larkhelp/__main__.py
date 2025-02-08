@@ -110,6 +110,6 @@ async def _(user_id: str = get_user_id()) -> None:
             )
         )
     except FinishedException:
-        pass
+        raise
     except Exception:
         await help_cmd.finish(await lang.text("command.error", user_id))
