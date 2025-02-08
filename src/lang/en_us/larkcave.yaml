@@ -30,6 +30,7 @@ help:
   u6: cave-c [-u|--user] (check cooldown)
   u7: cave-c --set <time (minutes)> (change cooldown time)
   u8: cave-r -c <ID> (delete comment)
+  u9: cave-s (统计投稿者)
 remove:
   no_result: The echo hole does not exist or has been deleted!
   no_permission: Insufficient permissions!
@@ -75,3 +76,7 @@ comment:
   title: 回声洞评论 —— ({})
   footer: 由 Moonlark & nonebot-plugin-cave-comment 生成
   id: ({})
+stat:
+  other: 其他
+  tip: 正在统计数据，请稍后……
+  title: 回声洞投稿统计
