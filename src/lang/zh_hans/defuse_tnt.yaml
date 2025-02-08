@@ -1,11 +1,14 @@
 template:
   main_title: 拆除 TNT
-  input: _____ _____ _____
-  remain: 剩余 {} 次尝试，密码为 1~9 的三位
-  table_number: 序号
-  title: 请猜测正确的密码
-  table_passwd: 密码
-  table_result: 验证结果
+  title: '密码: ___ ___ ___'
+  tip: '(1~9 x3 ⏰{})'
+thead:
+  password: 密码
+  result: 验证结果
+  right: 正确
+  wrong: 不存在
+  pos: 错位
+  more: 存在更多
 result:
   success: |
     [正确] 拆除成功！
@@ -13,12 +16,5 @@ result:
     用时: {}s
     获得积分: {}
   failed: "拆除失败，TNT 爆炸了！(正确排列: {})"
-result_wrong:
-  template: "[错误] {}"
-  sep: " | "
-  wrong: "不存在: {}"
-  right: "正确: {}"
-  pos_wrong: "存在但不在当前位置: {}"
-  repeated: "正确且存在多个: {}"
 
 

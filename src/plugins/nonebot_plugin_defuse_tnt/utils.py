@@ -52,14 +52,14 @@ def get_result_dict(password: list[int], answer: list[int]) -> dict[str, int]:
     return result
 
 
-async def get_failed_result_string(password: list[int], answer: list[int], user_id: str) -> str:
-    """
-    获取尝试结果的字符串（只支持错误的答案，不包含校验）
-    :param password: 用户给出密码
-    :param answer: 正确答案
-    :param user_id: 用户ID
-    """
-    result_dict = get_result_dict(password, answer)
-    result = [(await lang.text(f"result_wrong.{k}", user_id, v)) for k, v in result_dict.items() if v > 0]
-    string = (await lang.text("result_wrong.sep", user_id)).join(result)
-    return await lang.text("result_wrong.template", user_id, string)
+# async def get_failed_result_string(password: list[int], answer: list[int], user_id: str) -> str:
+#     """
+#     获取尝试结果的字符串（只支持错误的答案，不包含校验）
+#     :param password: 用户给出密码
+#     :param answer: 正确答案
+#     :param user_id: 用户ID
+#     """
+#     result_dict = get_result_dict(password, answer)
+#     result = [(await lang.text(f"result_wrong.{k}", user_id, v)) for k, v in result_dict.items() if v > 0]
+#     string = (await lang.text("result_wrong.sep", user_id)).join(result)
+#     return await lang.text("result_wrong.template", user_id, string)

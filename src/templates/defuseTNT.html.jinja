@@ -1,24 +1,33 @@
 {% extends base %}
 
 {% block body %}
-  <h2>{{ title }}</h2>
-  <h3>{{ input }}</h3>
-  <p>{{ remain }}</p>
-  <hr>
+  <span class="h2">{{ title }}</span>
+  <span class="badge bg-info">{{ tip }}</span>
   <table class="table table-striped">
     <thead>
       <tr>
-        <td>{{ table_number }}</td>
-        <td>{{ table_passwd }}</td>
-        <td>{{ table_result }}</td>
+        <th rowspan="2">#</th>
+        <th colspan="3" rowspan="2">{{ th.password }}</th>
+        <th colspan="4">{{ th.result }}</th>
+      </tr>
+      <tr>
+        <th>{{ th.right }}</th>
+        <th>{{ th.wrong }}</th>
+        <th>{{ th.pos }}</th>
+        <th>{{ th.more }}</th>
       </tr>
     </thead>
     <tbody>
       {% for item in history %}
         <tr>
           <td>{{ loop.index }}</td>
-          <td>{{ item.password }}</td>
-          <td>{{ item.result }}</td>
+          {% for char in password %}
+            <td>{{ item.password }}</td>
+          {% endfor %}
+          <td>{{ item.result.right }}</td>
+          <td>{{ item.result.pos_wrong }}</td>
+          <td>{{ item.result.wrong }}</td>
+          <td>{{ item.result.repeated }}</td>
         </tr>
       {% endfor %}
     </tbody>

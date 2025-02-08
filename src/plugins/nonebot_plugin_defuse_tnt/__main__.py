@@ -24,7 +24,7 @@ from nonebot_plugin_larkutils import get_user_id
 from nonebot_plugin_alconna import UniMessage
 from nonebot_plugin_render import render_template
 import re
-from .utils import get_failed_result_string
+from .utils import get_result_dict
 from .lang import lang
 from nonebot_plugin_minigame_api import create_minigame_session
 
@@ -46,13 +46,16 @@ async def _(user_id: str = get_user_id()) -> None:
             user_id,
             {
                 "title": await lang.text("template.title", user_id),
-                "input": await lang.text("template.input", user_id),
-                "remain": await lang.text("template.remain", user_id, r),
-                "table_number": await lang.text("template.table_number", user_id),
-                "table_passwd": await lang.text("template.table_passwd", user_id),
-                "table_result": await lang.text("template.table_result", user_id),
+                "tip": await lang.text("template.tip", user_id, r),
+                "th": {
+                    "password": await lang.text("thead.password", user_id),
+                    "result": await lang.text("thead.result", user_id),
+                    "wrong": await lang.text("thead.wrong", user_id),
+                    "pos": await lang.text("thead.pos", user_id),
+                    "more": await lang.text("thead.more", user_id)
+                },
                 "history": [
-                    {"password": item, "result": await get_failed_result_string(item, answer, user_id)}
+                    {"password": item, "result": get_result_dict(item, answer)}
                     for item in history
                 ],
             },
@@ -67,11 +70,10 @@ async def _(user_id: str = get_user_id()) -> None:
             continue
         if password == answer:
             t = await session.finish()
-            p = await session.add_points(40 ** ((r + 5) / 2) * (math.log((x + 120) ** (10 * (r + 1))) ** -1))
+            p = await session.add_points(40 ** ((r + 5) / 2) * (math.log((t + 120) ** (10 * (r + 1))) ** -1))
             await lang.finish("result.success", user_id, r, 6, t, p)
         else:
             history.append(password)
-            await matcher.send(await get_failed_result_string(password, answer, user_id))
             r -= 1
     await session.finish()
     await lang.finish("result.failed", user_id, answer)
