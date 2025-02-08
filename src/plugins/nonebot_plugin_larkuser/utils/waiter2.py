@@ -71,3 +71,8 @@ class WaitUserInput:
         if self.answer is not None:
             return parser(self.answer)
         raise ValueError("No input!")
+
+
+
+
+

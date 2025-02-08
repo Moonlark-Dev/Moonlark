@@ -1,0 +1,63 @@
+{% extends base %}
+
+{% block body %}
+<table class="table table-striped">
+    <tbody>
+        {% for c in range(6) %}
+            <tr>
+                {% if c >= len(history) %}
+                    {% for _ in range(len(correct_answer)) %}
+                        <td></td>
+                        <td></td>
+                    {% endfor %}
+                {% else %}
+                    {% for i in range(len(history[c]) - 1) %}
+                        <td class="bg-opacity-75 " id="letter-{{ c }}-{{ i }}">
+                            {{ history[c][i] }}
+                        </td>
+                    {% endfor %}
+                {% endif %}
+            </tr>
+        {% endfor %}
+    </tbody>
+</table>
+<script>
+let history = {{ str(history) | tojson }};
+let correctAnswer = "{{ corrent_answer }}";
+
+function checkWordle(line) {
+  const result = [];
+  const correctAnswerMap = {};
+  for (let i = 0; i < currectAnswer.length; i++) {
+    correctAnswerMap[currectAnswer[i]] = (correctAnswerMap[currectAnswer[i]] || 0) + 1;
+  }
+  for (let i = 0; i < line.length; i++) {
+    if (line[i] === currectAnswer[i]) {
+      result.push('success');
+      correctAnswerMap[line[i]] -= 1;
+    } else {
+      result.push(null);
+    }
+  }
+  for (let i = 0; i < line.length; i++) {
+    if (result[i] === null) {
+      if (correctAnswerMap[line[i]] > 0) {
+        result[i] = 'warning';
+        correctAnswerMap[line[i]] -= 1;
+      } else {
+        result[i] = 'secondary';
+      }
+    }
+  }
+  console.log(result);
+  return result;
+}
+
+history.forEach((line, index, __arr) => {
+    checkWordle(line).forEach((color, letterIndex, _arr) => {
+        let element = document.getElementById(`letter-${index}-${letterIndex}`);
+        element.classList.add(`bg-${color}`);
+    });
+});
+</script>
+{% endblock body %}
