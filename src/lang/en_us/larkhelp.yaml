@@ -11,6 +11,7 @@ command:
     {}
   usage: '{__prefix__}{}'
   not_found: Command {} does not exist or no help information is available
+  error: 服务器繁忙，请稍后再试。
 help:
   description: Command Help
   details: Get command usage
