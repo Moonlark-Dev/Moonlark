@@ -1,7 +1,10 @@
+from pathlib import Path
 import matplotlib.pyplot as plt
+from matplotlib import font_manager
 from io import BytesIO
 from ...lang import lang
 
+font_manager.fontManager.addfont(Path(".").joinpath("src/static/SarasaGothicSC-Regular.ttf"))
 plt.rcParams["font.sans-serif"] = ["Sarasa Gothic SC"]
 plt.rcParams["axes.unicode_minus"] = False
 
