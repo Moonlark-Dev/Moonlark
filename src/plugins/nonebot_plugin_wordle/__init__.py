@@ -40,9 +40,10 @@ async def check_length(length: Match[int], user_id: str = get_user_id()) -> bool
         await lang.send("wrong_length", user_id)
         return False
     return True
-        
+
 
 matcher = on_alconna(Alconna("wordle", Args["length", int, 5]), rule=check_length)
+
 
 async def check_word(event: Event) -> bool:
     return await dictionary.is_valid_word(event.get_plaintext())
@@ -58,10 +59,7 @@ async def _(length: int, user_id: str = get_user_id(), group_id: str = get_group
             "wordle.html.jinja",
             await lang.text("title", user_id),
             user_id,
-            templates={
-                "correct_answer": correct_answer,
-                "history": history
-            }
+            templates={"correct_answer": correct_answer, "history": history},
         )
         waiter = Waiter3(UniMessage().image(raw=image), group_id, Rule(check_word))
         await waiter.wait()
@@ -75,9 +73,3 @@ async def _(length: int, user_id: str = get_user_id(), group_id: str = get_group
             await lang.finish("success", user_id, correct_answer, translate)
         history.append(list(result))
     await lang.finish("fail", user_id, correct_answer, translate)
-
-        
-
-
-
-
