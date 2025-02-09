@@ -1,5 +1,5 @@
 from .lang import lang
-from .jrrp import get_luck_value
+from nonebot_plugin_larkutils.jrrp import get_luck_value
 from .types import LuckType
 
 

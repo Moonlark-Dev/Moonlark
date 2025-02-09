@@ -12,7 +12,6 @@ __plugin_meta__ = PluginMetadata(
 
 # require("nonebot_plugin_ranking")
 require("nonebot_plugin_larkutils")
-require("nonebot_plugin_jrrp")
 require("nonebot_plugin_larklang")
 require("nonebot_plugin_larkuser")
 require("nonebot_plugin_alconna")
