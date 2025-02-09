@@ -48,10 +48,9 @@ matcher = on_alconna(Alconna("wordle", Args["length", int, 5]))
 patch_matcher(matcher)
 playing_groups = []
 
+
 async def check_word(event: Event) -> bool:
     return await dictionary.is_valid_word(event.get_plaintext())
-
-
 
 
 class Wordle:
@@ -65,7 +64,7 @@ class Wordle:
         self.user_id = user_id
         self.start_time = datetime.now()
         logger.debug(correct_answer)
-    
+
     def __del__(self) -> None:
         playing_groups.remove(self.group_id)
 
@@ -93,7 +92,7 @@ class Wordle:
             await self.fail()
         elif result:
             self.history.append(list(result))
-    
+
     async def fail(self) -> None:
         await lang.finish("fail", self.user_id, self.correct_answer, self.translate)
 
@@ -108,7 +107,7 @@ class Wordle:
         t = await session.finish()
         await session.add_points(round((7 - len(self.history)) * 5000 / t))
         await lang.finish("success", user_id, self.correct_answer, self.translate)
-    
+
 
 @matcher.handle()
 async def _(length: int, user_id: str = get_user_id(), group_id: str = get_group_id()) -> None:
