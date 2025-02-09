@@ -30,19 +30,16 @@ from .waiter import Waiter3
 lang = LangHelper()
 
 
-async def check_length(length: Match[int], user_id: str = get_user_id()) -> bool:
-    if length.available and length.result < 3:
-        await lang.send("wrong_length", user_id)
-        return False
+async def check_length(length: int, user_id: str = get_user_id()) -> None:
+    if length and length < 3:
+        await lang.finish("wrong_length", user_id)
     try:
-        await dictionary.get_dictionary(length.result)
+        await dictionary.get_dictionary(length)
     except KeyError:
-        await lang.send("wrong_length", user_id)
-        return False
-    return True
+        await lang.finish("wrong_length", user_id)
 
 
-matcher = on_alconna(Alconna("wordle", Args["length", int, 5]), rule=check_length)
+matcher = on_alconna(Alconna("wordle", Args["length", int, 5]))
 
 
 async def check_word(event: Event) -> bool:
@@ -51,6 +48,7 @@ async def check_word(event: Event) -> bool:
 
 @matcher.handle()
 async def _(length: int, user_id: str = get_user_id(), group_id: str = get_group_id()) -> None:
+    await check_length(length)
     history = []
     correct_answer, translate = await dictionary.get_word_randomly(length)
     start_time = datetime.now()
