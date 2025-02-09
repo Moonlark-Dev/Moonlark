@@ -1,8 +1,5 @@
-from datetime import datetime
-import traceback
 from nonebot import require
 from nonebot.plugin import PluginMetadata
-from ..nonebot_plugin_larkuser.utils.matcher import patch_matcher
 
 
 __plugin_meta__ = PluginMetadata(
@@ -17,13 +14,15 @@ require("nonebot_plugin_larkutils")
 require("nonebot_plugin_alconna")
 require("nonebot_plugin_render")
 require("nonebot_plugin_larkuser")
-require("nonebot_plugin_larkuser")
 
 from nonebot_plugin_alconna import Alconna, on_alconna, Args, UniMessage
 from nonebot_plugin_larkutils import get_user_id
 from nonebot_plugin_larklang import LangHelper
 from nonebot_plugin_larkutils.group import get_group_id
 from nonebot_plugin_render import render_template
+from nonebot_plugin_larkuser.utils.matcher import patch_matcher
+from datetime import datetime
+import traceback
 from nonebot.exception import FinishedException
 from nonebot.adapters import Event
 from nonebot.log import logger
