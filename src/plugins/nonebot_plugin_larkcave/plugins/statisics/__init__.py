@@ -26,6 +26,6 @@ from .image import render_pie
 @cave.assign("statisics")
 async def _(session: async_scoped_session, user_id: str = get_user_id()) -> None:
     await lang.send("stat.tip", user_id)
-    data = await merge_small_poster(await set_nickname_for_posters(await get_poster_data(session)), user_id)
+    data = await merge_small_poster(await set_nickname_for_posters(await get_poster_data(session), user_id), user_id)
     img = await render_pie(data, user_id)
     await cave.finish(UniMessage().image(raw=img))

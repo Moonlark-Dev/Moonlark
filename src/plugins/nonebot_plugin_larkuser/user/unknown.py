@@ -38,3 +38,6 @@ class MoonlarkUnknownUser(MoonlarkUser):
 
     async def setup_user(self) -> None:
         self.nickname = "未知用户"
+
+    def has_nickname(self) -> bool:
+        return False

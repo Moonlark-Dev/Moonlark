@@ -16,7 +16,7 @@ require("nonebot_plugin_alconna")
 require("nonebot_plugin_render")
 require("nonebot_plugin_larkuser")
 
-from nonebot_plugin_alconna import Alconna, on_alconna, Args, UniMessage
+from nonebot_plugin_alconna import Alconna, on_alconna, Args, UniMessage, Match
 from nonebot_plugin_larkutils import get_user_id
 from nonebot_plugin_larklang import LangHelper
 from nonebot_plugin_larkutils.group import get_group_id
@@ -30,12 +30,12 @@ from .waiter import Waiter3
 lang = LangHelper()
 
 
-async def check_length(length: int, user_id: str = get_user_id()) -> bool:
-    if length < 3:
+async def check_length(length: Match[int], user_id: str = get_user_id()) -> bool:
+    if length.available and length.result < 3:
         await lang.send("wrong_length", user_id)
         return False
     try:
-        await dictionary.get_dictionary(length)
+        await dictionary.get_dictionary(length.result)
     except KeyError:
         await lang.send("wrong_length", user_id)
         return False
