@@ -35,6 +35,6 @@ class MoonlarkGuestUser(MoonlarkRegisteredUser):
             self.nickname = f"Guest用户-{self.original_user_id}"
         else:
             self.user_has_nickname = True
-        
+
     def has_nickname(self) -> bool:
         return self.user_has_nickname
