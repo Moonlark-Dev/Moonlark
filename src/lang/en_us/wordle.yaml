@@ -1,0 +1,8 @@
+wrong_length: 错误：无效长度。
+title: WORDLE
+success: |
+  回答正确！答案是:
+  {} ({})
+fail: |
+  挑战失败，答案是:
+  {} ({})
