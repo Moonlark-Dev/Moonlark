@@ -59,7 +59,12 @@ async def _(length: int, user_id: str = get_user_id(), group_id: str = get_group
             "wordle.html.jinja",
             await lang.text("title", user_id),
             user_id,
-            templates={"correct_answer": correct_answer, "history": history, "len": len, "answer_length": len(correct_answer)},
+            templates={
+                "correct_answer": correct_answer,
+                "history": history,
+                "len": len,
+                "answer_length": len(correct_answer),
+            },
         )
         waiter = Waiter3(UniMessage().image(raw=image), group_id, Rule(check_word))
         await waiter.wait()
