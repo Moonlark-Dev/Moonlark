@@ -58,7 +58,7 @@ class WaitUserInput:
             await lang.finish("prompt.unknown", user_id, at_sender=False, reply_message=True, matcher=matcher)
         self.answer = text
 
-    async def wait(self, timeout: int = 210) -> None:
+    async def wait(self, timeout: int = 210, auto_finish: bool = True) -> None:
         await self.prompt_text.send()
         start_time = datetime.now()
         while self.answer is None and (datetime.now() - start_time).total_seconds() <= timeout:
@@ -66,9 +66,11 @@ class WaitUserInput:
         if self.answer is None:
             if self.default is not None:
                 self.answer = self.default
-            else:
+            elif auto_finish:
                 self.message_matcher.destroy()
-                await lang.finish("prompt.timeout", self.user_id, at_sender=True)
+                await lang.finish("prompt.timeout", self.user_id, at_sender=False, reply_message=True)
+            else:
+                raise TimeoutError
         self.message_matcher.destroy()
 
     def get(self, parser: Callable[[str], T] = lambda message: message) -> T:
