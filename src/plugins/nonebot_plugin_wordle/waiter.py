@@ -1,3 +1,4 @@
+from typing import Optional
 from nonebot.adapters import Event
 from nonebot.matcher import Matcher
 from nonebot_plugin_larkuser.utils.waiter2 import WaitUserInput
@@ -13,7 +14,7 @@ class Waiter3(WaitUserInput):
         prompt_text: UniMessage,
         session_id: str,
         checker: Rule,
-        default: str = "",
+        default: Optional[str] = None,
     ) -> None:
         self.prompt_text = prompt_text
         self.user_id = ""
