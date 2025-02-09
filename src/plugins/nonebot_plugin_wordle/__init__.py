@@ -22,6 +22,7 @@ from nonebot_plugin_larklang import LangHelper
 from nonebot_plugin_larkutils.group import get_group_id
 from nonebot_plugin_render import render_template
 from nonebot.adapters import Event
+from nonebot.log import logger
 from nonebot.rule import Rule
 from nonebot_plugin_minigame_api import create_minigame_session
 from . import dictionary
@@ -52,12 +53,13 @@ async def _(length: int, user_id: str = get_user_id(), group_id: str = get_group
     history = []
     correct_answer, translate = await dictionary.get_word_randomly(length)
     start_time = datetime.now()
+    logger.debug(correct_answer)
     while len(history) < 6:
         image = await render_template(
             "wordle.html.jinja",
             await lang.text("title", user_id),
             user_id,
-            templates={"correct_answer": correct_answer, "history": history},
+            templates={"correct_answer": correct_answer, "history": history, "len": len, "answer_length": len(correct_answer)},
         )
         waiter = Waiter3(UniMessage().image(raw=image), group_id, Rule(check_word))
         await waiter.wait()
@@ -69,5 +71,8 @@ async def _(length: int, user_id: str = get_user_id(), group_id: str = get_group
             t = await session.finish()
             await session.add_points(round((7 - len(history)) * 5000 / t))
             await lang.finish("success", user_id, correct_answer, translate)
-        history.append(list(result))
+        elif result == "q":
+            break
+        elif result:
+            history.append(list(result))
     await lang.finish("fail", user_id, correct_answer, translate)
