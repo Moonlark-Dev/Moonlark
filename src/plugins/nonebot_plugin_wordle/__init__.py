@@ -21,6 +21,7 @@ from nonebot_plugin_larkutils import get_user_id
 from nonebot_plugin_larklang import LangHelper
 from nonebot_plugin_larkutils.group import get_group_id
 from nonebot_plugin_render import render_template
+from nonebot.exception import FinishedException
 from nonebot.adapters import Event
 from nonebot.log import logger
 from nonebot.rule import Rule
@@ -67,7 +68,11 @@ async def _(length: int, user_id: str = get_user_id(), group_id: str = get_group
             },
         )
         waiter = Waiter3(UniMessage().image(raw=image), group_id, Rule(check_word))
-        await waiter.wait()
+        try:
+            await waiter.wait(int(295 - (datetime.now() - start_time).total_seconds()))
+            # 留下 5s 给他发答案
+        except FinishedException:
+            break
         result = waiter.get()
         if result == correct_answer:
             user_id = waiter.user_id
