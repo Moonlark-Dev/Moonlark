@@ -6,6 +6,7 @@ from nonebot import on_message
 from nonebot_plugin_larkutils import get_group_id, get_user_id
 from nonebot.rule import Rule
 from nonebot_plugin_alconna import UniMessage
+from nonebot_plugin_larkuser import patch_matcher
 
 
 class Waiter3(WaitUserInput):
@@ -23,6 +24,7 @@ class Waiter3(WaitUserInput):
         self.checker = lambda _: True
         self.answer = None
         self.message_matcher = on_message(block=True, rule=checker)
+        patch_matcher(self.message_matcher)
         self.message_matcher.handle()(self.handle_message)
 
     async def handle_message(self, matcher: Matcher, event: Event, user_id: str = get_user_id()) -> None:
