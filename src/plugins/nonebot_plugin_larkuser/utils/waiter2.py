@@ -35,7 +35,7 @@ class WaitUserInput:
         prompt_text: UniMessage,
         user_id: str,
         checker: Optional[Callable[[str], bool]],
-        default: str = "",
+        default: Optional[str] = None,
     ) -> None:
         self.prompt_text = prompt_text
         self.user_id = user_id
@@ -58,13 +58,16 @@ class WaitUserInput:
             await lang.finish("prompt.unknown", user_id, at_sender=False, reply_message=True, matcher=matcher)
         self.answer = text
 
-    async def wait(self, timeout: int = 30) -> None:
+    async def wait(self, timeout: int = 210) -> None:
         await self.prompt_text.send()
         start_time = datetime.now()
         while self.answer is None and (datetime.now() - start_time).total_seconds() <= timeout:
             await asyncio.sleep(0.1)
         if self.answer is None:
-            self.answer = self.default
+            if self.default is not None:
+                self.answer = self.default
+            else:
+                await lang.finish("prompt.timeout", self.user_id, at_sender=True)
         self.message_matcher.destroy()
 
     def get(self, parser: Callable[[str], T] = lambda message: message) -> T:

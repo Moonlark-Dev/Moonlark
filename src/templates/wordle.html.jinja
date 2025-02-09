@@ -1,18 +1,24 @@
 {% extends base %}
 
 {% block body %}
+<style>
+.text {
+    text-align: center;
+    text-transform: capitalize;
+}
+</style>
+
 <table class="table table-striped table-bordered">
     <tbody>
         {% for c in range(6) %}
             <tr>
                 {% if c >= len(history) %}
-                    {% for _ in range(len(correct_answer)) %}
-                        <td></td>
+                    {% for _ in range(answer_length) %}
                         <td></td>
                     {% endfor %}
                 {% else %}
-                    {% for i in range(len(history[c]) - 1) %}
-                        <td class="bg-opacity-75 " id="letter-{{ c }}-{{ i }}">
+                    {% for i in range(answer_length) %}
+                        <td class="h3 text bg-opacity-75 " id="letter-{{ c }}-{{ i }}">
                             {{ history[c][i] }}
                         </td>
                     {% endfor %}
@@ -21,18 +27,19 @@
         {% endfor %}
     </tbody>
 </table>
+
 <script>
-let history = {{ str(history) | tojson }};
-let correctAnswer = "{{ corrent_answer }}";
+let history = {{ history | tojson }};
+let correctAnswer = "{{ correct_answer }}";
 
 function checkWordle(line) {
   const result = [];
   const correctAnswerMap = {};
-  for (let i = 0; i < currectAnswer.length; i++) {
-    correctAnswerMap[currectAnswer[i]] = (correctAnswerMap[currectAnswer[i]] || 0) + 1;
+  for (let i = 0; i < correctAnswer.length; i++) {
+    correctAnswerMap[correctAnswer[i]] = (correctAnswerMap[correctAnswer[i]] || 0) + 1;
   }
   for (let i = 0; i < line.length; i++) {
-    if (line[i] === currectAnswer[i]) {
+    if (line[i] === correctAnswer[i]) {
       result.push('success');
       correctAnswerMap[line[i]] -= 1;
     } else {
@@ -49,15 +56,17 @@ function checkWordle(line) {
       }
     }
   }
-  console.log(result);
+  console.log(result.toString());
   return result;
 }
 
+console.log(history.toString());
 history.forEach((line, index, __arr) => {
     checkWordle(line).forEach((color, letterIndex, _arr) => {
         let element = document.getElementById(`letter-${index}-${letterIndex}`);
         element.classList.add(`bg-${color}`);
     });
 });
+
 </script>
 {% endblock body %}
