@@ -69,9 +69,8 @@ async def _(length: int, user_id: str = get_user_id(), group_id: str = get_group
         )
         waiter = Waiter3(UniMessage().image(raw=image), group_id, Rule(check_word))
         try:
-            await waiter.wait(int(295 - (datetime.now() - start_time).total_seconds()))
-            # 留下 5s 给他发答案
-        except FinishedException:
+            await waiter.wait(int(290 - (datetime.now() - start_time).total_seconds()), False)
+        except TimeoutError:
             break
         result = waiter.get()
         if result == correct_answer:
