@@ -14,7 +14,11 @@
             <tr>
                 {% if c >= len(history) %}
                     {% for _ in range(answer_length) %}
-                        <td></td>
+                      {% if c == len(history) %}
+                        <td class="h3 bg-opacity-75 bg-info">&nbsp;</td>
+                      {% else %}
+                        <td class="h3">&nbsp;</td>
+                      {% endif %}
                     {% endfor %}
                 {% else %}
                     {% for i in range(answer_length) %}
