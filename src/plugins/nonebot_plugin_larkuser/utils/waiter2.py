@@ -35,7 +35,7 @@ class WaitUserInput:
         prompt_text: UniMessage,
         user_id: str,
         checker: Optional[Callable[[str], bool]],
-        default: Optional[str] = "",
+        default: Optional[str] = None,
     ) -> None:
         self.prompt_text = prompt_text
         self.user_id = user_id
