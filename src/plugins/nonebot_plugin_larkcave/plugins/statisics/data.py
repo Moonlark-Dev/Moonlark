@@ -32,7 +32,7 @@ async def set_nickname_for_posters(data: dict[str, int], sender_id: str) -> dict
 
 async def merge_small_poster(data: dict[str, int], sender_id: str) -> dict[str, int]:
     posters = {}
-    lowest = sum([i for i in data.values()]) / len(data) * 0.01
+    lowest = sum([i for i in data.values()]) * 0.01
     other_key_name = await lang.text("stat.other", sender_id)
     for key, count in data.items():
         if key == other_key_name:
