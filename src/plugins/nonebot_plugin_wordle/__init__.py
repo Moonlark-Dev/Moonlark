@@ -2,6 +2,7 @@ from datetime import datetime
 import traceback
 from nonebot import require
 from nonebot.plugin import PluginMetadata
+from ..nonebot_plugin_larkuser.utils.matcher import patch_matcher
 
 
 __plugin_meta__ = PluginMetadata(
@@ -15,6 +16,7 @@ require("nonebot_plugin_larklang")
 require("nonebot_plugin_larkutils")
 require("nonebot_plugin_alconna")
 require("nonebot_plugin_render")
+require("nonebot_plugin_larkuser")
 require("nonebot_plugin_larkuser")
 
 from nonebot_plugin_alconna import Alconna, on_alconna, Args, UniMessage
@@ -43,6 +45,7 @@ async def check_length(length: int, user_id: str = get_user_id()) -> None:
 
 
 matcher = on_alconna(Alconna("wordle", Args["length", int, 5]))
+patch_matcher(matcher)
 playing_groups = []
 
 async def check_word(event: Event) -> bool:
