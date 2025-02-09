@@ -67,6 +67,7 @@ class WaitUserInput:
             if self.default is not None:
                 self.answer = self.default
             else:
+                self.message_matcher.destroy()
                 await lang.finish("prompt.timeout", self.user_id, at_sender=True)
         self.message_matcher.destroy()
 
