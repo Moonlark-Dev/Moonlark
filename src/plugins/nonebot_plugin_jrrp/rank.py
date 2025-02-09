@@ -2,9 +2,8 @@ from typing import AsyncGenerator
 from nonebot_plugin_alconna import UniMessage
 from nonebot_plugin_orm import get_session
 from sqlalchemy import select
-from nonebot_plugin_larkuser import get_user
 from .lang import lang
-from .jrrp import get_luck_value
+from nonebot_plugin_larkutils.jrrp import get_luck_value
 from nonebot_plugin_larkutils import get_user_id
 from .__main__ import jrrp
 from nonebot_plugin_larkuser.models import UserData
