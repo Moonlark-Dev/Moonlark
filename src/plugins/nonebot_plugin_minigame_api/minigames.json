@@ -18,5 +18,10 @@
     "id": "manual_copy",
     "name": "manual-copy",
     "usage": 1
+  },
+  {
+    "id": "wordle",
+    "name": "wordle",
+    "usage": 1
   }
 ]
