@@ -21,16 +21,14 @@ cave:
   user_cd: User cooldown... ({} minutes remaining)
 help:
   d: Echo Cave
-  i: 投稿或查看其他用户投稿的回声洞，所有内容依照 CC-BY-NC-SA 4.0 许可协议授权
+  i: '（与漂流瓶类似）投稿或查看其他用户投稿的回声洞，所有内容依照 CC-BY-NC-SA 4.0 许可协议授权'
   u1: cave (随机条目)
-  u2: cave-a <content> (submit new echo cave)
-  u3: cave-r <ID> (删除条目)
+  u2: cave-a <内容...> (投稿条目)
+  u3: cave-r [-c] <ID> (删除条目或评论)
   u4: cave-s <ID> (恢复 7 天内删除的条目)
   u5: cave-g <ID> (查看自己投稿的条目)
-  u6: cave-c [-u|--user] (check cooldown)
-  u7: cave-c --set <time (minutes)> (change cooldown time)
-  u8: cave-r -c <ID> (delete comment)
-  u9: cave-s (统计投稿者)
+  u6: cave-c [-u|--user|--set <时间(分钟)>] (查看或修改冷却状态)
+  u7: cave-s (统计投稿者)
 remove:
   no_result: The echo hole does not exist or has been deleted!
   no_permission: Insufficient permissions!
