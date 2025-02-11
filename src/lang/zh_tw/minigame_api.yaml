@@ -22,8 +22,12 @@ help:
 #各小游戏帮助文本
 defuse_tnt:
   description: 拆除 TNT
-  details: '（wordle）通过猜测排列出正确的密码。'
+  details: 通过猜测排列出正确的密码。
   usage1: defuse-tnt
+wordle:
+  description: WORDLE
+  details: 多人的猜单词游戏（为了避免干扰使用，不成功的匹配不会被提示。）
+  usage1: wordle [长度=5]
 '2048':
   description: 2048 小游戏
   details: 数字合成游戏 —— 2048
