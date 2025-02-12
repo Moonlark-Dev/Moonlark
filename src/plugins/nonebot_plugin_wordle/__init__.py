@@ -55,7 +55,6 @@ async def check_word(event: Event) -> bool:
 class Wordle:
 
     def __init__(self, correct_answer: str, user_id: str, translate: str, group_id: str) -> None:
-        playing_groups.append(group_id)
         self.history = []
         self.group_id = group_id
         self.correct_answer = correct_answer
@@ -64,8 +63,12 @@ class Wordle:
         self.start_time = datetime.now()
         logger.debug(correct_answer)
 
-    def __del__(self) -> None:
+    def __exit__(self, *_args) -> None:
         playing_groups.remove(self.group_id)
+
+    def __enter__(self) -> "Wordle":
+        playing_groups.append(self.group_id)
+        return self
 
     async def ask(self) -> None:
         image = await render_template(
@@ -114,11 +117,11 @@ async def _(length: int, user_id: str = get_user_id(), group_id: str = get_group
         await lang.finish("playing", user_id)
     await check_length(length)
     correct_answer, translate = await dictionary.get_word_randomly(length)
-    wordle = Wordle(correct_answer, user_id, translate, group_id)
-    try:
-        await wordle.loop()
-    except FinishedException:
-        raise
-    except Exception:
-        logger.error(traceback.format_exc())
-        await lang.finish("error", user_id, correct_answer, translate)
+    with Wordle(correct_answer, user_id, translate, group_id) as wordle:
+        try:
+            await wordle.loop()
+        except FinishedException:
+            raise
+        except Exception:
+            logger.error(traceback.format_exc())
+            await lang.finish("error", user_id, correct_answer, translate)

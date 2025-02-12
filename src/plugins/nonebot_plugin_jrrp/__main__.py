@@ -22,4 +22,4 @@ async def _(value: int, user_id: str = get_user_id()) -> None:
         d += timedelta(1)
         if get_luck_value(user_id, d) == value:
             await lang.finish("get.found", user_id, value, d.isoformat())
-    await lang.finish("get.not_found", user_id)
+    await lang.finish("get.not_found", user_id, value)
