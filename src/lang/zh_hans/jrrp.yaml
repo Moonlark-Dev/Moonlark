@@ -17,3 +17,7 @@ help:
   details: 查询今天的人品值，今天也是幸运的一天～
   usage1: jrrp (获取今天的人品值)
   usage2: jrrp --rank (今日人品排名)
+  usage3: jrrp -g <分数> (计算下一个会出现某分数的日期)
+get:
+  not_found: 接下来一年你都不会出现 {} 分！
+  found: '你的下一个 {} 分会出现在: {}'
