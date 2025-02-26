@@ -1,1 +1,0 @@
-import{_ as s,c as a,o as i,a2 as e}from"./chunks/framework.CBal0aa0.js";const E=JSON.parse('{"title":"LarkUID","description":"","frontmatter":{},"headers":[],"relativePath":"plugins/uid.md","filePath":"plugins/uid.md"}'),t={name:"plugins/uid.md"},n=e("",27),l=[n];function h(r,o,p,d,k,c){return i(),a("div",null,l)}const g=s(t,[["render",h]]);export{E as __pageData,g as default};

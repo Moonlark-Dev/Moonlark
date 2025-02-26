@@ -1,1 +1,0 @@
-import{_ as a,c as e,o as i,a2 as l}from"./chunks/framework.CBal0aa0.js";const b=JSON.parse('{"title":"Help","description":"","frontmatter":{},"headers":[],"relativePath":"plugins/help.md","filePath":"plugins/help.md"}'),s={name:"plugins/help.md"},o=l("",25),t=[o];function h(d,c,r,n,p,k){return i(),e("div",null,t)}const g=a(s,[["render",h]]);export{b as __pageData,g as default};
