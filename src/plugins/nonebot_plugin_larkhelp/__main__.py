@@ -78,7 +78,7 @@ async def generate_markdown() -> str:
     await load_languages()
     user_id = f"mlsid::--lang={sys.argv[1]}"
     text = await lang.text("markdown.title", user_id)
-    for command in (await get_templates(user_id))["commands"]:
+    for command in sorted((await get_templates(user_id))["commands"]):
         text += await lang.text(
             "markdown.command", user_id, command["name"], command["description"], command["details"]
         )
