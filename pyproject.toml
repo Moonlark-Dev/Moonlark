@@ -94,7 +94,7 @@ readme = "README.md"
 python = "^3.11"
 nonebot-plugin-cnrail = "^0.3.0"
 nonebot-plugin-picmcstat = "^0.6.1"
-nonebot-plugin-bilichat = "^6.2.0"
+nonebot-plugin-bilichat = "^5.13.4"
 nonebot-plugin-sentry = "^2.0.0"
 nonebot-plugin-fakepic = "^0.2.2"
 moonlark-custom-plugins = {path = "src", develop = true}
