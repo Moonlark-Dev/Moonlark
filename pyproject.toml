@@ -92,18 +92,18 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.11"
-nonebot-plugin-cnrail = "^0.2.3"
+nonebot-plugin-cnrail = "^0.3"
 nonebot-plugin-picmcstat = "^0.6.1"
-nonebot-plugin-bilichat = "^5.10.4"
+nonebot-plugin-bilichat = "^5.13.4"
 nonebot-plugin-sentry = "^2.0.0"
 nonebot-plugin-fakepic = "^0.2.2"
 moonlark-custom-plugins = {path = "src", develop = true}
 
 [tool.poetry.group.dev.dependencies]
-nb-cli = "^1.4.0"
-ipykernel = "^6.29.4"
-ruff = "^0.4.7"
-pre-commit = "^3.7.1"
+nb-cli = "^1.4.2"
+ipykernel = "^6.29.5"
+ruff = "^0.9.7"
+pre-commit = "^4.1.0"
 
 
 [build-system]
