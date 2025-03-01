@@ -25,13 +25,13 @@ cryptography = "^44.0.0"
 pyproject-toml = "^0.0.10"
 matplotlib = "^3.10.0"
 
-nonebot-adapter-qq = "^1.4.4"
 nonebot-adapter-onebot = "^2.4.3"
 nonebot-plugin-htmlrender = "^0.3.1"
 nonebot-plugin-alconna = "^0.54.2"
 nonebot-plugin-picstatus = "^2.0.0.post2"
 nonebot-plugin-orm = "^0.7.6"
 nonebot-plugin-session = "^0.2.3"
+nonebot-adapter-qq = {git = "https://github.com/This-is-XiaoDeng/adapter-qq"}
 
 
 [build-system]
