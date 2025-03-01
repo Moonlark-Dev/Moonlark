@@ -10,6 +10,7 @@ class Character(ControllableMonomer, ABC):
 
     def __init__(self, team: ControllableTeam, data: CharacterData) -> None:
         super().__init__(team)
+        self.star = 4
         self.character_data = data
         self.health = self.character_data["current_hp"]
 

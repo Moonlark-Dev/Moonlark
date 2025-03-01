@@ -35,6 +35,8 @@ characters:
       common: 射击！
       skill: 蚀月轰击
       final_skill: 月殒天冲
+    info:
+      greeting: 
 buff:
   lunar_eclipse_cracks:
     name: 月蚀裂痕

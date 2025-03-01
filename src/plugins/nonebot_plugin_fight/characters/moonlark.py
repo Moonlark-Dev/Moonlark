@@ -11,6 +11,7 @@ class Moonlark(Character):
 
     def __init__(self, team: ControllableTeam, data: CharacterData) -> None:
         super().__init__(team, data)
+        self.star = 5
         self.skills = [self.skill_common_attack, self.skill_special]
         self.final_skill_power = [0, 100]
         self.level = level.character.get_current_level(data["experience"])["level"]

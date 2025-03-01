@@ -7,15 +7,15 @@ if TYPE_CHECKING:
 
 class Equipment(ABC):
 
-    def __init__(self, experience: int, gains: dict[str, Any], monomer: "Monomer") -> None:
+    def __init__(self, experience: int, gains: dict[str, Any]) -> None:
         self.experience = experience
         self.gains: dict[str, Any] = gains
+        self.monomer = None
+
+    @abstractmethod
+    async def get_name(self) -> str:
+        pass
+
+    @abstractmethod
+    async def setup(self, monomer: "Monomer") -> str:
         self.monomer = monomer
-
-    @abstractmethod
-    async def get_name() -> str:
-        pass
-
-    @abstractmethod
-    async def setup() -> str:
-        pass

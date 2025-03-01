@@ -15,11 +15,11 @@ class ControllableCharacter(Model):
     current_hp: Mapped[int]
     fav: Mapped[Optional[float]] = mapped_column(nullable=True)
     buff: Mapped[bytes] = mapped_column(default=b"{}")
-    weapon: Mapped[int]
     equipment: Mapped[bytes] = mapped_column(default=b"{}")
-    talent_level: Mapped[bytes]
+    talent_level: Mapped[bytes] = mapped_column(default=b"{}")
     weapon_experience: Mapped[int]
     weapon_damage: Mapped[int]
+    weapon_talent_level: Mapped[bytes] = mapped_column(default=b"{}")
 
 
 class EquipmentData(Model):
@@ -32,5 +32,7 @@ class EquipmentData(Model):
 
 class PlayerTeam(Model):
     user_id: Mapped[str] = mapped_column(String(128), primary_key=True)
-    characters: Mapped[bytes] = mapped_column(default=b"[]")
-    name: Mapped[Optional[str]] = mapped_column(Text(), nullable=True)
+    striker_1: Mapped[Optional[int]] = mapped_column(nullable=True, default=None)
+    striker_2: Mapped[Optional[int]] = mapped_column(nullable=True, default=None)
+    striker_3: Mapped[Optional[int]] = mapped_column(nullable=True, default=None)
+    special_1: Mapped[Optional[int]] = mapped_column(nullable=True, default=None)
