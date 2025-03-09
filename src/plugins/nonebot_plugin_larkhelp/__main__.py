@@ -1,4 +1,5 @@
 import asyncio
+from unittest.util import sorted_list_difference
 from nonebot_plugin_larklang.__main__ import load_languages
 from pathlib import Path
 import sys
@@ -67,9 +68,10 @@ async def get_help_dict(name: str, user_id: str, data: Optional[CommandHelp] = N
 async def get_templates(user_id: str) -> dict[str, Any]:
     if not help_list:
         raise ValueError("No Command")
+    sorted_help_list = sorted(list(help_list.items()), key=lambda x: x[0])
     return dict(
         usages_text=await lang.text("list.usage_text", user_id),
-        commands=[await get_help_dict(name, user_id, data) for name, data in help_list.items()],
+        commands=[await get_help_dict(name, user_id, data) for name, data in sorted_help_list],
     )
 
 
@@ -78,7 +80,7 @@ async def generate_markdown() -> str:
     await load_languages()
     user_id = f"mlsid::--lang={sys.argv[1]}"
     text = await lang.text("markdown.title", user_id)
-    for command in sorted((await get_templates(user_id))["commands"]):
+    for command in (await get_templates(user_id))["commands"]:
         text += await lang.text(
             "markdown.command", user_id, command["name"], command["description"], command["details"]
         )
