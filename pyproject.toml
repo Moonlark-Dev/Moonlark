@@ -21,7 +21,6 @@ plugins = [
     "nonebot_plugin_session",
     "nonebot_plugin_waiter",
     "nonebot_plugin_bilichat",
-    "nonebot_plugin_cnrail",
     "nonebot_plugin_picmcstat",
     "nonebot_plugin_fakepic",
 
@@ -92,7 +91,6 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.11"
-nonebot-plugin-cnrail = "^0.3"
 nonebot-plugin-picmcstat = "^0.6.1"
 nonebot-plugin-bilichat = "^5.13.4"
 nonebot-plugin-sentry = "^2.0.0"
