@@ -114,12 +114,12 @@ class LangHelper:
         text = await get_text(language, self.plugin_name, key, session, *args, **kwargs)
         await session.close()
         return text
-    
+
     def get_command_helper(self, base_key: Optional[str] = None, **preformated_keys) -> Any:
         async def _get_command_helper() -> "CommandLangHelper":
             return CommandLangHelper(self, base_key, **preformated_keys)
+
         return Depends(_get_command_helper)
-        
 
     async def is_key_exists(self, key: str, user_id: str | int) -> bool:
         return not (await self.text(key, user_id)).startswith("<缺失: ")
@@ -170,5 +170,3 @@ class CommandLangHelper(LangHelper):
 
     async def text(self, key: str, user_id: str | int, *args, **kwargs) -> str:
         return await super().text(self.get_key(key), user_id, *args, **self.preformated_keys, **kwargs)
-
-    
