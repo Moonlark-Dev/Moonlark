@@ -86,7 +86,12 @@ async def handle_get_cave(
 
 
 @cave.assign("$main")
-async def _(session: async_scoped_session, user_id: str = get_user_id(), group_id: str = get_group_id(), is_public_bot: bool = is_qq_public_bot()) -> None:
+async def _(
+    session: async_scoped_session,
+    user_id: str = get_user_id(),
+    group_id: str = get_group_id(),
+    is_public_bot: bool = is_qq_public_bot(),
+) -> None:
     await complete_schedule(user_id, "cave")
     await handle_get_cave(session, user_id, group_id, False, is_public_bot)
 

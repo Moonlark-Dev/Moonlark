@@ -7,7 +7,9 @@ from .config import config
 from .models import GroupData, UserCoolDownData
 
 
-async def is_group_cooled(group_id: str, session: async_scoped_session, is_public_bot: bool = False) -> tuple[bool, float]:
+async def is_group_cooled(
+    group_id: str, session: async_scoped_session, is_public_bot: bool = False
+) -> tuple[bool, float]:
     try:
         data = await session.get_one(GroupData, {"group_id": group_id})
     except NoResultFound:
@@ -15,7 +17,7 @@ async def is_group_cooled(group_id: str, session: async_scoped_session, is_publi
     if is_public_bot:
         group_cd = timedelta(minutes=data.cool_down_time // 2)
     else:
-        group_cd = timedelta(minutes=data.cool_down_time) 
+        group_cd = timedelta(minutes=data.cool_down_time)
     remain = (group_cd - (datetime.now() - data.last_use)).total_seconds()
     return remain <= 0, remain
 
@@ -30,15 +32,17 @@ async def on_group_use(group_id: str, session: async_scoped_session) -> None:
     await session.commit()
 
 
-async def is_user_cooled(user_id: str, session: async_scoped_session, is_public_bot: bool = False) -> tuple[bool, float]:
+async def is_user_cooled(
+    user_id: str, session: async_scoped_session, is_public_bot: bool = False
+) -> tuple[bool, float]:
     try:
         data = await session.get_one(UserCoolDownData, {"user_id": user_id})
     except NoResultFound:
         return True, 0
     if is_public_bot:
-        user_cd = timedelta(minutes=config.cave_user_cd // 2) 
+        user_cd = timedelta(minutes=config.cave_user_cd // 2)
     else:
-        user_cd = timedelta(minutes=config.cave_user_cd) 
+        user_cd = timedelta(minutes=config.cave_user_cd)
     remain = (user_cd - (datetime.now() - data.last_use)).total_seconds()
     return remain <= 0, remain
 
