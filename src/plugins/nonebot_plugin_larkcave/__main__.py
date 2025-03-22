@@ -9,7 +9,7 @@ from sqlalchemy.exc import NoResultFound
 from nonebot.exception import ActionFailed
 
 
-from nonebot_plugin_larkutils import get_group_id, get_user_id
+from nonebot_plugin_larkutils import get_group_id, get_user_id, is_qq_public_bot
 from .cool_down import is_group_cooled, is_user_cooled, on_use
 from .decoder import decode_cave
 from .lang import lang
@@ -68,11 +68,11 @@ async def send_cave(session: async_scoped_session, user_id: str, group_id: str, 
 
 
 async def handle_get_cave(
-    session: async_scoped_session, user_id: str = get_user_id(), group_id: str = get_group_id(), reverse: bool = False
+    session: async_scoped_session, user_id: str, group_id: str, reverse: bool = False, is_public_bot: bool = False
 ) -> None:
-    if not (user_cd_data := await is_user_cooled(user_id, session))[0]:
+    if not (user_cd_data := await is_user_cooled(user_id, session, is_public_bot))[0]:
         await lang.finish("cave.user_cd", user_id, round(user_cd_data[1] / 60, 3))
-    if not (group_cd_data := await is_group_cooled(group_id, session))[0]:
+    if not (group_cd_data := await is_group_cooled(group_id, session, is_public_bot))[0]:
         await lang.finish("cave.group_cd", user_id, round(group_cd_data[1] / 60, 3))
     for _ in range(3):
         try:
@@ -86,9 +86,9 @@ async def handle_get_cave(
 
 
 @cave.assign("$main")
-async def _(session: async_scoped_session, user_id: str = get_user_id(), group_id: str = get_group_id()) -> None:
+async def _(session: async_scoped_session, user_id: str = get_user_id(), group_id: str = get_group_id(), is_public_bot: bool = is_qq_public_bot()) -> None:
     await complete_schedule(user_id, "cave")
-    await handle_get_cave(session, user_id, group_id, False)
+    await handle_get_cave(session, user_id, group_id, False, is_public_bot)
 
 
 @on_fullmatch("evac\\").handle()
