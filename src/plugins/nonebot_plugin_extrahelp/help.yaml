@@ -1,10 +1,5 @@
 plugin: 'extrahelp'
 commands:
-  train:
-    description: train.description
-    details: train.details
-    usages:
-      - train.usage
   motd:
     description: motd.description
     details: motd.details

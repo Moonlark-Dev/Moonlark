@@ -14,4 +14,4 @@ require("nonebot_plugin_larkutils")
 require("nonebot_plugin_orm")
 
 from . import command as _command
-from .__main__ import LangHelper
+from .__main__ import LangHelper, CommandLangHelper

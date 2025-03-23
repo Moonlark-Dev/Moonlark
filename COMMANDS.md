@@ -230,12 +230,6 @@ Linux 手册 (ManPage) 查询
 
 ### 用法
 - `/time-progress`
-## `train`: 列车查询
-
-[lgc-NB2Dev/nonebot-plugin-cnrail] 查询 12306 列车时刻表
-
-### 用法
-- `/train <列车> (查询列车时刻)`
 ## `vote`: 投票
 
 Moonlark 投票
