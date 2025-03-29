@@ -96,12 +96,12 @@ def generate_help_markdown() -> None:
 @creator("help.html.jinja")
 async def render(user_id: str) -> bytes:
     return await render_template(
-        "help.html.jinja", 
+        "help.html.jinja",
         await lang.text("list.title", user_id),
-        user_id, 
+        user_id,
         {"categories": await get_templates(user_id)},
         {"usage_text": await lang.text("list.usage_text", user_id)},
-        True
+        True,
     )
 
 

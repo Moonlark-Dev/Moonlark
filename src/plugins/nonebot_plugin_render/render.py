@@ -44,7 +44,9 @@ def get_plugin_name(module: ModuleType | None) -> Optional[str]:
     return plugin.name
 
 
-async def render_template(name: str, title: str, user_id: str, templates: dict, keys: dict[str, str] = {}, cache: bool = False) -> bytes:
+async def render_template(
+    name: str, title: str, user_id: str, templates: dict, keys: dict[str, str] = {}, cache: bool = False
+) -> bytes:
     module = inspect.getmodule(inspect.stack()[1][0])
     plugin_name = get_plugin_name(module) or "nonebot-plugin-render"
     footer = await lang.text("render.footer", user_id, plugin_name)
