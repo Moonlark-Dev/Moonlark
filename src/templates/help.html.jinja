@@ -8,10 +8,8 @@
     <ul>
     {% for command in c.commands %}
     <li>
-        <strong>{{ command.name }}</strong>: {{ command.description }}
-        {% if len(command.usages) > 1 %}
-        <span class="badge bg-info">{{ len(command.usages)}}</span>
-        {% endif %}
+        <span class="badge bg-info">{{ command.name }}</span> {{ command.description }}
+    </li>
     {% endfor %}
     </ul>
 {% if not loop.last %}
