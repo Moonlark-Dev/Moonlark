@@ -65,14 +65,12 @@ async def get_help_dict(name: str, user_id: str, data: Optional[CommandHelp] = N
     }
 
 
-async def get_templates(user_id: str) -> dict[str, Any]:
+async def get_templates(user_id: str) -> list[dict[str, Any]]:
     if not help_list:
         raise ValueError("No Command")
     sorted_help_list = sorted(list(help_list.items()), key=lambda x: x[0])
-    return dict(
-        usages_text=await lang.text("list.usage_text", user_id),
-        commands=[await get_help_dict(name, user_id, data) for name, data in sorted_help_list],
-    )
+    commands = [await get_help_dict(name, user_id, data) for name, data in sorted_help_list]
+    return [{"name": None, "commands": commands}]
 
 
 async def generate_markdown() -> str:
@@ -80,7 +78,7 @@ async def generate_markdown() -> str:
     await load_languages()
     user_id = f"mlsid::--lang={sys.argv[1]}"
     text = await lang.text("markdown.title", user_id)
-    for command in (await get_templates(user_id))["commands"]:
+    for command in [category["commands"] for category in (await get_templates(user_id))]:
         text += await lang.text(
             "markdown.command", user_id, command["name"], command["description"], command["details"]
         )
@@ -98,7 +96,12 @@ def generate_help_markdown() -> None:
 @creator("help.html.jinja")
 async def render(user_id: str) -> bytes:
     return await render_template(
-        "help.html.jinja", await lang.text("list.title", user_id), user_id, await get_templates(user_id), True
+        "help.html.jinja", 
+        await lang.text("list.title", user_id),
+        user_id, 
+        {"categories": await get_templates(user_id)},
+        {"usage_text": await lang.text("list.usage_text", user_id)},
+        True
     )
 
 
