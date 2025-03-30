@@ -55,7 +55,8 @@ async def write_friends_file(data: dict[str, float]) -> None:
 async def _(bot: BotQQ, event: FriendAddEvent, user_id: str = get_user_id()) -> None:
     user = await get_user(user_id)
     if user_id not in (friends := await get_friends()):
-        await user.add_fav(config.friend_add_award_fav)
+        if user.is_registered():
+            await user.add_fav(config.friend_add_award_fav)
         friends[user_id] = datetime.now().timestamp()
         await write_friends_file(friends)
         await bot.send_to_c2c(event.openid, await lang.text("text.default", user_id))
