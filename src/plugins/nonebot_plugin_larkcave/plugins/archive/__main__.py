@@ -33,6 +33,8 @@ async def archive_cave(cave_id: int, session: AsyncSession) -> None:
     path = data_dir.joinpath(f"{cave_id}_{str(time.time()).replace('.', '_')}")
     path.mkdir(exist_ok=True)
     cave_data = await session.get_one(CaveData, {"id": cave_id})
+    if cave_data.public:
+        raise ValueError("回声洞未被删除，无法归档")
     async with aiofiles.open(path.joinpath("cave.json"), "w", encoding="utf-8") as f:
         await f.write(
             json.dumps(
@@ -68,7 +70,11 @@ async def _() -> None:
         logger.info(f"正在归档回声洞 {data.id} ...")
         try:
             await archive_cave(data.id, session)
+        except ValueError:
+            pass
         except Exception:
             logger.warning(f"归档回声洞 {data.id} 时出现错误: {traceback.format_exc()}")
+        await session.delete(data)
+    await session.commit()
     logger.info("回声洞归档检查完成！")
     await session.close()
