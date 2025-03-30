@@ -35,7 +35,7 @@
     </div>
     <div class="col-10">
         <h4>{{ data.user }}</h4>
-        <small>{{ data.body }}</small>
+        <small class="text-body">{{ data.body }}</small>
     </div>
 </div>
 <hr>
@@ -63,7 +63,7 @@
         <h4>{{ data.user }}</h4>
         <small>{{ text.discussion.at }} {{ data.category }}</small>
         <hr>
-        <small>{{ data.body }}</small>
+        <small class="text-body">{{ data.body }}</small>
     </div>
 </div>
 <hr>
@@ -119,9 +119,9 @@
     <div class="col-10">
         <h4>{{ data.user }}</h4>
         {{ text.pull.wants_to_merge }} {{data.from}} {{text.pull.into}} {{data.to}}
-        <small>{{ data.body }}</small>
     </div>
 </div>
+<small class="text-body">{{ data.body }}</small>
 <hr>
 <span class="badge bg-dark">{{ data.updated_at }}</span>
 {% if data.state == "open" %}
@@ -133,4 +133,12 @@
 <span class="badge text-light" style="background-color: {{label.color}};">{{ label.name }}</span>
 {% endfor %}
 {% endif %}
+<script>
+document.querySelectorAll(".text-body").forEach((element, index, array) => {
+    element.innerHTML = element.innerHTML.replace(/(?:\r\n|\r|\n)/g, '<br>');
+});
+</script>
+
 {% endblock body %}
+
+
