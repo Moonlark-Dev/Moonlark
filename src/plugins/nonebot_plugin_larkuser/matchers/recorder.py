@@ -12,7 +12,7 @@ from ..models import UserData
 
 async def checker(user: UserInfo = EventUserInfo()) -> bool:
     u = await get_user(user.user_id)
-    return u.is_main_account() and u.get_config_key("lock_nickname_and_avatar", False)
+    return u.is_main_account() and not u.get_config_key("lock_nickname_and_avatar", False)
 
 
 @on_message(block=False, priority=5, rule=checker).handle()
