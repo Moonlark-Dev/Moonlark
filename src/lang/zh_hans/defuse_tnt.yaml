@@ -16,5 +16,8 @@ result:
     用时: {}s
     获得积分: {}
   failed: "拆除失败，TNT 爆炸了！(正确排列: {})"
-
+help:
+  description: 拆除 TNT
+  details: 运气游戏——通过猜测排列出正确的拆除炸弹的密码。
+  usage1: defuse-tnt
 
