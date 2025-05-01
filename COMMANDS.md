@@ -45,6 +45,12 @@ Moonlark 本地化设置
 ### 用法
 - `/pcc [-b|--bag <index>] <count> (兑换)`
 - `/pcc (查看汇率)`
+## `status`: 系统状态
+
+[lgc-NB2Dev/nonebot-plugin-picstatus] 获取 Moonlark 运行状态
+
+### 用法
+- `/status`
 ## `theme`: 主题
 
 设定部分指令的图片渲染主题
@@ -248,9 +254,3 @@ Moonlark 投票
 ### 用法
 - `/schdeule (查看每日任务列表)`
 - `/schdeule collect (领取可领取的奖励)`
-## `status`: 系统状态
-
-[lgc-NB2Dev/nonebot-plugin-picstatus] 获取 Moonlark 运行状态
-
-### 用法
-- `/status`
