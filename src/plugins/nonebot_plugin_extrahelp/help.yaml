@@ -5,9 +5,11 @@ commands:
     details: motd.details
     usages:
       - motd.usage
+    category: tools
   status:
     description: status.description
     details: status.details
     usages:
       - status.usage
+    category: settings
   

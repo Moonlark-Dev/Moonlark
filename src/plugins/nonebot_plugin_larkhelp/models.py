@@ -6,6 +6,7 @@ class CommandHelp(BaseModel):
     description: str
     details: str
     usages: list[str]
+    category: str = "main"
 
 
 class CommandHelpData(BaseModel):

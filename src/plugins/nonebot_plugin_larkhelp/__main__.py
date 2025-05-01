@@ -69,8 +69,17 @@ async def get_templates(user_id: str) -> list[dict[str, Any]]:
     if not help_list:
         raise ValueError("No Command")
     sorted_help_list = sorted(list(help_list.items()), key=lambda x: x[0])
-    commands = [await get_help_dict(name, user_id, data) for name, data in sorted_help_list]
-    return [{"name": None, "commands": commands}]
+    commands = []
+    for command in [await get_help_dict(name, user_id, data) for name, data in sorted_help_list]:
+        for category in commands:
+            if category["name"] == command["name"]:
+                category["commands"].append(command)
+                break
+        else:
+            commands.append({"name": command["name"], "commands": [command]})
+    for category in commands:
+        category["name"] = await lang.text(f"list.category.{category['name']}", user_id)
+    return commands
 
 
 async def generate_markdown() -> str:
@@ -78,7 +87,10 @@ async def generate_markdown() -> str:
     await load_languages()
     user_id = f"mlsid::--lang={sys.argv[1]}"
     text = await lang.text("markdown.title", user_id)
-    for command in [category["commands"] for category in (await get_templates(user_id))]:
+    commands = []
+    for command_list in [category["commands"] for category in (await get_templates(user_id))]:
+        commands.extend(command_list)
+    for command in commands:
         text += await lang.text(
             "markdown.command", user_id, command["name"], command["description"], command["details"]
         )

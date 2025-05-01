@@ -6,8 +6,10 @@ commands:
     usages:
       - help.usage
       - help.usage_invite
+    category: setting
   whoami:
     description: help_whoami.description
     details: help_whoami.details
     usages:
       - help_whoami.usage
+    category: setting

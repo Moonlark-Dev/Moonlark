@@ -9,3 +9,4 @@ commands:
       - help.usage3
       - help.usage4
       - help.usage5
+    category: community

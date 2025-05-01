@@ -5,3 +5,4 @@ commands:
     details: help.det
     usages:
       - help.u1
+    category: tools

@@ -6,3 +6,4 @@ commands:
     usages:
       - help.u1
       - help.u2
+    category: setting
