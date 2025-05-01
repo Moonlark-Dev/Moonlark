@@ -55,7 +55,7 @@ async def get_input(game_map: Map2048, user_id: str) -> Directions:
 
 @cmd.handle()
 async def _(user_id: str = get_user_id()) -> None:
-    session = await create_minigame_session(user_id)
+    session = await create_minigame_session(user_id, "2048")
     game_map = Map2048()
     while True:
         try:
@@ -68,6 +68,6 @@ async def _(user_id: str = get_user_id()) -> None:
             break
         if not game_map.move(direction):
             await lang.text("game.cannot_move", user_id)
-    t = await session.finish()
-    p = await session.add_points(round(game_map.get_score() * 0.8))
-    await lang.finish("game.failed", user_id, round(t, 1), p, game_map.get_score())
+    score = game_map.get_score()
+    t, p = await session.finish(score, 0.75)
+    await lang.finish("game.failed", user_id, t, p, score)

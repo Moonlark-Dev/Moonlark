@@ -29,7 +29,7 @@ async def _(width: int, height: int, user_id: str = get_user_id()) -> None:
     if not (1 <= width <= 9 and 1 <= height <= 9):
         await lang.finish("tol.size_error", user_id)
     game_map = generate_map(width, height)
-    session = await create_minigame_session(user_id)
+    session = await create_minigame_session(user_id, "tol")
     steps = 0
     while any(get_all_lights_stats(game_map)):
         image = draw(game_map)
@@ -46,8 +46,7 @@ async def _(width: int, height: int, user_id: str = get_user_id()) -> None:
         m = string.split(" ")
         game_map = change_light_stats(game_map, int(m[0]) - 1, int(m[1]) - 1)
         steps += 1
-    time = await session.finish()
-    points = await session.add_points(
-        int((width * height * 21600) / ((1 + steps - math.sqrt(width * height)) * math.sqrt(time)))
+    time, points = await session.finish(
+        round((width * height * 21600) / ((1 + steps - math.sqrt(width * height))))
     )
     await lang.finish("tol.success", user_id, steps, points)
