@@ -11,5 +11,5 @@ commands:
     details: status.details
     usages:
       - status.usage
-    category: settings
+    category: setting
   
