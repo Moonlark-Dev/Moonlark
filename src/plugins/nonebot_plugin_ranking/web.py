@@ -37,7 +37,7 @@ class WebRanking(ABC):
             data = await self.get_sorted_data(user_id)
         except TypeError:
             # 兼容旧版
-            data: list[RankingData] = await self.get_sorted_data()      # type: ignore
+            data: list[RankingData] = await self.get_sorted_data()  # type: ignore
         index = offset
         return {
             "me": await find_user(data, user_id),

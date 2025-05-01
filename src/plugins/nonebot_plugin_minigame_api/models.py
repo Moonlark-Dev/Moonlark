@@ -22,7 +22,6 @@ from sqlalchemy import String
 from pydantic import BaseModel
 
 
-
 class UserGameData(Model):
     id_: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     user_id: Mapped[str] = mapped_column(String(128), index=True)

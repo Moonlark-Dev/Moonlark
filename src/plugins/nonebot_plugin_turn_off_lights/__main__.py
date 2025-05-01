@@ -46,7 +46,5 @@ async def _(width: int, height: int, user_id: str = get_user_id()) -> None:
         m = string.split(" ")
         game_map = change_light_stats(game_map, int(m[0]) - 1, int(m[1]) - 1)
         steps += 1
-    time, points = await session.finish(
-        round((width * height * 21600) / ((1 + steps - math.sqrt(width * height))))
-    )
+    time, points = await session.finish(round((width * height * 21600) / ((1 + steps - math.sqrt(width * height)))))
     await lang.finish("tol.success", user_id, steps, points)

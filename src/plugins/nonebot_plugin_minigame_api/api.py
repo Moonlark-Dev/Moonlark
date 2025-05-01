@@ -25,6 +25,7 @@ from .models import UserGameData
 from nonebot_plugin_orm import get_session
 from .session import MiniGameSession
 
+
 async def create_minigame_session(user_id: str, game_id: str) -> MiniGameSession:
     """
     创建小游戏会话
@@ -34,10 +35,12 @@ async def create_minigame_session(user_id: str, game_id: str) -> MiniGameSession
     session = MiniGameSession(user_id, game_id)
     return session
 
+
 class DictUserGameData(TypedDict):
     user_id: str
     total_points: int
     time: int
+
 
 async def get_user_data_list() -> AsyncGenerator[DictUserGameData, None]:
     """
@@ -46,14 +49,8 @@ async def get_user_data_list() -> AsyncGenerator[DictUserGameData, None]:
     """
     async with get_session() as session:
         for user_id in await session.scalars(select(UserGameData.user_id).distinct()):
-            user_data: DictUserGameData = {
-                "user_id": user_id,
-                "total_points": 0,
-                "time": 0
-            }
-            for data in await session.scalars(
-                select(UserGameData).where(UserGameData.user_id == user_id)
-            ):
+            user_data: DictUserGameData = {"user_id": user_id, "total_points": 0, "time": 0}
+            for data in await session.scalars(select(UserGameData).where(UserGameData.user_id == user_id)):
                 user_data["total_points"] += data.total_points
                 user_data["time"] += data.play_seconds
             yield user_data

@@ -28,6 +28,7 @@ from sqlalchemy import select
 
 T = TypeVar("T")
 
+
 class MiniGameSession:
 
     def __init__(self, user_id: str, game_id: str) -> None:
@@ -38,7 +39,6 @@ class MiniGameSession:
         self.user_id = user_id
         self.start_time = datetime.now()
         self.game_type = game_id
-        
 
     async def write_user_data(self, add_points: int, seconds: int) -> None:
         """
@@ -49,8 +49,7 @@ class MiniGameSession:
         async with get_session() as session:
             user_data = await session.scalar(
                 select(UserGameData).where(
-                    UserGameData.user_id == self.user_id,
-                    UserGameData.minigame_id == self.game_type
+                    UserGameData.user_id == self.user_id, UserGameData.minigame_id == self.game_type
                 )
             )
             if user_data is None:
@@ -59,7 +58,7 @@ class MiniGameSession:
                     minigame_id=self.game_type,
                     total_points=add_points,
                     play_seconds=seconds,
-                    success_count=1
+                    success_count=1,
                 )
                 session.add(user_data)
             else:
@@ -82,16 +81,15 @@ class MiniGameSession:
         await self.write_user_data(point, time)
         await self.gain_vimcoin(point, rate)
         return time, point
-    
-    async def get_input(self, message: str | UniMessage, checker: Optional[Callable[[str], bool]] = None, parser: Callable[[str], T] = lambda msg: msg,) -> T:
-        return await prompt(
-            message,
-            self.user_id,
-            checker,
-            parser=parser
-        )
-    
-    
+
+    async def get_input(
+        self,
+        message: str | UniMessage,
+        checker: Optional[Callable[[str], bool]] = None,
+        parser: Callable[[str], T] = lambda msg: msg,
+    ) -> T:
+        return await prompt(message, self.user_id, checker, parser=parser)
+
     async def gain_vimcoin(self, point: int, rate: float) -> None:
         if point <= 25:
             return
@@ -104,8 +102,7 @@ class MiniGameSession:
         await give_special_item(self.user_id, "vimcoin", count, {})
         await lang.send("gain", self.user_id, count)
 
-        
 
 def get_time_rt(sec: int) -> float:
     minute = round(sec / 60)
-    return 0.015 * minute ** 2 - 0.156 * minute + 1.2
+    return 0.015 * minute**2 - 0.156 * minute + 1.2

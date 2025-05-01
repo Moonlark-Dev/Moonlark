@@ -29,7 +29,6 @@ matcher = on_alconna(Alconna("minigame-rank"))
 lang = LangHelper()
 
 
-
 @matcher.assign("$main")
 async def _(user_id: str = get_user_id()) -> None:
     image = await generate_image(

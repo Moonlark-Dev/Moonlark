@@ -24,9 +24,9 @@ from .lang import lang
 async def get_rank_user(user_id: str) -> AsyncGenerator[RankingData, None]:
     async for user in get_user_data_list():
         yield {
-            "user_id": user['user_id'],
-            "data": user['total_points'],
-            "info": await lang.text("rank.time", user_id, round(user["time"] / 3600, 1))
+            "user_id": user["user_id"],
+            "data": user["total_points"],
+            "info": await lang.text("rank.time", user_id, round(user["time"] / 3600, 1)),
         }
 
 
