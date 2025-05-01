@@ -59,6 +59,7 @@ async def get_help_dict(name: str, user_id: str, data: Optional[CommandHelp] = N
         "name": name,
         "description": await (plugin_lang := LangHelper(data.plugin)).text(data.description, user_id),
         "details": await plugin_lang.text(data.details, user_id),
+        "category": data.category,
         "usages": [
             (await lang.text("list.usage", user_id, await plugin_lang.text(usage, user_id))) for usage in data.usages
         ],
@@ -72,11 +73,11 @@ async def get_templates(user_id: str) -> list[dict[str, Any]]:
     commands = []
     for command in [await get_help_dict(name, user_id, data) for name, data in sorted_help_list]:
         for category in commands:
-            if category["name"] == command["name"]:
+            if category["name"] == command["category"]:
                 category["commands"].append(command)
                 break
         else:
-            commands.append({"name": command["name"], "commands": [command]})
+            commands.append({"name": command["category"], "commands": [command]})
     for category in commands:
         category["name"] = await lang.text(f"list.category.{category['name']}", user_id)
     return commands
