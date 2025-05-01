@@ -79,7 +79,7 @@ async def get_templates(user_id: str) -> list[dict[str, Any]]:
         else:
             commands.append({"name": command["category"], "commands": [command]})
     for category in commands:
-        category["name"] = await lang.text(f"list.category.{category['category']}", user_id)
+        category["name"] = await lang.text(f"list.category.{category['name']}", user_id)
     return commands
 
 
