@@ -8,4 +8,5 @@ commands:
       - help.usage_view
       - help.usage_set
       - help.usage_reload
+    category: setting
       

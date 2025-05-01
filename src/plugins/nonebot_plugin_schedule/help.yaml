@@ -1,3 +1,3 @@
 plugin: schedule
 commands:
-  schedule: help;2
+  schedule: help;2;community

@@ -5,3 +5,4 @@ commands:
     details: help.details
     usages:
       - help.usage1
+    category: tools

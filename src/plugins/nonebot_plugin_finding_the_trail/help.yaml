@@ -9,3 +9,4 @@ commands:
       - help.u3
       - help.u4
       - help.u5
+    category: game

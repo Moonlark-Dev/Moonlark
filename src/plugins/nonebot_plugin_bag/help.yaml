@@ -13,3 +13,4 @@ commands:
       - help.usage7
       - help.usage8
       - help.usage9
+    category: setting

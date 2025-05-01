@@ -1,6 +1,6 @@
 plugin: holiday
 commands:
-  holiday: help;1
+  holiday: help;1;tools
 #    description: help.description
 #    details: help.details
 #    usages:

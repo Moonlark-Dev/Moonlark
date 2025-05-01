@@ -1,4 +1,4 @@
 plugin: translate
 commands:
-  t: help_t;1
-  raw: help_raw;1
+  t: help_t;1;tools
+  raw: help_raw;1;tools

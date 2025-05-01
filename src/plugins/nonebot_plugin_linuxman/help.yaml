@@ -5,3 +5,4 @@ commands:
     details: h.i
     usages:
       - h.u
+    category: tools

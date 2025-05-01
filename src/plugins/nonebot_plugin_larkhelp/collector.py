@@ -21,16 +21,23 @@ async def get_plugin_help(plugin: Plugin) -> dict[str, CommandHelp]:
     help_list = {}
     for key, value in data.commands.items():
         if isinstance(value, str):
-            if ";" in value:
-                usage_count = int(value.split(";")[-1])
-                value = value.split(";")[0] or "help"
+            l = value.split(";")
+            usage_count = l[1]
+            value = l[0] or "help"
+            if usage_count.isdigit():
+                usage_count = int(usage_count)
             else:
                 usage_count = 1
+            if len(l) > 2:
+                category = l[-1]
+            else:
+                category = "new"
             help_list[key] = CommandHelp(
                 plugin=data.plugin,
                 description=f"{value}.description",
                 details=f"{value}.details",
                 usages=[f"{value}.usage{i}" for i in range(1, usage_count + 1)],
+                category=category
             )
         else:
             help_list[key] = CommandHelp(**value, plugin=data.plugin)
