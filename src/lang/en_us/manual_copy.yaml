@@ -7,3 +7,7 @@ question: |
 
   *来源: {}*
 finish: 完全符合！用时 {} 秒，获得 {} 积分。
+help:
+  description: 打字机
+  details: 打字速度的挑战——尽量快速地通过输入屏幕上的文本。
+  usage1: manual-copy
