@@ -1,0 +1,120 @@
+{% extends base %}
+
+{% block header %}
+<style>
+    .luckiest {
+        text-align: center;
+        padding: 10px;
+        
+    }
+    .luckiest-low {
+        margin-top: 70px;
+    }
+    .rank {
+        font-size: 275%;
+    }
+    .avatar {
+        margin-bottom: 15px;
+    }
+    .value {
+        font-size: 300%;
+    }
+    #third {
+        background-color: #86d5e4;
+    }
+    #second {
+        background-color: #4bb5e2;
+    }
+    #first {
+        background-color: #1a9ad1;
+    }
+    .num {
+        float: right;
+        margin-top: -10px;
+        font-size: 275%;
+    }
+</style>
+{% endblock header %}
+
+{% block body %}
+
+
+<h2 style="text-align: center;">{{ text.reverse_title }}</h2>
+
+<div class="row">
+<!-- 2nd -->
+<div class="col-4">
+<div class="card luckiest luckiest-low bg-opacity-75" id="second">
+<p class="rank">2nd</p>
+{% if luckiest_2.avatar %}
+<img src="data:image;base64,{{ luckiest_2.avatar }}" class="rounded-circle avatar" width="100%">
+{% endif %}
+<h3>{{ luckiest_2.nickname }}</h3>
+<small>{{ luckiest_2.user_id }}</small>
+</div>
+</div>
+
+<!-- 1st -->
+<div class="col-4">
+<div class="card luckiest bg-opacity-75" id="first">
+<p class="rank">1st</p>
+{% if luckiest_1.avatar %}
+<img src="data:image;base64,{{ luckiest_1.avatar }}" class="rounded-circle avatar" width="100%">
+{% endif %}
+<h3>{{ luckiest_1.nickname }}</h3>
+<small>{{ luckiest_1.user_id }}</small>
+</div>
+</div>
+
+<!-- 3nd -->
+
+<div class="col-4">
+<div class="card luckiest luckiest-low bg-opacity-75" id="third">
+<p class="rank">3rd</p>
+{% if luckiest_3.avatar %}
+<img src="data:image;base64,{{ luckiest_3.avatar }}" class="rounded-circle avatar" width="100%">
+{% endif %}
+<h3>{{ luckiest_3.nickname }}</h3>
+<small>{{ luckiest_3.user_id }}</small>
+</div>
+</div>
+
+</div>
+
+<script>
+let first_value = '<p class="value">{{ luckiest_1.value }}</p>';
+let heights = [
+    document.getElementById("first").offsetHeight,
+    document.getElementById("second").offsetHeight,
+    document.getElementById("third").offsetHeight,
+];
+heights.sort()
+let base_height = heights[2];
+console.log(heights[0], heights[1], heights[2]);
+
+["first", "second", "third"].forEach((value, index, array) => {
+    let padding = (base_height - document.getElementById(value).offsetHeight) / 2;
+    let height = base_height;
+    if (value === "first") {
+        height += 70;
+    }
+    document.getElementById(value).style.height = `${height}px`;
+    document.getElementById(value).style.paddingTop = `${padding}px`;
+    console.log(padding, height, value)
+});
+document.getElementById("first").innerHTML += first_value;
+
+
+</script>
+
+{% if user %}
+<hr>
+<span class="h3">{{ user.index }}. {{ user.nickname }}</span>
+<span class="num">{{ user.data }}</span>
+<br>
+{{ user.info }}
+{% else %}
+<p style="text-align: center;">{{ text.unregistered }}</p>
+{% endif %}
+
+{% endblock body %}
