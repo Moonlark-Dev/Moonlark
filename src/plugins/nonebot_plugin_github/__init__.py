@@ -1,3 +1,4 @@
+import traceback
 from nonebot import logger, require
 from nonebot.exception import FinishedException
 from nonebot.plugin import PluginMetadata
@@ -35,7 +36,9 @@ async def github_handler(matcher, url: str, user_id: str, reply_unknown_url: boo
     except FinishedException:
         raise
     except Exception:
-        await matcher.finish(await lang.text("error", user_id))
+        logger.warning(traceback.format_exc())
+        if reply_unknown_url:
+            await matcher.finish(await lang.text("error", user_id))
 
 
 async def _github_handler(matcher, url: str, user_id: str, reply_unknown_url: bool) -> None:
