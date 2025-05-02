@@ -1,0 +1,3 @@
+plugin: 'defuse_tnt'
+commands:
+  'defuse-tnt': help;1;game

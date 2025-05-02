@@ -15,6 +15,6 @@ require("nonebot_plugin_alconna")
 require("nonebot_plugin_render")
 require("nonebot_plugin_larkutils")
 
-from .api import create_minigame_session, get_user_data, get_user_data_list, exchange_pawcoin
+from .api import create_minigame_session
 from .ranking import get_rank_user
 from . import __main__

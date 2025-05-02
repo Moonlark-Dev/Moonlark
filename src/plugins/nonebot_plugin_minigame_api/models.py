@@ -22,21 +22,10 @@ from sqlalchemy import String
 from pydantic import BaseModel
 
 
-class User(Model):
-    __tablename__ = "nonebot_plugin_minigames_api_user"
-    user_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+class UserGameData(Model):
+    id_: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    user_id: Mapped[str] = mapped_column(String(128), index=True)
+    minigame_id: Mapped[str] = mapped_column(String(32), index=True)
     total_points: Mapped[int] = mapped_column(default=0)
-    exchanged_pawcoin: Mapped[int] = mapped_column(default=0)
-    seconds: Mapped[int] = mapped_column(default=0)
-    count: Mapped[int] = mapped_column(default=0)
-
-
-class UserData(BaseModel):
-    user_id: str
-    total_points: int
-    exchanged_pawcoin: int
-    seconds: int
-    count: int
-
-    def get_exchangeable_pawcoin(self) -> int:
-        return int(self.total_points**0.3) - self.exchanged_pawcoin
+    play_seconds: Mapped[int] = mapped_column(default=0)
+    success_count: Mapped[int] = mapped_column(default=0)

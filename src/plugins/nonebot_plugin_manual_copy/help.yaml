@@ -1,0 +1,3 @@
+plugin: 'manual_copy'
+commands:
+  'manual-copy': help;1;game

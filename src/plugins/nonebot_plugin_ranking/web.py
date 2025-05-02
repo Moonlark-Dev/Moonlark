@@ -33,7 +33,11 @@ class WebRanking(ABC):
     async def handle(
         self, request: Request, offset: int = 0, limit: int = 20, user_id: str = get_user_id("-1")
     ) -> RankingResponse:
-        data = await self.get_sorted_data()
+        try:
+            data = await self.get_sorted_data(user_id)
+        except TypeError:
+            # 兼容旧版
+            data: list[RankingData] = await self.get_sorted_data()  # type: ignore
         index = offset
         return {
             "me": await find_user(data, user_id),
@@ -53,7 +57,7 @@ class WebRanking(ABC):
         }
 
     @abstractmethod
-    async def get_sorted_data(self) -> list[RankingData]: ...
+    async def get_sorted_data(self, user_id: str) -> list[RankingData]: ...
 
 
 rankings: list[WebRanking] = []

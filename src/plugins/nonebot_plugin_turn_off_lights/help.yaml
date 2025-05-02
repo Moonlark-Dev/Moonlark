@@ -1,0 +1,3 @@
+plugin: 'turn_off_lights'
+commands:
+  'tol': help_1;1;game

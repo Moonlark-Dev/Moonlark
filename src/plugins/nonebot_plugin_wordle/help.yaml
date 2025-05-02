@@ -1,0 +1,3 @@
+plugin: 'wordle'
+commands:
+  'wordle': help;1;game

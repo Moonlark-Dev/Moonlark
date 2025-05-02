@@ -16,63 +16,93 @@
 # ##############################################################################
 
 from datetime import datetime
+import math
+from nonebot_plugin_alconna import UniMessage
+from nonebot_plugin_bag.utils.bag import give_special_item
 from nonebot_plugin_orm import get_session
-from typing import NoReturn
-from nonebot.exception import FinishedException
-from .models import User
+from typing import Callable, NoReturn, Optional, TypeVar
+from nonebot_plugin_larkuser.utils.waiter import prompt
+from .models import UserGameData
 from .lang import lang
+from sqlalchemy import select
+
+T = TypeVar("T")
 
 
 class MiniGameSession:
 
-    def __init__(self, user_id: str) -> None:
+    def __init__(self, user_id: str, game_id: str) -> None:
         """
         初始化小游戏会话
         :param user_id: 用户 ID
         """
         self.user_id = user_id
         self.start_time = datetime.now()
+        self.game_type = game_id
+
+    async def write_user_data(self, add_points: int, seconds: int) -> None:
+        """
+        写入用户数据
+        :param add_points: 增加的分数
+        :param seconds: 挑战时间
+        """
+        async with get_session() as session:
+            user_data = await session.scalar(
+                select(UserGameData).where(
+                    UserGameData.user_id == self.user_id, UserGameData.minigame_id == self.game_type
+                )
+            )
+            if user_data is None:
+                user_data = UserGameData(
+                    user_id=self.user_id,
+                    minigame_id=self.game_type,
+                    total_points=add_points,
+                    play_seconds=seconds,
+                    success_count=1,
+                )
+                session.add(user_data)
+            else:
+                user_data.total_points += add_points
+                user_data.play_seconds += seconds
+                user_data.success_count += 1
+            await session.commit()
 
     async def quit(self) -> NoReturn:
         await lang.finish("quit.quit", self.user_id)
-        raise FinishedException
 
-    async def finish(self) -> int:
+    async def finish(self, game_point: int = 100, rate: float = 1) -> tuple[int, int]:
         """
         标记小游戏结束
-        :return: 挑战时间
+        :return: 挑战时间, 挑战分数
         """
         end_time = datetime.now()
         time = round((end_time - self.start_time).total_seconds())
-        async with get_session() as session:
-            user = await session.get_one(User, self.user_id)
-            user.seconds += time
-            await session.commit()
-        return time
+        point = round(game_point * rate * get_time_rt(time))
+        await self.write_user_data(point, time)
+        await self.gain_vimcoin(point, rate)
+        return time, point
 
-    async def add_points(self, points: int) -> int:
-        """
-        添加小游戏积分
-        :return: 实际增加的积分
-        :param points: 积分数量
-        """
-        async with get_session() as session:
-            user = await session.get_one(User, self.user_id)
-            user.total_points += points
-            await session.commit()
-        return points
+    async def get_input(
+        self,
+        message: str | UniMessage,
+        checker: Optional[Callable[[str], bool]] = None,
+        parser: Callable[[str], T] = lambda msg: msg,
+    ) -> T:
+        return await prompt(message, self.user_id, checker, parser=parser)
 
-    async def init_user(self):
-        """
-        初始化用户数据库数据
-        """
-        async with get_session() as session:
-            if not await session.get(User, self.user_id):
-                session.add(User(user_id=self.user_id))
-                await session.commit()
+    async def gain_vimcoin(self, point: int, rate: float) -> None:
+        if point <= 25:
+            return
+        elif point <= 50:
+            count = 5
+        elif point <= 100:
+            count = 10
+        else:
+            count = round((5 * math.log(point / 2 - 49, 2) + 10) * rate * 0.87)
+        await give_special_item(self.user_id, "vimcoin", count, {})
+        await lang.send("gain", self.user_id, count)
 
-    async def add_count(self) -> None:
-        async with get_session() as session:
-            user = await session.get_one(User, self.user_id)
-            user.count += 1
-            await session.commit()
+
+def get_time_rt(sec: int) -> float:
+    minute = round(sec / 60)
+    return 0.015 * minute**2 - 0.156 * minute + 1.2
