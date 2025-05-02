@@ -54,8 +54,10 @@ async def render_template(
     async with get_session() as session:
         if cache and (c := await get_cache(name, await get_user_language(user_id, session), t)):
             return c
+    if keys:
+        templates = templates | {"text": keys}
     return await html_to_pic(
-        await render_template_to_text(name, title, footer, templates | {"text": keys}, base),
+        await render_template_to_text(name, title, footer, templates, base),
         template_path=Path(getcwd()).joinpath(f"src/templates").as_uri(),
         viewport=config.render_viewport,
     )
