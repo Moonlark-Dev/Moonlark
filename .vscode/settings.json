@@ -1,6 +1,5 @@
 {
     "python.REPL.enableREPLSmartSend": false,
-    "python.analysis.typeCheckingMode": "basic",
     "python.analysis.autoImportCompletions": true,
     "github.copilot.enable": {
         "*": false,
