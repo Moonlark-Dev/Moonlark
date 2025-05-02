@@ -18,6 +18,7 @@ async def get_user_list() -> AsyncGenerator[tuple[str, int], None]:
         yield user_id, get_luck_value(user_id)
     await session.close()
 
+
 async def get_rank(sender_id: str, reverse: bool = False) -> NoReturn:
     data = sorted([data async for data in get_user_list()], key=lambda x: x[1], reverse=not reverse)
     templates = {}
@@ -28,7 +29,7 @@ async def get_rank(sender_id: str, reverse: bool = False) -> NoReturn:
             "user_id": user_id,
             "value": data[i][1],
             "avatar": user.get_base64_avatar(),
-            "nickname": user.get_nickname()
+            "nickname": user.get_nickname(),
         }
     i = 0
     for user_id, value in data:
@@ -40,7 +41,7 @@ async def get_rank(sender_id: str, reverse: bool = False) -> NoReturn:
             "index": i,
             "nickname": user.get_nickname(),
             "data": value,
-            "info": await lang.text("forward", user_id, round((len(data) - i) / len(data) * 100, 1))
+            "info": await lang.text("forward", user_id, round((len(data) - i) / len(data) * 100, 1)),
         }
         break
     else:
@@ -50,11 +51,11 @@ async def get_rank(sender_id: str, reverse: bool = False) -> NoReturn:
         await lang.text("rank.title", sender_id),
         sender_id,
         templates,
-        dict([(key, await lang.text(f"template.{key}", user_id)) for key in ["reverse_title", "unregistered", "title"]])
+        dict(
+            [(key, await lang.text(f"template.{key}", user_id)) for key in ["reverse_title", "unregistered", "title"]]
+        ),
     )
     await jrrp.finish(UniMessage().image(raw=image))
-
-
 
 
 @jrrp.assign("rank")

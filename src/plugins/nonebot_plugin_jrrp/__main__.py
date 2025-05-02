@@ -5,7 +5,7 @@ from datetime import date, timedelta
 from .utils import get_luck_message, lang
 from nonebot_plugin_larkutils import get_user_id
 
-alc = Alconna("jrrp", Option("--rank|-r"), Option("--rank-r"),  Option("--get|-g", Args["value", int]))
+alc = Alconna("jrrp", Option("--rank|-r"), Option("--rank-r"), Option("--get|-g", Args["value", int]))
 jrrp = on_alconna(alc)
 
 
