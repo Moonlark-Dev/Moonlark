@@ -26,4 +26,4 @@ template:
   reverse_title: 今日倒霉蛋
   unregistered: 未注册用户无法参与排名
   title: 今日幸运星
-  forward: 领先 {}% 的用户
+forward: 领先 {}% 的用户
