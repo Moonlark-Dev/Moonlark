@@ -15,19 +15,12 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
-from nonebot_plugin_alconna import on_alconna, Alconna, Args, Option, Subcommand
-from typing import Optional
+from nonebot_plugin_alconna import on_alconna, Alconna, Args
 from nonebot_plugin_larkuser import patch_matcher
 from nonebot_plugin_larklang import LangHelper
 
-alc = Alconna(
-    "ftt",
-    Args["seed?", str],
-    Subcommand("ranking"),
-    Subcommand("points"),
-    Subcommand("exchange", Args["count?", int]),
-)
-ftt = on_alconna(alc)
+
+ftt = on_alconna(Alconna("ftt", Args["seed?", str, "-1"]))
 lang = LangHelper()
 
 patch_matcher(ftt)
