@@ -31,7 +31,6 @@ from ..utils.answer import AnswerGetter
 from ..__main__ import ftt, lang
 
 
-
 async def is_user_continue(user_id: str, d_list: list[Directions]) -> bool:
     while True:
         inp = await prompt(await lang.text("ftt.done", user_id, await get_command_list_string(d_list, user_id)))
@@ -82,5 +81,6 @@ async def _(seed: str, user_id: str = get_user_id()) -> None:
             if ftt_map.difficulty_name != "easy":
                 await complete_schedule(user_id, "ftt")
             await lang.finish("ftt.success", user_id, points, map_seed)
-    await session.quit(await lang.text("ftt.example", user_id, await get_command_list_string(ftt_map.answer, user_id), map_seed))
-    
+    await session.quit(
+        await lang.text("ftt.example", user_id, await get_command_list_string(ftt_map.answer, user_id), map_seed)
+    )
