@@ -17,9 +17,11 @@
 
 from datetime import datetime
 import math
+import random
 from nonebot_plugin_alconna import UniMessage
 from nonebot_plugin_bag.utils.bag import give_special_item
 from nonebot_plugin_orm import get_session
+from nonebot.matcher import Matcher
 from typing import Callable, NoReturn, Optional, TypeVar
 from nonebot_plugin_larkuser.utils.waiter import prompt
 from .models import UserGameData
@@ -67,7 +69,9 @@ class MiniGameSession:
                 user_data.success_count += 1
             await session.commit()
 
-    async def quit(self) -> NoReturn:
+    async def quit(self, text: Optional[str] = None, matcher: Matcher = Matcher()) -> NoReturn:
+        if text is not None:
+            await matcher.finish(text)
         await lang.finish("quit.quit", self.user_id)
 
     async def finish(self, game_point: int = 100, rate: float = 1) -> tuple[int, int]:
@@ -98,7 +102,8 @@ class MiniGameSession:
         elif point <= 100:
             count = 10
         else:
-            count = round((5 * math.log(point / 2 - 49, 2) + 10) * rate * 0.87)
+            r_2 = random.choice([0.87, 0.75, 0.75, 0.6, 0.6, 0.5, 0.5, 0.5, 0.43, 0.41, 0.3])
+            count = round((5 * math.log(point / 2 - 49, 2) + 10) * rate * r_2)
         await give_special_item(self.user_id, "vimcoin", count, {})
         await lang.send("gain", self.user_id, count)
 

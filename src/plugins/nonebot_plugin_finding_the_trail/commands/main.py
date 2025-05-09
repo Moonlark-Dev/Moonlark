@@ -15,7 +15,6 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
-import random
 import time
 import os
 import struct
@@ -23,13 +22,14 @@ from nonebot_plugin_schedule.utils import complete_schedule
 from nonebot_plugin_waiter import prompt
 from nonebot_plugin_alconna import Match
 from nonebot_plugin_larkutils import get_user_id
+from nonebot_plugin_minigame_api import create_minigame_session
 from ..exceptions import Quited, CannotMove
 from ..utils.fttmap import FttMap
 from ..utils.enums import Directions
 from ..utils.string import get_command_list_string
 from ..utils.answer import AnswerGetter
 from ..__main__ import ftt, lang
-from ..utils.points import add_point
+
 
 
 async def is_user_continue(user_id: str, d_list: list[Directions]) -> bool:
@@ -44,23 +44,19 @@ async def is_user_continue(user_id: str, d_list: list[Directions]) -> bool:
             return False
 
 
-@ftt.assign("$main")
 @ftt.assign("seed")
-async def _(seed: Match[str], user_id: str = get_user_id()) -> None:
-    if seed.available:
-        map_seed = seed.result
-    else:
-        map_seed = str(struct.unpack("I", os.urandom(4))[0])
+@ftt.assign("$main")
+async def _(seed: str, user_id: str = get_user_id()) -> None:
+    map_seed = seed if seed != "-1" else str(struct.unpack("I", os.urandom(4))[0])
     ftt_map = FttMap(map_seed)
     points = ftt_map.difficulty["points"]
-    start_time = time.time()
+    session = await create_minigame_session(user_id, "ftt")
     while points >= 2:
         getter = AnswerGetter(user_id, ftt_map)
         try:
             d_list = await getter.get_commands()
         except Quited:
-            await lang.send("ftt.quited", user_id)
-            break
+            await session.quit()
         if not await is_user_continue(user_id, d_list):
             continue
         try:
@@ -80,14 +76,11 @@ async def _(seed: Match[str], user_id: str = get_user_id()) -> None:
             await lang.send("ftt.big_failed", user_id)
             break
         else:
-            points *= 10 / (time.time() - start_time)
-            points = round(points)
-            if seed.available:
-                points = 1
-            await add_point(user_id, points)
+            if seed != "-1":
+                points = 5
+            t, points = await session.finish(round(points * (ftt_map.step_length / 5)), 1.6)
             if ftt_map.difficulty_name != "easy":
                 await complete_schedule(user_id, "ftt")
-            await lang.finish("ftt.success", user_id, points)
-    # TODO 参考答案动画
-    # TODO 错误答案演示
-    await lang.finish("ftt.example", user_id, await get_command_list_string(ftt_map.answer, user_id))
+            await lang.finish("ftt.success", user_id, points, map_seed)
+    await session.quit(await lang.text("ftt.example", user_id, await get_command_list_string(ftt_map.answer, user_id), map_seed))
+    
