@@ -19,8 +19,8 @@ async def get_images() -> AsyncGenerator[ImageData, None]:
     image_list = await session.scalars(select(ImageData.id))
     for image_id in image_list:
         image = await session.get_one(ImageData, {"id": image_id})
-        belong = await session.get_one(CaveData, {"id": image.belong})
-        if belong.public:
+        belong = await session.get(CaveData, {"id": image.belong})
+        if belong is not None and belong.public:
             yield image
     await session.close()
 
