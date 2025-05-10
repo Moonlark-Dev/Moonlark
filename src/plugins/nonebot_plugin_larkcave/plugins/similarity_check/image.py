@@ -38,7 +38,10 @@ async def compare_images_async(image1: bytes, image2: CaveImage, image1_name: st
 async def get_image_list(session: async_scoped_session) -> AsyncGenerator[CaveImage, None]:
     image_list = await session.scalars(select(ImageData.id))
     for image_id in image_list.all():
-        yield await get_image(str(image_id), session)
+        try:
+            yield await get_image(str(image_id), session)
+        except FileNotFoundError:
+            pass
 
 
 async def check_image(posting: bytes, session: async_scoped_session, name: str) -> CheckResult:
