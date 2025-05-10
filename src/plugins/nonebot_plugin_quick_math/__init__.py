@@ -21,4 +21,4 @@ require("nonebot_plugin_larkuser")
 require("nonebot_plugin_alconna")
 require("nonebot_plugin_apscheduler")
 
-from .commands import main, rank, points, exchange
+from .commands import main, rank, points
