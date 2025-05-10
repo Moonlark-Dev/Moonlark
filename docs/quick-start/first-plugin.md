@@ -116,7 +116,7 @@ help:
 
 ::: tip
 
-Moonlark 使用 LarkLang 实现本地化，也可以在 Moonlark 中添加相同语言的不通风格，任何向用户反馈的文本都要接入本地化。
+Moonlark 使用 LarkLang 实现本地化，也可以在 Moonlark 中添加相同语言的不同风格，任何向用户反馈的文本都要接入本地化。
 
 :::
 
