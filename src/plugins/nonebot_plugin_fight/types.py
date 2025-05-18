@@ -24,21 +24,27 @@ if TYPE_CHECKING:
 
 
 class AttackTypes(Enum):
+    physical = 0
     wind = 1
     fire = 2
     electricity = 3
     ice = 4
-    ME = 5
+    me = 5
     real = 6
+    null = 7
+
+
+class HarmData(TypedDict):
+    target: "Monomer"
+    harm_value: int
+    harm_type: AttackTypes
+    harm_missed: bool
 
 
 class AttackEvent(TypedDict):
     type: Literal["harm.single"]
     origin: "Monomer"
-    target: "Monomer"
-    harm_value: int
-    harm_type: AttackTypes
-    harm_missed: bool
+    harms: list[HarmData]
 
 
 class MessageActionEvent(TypedDict):
@@ -49,8 +55,8 @@ class MessageActionEvent(TypedDict):
 class SkillInfo(TypedDict):
     name: str
     monomer: "Monomer"
-    occupy_round: bool
     cost: int
+    charge: bool
     instant: bool
     target_type: Literal["self", "enemy", "none"]
 
