@@ -88,7 +88,7 @@ class Team:
 
     def get_monomers(self) -> list["Monomer"]:
         return self.monomers
-    
+
     async def get_monomer_stat_list(self, user_id: str) -> list[str]:
         return [stat for monomer in self.monomers for stat in await monomer.get_self_stat(user_id)]
 

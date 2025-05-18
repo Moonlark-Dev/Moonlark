@@ -35,7 +35,7 @@ class ControllableMonomer(Monomer, ABC):
         if not isinstance(self.team, ControllableTeam):
             raise ValueError("The team must be an instance of ControllableTeam.")
         self.user_id = self.team.get_user_id()
-        
+
     @abstractmethod
     async def get_skill_info_list(self) -> list[SkillInfo]:
         return []
@@ -46,17 +46,19 @@ class ControllableMonomer(Monomer, ABC):
             "stat.stat_header",
             self.user_id,
             code_escape(await self.team.get_team_name(self.user_id)),
-            code_escape(await another_team.get_team_name(self.user_id))
+            code_escape(await another_team.get_team_name(self.user_id)),
         )
         markdown += "\n"
-        stats = await self.team.get_monomer_stat_list(self.user_id), await another_team.get_monomer_stat_list(self.user_id)
+        stats = await self.team.get_monomer_stat_list(self.user_id), await another_team.get_monomer_stat_list(
+            self.user_id
+        )
         for pos_index in range(max(len(stats[0]), len(stats[1]))):
             markdown += await lang.text(
                 "stat.pos_line",
                 self.user_id,
                 pos_index + 1,
                 stats[0][pos_index] if pos_index < len(stats[0]) else "",
-                stats[1][pos_index] if pos_index < len(stats[1]) else ""
+                stats[1][pos_index] if pos_index < len(stats[1]) else "",
             )
             markdown += "\n"
         return markdown
@@ -71,9 +73,9 @@ class ControllableMonomer(Monomer, ABC):
                     await lang.text(
                         "action_text.skill_line",
                         self.user_id,
-                        '',
+                        "",
                         f'~~{skill["name"]}~~',
-                        await lang.text(f"action_text.cost.charge", self.user_id, self.final_skill_power[1])
+                        await lang.text(f"action_text.cost.charge", self.user_id, self.final_skill_power[1]),
                     )
                 )
             elif not self.team.has_skill_point(skill["cost"]):
@@ -81,9 +83,9 @@ class ControllableMonomer(Monomer, ABC):
                     await lang.text(
                         "action_text.skill_line",
                         self.user_id,
-                        '',
+                        "",
                         f'~~{skill["name"]}~~',
-                        await lang.text(f"action_text.cost.normal", self.user_id, skill["cost"])
+                        await lang.text(f"action_text.cost.normal", self.user_id, skill["cost"]),
                     )
                 )
             elif skill["cost"] < 0:
@@ -93,7 +95,7 @@ class ControllableMonomer(Monomer, ABC):
                         self.user_id,
                         index,
                         skill["name"],
-                        await lang.text(f"action_text.cost.add", self.user_id, -skill["cost"])
+                        await lang.text(f"action_text.cost.add", self.user_id, -skill["cost"]),
                     )
                 )
             elif skill["charge"]:
@@ -103,7 +105,7 @@ class ControllableMonomer(Monomer, ABC):
                         self.user_id,
                         index,
                         f'**{skill["name"]}**',
-                        await lang.text(f"action_text.cost.charge", self.user_id, self.final_skill_power[1])
+                        await lang.text(f"action_text.cost.charge", self.user_id, self.final_skill_power[1]),
                     )
                 )
             else:
@@ -113,7 +115,7 @@ class ControllableMonomer(Monomer, ABC):
                         self.user_id,
                         index,
                         skill["name"],
-                        await lang.text(f"action_text.cost.normal", self.user_id, self.final_skill_power[1])
+                        await lang.text(f"action_text.cost.normal", self.user_id, self.final_skill_power[1]),
                     )
                 )
         return await lang.text(
@@ -123,9 +125,9 @@ class ControllableMonomer(Monomer, ABC):
             self.final_skill_power[0],
             self.final_skill_power[1],
             self.get_charge_percent(True),
-            "\n".join(skill_text_list)
+            "\n".join(skill_text_list),
         )
-    
+
     @abstractmethod
     async def execute_skill(self, index: int, target: Optional[Monomer]) -> None:
         pass
@@ -135,14 +137,11 @@ class ControllableMonomer(Monomer, ABC):
         markdown += "\n"
         markdown += await self.get_action_text()
         markdown += "\n"
-        markdown += await lang.text(
-            "command_help",
-            self.user_id
-        )
+        markdown += await lang.text("command_help", self.user_id)
         # TODO 战斗倒计时
         image = await md_to_pic(markdown)
         message = UniMessage().image(raw=image)
-        while (message := await self.get_action_command(message)):
+        while message := await self.get_action_command(message):
             pass
 
     async def get_action_command(self, message: UniMessage) -> Optional[UniMessage]:
@@ -150,8 +149,9 @@ class ControllableMonomer(Monomer, ABC):
         waiter = WaitUserInput(
             message,
             self.user_id,
-            lambda text: text in ["l", "b", "s"] or ((c := text.split(" "))[0].isdigit() and self.is_skill_ready(int(c[0]), skill_info_list)),
-            "s"
+            lambda text: text in ["l", "b", "s"]
+            or ((c := text.split(" "))[0].isdigit() and self.is_skill_ready(int(c[0]), skill_info_list)),
+            "s",
         )
         await waiter.wait()
         command = waiter.get(lambda text: text.split(" "))
@@ -176,26 +176,29 @@ class ControllableMonomer(Monomer, ABC):
 
     async def get_action_list(self) -> str:
         markdown = await lang.text("action_list.header", self.user_id)
-        original_action_value = (100000 / self.speed)
+        original_action_value = 100000 / self.speed
         index = 0
-        monomers = sorted(self.team.scheduler.get_monomers(), key=lambda target: target.get_action_value() if target != self else original_action_value)
+        monomers = sorted(
+            self.team.scheduler.get_monomers(),
+            key=lambda target: target.get_action_value() if target != self else original_action_value,
+        )
         markdown += await lang.text(
-            "action_list.line", 
+            "action_list.line",
             self.user_id,
             0,
             code_escape(await self.team.get_team_name(self.user_id)),
             await self.get_name(self.user_id),
-            0
+            0,
         )
         for monomer in monomers:
             index += 1
             markdown += await lang.text(
-                "action_list.line" if monomer != self else "action_list.line_self", 
+                "action_list.line" if monomer != self else "action_list.line_self",
                 self.user_id,
                 index,
                 code_escape(await monomer.get_team().get_team_name(self.user_id)),
                 await monomer.get_name(self.user_id),
-                round(monomer.get_action_value() if monomer != self else original_action_value)
+                round(monomer.get_action_value() if monomer != self else original_action_value),
             )
         return markdown
 
@@ -208,8 +211,6 @@ class ControllableMonomer(Monomer, ABC):
         if not self.team.has_skill_point(skill_info["cost"]):
             return False
         return True
-        
-
 
 
 def get_monomer_indexs(monomer: ControllableMonomer, monomers: list[ControllableMonomer]) -> list[int]:
@@ -218,4 +219,3 @@ def get_monomer_indexs(monomer: ControllableMonomer, monomers: list[Controllable
         if m == monomer:
             indexs.append(i)
     return indexs
-

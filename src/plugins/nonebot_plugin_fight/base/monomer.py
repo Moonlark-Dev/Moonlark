@@ -39,8 +39,7 @@ class Monomer(ABC):
         self.defuse = 20
 
     @abstractmethod
-    def has_final_skill(self) -> bool:
-        ...
+    def has_final_skill(self) -> bool: ...
 
     def get_shield(self) -> int:
         return self.shield
@@ -57,19 +56,17 @@ class Monomer(ABC):
     @abstractmethod
     def get_max_hp(self) -> int:
         return 100
-    
-    @abstractmethod
-    def get_attack_type(self) -> AttackTypes:
-        ...
 
     @abstractmethod
-    def get_weakness_type(self) -> AttackTypes:
-        ...
+    def get_attack_type(self) -> AttackTypes: ...
+
+    @abstractmethod
+    def get_weakness_type(self) -> AttackTypes: ...
 
     def get_hp(self) -> int:
         self.health = max(0, min(self.get_max_hp(), self.health))
         return self.health
-    
+
     async def get_self_stat(self, user_id: str) -> str:
         return await lang.text(
             "stat.monomer_stat",
@@ -77,13 +74,13 @@ class Monomer(ABC):
             await self.get_name(user_id),
             await lang.text(f"harm_type._{self.get_attack_type().value}", user_id),
             await lang.text(f"harm_type._{self.get_weakness_type().value}", user_id),
-            '' if not self.has_final_skill() else await lang.text("stat.power", user_id, self.get_charge_percent()),
-            (await lang.text("stat.hp.full", user_id)) * (f := round(12 * self.get_hp_percent())) + (await lang.text("stat.hp.null", user_id)) * (12 - f),
+            "" if not self.has_final_skill() else await lang.text("stat.power", user_id, self.get_charge_percent()),
+            (await lang.text("stat.hp.full", user_id)) * (f := round(12 * self.get_hp_percent()))
+            + (await lang.text("stat.hp.null", user_id)) * (12 - f),
         )
 
     def get_hp_percent(self) -> float:
         return min(1, self.get_hp() / self.get_max_hp())
-
 
     def get_charge_percent(self, readable: bool = True) -> float:
         if self.has_final_skill():
@@ -167,7 +164,7 @@ class Monomer(ABC):
             return 0
         if type_ == AttackTypes.real or type_ == self.get_weakness_type():
             real_harm = harm
-            self.reduce_balance_value(random.randint(25,35))
+            self.reduce_balance_value(random.randint(25, 35))
         else:
             real_harm = round(harm * (self.get_defuse() / monomer.get_defuse()))
         self.reduce_balance_value(int(real_harm / 2 * (monomer.get_attack_value() / self.get_attack_value())))

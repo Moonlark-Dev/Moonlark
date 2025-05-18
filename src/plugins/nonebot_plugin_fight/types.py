@@ -40,6 +40,7 @@ class HarmData(TypedDict):
     harm_type: AttackTypes
     harm_missed: bool
 
+
 class AttackEvent(TypedDict):
     type: Literal["harm.single"]
     origin: "Monomer"
