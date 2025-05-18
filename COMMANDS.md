@@ -1,6 +1,91 @@
 # Moonlark 指令列表
 
 > 由 Moonlark & nonebot-plugin-larkhelp 生成
+## `2048`: 2048 小游戏
+
+数字合成游戏 —— 2048
+
+### 用法
+- `/2048`
+## `bingo`: 宾果游戏生成
+
+输入大小与内容，一键生成宾果游戏图片
+
+### 用法
+- `/bingo [列数] [行数] (开始创建宾果游戏)`
+## `boothill`: 波提欧
+
+对句子进行一些？？？的处理，仅支持简体中文。
+
+「他宝了个腿的。」 ——巡海游侠，波提欧
+
+
+### 用法
+- `/boothill <句子>`
+## `defuse-tnt`: 拆除 TNT
+
+运气游戏——通过猜测排列出正确的拆除炸弹的密码。
+
+### 用法
+- `/defuse-tnt`
+## `ftt`: 寻径指津
+
+寻径指津玩法
+
+### 用法
+- `/ftt (从随机地图开始)`
+- `/ftt <seed> (从指定种子生成地图，无奖励)`
+- `/ftt exchange [count] (将积分兑换为 PawCoin)`
+- `/ftt ranking (积分排名)`
+- `/ftt points (查看积分)`
+## `jrrp`: 今日人品
+
+查询今天的人品值，今天也是幸运的一天～
+
+### 用法
+- `/jrrp (获取今天的人品值)`
+- `/jrrp --rank (今日人品排名)`
+- `/jrrp -g <分数> (计算下一个会出现某分数的日期)`
+## `minigame`: 小游戏
+
+查看小游戏积分、排名和小游戏列表
+
+### 用法
+- `/minigame (查看小游戏列表)`
+- `/minigame rank (查看积分排行榜)`
+- `/minigame me (查看积分)`
+- `/minigame exchange [数量] (兑换PawCoin)`
+## `quick-math`: 快速数学
+
+以计算为核心的玩法。找到问题的答案，并在排行榜中获取更高的积分。
+
+### 用法
+- `/quick-math [-l|--level <开始的等级>] (开始挑战)`
+- `/quick-math rank [{max|total}] (积分排行榜)`
+- `/quick-math exchange [count] (使用总分兑换奖励)`
+- `/quick-math points (查看总分详情)`
+## `setu`: 随机图片
+
+随机 Pixiv 插画
+
+### 用法
+- `/setu (随机图片)`
+- `/setu rank (查看使用排行)`
+## `tol`: 关灯挑战
+
+尝试关掉所有的灯_一盏灯被开启或关闭时它上、下、左、右边的灯的状态也会发生改变。
+
+### 用法
+- `/tol`
+## `wordle`: WORDLE
+
+猜单词的游戏，支持多人游玩。
+
+游玩提示：为了避免干扰使用，不成功的匹配不会被提示，也不能在一个会话中同时开启多个 WORDLE 游戏。
+
+
+### 用法
+- `/wordle [长度=5]`
 ## `access`: 权限管理
 
 Moonlark 权限控制 (仅 SUPERUSER 可用)
@@ -64,64 +149,6 @@ Moonlark 本地化设置
 
 ### 用法
 - `/whoami (查看帐号信息)`
-## `bingo`: 宾果游戏生成
-
-输入大小与内容，一键生成宾果游戏图片
-
-### 用法
-- `/bingo [列数] [行数] (开始创建宾果游戏)`
-## `boothill`: 波提欧
-
-对句子进行一些？？？的处理，仅支持简体中文。
-
-「他宝了个腿的。」 ——巡海游侠，波提欧
-
-
-### 用法
-- `/boothill <句子>`
-## `ftt`: 寻径指津
-
-寻径指津玩法
-
-### 用法
-- `/ftt (从随机地图开始)`
-- `/ftt <seed> (从指定种子生成地图，无奖励)`
-- `/ftt exchange [count] (将积分兑换为 PawCoin)`
-- `/ftt ranking (积分排名)`
-- `/ftt points (查看积分)`
-## `jrrp`: 今日人品
-
-查询今天的人品值，今天也是幸运的一天～
-
-### 用法
-- `/jrrp (获取今天的人品值)`
-- `/jrrp --rank (今日人品排名)`
-- `/jrrp -g <分数> (计算下一个会出现某分数的日期)`
-## `minigame`: 小游戏
-
-查看小游戏积分、排名和小游戏列表
-
-### 用法
-- `/minigame (查看小游戏列表)`
-- `/minigame rank (查看积分排行榜)`
-- `/minigame me (查看积分)`
-- `/minigame exchange [数量] (兑换PawCoin)`
-## `quick-math`: 快速数学
-
-以计算为核心的玩法。找到问题的答案，并在排行榜中获取更高的积分。
-
-### 用法
-- `/quick-math [-l|--level <开始的等级>] (开始挑战)`
-- `/quick-math rank [{max|total}] (积分排行榜)`
-- `/quick-math exchange [count] (使用总分兑换奖励)`
-- `/quick-math points (查看总分详情)`
-## `setu`: 随机图片
-
-随机 Pixiv 插画
-
-### 用法
-- `/setu (随机图片)`
-- `/setu rank (查看使用排行)`
 ## `calc`: 计算器
 
 通过 Wolfram|Alpha 计算表达式或回答问题
