@@ -19,6 +19,7 @@ from abc import ABC, abstractmethod
 import random
 from typing import TYPE_CHECKING
 from .team import Team
+from ..lang import lang
 from ..types import ACTION_EVENT, AttackTypes, BuffData, BuffTypes
 
 
@@ -36,8 +37,10 @@ class Monomer(ABC):
         self.final_skill_power = [0, 230]
         self.focus = 100
         self.defuse = 20
-        self.shield = 0
-        self.unset_speed = self.speed
+
+    @abstractmethod
+    def has_final_skill(self) -> bool:
+        ...
 
     def get_shield(self) -> int:
         return self.shield
@@ -54,10 +57,39 @@ class Monomer(ABC):
     @abstractmethod
     def get_max_hp(self) -> int:
         return 100
+    
+    @abstractmethod
+    def get_attack_type(self) -> AttackTypes:
+        ...
+
+    @abstractmethod
+    def get_weakness_type(self) -> AttackTypes:
+        ...
 
     def get_hp(self) -> int:
         self.health = max(0, min(self.get_max_hp(), self.health))
         return self.health
+    
+    async def get_self_stat(self, user_id: str) -> str:
+        return await lang.text(
+            "stat.monomer_stat",
+            user_id,
+            await self.get_name(user_id),
+            await lang.text(f"harm_type._{self.get_attack_type().value}", user_id),
+            await lang.text(f"harm_type._{self.get_weakness_type().value}", user_id),
+            '' if not self.has_final_skill() else await lang.text("stat.power", user_id, self.get_charge_percent()),
+            (await lang.text("stat.hp.full", user_id)) * (f := round(12 * self.get_hp_percent())) + (await lang.text("stat.hp.null", user_id)) * (12 - f),
+        )
+
+    def get_hp_percent(self) -> float:
+        return min(1, self.get_hp() / self.get_max_hp())
+
+
+    def get_charge_percent(self, readable: bool = True) -> float:
+        if self.has_final_skill():
+            percent = min(1, self.final_skill_power[0] / self.final_skill_power[1])
+            return percent if not readable else round(percent * 100)
+        return 0
 
     @abstractmethod
     async def get_name(self, user_id: str) -> str:
@@ -99,7 +131,6 @@ class Monomer(ABC):
             self.buff_list[i]["remain_rounds"] -= 1
         self.clean_buff()
         await self.on_action(teams)
-        self.speed = self.unset_speed
 
     def get_power_percent(self) -> float:
         return min(self.final_skill_power[0] / self.final_skill_power[1], 1)
@@ -130,20 +161,17 @@ class Monomer(ABC):
             self.shield = max(0, self.shield)
         return harm
 
-    async def attacked(self, type_: AttackTypes, harm: int, monomer: "Monomer", missed: bool) -> float:
-        for buff in self.buff_list:
-            if buff["buff_type"] == BuffTypes.lunar_eclipse_cracks and type_ == AttackTypes.ME:
-                harm += round(harm * 0.15)
+    async def attacked(self, type_: AttackTypes, harm: int, monomer: "Monomer") -> float:
         if monomer in self.team.get_monomers():
             self.reduce_balance_value(15)
             return 0
-        if type_ == AttackTypes.real:
+        if type_ == AttackTypes.real or type_ == self.get_weakness_type():
             real_harm = harm
+            self.reduce_balance_value(random.randint(25,35))
         else:
             real_harm = round(harm * (self.get_defuse() / monomer.get_defuse()))
         self.reduce_balance_value(int(real_harm / 2 * (monomer.get_attack_value() / self.get_attack_value())))
         self.health -= self.break_shield(real_harm)
-        await self.team.scheduler.post_attack_event(self, monomer, real_harm, type_, True)
         return real_harm
 
     def get_attack_value(self) -> int:
@@ -162,12 +190,11 @@ class Monomer(ABC):
         elif random.random() <= self.critical_strike[0]:
             harm *= self.critical_strike[1]
             critical = True
-        return await target.attacked(type_, round(harm), self, missed), critical, missed
+        return (await target.attacked(type_, round(harm), self)), critical, missed
 
     def get_focus(self) -> int:
         return self.focus
 
 
 def get_miss_percent(origin: Monomer, target: Monomer) -> float:
-    "Calculate the miss percent that influenced by FOCUS value."
     return (origin.get_focus() - target.get_focus()) / 1000 + 0.05

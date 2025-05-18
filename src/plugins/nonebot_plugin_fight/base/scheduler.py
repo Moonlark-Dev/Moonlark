@@ -1,7 +1,7 @@
-from .team import Team
+from .team import ControllableTeam, Team
 from .monomer import Monomer
 
-from ..types import ACTION_EVENT, AttackTypes
+from ..types import ACTION_EVENT, HarmData
 
 
 class Scheduler:
@@ -20,16 +20,13 @@ class Scheduler:
             await t.got_event(event)
 
     async def post_attack_event(
-        self, target: Monomer, origin: Monomer, harm: int, harm_type: AttackTypes, missed: bool = False
+        self, origin: Monomer, harms: list[HarmData]
     ) -> None:
         await self.post_action_event(
             {
                 "type": "harm.single",
                 "origin": origin,
-                "target": target,
-                "harm_value": harm,
-                "harm_type": harm_type,
-                "harm_missed": missed,
+                "harms": harms
             }
         )
 
@@ -40,8 +37,13 @@ class Scheduler:
         return monomers
 
     async def setup(self) -> None:
+        if not any([True for t in self.teams if isinstance(t, ControllableTeam)]):
+            raise TypeError("No controllable team found.")
         for monomer in self.get_monomers():
             await monomer.setup(self.get_selectable_teams(monomer))
+    
+    def get_another_team(self, team: Team) -> Team:
+        return self.teams[0] if team == self.teams[1] else self.teams[1]
 
     def get_selectable_teams(self, monomer: Monomer) -> list[Team]:
         return [t for t in self.teams if t != monomer.get_team() and t.is_selectable()]
