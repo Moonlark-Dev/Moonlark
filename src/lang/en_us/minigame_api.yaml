@@ -2,41 +2,9 @@ quit:
   quit: 已结束挑战！
 rank:
   title: 小游戏积分排行
-command:
-  exchange_not_enough: 错误：积分不足（可兑换 {} 个 PawCoin）
-  exchange_success: 已兑换 {} 个 PawCoin
-  me_info: |
-    总积分: {}
-    挑战次数: {}
-    总时长: {}s
-    可兑换猫爪币: {}/{}
-  ranking_title: 小游戏积分排行
-  help_title: 小游戏列表
+  time: '总游玩时长: {}h'
 help:
-  ds: 小游戏
-  dt: 查看小游戏积分、排名和小游戏列表
-  u1: minigame (查看小游戏列表)
-  u2: minigame rank (查看积分排行榜)
-  u3: minigame me (查看积分)
-  u4: minigame exchange [数量] (兑换PawCoin)
-#各小游戏帮助文本
-defuse_tnt:
-  description: 拆除 TNT
-  details: 通过猜测排列出正确的密码。
-  usage1: defuse-tnt
-wordle:
-  description: WORDLE
-  details: 多人的猜单词游戏（为了避免干扰使用，不成功的匹配不会被提示。）
-  usage1: wordle [长度=5]
-'2048':
-  description: 2048 小游戏
-  details: 数字合成游戏 —— 2048
-  usage1: '2048'
-tol:
-  description: 关灯挑战
-  details: 尝试关掉所有的灯（一盏灯被开启或关闭时它上、下、左、右边的灯的状态也会发生改变）
-  usage1: tol
-manual_copy:
-  description: 打字机
-  details: 尽量快速地通过输入屏幕上的文本（较简单）
-  usage1: manual-copy
+  ds: 小游戏积分排名
+  dt: 查看 Moonlark 中游玩玩法的用户的排名
+  u1: minigame-rank
+gain: '通过小游戏获得了 {}vi!'

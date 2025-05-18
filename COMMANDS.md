@@ -34,27 +34,25 @@
 
 ### 用法
 - `/ftt (从随机地图开始)`
-- `/ftt <seed> (从指定种子生成地图，无奖励)`
-- `/ftt exchange [count] (将积分兑换为 PawCoin)`
-- `/ftt ranking (积分排名)`
-- `/ftt points (查看积分)`
+- `/ftt <seed> (从指定种子生成地图)`
+- `/[缺失: finding_the_trail.help.u3 ((); {})]`
+- `/[缺失: finding_the_trail.help.u4 ((); {})]`
+- `/[缺失: finding_the_trail.help.u5 ((); {})]`
 ## `jrrp`: 今日人品
 
 查询今天的人品值，今天也是幸运的一天～
 
 ### 用法
 - `/jrrp (获取今天的人品值)`
-- `/jrrp --rank (今日人品排名)`
+- `/jrrp --rank (今日幸运星)`
 - `/jrrp -g <分数> (计算下一个会出现某分数的日期)`
-## `minigame`: 小游戏
+- `/jrrp --rank-r (今日倒霉蛋)`
+## `minigame`: 小游戏积分排名
 
-查看小游戏积分、排名和小游戏列表
+查看 Moonlark 中游玩玩法的用户的排名
 
 ### 用法
-- `/minigame (查看小游戏列表)`
-- `/minigame rank (查看积分排行榜)`
-- `/minigame me (查看积分)`
-- `/minigame exchange [数量] (兑换PawCoin)`
+- `/minigame-rank`
 ## `quick-math`: 快速数学
 
 以计算为核心的玩法。找到问题的答案，并在排行榜中获取更高的积分。
@@ -62,7 +60,6 @@
 ### 用法
 - `/quick-math [-l|--level <开始的等级>] (开始挑战)`
 - `/quick-math rank [{max|total}] (积分排行榜)`
-- `/quick-math exchange [count] (使用总分兑换奖励)`
 - `/quick-math points (查看总分详情)`
 ## `setu`: 随机图片
 

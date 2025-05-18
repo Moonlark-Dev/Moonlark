@@ -27,5 +27,6 @@ load_plugin("nonebot_plugin_larkcave.plugins.restore")
 load_plugin("nonebot_plugin_larkcave.plugins.archive")
 load_plugin("nonebot_plugin_larkcave.plugins.cool_down")
 load_plugin("nonebot_plugin_larkcave.plugins.get")
+load_plugin("nonebot_plugin_larkcave.plugins.api")
 
 from . import __main__
