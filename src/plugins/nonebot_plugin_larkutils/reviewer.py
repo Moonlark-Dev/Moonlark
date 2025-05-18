@@ -55,6 +55,9 @@ def get_review_result(data: dict) -> ReviewResult:
 
 
 async def review_image(image: bytes) -> ReviewResult:
+    if not api_key:
+        logger.warning("审核接口未配置，内容审核将被禁用")
+        return {"compliance": True, "conclusion": "合规", "message": "未配置审核接口"}
     async with httpx.AsyncClient() as client:
         response = await client.post(
             f"https://aip.baidubce.com/rest/2.0/solution/v1/img_censor/v2/user_defined?access_token={await get_access_token()}",
@@ -65,6 +68,9 @@ async def review_image(image: bytes) -> ReviewResult:
 
 
 async def review_text(text: str) -> ReviewResult:
+    if not api_key:
+        logger.warning("审核接口未配置，内容审核将被禁用")
+        return {"compliance": True, "conclusion": "合规", "message": "未配置审核接口"}
     async with httpx.AsyncClient() as client:
         response = await client.post(
             f"https://aip.baidubce.com/rest/2.0/solution/v1/text_censor/v2/user_defined?access_token={await get_access_token()}",
