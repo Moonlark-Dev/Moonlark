@@ -1,0 +1,21 @@
+{% extends base %}
+
+{% block body %}
+{% for row1 in row1s %}
+<div style="display:flex;">
+    {% for i1 in row1.items %}
+    <div style="display: flex;margin: 2px;">
+        {% for row2 in i1.rows %}
+        <div style="display: flex;">
+            {% for i2 in row2.items %}
+            <div style="background-color: blue;border-radius:3px;width:100px;height:100px;display: flex;justify-content: center;align-items: center;margin:5px">
+                <h1>{{ i.value }}</h1>
+            </div>
+            {% endfor %}
+        </div>
+        {% endfor %}
+    </div>
+    {% endfor %}
+</div>
+{% endfor %}
+{% endblock body %}
