@@ -1,2 +1,14 @@
-sudoku:
+new:
+  number-invalid: 指定挖空数量不符合范围(0<数量<81)
   generated: 已生成数独
+fill:
+  position-invalid: 坐标不符合要求
+  number-invaild: 填入数字不符合要求，请填入1-9之间的整数
+clear:
+  position-invalid: 坐标不符合要求
+answer:
+  answer-showed: 已展示答案
+undo:
+  no-more: 没有更多操作记录
+redo:
+  no-more: 没有更新的操作
