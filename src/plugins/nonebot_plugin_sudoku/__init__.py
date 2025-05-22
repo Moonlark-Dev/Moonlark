@@ -6,7 +6,7 @@ from .config import Config
 __plugin_meta__ = PluginMetadata(
     name="nonebot_plugin_sudoku",
     description="数独游戏",
-    usage="/sudoku",
+    usage="",
     config=Config,
 )
 

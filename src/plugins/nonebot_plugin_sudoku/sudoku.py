@@ -1,14 +1,11 @@
 import random
 
+problem=[]
+answer=[]
+
 class Sudoku():
     def __init__(self):
         self.arrays = [0] * 81
-    def view(self, arrays):
-        for index in range(len(arrays)):
-            if index > 0 and index % 9 == 0:
-                print('\n', end='')
-            print(arrays[index], end=' ')
-        print('\n')
 
     def array(self, row_array):
         array = {1, 2, 3, 4, 5, 6, 7, 8, 9}
@@ -42,8 +39,35 @@ class Sudoku():
         for row_array in [0, 1, 2, 9, 10, 11, 18, 19, 20]:
             self.array(row_array)
         return self.arrays
-for null in range(10000):
-    arrays = Sudoku().sudoku()
-    if 0 not in arrays:
-        Sudoku().view(arrays)
-        break
+    
+def generate_new(num_holes: int):
+    global problem, answer
+    for null in range(10000):
+        answer = Sudoku().sudoku()
+        if 0 not in answer:
+            break
+    problem = answer.copy()
+    for i in range(num_holes):
+        flag=True
+        while flag:
+            x, y=random.randint(0,8), random.randint(0,8)
+            if problem[y*9+x]!=0:
+                problem[y*9+x]=0
+                flag=False
+
+def get_problem():
+    global problem
+    src = problem
+    content = {"rows": [[[[0 for i in range(3)] for i in range(3)] for i in range(3)] for i in range(3)]}
+    for i in range(len(src)):
+        content["rows"][(i//9)//3][(i%9)//3][(i//9)%3][(i%9)%3] = ("" if src[i]==0 else str(src[i]))
+    return content
+
+def get_answer():
+    global answer
+    src = answer
+    content = {"rows": [[[[0 for i in range(3)] for i in range(3)] for i in range(3)] for i in range(3)]}
+    for i in range(len(src)):
+        content["rows"][(i//9)//3][(i%9)//3][(i//9)%3][(i%9)%3] = ("" if src[i]==0 else str(src[i]))
+    return content
+
