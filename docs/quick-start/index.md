@@ -15,30 +15,6 @@
 
 ::: tip
 
-部分带有自动导入功能的编辑器、IDE 及语言服务器（如 VSCode）可能将相对导入的根目录识别为 `src/` 但实际上为仓库根目录。
-
-### 正确
-
-```python
-from nonebot_plugin_larkutils import get_user_id
-```
-
-#### 使用相对路径导入
-
-```python
-from nonebot_plugin_larkutils import get_user_id
-```
-
-### 错误
-
-```python
-from plugins.nonebot_plugin_larkutils import get_user_id
-```
-
-:::
-
-::: tip
-
 有一部分编辑器或 IDE （如 PyCharm）可能在重构时在 `src/` 和 `src/plugins/` 下建立空的 `__init__.py` 文件，请删除它或添加为 Ignore。
 
 :::
@@ -47,7 +23,6 @@ from plugins.nonebot_plugin_larkutils import get_user_id
 ## 开始
 
 [初始化开发环境][7]
-
 
 
 [1]: https://python.org
