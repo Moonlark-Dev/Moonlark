@@ -23,3 +23,15 @@ undo:
 redo:
   success: 已重做操作
   no-more: 没有更新的操作
+help:
+  description: 数独解谜游戏
+  details: 数独解谜游戏，提供不同难度级别的数独谜题。游戏可以错误检查功能，帮助用户学习数独技巧。
+  usage:
+    new: sudoku new <num-holes> (生成指定空格数的数独)
+    change: sudoku change <row> <column> <value> (修改数独指定行列数字)
+    erase: sudoku erase <row> <column> (去除数独指定行列数字)
+    hint: sudoku hint (提供第一个空格的提示)
+    reset: sudoku reset (重置数独为初始状态)
+    answer: sudoku answer (展示答案)
+    undo: sudoku undo (撤销操作)
+    redo: sudoku redo (撤销操作)
