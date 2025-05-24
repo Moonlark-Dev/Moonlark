@@ -15,9 +15,9 @@ poetry run nb plugin create nonebot-plugin-sha1
 
 ## 编写插件
 
-### `src/plugins/nonebot_plugin_sha1/__init__.py`
+### 1. 编辑插件入口文件
 
-插件创建后，这个文件应该是这样的：
+使用以上指令创建插件后，该插件入坑文件将位于 `src/plugins/nonebot_plugin_sha1/__init__.py`，这个文件目前只包含了插件元数据和其他信息，它应该是这样的：
 
 ```python
 from nonebot import get_plugin_config
@@ -35,7 +35,7 @@ __plugin_meta__ = PluginMetadata(
 config = get_plugin_config(Config)
 ```
 
-为了方便，我们进行如下更改：
+我们进行如下更改：
 
 ```diff
 - from nonebot import get_plugin_config
@@ -56,44 +56,32 @@ __plugin_meta__ = PluginMetadata(
 
 ```
 
-同时，删除 `config.py` 文件。
+这个插件不需要任何环境变量配置，我们将删除 `config.py` 文件。
 
-::: tip
-这个插件不包含配置项，不应保留空的 `config.py` 文件
-:::
+### 2. 编写插件主体
 
-```python
-from nonebot.plugin import PluginMetadata
-from nonebot import require
-
-__plugin_meta__ = PluginMetadata(
-    name="nonebot-plugin-sha1",
-    description="SHA1 摘要提取",
-    usage="",
-    config=None,
-)
-
-
-require("nonebot_plugin_larklang")
-require("nonebot_plugin_larkutils")
-
-from . import __main__
-```
-
-### `src/plugins/nonebot_plugin_sha1/__main__.py` (新建)
+在开始之前，我们需要引入一些必要的模块。
 
 ```python
 import hashlib
+from nonebot import require
 from nonebot import on_command
 from nonebot.adapters import Message
 from nonebot.params import CommandArg
 
+require("nonebot_plugin_larklang")
+require("nonebot_plugin_larkutils")
+
 from nonebot_plugin_larklang import LangHelper
 from nonebot_plugin_larkutils import get_user_id
+```
 
+然后，我们将为这个插件创建一个 `sha1` 指令，继续添加以下内容：
+
+```python
+# 如果插件的指令比较复杂，建议使用 on_alconna 而不是 on_command 进行匹配。 
 sha1 = on_command("sha1")
 lang = LangHelper()
-
 
 @sha1.handle()
 async def _(message: Message = CommandArg(), user_id: str = get_user_id()) -> None:
@@ -102,17 +90,31 @@ async def _(message: Message = CommandArg(), user_id: str = get_user_id()) -> No
     await lang.finish("sha1.sha1", user_id, sha1sum)
 ```
 
-### `src/lang/zh_hans/sha1.yaml` (新建)
+### 3. 创建本地化文件
+
+在上一步中我们不难注意到，我们的 SHA1 插件使用了 `LarkLang` 对象中的一个 `finish` 方法向用户发送结果。我们需要为这个插件创建本地化文件，否则 `LarkLang` 插件永远也无法知道我们要向用户发送什么。
+
+::: tip
+
+Moonlark 代码内包含了多个语言的语言文件，在大多数情况下，我们只需要编辑 `src/lang/zh_hans` 下的内容。
+
+:::
+
+
+我们在 `src/lang/zh_hans` 下创建一个 `sha1.yaml`，然后写入以下内容： 
 
 ```yaml
 sha1:
   sha1: '消息文本的 SHA1 摘要为: {}'
+  # 这个就是键 `sha1.sha1`
+
 help:
   description: SHA1 摘要计算
   details: 计算文本的 SHA1 摘要
-  usage: sha1 <内容>
-
+  usage1: sha1 <内容>
 ```
+
+同时，我们为这个文件额外写入了一个没有在代码中体现的 `help` 节，这个节将在下一步被用到。
 
 ::: tip
 
@@ -120,16 +122,15 @@ Moonlark 使用 LarkLang 实现本地化，也可以在 Moonlark 中添加相同
 
 :::
 
-### `src/plugins/nonebot_plugin_sha1/help.yaml` (新建)
+### 4. 创建指令帮助配置
+
+在插件根目录，即 `src/plugins/nonebot_plugin_sha1` 下创建一个 `help.yaml`，LarkHelp 将在启动时读取这里面的内容并生成 `help` 指令展示的帮助列表：
 
 ```yaml
 plugin: sha1
 commands:
-  sha1:
-    description: help.description
-    details: help.details
-    usages:
-      - help.usage
+  sha1: help;1;tools
+  # help 为本地化节名，1 为用法数量，tools 为指令分类
 ```
 
 ## 测试
@@ -144,13 +145,13 @@ poetry run nb run
 08-01 13:18:35 [SUCCESS] nonebot | Succeeded to load plugin "nonebot_plugin_sha1" from "src.plugins.nonebot_plugin_sha1"
 ```
 
-此时，使用 `sha1 114514` 将会出现以下消息：
+此时，使用 `sha1 114514` 将会发送以下消息：
 
 ```
 消息文本的 SHA1 摘要为: 2c8509df0df65f9826dc872a9acfea532c1f53c7
 ```
 
-## 下一步
+## 参考阅读
 
 [发生了什么？][1]
 
