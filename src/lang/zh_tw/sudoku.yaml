@@ -1,14 +1,25 @@
 new:
-  number-invalid: 指定挖空数量不符合范围(0<数量<81)
+  number-invalid: 指定挖空数量不符合范围(请保证0<数量<81)
   generated: 已生成数独
-fill:
+change:
   position-invalid: 坐标不符合要求
   number-invaild: 填入数字不符合要求，请填入1-9之间的整数
-clear:
+  changed-origin: 请不要修改原题
+  conflict: 填入数字和已有数字发生冲突
+  success: 已修改
+erase:
   position-invalid: 坐标不符合要求
+  changed-origin: 请不要修改原题
+  success: 已擦除
+hint:
+  success: 已提供提示
+reset:
+  resets: 已重置数独
 answer:
   answer-showed: 已展示答案
 undo:
+  success: 已撤销操作
   no-more: 没有更多操作记录
 redo:
+  success: 已重做操作
   no-more: 没有更新的操作

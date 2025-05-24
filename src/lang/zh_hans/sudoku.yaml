@@ -1,14 +1,37 @@
 new:
-  number-invalid: 指定挖空数量不符合范围(0<数量<81)
+  number-invalid: 指定挖空数量不符合范围(请保证0<数量<81)
   generated: 已生成数独
-fill:
+change:
   position-invalid: 坐标不符合要求
   number-invaild: 填入数字不符合要求，请填入1-9之间的整数
-clear:
+  changed-origin: 请不要修改原题
+  conflict: 填入数字和已有数字发生冲突
+  success: 已修改
+erase:
   position-invalid: 坐标不符合要求
+  changed-origin: 请不要修改原题
+  success: 已擦除
+hint:
+  success: 已提供提示
+reset:
+  resets: 已重置数独
 answer:
   answer-showed: 已展示答案
 undo:
+  success: 已撤销操作
   no-more: 没有更多操作记录
 redo:
+  success: 已重做操作
   no-more: 没有更新的操作
+help:
+  description: 数独解谜游戏
+  details: 数独解谜游戏，提供不同难度级别的数独谜题。游戏可以错误检查功能，帮助用户学习数独技巧。
+  usage:
+    new: sudoku new <num-holes> (生成指定空格数的数独)
+    change: sudoku change <row> <column> <value> (修改数独指定行列数字)
+    erase: sudoku erase <row> <column> (去除数独指定行列数字)
+    hint: sudoku hint (提供第一个空格的提示)
+    reset: sudoku reset (重置数独为初始状态)
+    answer: sudoku answer (展示答案)
+    undo: sudoku undo (撤销操作)
+    redo: sudoku redo (撤销操作)
