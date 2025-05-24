@@ -1,10 +1,10 @@
 from datetime import datetime
+from nonebot_plugin_larkuser.utils.user import get_registered_user_ids
 from nonebot_plugin_larkutils import get_main_account
 import json
 from typing import Optional
 from nonebot.log import logger
 from nonebot_plugin_orm import get_session
-from sqlalchemy import select
 
 from nonebot_plugin_larkuser.models import UserData
 from ..models import EmailData, EmailItem, EmailUser
@@ -34,9 +34,7 @@ async def send_global_email(
     subject: str, content: str, author: Optional[str] = None, items: list[EmailItemData] = []
 ) -> int:
     async with get_session() as session:
-        receivers = list(
-            (await session.scalars(select(UserData.user_id).where(UserData.register_time.is_not(None)))).all()
-        )
+        receivers =  await get_registered_user_ids()
         for i in range(len(receivers)):
             receivers[i] = await get_main_account(receivers[i])
         receivers = list(set(receivers))
