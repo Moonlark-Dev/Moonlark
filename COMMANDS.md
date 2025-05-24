@@ -271,3 +271,16 @@ Moonlark 投票
 ### 用法
 - `/schdeule (查看每日任务列表)`
 - `/schdeule collect (领取可领取的奖励)`
+## `sudoku`: 数独解谜游戏
+
+数独解谜游戏，提供不同难度级别的数独谜题。游戏可以错误检查功能，帮助用户学习数独技巧。
+
+### 用法
+- `/sudoku new <num-holes> (生成指定空格数的数独)`
+- `/sudoku change <row> <column> <value> (修改数独指定行列数字)`
+- `/sudoku erase <row> <column> (去除数独指定行列数字)`
+- `/sudoku hint (提供第一个空格的提示)`
+- `/sudoku reset (重置数独为初始状态)`
+- `/sudoku answer (展示答案)`
+- `/sudoku undo (撤销操作)`
+- `/sudoku redo (撤销操作)`

@@ -64,6 +64,7 @@ plugins = [
     "nonebot_plugin_registry",
     "nonebot_plugin_render",
     "nonebot_plugin_sign",
+    "nonebot_plugin_sudoku",
     "nonebot_plugin_time_progress",
     "nonebot_plugin_translate",
     "nonebot_plugin_vote",
