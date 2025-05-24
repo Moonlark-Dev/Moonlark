@@ -1,0 +1,16 @@
+plugin: sudoku
+commands:
+  sudoku:
+    description: help.description
+    details: help.details
+    usages:
+      - help.usage.new
+      - help.usage.change
+      - help.usage.erase
+      - help.usage.hint
+      - help.usage.reset
+      - help.usage.answer
+      - help.usage.undo
+      - help.usage.redo
+    category: game
+      
