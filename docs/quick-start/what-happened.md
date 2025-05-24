@@ -165,9 +165,6 @@ sequenceDiagram
    import nonebot_plugin_larklang
    ```
 
-## 后续学习路径
-
-▶ [插件帮助文档编写指南][9]
 
 [1]: first-plugin
 [2]: /plugins/lang
@@ -177,4 +174,3 @@ sequenceDiagram
 [6]: https://nonebot.dev/docs/tutorial/matcher
 [7]: https://nonebot.dev/docs/tutorial/event-data
 [8]: https://github.com/nonebot/plugin-alconna
-[9]: plugin-help
