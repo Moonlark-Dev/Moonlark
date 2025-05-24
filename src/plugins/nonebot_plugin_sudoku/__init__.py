@@ -23,4 +23,3 @@ require("nonebot_plugin_alconna")
 require("nonebot_plugin_apscheduler")
 
 from . import __main__
-
