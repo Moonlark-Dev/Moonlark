@@ -1,21 +1,19 @@
 from typing import AsyncGenerator, NoReturn
 from nonebot_plugin_alconna import UniMessage
+from nonebot_plugin_larkuser.utils.user import get_registered_user_ids
 from nonebot_plugin_orm import get_session
-from sqlalchemy import select
 from .lang import lang
 from nonebot_plugin_render import render_template
 from nonebot_plugin_larkutils.jrrp import get_luck_value
 from nonebot_plugin_larkutils import get_user_id
 from .__main__ import jrrp
-from nonebot_plugin_larkuser.models import UserData
 from nonebot_plugin_larkuser import get_user
 
 
 async def get_user_list() -> AsyncGenerator[tuple[str, int], None]:
     session = get_session()
-    result = await session.scalars(select(UserData.user_id).where(UserData.register_time != None))
-    for user_id in result:
-        yield user_id, get_luck_value(user_id)
+    for user in await get_registered_user_ids():
+        yield user, get_luck_value(user)
     await session.close()
 
 
