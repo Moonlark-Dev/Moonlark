@@ -24,15 +24,18 @@ async def get_user(user_id: str) -> MoonlarkUser:
     await user.setup_user()
     return user
 
+
 async def get_registered_user_ids() -> list[str]:
     async with get_session() as session:
         return list(await session.scalars(select(UserData.user_id).where(UserData.register_time != None)))
 
+
 async def get_registered_users() -> AsyncGenerator[MoonlarkRegisteredUser, None]:
-        for user_id in await get_registered_user_ids():
-            user = await get_user(user_id)
-            if isinstance(user, MoonlarkRegisteredUser):
-                yield user
+    for user_id in await get_registered_user_ids():
+        user = await get_user(user_id)
+        if isinstance(user, MoonlarkRegisteredUser):
+            yield user
+
 
 async def get_registered_user_list() -> list[MoonlarkRegisteredUser]:
     return [u async for u in get_registered_users()]

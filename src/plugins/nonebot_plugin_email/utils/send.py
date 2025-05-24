@@ -34,7 +34,7 @@ async def send_global_email(
     subject: str, content: str, author: Optional[str] = None, items: list[EmailItemData] = []
 ) -> int:
     async with get_session() as session:
-        receivers =  await get_registered_user_ids()
+        receivers = await get_registered_user_ids()
         for i in range(len(receivers)):
             receivers[i] = await get_main_account(receivers[i])
         receivers = list(set(receivers))
