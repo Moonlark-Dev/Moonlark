@@ -55,3 +55,4 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 - [Nonebot2](https://nonebot.dev)
 - [JetBrains](https://jetbrains.com)
 - 所有[开发者](https://github.com/orgs/Moonlark-Dev/people)、[贡献者](https://github.com/Moonlark-Dev/Moonlark/graphs/contributors)和用户
+
