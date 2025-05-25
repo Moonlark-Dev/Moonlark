@@ -74,7 +74,6 @@ packages = [
     { include = "nonebot_plugin_minigame_api", from = "./plugins" },
     { include = "nonebot_plugin_openai", from = "./plugins" },
     { include = "nonebot_plugin_pacman", from = "./plugins" },
-    { include = "nonebot_plugin_pawcoin_exchange", from = "./plugins" },
     { include = "nonebot_plugin_preview", from = "./plugins" },
     { include = "nonebot_plugin_quick_math", from = "./plugins" },
     { include = "nonebot_plugin_ranking", from = "./plugins" },
