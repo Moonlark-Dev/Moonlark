@@ -6,20 +6,60 @@ log:
     name: 名称
     stat: 状态
   title: 战况
-stat: '❤{}% ⛓{} ⏱{action_value}'
-stat_with_shield: '❤{}%(+{shield}) ⛓{} ⏱{}'
-stat_unselectable: '⏱{action_value}'
 skill_stat:
-  cost: '💰{}'
-  not_occupy_round: '🔄'
-skill_point: '{} / {}'
+  cost: 'C{}'
+stat:
+  monomer_stat: |
+    {} `{}/{}`{}<br>HP: [{}]{buff}
+  hp:
+    full: '/'
+    null: '-'
+  power: ' P:{}%'
+  stat_header: |
+    |     | 我方阵容 `{}` | 敌方阵容 `{}` |
+    |:---:|--------------|---------------|
+  pos_line: |
+    | {} | {a} | {b} |
+action_text:
+  header: |
+    ## 当前行动 `{}`
+    - COST: {}
+    - CHARGE: {}/{} ({}%)
+    |     | 技能              | 费用 |
+    |:---:|-------------------|-----|
+    {}
+  skill_line: |
+    | {}  | {} | {}  |
+  cost:
+    normal: '{}C'
+    charge: '{}P'
+    add: '+{}C'
+timer: '战斗倒计时: {}s'
+command_help: |
+  > ### 指令列表
+  > - `<技能> [目标]`: 使用技能
+  > - `l`: 显示当前行动队列
+  > - `b`: 查看装备栏
+  > - `s`: 跳过回合
+  > 使用技能或目标前面的数字选择技能或目标
+action_list:
+  header: |
+    # 行动序列
+    |    | 队伍 | 单位名称      | 行动点 |
+    |:--:|------|--------------|-------|
+  line: |
+    | {} | `{}` | {} | {} |
+  line_self: |
+    | *{}* | *`{}`* | *{}* | *{}* |
 harm_type:
-  _1: 风
-  _2: 火
-  _3: 电
-  _4: 冰
-  _5: ME
-  _6: 真
+  _0: P
+  _1: W
+  _2: F
+  _3: E
+  _4: I
+  _5: M
+  _6: R
+  _7: N
 hp:
   normal: '{} / {} ({}%)'
   plus: '{} / {} ({}%) + {}'
@@ -28,20 +68,5 @@ action:
   myteam: 我方队伍 (按行动顺序排序)
   title: 行动面板
   invalid: 无效输入，请检查输入内容
-characters:
-  moonlark:
-    name: Moonlark
-    skills:
-      common: 射击！
-      skill: 蚀月轰击
-      final_skill: 月殒天冲
-buff:
-  lunar_eclipse_cracks:
-    name: 月蚀裂痕
-    description: 受到 ME 属性伤害 +15%
-  moonlark_cold_down:
-    name: 过载
-    description: Moonlark 下回合普攻伤害 -30%
-weapon:
-  id_0:
-    name: Moonlark 的手枪
+characters: ''
+buff: ''
