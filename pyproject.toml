@@ -58,7 +58,6 @@ plugins = [
     "nonebot_plugin_minigame_api",
     "nonebot_plugin_openai",
     "nonebot_plugin_pacman",
-    "nonebot_plugin_pawcoin_exchange",
     "nonebot_plugin_preview",
     "nonebot_plugin_quick_math",
     "nonebot_plugin_ranking",
