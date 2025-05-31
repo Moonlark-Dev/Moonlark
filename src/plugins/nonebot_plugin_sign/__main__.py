@@ -36,8 +36,8 @@ class SignClaimData(TypedDict):
     now: float | int
 
 
-def get_luck(user_id: str) -> str:
-    value = get_luck_value(user_id)
+async def get_luck(user_id: str) -> str:
+    value = await get_luck_value(user_id)
     if 80 < value <= 100:
         return "a"
     elif 60 < value <= 80:
@@ -201,7 +201,7 @@ async def _(matcher: Matcher, user_id: str = get_user_id()) -> None:
         },
         "fortune": {
             "text": await lang.text("image.fortune", user_id),
-            "value": await lang.text(f"luck.{get_luck(user_id)}", user_id),
+            "value": await lang.text(f"luck.{await get_luck(user_id)}", user_id),
         },
         "avatar": base64.b64encode(user.avatar).decode() if user.avatar is not None else None,
     }
