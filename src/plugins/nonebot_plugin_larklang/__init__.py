@@ -15,3 +15,4 @@ require("nonebot_plugin_orm")
 
 from . import command as _command
 from .__main__ import LangHelper, CommandLangHelper
+from .quit import parse_exit_input
