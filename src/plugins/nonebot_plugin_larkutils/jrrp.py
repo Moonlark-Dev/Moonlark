@@ -6,6 +6,7 @@ from nonebot_plugin_orm import Model, get_session
 from sqlalchemy import String
 from sqlalchemy.orm import mapped_column, Mapped
 
+
 class LuckValue(Model):
     user_id: Mapped[str] = mapped_column(String(128), primary_key=True)
     luck_value: Mapped[int]
@@ -17,11 +18,9 @@ async def get_luck_value(user_id: str) -> int:
         value = await session.get(LuckValue, {"user_id": user_id})
         if value is not None and value.generate_date == date.today():
             return value.luck_value
-        random.seed(struct.unpack("<I",os.urandom(4))[0])
+        random.seed(struct.unpack("<I", os.urandom(4))[0])
         value = LuckValue(
-            user_id=user_id,
-            luck_value=(luck_value := random.randint(0, 100)),
-            generate_date=date.today()
+            user_id=user_id, luck_value=(luck_value := random.randint(0, 100)), generate_date=date.today()
         )
         await session.merge(value)
         await session.commit()

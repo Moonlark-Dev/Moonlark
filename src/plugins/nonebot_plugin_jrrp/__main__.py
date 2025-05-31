@@ -13,4 +13,3 @@ jrrp = on_alconna(alc)
 async def _(user_id: str = get_user_id()) -> None:
     await complete_schedule(user_id, "jrrp")
     await jrrp.finish(await get_luck_message(user_id), at_sender=True)
-
