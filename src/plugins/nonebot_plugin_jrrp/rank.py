@@ -13,14 +13,14 @@ from nonebot_plugin_larkuser import get_user
 async def get_user_list() -> AsyncGenerator[tuple[str, int], None]:
     session = get_session()
     for user in await get_registered_user_ids():
-        yield user, get_luck_value(user)
+        yield user, await get_luck_value(user)
     await session.close()
 
 
 async def get_rank(sender_id: str, reverse: bool = False) -> NoReturn:
     data = sorted([data async for data in get_user_list()], key=lambda x: x[1], reverse=not reverse)
     templates = {}
-    for i in range(3):
+    for i in range(min(3, len(data))):
         user_id = data[i][0]
         user = await get_user(user_id)
         templates[f"luckiest_{i + 1}"] = {

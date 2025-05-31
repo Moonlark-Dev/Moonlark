@@ -1,14 +1,28 @@
 from datetime import date
-from typing import Optional
+import os
+import random
+import struct
+from nonebot_plugin_orm import Model, get_session
+from sqlalchemy import String
+from sqlalchemy.orm import mapped_column, Mapped
+
+class LuckValue(Model):
+    user_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    luck_value: Mapped[int]
+    generate_date: Mapped[date]
 
 
-def str_to_int(s: str) -> int:
-    total = 0
-    for i, char in enumerate(s):
-        total += ord(char) * (256**i)
-    return total
-
-
-def get_luck_value(user_id: str, target_date: Optional[date] = None) -> int:
-    d = str(target_date or date.today())
-    return str_to_int(f"{d}::{user_id}") % 101
+async def get_luck_value(user_id: str) -> int:
+    async with get_session() as session:
+        value = await session.get(LuckValue, {"user_id": user_id})
+        if value is not None and value.generate_date == date.today():
+            return value.luck_value
+        random.seed(struct.unpack("<I",os.urandom(4))[0])
+        value = LuckValue(
+            user_id=user_id,
+            luck_value=(luck_value := random.randint(0, 100)),
+            generate_date=date.today()
+        )
+        await session.merge(value)
+        await session.commit()
+    return luck_value
