@@ -1,4 +1,4 @@
-from nonebot_plugin_larklang import LangHelper
+from .__main__ import LangHelper
 
 
 lang = LangHelper()
