@@ -24,3 +24,5 @@ help:
   usage_view: lang view <language > (view language information)
   usage_list: lang (view language list)
   usage_reload: lang reload (重载语言[SU])
+quit:
+  exited: 已退出！
