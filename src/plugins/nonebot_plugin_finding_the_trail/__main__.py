@@ -22,5 +22,4 @@ from nonebot_plugin_larklang import LangHelper
 
 ftt = on_alconna(Alconna("ftt", Args["seed?", str, "-1"]))
 lang = LangHelper()
-
 patch_matcher(ftt)
