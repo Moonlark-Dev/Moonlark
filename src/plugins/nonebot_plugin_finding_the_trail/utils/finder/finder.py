@@ -23,8 +23,9 @@ from .utils import NodeData, get_moveable_directions
 
 class Finder(ABC):
 
-    def __init__(self, game_map: list[list[Blocks]], step_limit: int = -1, min_step: int = 0) -> None:
+    def __init__(self, game_map: list[list[Blocks]], step_limit: int = -1, min_step: int = 0, portal: bool = False) -> None:
         self.step_limit = step_limit
+        self.portal = portal
         self.min_step = min_step
         self.game_map = game_map
         self.end_pos = [0, 0]

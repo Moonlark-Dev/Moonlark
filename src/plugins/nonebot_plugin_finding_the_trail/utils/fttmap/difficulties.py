@@ -14,20 +14,7 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
-#
-#  This program is free software: you can redistribute it and/or modify
-#  it under the terms of the GNU Affero General Public License as published
-#  by the Free Software Foundation, either version 3 of the License, or
-#  (at your option) any later version.
-#
-#  This program is distributed in the hope that it will be useful,
-#  but WITHOUT ANY WARRANTY; without even the implied warranty of
-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#  GNU Affero General Public License for more details.
-#
-#  You should have received a copy of the GNU Affero General Public License
-#  along with this program.  If not, see <https://www.gnu.org/licenses/>.
-# ##############################################################################
+
 
 from nonebot_plugin_finding_the_trail.utils.enums.blocks import Blocks
 
@@ -36,12 +23,12 @@ DIFFICULTIES = {
         "map": {
             "row": 6,
             "column": 8,
-            "blocks": [(Blocks.WALL, 3 / 15), (Blocks.GOLD_PISTON, 1 / 15), (Blocks.PISTON, 2 / 15)],
-            "portal": False,
+            "blocks": [(Blocks.WALL, 3 / 9), (Blocks.GOLD_PISTON, 1 / 12), (Blocks.PISTON, 2 / 9)]
         },
         "finder": {
             "step_limit": 12,
             "min_step": 4,
+            "portal": False,
         },
         "points": 10,
     },
@@ -55,12 +42,12 @@ DIFFICULTIES = {
                 (Blocks.SAND, 0.1),
                 (Blocks.GOLD_PISTON, 0.1),
                 (Blocks.COBWEB, 0.1),
-            ],
-            "portal": False,
+            ]
         },
         "finder": {
             "step_limit": 17,
             "min_step": 5,
+            "portal": False,
         },
         "points": 25,
     },
@@ -75,11 +62,11 @@ DIFFICULTIES = {
                 (Blocks.WALL, 0.2),
                 (Blocks.COBWEB, 0.1),
             ],
-            "portal": True,
         },
         "finder": {
             "step_limit": 20,
             "min_step": 7,
+            "portal": True,
         },
         "points": 100,
     },

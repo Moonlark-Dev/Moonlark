@@ -35,4 +35,4 @@ require("nonebot_plugin_minigame_api")
 require("nonebot_plugin_waiter")
 require("nonebot_plugin_schedule")
 
-from . import commands
+from . import command
