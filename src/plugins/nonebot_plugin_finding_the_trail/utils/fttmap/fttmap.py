@@ -29,10 +29,13 @@ class FttMap:
 
     def __init__(self, seed: str) -> None:
         random.seed(seed)
-        self.difficulty_name = random.choice(list(DIFFICULTIES.keys()))
-        self.difficulty = DIFFICULTIES[self.difficulty_name]
-        self.map, self.answer, self.start_pos = self.generate_map()
-        self.step_length = len(self.answer)
+        self.answer = []
+        self.step_length = 0
+        while self.step_length < 3:
+            self.difficulty_name = random.choice(list(DIFFICULTIES.keys()))
+            self.difficulty = DIFFICULTIES[self.difficulty_name]
+            self.map, self.answer, self.start_pos = self.generate_map()
+            self.step_length = len(self.answer)
 
     def generate_map(self) -> tuple[list[list[Blocks]], list[Directions], list[int]]:
         game_map = generate(**self.difficulty["map"])
