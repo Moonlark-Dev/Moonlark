@@ -23,7 +23,7 @@ DIFFICULTIES = {
         "map": {
             "row": 6,
             "column": 8,
-            "blocks": [(Blocks.WALL, 3 / 9), (Blocks.GOLD_PISTON, 1 / 12), (Blocks.PISTON, 2 / 9)]
+            "blocks": [(Blocks.WALL, 3 / 9), (Blocks.GOLD_PISTON, 1 / 12), (Blocks.PISTON, 2 / 9)],
         },
         "finder": {
             "step_limit": 12,
@@ -42,7 +42,7 @@ DIFFICULTIES = {
                 (Blocks.SAND, 0.1),
                 (Blocks.GOLD_PISTON, 0.1),
                 (Blocks.COBWEB, 0.1),
-            ]
+            ],
         },
         "finder": {
             "step_limit": 17,

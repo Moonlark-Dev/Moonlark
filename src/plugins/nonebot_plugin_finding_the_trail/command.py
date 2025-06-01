@@ -66,7 +66,11 @@ async def _(seed: str, user_id: str = get_user_id()) -> None:
         try:
             d_list = await getter.get_commands()
         except Quited:
-            await session.quit(await lang.text("ftt.example", user_id, await get_command_list_string(ftt_map.answer, user_id), map_seed))
+            await session.quit(
+                await lang.text(
+                    "ftt.example", user_id, await get_command_list_string(ftt_map.answer, user_id), map_seed
+                )
+            )
         if not await is_user_continue(user_id, d_list):
             continue
         try:

@@ -41,7 +41,9 @@ def get_portal_pos(game_map: list[list[Blocks]]) -> Optional[tuple[tuple[int, in
 
 class EndFinder(Finder):
 
-    def __init__(self, game_map: list[list[Blocks]], step_limit: int = -1, min_step: int = 0, portal: bool = False) -> None:
+    def __init__(
+        self, game_map: list[list[Blocks]], step_limit: int = -1, min_step: int = 0, portal: bool = False
+    ) -> None:
         super().__init__(game_map, step_limit, min_step, portal)
 
     def set_end_block(self) -> None:
