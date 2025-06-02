@@ -8,9 +8,9 @@ from nonebot_plugin_larklang import LangHelper
 quick_math = on_alconna(
     Alconna(
         "quick-math",
-        Subcommand("rank", Args["rank_type", Literal["total", "max"], "max"]),
+        Subcommand("rank", Option("-t|--total")),
         Subcommand("points"),
-        Option("--level|-l", Args["start_level", int, 1]),
+        Subcommand("--level", Args["max_level", int]),
     )
 )
 lang = LangHelper()

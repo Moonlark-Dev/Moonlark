@@ -1,7 +1,7 @@
 [project]
 name = "moonlark_custom_plugins"
-version = "0.2.0"
-description = "Moonlark 中的自定义插件 (本插件必须使用 --editable 安装)"
+version = "0.2.2"
+description = "Moonlark 中的自定义插件"
 requires-python = ">=3.11, <4.0"
 
 
@@ -9,7 +9,7 @@ requires-python = ">=3.11, <4.0"
 python = "^3.11"
 nonebot2 = {extras = ["fastapi"], version = "^2.3.1"}
 
-httpx = {extras = ["socks"], version = "^0.27.0"}
+httpx = {extras = ["socks"], version = "^0.28.1"}
 aiofiles = "^23.2.1"
 numpy = "^1.26.4"
 pillow = "^10.3.0"
@@ -25,12 +25,11 @@ cryptography = "^44.0.0"
 pyproject-toml = "^0.0.10"
 matplotlib = "^3.10.0"
 
-nonebot-adapter-onebot = "^2.4.3"
-nonebot-plugin-htmlrender = "^0.3.1"
-nonebot-plugin-alconna = "^0.54.2"
-nonebot-plugin-picstatus = "^2.0.0.post2"
-nonebot-plugin-orm = "^0.7.6"
-nonebot-plugin-session = "^0.2.3"
+nonebot-adapter-onebot = "^2.4.6"
+nonebot-plugin-htmlrender = "^0.6.6"
+nonebot-plugin-alconna = "^0.57.6"
+nonebot-plugin-orm = "^0.8.0"
+nonebot-plugin-session = "^0.3.2"
 nonebot-adapter-qq = {git = "https://github.com/This-is-XiaoDeng/adapter-qq"}
 
 
@@ -90,7 +89,8 @@ packages = [
     { include = "nonebot_plugin_turn_off_lights", from = "./plugins" },
     { include = "nonebot_plugin_github", from = "./plugins" },
     { include = "nonebot_plugin_schedule", from = "./plugins" },
-    { include = "nonebot_plugin_wordle", from = "./plugins" }
+    { include = "nonebot_plugin_wordle", from = "./plugins" },
+    { include = "nonebot_plugin_sudoku", from = "./plugins" }
 ]
 
 

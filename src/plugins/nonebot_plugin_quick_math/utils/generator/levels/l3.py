@@ -25,4 +25,6 @@ async def generate_question(user_id: str) -> Question:
         answer = f"({answer}|{fraction})"
     else:
         answer = int(answer)
-    return {"question": question, "answer": str(answer)}
+    async def verify(string: str) -> bool:
+        return string.strip() == str(answer)
+    return {"question": question, "answer": verify}
