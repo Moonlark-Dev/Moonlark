@@ -52,23 +52,23 @@ docs = ["sphinx (==7.2.6)", "sphinx-mdinclude (==0.5.3)"]
 
 [[package]]
 name = "alembic"
-version = "1.14.1"
+version = "1.16.1"
 description = "A database migration tool for SQLAlchemy."
 optional = false
-python-versions = ">=3.8"
+python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "alembic-1.14.1-py3-none-any.whl", hash = "sha256:1acdd7a3a478e208b0503cd73614d5e4c6efafa4e73518bb60e4f2846a37b1c5"},
-    {file = "alembic-1.14.1.tar.gz", hash = "sha256:496e888245a53adf1498fcab31713a469c65836f8de76e01399aa1c3e90dd213"},
+    {file = "alembic-1.16.1-py3-none-any.whl", hash = "sha256:0cdd48acada30d93aa1035767d67dff25702f8de74d7c3919f2e8492c8db2e67"},
+    {file = "alembic-1.16.1.tar.gz", hash = "sha256:43d37ba24b3d17bc1eb1024fe0f51cd1dc95aeb5464594a02c6bb9ca9864bfa4"},
 ]
 
 [package.dependencies]
 Mako = "*"
-SQLAlchemy = ">=1.3.0"
-typing-extensions = ">=4"
+SQLAlchemy = ">=1.4.0"
+typing-extensions = ">=4.12"
 
 [package.extras]
-tz = ["backports.zoneinfo ; python_version < \"3.9\"", "tzdata"]
+tz = ["tzdata"]
 
 [[package]]
 name = "annotated-types"
@@ -1420,14 +1420,14 @@ test = ["Cython (>=0.29.24)"]
 
 [[package]]
 name = "httpx"
-version = "0.27.2"
+version = "0.28.1"
 description = "The next generation HTTP client."
 optional = false
 python-versions = ">=3.8"
 groups = ["main", "dev"]
 files = [
-    {file = "httpx-0.27.2-py3-none-any.whl", hash = "sha256:7bb2708e112d8fdd7829cd4243970f0c223274051cb35ee80c03301ee29a3df0"},
-    {file = "httpx-0.27.2.tar.gz", hash = "sha256:f7c2be1d2f3c3c3160d441802406b206c2b76f5947b11115e6df10c6c65e66c2"},
+    {file = "httpx-0.28.1-py3-none-any.whl", hash = "sha256:d909fcccc110f8c7faf814ca82a9a4d816bc5a6dbfea25d6591d6985b8ba59ad"},
+    {file = "httpx-0.28.1.tar.gz", hash = "sha256:75e98c5f16b0f35b567856f597f06ff2270a374470a5c2392242528e3e3e42fc"},
 ]
 
 [package.dependencies]
@@ -1435,7 +1435,6 @@ anyio = "*"
 certifi = "*"
 httpcore = "==1.*"
 idna = "*"
-sniffio = "*"
 socksio = {version = "==1.*", optional = true, markers = "extra == \"socks\""}
 
 [package.extras]
@@ -2363,8 +2362,8 @@ files = [
 
 [[package]]
 name = "moonlark-custom-plugins"
-version = "0.2.0"
-description = "Moonlark 中的自定义插件 (本插件必须使用 --editable 安装)"
+version = "0.2.2"
+description = "Moonlark 中的自定义插件"
 optional = false
 python-versions = "^3.11"
 groups = ["main"]
@@ -2377,16 +2376,15 @@ aiomysql = "^0.2.0"
 aiosqlite = "^0.20.0"
 beautifulsoup4 = "^4.12.3"
 cryptography = "^44.0.0"
-httpx = {version = "^0.27.0", extras = ["socks"]}
+httpx = {version = "^0.28.1", extras = ["socks"]}
 jieba = "^0.42.1"
 matplotlib = "^3.10.0"
-nonebot-adapter-onebot = "^2.4.3"
+nonebot-adapter-onebot = "^2.4.6"
 nonebot-adapter-qq = {git = "https://github.com/This-is-XiaoDeng/adapter-qq"}
-nonebot-plugin-alconna = "^0.54.2"
-nonebot-plugin-htmlrender = "^0.3.1"
-nonebot-plugin-orm = "^0.7.6"
-nonebot-plugin-picstatus = "^2.0.0.post2"
-nonebot-plugin-session = "^0.2.3"
+nonebot-plugin-alconna = "^0.57.6"
+nonebot-plugin-htmlrender = "^0.6.6"
+nonebot-plugin-orm = "^0.8.0"
+nonebot-plugin-session = "^0.3.2"
 nonebot2 = {version = "^2.3.1", extras = ["fastapi"]}
 numpy = "^1.26.4"
 openai = "^1.34.0"
@@ -2738,14 +2736,14 @@ resolved_reference = "bc20e4ced2cfb35acf607cb455c83e42fde8e86e"
 
 [[package]]
 name = "nonebot-plugin-alconna"
-version = "0.54.2"
+version = "0.57.6"
 description = "Alconna Adapter for Nonebot"
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "nonebot_plugin_alconna-0.54.2-py3-none-any.whl", hash = "sha256:ab9a1a5f0f8c9a30ba57a49bed5d3e9c3f761ea5954cbafb15bcd2aa9c7d5507"},
-    {file = "nonebot_plugin_alconna-0.54.2.tar.gz", hash = "sha256:0216da3bc2e5f8b4c4c44c2701f8f0a536d35ea0db79e708cc2ecd002b57ace6"},
+    {file = "nonebot_plugin_alconna-0.57.6-py3-none-any.whl", hash = "sha256:7690f4f1bfc1be8755080eea3554582cafe9cb44c1a1f270e30922d3d1f8358d"},
+    {file = "nonebot_plugin_alconna-0.57.6.tar.gz", hash = "sha256:f22357cf784358205b8ae76707627fd28d1a73b594e38b239619be4eea9fe6ae"},
 ]
 
 [package.dependencies]
@@ -2847,23 +2845,23 @@ pil_utils = "0.1.10"
 
 [[package]]
 name = "nonebot-plugin-htmlrender"
-version = "0.3.5"
+version = "0.6.6"
 description = "通过浏览器渲染图片"
 optional = false
 python-versions = "<4.0,>=3.9"
 groups = ["main"]
 files = [
-    {file = "nonebot_plugin_htmlrender-0.3.5-py3-none-any.whl", hash = "sha256:a46c6a1b57ae79e26ed996ca1eca2c729f8f4a53aed993b7664f956d7eeca29e"},
-    {file = "nonebot_plugin_htmlrender-0.3.5.tar.gz", hash = "sha256:22b3e801bde06e66528582aa085317b27c42e82e8d7e72aa04218635e03c1303"},
+    {file = "nonebot_plugin_htmlrender-0.6.6-py3-none-any.whl", hash = "sha256:b0dc4130b4740fe6fda7b6c2424f277ea9d13713c74949a040512fddda92bd9a"},
+    {file = "nonebot_plugin_htmlrender-0.6.6.tar.gz", hash = "sha256:3cf3594431d995d6d960dbf445e13a88f8580f799eedc303a652f12540b8198c"},
 ]
 
 [package.dependencies]
 aiofiles = ">=0.8.0"
 jinja2 = ">=3.0.3"
 markdown = ">=3.3.6"
-nonebot2 = ">=2.2.0"
-playwright = ">=1.17.2"
-Pygments = ">=2.10.0"
+nonebot2 = ">=2.4.2"
+playwright = ">=1.48.0"
+pygments = ">=2.10.0"
 pymdown-extensions = ">=9.1"
 python-markdown-math = ">=0.8"
 
@@ -2887,23 +2885,24 @@ typing-extensions = ">=4.0.0,<5.0.0"
 
 [[package]]
 name = "nonebot-plugin-orm"
-version = "0.7.7"
+version = "0.8.0"
 description = "SQLAlchemy ORM support for nonebot"
 optional = false
-python-versions = "<4.0,>=3.8"
+python-versions = "<4.0,>=3.9"
 groups = ["main"]
 files = [
-    {file = "nonebot_plugin_orm-0.7.7-py3-none-any.whl", hash = "sha256:645ba90f24969ce8bebb6841cdd0a0fb823e27a5d256989e332ec9f6608bbde5"},
-    {file = "nonebot_plugin_orm-0.7.7.tar.gz", hash = "sha256:61705c59bbac51521738259efbe51223847a0e0389807267fff7a5167f8c8c85"},
+    {file = "nonebot_plugin_orm-0.8.0-py3-none-any.whl", hash = "sha256:1d9836422e0cf13f41ae163f6f366877a00688930928f581b5e5e4846a168de5"},
+    {file = "nonebot_plugin_orm-0.8.0.tar.gz", hash = "sha256:7641f2b864d8ea1b365b088a1227ca1c4327a4c00840725bed9305a39b131e35"},
 ]
 
 [package.dependencies]
-alembic = ">=1.13,<1.15"
+alembic = ">=1.16,<2.0"
 click = ">=8.1,<9.0"
-importlib-resources = {version = ">=6.1,<7.0", markers = "python_version < \"3.12\""}
-nonebot-plugin-localstore = ">=0.6,<1.0"
-nonebot2 = ">=2.2,<3.0"
+importlib-resources = {version = ">=5.12", markers = "python_version < \"3.12\""}
+nonebot-plugin-localstore = ">=0.7,<1.0"
+nonebot2 = ">=2.4,<3.0"
 sqlalchemy = ">=2.0,<3.0"
+typing-extensions = ">=4.13,<5.0"
 
 [package.extras]
 aiomysql = ["sqlalchemy[aiomysql]"]
@@ -2938,29 +2937,29 @@ punycode = ">=0.2.1"
 
 [[package]]
 name = "nonebot-plugin-picstatus"
-version = "2.1.2"
+version = "2.1.3.post1"
 description = "A NoneBot2 plugin generates a picture which shows the status of current device"
 optional = false
 python-versions = "<4.0,>=3.9"
 groups = ["main"]
 files = [
-    {file = "nonebot_plugin_picstatus-2.1.2-py3-none-any.whl", hash = "sha256:3b4ffba4ffbd52d5acb3f4730de1ec231c695b1b6a4dec015448692e18d8d98d"},
-    {file = "nonebot_plugin_picstatus-2.1.2.tar.gz", hash = "sha256:7608991732af708a984ee61104a0aa6108123ccc3ce3e66742eb1c562942a9f5"},
+    {file = "nonebot_plugin_picstatus-2.1.3.post1-py3-none-any.whl", hash = "sha256:1385fa91b4ebbd7d733836fbe5b6eaeba43f8055ebf03997272d6ca2dbf3afdc"},
+    {file = "nonebot_plugin_picstatus-2.1.3.post1.tar.gz", hash = "sha256:4fc4421550c30446cf0bf130569c571789bfef916a3652a4cd7fc6074d119528"},
 ]
 
 [package.dependencies]
-anyio = ">=4.4.0"
-cookit = {version = ">=0.8.0", extras = ["jinja", "loguru", "playwright", "pydantic"]}
-httpx = ">=0.27.0"
+anyio = ">=4.6.2.post1"
+cookit = {version = ">=0.8.2", extras = ["jinja", "loguru", "playwright", "pydantic"]}
+httpx = ">=0.27.2"
 jinja2 = ">=3.1.4"
-nonebot-plugin-alconna = ">=0.52.0"
+nonebot-plugin-alconna = ">=0.54.0"
 nonebot-plugin-apscheduler = ">=0.5.0"
-nonebot-plugin-htmlrender = ">=0.3.5"
-nonebot-plugin-userinfo = ">=0.2.5"
-nonebot2 = ">=2.3.3"
-psutil = ">=6.0.0"
+nonebot-plugin-htmlrender = ">=0.4.0"
+nonebot-plugin-userinfo = ">=0.2.6"
+nonebot2 = ">=2.4.0"
+psutil = ">=6.1.0"
 py-cpuinfo = ">=9.0.0"
-yarl = ">=1.9.4"
+yarl = ">=1.18.3"
 
 [[package]]
 name = "nonebot-plugin-sentry"
@@ -2981,19 +2980,19 @@ sentry-sdk = {version = ">=2.0.0,<3.0.0", extras = ["loguru"]}
 
 [[package]]
 name = "nonebot-plugin-session"
-version = "0.2.3"
+version = "0.3.2"
 description = "Nonebot2 会话信息提取与会话id定义"
 optional = false
-python-versions = ">=3.8,<4.0"
+python-versions = "<4.0,>=3.9"
 groups = ["main"]
 files = [
-    {file = "nonebot_plugin_session-0.2.3-py3-none-any.whl", hash = "sha256:5f652a0c082231c1cea72deb994a81e50f77ba532e14d30fdec09772f69079fd"},
-    {file = "nonebot_plugin_session-0.2.3.tar.gz", hash = "sha256:33af37400f5005927c4ff861e593774bedc314fba00cfe06f482e582d9f447b7"},
+    {file = "nonebot_plugin_session-0.3.2-py3-none-any.whl", hash = "sha256:785e74ff656e46d84c4dbbac125f9a9adebcc4b9ff7db700527e6e47d47aabd6"},
+    {file = "nonebot_plugin_session-0.3.2.tar.gz", hash = "sha256:da0dabe9108151052a6e83d9923068d2ec43a93810ad37b264ed65aee2c69f93"},
 ]
 
 [package.dependencies]
-nonebot2 = ">=2.0.0,<3.0.0"
-strenum = ">=0.4.8,<0.5.0"
+nonebot2 = ">=2.3.0,<3.0.0"
+strenum = ">=0.4.15,<0.5.0"
 
 [[package]]
 name = "nonebot-plugin-userinfo"
@@ -5031,14 +5030,14 @@ files = [
 
 [[package]]
 name = "tifffile"
-version = "2025.5.26"
+version = "2025.6.1"
 description = "Read and write TIFF files"
 optional = false
 python-versions = ">=3.11"
 groups = ["main"]
 files = [
-    {file = "tifffile-2025.5.26-py3-none-any.whl", hash = "sha256:c316c9191c935d3a1fd7617e7af1d4367dfe2d8bd74d98d147bc21c074cc3ea9"},
-    {file = "tifffile-2025.5.26.tar.gz", hash = "sha256:512ad634b142a8aa7e3004f81acb81cd5b0f2ccd16979cb1ef2f01a7fd971bfc"},
+    {file = "tifffile-2025.6.1-py3-none-any.whl", hash = "sha256:ff7163f1aaea519b769a2ac77c43be69e7d83e5b5d5d6a676497399de50535e5"},
+    {file = "tifffile-2025.6.1.tar.gz", hash = "sha256:63cff7cf7305c26e3f3451c0b05fd95a09252beef4f1663227d4b70cb75c5fdb"},
 ]
 
 [package.dependencies]
@@ -5681,4 +5680,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.11"
-content-hash = "2788454e63a283a18c0a0cbf8ed4dfba319f28b4c3c044a684b547b8d29ab189"
+content-hash = "954ef83cf4cccb840c7176c9748c01604bf72724cd05a549b25e7026ea5c0c48"

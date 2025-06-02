@@ -8,7 +8,7 @@ from nonebot_plugin_ranking import generate_image
 
 
 @quick_math.assign("rank")
-async def _(rank_type: Literal["total", "max"], user_id: str = get_user_id()) -> None:
+async def handle(rank_type: Literal["max", "total"] = "max", user_id: str = get_user_id()) -> None:
     image = await generate_image(
         [
             {"user_id": user.user_id, "data": user.max_point if rank_type == "max" else user.experience, "info": None}
@@ -18,3 +18,8 @@ async def _(rank_type: Literal["total", "max"], user_id: str = get_user_id()) ->
         await lang.text(f"rank.title-{1 if rank_type == 'max' else 2}", user_id),
     )
     await quick_math.finish(UniMessage().image(raw=image))
+
+
+@quick_math.assign("total")
+async def _(user_id: str = get_user_id()) -> None:
+    await handle("total", user_id)

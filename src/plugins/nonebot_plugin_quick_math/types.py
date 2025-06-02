@@ -3,7 +3,7 @@ from typing import Awaitable, Callable, Literal, TypedDict
 
 class Question(TypedDict):
     question: str
-    answer: str
+    answer: Callable[[str], Awaitable[bool]]
 
 
 class QuestionData(TypedDict):

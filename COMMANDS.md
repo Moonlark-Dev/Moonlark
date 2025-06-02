@@ -35,9 +35,6 @@
 ### 用法
 - `/ftt (从随机地图开始)`
 - `/ftt <seed> (从指定种子生成地图)`
-- `/[缺失: finding_the_trail.help.u3 ((); {})]`
-- `/[缺失: finding_the_trail.help.u4 ((); {})]`
-- `/[缺失: finding_the_trail.help.u5 ((); {})]`
 ## `jrrp`: 今日人品
 
 查询今天的人品值，今天也是幸运的一天～
@@ -57,8 +54,8 @@
 以计算为核心的玩法。找到问题的答案，并在排行榜中获取更高的积分。
 
 ### 用法
-- `/quick-math [-l|--level <开始的等级>] (开始挑战)`
-- `/quick-math rank [{max|total}] (积分排行榜)`
+- `/quick-math [--level <开始的等级>] (开始挑战)`
+- `/quick-math rank [--total] (积分排行榜)`
 - `/quick-math points (查看总分详情)`
 ## `setu`: 随机图片
 

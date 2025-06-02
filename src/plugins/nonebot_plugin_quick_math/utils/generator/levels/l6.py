@@ -5,7 +5,7 @@ from typing import Generator, Optional
 import sympy as sp
 import re
 
-from .l5 import parse_int
+from .utils import parse_int, get_verify_function
 
 from nonebot_plugin_openai.utils.message import generate_message
 
@@ -15,35 +15,6 @@ from ....config import config
 from nonebot_plugin_openai.utils.chat import fetch_messages
 from ....types import Question
 from ....__main__ import lang
-
-AI_PROMPT = """# OBJECTIVE # You will be given the result of a polynomial after simplification. I need a multiple choice question based on this result as an answer, please generate two wrong answers that are completely different from the correct result, it should look like a randomized expression but contain no trigonometric functions and no letters. The wrong answers should be disorienting; their goal is to confuse the respondent and make it difficult for them to pick the correct answer.
-# RESPONSE # Directly output a json list containing the two wrong answers you generated. No need to output the curly braces, and don't wrap them in any quotes.
-# YOUR OUTPUT EXAMPLE #
-["{wrong_answer_1}","{wrong_answer_2}"]"""
-
-
-async def get_wrong_answer(
-    right_answer: str, question: str, user_id: str, retry: int = config.qm_gpt_max_retry
-) -> list[str]:
-    messages = [
-        generate_message(AI_PROMPT, "system"),
-        generate_message(f"{right_answer}", "user"),
-    ]
-    content = re.search(
-        r"\[.+\]",
-        await fetch_messages(
-            messages,
-            user_id,
-            temperature=0.8,
-            top_p=0.9,
-        ),
-    )
-    if content is None and retry > 0:
-        return await get_wrong_answer(right_answer, question, user_id, retry - 1)
-    elif content is not None:
-        return json.loads(content[0].replace("\\", "\\\\"))
-    else:
-        raise GenerateFailed()
 
 
 def evaluate_trig_functions(angle_degrees: int):
@@ -80,12 +51,7 @@ async def generate_question(user_id: str) -> Question:
                 a = random.choice([i for i in range(-75, 76) if i != 0])
                 question += parse_int(a)
                 answer += sp.Integer(a)
-    choices = [sp.latex(answer.expand().simplify())]
-    right_answer = choices[0]
-    choices.extend(await get_wrong_answer(choices[0], question, user_id))
-    random.shuffle(choices)
-    right_choice = ["A", "B", "C"][choices.index(right_answer)]
     return {
-        "answer": right_choice,
-        "question": await lang.text("question.l6", user_id, question, *choices),
+        "answer": get_verify_function(answer, user_id),
+        "question": await lang.text("question.l6", user_id, question),
     }
