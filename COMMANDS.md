@@ -35,9 +35,6 @@
 ### 用法
 - `/ftt (从随机地图开始)`
 - `/ftt <seed> (从指定种子生成地图)`
-- `/[缺失: finding_the_trail.help.u3 ((); {})]`
-- `/[缺失: finding_the_trail.help.u4 ((); {})]`
-- `/[缺失: finding_the_trail.help.u5 ((); {})]`
 ## `jrrp`: 今日人品
 
 查询今天的人品值，今天也是幸运的一天～
