@@ -24,11 +24,13 @@ from ..__main__ import lang, quick_math
 from nonebot_plugin_larkuser.exceptions import PromptTimeout
 from enum import Enum
 
+
 class ReplyType(Enum):
     RIGHT = 0
     TIMEOUT = 1
     WRONG = 2
     SKIP = 3
+
 
 async def wait_answer(question: QuestionData, image: UniMessage, user_id: str) -> ReplyType:
     message = image
@@ -71,7 +73,9 @@ async def handle(max_level: int = 1, user_id: str = get_user_id()) -> None:
             end_time = datetime.now()
             if point >= 400 and not is_respawned:
                 try:
-                    respawn: str = await prompt(await lang.text("main.respawn_prompt", user_id, point // 2), user_id, timeout=20)
+                    respawn: str = await prompt(
+                        await lang.text("main.respawn_prompt", user_id, point // 2), user_id, timeout=20
+                    )
                 except PromptTimeout:
                     break
                 if respawn.startswith("y"):
@@ -124,6 +128,7 @@ async def handle(max_level: int = 1, user_id: str = get_user_id()) -> None:
             )
         )
     )
+
 
 @quick_math.assign("max_level")
 async def _(max_level: int, user_id: str = get_user_id()) -> None:

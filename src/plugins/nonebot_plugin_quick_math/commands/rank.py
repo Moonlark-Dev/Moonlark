@@ -19,6 +19,7 @@ async def handle(rank_type: Literal["max", "total"] = "max", user_id: str = get_
     )
     await quick_math.finish(UniMessage().image(raw=image))
 
+
 @quick_math.assign("total")
 async def _(user_id: str = get_user_id()) -> None:
     await handle("total", user_id)

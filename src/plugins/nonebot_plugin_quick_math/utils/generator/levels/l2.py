@@ -12,6 +12,8 @@ async def generate_question(user_id: str) -> Question:
         question = await lang.text("question.l2-1", user_id, a, b)
     else:
         question = await lang.text("question.l2-2", user_id, a, b)
+
     async def verify(string: str) -> bool:
         return string.strip() == answer
+
     return {"question": question, "answer": verify}
