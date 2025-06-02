@@ -23,7 +23,7 @@ async def generate_question(user_id: str) -> Question:
         case 6:
             answer = (a - b) ** 2 - c
 
-    async def verify(string: str, _: str) -> bool:
+    async def verify(string: str) -> bool:
         return string.strip() == str(answer)
 
     return {"question": question, "answer": verify}
