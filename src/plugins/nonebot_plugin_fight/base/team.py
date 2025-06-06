@@ -15,18 +15,16 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
-import stat
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 import copy
-from ..lang import lang
-from ..base.scheduler import Scheduler
+
 from ..types import ACTION_EVENT
-from typing import Any
 from nonebot.matcher import Matcher
 
 if TYPE_CHECKING:
     from .monomer import Monomer
     from .scheduler import Scheduler
+    from ..base.scheduler import Scheduler
 
 
 class Team:
@@ -90,21 +88,20 @@ class Team:
         return self.monomers
 
     async def get_monomer_stat_list(self, user_id: str) -> list[str]:
-        return [stat for monomer in self.monomers for stat in await monomer.get_self_stat(user_id)]
+        return [await monomer.get_self_stat(user_id) for monomer in self.monomers]
 
 
 class ControllableTeam(Team):
 
     def __init__(
         self,
-        scheduler: Scheduler,
+        scheduler: "Scheduler",
         matcher: Matcher,
         user_id: str,
         team_id: str = "A",
         selectable: bool = True,
-        team_skill: None = None,
     ) -> None:
-        super().__init__(scheduler, team_id, selectable, team_skill)
+        super().__init__(scheduler, team_id, selectable)
         self.user_id = user_id
         self.matcher = matcher
 

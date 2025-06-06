@@ -55,7 +55,8 @@ class WaitUserInput:
         except Exception:
             result = False
         if not result:
-            await lang.finish("prompt.unknown", user_id, at_sender=False, reply_message=True, matcher=matcher)
+            await lang.send("prompt.unknown", user_id, at_sender=False, reply_message=True, matcher=matcher)
+            return
         self.answer = text
 
     async def wait(self, timeout: int = 210, auto_finish: bool = True) -> None:

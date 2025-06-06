@@ -17,7 +17,6 @@
 
 from abc import ABC, abstractmethod
 import random
-from typing import TYPE_CHECKING
 from .team import Team
 from ..lang import lang
 from ..types import ACTION_EVENT, AttackTypes, BuffData, BuffTypes
@@ -27,7 +26,6 @@ class Monomer(ABC):
 
     def __init__(self, team: Team):
         self.buff_list: list[BuffData] = []
-        self.health = 100
         self.attack = 20
         self.critical_strike = (0.05, 1.50)
         self.speed = 97
@@ -36,7 +34,9 @@ class Monomer(ABC):
         self.balance = 100
         self.final_skill_power = [0, 230]
         self.focus = 100
+        self.shield = 0
         self.defuse = 20
+        self.health = self.get_max_hp()
 
     @abstractmethod
     def has_final_skill(self) -> bool: ...
@@ -55,7 +55,7 @@ class Monomer(ABC):
 
     @abstractmethod
     def get_max_hp(self) -> int:
-        return 100
+        pass
 
     @abstractmethod
     def get_attack_type(self) -> AttackTypes: ...
@@ -76,7 +76,8 @@ class Monomer(ABC):
             await lang.text(f"harm_type._{self.get_weakness_type().value}", user_id),
             "" if not self.has_final_skill() else await lang.text("stat.power", user_id, self.get_charge_percent()),
             (await lang.text("stat.hp.full", user_id)) * (f := round(12 * self.get_hp_percent()))
-            + (await lang.text("stat.hp.null", user_id)) * (12 - f),
+            + (await lang.text("stat.hp.line", user_id)) * (12 - f),
+            buff="",
         )
 
     def get_hp_percent(self) -> float:
@@ -139,17 +140,21 @@ class Monomer(ABC):
         self.final_skill_power[0] = 0
 
     async def is_actionable(self) -> bool:
-        return self.get_hp() > 0 and self.balance > 0 and self.get_action_value() > 0
+        return self.get_hp() > 0
 
     def get_team(self) -> Team:
         return self.team
 
     def reduce_balance_value(self, value: int) -> int:
         self.balance -= value
+        if self.balance <= 0:
+            self.balance = 25
+            self.speed *= 0.9
+            # 可以加特殊效果
         return self.balance
 
     def get_defuse(self) -> int:
-        return round(self.defuse * (self.balance / 100))
+        return round(self.defuse * ((self.balance - 50) / 100 + 1))
 
     def break_shield(self, harm: int) -> int:
         if self.has_shield():
@@ -167,7 +172,7 @@ class Monomer(ABC):
             self.reduce_balance_value(random.randint(25, 35))
         else:
             real_harm = round(harm * (self.get_defuse() / monomer.get_defuse()))
-        self.reduce_balance_value(int(real_harm / 2 * (monomer.get_attack_value() / self.get_attack_value())))
+        self.reduce_balance_value(int((real_harm / 2) * (monomer.get_attack_value() / self.get_attack_value())))
         self.health -= self.break_shield(real_harm)
         return real_harm
 
@@ -187,6 +192,7 @@ class Monomer(ABC):
         elif random.random() <= self.critical_strike[0]:
             harm *= self.critical_strike[1]
             critical = True
+        await self.power_final_skill(5)
         return (await target.attacked(type_, round(harm), self)), critical, missed
 
     def get_focus(self) -> int:

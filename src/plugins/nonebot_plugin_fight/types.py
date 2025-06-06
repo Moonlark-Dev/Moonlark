@@ -72,8 +72,7 @@ ACTION_EVENT = MessageActionEvent | AttackEvent
 
 class BuffTypes(Enum):
     # buff_id, is_gain, keep
-    lunar_eclipse_cracks = "lunar_eclipse_cracks", False, True
-    moonlark_cold_down = "moonlark_cold_down", False, False
+    pass
 
 
 class BuffData(TypedDict):
