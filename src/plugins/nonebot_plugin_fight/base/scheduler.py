@@ -1,3 +1,5 @@
+from typing import TYPE_CHECKING
+
 from .team import ControllableTeam, Team
 from .monomer import Monomer
 
@@ -7,9 +9,9 @@ from ..types import ACTION_EVENT, HarmData
 class Scheduler:
 
     def __init__(self) -> None:
-        self.teams: list[Team] = []
+        self.teams: list["Team"] = []
 
-    def register_team(self, team: Team) -> "Scheduler":
+    def register_team(self, team: "Team") -> "Scheduler":
         if len(self.teams) > 1:
             raise ValueError("The number of teams is limited to 2.")
         self.teams.append(team)
@@ -19,10 +21,10 @@ class Scheduler:
         for t in self.teams:
             await t.got_event(event)
 
-    async def post_attack_event(self, origin: Monomer, harms: list[HarmData]) -> None:
+    async def post_attack_event(self, origin: "Monomer", harms: list[HarmData]) -> None:
         await self.post_action_event({"type": "harm.single", "origin": origin, "harms": harms})
 
-    def get_monomers(self) -> list[Monomer]:
+    def get_monomers(self) -> list["Monomer"]:
         monomers = []
         for team in self.teams:
             monomers += team.get_monomers()
@@ -34,20 +36,20 @@ class Scheduler:
         for monomer in self.get_monomers():
             await monomer.setup(self.get_selectable_teams(monomer))
 
-    def get_another_team(self, team: Team) -> Team:
+    def get_another_team(self, team: "Team") -> "Team":
         return self.teams[0] if team == self.teams[1] else self.teams[1]
 
-    def get_selectable_teams(self, monomer: Monomer) -> list[Team]:
+    def get_selectable_teams(self, monomer: "Monomer") -> list["Team"]:
         return [t for t in self.teams if t != monomer.get_team() and t.is_selectable()]
 
-    def get_actionable_monomers(self) -> list[Monomer]:
-        return [m for m in self.get_monomers() if m.is_actionable()]
+    async def get_actionable_monomers(self) -> list["Monomer"]:
+        return [m for m in self.get_monomers() if await m.is_actionable()]
 
-    def get_sorted_monomers(self) -> list[Monomer]:
-        return sorted(self.get_actionable_monomers(), key=lambda target: target.get_action_value())
+    async def get_sorted_monomers(self) -> list["Monomer"]:
+        return sorted(await self.get_actionable_monomers(), key=lambda target: target.get_action_value())
 
-    def get_action_monomer(self) -> Monomer:
-        monomers = self.get_sorted_monomers()
+    async def get_action_monomer(self) -> "Monomer":
+        monomers = await self.get_sorted_monomers()
         action_monomer = monomers.pop(0)
         for monomer in monomers:
             monomer.reduce_action_value(action_monomer.get_action_value())
@@ -55,17 +57,17 @@ class Scheduler:
         return action_monomer
 
     async def loop(self) -> None:
-        while self.is_continuable():
-            action_monomer = self.get_action_monomer()
+        while await self.is_continuable():
+            action_monomer = await self.get_action_monomer()
             await action_monomer.action(self.get_selectable_teams(action_monomer))
 
-    def is_continuable(self) -> bool:
-        return len(self.get_actionable_team()) > 1
+    async def is_continuable(self) -> bool:
+        return len(await self.get_actionable_team()) > 1
 
-    def get_actionable_team(self) -> list[Team]:
+    async def get_actionable_team(self) -> list["Team"]:
         teams = []
         for team in self.teams:
-            actionable_monomers = [m for m in team.get_monomers() if m.is_actionable()]
+            actionable_monomers = [m for m in team.get_monomers() if await m.is_actionable()]
             if len(actionable_monomers) >= 1:
                 teams.append(team)
         return teams

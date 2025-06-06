@@ -27,6 +27,7 @@ from nonebot_plugin_alconna import UniMessage
 from nonebot_plugin_htmlrender import md_to_pic
 from markdown.util import code_escape
 
+from nonebot.log import logger
 
 class ControllableMonomer(Monomer, ABC):
 
@@ -40,6 +41,7 @@ class ControllableMonomer(Monomer, ABC):
     async def get_skill_info_list(self) -> list[SkillInfo]:
         return []
 
+
     async def get_stat_text(self) -> str:
         another_team = self.team.scheduler.get_another_team(self.team)
         markdown = await lang.text(
@@ -48,19 +50,19 @@ class ControllableMonomer(Monomer, ABC):
             code_escape(await self.team.get_team_name(self.user_id)),
             code_escape(await another_team.get_team_name(self.user_id)),
         )
-        markdown += "\n"
         stats = await self.team.get_monomer_stat_list(self.user_id), await another_team.get_monomer_stat_list(
             self.user_id
         )
+        logger.debug(stats)
         for pos_index in range(max(len(stats[0]), len(stats[1]))):
             markdown += await lang.text(
                 "stat.pos_line",
                 self.user_id,
                 pos_index + 1,
-                stats[0][pos_index] if pos_index < len(stats[0]) else "",
-                stats[1][pos_index] if pos_index < len(stats[1]) else "",
+                a=stats[0][pos_index] if pos_index < len(stats[0]) else "",
+                b=stats[1][pos_index] if pos_index < len(stats[1]) else "",
             )
-            markdown += "\n"
+            # markdown += "\n"
         return markdown
 
     async def get_action_text(self) -> str:
@@ -68,7 +70,7 @@ class ControllableMonomer(Monomer, ABC):
         index = 0
         for skill in await self.get_skill_info_list():
             index += 1
-            if skill["charge"] and self.get_charge_percent() < 1:
+            if skill["charge"] and self.get_charge_percent(False) < 1:
                 skill_text_list.append(
                     await lang.text(
                         "action_text.skill_line",
@@ -115,22 +117,37 @@ class ControllableMonomer(Monomer, ABC):
                         self.user_id,
                         index,
                         skill["name"],
-                        await lang.text(f"action_text.cost.normal", self.user_id, self.final_skill_power[1]),
+                        await lang.text(f"action_text.cost.normal", self.user_id, skill["cost"]),
                     )
                 )
         return await lang.text(
             "action_text.header",
             self.user_id,
+            await self.get_name(self.user_id),
             self.team.get_skill_point()[0],
             self.final_skill_power[0],
             self.final_skill_power[1],
             self.get_charge_percent(True),
-            "\n".join(skill_text_list),
+            "".join(skill_text_list),
         )
 
     @abstractmethod
     async def execute_skill(self, index: int, target: Optional[Monomer]) -> None:
         pass
+
+    async def select_skill(self, index: int, target: Optional[Monomer]) -> None:
+        data = (await self.get_skill_info_list())[index]
+        logger.debug(f"{index=}, {target=} {data=}")
+        if data["cost"] > 0:
+            await self.power_final_skill(10)
+            self.team.reduce_skill_points(data["cost"])
+        elif data["cost"] < 0:
+            await self.power_final_skill(15)
+            self.team.add_skill_points(-data["cost"])
+        elif data["charge"]:
+            self.final_skill_power[0] = 0
+        await self.execute_skill(index, target)
+
 
     async def on_action(self, teams: list[Team]) -> None:
         markdown = await self.get_stat_text()
@@ -143,6 +160,7 @@ class ControllableMonomer(Monomer, ABC):
         message = UniMessage().image(raw=image)
         while message := await self.get_action_command(message):
             pass
+        logger.debug("选择结束")
 
     async def get_action_command(self, message: UniMessage) -> Optional[UniMessage]:
         skill_info_list = await self.get_skill_info_list()
@@ -154,25 +172,32 @@ class ControllableMonomer(Monomer, ABC):
             "s",
         )
         await waiter.wait()
-        command = waiter.get(lambda text: text.split(" "))
+        command: list[str] = waiter.get(lambda text: text.split(" "))
         if command[0] == "l":
             return UniMessage().image(raw=await md_to_pic(await self.get_action_list()))
         elif command[0] == "b":
-            pass
+            return None
         elif command[0] == "s":
-            pass
-        else:
+            return None
+        elif command[0].isdigit() and 0 < int(command[0]) <= len(await self.get_skill_info_list()):
             if len(command) >= 1:
                 target_type = skill_info_list[int(command[0]) - 1]["target_type"]
-                if target_type == "enemy":
-                    target = self.team.scheduler.get_another_team(self.team).get_monomers()[int(command[1]) - 1]
-                elif target_type == "self":
-                    target = self.team.get_monomers()[int(command[1]) - 1]
-                else:
-                    target = None
+                try:
+                    if target_type == "enemy":
+                        target = self.team.scheduler.get_another_team(self.team).get_monomers()[int(command[1]) - 1]
+                    elif target_type == "self":
+                        target = self.team.get_monomers()[int(command[1]) - 1]
+                    else:
+                        target = None
+                except IndexError:
+                    return UniMessage.text(await lang.text("action.invalid", self.user_id))
             else:
                 target = None
-            await self.execute_skill(int(command[0]), target)
+            try:
+                return await self.select_skill(int(command[0]) - 1, target)
+            except ValueError as e:
+                return UniMessage.text(str(e))
+        return UniMessage.text(await lang.text("action.invalid", self.user_id))
 
     async def get_action_list(self) -> str:
         markdown = await lang.text("action_list.header", self.user_id)

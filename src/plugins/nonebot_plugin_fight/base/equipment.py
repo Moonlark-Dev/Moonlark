@@ -12,10 +12,16 @@ class Equipment(ABC):
         self.gains: dict[str, Any] = gains
         self.monomer = monomer
 
+
+    @staticmethod
     @abstractmethod
     async def get_name() -> str:
         pass
 
     @abstractmethod
-    async def setup() -> str:
+    async def setup(self) -> str:
         pass
+
+    def get_max_hp(self, origin_max_hp: int, current_max_hp: int) -> int:
+        return current_max_hp
+
