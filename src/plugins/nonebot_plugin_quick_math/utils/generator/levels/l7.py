@@ -2,6 +2,7 @@ from nonebot.log import logger
 from random import randint, choice
 from sympy import Symbol, diff, limit, latex
 
+from .utils import get_verify_function
 from ....types import Question
 from ....__main__ import lang
 
@@ -37,4 +38,4 @@ async def generate_question(user_id: str) -> Question:
         case _:
             question, answer = await generate_limit_question(user_id)
     logger.debug(answer)
-    return {"question": question, "answer": answer.replace("*", "").replace("+", "\\+")}
+    return {"question": question, "answer": get_verify_function(answer, user_id)}

@@ -54,8 +54,8 @@
 以计算为核心的玩法。找到问题的答案，并在排行榜中获取更高的积分。
 
 ### 用法
-- `/quick-math [-l|--level <开始的等级>] (开始挑战)`
-- `/quick-math rank [{max|total}] (积分排行榜)`
+- `/quick-math [--level <开始的等级>] (开始挑战)`
+- `/quick-math rank [--total] (积分排行榜)`
 - `/quick-math points (查看总分详情)`
 ## `setu`: 随机图片
 

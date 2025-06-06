@@ -1,12 +1,14 @@
 from datetime import datetime
+from typing import Optional
+
 from nonebot.adapters import Message
-from nonebot_plugin_alconna import UniMessage, Match
+from nonebot_plugin_alconna import UniMessage
 from nonebot_plugin_htmlrender import md_to_pic
-from nonebot_plugin_waiter import prompt_until, prompt
 import re
 
 from nonebot_plugin_achievement.utils.unlock import unlock_achievement
 
+from ..types import QuestionData
 from ..utils.achievement import get_achievement_location, update_achievements_status
 
 from ..utils.point import get_point
@@ -17,29 +19,44 @@ from ..config import config
 from ..utils.generator import get_max_level
 import asyncio
 from nonebot_plugin_larkutils.user import get_user_id
+from nonebot_plugin_larkuser.utils.waiter import prompt
 from ..__main__ import lang, quick_math
+from nonebot_plugin_larkuser.exceptions import PromptTimeout
+from enum import Enum
+
+
+class ReplyType(Enum):
+    RIGHT = 0
+    TIMEOUT = 1
+    WRONG = 2
+    SKIP = 3
+
+
+async def wait_answer(question: QuestionData, image: UniMessage, user_id: str) -> ReplyType:
+    message = image
+    for i in range(config.qm_retry_count + 1):
+        try:
+            r: str = await prompt(message, user_id, timeout=question["limit_in_sec"])
+        except PromptTimeout:
+            return ReplyType.TIMEOUT
+        if r.lower() in ["skip", "tg"]:
+            return ReplyType.SKIP
+        elif await question["question"]["answer"](r):
+            return ReplyType.RIGHT
+        message = UniMessage.text(await lang.text(f"answer.wrong", user_id, config.qm_retry_count - i))
+    return ReplyType.WRONG
 
 
 @quick_math.assign("$main")
-async def _(start_level: Match[int], user_id: str = get_user_id()) -> None:
+async def handle(max_level: int = 1, user_id: str = get_user_id()) -> None:
     point = 0
     answered = 0
-    if start_level.available and 1 <= start_level.result <= get_max_level():
-        max_level = start_level.result
-    else:
+    if max_level < 1 or max_level > get_max_level():
         max_level = 1
     total_skipping_count = 1
     skipped_question = 0
     is_respawned = False
     total_answered = 0
-
-    def check_input(msg: Message) -> bool:
-        nonlocal total_answered
-        total_answered += 1
-        return bool(
-            re.match(f"^{question['question']['answer']}$", message := msg.extract_plain_text())
-            or (message.lower() in ["skip", "tg"] and total_skipping_count > skipped_question)
-        )
 
     for sec in range(config.qm_wait_time):
         await quick_math.send(str(config.qm_wait_time - sec))
@@ -50,26 +67,24 @@ async def _(start_level: Match[int], user_id: str = get_user_id()) -> None:
             max_level, user_id, answered, point, total_skipping_count, skipped_question
         )
         send_time = datetime.now()
-        resp = await prompt_until(
-            await image.export(),
-            check_input,
-            timeout=question["limit_in_sec"],
-            retry=config.qm_retry_count,
-            retry_prompt=await lang.text(f"answer.wrong", user_id),
-            timeout_prompt=await lang.text("main.timeout", user_id),
-            limited_prompt=await lang.text("main.wrong", user_id),
-        )
-        if resp is None:
+        resp = await wait_answer(question, image, user_id)
+        total_answered += 1
+        if resp == ReplyType.TIMEOUT or resp == ReplyType.WRONG:
             end_time = datetime.now()
             if point >= 400 and not is_respawned:
-                resp = await prompt(await lang.text("main.respawn_prompt", user_id, point // 2), timeout=20)
-                if resp is None or not resp.extract_plain_text().lower().startswith("y"):
+                try:
+                    respawn: str = await prompt(
+                        await lang.text("main.respawn_prompt", user_id, point // 2), user_id, timeout=20
+                    )
+                except PromptTimeout:
                     break
-                point -= point // 2
-                is_respawned = True
-                continue
+                if respawn.startswith("y"):
+                    point -= point // 2
+                    is_respawned = True
+                    continue
+                break
             break
-        elif resp.extract_plain_text().lower() in ["skip", "tg"]:
+        elif resp == ReplyType.SKIP and total_skipping_count > skipped_question:
             skipped_question += 1
             point += get_point(question, send_time) // 2
             await lang.send("main.skipped", user_id)
@@ -77,7 +92,7 @@ async def _(start_level: Match[int], user_id: str = get_user_id()) -> None:
             if question["level"] == 7:
                 await unlock_achievement(get_achievement_location("calculus"), user_id)
             add_point = get_point(question, send_time)
-            if start_level.available and start_level.result > 1:
+            if max_level > 1:
                 add_point = int(add_point * 0.8)
             answered += 1
             point += add_point
@@ -113,3 +128,8 @@ async def _(start_level: Match[int], user_id: str = get_user_id()) -> None:
             )
         )
     )
+
+
+@quick_math.assign("max_level")
+async def _(max_level: int, user_id: str = get_user_id()) -> None:
+    await handle(max_level, user_id)

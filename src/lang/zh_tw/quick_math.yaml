@@ -54,38 +54,12 @@ question:
   l5-b: '{}x'
   l5-c: '{}'
   l5: |
-    请选出这个方程正确的解：
+    解方程（不回避虚数根）：
 
     $${} = 0$$
-
-    A. {}
-
-    B. {}
-
-    C. {}
-
-    D. {}
-
-    E. {}
   l5-o: " {} "
-  l5-n: "无解"
-  l5-s:
-    - 'x_1 = 114514, \\quad x_2 = 1919810'
-    - 'x = 10086'
-    - '锟斤拷烫烫烫'
-    - '我是谁我在哪'
-    - '你猜'
-    - '我不知道'
   l6: |
-    请选出这个表达式的结果:
-
-    $${}$$
-
-    A. ${}$
-
-    B. ${}$
-
-    C. ${}$
+    $${} = ?$$
   l7-diff: |
     求以下函数的导数：
 
@@ -101,7 +75,7 @@ question:
 answer:
   no_question: 请等待题目生成！
   right: 回答正确！获得 {} 积分
-  wrong: 回答错误，您还可以重试 {{count}} 次
+  wrong: 回答错误，您还可以重试 {} 次
 rank:
   title-1: QuickMath 记录排行
   title-2: QuickMath 总分排行
@@ -118,8 +92,8 @@ achievements:
 help:
   desc: 快速数学
   details: 以计算为核心的玩法。找到问题的答案，并在排行榜中获取更高的积分。
-  u1: quick-math [-l|--level <开始的等级>] (开始挑战)
-  u2: quick-math rank [{{max|total}}] (积分排行榜)
+  u1: quick-math [--level <开始的等级>] (开始挑战)
+  u2: quick-math rank [--total] (积分排行榜)
   u4: quick-math points (查看总分详情)
 award:
   info: |
