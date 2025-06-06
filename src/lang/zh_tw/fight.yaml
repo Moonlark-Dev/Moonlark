@@ -9,11 +9,10 @@ log:
 skill_stat:
   cost: 'C{}'
 stat:
-  monomer_stat: |
-    {} `{}/{}`{}<br>HP: [{}]{buff}
+  monomer_stat: '{} `{}/{}`{}<br>HP: [{}]{buff}'
   hp:
     full: '/'
-    null: '-'
+    line: '-'
   power: ' P:{}%'
   stat_header: |
     |     | 我方阵容 `{}` | 敌方阵容 `{}` |
@@ -23,8 +22,10 @@ stat:
 action_text:
   header: |
     ## 当前行动 `{}`
+
     - COST: {}
     - CHARGE: {}/{} ({}%)
+
     |     | 技能              | 费用 |
     |:---:|-------------------|-----|
     {}
@@ -36,11 +37,12 @@ action_text:
     add: '+{}C'
 timer: '战斗倒计时: {}s'
 command_help: |
-  > ### 指令列表
+  > #### 指令列表
   > - `<技能> [目标]`: 使用技能
   > - `l`: 显示当前行动队列
-  > - `b`: 查看装备栏
-  > - `s`: 跳过回合
+  > - ~~`b`: 查看装备栏~~
+  > - ~~`s`: 跳过回合~~
+  >
   > 使用技能或目标前面的数字选择技能或目标
 action_list:
   header: |
@@ -68,5 +70,7 @@ action:
   myteam: 我方队伍 (按行动顺序排序)
   title: 行动面板
   invalid: 无效输入，请检查输入内容
-characters: ''
+characters:
+  delta:
+    name: 德尔塔 (测试)
 buff: ''
