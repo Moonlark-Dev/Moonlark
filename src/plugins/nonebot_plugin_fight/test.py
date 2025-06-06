@@ -23,24 +23,24 @@ from .monomers import TestBot
 
 test = on_command("fight-test")
 
+
 @test.handle()
 async def _(matcher: Matcher, user_id: str = get_user_id()) -> None:
     scheduler = Scheduler()
     player_team = ControllableTeam(scheduler, matcher, user_id)
     enemy_team = Team(scheduler, "B")
-    Delta(player_team, {
-        "experience": 0,
-        "current_hp": 902,
-        "fav": 0.0,
-        "buff": [],
-        "weapon": {
+    Delta(
+        player_team,
+        {
             "experience": 0,
-            "damage_level": 0,
-            "talent_level": {}
+            "current_hp": 902,
+            "fav": 0.0,
+            "buff": [],
+            "weapon": {"experience": 0, "damage_level": 0, "talent_level": {}},
+            "equipment": [],
+            "talent_level": {},
         },
-        "equipment": [],
-        "talent_level": {}
-    })
+    )
     TestBot(enemy_team)
     TestBot(enemy_team)
     await scheduler.setup()

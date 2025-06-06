@@ -77,7 +77,7 @@ class Monomer(ABC):
             "" if not self.has_final_skill() else await lang.text("stat.power", user_id, self.get_charge_percent()),
             (await lang.text("stat.hp.full", user_id)) * (f := round(12 * self.get_hp_percent()))
             + (await lang.text("stat.hp.line", user_id)) * (12 - f),
-            buff=""
+            buff="",
         )
 
     def get_hp_percent(self) -> float:

@@ -22,38 +22,14 @@ from ..types import CharacterData, AttackTypes, SkillInfo
 
 class Delta(Character):
 
-
-
-
     def get_weakness_type(self) -> AttackTypes:
         return AttackTypes.me
 
     async def get_skill_info_list(self) -> list[SkillInfo]:
         return [
-            {
-                "name": "[普攻]",
-                "monomer": self,
-                "cost": -1,
-                "charge": False,
-                "instant": False,
-                "target_type": "enemy"
-            },
-            {
-                "name": "[战技]",
-                "monomer": self,
-                "cost": 1,
-                "charge": False,
-                "instant": False,
-                "target_type": "enemy"
-            },
-            {
-                "name": "[终结技]",
-                "monomer": self,
-                "cost": 0,
-                "charge": True,
-                "instant": True,
-                "target_type": "none"
-            }
+            {"name": "[普攻]", "monomer": self, "cost": -1, "charge": False, "instant": False, "target_type": "enemy"},
+            {"name": "[战技]", "monomer": self, "cost": 1, "charge": False, "instant": False, "target_type": "enemy"},
+            {"name": "[终结技]", "monomer": self, "cost": 0, "charge": True, "instant": True, "target_type": "none"},
         ]
 
     def get_attack_type(self) -> AttackTypes:
@@ -68,17 +44,9 @@ class Delta(Character):
     async def execute_skill(self, index: int, target: Optional[Monomer]) -> None:
         print(f"{index=}")
         if index == 0:
-            await self.on_attack(
-                AttackTypes.electricity,
-                self.get_attack_value() * 0.8,
-                target
-            )
+            await self.on_attack(AttackTypes.electricity, self.get_attack_value() * 0.8, target)
         elif index == 1:
-            harm, critical, missed = await self.on_attack(
-                AttackTypes.electricity,
-                self.get_attack_value(),
-                target
-            )
+            harm, critical, missed = await self.on_attack(AttackTypes.electricity, self.get_attack_value(), target)
             if not missed:
                 p = 0.5 if critical else 0.3
                 self.focus -= 20
@@ -99,5 +67,3 @@ class Delta(Character):
     @staticmethod
     def get_character_id() -> tuple[int, str]:
         return 1, "delta"
-
-

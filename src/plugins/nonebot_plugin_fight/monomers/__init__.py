@@ -18,6 +18,4 @@
 
 from .test_bot import TestBot
 
-MONOMERS = [
-    TestBot
-]
+MONOMERS = [TestBot]

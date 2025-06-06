@@ -12,7 +12,6 @@ class Equipment(ABC):
         self.gains: dict[str, Any] = gains
         self.monomer = monomer
 
-
     @staticmethod
     @abstractmethod
     async def get_name() -> str:
@@ -24,4 +23,3 @@ class Equipment(ABC):
 
     def get_max_hp(self, origin_max_hp: int, current_max_hp: int) -> int:
         return current_max_hp
-

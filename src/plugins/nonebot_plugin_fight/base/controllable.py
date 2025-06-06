@@ -29,6 +29,7 @@ from markdown.util import code_escape
 
 from nonebot.log import logger
 
+
 class ControllableMonomer(Monomer, ABC):
 
     def __init__(self, team: ControllableTeam) -> None:
@@ -40,7 +41,6 @@ class ControllableMonomer(Monomer, ABC):
     @abstractmethod
     async def get_skill_info_list(self) -> list[SkillInfo]:
         return []
-
 
     async def get_stat_text(self) -> str:
         another_team = self.team.scheduler.get_another_team(self.team)
@@ -147,7 +147,6 @@ class ControllableMonomer(Monomer, ABC):
         elif data["charge"]:
             self.final_skill_power[0] = 0
         await self.execute_skill(index, target)
-
 
     async def on_action(self, teams: list[Team]) -> None:
         markdown = await self.get_stat_text()

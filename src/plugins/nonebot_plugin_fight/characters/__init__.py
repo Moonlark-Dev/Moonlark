@@ -18,6 +18,4 @@
 from .delta import Delta
 
 
-CHARACTERS = [
-    Delta
-]
+CHARACTERS = [Delta]

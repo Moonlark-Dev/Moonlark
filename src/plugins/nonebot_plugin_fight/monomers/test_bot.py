@@ -22,7 +22,6 @@ from ..types import AttackTypes
 
 class TestBot(Monomer):
 
-
     async def on_action(self, teams: list[Team]) -> None:
         r = await self.on_attack(AttackTypes.physical, 15, random.choice(teams[0].get_monomers()))
         logger.debug(f"{r=}")
@@ -30,24 +29,17 @@ class TestBot(Monomer):
     async def get_name(self, user_id: str) -> str:
         return "测试标靶"
 
-
-
     def get_weakness_type(self) -> AttackTypes:
         return AttackTypes.electricity
-
-
 
     def get_attack_type(self) -> AttackTypes:
         return AttackTypes.physical
 
-
     def get_max_hp(self) -> int:
         return 1000
-
 
     def has_final_skill(self) -> bool:
         return False
 
     def __init__(self, team: Team) -> None:
         super().__init__(team)
-
