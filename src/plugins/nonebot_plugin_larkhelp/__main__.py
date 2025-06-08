@@ -117,6 +117,7 @@ async def render(user_id: str) -> bytes:
         {"categories": await get_templates(user_id)},
         {"usage_text": await lang.text("list.usage_text", user_id)},
         True,
+        True,
     )
 
 
