@@ -1,4 +1,6 @@
 import asyncio
+from nonebot.log import logger
+import traceback
 from unittest.util import sorted_list_difference
 from nonebot_plugin_larklang.__main__ import load_languages
 from pathlib import Path
@@ -130,4 +132,5 @@ async def _(user_id: str = get_user_id()) -> None:
     except FinishedException:
         raise
     except Exception:
+        logger.error(traceback.format_exc())
         await help_cmd.finish(await lang.text("command.error", user_id))
