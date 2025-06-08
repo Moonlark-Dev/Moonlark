@@ -48,20 +48,24 @@ def get_plugin_name(module: ModuleType | None) -> Optional[str]:
     return plugin.name
 
 
-
-
 def resize_png_to_75_percent(png_bytes: bytes) -> bytes:
     with Image.open(io.BytesIO(png_bytes)) as img:
         new_size = (int(img.width * 0.75), int(img.height * 0.75))
         resized_img = img.resize(new_size, Image.Resampling.LANCZOS)
 
         output_buffer = io.BytesIO()
-        resized_img.save(output_buffer, format='PNG')
+        resized_img.save(output_buffer, format="PNG")
         return output_buffer.getvalue()
 
 
 async def render_template(
-    name: str, title: str, user_id: str, templates: dict, keys: dict[str, str] = {}, cache: bool = False, resize: bool = False
+    name: str,
+    title: str,
+    user_id: str,
+    templates: dict,
+    keys: dict[str, str] = {},
+    cache: bool = False,
+    resize: bool = False,
 ) -> bytes:
     if user_id.startswith("mlsid::") and parse_special_user_id(user_id).get("ignore-cache", "n") == "y":
         cache = False
@@ -74,7 +78,7 @@ async def render_template(
             return c
     if keys:
         templates = templates | {"text": keys}
-    image =  await html_to_pic(
+    image = await html_to_pic(
         await render_template_to_text(name, title, footer, templates, base),
         template_path=Path(getcwd()).joinpath(f"src/templates").as_uri(),
         viewport=config.render_viewport,

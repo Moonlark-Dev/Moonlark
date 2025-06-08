@@ -19,6 +19,7 @@ def creator(template_name: str):
     def d(func: CACHE_CREATOR_TYPE) -> CACHE_CREATOR_TYPE:
         creator_functions[template_name] = func
         return func
+
     return d
 
 
