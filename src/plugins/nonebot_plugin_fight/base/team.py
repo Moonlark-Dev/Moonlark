@@ -40,14 +40,12 @@ class Team:
         self.monomers: list["Monomer"] = []
         self.scheduler: "Scheduler" = scheduler.register_team(self)
 
-
     def get_skill_point(self) -> tuple[int, int]:
         self.skill_point[0] = min(5, max(0, self.skill_point[0]))
         return self.skill_point[0], self.skill_point[1]
 
     async def get_team_name(self, user_id: str) -> str:
         return self.team_id
-
 
     async def got_event(self, event: ACTION_EVENT) -> None:
         for m in self.monomers:

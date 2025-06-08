@@ -69,11 +69,7 @@ class Monomer(ABC):
 
     async def get_self_stat(self, user_id: str) -> str:
         if self.get_hp() <= 0:
-            return await lang.text(
-                "stat.monomer_stat_d",
-                user_id,
-                await self.get_name(user_id)
-            )
+            return await lang.text("stat.monomer_stat_d", user_id, await self.get_name(user_id))
 
         return await lang.text(
             "stat.monomer_stat",
@@ -224,15 +220,7 @@ class Monomer(ABC):
         await self.power_final_skill(5)
         result = await target.attacked(type_, round(harm), self)
         await self.get_team().scheduler.post_attack_event(
-            self,
-            [
-                {
-                    "target": target,
-                    "harm_missed": missed,
-                    "harm_value": round(result),
-                    "harm_type": type_
-                }
-            ]
+            self, [{"target": target, "harm_missed": missed, "harm_value": round(result), "harm_type": type_}]
         )
         return result, critical, missed
 

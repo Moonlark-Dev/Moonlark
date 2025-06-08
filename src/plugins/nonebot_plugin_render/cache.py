@@ -14,7 +14,6 @@ creator_functions: dict[str, CACHE_CREATOR_TYPE] = {}
 cache_dir = get_cache_dir("nonebot-plugin-render")
 
 
-
 def creator(template_name: str):
     def d(func: CACHE_CREATOR_TYPE) -> CACHE_CREATOR_TYPE:
         creator_functions[template_name] = func

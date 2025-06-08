@@ -61,7 +61,6 @@ class SkillInfo(TypedDict):
     target_type: Literal["self", "enemy", "none"]
 
 
-
 ACTION_EVENT = MessageActionEvent | AttackEvent
 
 

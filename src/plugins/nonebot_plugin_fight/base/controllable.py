@@ -39,7 +39,6 @@ class ControllableMonomer(Monomer, ABC):
             raise ValueError("The team must be an instance of ControllableTeam.")
         self.user_id = self.team.get_user_id()
 
-
     @abstractmethod
     async def get_skill_info_list(self) -> list[SkillInfo]:
         return []
@@ -170,20 +169,22 @@ class ControllableMonomer(Monomer, ABC):
         targets = []
         for attack_log in attack_logs:
             for h in attack_log["harms"]:
-                targets.append(await lang.text(
-                    "attack.target",
-                    self.user_id,
-                    await h["target"].get_name(self.user_id),
-                    h["harm_value"],
-                    miss=await lang.text("attack.miss", self.user_id) if h["harm_missed"] else ""
-                ))
+                targets.append(
+                    await lang.text(
+                        "attack.target",
+                        self.user_id,
+                        await h["target"].get_name(self.user_id),
+                        h["harm_value"],
+                        miss=await lang.text("attack.miss", self.user_id) if h["harm_missed"] else "",
+                    )
+                )
         o = attack_logs[0]["origin"]
         return await lang.text(
             "attack.line",
             self.user_id,
             await o.get_name(self.user_id),
             await lang.text(f"harm_type._{o.get_attack_type().value}", self.user_id),
-            ", ".join(targets)
+            ", ".join(targets),
         )
 
     async def on_action(self, teams: list[Team]) -> None:
@@ -194,7 +195,15 @@ class ControllableMonomer(Monomer, ABC):
         markdown += "\n"
         markdown += await lang.text("command_help", self.user_id)
         image = await md_to_pic(markdown)
-        message = UniMessage().image(raw=image).text(text=await lang.text("time_remain", self.user_id, int(self.get_team().scheduler.get_remain_time().total_seconds())))
+        message = (
+            UniMessage()
+            .image(raw=image)
+            .text(
+                text=await lang.text(
+                    "time_remain", self.user_id, int(self.get_team().scheduler.get_remain_time().total_seconds())
+                )
+            )
+        )
         while message := await self.get_action_command(message):
             pass
         logger.debug("选择结束")
