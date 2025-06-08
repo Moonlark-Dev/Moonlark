@@ -13,11 +13,13 @@ attack:
   target: '{}(-{}{miss})'
   miss: ' MISS'
 stat:
-  monomer_stat: '{} `{}/{}`{}<br>HP: [{}]{buff}'
+  lose_balance: 失衡
+  monomer_stat: '**{}** `{}/{}`<br>{}B:{}<br>HP: [{}]{buff}'
+  monomer_stat_d: '**{}** *(无法行动)*'
   hp:
     full: '/'
     line: '-'
-  power: ' P:{}%'
+  power: ' P:{}% '
   stat_header: |
     |     | 我方阵容 `{}` | 敌方阵容 `{}` |
     |:---:|--------------|---------------|
