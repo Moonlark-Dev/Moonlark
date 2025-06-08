@@ -19,7 +19,6 @@ def creator(template_name: str):
     def d(func: CACHE_CREATOR_TYPE) -> CACHE_CREATOR_TYPE:
         creator_functions[template_name] = func
         return func
-
     return d
 
 
@@ -29,7 +28,7 @@ async def setup_cache() -> None:
     for template, function in creator_functions.items():
         for lang in languages:
             for theme in themes:
-                image = await function(f"mlsid::--lang={lang};--theme={theme}")
+                image = await function(f"mlsid::--lang={lang};--theme={theme};--ignore-cache=y")
                 f_name = hashlib.sha256(
                     f"mlrc::--template={template};--lang={lang};--theme={theme}".encode()
                 ).hexdigest()

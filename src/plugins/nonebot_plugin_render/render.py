@@ -7,11 +7,15 @@ from nonebot import get_plugin_by_module_name
 from nonebot_plugin_htmlrender import html_to_pic
 from nonebot_plugin_orm import get_session
 from nonebot_plugin_larklang.__main__ import get_user_language
+from nonebot_plugin_larkutils import parse_special_user_id
 from .lang import lang
 from .config import config
 from .cache import get_cache
 from . import theme
 from os import getcwd
+
+from PIL import Image
+import io
 
 file_loader = FileSystemLoader(Path("./src/templates"))
 env = Environment(
@@ -37,16 +41,30 @@ async def render_template_to_text(
 
 def get_plugin_name(module: ModuleType | None) -> Optional[str]:
     if module is None:
-        return
+        return None
     plugin = get_plugin_by_module_name(module.__name__)
     if plugin is None:
-        return
+        return None
     return plugin.name
 
 
+
+
+def resize_png_to_75_percent(png_bytes: bytes) -> bytes:
+    with Image.open(io.BytesIO(png_bytes)) as img:
+        new_size = (int(img.width * 0.75), int(img.height * 0.75))
+        resized_img = img.resize(new_size, Image.Resampling.LANCZOS)
+
+        output_buffer = io.BytesIO()
+        resized_img.save(output_buffer, format='PNG')
+        return output_buffer.getvalue()
+
+
 async def render_template(
-    name: str, title: str, user_id: str, templates: dict, keys: dict[str, str] = {}, cache: bool = False
+    name: str, title: str, user_id: str, templates: dict, keys: dict[str, str] = {}, cache: bool = False, resize: bool = False
 ) -> bytes:
+    if user_id.startswith("mlsid::") and parse_special_user_id(user_id).get("ignore-cache", "n") == "y":
+        cache = False
     module = inspect.getmodule(inspect.stack()[1][0])
     plugin_name = get_plugin_name(module) or "nonebot-plugin-render"
     footer = await lang.text("render.footer", user_id, plugin_name)
@@ -56,8 +74,11 @@ async def render_template(
             return c
     if keys:
         templates = templates | {"text": keys}
-    return await html_to_pic(
+    image =  await html_to_pic(
         await render_template_to_text(name, title, footer, templates, base),
         template_path=Path(getcwd()).joinpath(f"src/templates").as_uri(),
         viewport=config.render_viewport,
     )
+    if resize:
+        return resize_png_to_75_percent(image)
+    return image
