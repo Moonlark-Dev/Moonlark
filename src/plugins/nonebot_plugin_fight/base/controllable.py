@@ -16,16 +16,17 @@
 # ##############################################################################
 
 from nonebot_plugin_larkuser.utils.waiter2 import WaitUserInput
-from .monomer import Monomer, Team, ACTION_EVENT
+from .monomer import Monomer, Team
 from .team import ControllableTeam
-import re
 from ..lang import lang
 from typing import Any, Optional, Awaitable, Callable
-from ..types import SkillInfo, ActionCommand
+from ..types import SkillInfo, AttackEvent
 from abc import ABC, abstractmethod
 from nonebot_plugin_alconna import UniMessage
 from nonebot_plugin_htmlrender import md_to_pic
 from markdown.util import code_escape
+from datetime import datetime
+
 
 from nonebot.log import logger
 
@@ -37,6 +38,7 @@ class ControllableMonomer(Monomer, ABC):
         if not isinstance(self.team, ControllableTeam):
             raise ValueError("The team must be an instance of ControllableTeam.")
         self.user_id = self.team.get_user_id()
+
 
     @abstractmethod
     async def get_skill_info_list(self) -> list[SkillInfo]:
@@ -62,7 +64,6 @@ class ControllableMonomer(Monomer, ABC):
                 a=stats[0][pos_index] if pos_index < len(stats[0]) else "",
                 b=stats[1][pos_index] if pos_index < len(stats[1]) else "",
             )
-            # markdown += "\n"
         return markdown
 
     async def get_action_text(self) -> str:
@@ -148,15 +149,52 @@ class ControllableMonomer(Monomer, ABC):
             self.final_skill_power[0] = 0
         await self.execute_skill(index, target)
 
+    async def send_fight_log(self) -> None:
+        message = []
+        cache_harm_logs: list[AttackEvent] = []
+        for event in self.team.get_action_events():
+            if event["type"] == "normal":
+                message.append(event["message"])
+            elif event["type"] == "harm.single":
+                if len(cache_harm_logs) == 0 or event["origin"] == cache_harm_logs[-1]["origin"]:
+                    cache_harm_logs.append(event)
+                else:
+                    message.append(await self.parse_harm_logs(cache_harm_logs))
+                    cache_harm_logs = [event]
+        if len(cache_harm_logs) > 0:
+            message.append(await self.parse_harm_logs(cache_harm_logs))
+        if message:
+            await UniMessage.text(text="\n".join(message)).send()
+
+    async def parse_harm_logs(self, attack_logs: list[AttackEvent]) -> str:
+        targets = []
+        for attack_log in attack_logs:
+            for h in attack_log["harms"]:
+                targets.append(await lang.text(
+                    "attack.target",
+                    self.user_id,
+                    await h["target"].get_name(self.user_id),
+                    h["harm_value"],
+                    miss=await lang.text("attack.miss", self.user_id) if h["harm_missed"] else ""
+                ))
+        o = attack_logs[0]["origin"]
+        return await lang.text(
+            "attack.line",
+            self.user_id,
+            await o.get_name(self.user_id),
+            await lang.text(f"harm_type._{o.get_attack_type().value}", self.user_id),
+            ", ".join(targets)
+        )
+
     async def on_action(self, teams: list[Team]) -> None:
+        await self.send_fight_log()
         markdown = await self.get_stat_text()
         markdown += "\n"
         markdown += await self.get_action_text()
         markdown += "\n"
         markdown += await lang.text("command_help", self.user_id)
-        # TODO 战斗倒计时
         image = await md_to_pic(markdown)
-        message = UniMessage().image(raw=image)
+        message = UniMessage().image(raw=image).text(text=await lang.text("time_remain", self.user_id, int(self.get_team().scheduler.get_remain_time().total_seconds())))
         while message := await self.get_action_command(message):
             pass
         logger.debug("选择结束")

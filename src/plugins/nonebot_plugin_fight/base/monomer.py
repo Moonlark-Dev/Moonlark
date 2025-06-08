@@ -192,8 +192,23 @@ class Monomer(ABC):
         elif random.random() <= self.critical_strike[0]:
             harm *= self.critical_strike[1]
             critical = True
+            await self.power_final_skill(10)
+        else:
+            await self.power_final_skill(5)
         await self.power_final_skill(5)
-        return (await target.attacked(type_, round(harm), self)), critical, missed
+        result = await target.attacked(type_, round(harm), self)
+        await self.get_team().scheduler.post_attack_event(
+            self,
+            [
+                {
+                    "target": target,
+                    "harm_missed": missed,
+                    "harm_value": round(result),
+                    "harm_type": type_
+                }
+            ]
+        )
+        return result, critical, missed
 
     def get_focus(self) -> int:
         return self.focus

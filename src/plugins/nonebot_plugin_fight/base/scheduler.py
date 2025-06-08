@@ -1,15 +1,17 @@
-from typing import TYPE_CHECKING
+
+from datetime import datetime, timedelta
+from typing import Optional
 
 from .team import ControllableTeam, Team
 from .monomer import Monomer
-
 from ..types import ACTION_EVENT, HarmData
 
 
 class Scheduler:
 
-    def __init__(self) -> None:
+    def __init__(self, time_to_draw: datetime) -> None:
         self.teams: list["Team"] = []
+        self.time_to_draw = time_to_draw
 
     def register_team(self, team: "Team") -> "Scheduler":
         if len(self.teams) > 1:
@@ -56,10 +58,16 @@ class Scheduler:
         action_monomer.reset_action_value()
         return action_monomer
 
-    async def loop(self) -> None:
+    def get_remain_time(self) -> timedelta:
+        return self.time_to_draw - datetime.now()
+
+    async def loop(self) -> Optional[Team]:
         while await self.is_continuable():
             action_monomer = await self.get_action_monomer()
             await action_monomer.action(self.get_selectable_teams(action_monomer))
+            if self.get_remain_time().total_seconds() < 0:
+                return None
+        return (await self.get_actionable_team())[0]
 
     async def is_continuable(self) -> bool:
         return len(await self.get_actionable_team()) > 1

@@ -20,13 +20,14 @@ from nonebot_plugin_larkutils import get_user_id
 from .base import Scheduler, ControllableTeam, Team
 from .characters import Delta
 from .monomers import TestBot
+from datetime import datetime, timedelta
 
 test = on_command("fight-test")
 
 
 @test.handle()
 async def _(matcher: Matcher, user_id: str = get_user_id()) -> None:
-    scheduler = Scheduler()
+    scheduler = Scheduler(datetime.now() + timedelta(minutes=4, seconds=30))
     player_team = ControllableTeam(scheduler, matcher, user_id)
     enemy_team = Team(scheduler, "B")
     Delta(

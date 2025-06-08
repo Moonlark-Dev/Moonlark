@@ -8,6 +8,10 @@ log:
   title: 战况
 skill_stat:
   cost: 'C{}'
+attack:
+  line: '{} ⚔({})>> {}'
+  target: '{}(-{}{miss})'
+  miss: ' MISS'
 stat:
   monomer_stat: '{} `{}/{}`{}<br>HP: [{}]{buff}'
   hp:
@@ -74,3 +78,4 @@ characters:
   delta:
     name: 德尔塔 (测试)
 buff: ''
+time_remain: '剩余时间: {}s'

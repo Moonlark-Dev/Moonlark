@@ -1,7 +1,6 @@
 from typing import Awaitable, Callable, Optional
 from nonebot.log import logger
-from nonebot import get_driver
-import asyncio
+from nonebot import get_driver, get_bots
 import aiofiles
 import hashlib
 from nonebot_plugin_localstore import get_cache_dir
@@ -15,6 +14,7 @@ creator_functions: dict[str, CACHE_CREATOR_TYPE] = {}
 cache_dir = get_cache_dir("nonebot-plugin-render")
 
 
+
 def creator(template_name: str):
     def d(func: CACHE_CREATOR_TYPE) -> CACHE_CREATOR_TYPE:
         creator_functions[template_name] = func
@@ -24,7 +24,6 @@ def creator(template_name: str):
 
 
 async def setup_cache() -> None:
-    await asyncio.sleep(5)
     languages = get_languages().keys()
     themes = (await get_themes()).keys()
     for template, function in creator_functions.items():
@@ -40,13 +39,13 @@ async def setup_cache() -> None:
     logger.success("Render 缓存创建完成！")
 
 
-@get_driver().on_startup
+@get_driver().on_bot_connect
 async def _() -> None:
     for file in cache_dir.iterdir():
         if file.is_file():
             file.unlink()
-    if config.render_cache:
-        t = asyncio.create_task(setup_cache())
+    if config.render_cache and len(get_bots().keys()) <= 1:
+        await setup_cache()
 
 
 async def get_cache(template: str, lang: str, theme: str) -> Optional[bytes]:
@@ -55,3 +54,4 @@ async def get_cache(template: str, lang: str, theme: str) -> Optional[bytes]:
     if path.exists():
         async with aiofiles.open(path, "rb") as f:
             return await f.read()
+    return None

@@ -1,6 +1,7 @@
 node_modules/
 sha1.yaml
 nonebot_plugin_sha1/
+bot.py
 
 
 # Byte-compiled / optimized / DLL files
