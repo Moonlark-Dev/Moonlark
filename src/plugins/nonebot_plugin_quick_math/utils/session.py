@@ -88,15 +88,9 @@ class QuickMathSession:
         self.point += add_point
         await lang.send("answer.right", self.user_id, add_point)
 
-
     async def get_question(self) -> tuple[UniMessage, QuestionData]:
         return await get_question(
-            self.get_level(),
-            self.user_id,
-            self.passed,
-            self.point,
-            self.available_skip_count,
-            self.skipped_question
+            self.get_level(), self.user_id, self.passed, self.point, self.available_skip_count, self.skipped_question
         )
 
     def get_level(self) -> int:
@@ -129,18 +123,18 @@ class QuickMathSession:
         await lang.send("main.skipped", self.user_id)
 
     async def on_question_finished(self) -> None:
-        if self.level[0] != "lock" and self.passed % config.qm_change_max_level_count == 0 and self.level[1] != get_max_level():
+        if (
+            self.level[0] != "lock"
+            and self.passed % config.qm_change_max_level_count == 0
+            and self.level[1] != get_max_level()
+        ):
             self.set_max_level(self.level[1] + 1)
         if self.point >= 200 * self.available_skip_count:
             self.available_skip_count += 1
 
     async def update_achievement(self) -> None:
         await update_achievements_status(
-            self.user_id,
-            self.passed,
-            self.point,
-            self.passed / self.total_answered,
-            self.skipped_question
+            self.user_id, self.passed, self.point, self.passed / self.total_answered, self.skipped_question
         )
 
     async def send_result_image(self) -> NoReturn:
