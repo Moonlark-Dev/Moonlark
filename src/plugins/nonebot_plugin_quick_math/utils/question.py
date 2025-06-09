@@ -8,9 +8,9 @@ from nonebot_plugin_alconna import UniMessage
 
 
 async def get_question(
-    max_level: int, user_id: str, answered: int, point: int, total_skipping_count: int, skipped_question: int
+    level: int, user_id: str, answered: int, point: int, total_skipping_count: int, skipped_question: int
 ) -> tuple[UniMessage, QuestionData]:
-    question = await generate_question(user_id, max_level)
+    question = await generate_question(user_id, level)
     question["limit_in_sec"] = max(config.qm_min_limit, round(question["limit_in_sec"] * 0.8 ** (point // 250)))
     return (
         UniMessage().image(
