@@ -68,20 +68,33 @@ class Monomer(ABC):
         return self.health
 
     async def get_self_stat(self, user_id: str) -> str:
+        if self.get_hp() <= 0:
+            return await lang.text("stat.monomer_stat_d", user_id, await self.get_name(user_id))
+
         return await lang.text(
             "stat.monomer_stat",
             user_id,
             await self.get_name(user_id),
             await lang.text(f"harm_type._{self.get_attack_type().value}", user_id),
             await lang.text(f"harm_type._{self.get_weakness_type().value}", user_id),
-            "" if not self.has_final_skill() else await lang.text("stat.power", user_id, self.get_charge_percent()),
+            await self.get_final_skill_string(user_id),
+            f"{self.balance}%",
             (await lang.text("stat.hp.full", user_id)) * (f := round(12 * self.get_hp_percent()))
             + (await lang.text("stat.hp.line", user_id)) * (12 - f),
-            buff="",
+            buff=f"<br>{await self.get_buff_string(user_id)}",
         )
 
+    async def get_final_skill_string(self, user_id: str) -> str:
+        return "" if not self.has_final_skill() else await lang.text("stat.power", user_id, self.get_charge_percent())
+
+    async def get_buff_string(self, user_id: str) -> str:
+        l = []
+        if self.balance <= 0:
+            l.append(await lang.text("stat.lose_balance", user_id))
+        return "<br>".join(l)
+
     def get_hp_percent(self) -> float:
-        return min(1, self.get_hp() / self.get_max_hp())
+        return min(1.0, self.get_hp() / self.get_max_hp())
 
     def get_charge_percent(self, readable: bool = True) -> float:
         if self.has_final_skill():
@@ -128,7 +141,11 @@ class Monomer(ABC):
         for i in range(len(self.buff_list)):
             self.buff_list[i]["remain_rounds"] -= 1
         self.clean_buff()
-        await self.on_action(teams)
+        self.add_balance_value(round(self.focus * 0.12))
+        if self.balance <= 0:
+            self.balance = 100
+        else:
+            await self.on_action(teams)
 
     def get_power_percent(self) -> float:
         return min(self.final_skill_power[0] / self.final_skill_power[1], 1)
@@ -147,10 +164,15 @@ class Monomer(ABC):
 
     def reduce_balance_value(self, value: int) -> int:
         self.balance -= value
-        if self.balance <= 0:
-            self.balance = 25
+        if self.balance <= 0 < self.balance + value:
             self.speed *= 0.9
-            # 可以加特殊效果
+            self.balance = round(self.balance + value - value * 0.2)
+        return self.balance
+
+    def add_balance_value(self, value: int) -> int:
+        if self.balance < 100 <= self.balance + value:
+            self.speed *= 1.1
+        self.balance = min(100, self.balance + value)
         return self.balance
 
     def get_defuse(self) -> int:
@@ -172,7 +194,7 @@ class Monomer(ABC):
             self.reduce_balance_value(random.randint(25, 35))
         else:
             real_harm = round(harm * (self.get_defuse() / monomer.get_defuse()))
-        self.reduce_balance_value(int((real_harm / 2) * (monomer.get_attack_value() / self.get_attack_value())))
+        self.reduce_balance_value(int(0.3 * (real_harm / 2) * (monomer.get_attack_value() / self.get_attack_value())))
         self.health -= self.break_shield(real_harm)
         return real_harm
 
@@ -192,8 +214,15 @@ class Monomer(ABC):
         elif random.random() <= self.critical_strike[0]:
             harm *= self.critical_strike[1]
             critical = True
+            await self.power_final_skill(10)
+        else:
+            await self.power_final_skill(5)
         await self.power_final_skill(5)
-        return (await target.attacked(type_, round(harm), self)), critical, missed
+        result = await target.attacked(type_, round(harm), self)
+        await self.get_team().scheduler.post_attack_event(
+            self, [{"target": target, "harm_missed": missed, "harm_value": round(result), "harm_type": type_}]
+        )
+        return result, critical, missed
 
     def get_focus(self) -> int:
         return self.focus

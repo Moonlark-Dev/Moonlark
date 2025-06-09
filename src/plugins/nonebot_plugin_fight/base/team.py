@@ -17,7 +17,6 @@
 
 from typing import TYPE_CHECKING
 import copy
-
 from ..types import ACTION_EVENT
 from nonebot.matcher import Matcher
 
@@ -40,7 +39,6 @@ class Team:
         self.selectable = selectable
         self.monomers: list["Monomer"] = []
         self.scheduler: "Scheduler" = scheduler.register_team(self)
-        self.action_logs = []
 
     def get_skill_point(self) -> tuple[int, int]:
         self.skill_point[0] = min(5, max(0, self.skill_point[0]))
@@ -49,20 +47,14 @@ class Team:
     async def get_team_name(self, user_id: str) -> str:
         return self.team_id
 
-    def get_action_events(self) -> list[ACTION_EVENT]:
-        events = copy.deepcopy(self.action_logs)
-        self.action_logs.clear()
-        return events
-
     async def got_event(self, event: ACTION_EVENT) -> None:
-        if isinstance(self, ControllableTeam):
-            self.action_logs.append(event)
         for m in self.monomers:
             await m.on_event(event)
 
     def reduce_skill_points(self, count: int = 1) -> int:
         self.skill_point[0] -= count
-        if self.skill_point[0] <= 0:
+        if self.skill_point[0] < 0:
+            self.skill_point[0] += count
             raise ValueError("没有可以减少的技能点")
         return self.skill_point[0]
 
@@ -71,7 +63,7 @@ class Team:
             self.skill_point[0] = self.skill_point[1]
         return self.skill_point[0]
 
-    def has_skill_point(self, min_count: int = 1) -> int:
+    def has_skill_point(self, min_count: int = 1) -> bool:
         return self.skill_point[0] >= min_count
 
     def register_monomer(self, monomer: "Monomer") -> "Team":
@@ -104,6 +96,16 @@ class ControllableTeam(Team):
         super().__init__(scheduler, team_id, selectable)
         self.user_id = user_id
         self.matcher = matcher
+        self.action_logs = []
 
     def get_user_id(self) -> str:
         return self.user_id
+
+    def get_action_events(self) -> list[ACTION_EVENT]:
+        events = copy.deepcopy(self.action_logs)
+        self.action_logs.clear()
+        return events
+
+    async def got_event(self, event: ACTION_EVENT) -> None:
+        await super().got_event(event)
+        self.action_logs.append(event)
