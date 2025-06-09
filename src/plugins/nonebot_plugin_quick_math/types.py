@@ -1,3 +1,4 @@
+from enum import Enum
 from typing import Awaitable, Callable, Literal, TypedDict
 
 
@@ -28,3 +29,14 @@ class JsonCycleData(TypedDict):
 
 
 LEVEL = Literal["A", "B", "C", "D"]
+
+
+class ReplyType(Enum):
+    RIGHT = 0
+    TIMEOUT = 1
+    WRONG = 2
+    SKIP = 3
+
+
+LevelModeString = Literal["random", "lock"]
+LevelMode = tuple[LevelModeString, int]

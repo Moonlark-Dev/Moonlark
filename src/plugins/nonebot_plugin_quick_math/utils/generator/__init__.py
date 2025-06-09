@@ -24,13 +24,12 @@ def get_difficulty_list(max_level: int) -> list[int]:
     return difficulties
 
 
-async def generate_question(user_id: str, max_level: int) -> QuestionData:
-    level = random.choice(get_difficulty_list(max_level))
+async def generate_question(user_id: str, level: int) -> QuestionData:
     try:
         question = await GENERATOR_LIST[level]["function"](user_id)
     except Exception:
         logger.warning(f"生成题目时出现错误 ({level=}): {traceback.format_exc()}")
-        return await generate_question(user_id, max_level)
+        return await generate_question(user_id, level)
     logger.debug(question)
     return {
         "question": question,
