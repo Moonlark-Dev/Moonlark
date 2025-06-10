@@ -18,7 +18,9 @@ async def get_luck_value(user_id: str) -> int:
         if value is not None and value.generate_date == date.today():
             return value.luck_value
         value = LuckValue(
-            user_id=user_id, luck_value=(luck_value := struct.unpack("<I",os.urandom(4))[0] % 101), generate_date=date.today()
+            user_id=user_id,
+            luck_value=(luck_value := struct.unpack("<I", os.urandom(4))[0] % 101),
+            generate_date=date.today(),
         )
         await session.merge(value)
         await session.commit()
