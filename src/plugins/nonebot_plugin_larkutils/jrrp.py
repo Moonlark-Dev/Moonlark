@@ -1,6 +1,5 @@
 from datetime import date
 import os
-import random
 import struct
 from nonebot_plugin_orm import Model, get_session
 from sqlalchemy import String
@@ -18,9 +17,10 @@ async def get_luck_value(user_id: str) -> int:
         value = await session.get(LuckValue, {"user_id": user_id})
         if value is not None and value.generate_date == date.today():
             return value.luck_value
-        random.seed(struct.unpack("<I", os.urandom(4))[0])
         value = LuckValue(
-            user_id=user_id, luck_value=(luck_value := random.randint(0, 100)), generate_date=date.today()
+            user_id=user_id,
+            luck_value=(luck_value := struct.unpack("<I", os.urandom(4))[0] % 101),
+            generate_date=date.today(),
         )
         await session.merge(value)
         await session.commit()
