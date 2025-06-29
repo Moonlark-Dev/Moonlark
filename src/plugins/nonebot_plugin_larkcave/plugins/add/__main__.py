@@ -32,6 +32,7 @@ async def _(
     except KeyError:
         await lang.finish("add.empty", user_id)
         return
+    await lang.send("add.checking", user_id)
     try:
         await check_cave(content, event, bot, state, session)
     except ReviewFailed as e:
