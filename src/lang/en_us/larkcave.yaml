@@ -11,6 +11,7 @@ add:
     {}
   image_empty: An error occurred while fetching the image in the message, please try again later
   posted: 'Echo cave ({}) submitted successfully'
+  checking: 正在检查投稿内容，请稍候……
 cave:
   noresult: |
     获取回声洞时出现错误: 所含图片失效
