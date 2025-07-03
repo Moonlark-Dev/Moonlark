@@ -20,7 +20,6 @@ plugins = [
     "nonebot_plugin_apscheduler",
     "nonebot_plugin_session",
     "nonebot_plugin_waiter",
-    "nonebot_plugin_bilichat",
     "nonebot_plugin_picmcstat",
     "nonebot_plugin_fakepic",
 
