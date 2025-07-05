@@ -16,8 +16,8 @@ help:
   description: 今日人品
   details: 查询今天的人品值，今天也是幸运的一天～
   usage1: jrrp (获取今天的人品值)
-  usage2: jrrp --rank (今日幸运星)
-  usage3: jrrp --rank-r (今日倒霉蛋)
+  usage2: jrrp r (今日幸运星[--rank])
+  usage3: jrrp rr (今日倒霉蛋[--rank-r])
 template:
   reverse_title: 今日倒霉蛋
   unregistered: 未注册用户无法参与排名

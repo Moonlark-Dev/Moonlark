@@ -13,11 +13,17 @@ command:
   info: |
     [✓] {}: {}
 
+    提示：用法中的 <XXX> 为必要参数，[XXX] 为可选参数，AA|BB 表示选择。(XXX) 为用法解释，不包括在用法内。所有参数均不需要包含最外面的括号。
+
     用法:
     {}
   usage: '{__prefix__}{}'
-  not_found: 命令 {} 不存在，或无可用的帮助信息
-  error: 服务器繁忙，请稍后再试。
+  not_found:
+    - 命令 {} 不存在，或无可用的帮助信息
+    - 没有找到指令 {} 喵……
+  error: |
+    指令列表发送失败了唔……
+    主人可以前往 Moonlark 的 GitHub 仓库的 COMMANDS.md 文件查阅指令列表喵~
 help:
   description: 命令帮助
   details: 获取命令用法
