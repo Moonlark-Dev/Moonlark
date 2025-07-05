@@ -10,8 +10,9 @@ quick_math = on_alconna(
         "quick-math",
         Subcommand("rank", Option("-t|--total")),
         Subcommand("points"),
-        Subcommand("--level", Args["max_level", int]),
-    )
+        Subcommand("--level|-l", Args["max_level", int]),
+    ),
+    aliases={"qm"},
 )
 lang = LangHelper()
 patch_matcher(quick_math)
