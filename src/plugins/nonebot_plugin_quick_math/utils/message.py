@@ -26,15 +26,22 @@ from nonebot_plugin_quick_math.__main__ import lang, quick_math
 from nonebot_plugin_quick_math.config import config
 from nonebot_plugin_quick_math.types import QuestionData, ReplyType, ExtendReplyType
 
-@overload
-async def wait_answer(question: QuestionData, image: UniMessage, user_id: str, enable_leave_command: Literal[False] = False) -> ReplyType:
-    ...
 
 @overload
-async def wait_answer(question: QuestionData, image: UniMessage, user_id: str, enable_leave_command: Literal[True] = False) -> ReplyType | ExtendReplyType:
-    ...
+async def wait_answer(
+    question: QuestionData, image: UniMessage, user_id: str, enable_leave_command: Literal[False] = False
+) -> ReplyType: ...
 
-async def wait_answer(question: QuestionData, image: UniMessage, user_id: str, enable_leave_command: bool = False) -> ReplyType | ExtendReplyType:
+
+@overload
+async def wait_answer(
+    question: QuestionData, image: UniMessage, user_id: str, enable_leave_command: Literal[True] = False
+) -> ReplyType | ExtendReplyType: ...
+
+
+async def wait_answer(
+    question: QuestionData, image: UniMessage, user_id: str, enable_leave_command: bool = False
+) -> ReplyType | ExtendReplyType:
     message = image
     for i in range(config.qm_retry_count + 1):
         try:

@@ -37,6 +37,7 @@ class ReplyType(Enum):
     WRONG = 2
     SKIP = 3
 
+
 class ExtendReplyType(Enum):
     LEAVE = 4
 

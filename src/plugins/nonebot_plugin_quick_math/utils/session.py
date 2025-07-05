@@ -89,13 +89,19 @@ class QuickMathSession:
         await lang.send("answer.right", self.user_id, add_point)
 
     @overload
-    async def get_question(self, override_time_limitation: Optional[bool] = False) -> tuple[UniMessage, QuestionData]:
-        ...
+    async def get_question(
+        self, override_time_limitation: Optional[bool] = False
+    ) -> tuple[UniMessage, QuestionData]: ...
 
     async def get_question(self, **kwargs) -> tuple[UniMessage, QuestionData]:
         return await get_question(
-            self.get_level(), self.user_id, self.passed, self.point, self.available_skip_count, self.skipped_question,
-            **kwargs
+            self.get_level(),
+            self.user_id,
+            self.passed,
+            self.point,
+            self.available_skip_count,
+            self.skipped_question,
+            **kwargs,
         )
 
     def get_level(self) -> int:
@@ -184,9 +190,13 @@ class QuickMathZenSession(QuickMathSession):
     async def send_question(self) -> bool:
         image, question = await self.get_question()
         send_time = datetime.now()
-        result = await wait_answer(question, image.text(text=await lang.text("main.zen_mode", self.user_id)), self.user_id, enable_leave_command=True)
+        result = await wait_answer(
+            question,
+            image.text(text=await lang.text("main.zen_mode", self.user_id)),
+            self.user_id,
+            enable_leave_command=True,
+        )
         if result == ExtendReplyType.LEAVE:
             self.point *= 0.75
             return False
         return await self.process_answer_result(result, send_time, question)
-
