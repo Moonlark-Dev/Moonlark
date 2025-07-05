@@ -7,4 +7,5 @@ commands:
       - help.u1
       - help.u2
       - help.u4
+      - help.u3
     category: game

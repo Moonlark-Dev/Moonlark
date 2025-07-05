@@ -38,5 +38,9 @@ class ReplyType(Enum):
     SKIP = 3
 
 
+class ExtendReplyType(Enum):
+    LEAVE = 4
+
+
 LevelModeString = Literal["random", "lock"]
 LevelMode = tuple[LevelModeString, int]

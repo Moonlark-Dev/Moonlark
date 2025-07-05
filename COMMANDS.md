@@ -57,6 +57,7 @@
 - `/quick-math [--level <开始的等级>] (开始挑战)`
 - `/quick-math rank [--total] (积分排行榜)`
 - `/quick-math points (查看总分详情)`
+- `/quick-math zen <等级> (禅模式)`
 ## `setu`: 随机图片
 
 随机 Pixiv 插画
