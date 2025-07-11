@@ -229,7 +229,6 @@ Linux 手册 (ManPage) 查询
 ### 用法
 - `/summary [读取长度] (总结历史消息)`
 - `/summary -e|-d (功能开关)`
-- `/[缺失: message_summary.help.usage3 ((); {})]`
 ## `t`: 翻译器
 
 翻译文本（默认英到中）
