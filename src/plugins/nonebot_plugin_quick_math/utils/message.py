@@ -16,6 +16,7 @@
 # ##############################################################################
 
 import asyncio
+from typing import Literal, overload
 
 from nonebot_plugin_alconna import UniMessage
 
@@ -23,10 +24,24 @@ from nonebot_plugin_larkuser import prompt
 from nonebot_plugin_larkuser.exceptions import PromptTimeout
 from nonebot_plugin_quick_math.__main__ import lang, quick_math
 from nonebot_plugin_quick_math.config import config
-from nonebot_plugin_quick_math.types import QuestionData, ReplyType
+from nonebot_plugin_quick_math.types import QuestionData, ReplyType, ExtendReplyType
 
 
-async def wait_answer(question: QuestionData, image: UniMessage, user_id: str) -> ReplyType:
+@overload
+async def wait_answer(
+    question: QuestionData, image: UniMessage, user_id: str, enable_leave_command: Literal[False] = False
+) -> ReplyType: ...
+
+
+@overload
+async def wait_answer(
+    question: QuestionData, image: UniMessage, user_id: str, enable_leave_command: Literal[True] = False
+) -> ReplyType | ExtendReplyType: ...
+
+
+async def wait_answer(
+    question: QuestionData, image: UniMessage, user_id: str, enable_leave_command: bool = False
+) -> ReplyType | ExtendReplyType:
     message = image
     for i in range(config.qm_retry_count + 1):
         try:
@@ -35,6 +50,8 @@ async def wait_answer(question: QuestionData, image: UniMessage, user_id: str) -
             return ReplyType.TIMEOUT
         if r.lower() in ["skip", "tg"]:
             return ReplyType.SKIP
+        elif r.lower() in ["leave", "quit"]:
+            return ExtendReplyType.LEAVE
         elif await question["question"]["answer"](r):
             return ReplyType.RIGHT
         message = UniMessage.text(await lang.text(f"answer.wrong", user_id, config.qm_retry_count - i))
