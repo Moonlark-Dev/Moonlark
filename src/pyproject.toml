@@ -90,7 +90,8 @@ packages = [
     { include = "nonebot_plugin_github", from = "./plugins" },
     { include = "nonebot_plugin_schedule", from = "./plugins" },
     { include = "nonebot_plugin_wordle", from = "./plugins" },
-    { include = "nonebot_plugin_sudoku", from = "./plugins" }
+    { include = "nonebot_plugin_sudoku", from = "./plugins" },
+    { include = "nonebot_plugin_message_summary", from = "./plugins" }
 ]
 
 

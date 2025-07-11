@@ -75,7 +75,8 @@ plugins = [
     "nonebot_plugin_turn_off_lights",
     "nonebot_plugin_github",
     "nonebot_plugin_schedule",
-    "nonebot_plugin_wordle"
+    "nonebot_plugin_wordle",
+    "nonebot_plugin_message_summary"
 ]
 plugin_dirs = []
 builtin_plugins = []
