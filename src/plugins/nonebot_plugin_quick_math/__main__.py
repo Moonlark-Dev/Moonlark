@@ -10,7 +10,8 @@ quick_math = on_alconna(
         "quick-math",
         Subcommand("rank", Option("-t|--total")),
         Subcommand("points"),
-        Subcommand("--level|-l", Args["max_level", int]),
+        Subcommand("--level", Args["max_level", int]),
+        Subcommand("zen", Args["zen_level", int]),
     ),
     aliases={"qm"},
 )
