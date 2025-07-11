@@ -17,7 +17,7 @@
 
 import random
 from datetime import datetime
-from typing import NoReturn, Optional
+from typing import NoReturn, Optional, overload
 
 from nonebot_plugin_alconna import UniMessage
 from nonebot_plugin_htmlrender import md_to_pic
@@ -27,7 +27,7 @@ from nonebot_plugin_larkuser import prompt
 from nonebot_plugin_larkuser.exceptions import PromptTimeout
 from nonebot_plugin_quick_math.__main__ import lang, quick_math
 from nonebot_plugin_quick_math.config import config
-from nonebot_plugin_quick_math.types import LevelMode, LevelModeString, ReplyType, QuestionData
+from nonebot_plugin_quick_math.types import LevelMode, LevelModeString, ReplyType, QuestionData, ExtendReplyType
 from nonebot_plugin_quick_math.utils.achievement import get_achievement_location, update_achievements_status
 from nonebot_plugin_quick_math.utils.generator import get_difficulty_list, get_max_level
 from nonebot_plugin_quick_math.utils.message import wait_answer
@@ -88,9 +88,20 @@ class QuickMathSession:
         self.point += add_point
         await lang.send("answer.right", self.user_id, add_point)
 
-    async def get_question(self) -> tuple[UniMessage, QuestionData]:
+    @overload
+    async def get_question(
+        self, override_time_limitation: Optional[bool] = False
+    ) -> tuple[UniMessage, QuestionData]: ...
+
+    async def get_question(self, **kwargs) -> tuple[UniMessage, QuestionData]:
         return await get_question(
-            self.get_level(), self.user_id, self.passed, self.point, self.available_skip_count, self.skipped_question
+            self.get_level(),
+            self.user_id,
+            self.passed,
+            self.point,
+            self.available_skip_count,
+            self.skipped_question,
+            **kwargs,
         )
 
     def get_level(self) -> int:
@@ -164,3 +175,28 @@ class QuickMathSession:
                 diff,
             )
         )
+
+
+class QuickMathZenSession(QuickMathSession):
+
+    def __init__(self, user_id: str, difficulty: int) -> None:
+        super().__init__(user_id)
+        self.set_level_mode("lock")
+        self.set_max_level(difficulty)
+
+    async def get_question(self) -> tuple[UniMessage, QuestionData]:
+        return await super().get_question(override_time_limitation=True)
+
+    async def send_question(self) -> bool:
+        image, question = await self.get_question()
+        send_time = datetime.now()
+        result = await wait_answer(
+            question,
+            image.text(text=await lang.text("main.zen_mode", self.user_id)),
+            self.user_id,
+            enable_leave_command=True,
+        )
+        if result == ExtendReplyType.LEAVE:
+            self.point *= 0.75
+            return False
+        return await self.process_answer_result(result, send_time, question)

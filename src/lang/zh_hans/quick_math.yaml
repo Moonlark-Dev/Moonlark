@@ -1,4 +1,5 @@
 main:
+  zen_mode: "[Zen 模式]输入 leave 结束"
   timeout: 您已超时
   checkout: |
     # Quick Math 挑战结果
@@ -96,6 +97,7 @@ help:
   details: 以计算为核心的玩法。找到问题的答案，并在排行榜中获取更高的积分。（指令别名：qm）
   u1: quick-math [--level <开始的等级>] (开始挑战)
   u2: quick-math rank [--total] (积分排行榜)
+  u3: quick-math zen <等级> (禅模式)
   u4: quick-math points (查看总分详情)
 award:
   info: |
