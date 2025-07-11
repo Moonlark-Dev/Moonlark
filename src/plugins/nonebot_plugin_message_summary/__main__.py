@@ -17,12 +17,7 @@ from nonebot_plugin_localstore import get_cache_file
 from .models import GroupMessage
 
 lang = LangHelper()
-summary = on_alconna(Alconna(
-    "summary",
-    Subcommand("--enable|-e"),
-    Subcommand("--disable|-d"),
-    Args["limit", int, 200]
-))
+summary = on_alconna(Alconna("summary", Subcommand("--enable|-e"), Subcommand("--disable|-d"), Args["limit", int, 200]))
 config_file = get_cache_file("nonebot-plugin-message-summary", "config.json")
 recorder = on_message(priority=3, block=False)
 
@@ -35,55 +30,62 @@ async def get_config() -> list[str]:
 
 
 @summary.assign("$main")
-async def _(limit: int, session: async_scoped_session, user_id: str = get_user_id(), group_id: str = get_group_id()) -> None:
+async def _(
+    limit: int, session: async_scoped_session, user_id: str = get_user_id(), group_id: str = get_group_id()
+) -> None:
     if group_id not in await get_config():
         await lang.finish("disabled", user_id)
-    result = (await session.scalars(select(GroupMessage).where(GroupMessage.group_id == group_id).order_by(GroupMessage.id_.desc()).limit(limit).order_by(GroupMessage.id_))).all()
+    result = (
+        await session.scalars(
+            select(GroupMessage)
+            .where(GroupMessage.group_id == group_id)
+            .order_by(GroupMessage.id_.desc())
+            .limit(limit)
+            .order_by(GroupMessage.id_)
+        )
+    ).all()
     messages = ""
     for message in result:
         messages += f"[{message.sender_nickname}] {message.message}\n"
     summary_string = await fetch_messages(
-        [
-            generate_message(await lang.text("prompt", user_id), "system"),
-            generate_message(messages, "user")
-        ],
-        user_id
+        [generate_message(await lang.text("prompt", user_id), "system"), generate_message(messages, "user")], user_id
     )
     await summary.finish(UniMessage().image(raw=await md_to_pic(summary_string)))
 
 
 async def clean_recorded_message(session: async_scoped_session, group_id: str) -> None:
-    result = (await session.scalars(
-        select(GroupMessage).where(GroupMessage.group_id == group_id).order_by(GroupMessage.id_))).all()
+    result = (
+        await session.scalars(select(GroupMessage).where(GroupMessage.group_id == group_id).order_by(GroupMessage.id_))
+    ).all()
     if len(result) > 270:
         for i in range(270 - len(result)):
             await session.delete(result[i])
+
 
 @recorder.handle()
 async def _(event: GroupMessageEvent, session: async_scoped_session, group_id: str = get_group_id()) -> None:
     if group_id not in await get_config():
         await recorder.finish()
     await clean_recorded_message(session, group_id)
-    session.add(GroupMessage(
-        message=event.raw_message,
-        sender_nickname=event.sender.nickname,
-        group_id=group_id
-    ))
+    session.add(GroupMessage(message=event.raw_message, sender_nickname=event.sender.nickname, group_id=group_id))
     await session.commit()
     await recorder.finish()
 
 
 @recorder.handle()
-async def _(event: Event, session: async_scoped_session, group_id: str = get_group_id(), user_id: str = get_user_id()) -> None:
+async def _(
+    event: Event, session: async_scoped_session, group_id: str = get_group_id(), user_id: str = get_user_id()
+) -> None:
     if group_id not in await get_config():
         await recorder.finish()
     await clean_recorded_message(session, group_id)
-    session.add(GroupMessage(
-        message=event.get_plaintext(),
-        sender_nickname=(await get_user(user_id)).get_nickname(),
-        group_id=group_id
-    ))
+    session.add(
+        GroupMessage(
+            message=event.get_plaintext(), sender_nickname=(await get_user(user_id)).get_nickname(), group_id=group_id
+        )
+    )
     await session.commit()
+
 
 @summary.assign("enable")
 async def _(bot: Bot, user_id: str = get_user_id(), group_id: str = get_group_id()) -> None:
@@ -96,6 +98,7 @@ async def _(bot: Bot, user_id: str = get_user_id(), group_id: str = get_group_id
         await f.write(json.dumps(config))
     await lang.finish("switch.enable", user_id)
 
+
 @summary.assign("disable")
 async def _(user_id: str = get_user_id(), group_id: str = get_group_id()) -> None:
     config = await get_config()
@@ -104,8 +107,3 @@ async def _(user_id: str = get_user_id(), group_id: str = get_group_id()) -> Non
     async with aiofiles.open(config_file, "w") as f:
         await f.write(json.dumps(config))
     await lang.finish("switch.disable", user_id)
-
-
-
-
-
