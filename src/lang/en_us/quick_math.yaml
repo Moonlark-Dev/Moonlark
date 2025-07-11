@@ -91,7 +91,7 @@ achievements:
   calculus: 看！微积分
 help:
   desc: 快速数学
-  details: 以计算为核心的玩法。找到问题的答案，并在排行榜中获取更高的积分。
+  details: 以计算为核心的玩法。找到问题的答案，并在排行榜中获取更高的积分。（指令别名：qm）
   u1: quick-math [--level <开始的等级>] (开始挑战)
   u2: quick-math rank [--total] (积分排行榜)
   u4: quick-math points (查看总分详情)
