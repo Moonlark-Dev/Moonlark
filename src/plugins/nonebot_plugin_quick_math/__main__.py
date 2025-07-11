@@ -12,7 +12,8 @@ quick_math = on_alconna(
         Subcommand("points"),
         Subcommand("--level", Args["max_level", int]),
         Subcommand("zen", Args["zen_level", int]),
-    )
+    ),
+    aliases={"qm"},
 )
 lang = LangHelper()
 patch_matcher(quick_math)
