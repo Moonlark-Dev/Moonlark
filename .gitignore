@@ -2,6 +2,8 @@ node_modules/
 sha1.yaml
 nonebot_plugin_sha1/
 bot.py
+.vscode/
+poetry.toml
 
 
 # Byte-compiled / optimized / DLL files
