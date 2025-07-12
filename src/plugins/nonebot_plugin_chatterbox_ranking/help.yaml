@@ -1,0 +1,3 @@
+plugin: 'message_summary'
+commands:
+  chatterbox: help;2;game
