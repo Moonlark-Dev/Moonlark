@@ -10,6 +10,7 @@ class GroupChatterbox(Model):
     group_id: Mapped[str] = mapped_column(String(128))
     message_count: Mapped[int]
 
+
 class GroupChatterboxWithNickname(BaseModel):
     nickname: str
     message_count: int

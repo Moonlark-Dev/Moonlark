@@ -27,9 +27,7 @@ async def get_config() -> list[str]:
 
 
 @summary.assign("$main")
-async def _(
-    session: async_scoped_session, user_id: str = get_user_id(), group_id: str = get_group_id()
-) -> None:
+async def _(session: async_scoped_session, user_id: str = get_user_id(), group_id: str = get_group_id()) -> None:
     if group_id not in await get_config():
         await lang.finish("disabled", user_id)
     result = (
@@ -40,28 +38,31 @@ async def _(
             .limit(5)
         )
     ).all()
-    await summary.finish(UniMessage().image(raw=await render_bar(
-        [GroupChatterboxWithNickname(
-            nickname=(await get_user(data.user_id)).get_nickname(),
-            message_count=data.message_count
-        ) for data in result],
-        user_id,
-        group_id
-    )))
-
+    await summary.finish(
+        UniMessage().image(
+            raw=await render_bar(
+                [
+                    GroupChatterboxWithNickname(
+                        nickname=(await get_user(data.user_id)).get_nickname(), message_count=data.message_count
+                    )
+                    for data in result
+                ],
+                user_id,
+                group_id,
+            )
+        )
+    )
 
 
 @recorder.handle()
 async def _(session: async_scoped_session, group_id: str = get_group_id(), user_id: str = get_user_id()) -> None:
     if group_id not in await get_config():
         await recorder.finish()
-    result = await session.scalar(select(GroupChatterbox).where(GroupChatterbox.group_id == group_id, GroupChatterbox.user_id == user_id))
+    result = await session.scalar(
+        select(GroupChatterbox).where(GroupChatterbox.group_id == group_id, GroupChatterbox.user_id == user_id)
+    )
     if result is None:
-        result = GroupChatterbox(
-            group_id=group_id,
-            user_id=user_id,
-            message_count=1
-        )
+        result = GroupChatterbox(group_id=group_id, user_id=user_id, message_count=1)
     else:
         result.message_count += 1
     await session.merge(result)
