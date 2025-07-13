@@ -20,7 +20,6 @@ from typing import Literal
 from sqlalchemy import select
 
 from ..types import Message, Messages
-from ..models import SessionMessage
 
 
 def generate_message(content: str, role: Literal["system", "user", "assistant"] = "system") -> Message:
