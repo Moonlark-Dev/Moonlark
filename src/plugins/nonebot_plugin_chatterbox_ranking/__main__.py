@@ -35,7 +35,7 @@ async def _(session: async_scoped_session, user_id: str = get_user_id(), group_i
             select(GroupChatterbox)
             .where(GroupChatterbox.group_id == group_id)
             .order_by(GroupChatterbox.message_count.desc())
-            .limit(5)
+            .limit(12)
         )
     ).all()
     await summary.finish(
