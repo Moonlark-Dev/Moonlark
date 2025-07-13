@@ -56,7 +56,7 @@ class QuickMathSession:
         await self.send_result_image()
 
     def set_max_level(self, max_level: int) -> LevelMode:
-        self.level = self.level[0], min(7, min(max_level, 1))
+        self.level = self.level[0], min(7, max(max_level, 1))
         return self.level
 
     def set_level_mode(self, level_mode: LevelModeString) -> LevelMode:
@@ -70,6 +70,7 @@ class QuickMathSession:
         return await self.process_answer_result(result, send_time, question)
 
     async def process_answer_result(self, result: ReplyType, send_time: datetime, question: QuestionData) -> bool:
+        self.total_answered += 1
         if result == ReplyType.TIMEOUT or result == ReplyType.WRONG:
             return await self.on_wrong_answer()
         elif result == ReplyType.SKIP and self.available_skip_count > self.skipped_question:
@@ -149,7 +150,11 @@ class QuickMathSession:
         )
 
     async def send_result_image(self) -> NoReturn:
-        await quick_math.finish(UniMessage().image(raw=await self.get_result_image()))
+        image = await self.get_result_image()
+        if image:
+            await quick_math.finish(UniMessage().image(raw=image))
+        else:
+            await quick_math.finish()
 
     async def get_result_image(self) -> Optional[bytes]:
         if self.passed == 0:
