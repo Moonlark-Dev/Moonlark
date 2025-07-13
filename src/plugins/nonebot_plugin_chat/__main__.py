@@ -35,6 +35,7 @@ from .utils import get_history, generate_history, generate_memory
 async def handle_qq_bot(message: str, session: async_scoped_session, user_id: str) -> None:
     pass
 
+
 @on_message(priority=10, block=True).handle()
 async def _(event: Event, bot: Bot, session: async_scoped_session, user_id: str = get_user_id()) -> None:
     message = event.get_plaintext()
@@ -58,5 +59,3 @@ async def _(event: Event, bot: Bot, session: async_scoped_session, user_id: str 
     await session.commit()
     if len(history) >= 25:
         asyncio.create_task(generate_memory(user_id))
-
-
