@@ -21,6 +21,7 @@ from datetime import datetime
 from nonebot import on_message
 from nonebot.adapters import Event, Bot
 from nonebot.adapters.qq import Bot as Bot_QQ
+from nonebot.rule import to_me
 from nonebot_plugin_alconna import UniMessage
 
 
@@ -36,7 +37,7 @@ async def handle_qq_bot(message: str, session: async_scoped_session, user_id: st
     pass
 
 
-@on_message(priority=10, block=True).handle()
+@on_message(priority=10, rule=to_me(), block=True).handle()
 async def _(event: Event, bot: Bot, session: async_scoped_session, user_id: str = get_user_id()) -> None:
     message = event.get_plaintext()
     if not message:
