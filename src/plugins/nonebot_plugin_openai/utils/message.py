@@ -36,6 +36,8 @@ def generate_message(content: str, role: Literal["system", "user", "assistant"] 
         return {"role": "assistant", "content": content}
     else:
         raise ValueError(f"Invalid role: {role}")
+
+
 #
 #
 # async def get_session_messages(session_id: int) -> list[Message]:

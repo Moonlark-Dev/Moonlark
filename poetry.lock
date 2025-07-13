@@ -2412,7 +2412,7 @@ typing-extensions = ">=4.0.0,<5.0.0"
 
 [[package]]
 name = "nonebot-adapter-qq"
-version = "1.6.2"
+version = "1.6.4"
 description = "QQ adapter for nonebot2"
 optional = false
 python-versions = "^3.9"
@@ -2431,7 +2431,7 @@ yarl = "^1.9.0"
 type = "git"
 url = "https://github.com/This-is-XiaoDeng/adapter-qq"
 reference = "HEAD"
-resolved_reference = "bc20e4ced2cfb35acf607cb455c83e42fde8e86e"
+resolved_reference = "3370110ed3cc275c049e08432ced2034ac424f3d"
 
 [[package]]
 name = "nonebot-plugin-alconna"
@@ -2545,14 +2545,14 @@ typing-extensions = ">=4.0.0,<5.0.0"
 
 [[package]]
 name = "nonebot-plugin-orm"
-version = "0.8.1"
+version = "0.8.2"
 description = "SQLAlchemy ORM support for nonebot"
 optional = false
 python-versions = "<4.0,>=3.9"
 groups = ["main"]
 files = [
-    {file = "nonebot_plugin_orm-0.8.1-py3-none-any.whl", hash = "sha256:ac10a48b8c8ef90d4506acd6f5f46c02cf9ab76935856532ba15ab9c00684cd7"},
-    {file = "nonebot_plugin_orm-0.8.1.tar.gz", hash = "sha256:5c90c84ce7ebd8da5244b72ede85d3c4f08e94190526066c8955fd94bde6ffdf"},
+    {file = "nonebot_plugin_orm-0.8.2-py3-none-any.whl", hash = "sha256:be870742127714e7d54f1510f017027b82a5e0bf267e2cd239cac8fa471b1f5b"},
+    {file = "nonebot_plugin_orm-0.8.2.tar.gz", hash = "sha256:faa9c9d1e957518f93e513914846e9c69d501cf8b0fc3dcf9489aafd9a5c935a"},
 ]
 
 [package.dependencies]

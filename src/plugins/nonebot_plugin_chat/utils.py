@@ -30,7 +30,8 @@ from nonebot_plugin_openai.utils.message import generate_message
 async def get_history(session: async_scoped_session | AsyncSession, user_id: str) -> Messages:
     messages = []
     for message in await session.scalars(
-        select(SessionMessage).where(SessionMessage.user_id == user_id).order_by(SessionMessage.id_)):
+        select(SessionMessage).where(SessionMessage.user_id == user_id).order_by(SessionMessage.id_)
+    ):
         messages.append(generate_message(message.content, message.role))
     return messages
 
@@ -62,11 +63,12 @@ async def generate_memory(user_id: str) -> None:
         message_string = generate_message_string(messages)
         memory = await fetch_messages(
             [
-                generate_message(await lang.text("prompt.memory", user_id, await get_memory(user_id, session)),
-                                 "system"),
-                generate_message(await lang.text("prompt.memory_2", user_id, message_string, "user"))
+                generate_message(
+                    await lang.text("prompt.memory", user_id, await get_memory(user_id, session)), "system"
+                ),
+                generate_message(await lang.text("prompt.memory_2", user_id, message_string, "user")),
             ],
-            user_id
+            user_id,
         )
         user_data = await session.get(ChatUser, {"user_id": user_id})
         if user_data is None:
@@ -74,6 +76,7 @@ async def generate_memory(user_id: str) -> None:
         user_data.memory = memory
         await session.merge(user_data)
         for message in await session.scalars(
-                select(SessionMessage).where(SessionMessage.user_id == user_id).order_by(SessionMessage.id_)):
+            select(SessionMessage).where(SessionMessage.user_id == user_id).order_by(SessionMessage.id_)
+        ):
             await session.delete(message)
         await session.commit()
