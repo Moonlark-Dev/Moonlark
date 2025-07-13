@@ -7,11 +7,11 @@ from sqlalchemy import String
 from .config import config
 
 
-class SessionMessage(Model):
-    message_id: Mapped[int] = mapped_column(autoincrement=True, primary_key=True)
-    session_id: Mapped[int]
-    content: Mapped[bytes]
-    role: Mapped[str] = mapped_column(String(32))
+# class SessionMessage(Model):
+#     message_id: Mapped[int] = mapped_column(autoincrement=True, primary_key=True)
+#     session_id: Mapped[int]
+#     content: Mapped[bytes]
+#     role: Mapped[str] = mapped_column(String(32))
 
 
 class GptUser(Model):

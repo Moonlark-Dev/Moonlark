@@ -54,7 +54,7 @@ DEFAULT_AT_GREETINGS: AtGreetingsData = {
 }
 
 
-@on_message(rule=to_me(), block=False).handle()
+@on_message(rule=to_me(), block=False, priority=5).handle()
 async def _(event: Event, user_id: str = get_user_id()) -> None:
     if event.get_plaintext():
         return
