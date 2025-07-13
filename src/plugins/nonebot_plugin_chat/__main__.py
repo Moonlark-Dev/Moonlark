@@ -49,7 +49,7 @@ async def _(event: Event, bot: Bot, session: async_scoped_session, user_id: str 
     history.append(generate_message(message, "user"))
     reply = await fetch_messages(history, user_id)
     for line in reply.splitlines():
-        await asyncio.sleep(random.random() / 2 * len(line))
+        await asyncio.sleep(random.random() / 20 * len(line))
         await UniMessage().text(line).send()
     session.add(SessionMessage(content=message, role="user", user_id=user_id))
     session.add(SessionMessage(content=reply, role="assistant", user_id=user_id))
