@@ -90,7 +90,7 @@ class QuickMathSession:
 
     @overload
     async def get_question(
-        self, override_time_limitation: Optional[bool] = False
+        self, override_time_limitation: Optional[float] = False
     ) -> tuple[UniMessage, QuestionData]: ...
 
     async def get_question(self, **kwargs) -> tuple[UniMessage, QuestionData]:
@@ -185,7 +185,7 @@ class QuickMathZenSession(QuickMathSession):
         self.set_max_level(difficulty)
 
     async def get_question(self) -> tuple[UniMessage, QuestionData]:
-        return await super().get_question(override_time_limitation=True)
+        return await super().get_question(override_time_limitation=300)
 
     async def send_question(self) -> bool:
         image, question = await self.get_question()
