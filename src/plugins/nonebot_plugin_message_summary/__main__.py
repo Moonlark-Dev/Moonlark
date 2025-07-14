@@ -19,11 +19,11 @@ from .models import GroupMessage
 lang = LangHelper()
 summary = on_alconna(
     Alconna(
-        "summary", 
-        Subcommand("--enable|-e"), 
-        Subcommand("--disable|-d"), 
+        "summary",
+        Subcommand("--enable|-e"),
+        Subcommand("--disable|-d"),
         Args["limit", int, 200],
-        Args["style", str, "default"]
+        Args["style", str, "default"],
     )
 )
 config_file = get_cache_file("nonebot-plugin-message-summary", "config.json")
@@ -39,11 +39,7 @@ async def get_config() -> list[str]:
 
 @summary.assign("$main")
 async def _(
-    limit: int, 
-    style: str,
-    session: async_scoped_session, 
-    user_id: str = get_user_id(), 
-    group_id: str = get_group_id()
+    limit: int, style: str, session: async_scoped_session, user_id: str = get_user_id(), group_id: str = get_group_id()
 ) -> None:
     if group_id not in await get_config():
         await lang.finish("disabled", user_id)
@@ -63,19 +59,16 @@ async def _(
         summary_string = await fetch_messages(
             [
                 generate_message(await lang.text("prompt2s", user_id), "system"),
-                generate_message(await lang.text("prompt2u", user_id, messages), "user")
-            ], 
+                generate_message(await lang.text("prompt2u", user_id, messages), "user"),
+            ],
             user_id,
-            model="gemini-2.5-pro"
+            model="gemini-2.5-pro",
         )
         await summary.finish(summary_string)
     else:
         summary_string = await fetch_messages(
-            [
-                generate_message(await lang.text("prompt", user_id), "system"), 
-                generate_message(messages, "user")
-            ], 
-            user_id
+            [generate_message(await lang.text("prompt", user_id), "system"), generate_message(messages, "user")],
+            user_id,
         )
         await summary.finish(UniMessage().image(raw=await md_to_pic(summary_string)))
 
