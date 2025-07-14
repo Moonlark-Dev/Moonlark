@@ -12,3 +12,10 @@ help:
   details: 统计群聊中的话痨，该功能不支持 QQ 节点且需要在群聊中手动启用。
   usage1: ct (群话痨排行)
   usage2: ct -e|-d (功能开关)
+  usage3: ct me|<@用户> (查询指定用户的话痨排行)
+find:
+  result: |
+    [话痨排行 - {}]
+    排名：{}
+    消息量：{}
+  not_found: 未找到有关数据。
