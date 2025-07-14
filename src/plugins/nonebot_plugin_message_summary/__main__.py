@@ -8,7 +8,7 @@ from nonebot.adapters.onebot.v11 import GroupMessageEvent
 from nonebot import on_message
 import json
 from nonebot_plugin_orm import async_scoped_session
-from nonebot_plugin_alconna import on_alconna, Alconna, Subcommand, Args, UniMessage
+from nonebot_plugin_alconna import on_alconna, Alconna, Subcommand, Args, UniMessage, Option
 from nonebot_plugin_openai import fetch_messages, generate_message
 from nonebot_plugin_larkutils import get_user_id, get_group_id
 from nonebot_plugin_larklang import LangHelper
@@ -23,7 +23,7 @@ summary = on_alconna(
         Subcommand("--enable|-e"),
         Subcommand("--disable|-d"),
         Args["limit", int, 200],
-        Args["style", str, "default"],
+        Subcommand("-s|--style", Args["style_type", str, "default"]),
     )
 )
 config_file = get_cache_file("nonebot-plugin-message-summary", "config.json")
@@ -37,17 +37,33 @@ async def get_config() -> list[str]:
         return json.loads(await f.read())
 
 
-@summary.assign("$main")
+@summary.assign("style")
 async def _(
-    limit: int, style: str, session: async_scoped_session, user_id: str = get_user_id(), group_id: str = get_group_id()
+    limit: int,
+    style_type: str,
+    session: async_scoped_session,
+    user_id: str = get_user_id(),
+    group_id: str = get_group_id(),
 ) -> None:
+    await handle_main(limit, session, style_type, user_id, group_id)
+
+
+@summary.assign("$main")
+async def handle_main(
+    limit: int,
+    session: async_scoped_session,
+    style_type: str = "default",
+    user_id: str = get_user_id(),
+    group_id: str = get_group_id(),
+) -> None:
+    style = style_type
     if group_id not in await get_config():
         await lang.finish("disabled", user_id)
     result = (
         await session.scalars(
             select(GroupMessage)
             .where(GroupMessage.group_id == group_id)
-            .order_by(GroupMessage.id_.desc())
+            .order_by(GroupMessage.id_)
             .limit(limit)
             .order_by(GroupMessage.id_)
         )
@@ -84,6 +100,7 @@ async def clean_recorded_message(session: async_scoped_session, group_id: str) -
 
 @recorder.handle()
 async def _(event: GroupMessageEvent, session: async_scoped_session, group_id: str = get_group_id()) -> None:
+
     if group_id not in await get_config():
         await recorder.finish()
     await clean_recorded_message(session, group_id)

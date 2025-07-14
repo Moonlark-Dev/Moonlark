@@ -236,6 +236,7 @@ Linux 手册 (ManPage) 查询
 
 ### 用法
 - `/summary [读取长度] (总结历史消息)`
+- `/summary -s broadcast (广播风格总结)`
 - `/summary -e|-d (功能开关)`
 ## `t`: 翻译器
 
