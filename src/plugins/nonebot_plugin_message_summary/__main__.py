@@ -40,7 +40,11 @@ async def get_config() -> list[str]:
 @summary.assign("$main")
 @summary.assign("style")
 async def _(
-    limit: int, style_type: str, session: async_scoped_session, user_id: str = get_user_id(), group_id: str = get_group_id()
+    limit: int,
+    style_type: str,
+    session: async_scoped_session,
+    user_id: str = get_user_id(),
+    group_id: str = get_group_id(),
 ) -> None:
     style = style_type
     if group_id not in await get_config():
