@@ -50,8 +50,8 @@ async def _(
 @summary.assign("$main")
 async def handle_main(
     limit: int,
-    style_type: str = "default",
     session: async_scoped_session,
+    style_type: str = "default",
     user_id: str = get_user_id(),
     group_id: str = get_group_id(),
 ) -> None:
