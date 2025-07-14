@@ -87,7 +87,7 @@ async def _(bot: Bot, event: Event) -> None:
     except ValueError:
         return
     await process_to_me_message(event, bot, session_id)
-    if sessions.get(session_id, ("", 0.0))[0] != bot.self_id:
+    if session_id in sessions and sessions[session_id][0] != bot.self_id:
         raise IgnoredException(f"此群组已分配给帐号 {session_id}")
     elif event.get_user_id() in config.bots_list.keys():
         raise IgnoredException("忽略自身消息")
