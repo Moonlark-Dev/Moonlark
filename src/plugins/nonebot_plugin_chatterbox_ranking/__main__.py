@@ -6,7 +6,7 @@ from nonebot.adapters.qq import Bot as Bot_QQ
 from nonebot import on_message
 import json
 from nonebot_plugin_orm import async_scoped_session
-from nonebot_plugin_alconna import on_alconna, Alconna, Subcommand, UniMessage
+from nonebot_plugin_alconna import on_alconna, Alconna, Subcommand, UniMessage, Args, At
 from nonebot_plugin_larkutils import get_user_id, get_group_id
 from nonebot_plugin_localstore import get_cache_file
 
@@ -14,7 +14,10 @@ from .image import render_bar
 from .lang import lang
 from .models import GroupChatterbox, GroupChatterboxWithNickname
 
-summary = on_alconna(Alconna("chatterbox", Subcommand("--enable|-e"), Subcommand("--disable|-d")), aliases={"ct"})
+summary = on_alconna(
+    Alconna("chatterbox", Subcommand("--enable|-e"), Subcommand("--disable|-d"), Args["user_id?", str | At]),
+    aliases={"ct"},
+)
 config_file = get_cache_file("nonebot-plugin-chatterbox-ranking", "config.json")
 recorder = on_message(priority=3, block=False)
 
@@ -52,6 +55,26 @@ async def _(session: async_scoped_session, user_id: str = get_user_id(), group_i
             )
         )
     )
+
+
+@summary.assign("user_id")
+async def _(
+    session: async_scoped_session, user_id: str, sender_id: str = get_user_id(), group_id: str = get_group_id()
+) -> None:
+    if group_id not in await get_config():
+        await lang.finish("disabled", user_id)
+    if user_id == "me":
+        user_id = sender_id
+    index = 1
+    for user in await session.scalars(
+        select(GroupChatterbox)
+        .where(GroupChatterbox.group_id == group_id)
+        .order_by(GroupChatterbox.message_count.desc())
+    ):
+        if user.user_id == user_id:
+            await lang.finish("find.result", user_id, user_id, index, user.message_count)
+        index += 1
+    await lang.finish("find.not_found", user_id)
 
 
 @recorder.handle()
