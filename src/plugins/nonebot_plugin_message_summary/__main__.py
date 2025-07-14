@@ -8,7 +8,7 @@ from nonebot.adapters.onebot.v11 import GroupMessageEvent
 from nonebot import on_message
 import json
 from nonebot_plugin_orm import async_scoped_session
-from nonebot_plugin_alconna import on_alconna, Alconna, Subcommand, Args, UniMessage
+from nonebot_plugin_alconna import on_alconna, Alconna, Subcommand, Args, UniMessage, Option
 from nonebot_plugin_openai import fetch_messages, generate_message
 from nonebot_plugin_larkutils import get_user_id, get_group_id
 from nonebot_plugin_larklang import LangHelper
