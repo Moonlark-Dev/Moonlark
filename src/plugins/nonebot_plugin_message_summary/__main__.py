@@ -45,7 +45,7 @@ async def _(
     user_id: str = get_user_id(),
     group_id: str = get_group_id(),
 ) -> None:
-    await handle_main(limit, style_type, session, user_id, group_id)
+    await handle_main(limit, session, style_type, user_id, group_id)
 
 
 @summary.assign("$main")
