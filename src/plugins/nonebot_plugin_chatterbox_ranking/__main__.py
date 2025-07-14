@@ -1,3 +1,4 @@
+from typing import Literal
 import aiofiles
 from nonebot_plugin_larkuser import get_user
 from sqlalchemy import select
@@ -15,7 +16,7 @@ from .lang import lang
 from .models import GroupChatterbox, GroupChatterboxWithNickname
 
 summary = on_alconna(
-    Alconna("chatterbox", Subcommand("--enable|-e"), Subcommand("--disable|-d"), Args["user_id?", str | At]),
+    Alconna("chatterbox", Subcommand("--enable|-e"), Subcommand("--disable|-d"), Args["user_id?", Literal["me"] | At]),
     aliases={"ct"},
 )
 config_file = get_cache_file("nonebot-plugin-chatterbox-ranking", "config.json")
@@ -27,6 +28,31 @@ async def get_config() -> list[str]:
         return []
     async with aiofiles.open(config_file, "r") as f:
         return json.loads(await f.read())
+
+
+@summary.assign("user_id")
+async def _(
+    session: async_scoped_session,
+    user_id: Literal["me"] | At = "me",
+    sender_id: str = get_user_id(),
+    group_id: str = get_group_id(),
+) -> None:
+    if group_id not in await get_config():
+        await lang.finish("disabled", user_id)
+    if user_id == "me":
+        user_id = sender_id
+    else:
+        user_id = user_id.target
+    index = 1
+    for user in await session.scalars(
+        select(GroupChatterbox)
+        .where(GroupChatterbox.group_id == group_id)
+        .order_by(GroupChatterbox.message_count.desc())
+    ):
+        if user.user_id == user_id:
+            await lang.finish("find.result", user_id, user_id, index, user.message_count)
+        index += 1
+    await lang.finish("find.not_found", user_id)
 
 
 @summary.assign("$main")
@@ -55,26 +81,6 @@ async def _(session: async_scoped_session, user_id: str = get_user_id(), group_i
             )
         )
     )
-
-
-@summary.assign("user_id")
-async def _(
-    session: async_scoped_session, user_id: str, sender_id: str = get_user_id(), group_id: str = get_group_id()
-) -> None:
-    if group_id not in await get_config():
-        await lang.finish("disabled", user_id)
-    if user_id == "me":
-        user_id = sender_id
-    index = 1
-    for user in await session.scalars(
-        select(GroupChatterbox)
-        .where(GroupChatterbox.group_id == group_id)
-        .order_by(GroupChatterbox.message_count.desc())
-    ):
-        if user.user_id == user_id:
-            await lang.finish("find.result", user_id, user_id, index, user.message_count)
-        index += 1
-    await lang.finish("find.not_found", user_id)
 
 
 @recorder.handle()
