@@ -63,7 +63,7 @@ async def handle_main(
         await session.scalars(
             select(GroupMessage)
             .where(GroupMessage.group_id == group_id)
-            .order_by(GroupMessage.id_.desc())
+            .order_by(GroupMessage.id_)
             .limit(limit)
             .order_by(GroupMessage.id_)
         )
