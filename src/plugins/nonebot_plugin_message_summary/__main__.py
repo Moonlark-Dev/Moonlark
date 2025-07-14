@@ -23,7 +23,7 @@ summary = on_alconna(
         Subcommand("--enable|-e"),
         Subcommand("--disable|-d"),
         Args["limit", int, 200],
-        Args["style", str, "default"],
+        Option("-s|--style", Args["style", str, "default"])
     )
 )
 config_file = get_cache_file("nonebot-plugin-message-summary", "config.json")
