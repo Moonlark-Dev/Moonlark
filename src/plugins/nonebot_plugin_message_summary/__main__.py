@@ -23,7 +23,7 @@ summary = on_alconna(
         Subcommand("--enable|-e"),
         Subcommand("--disable|-d"),
         Args["limit", int, 200],
-        Option("-s|--style", Args["style_type", str, "default"]),
+        Subcommand("-s|--style", Args["style_type", str, "default"]),
     )
 )
 config_file = get_cache_file("nonebot-plugin-message-summary", "config.json")
@@ -37,12 +37,22 @@ async def get_config() -> list[str]:
         return json.loads(await f.read())
 
 
-@summary.assign("$main")
 @summary.assign("style")
 async def _(
     limit: int,
     style_type: str,
     session: async_scoped_session,
+    user_id: str = get_user_id(),
+    group_id: str = get_group_id(),
+) -> None:
+    await handle_main(limit, style_type, session, user_id, group_id)
+
+
+@summary.assign("$main")
+async def handle_main(
+    limit: int,
+    session: async_scoped_session,
+    style_type: str = "default",
     user_id: str = get_user_id(),
     group_id: str = get_group_id(),
 ) -> None:
@@ -90,6 +100,7 @@ async def clean_recorded_message(session: async_scoped_session, group_id: str) -
 
 @recorder.handle()
 async def _(event: GroupMessageEvent, session: async_scoped_session, group_id: str = get_group_id()) -> None:
+
     if group_id not in await get_config():
         await recorder.finish()
     await clean_recorded_message(session, group_id)
