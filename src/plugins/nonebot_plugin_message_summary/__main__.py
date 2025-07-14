@@ -47,6 +47,7 @@ async def _(
 ) -> None:
     await handle_main(limit, style_type, session, user_id, group_id)
 
+
 @summary.assign("$main")
 async def handle_main(
     limit: int,
@@ -99,7 +100,7 @@ async def clean_recorded_message(session: async_scoped_session, group_id: str) -
 
 @recorder.handle()
 async def _(event: GroupMessageEvent, session: async_scoped_session, group_id: str = get_group_id()) -> None:
-    
+
     if group_id not in await get_config():
         await recorder.finish()
     await clean_recorded_message(session, group_id)
