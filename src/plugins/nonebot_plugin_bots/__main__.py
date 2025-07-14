@@ -47,9 +47,11 @@ async def get_bot_status(user_id: str) -> BotStatus:
         "nickname": nickname,
     }
 
+
 async def is_bot_online(bot_id: str) -> bool:
     status = await get_bot_status(bot_id)
     return status["online"] and status["good"]
+
 
 @cast(FastAPI, get_app()).get("/api/bots")
 async def bots_status(_: Request) -> dict[str, BotStatus]:
