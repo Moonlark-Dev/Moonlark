@@ -63,13 +63,13 @@ async def handle_main(
         await session.scalars(
             select(GroupMessage)
             .where(GroupMessage.group_id == group_id)
-            .order_by(GroupMessage.id_)
+            .order_by(GroupMessage.id_.desc())
             .limit(limit)
             .order_by(GroupMessage.id_)
         )
     ).all()
     messages = ""
-    for message in result:
+    for message in result[::-1]:
         messages += f"[{message.sender_nickname}] {message.message}\n"
     if style == "broadcast":
         summary_string = await fetch_messages(
