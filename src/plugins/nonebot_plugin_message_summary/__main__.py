@@ -7,6 +7,7 @@ from nonebot.adapters.qq import Bot as Bot_QQ
 from nonebot.adapters.onebot.v11 import GroupMessageEvent
 from nonebot import on_message
 import json
+from datetime import datetime, timedelta, timezone
 from nonebot_plugin_orm import async_scoped_session
 from nonebot_plugin_alconna import on_alconna, Alconna, Subcommand, Args, UniMessage, Option
 from nonebot_plugin_openai import fetch_messages, generate_message
@@ -72,9 +73,10 @@ async def handle_main(
     for message in result[::-1]:
         messages += f"[{message.sender_nickname}] {message.message}\n"
     if style == "broadcast":
+        time_str = datetime.now(timezone(timedelta(hours=8))).strftime("%Y-%m-%d %H:%M:%S")
         summary_string = await fetch_messages(
             [
-                generate_message(await lang.text("prompt2s", user_id), "system"),
+                generate_message(await lang.text("prompt2s", user_id, time_str), "system"),
                 generate_message(await lang.text("prompt2u", user_id, messages), "user"),
             ],
             user_id,
