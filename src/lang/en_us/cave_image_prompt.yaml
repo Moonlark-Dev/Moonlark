@@ -1,8 +1,8 @@
 ask: |
   Image detected! Would you like to submit it to Cave?
   Please reply "Yes" or "No"
-yes: "Yes"
-no: "No"
+"yes": "Yes"
+"no": "No"
 submitting: "Submitting to Cave, please wait..."
 success: "Image successfully submitted to Cave ({})"
 error: "Submission failed: {}"
