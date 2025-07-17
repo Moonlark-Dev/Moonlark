@@ -114,7 +114,7 @@ async def render(user_id: str) -> bytes:
         "help.html.jinja",
         await lang.text("list.title", user_id),
         user_id,
-        {"categories": await get_templates(user_id)},
+        {"categories": await get_templates(user_id), "len": len},
         {"usage_text": await lang.text("list.usage_text", user_id)},
         True,
         True,
