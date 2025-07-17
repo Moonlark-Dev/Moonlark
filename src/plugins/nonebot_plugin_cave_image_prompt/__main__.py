@@ -1,0 +1,136 @@
+from typing import cast
+
+from nonebot import on_message
+from nonebot.adapters import Event
+from nonebot.rule import Rule
+from nonebot_plugin_alconna import Image, Text, UniMessage
+from nonebot_plugin_larklang import LangHelper
+from nonebot_plugin_larkutils import get_user_id, is_private_message
+from nonebot_plugin_waiter import prompt_until
+
+lang = LangHelper()
+
+
+def is_single_image_message(event: Event) -> bool:
+    """检查消息是否只包含一张图片"""
+    try:
+        message = UniMessage.generate_without_reply(event=event)
+        
+        # 统计图片和文本数量
+        image_count = 0
+        text_content = ""
+        
+        for segment in message:
+            if isinstance(segment, Image):
+                image_count += 1
+            elif isinstance(segment, Text):
+                # 去除空白字符检查是否有实际文本内容
+                text_content += segment.text.strip()
+        
+        # 只有一张图片且没有文本内容
+        return image_count == 1 and not text_content
+    except Exception:
+        return False
+
+
+async def ask_cave_submission(user_id: str) -> bool:
+    """询问用户是否要投稿到 Cave"""
+    try:
+        response = await prompt_until(
+            UniMessage.text(await lang.text("cave_image_prompt.ask", user_id)),
+            [
+                await lang.text("cave_image_prompt.yes", user_id),
+                await lang.text("cave_image_prompt.no", user_id),
+            ],
+            timeout=60,
+        )
+        
+        yes_text = await lang.text("cave_image_prompt.yes", user_id)
+        return response and response.extract_plain_text().strip() == yes_text
+    except Exception:
+        return False
+
+
+# 监听私聊中的单图片消息
+image_prompt = on_message(
+    Rule(is_private_message) & Rule(is_single_image_message),
+    priority=10,
+    block=False,
+)
+
+
+@image_prompt.handle()
+async def handle_image_prompt(event: Event, user_id: str = get_user_id()) -> None:
+    """处理单图片消息，询问是否投稿到 Cave"""
+    try:
+        message = UniMessage.generate_without_reply(event=event)
+        
+        # 找到图片
+        image = None
+        for segment in message:
+            if isinstance(segment, Image):
+                image = segment
+                break
+        
+        if not image:
+            return
+        
+        # 询问用户是否要投稿
+        if await ask_cave_submission(user_id):
+            # 用户确认投稿，调用 Cave 的 add 功能
+            
+            # 构造 Cave add 命令的参数
+            content = [image]
+            
+            # 模拟 cave add 命令调用
+            await lang.send("cave_image_prompt.submitting", user_id)
+            
+            # 使用 Cave 插件的 add 功能
+            try:
+                # 导入必要的依赖
+                from datetime import datetime
+
+                from nonebot.adapters import Bot
+                from nonebot_plugin_alconna import image_fetch
+                from nonebot_plugin_larkcave.models import CaveData
+                from nonebot_plugin_larkcave.plugins.add.__main__ import get_cave_id
+                from nonebot_plugin_larkcave.plugins.add.checker import check_cave
+                from nonebot_plugin_larkcave.plugins.add.encoder import encode_image
+                from nonebot_plugin_orm import async_scoped_session
+                
+                # 获取当前的 bot 和 session
+                bot = cast(Bot, event.get_bot())
+                
+                async with async_scoped_session() as session:
+                    # 检查内容
+                    state = {}
+                    await check_cave(content, event, bot, state, session)
+                    
+                    # 获取新的 Cave ID
+                    cave_id = await get_cave_id(session)
+                    
+                    # 编码图片
+                    image_bytes = cast(bytes, await image_fetch(event, bot, state, image))
+                    encoded_content = await encode_image(cave_id, image.name, image_bytes, session)
+                    
+                    # 保存到数据库
+                    session.add(CaveData(
+                        id=cave_id,
+                        author=user_id,
+                        time=datetime.now(),
+                        content=encoded_content
+                    ))
+                    await session.commit()
+                    
+                    await lang.finish("cave_image_prompt.success", user_id, cave_id)
+                    
+            except Exception as e:
+                # 如果出错，发送错误信息
+                await lang.finish("cave_image_prompt.error", user_id, str(e))
+        else:
+            # 用户选择不投稿或超时
+            await lang.finish("cave_image_prompt.cancelled", user_id)
+            
+    except Exception:
+        # 静默失败，不干扰正常消息处理
+        pass
