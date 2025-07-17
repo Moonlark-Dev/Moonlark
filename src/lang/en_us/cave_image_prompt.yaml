@@ -1,6 +1,6 @@
 ask: |
   Image detected! Would you like to submit it to Cave?
-  Please reply "Yes" or "No"
+  Please reply "Yes", "No", "y", or "n"
 "yes": "Yes"
 "no": "No"
 submitting: "Submitting to Cave, please wait..."
