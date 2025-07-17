@@ -37,7 +37,7 @@ async def handle_qq_bot(message: str, session: async_scoped_session, user_id: st
     pass
 
 
-@on_message(priority=10, rule=to_me(), block=True).handle()
+@on_message(priority=50, rule=to_me(), block=True).handle()
 async def _(event: Event, bot: Bot, session: async_scoped_session, user_id: str = get_user_id()) -> None:
     message = event.get_plaintext()
     if not message:
@@ -49,8 +49,9 @@ async def _(event: Event, bot: Bot, session: async_scoped_session, user_id: str 
     history.append(generate_message(message, "user"))
     reply = await fetch_messages(history, user_id)
     for line in reply.splitlines():
-        await asyncio.sleep(random.random() / 20 * len(line))
-        await UniMessage().text(line).send()
+        if line:
+            await asyncio.sleep(random.random() / 20 * len(line))
+            await UniMessage().text(line).send()
     session.add(SessionMessage(content=message, role="user", user_id=user_id))
     session.add(SessionMessage(content=reply, role="assistant", user_id=user_id))
     user_data = await session.get(ChatUser, {"user_id": user_id})
