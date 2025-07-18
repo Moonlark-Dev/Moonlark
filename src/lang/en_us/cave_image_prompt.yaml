@@ -1,9 +1,6 @@
 ask: |
-  Image detected! Would you like to submit it to Cave?
-  Please reply "Yes", "No", "y", or "n"
-"yes": "Yes"
-"no": "No"
-submitting: "Submitting to Cave, please wait..."
-success: "Image successfully submitted to Cave ({})"
-error: "Submission failed: {}"
-cancelled: "Submission cancelled"
+  检测到您发送了一张图片！是否要投稿到回声洞？
+  请回复 "是"、"否"、"y" 或 "n"
+"yes": "是"
+"no": "否"
+cancelled: "已取消投稿"
