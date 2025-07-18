@@ -24,7 +24,9 @@ async def get_cave_id(session: async_scoped_session) -> int:
     return (result + 1) if result is not None else 0
 
 
-async def post_cave(content: list[Image | Text], user_id: str, event: Event, bot: Bot, state: T_State, session: async_scoped_session) -> NoReturn:
+async def post_cave(
+    content: list[Image | Text], user_id: str, event: Event, bot: Bot, state: T_State, session: async_scoped_session
+) -> NoReturn:
     await lang.send("add.checking", user_id)
     try:
         await check_cave(content, event, bot, state, session)

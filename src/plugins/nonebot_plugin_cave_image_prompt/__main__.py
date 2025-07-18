@@ -1,4 +1,3 @@
-
 from nonebot import on_message
 from nonebot.adapters import Event, Bot
 from nonebot.rule import Rule
@@ -38,8 +37,6 @@ async def ask_cave_submission(user_id: str) -> bool:
         timeout=60,
         allow_quit=False,
     )
-
-
 
 
 @image_prompt.handle()
