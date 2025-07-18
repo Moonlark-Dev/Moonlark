@@ -62,9 +62,7 @@ async def ask_cave_submission(user_id: str) -> bool:
     return await prompt(
         UniMessage.text(await lang.text("ask", user_id)),
         user_id,
-        checker=lambda text: (
-            text.strip() in [yes_text, no_text] or text.strip().lower() in ["y", "yes", "n", "no"]
-        ),
+        checker=lambda text: (text.strip() in [yes_text, no_text] or text.strip().lower() in ["y", "yes", "n", "no"]),
         parser=parse_response,
         timeout=60,
         allow_quit=False,
