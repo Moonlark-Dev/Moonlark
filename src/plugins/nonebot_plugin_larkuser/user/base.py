@@ -31,8 +31,6 @@ class MoonlarkUser(ABC):
         self.user_id = user_id
 
         self.register_time: Optional[datetime] = None
-        self.ship_code: Optional[str] = None
-        self.gender: Optional[bool] = None
         self.avatar: Optional[bytes] = None
 
         self.nickname = ""
@@ -66,6 +64,7 @@ class MoonlarkUser(ABC):
     def get_base64_avatar(self) -> Optional[str]:
         if self.has_avatar():
             return base64.b64encode(self.get_avatar()).decode()
+        return None
 
     def has_avatar(self) -> bool:
         return self.get_avatar() is not None
@@ -79,17 +78,11 @@ class MoonlarkUser(ABC):
     def get_health(self) -> float:
         return max(self.health, 0)
 
-    def get_gender(self) -> Optional[bool]:
-        return self.gender
-
     def get_experience(self) -> int:
         return self.experience
 
     def get_register_time(self) -> Optional[datetime]:
         return self.register_time
-
-    def get_ship_code(self) -> Optional[str]:
-        return self.ship_code
 
     def get_level(self) -> int:
         return get_level_by_experience(self.experience)
