@@ -126,8 +126,6 @@ class MoonlarkRegisteredGuest(MoonlarkUser):
         )
         self.nickname = user["nickname"]
         self.register_time = datetime.now()
-        self.ship_code = f"GUEST-{self.user_id}"
-        self.gender = True
         self.vimcoin = user["vimcoin"]
         self.experience = user["experience"]
         self.health = user["health"]

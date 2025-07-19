@@ -25,8 +25,6 @@ class DetailedUserResponse(BasicUserResponse):
     total_experience: int
     vimcoin: float
     register_time: Optional[float]
-    ship_code: Optional[str]
-    gender: Optional[int]
     health: float
     favorability: float
 

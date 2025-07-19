@@ -1,3 +1,5 @@
+import base64
+import json
 from datetime import datetime
 
 from nonebot_plugin_alconna import UniMessage
@@ -6,18 +8,22 @@ from nonebot.adapters import Message
 from nonebot import logger, on_command
 from nonebot.params import ArgPlainText, CommandArg
 from nonebot.typing import T_State
-from nonebot_plugin_orm import get_session
+from typing import Optional
+from nonebot_plugin_orm import async_scoped_session
 from sqlalchemy import select
 
 from nonebot_plugin_email.utils.send import send_email
 
 from nonebot_plugin_preview.preview import screenshot
 from nonebot_plugin_larkuser.models import UserData
+from nonebot_plugin_larkuser.exceptions import PromptTimeout
 from nonebot_plugin_larkuser.utils.base58 import base58_decode
 from nonebot_plugin_larkuser import get_user
+from nonebot_plugin_larkuser.utils.waiter import prompt
 from nonebot.exception import ActionFailed
 
 from nonebot_plugin_larkutils.user import get_user_id
+from nonebot_plugin_larkutils import review_text
 from .lang import lang
 from nonebot_plugin_larkuser.user.utils import is_user_registered
 import traceback
@@ -27,11 +33,39 @@ from nonebot_plugin_userinfo import EventUserInfo, UserInfo
 register = on_command("register")
 
 
+async def send_eula_screenshot(user_id: str) -> None:
+    try:
+        await UniMessage().text(await lang.text("command.tip_without_url", user_id)).image(
+            raw=await screenshot("https://github.com/orgs/Moonlark-Dev/discussions/3", 1), name="image.png"
+        ).send()
+    except Exception:
+        await lang.send("command.tip_failed_to_send_content", user_id)
+        logger.error(f"以截图形式发送 EUAL 失败: {traceback.format_exc()}")
+
+async def get_nickname(user: UserInfo, user_id: str) -> tuple[Optional[str], bool]:
+    if user.user_displayname:
+        return user.user_displayname, False
+    prompt_text = await lang.text("prompt.user_nickname", user_id, user_id)
+    for i in range(3):
+        try:
+            nickname = await prompt(prompt_text, user_id, checker=lambda msg: len(msg) <= 27, ignore_error_details=False, allow_quit=False)
+        except PromptTimeout:
+            return None, False
+        review_result = await review_text(nickname)
+        if review_result["conclusion"]:
+            return nickname, True
+        prompt_text = await lang.text("prompt.nickname_review_failed", user_id, review_result["message"])
+    await lang.text("prompt.nickname_failed", user_id)
+    return None, False
+
+
+
 @register.handle()
-async def _(state: T_State, message: Message = CommandArg(), user_id: str = get_user_id()) -> None:
+async def _(session: async_scoped_session, message: Message = CommandArg(), user: UserInfo = EventUserInfo(), user_id: str = get_user_id()) -> None:
+    invite_user = None
     if text := message.extract_plain_text():
         if await is_user_registered(user := base58_decode(text)):
-            state["invite_user"] = user
+            invite_user = user
         else:
             await lang.finish("invite.unknown", user_id)
     if await is_user_registered(user_id):
@@ -40,47 +74,19 @@ async def _(state: T_State, message: Message = CommandArg(), user_id: str = get_
         await lang.send("command.tip", user_id)
     except ActionFailed:
         logger.warning("发送最终许可协议 URL 失败，尝试以截图形式发送")
-        try:
-            await UniMessage().text(await lang.text("command.tip_without_url", user_id)).image(
-                raw=await screenshot("https://github.com/orgs/Moonlark-Dev/discussions/3", 1), name="image.png"
-            ).send()
-        except Exception:
-            await lang.send("command.tip_failed_to_send_content", user_id)
-            logger.error(f"以截图形式发送 EUAL 失败: {traceback.format_exc()}")
-    await lang.send("input.g", user_id)
-
-
-@register.got("gender")
-async def _(state: T_State, gender: str = ArgPlainText(), user_id: str = get_user_id()) -> None:
-    if gender == "cancel":
+        await send_eula_screenshot(user_id)
+    if not await prompt(await lang.text("command.confirm_eula", user_id), user_id, parser=lambda t: t.strip().lower().startswith("y")):
         await lang.finish("command.cancel", user_id)
-    if gender.lower() == "m":
-        state["gender"] = True
-    elif gender.lower() == "f":
-        state["gender"] = False
-    else:
-        await register.reject(await lang.text("command.invalid", user_id))
-    await lang.send("input.s", user_id)
+    u = UserData(
+        user_id=user_id,
+        nickname=(d := await get_nickname(user, user_id))[0],
+        register_time=datetime.now(),
+        config=base64.b64encode(json.dumps({"lock_nickname": d[1]}).encode("utf-8"))
+    )
+    await session.merge(u)
+    await session.commit()
+    await lang.finish("welcome", user_id, d[0] or f"用户-{user_id}")
 
-
-@register.got("ship_code")
-async def _(state: T_State, ship_code: str = ArgPlainText(), user_id: str = get_user_id()) -> None:
-    logger.debug(f"{ship_code=}")
-    if ship_code == "cancel":
-        await lang.finish("command.cancel", user_id)
-    async with get_session() as session:
-        if await session.scalar(select(UserData).where(UserData.ship_code == ship_code)) is not None:
-            await register.reject(await lang.text("command.invalid", user_id))
-        if len(ship_code) >= 25:
-            await register.reject(await lang.text("command.invalid", user_id))
-        state["ship_code"] = ship_code
-        await lang.send(
-            "input.c",
-            user_id,
-            user_id,
-            await lang.text("gender.male" if state["gender"] else "gender.female", user_id),
-            state["ship_code"],
-        )
 
 
 async def gain_invite(user_id: str, invited_user_id: str, invited_user_data: UserInfo) -> None:
@@ -106,24 +112,3 @@ async def gain_invite(user_id: str, invited_user_id: str, invited_user_data: Use
     )
 
 
-@register.got("confirm")
-async def _(
-    state: T_State, confirm: str = ArgPlainText(), user_id: str = get_user_id(), user: UserInfo = EventUserInfo()
-) -> None:
-    logger.debug(f"{confirm=}")
-    logger.debug(f"{state=}")
-    if confirm.lower() in ["cancel", "n"]:
-        await lang.finish("command.cancel", user_id)
-    async with get_session() as session:
-        user_data = await session.get(UserData, user_id)
-        if user_data is None:
-            user_data = UserData(user_id=user.user_id, nickname=user.user_name)
-        user_data.ship_code = state["ship_code"]
-        user_data.gender = state["gender"]
-        user_data.register_time = datetime.now()
-        await lang.send("command.confirm", user_id, user_data.nickname)
-        await session.merge(user_data)
-        await session.commit()
-    if "invite_user" in state:
-        await gain_invite(state["invite_user"], user_id, user)
-    await register.finish()
