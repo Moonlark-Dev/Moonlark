@@ -42,13 +42,16 @@ async def send_eula_screenshot(user_id: str) -> None:
         await lang.send("command.tip_failed_to_send_content", user_id)
         logger.error(f"以截图形式发送 EUAL 失败: {traceback.format_exc()}")
 
+
 async def get_nickname(user: UserInfo, user_id: str) -> tuple[Optional[str], bool]:
     if user.user_displayname:
         return user.user_displayname, False
     prompt_text = await lang.text("prompt.user_nickname", user_id, user_id)
     for i in range(3):
         try:
-            nickname = await prompt(prompt_text, user_id, checker=lambda msg: len(msg) <= 27, ignore_error_details=False, allow_quit=False)
+            nickname = await prompt(
+                prompt_text, user_id, checker=lambda msg: len(msg) <= 27, ignore_error_details=False, allow_quit=False
+            )
         except PromptTimeout:
             return None, False
         review_result = await review_text(nickname)
@@ -59,9 +62,13 @@ async def get_nickname(user: UserInfo, user_id: str) -> tuple[Optional[str], boo
     return None, False
 
 
-
 @register.handle()
-async def _(session: async_scoped_session, message: Message = CommandArg(), user: UserInfo = EventUserInfo(), user_id: str = get_user_id()) -> None:
+async def _(
+    session: async_scoped_session,
+    message: Message = CommandArg(),
+    user: UserInfo = EventUserInfo(),
+    user_id: str = get_user_id(),
+) -> None:
     invite_user = None
     if text := message.extract_plain_text():
         if await is_user_registered(user := base58_decode(text)):
@@ -75,18 +82,19 @@ async def _(session: async_scoped_session, message: Message = CommandArg(), user
     except ActionFailed:
         logger.warning("发送最终许可协议 URL 失败，尝试以截图形式发送")
         await send_eula_screenshot(user_id)
-    if not await prompt(await lang.text("command.confirm_eula", user_id), user_id, parser=lambda t: t.strip().lower().startswith("y")):
+    if not await prompt(
+        await lang.text("command.confirm_eula", user_id), user_id, parser=lambda t: t.strip().lower().startswith("y")
+    ):
         await lang.finish("command.cancel", user_id)
     u = UserData(
         user_id=user_id,
         nickname=(d := await get_nickname(user, user_id))[0],
         register_time=datetime.now(),
-        config=base64.b64encode(json.dumps({"lock_nickname": d[1]}).encode("utf-8"))
+        config=base64.b64encode(json.dumps({"lock_nickname": d[1]}).encode("utf-8")),
     )
     await session.merge(u)
     await session.commit()
     await lang.finish("welcome", user_id, d[0] or f"用户-{user_id}")
-
 
 
 async def gain_invite(user_id: str, invited_user_id: str, invited_user_data: UserInfo) -> None:
@@ -110,5 +118,3 @@ async def gain_invite(user_id: str, invited_user_id: str, invited_user_data: Use
             {"item_id": "special:fav", "count": 7, "data": {"multiple": 1000}},  # 0.007
         ],
     )
-
-

@@ -78,7 +78,6 @@ class MoonlarkUser(ABC):
     def get_health(self) -> float:
         return max(self.health, 0)
 
-
     def get_experience(self) -> int:
         return self.experience
 
