@@ -2,9 +2,9 @@ from nonebot.plugin import PluginMetadata
 from nonebot import require
 
 __plugin_meta__ = PluginMetadata(
-    name="nonebot-plugin-holiday",
-    description="本年剩余假期",
-    usage="/holiday",
+    name="nonebot-plugin-hkrpg-calendar",
+    description="崩铁活动日历",
+    usage="/hsrc",
     config=None,
 )
 require("nonebot_plugin_alconna")
