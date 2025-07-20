@@ -1,0 +1,136 @@
+{% extends base %}
+
+{% block body %}
+    <h2 style="text-align: center">{{ text.pool_title }}</h2>
+    <h3>{{ text.coming_pool }}</h3>
+    <div class="row">
+        <div class="col" id="coming-card-pool-col-1"></div>
+        <div class="col" id="coming-card-pool-col-2"></div>
+    </div>
+    <div style="height: 15px; width: 100%"></div>
+    <h3>{{ text.current_up }}</h3>
+    <div class="row">
+        <div class="col" id="current-card-pool-col-1"></div>
+        <div class="col" id="current-card-pool-col-2"></div>
+    </div>
+    <br>
+    <h2 style="text-align: center">{{ text.activity_title }}</h2>
+    <h3>{{ text.ongoing }}</h3>
+    {% for activity in activities %}
+        {% if activity.begin_at < current_time and activity.end_at > current_time %}
+            <div class="row">
+                <div class="col-4">
+                    <img src="https://{{ activity.picture }}" width="100%" alt="{{ activity.title }}" />
+                </div>
+                <div class="col-8">
+                    <h6>{{ activity.title }}</h6>
+                    <span class="badge bg-warning">{{ text.a_remain }} {{ round((activity.end_at - current_time) / 86400, 1) }} {{ text.day }}</span>
+                </div>
+            </div>
+            <div style="height: 5px; width: 100%"></div>
+        {% endif %}
+    {% endfor %}
+    <div style="height: 15px; width: 100%"></div>
+    <h3>{{ text.coming_activity }}</h3>
+    {% for activity in activities %}
+        {% if activity.begin_at >= current_time %}
+            <div class="row">
+                <div class="col-4">
+                    <img src="https:{{ activity.picture }}" width="100%" alt="{{ activity.title }}" />
+                </div>
+                <div class="col-8">
+                    <h6>{{ activity.title }}</h6>
+                    <span class="badge bg-success">{{ text.a_coming_remain }} {{ round((activity.begin_at - current_time) / 86400, 1) }} {{ text.day }}</span>
+                </div>
+            </div>
+            <div style="height: 5px; width: 100%"></div>
+        {% endif %}
+    {% endfor %}
+
+    {% if server_id == 16 %}
+        <p style="text-align: center;">{{ text.server_cn }}</p>
+    {% elif server_id == 17 %}
+        <p style="text-align: center;">{{ text.server_in }}</p>
+    {% else %}
+        <p style="text-align: center;">{{ text.server_jp }}</p>
+    {% endif %}
+    <script>
+    let card_pool_list = {{ card_pool | tojson }};
+    let current_time = {{ current_time }};
+    let text_day = "{{ text.day }}";
+
+    function get_coming_pool_list() {
+        let pools = [];
+        card_pool_list.forEach((item, _index, _array) => {
+            if (item["start_at"] >= current_time) {
+                pools.push(item)
+            }
+        });
+        return pools;
+    }
+
+    function get_ongoing_pool_list() {
+        let pools = [];
+        card_pool_list.forEach((item, _index, _array) => {
+            if (item["start_at"] < current_time && item["end_at"] > current_time) {
+                pools.push(item)
+            }
+        });
+        return pools;
+    }
+
+
+    function show_card_pools(card_pools, element_col_1, element_col_2, time_key, time_alt, badge_color) {
+        let slice_index = Math.floor(card_pools.length / 2);
+        if (slice_index !== card_pools) {
+            slice_index += 1;
+        }
+        card_pools.slice(0, slice_index).forEach((item, index, array) => {
+            element_col_1.innerHTML += `<div class="row">
+                <div class="col-4">
+                    <img src="https:${item["icon"]}" width="100%" alt="${item["name"]}"/>
+                </div>
+                <div class="col-8">
+                    <span class="h6">${item["name"]}</span><br>
+                    <span class="badge bg-${badge_color}">${time_alt} ${Math.round((item[time_key] - current_time) / 86400)} ${text_day}</span>
+                </div>
+            </div>`;
+            if(index !== array.length - 1) {
+                element_col_1.innerHTML += '<div style="height: 7px; width: 100%;"></div>';
+            }
+        });
+        card_pools.slice(slice_index).forEach((item, index, array) => {
+            element_col_2.innerHTML += `<div class="row">
+                <div class="col-4">
+                    <img src="https:${item["icon"]}" width="100%" alt="${item["name"]}"/>
+                </div>
+                <div class="col-8">
+                    <span class="h6">${item["name"]}</span><br>
+                    <span class="badge bg-${badge_color}">${time_alt} ${Math.round((item[time_key] - current_time) / 86400)} ${text_day}</span>
+                </div>
+            </div>`;
+            if(index !== array.length - 1) {
+                element_col_2.innerHTML += '<div style="height: 7px; width: 100%;"></div>';
+            }
+        });
+    }
+    show_card_pools(
+        get_coming_pool_list(),
+        document.getElementById("coming-card-pool-col-1"),
+        document.getElementById("coming-card-pool-col-2"),
+        "start_at",
+        "{{ text.up_after }}",
+        "success"
+    );
+    show_card_pools(
+        get_ongoing_pool_list(),
+        document.getElementById("current-card-pool-col-1"),
+        document.getElementById("current-card-pool-col-2"),
+        "end_at",
+        "{{ text.up_remain }}",
+        "warning"
+    );
+
+
+    </script>
+{% endblock body %}
