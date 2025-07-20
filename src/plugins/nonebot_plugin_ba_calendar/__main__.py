@@ -28,21 +28,26 @@ matcher = on_alconna(Alconna("ba-calendar", Args["server", Literal["in", "jp", "
 lang = LangHelper()
 
 
-
-
-
 async def get_card_pool_data(server_id: int) -> dict:
     async with httpx.AsyncClient() as client:
-        req = await client.get(f"https://www.gamekee.com/v1/cardPool/query-list?order_by=-1&card_tag_id=&keyword=&kind_id=6&status=0&serverId={server_id}", headers={"game-alias": "ba"})
+        req = await client.get(
+            f"https://www.gamekee.com/v1/cardPool/query-list?order_by=-1&card_tag_id=&keyword=&kind_id=6&status=0&serverId={server_id}",
+            headers={"game-alias": "ba"},
+        )
     return req.json()
+
 
 async def get_activities(server_id: int) -> dict:
     async with httpx.AsyncClient() as client:
-        req = await client.get(f"https://www.gamekee.com/v1/activity/page-list?importance=0&sort=-1&keyword=&limit=999&page_no=1&serverId={server_id}&status=0", headers={"game-alias": "ba"})
+        req = await client.get(
+            f"https://www.gamekee.com/v1/activity/page-list?importance=0&sort=-1&keyword=&limit=999&page_no=1&serverId={server_id}&status=0",
+            headers={"game-alias": "ba"},
+        )
     return req.json()
 
+
 @matcher.handle()
-async def _(server: Literal["in", "jp", "cn"],user_id: str = get_user_id()) -> None:
+async def _(server: Literal["in", "jp", "cn"], user_id: str = get_user_id()) -> None:
     server_id = {"in": 17, "jp": 15, "cn": 16}[server]
     await UniMessage().image(
         raw=await render_template(
@@ -52,27 +57,34 @@ async def _(server: Literal["in", "jp", "cn"],user_id: str = get_user_id()) -> N
             {
                 "card_pool": (await get_card_pool_data(server_id))["data"][::-1],
                 "activities": (await get_activities(server_id))["data"][::-1],
-                "current_time":  datetime.now().timestamp(),
+                "current_time": datetime.now().timestamp(),
                 "server_id": server_id,
                 "len": len,
-                "round": round
+                "round": round,
             },
-            await generate_render_keys(lang, user_id, [f"template.{k}" for k in [
-                "pool_title",
-                "coming_pool",
-                "current_up",
-                "activity_title",
-                "ongoing",
-                "day",
-                "a_remain",
-                "coming_activity",
-                "a_coming_remain",
-                "server_cn",
-                "server_jp",
-                "server_in",
-                "up_after",
-                "up_remain"
-            ]])
+            await generate_render_keys(
+                lang,
+                user_id,
+                [
+                    f"template.{k}"
+                    for k in [
+                        "pool_title",
+                        "coming_pool",
+                        "current_up",
+                        "activity_title",
+                        "ongoing",
+                        "day",
+                        "a_remain",
+                        "coming_activity",
+                        "a_coming_remain",
+                        "server_cn",
+                        "server_jp",
+                        "server_in",
+                        "up_after",
+                        "up_remain",
+                    ]
+                ],
+            ),
         )
     ).send()
     await matcher.finish()
