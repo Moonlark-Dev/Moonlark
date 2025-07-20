@@ -64,6 +64,7 @@ async def generate_render_keys(helper: LangHelper, user_id: str, keys: list[str]
         k[key.split(".")[-1]] = await helper.text(key, user_id)
     return k
 
+
 async def render_template(
     name: str,
     title: str,
