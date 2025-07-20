@@ -79,7 +79,8 @@ plugins = [
     "nonebot_plugin_message_summary",
     "nonebot_plugin_chatterbox_ranking",
     "nonebot_plugin_chat",
-    "nonebot_plugin_cave_image_prompt"
+    "nonebot_plugin_cave_image_prompt",
+    "nonebot_plugin_hkrpg_calendar"
 ]
 plugin_dirs = []
 builtin_plugins = []
