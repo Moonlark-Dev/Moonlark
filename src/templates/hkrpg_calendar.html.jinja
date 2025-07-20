@@ -1,0 +1,27 @@
+{% extends base %}
+
+{% block body %}
+    <h2>{{ text.ongoing }}</h2>
+    <hr>
+    <ul>
+        {% for event in events.ongoing %}
+            <li>
+                <span class="badge bg-info">{{ event.location }}</span>
+                <span class="badge bg-danger">{{ text.remain }} {{ event.remain_days }} {{ text.day }}</span>
+                <p>{{ event.summary }}</p>
+            </li>
+        {% endfor %}
+    </ul>
+
+    <h2>{{ text.coming }}</h2>
+    <hr>
+    <ul>
+        {% for event in events.coming %}
+            <li>
+                <span class="badge bg-info">{{ event.location }}</span>
+                <span class="badge bg-success">{{ text.coming_day }} {{ event.remain_days }} {{ text.day }}</span>
+                <p>{{ event.summary }}</p>
+            </li>
+        {% endfor %}
+    </ul>
+{% endblock body %}

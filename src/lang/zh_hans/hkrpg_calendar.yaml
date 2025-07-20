@@ -1,0 +1,11 @@
+template:
+  ongoing: 正在进行
+  remain: 剩余
+  day: 天
+  coming: 即将开始
+  coming_day: 距开始
+title: 崩铁活动日历
+help:
+  details: 《崩坏：星穹铁道》活动日历
+  description: 崩铁活动日历
+  usage1: hsrc

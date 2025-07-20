@@ -71,8 +71,6 @@ class MoonlarkRegisteredUser(MoonlarkUser):
                 return
             self.nickname = user.nickname
             self.register_time = user.register_time
-            self.ship_code = user.ship_code
-            self.gender = user.gender
             self.vimcoin = user.vimcoin
             self.experience = user.experience
             self.health = user.health

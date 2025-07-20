@@ -6,7 +6,7 @@ from jinja2 import Environment, FileSystemLoader
 from nonebot import get_plugin_by_module_name
 from nonebot_plugin_htmlrender import html_to_pic
 from nonebot_plugin_orm import get_session
-from nonebot_plugin_larklang.__main__ import get_user_language
+from nonebot_plugin_larklang.__main__ import get_user_language, LangHelper
 from nonebot_plugin_larkutils import parse_special_user_id
 from .lang import lang
 from .config import config
@@ -57,6 +57,12 @@ def resize_png_to_75_percent(png_bytes: bytes) -> bytes:
         resized_img.save(output_buffer, format="PNG")
         return output_buffer.getvalue()
 
+
+async def generate_render_keys(helper: LangHelper, user_id: str, keys: list[str]) -> dict[str, str]:
+    k = {}
+    for key in keys:
+        k[key.split(".")[-1]] = await helper.text(key, user_id)
+    return k
 
 async def render_template(
     name: str,
