@@ -13,6 +13,10 @@ class VerifyResponse(TypedDictExtension):
     nickname: str
 
 
+class MessageResponse(TypedDictExtension):
+    success: bool
+    message: str
+
 class BasicUserResponse(TypedDictExtension):
     user_id: str
     nickname: str
@@ -27,18 +31,3 @@ class DetailedUserResponse(BasicUserResponse):
     register_time: Optional[float]
     health: float
     favorability: float
-
-
-class EarchTimeData(TypedDictExtension):
-    timestamp: float
-    strftime: str
-
-
-class GalacticTimeData(TypedDictExtension):
-    strftime: str
-    array: list[int]
-
-
-class TimeResponse(TypedDictExtension):
-    earth: EarchTimeData
-    galactic: GalacticTimeData
