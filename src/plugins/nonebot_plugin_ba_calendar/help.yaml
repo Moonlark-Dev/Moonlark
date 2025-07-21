@@ -1,0 +1,3 @@
+plugin: ba_calendar
+commands:
+  bac: help;2;tools
