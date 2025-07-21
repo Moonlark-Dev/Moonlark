@@ -32,9 +32,10 @@ async def _(request: Request, avatar: bool = True, user_data: MoonlarkUser = get
     }
 
 
-
 @app.post("/api/users/me")
-async def _(request: Request, nickname: Optional[str] = None, user_data: MoonlarkUser = get_user_data()) -> MessageResponse:
+async def _(
+    request: Request, nickname: Optional[str] = None, user_data: MoonlarkUser = get_user_data()
+) -> MessageResponse:
     async with get_session() as session:
         user = await session.get(UserData, {"user_id": user_data.user_id})
         if user is None:
@@ -46,8 +47,6 @@ async def _(request: Request, nickname: Optional[str] = None, user_data: Moonlar
                 return {"success": False, "message": f"审核未通过: {r['message']}"}
         await session.commit()
     return {"success": True, "message": "执行过程中未出现异常"}
-
-
 
 
 @app.get("/api/users/{user_id}")

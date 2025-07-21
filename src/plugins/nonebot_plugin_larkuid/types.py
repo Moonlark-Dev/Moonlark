@@ -17,6 +17,7 @@ class MessageResponse(TypedDictExtension):
     success: bool
     message: str
 
+
 class BasicUserResponse(TypedDictExtension):
     user_id: str
     nickname: str
