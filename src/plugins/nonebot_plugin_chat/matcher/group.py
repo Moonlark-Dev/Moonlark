@@ -122,7 +122,7 @@ class Group:
                 generate_message(await lang.text("prompt_group.memory", messages, await self.get_memory()), "user")
             ],
             user_id,
-            model="google/gemini-2.5-flash",
+            model="deepseek/deepseek-r1-0528:free",
             extra_headers={"X-Title": "Moonlark - Memory", "HTTP-Referer": "https://memory.moonlark.itcdt.top"}
         )
         async with get_session() as session:
