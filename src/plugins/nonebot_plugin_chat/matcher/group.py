@@ -248,7 +248,7 @@ class Group:
         if time_to_last_message > 600 and random.random() <= (100 - self.desire) / 100 and not self.cached_messages[-1]["self"]:
             await self.reply(self.cached_user_id)
             await self.generate_memory(self.cached_user_id)
-            
+            self.cached_messages.clear()
             
 
 
