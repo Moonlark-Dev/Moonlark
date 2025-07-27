@@ -111,6 +111,8 @@ class Group:
             
     async def generate_memory(self, user_id: str) -> None:
         messages = ""
+        if not self.cached_messages:
+            return
         for message in self.cached_messages:
             if message["self"]:
                 messages += f'[{message["send_time"].strftime("%H:%M")}][Moonlark]: {message["content"]}\n'
@@ -119,7 +121,7 @@ class Group:
         memory = await fetch_messages(
             [
                 generate_message(await lang.text("prompt_group.memory", self.user_id), "system"),
-                generate_message(await lang.text("prompt_group.memory", messages, await self.get_memory()), "user")
+                generate_message(await lang.text("prompt_group.memory_2", await self.get_memory(), messages), "user")
             ],
             user_id,
             model="deepseek/deepseek-r1-0528:free",
@@ -172,6 +174,8 @@ class Group:
     def format_message(self, origin_message: str) -> UniMessage:
         if "[Moonlark]:" in origin_message:
             message = "[Moonlark]:".join(origin_message.split("[Moonlark]:", 1)[1:])
+        elif origin_message.startswith("Moonlark:"):
+            message = "[Moonlark]:".join(origin_message.split("Moonlark:", 1)[1:]).strip()
         else:
             message = origin_message
         message = message.strip()
