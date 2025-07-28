@@ -18,7 +18,6 @@ class ChatUser(Model):
     latest_chat: Mapped[datetime]
 
 
-
 class ChatGroup(Model):
     group_id: Mapped[str] = mapped_column(String(128), primary_key=True)
     memory: Mapped[str] = mapped_column(Text(), default="暂无")

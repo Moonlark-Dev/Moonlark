@@ -16,6 +16,7 @@
 # ##############################################################################
 
 import json
+import base64
 import random
 import asyncio
 from datetime import datetime
@@ -38,13 +39,19 @@ from ..lang import lang
 BASE_DESIRE = 35
 
 
-
 async def group_message(event: Event) -> bool:
     return event.get_user_id() != event.get_session_id()
 
-async def enabled_group(event: Event, session: async_scoped_session, group_id: str = get_group_id(), user_id: str = get_user_id()) -> bool:
-    return bool((await group_message(event)) and (g := await session.get(ChatGroup, {"group_id": group_id})) and g.enabled and user_id not in json.loads(g.blocked_user))
 
+async def enabled_group(
+    event: Event, session: async_scoped_session, group_id: str = get_group_id(), user_id: str = get_user_id()
+) -> bool:
+    return bool(
+        (await group_message(event))
+        and (g := await session.get(ChatGroup, {"group_id": group_id}))
+        and g.enabled
+        and user_id not in json.loads(g.blocked_user)
+    )
 
 
 class CachedMessage(TypedDict):
@@ -56,9 +63,27 @@ class CachedMessage(TypedDict):
 
 
 async def get_image_summary(segment: Image, event: Event, bot: Bot, state: T_State) -> str:
-    if not isinstance(image := await image_fetch(event, bot ,state, segment), bytes):
+    if not isinstance(image := await image_fetch(event, bot, state, segment), bytes):
         return "暂无信息"
-    return "暂无信息"
+
+    image_base64 = base64.b64encode(image).decode("utf-8")
+    messages = [
+        generate_message(await lang.text("prompt_group.image_describe", event.get_user_id()), "system"),
+        generate_message(
+            [{"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_base64}"}}], "user"
+        ),
+    ]
+
+    try:
+        summary = await fetch_messages(
+            messages,
+            event.get_user_id(),
+            model="google/gemini-2.5-flash",
+            extra_headers={"X-Title": "Moonlark - Image Describe", "HTTP-Referer": "https://image.moonlark.itcdt.top"},
+        )
+        return summary.strip()
+    except Exception:
+        return "暂无信息"
 
 
 async def parse_message_to_string(message: UniMessage, event: Event, bot: Bot, state: T_State) -> str:
@@ -75,7 +100,9 @@ async def parse_message_to_string(message: UniMessage, event: Event, bot: Bot, s
 
 class Group:
 
-    def __init__(self, group_id: str, cached_user_id: str, bot: Bot, target: Target, lang_name: str = "zh_hans") -> None:
+    def __init__(
+        self, group_id: str, cached_user_id: str, bot: Bot, target: Target, lang_name: str = "zh_hans"
+    ) -> None:
         self.group_id = group_id
         self.target = target
         self.cached_user_id = cached_user_id
@@ -86,19 +113,17 @@ class Group:
         self.triggered = False
         self.last_reward_participation: Optional[datetime] = None
 
-    async def process_message(self, message: UniMessage, user_id: str, event: Event, state: T_State, nickname: str, mentioned: bool = False) -> NoReturn:
+    async def process_message(
+        self, message: UniMessage, user_id: str, event: Event, state: T_State, nickname: str, mentioned: bool = False
+    ) -> NoReturn:
         msg = await parse_message_to_string(message, event, self.bot, state)
         if not msg:
             return
-        self.cached_messages.append({
-            "content": msg,
-            "nickname": nickname,
-            "send_time": datetime.now(),
-            "user_id": user_id,
-            "self": False
-        })
+        self.cached_messages.append(
+            {"content": msg, "nickname": nickname, "send_time": datetime.now(), "user_id": user_id, "self": False}
+        )
         await self.calculate_desire(mentioned)
-        
+
         logger.debug(self.desire)
         if mentioned or (random.random() <= self.desire / 100 and msg != "[图片: 暂无信息]" and not self.triggered):
             self.triggered = True
@@ -109,7 +134,6 @@ class Group:
             await self.generate_memory(user_id)
             self.cached_messages.clear()
 
-            
     async def generate_memory(self, user_id: str) -> None:
         messages = ""
         if not self.cached_messages:
@@ -122,11 +146,13 @@ class Group:
         memory = await fetch_messages(
             [
                 generate_message(await lang.text("prompt_group.memory", self.user_id), "system"),
-                generate_message(await lang.text("prompt_group.memory_2", self.user_id, await self.get_memory(), messages), "user")
+                generate_message(
+                    await lang.text("prompt_group.memory_2", self.user_id, await self.get_memory(), messages), "user"
+                ),
             ],
             user_id,
             model="deepseek/deepseek-r1-0528:free",
-            extra_headers={"X-Title": "Moonlark - Memory", "HTTP-Referer": "https://memory.moonlark.itcdt.top"}
+            extra_headers={"X-Title": "Moonlark - Memory", "HTTP-Referer": "https://memory.moonlark.itcdt.top"},
         )
         async with get_session() as session:
             g = await session.get_one(ChatGroup, {"group_id": self.group_id})
@@ -136,35 +162,47 @@ class Group:
 
     async def get_messages(self) -> Messages:
         messages = [
-            generate_message(await lang.text("prompt_group.default", self.user_id, await self.get_memory(), datetime.now().isoformat()), "system"),
-            generate_message("", "user")
+            generate_message(
+                await lang.text(
+                    "prompt_group.default", self.user_id, await self.get_memory(), datetime.now().isoformat()
+                ),
+                "system",
+            ),
+            generate_message("", "user"),
         ]
         for message in self.cached_messages:
             if message["self"]:
                 messages.append(generate_message(message["content"], "assistant"))
                 messages.append(generate_message("", "user"))
             else:
-                messages[-1]["content"] += f"[{message['send_time'].strftime('%H:%M')}][{message['nickname']}]: {message['content']}\n"
+                messages[-1][
+                    "content"
+                ] += f"[{message['send_time'].strftime('%H:%M')}][{message['nickname']}]: {message['content']}\n"
         return messages
 
     async def reply(self, user_id: str) -> bool:
         messages = await self.get_messages()
-        reply = await fetch_messages(messages, user_id, extra_headers={"X-Title": "Moonlark - Chat", "HTTP-Referer": "https://chat.moonlark.itcdt.top"})
+        reply = await fetch_messages(
+            messages,
+            user_id,
+            extra_headers={"X-Title": "Moonlark - Chat", "HTTP-Referer": "https://chat.moonlark.itcdt.top"},
+        )
         for line in reply.splitlines():
             if line == ".skip":
                 return False
             elif line:
                 await asyncio.sleep(len(line) * 0.02)
                 await self.format_message(line).send(target=self.target, bot=self.bot)
-        self.cached_messages.append({
-            "content": reply,
-            "self": True,
-            "send_time": datetime.now(),
-
-            # NOTE Not important
-            "nickname": "",
-            "user_id": "",
-        })
+        self.cached_messages.append(
+            {
+                "content": reply,
+                "self": True,
+                "send_time": datetime.now(),
+                # NOTE Not important
+                "nickname": "",
+                "user_id": "",
+            }
+        )
         return True
 
     async def get_memory(self) -> str:
@@ -197,8 +235,6 @@ class Group:
                 uni_msg[-1].text += char
         return uni_msg
 
-
-
     def get_users(self) -> dict[str, str]:
         users = {}
         for message in self.cached_messages:
@@ -223,12 +259,9 @@ class Group:
             else:
                 bot_participate = True
         activity_penalty = min(30.0, 0.3 * msg_count)
-        loneliness_boost = 30 if (
-            msg_count >= 3 and
-            len(user_msg_count) == 1 and
-            bot_participate and
-            not mentioned
-        ) else 0
+        loneliness_boost = (
+            30 if (msg_count >= 3 and len(user_msg_count) == 1 and bot_participate and not mentioned) else 0
+        )
         if bot_participate and self.is_participation_boost_available():
             participation_boost = -10
             self.last_reward_participation = datetime.now()
@@ -237,35 +270,34 @@ class Group:
         new_desire = base + mention_boost + participation_boost - activity_penalty + loneliness_boost
         self.desire = max(0.0, min(100.0, new_desire))
 
-
     def is_participation_boost_available(self) -> bool:
         if self.last_reward_participation is None:
             return True
         dt = datetime.now()
         return (dt - self.last_reward_participation).total_seconds() >= 180
 
-
     async def process_timer(self) -> None:
         dt = datetime.now()
         if not self.cached_messages:
             return
         time_to_last_message = (dt - self.cached_messages[-1]["send_time"]).total_seconds()
-        if time_to_last_message > 600 and random.random() <= (100 - self.desire) / 100 and not self.cached_messages[-1]["self"]:
+        if (
+            time_to_last_message > 600
+            and random.random() <= (100 - self.desire) / 100
+            and not self.cached_messages[-1]["self"]
+        ):
             await self.reply(self.cached_user_id)
             await self.generate_memory(self.cached_user_id)
             self.cached_messages.clear()
-            
-
-
-
-
-
 
 
 groups: dict[str, Group] = {}
 
+
 @on_message(priority=50, rule=enabled_group, block=True).handle()
-async def _(event: Event, bot: Bot, state: T_State, user_id: str = get_user_id(), session_id: str = get_group_id()) -> None:
+async def _(
+    event: Event, bot: Bot, state: T_State, user_id: str = get_user_id(), session_id: str = get_group_id()
+) -> None:
     if session_id not in groups:
         groups[session_id] = Group(session_id, user_id, bot, get_target(event))
     user = await get_user(user_id)
@@ -273,9 +305,10 @@ async def _(event: Event, bot: Bot, state: T_State, user_id: str = get_user_id()
     await groups[session_id].process_message(message, user_id, event, state, user.get_nickname(), event.is_tome())
 
 
-
 @on_command("switch-chat").handle()
-async def _(matcher: Matcher, session: async_scoped_session, group_id: str = get_group_id(), user_id: str = get_user_id()) -> None:
+async def _(
+    matcher: Matcher, session: async_scoped_session, group_id: str = get_group_id(), user_id: str = get_user_id()
+) -> None:
     g = await session.get(ChatGroup, {"group_id": group_id})
     if g is None:
         g = ChatGroup(group_id=group_id, enabled=True)
@@ -295,4 +328,3 @@ async def _(matcher: Matcher, session: async_scoped_session, group_id: str = get
 async def _() -> None:
     for group in groups.values():
         await group.process_timer()
-
