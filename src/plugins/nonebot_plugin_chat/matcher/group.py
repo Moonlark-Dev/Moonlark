@@ -121,7 +121,7 @@ class Group:
         memory = await fetch_messages(
             [
                 generate_message(await lang.text("prompt_group.memory", self.user_id), "system"),
-                generate_message(await lang.text("prompt_group.memory_2", await self.get_memory(), messages), "user")
+                generate_message(await lang.text("prompt_group.memory_2", self.user_id, await self.get_memory(), messages), "user")
             ],
             user_id,
             model="deepseek/deepseek-r1-0528:free",
