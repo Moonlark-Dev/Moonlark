@@ -46,6 +46,7 @@ from nonebot_plugin_openai import generate_message, fetch_messages
 from nonebot_plugin_chat.models import SessionMessage, ChatUser
 from nonebot_plugin_chat.utils import get_history, generate_history, generate_memory
 
+
 async def private_message(pm: bool = is_private_message()) -> bool:
     return pm
 
@@ -71,5 +72,3 @@ async def _(event: Event, bot: Bot, session: async_scoped_session, user_id: str 
     await session.commit()
     if len(history) >= 25:
         asyncio.create_task(generate_memory(user_id))
-
-
