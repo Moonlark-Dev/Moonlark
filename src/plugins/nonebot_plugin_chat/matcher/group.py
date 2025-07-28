@@ -14,31 +14,26 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
+
 import json
 import random
+import asyncio
 from datetime import datetime
-from typing import TypedDict, NoReturn
+from nonebot.typing import T_State
+from typing import TypedDict, NoReturn, Optional
 from nonebot_plugin_apscheduler import scheduler
-
-from nonebot.plugin.on import on_command
-from nonebot_plugin_alconna import UniMessage, Text, At, Image, Target, get_target
-
+from nonebot_plugin_alconna import UniMessage, Text, At, Image, Target, get_target, image_fetch, Reply
 from nonebot_plugin_larkuser import get_user
-
-from nonebot import on_message
-from nonebot.adapters import Event
-from typing import Optional
-from nonebot.adapters import Bot
-
+from nonebot import on_message, on_command
+from nonebot.adapters import Event, Bot, Message
 from nonebot_plugin_larkutils import get_user_id, get_group_id
 from nonebot_plugin_orm import async_scoped_session, get_session
-from ..lang import lang
 from nonebot.log import logger
 from nonebot_plugin_openai import generate_message, fetch_messages
 from nonebot_plugin_openai.types import Messages
-import asyncio
 from nonebot_plugin_chat.models import ChatGroup
 from nonebot.matcher import Matcher
+from ..lang import lang
 
 BASE_DESIRE = 35
 
@@ -60,7 +55,13 @@ class CachedMessage(TypedDict):
     self: bool
 
 
-async def parse_message_to_string(message: UniMessage) -> str:
+async def get_image_summary(segment: Image, event: Event, bot: Bot, state: T_State) -> str:
+    if not isinstance(image := await image_fetch(event, bot ,state, segment), bytes):
+        return "暂无信息"
+    return "暂无信息"
+
+
+async def parse_message_to_string(message: UniMessage, event: Event, bot: Bot, state: T_State) -> str:
     str_msg = ""
     for segment in message:
         if isinstance(segment, Text):
@@ -68,7 +69,7 @@ async def parse_message_to_string(message: UniMessage) -> str:
         elif isinstance(segment, At):
             str_msg += f" @{(await get_user(segment.target)).get_nickname()} "
         elif isinstance(segment, Image):
-            str_msg += f"[图片: 暂无信息]"
+            str_msg += f"[图片: {await get_image_summary(segment, event, bot, state)}]"
     return str_msg
 
 
@@ -85,8 +86,8 @@ class Group:
         self.triggered = False
         self.last_reward_participation: Optional[datetime] = None
 
-    async def process_message(self, message: UniMessage, user_id: str, nickname: str, mentioned: bool = False) -> NoReturn:
-        msg = await parse_message_to_string(message)
+    async def process_message(self, message: UniMessage, user_id: str, event: Event, state: T_State, nickname: str, mentioned: bool = False) -> NoReturn:
+        msg = await parse_message_to_string(message, event, self.bot, state)
         if not msg:
             return
         self.cached_messages.append({
@@ -174,8 +175,8 @@ class Group:
     def format_message(self, origin_message: str) -> UniMessage:
         if "[Moonlark]:" in origin_message:
             message = "[Moonlark]:".join(origin_message.split("[Moonlark]:", 1)[1:])
-        elif origin_message.startswith("Moonlark:"):
-            message = "[Moonlark]:".join(origin_message.split("Moonlark:", 1)[1:]).strip()
+        elif "Moonlark:" in origin_message:
+            message = "[Moonlark]:".join(origin_message.split("Moonlark:", 1)[1:])
         else:
             message = origin_message
         message = message.strip()
@@ -264,12 +265,12 @@ class Group:
 groups: dict[str, Group] = {}
 
 @on_message(priority=50, rule=enabled_group, block=True).handle()
-async def _(event: Event, bot: Bot, user_id: str = get_user_id(), session_id: str = get_group_id()) -> None:
+async def _(event: Event, bot: Bot, state: T_State, user_id: str = get_user_id(), session_id: str = get_group_id()) -> None:
     if session_id not in groups:
         groups[session_id] = Group(session_id, user_id, bot, get_target(event))
     user = await get_user(user_id)
     message = UniMessage.generate_without_reply(message=event.get_message(), event=event)
-    await groups[session_id].process_message(message, user_id, user.get_nickname(), event.is_tome())
+    await groups[session_id].process_message(message, user_id, event, state, user.get_nickname(), event.is_tome())
 
 
 
