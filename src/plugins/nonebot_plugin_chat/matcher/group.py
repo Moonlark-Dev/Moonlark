@@ -19,6 +19,7 @@ import json
 import base64
 import random
 import asyncio
+import traceback
 from datetime import datetime
 from nonebot.typing import T_State
 from typing import TypedDict, NoReturn, Optional
@@ -83,6 +84,7 @@ async def get_image_summary(segment: Image, event: Event, bot: Bot, state: T_Sta
         )
         return summary.strip()
     except Exception:
+        logger.warning(traceback.format_exc())
         return "暂无信息"
 
 
