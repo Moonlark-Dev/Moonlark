@@ -15,16 +15,17 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
-import json
-import base64
 import random
+import re
 import asyncio
-import traceback
-from datetime import datetime
+from datetime import datetime, timedelta
+from nonebot.adapters.qq import Bot as BotQQ
+from nonebot.params import CommandArg
 from nonebot.typing import T_State
 from typing import TypedDict, NoReturn, Optional
 from nonebot_plugin_apscheduler import scheduler
-from nonebot_plugin_alconna import UniMessage, Text, At, Image, Target, get_target, image_fetch, Reply
+from nonebot_plugin_alconna import UniMessage, Target, get_target
+from nonebot_plugin_userinfo import EventUserInfo, UserInfo
 from nonebot_plugin_larkuser import get_user
 from nonebot import on_message, on_command
 from nonebot.adapters import Event, Bot, Message
@@ -36,23 +37,9 @@ from nonebot_plugin_openai.types import Messages
 from nonebot_plugin_chat.models import ChatGroup
 from nonebot.matcher import Matcher
 from ..lang import lang
+from ..utils import enabled_group, parse_message_to_string
 
 BASE_DESIRE = 35
-
-
-async def group_message(event: Event) -> bool:
-    return event.get_user_id() != event.get_session_id()
-
-
-async def enabled_group(
-    event: Event, session: async_scoped_session, group_id: str = get_group_id(), user_id: str = get_user_id()
-) -> bool:
-    return bool(
-        (await group_message(event))
-        and (g := await session.get(ChatGroup, {"group_id": group_id}))
-        and g.enabled
-        and user_id not in json.loads(g.blocked_user)
-    )
 
 
 class CachedMessage(TypedDict):
@@ -61,43 +48,6 @@ class CachedMessage(TypedDict):
     user_id: str
     send_time: datetime
     self: bool
-
-
-async def get_image_summary(segment: Image, event: Event, bot: Bot, state: T_State) -> str:
-    if not isinstance(image := await image_fetch(event, bot, state, segment), bytes):
-        return "暂无信息"
-
-    image_base64 = base64.b64encode(image).decode("utf-8")
-    messages = [
-        generate_message(await lang.text("prompt_group.image_describe_system", event.get_user_id()), "system"),
-        generate_message(
-            [{"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_base64}"}},{"type": "text", "text": await lang.text("prompt_group.image_describe_user", event.get_user_id())}], "user"
-        ),
-    ]
-
-    try:
-        summary = await fetch_messages(
-            messages,
-            event.get_user_id(),
-            model="google/gemini-2.5-flash",
-            extra_headers={"X-Title": "Moonlark - Image Describe", "HTTP-Referer": "https://image.moonlark.itcdt.top"},
-        )
-        return summary.strip()
-    except Exception:
-        logger.warning(traceback.format_exc())
-        return "暂无信息"
-
-
-async def parse_message_to_string(message: UniMessage, event: Event, bot: Bot, state: T_State) -> str:
-    str_msg = ""
-    for segment in message:
-        if isinstance(segment, Text):
-            str_msg += segment.text
-        elif isinstance(segment, At):
-            str_msg += f" @{(await get_user(segment.target)).get_nickname()} "
-        elif isinstance(segment, Image):
-            str_msg += f"[图片: {await get_image_summary(segment, event, bot, state)}]"
-    return str_msg
 
 
 class Group:
@@ -114,6 +64,11 @@ class Group:
         self.desire = BASE_DESIRE
         self.triggered = False
         self.last_reward_participation: Optional[datetime] = None
+        self.mute_until: Optional[datetime] = None
+
+    async def mute(self) -> None:
+        self.mute_until = datetime.now() + timedelta(minutes=15)
+        asyncio.create_task(self.generate_memory(self.cached_user_id))
 
     async def process_message(
         self, message: UniMessage, user_id: str, event: Event, state: T_State, nickname: str, mentioned: bool = False
@@ -134,7 +89,6 @@ class Group:
             self.triggered = False
         elif len(self.cached_messages) >= 100 and not self.is_participation_boost_available():
             await self.generate_memory(user_id)
-            self.cached_messages.clear()
 
     async def generate_memory(self, user_id: str) -> None:
         messages = ""
@@ -161,6 +115,7 @@ class Group:
             g.memory = memory
             await session.commit()
         self.last_reward_participation = None
+        self.cached_messages.clear()
 
     async def get_messages(self) -> Messages:
         messages = [
@@ -280,6 +235,8 @@ class Group:
 
     async def process_timer(self) -> None:
         dt = datetime.now()
+        if self.mute_until and dt > self.mute_until:
+            self.mute_until = None
         if not self.cached_messages:
             return
         time_to_last_message = (dt - self.cached_messages[-1]["send_time"]).total_seconds()
@@ -290,7 +247,6 @@ class Group:
         ):
             await self.reply(self.cached_user_id)
             await self.generate_memory(self.cached_user_id)
-            self.cached_messages.clear()
 
 
 groups: dict[str, Group] = {}
@@ -298,32 +254,95 @@ groups: dict[str, Group] = {}
 
 @on_message(priority=50, rule=enabled_group, block=True).handle()
 async def _(
-    event: Event, bot: Bot, state: T_State, user_id: str = get_user_id(), session_id: str = get_group_id()
+    event: Event, bot: Bot, state: T_State, user_info: UserInfo = EventUserInfo(), user_id: str = get_user_id(), session_id: str = get_group_id()
 ) -> None:
-    if session_id not in groups:
+    if isinstance(bot, BotQQ):
+        return
+    elif session_id not in groups:
         groups[session_id] = Group(session_id, user_id, bot, get_target(event))
+    elif groups[session_id].mute_until is not None:
+        return
     user = await get_user(user_id)
     message = UniMessage.generate_without_reply(message=event.get_message(), event=event)
-    await groups[session_id].process_message(message, user_id, event, state, user.get_nickname(), event.is_tome())
-
-
-@on_command("switch-chat").handle()
-async def _(
-    matcher: Matcher, session: async_scoped_session, group_id: str = get_group_id(), user_id: str = get_user_id()
-) -> None:
-    g = await session.get(ChatGroup, {"group_id": group_id})
-    if g is None:
-        g = ChatGroup(group_id=group_id, enabled=True)
-        await lang.send("switch.on", user_id)
-    elif g.enabled:
-        g.enabled = False
-        await lang.send("switch.off", user_id)
+    if user.has_nickname():
+        nickname = user.get_nickname()
     else:
-        g.enabled = True
-        await lang.send("switch.on", user_id)
+        nickname = user_info.user_displayname
+    await groups[session_id].process_message(message, user_id, event, state, nickname, event.is_tome())
+
+async def group_disable(group_id: str, user_id: str) -> None:
+    if group_id in groups:
+        await groups[group_id].generate_memory(user_id)
+        groups.pop(group_id)
+
+
+
+@on_command("chat").handle()
+async def _(
+    matcher: Matcher, bot: Bot, session: async_scoped_session, message: Message = CommandArg(), group_id: str = get_group_id(), user_id: str = get_user_id()
+) -> None:
+    if isinstance(bot, BotQQ):
+        await lang.finish("command.not_available", user_id)
+    argv = message.extract_plain_text().split(" ")
+    g = await session.get(ChatGroup, {"group_id": group_id})
+    if len(argv) == 0:
+        await lang.finish("command.no_argv", user_id)
+    match argv[0]:
+        case "switch":
+            if g is None or not g.enabled:
+                g = ChatGroup(group_id=group_id, enabled=True)
+                await lang.send("command.switch.enabled", user_id)
+            else:
+                g.enabled = False
+                await group_disable(group_id, user_id)
+                await lang.send("command.switch.disabled", user_id)
+        case "off":
+            g = ChatGroup(group_id=group_id, enabled=False)
+            await group_disable(group_id, user_id)
+            await lang.send("command.switch.disabled", user_id)
+        case "on":
+            g = ChatGroup(group_id=group_id, enabled=True)
+            await lang.send("command.switch.enabled", user_id)
+        case "desire":
+            if len(argv) > 1 and re.match(r"^\d+\.?\d*$", argv[1]) and group_id in groups:
+                groups[group_id].desire = float(argv[1])
+                await lang.send("command.desire.set", user_id)
+            elif group_id in groups:
+                await lang.send("command.desire.get", user_id, groups[group_id].desire)
+            elif g and g.enabled:
+                await lang.send("command.not_inited", user_id)
+            else:
+                await lang.send("command.disabled", user_id)
+        case "mute":
+            if group_id in groups:
+                await lang.send("command.mute", user_id)
+                await groups[group_id].mute()
+            elif g and g.enabled:
+                await lang.send("command.not_inited", user_id)
+            else:
+                await lang.send("command.disabled", user_id)
+        case "unmute":
+            if group_id in groups:
+                groups[group_id].mute_until = None
+                await lang.send("command.unmute", user_id)
+            elif g and g.enabled:
+                await lang.send("command.not_inited", user_id)
+            else:
+                await lang.send("command.disabled", user_id)
+        case "reset-memory":
+            if g is not None:
+                g.memory = ""
+                await lang.send("command.done")
+            else:
+                await lang.send("command.disabled", user_id)
+        case _:
+            await lang.finish("command.no_argv", user_id)
     await session.merge(g)
     await session.commit()
     await matcher.finish()
+
+
+
 
 
 @scheduler.scheduled_job("cron", minute="*", id="trigger_group")
