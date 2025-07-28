@@ -22,7 +22,7 @@ from sqlalchemy import select
 from ..types import Message, Messages
 
 
-def generate_message(content: str, role: Literal["system", "user", "assistant"] = "system") -> Message:
+def generate_message(content: str | list, role: Literal["system", "user", "assistant"] = "system") -> Message:
     # NOTE 以下写法过不了类型检查
     # return {
     #     "role": role,

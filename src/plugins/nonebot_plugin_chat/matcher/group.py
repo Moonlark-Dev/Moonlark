@@ -16,6 +16,7 @@
 # ##############################################################################
 
 import json
+import base64
 import random
 import asyncio
 from datetime import datetime
@@ -56,9 +57,35 @@ class CachedMessage(TypedDict):
 
 
 async def get_image_summary(segment: Image, event: Event, bot: Bot, state: T_State) -> str:
-    if not isinstance(image := await image_fetch(event, bot ,state, segment), bytes):
+    if not isinstance(image := await image_fetch(event, bot, state, segment), bytes):
         return "暂无信息"
-    return "暂无信息"
+    
+    image_base64 = base64.b64encode(image).decode('utf-8')
+    messages = [
+        generate_message(await lang.text("prompt_group.image_describe", event.get_user_id()), "system"),
+        generate_message(
+            [
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:image/jpeg;base64,{image_base64}"
+                    }
+                }
+            ],
+            "user"
+        )
+    ]
+    
+    try:
+        summary = await fetch_messages(
+            messages,
+            event.get_user_id(),
+            model="google/gemini-2.5-flash",
+            extra_headers={"X-Title": "Moonlark - Image Describe", "HTTP-Referer": "https://image.moonlark.itcdt.top"}
+        )
+        return summary.strip()
+    except Exception:
+        return "暂无信息"
 
 
 async def parse_message_to_string(message: UniMessage, event: Event, bot: Bot, state: T_State) -> str:
