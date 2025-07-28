@@ -69,9 +69,9 @@ async def get_image_summary(segment: Image, event: Event, bot: Bot, state: T_Sta
 
     image_base64 = base64.b64encode(image).decode("utf-8")
     messages = [
-        generate_message(await lang.text("prompt_group.image_describe", event.get_user_id()), "system"),
+        generate_message(await lang.text("prompt_group.image_describe_system", event.get_user_id()), "system"),
         generate_message(
-            [{"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_base64}"}}], "user"
+            [{"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_base64}"}},{"type": "text", "text": await lang.text("prompt_group.image_describe_user", event.get_user_id())}], "user"
         ),
     ]
 
