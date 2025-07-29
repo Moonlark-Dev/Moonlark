@@ -14,14 +14,23 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
-
+import base64
+import json
+import traceback
 from datetime import datetime
 
+from nonebot import Bot, logger
+from nonebot.internal.adapter import Event
+from nonebot.typing import T_State
+from nonebot_plugin_userinfo import get_user_info
+from nonebot_plugin_alconna import Image, image_fetch, UniMessage, Text, At
 from nonebot_plugin_orm import async_scoped_session, AsyncSession, get_session
 from sqlalchemy import select
 
 from nonebot_plugin_chat.lang import lang
-from nonebot_plugin_chat.models import SessionMessage, ChatUser
+from nonebot_plugin_chat.models import SessionMessage, ChatUser, ChatGroup
+from nonebot_plugin_larkuser import get_user
+from nonebot_plugin_larkutils import get_group_id, get_user_id
 from nonebot_plugin_openai.types import Messages
 from nonebot_plugin_openai.utils.chat import fetch_messages
 from nonebot_plugin_openai.utils.message import generate_message
@@ -80,3 +89,64 @@ async def generate_memory(user_id: str) -> None:
         ):
             await session.delete(message)
         await session.commit()
+
+
+async def group_message(event: Event) -> bool:
+    return event.get_user_id() != event.get_session_id()
+
+
+async def enabled_group(
+    event: Event, session: async_scoped_session, group_id: str = get_group_id(), user_id: str = get_user_id()
+) -> bool:
+    return bool(
+        (await group_message(event))
+        and (g := await session.get(ChatGroup, {"group_id": group_id}))
+        and g.enabled
+        and user_id not in json.loads(g.blocked_user)
+    )
+
+
+async def get_image_summary(segment: Image, event: Event, bot: Bot, state: T_State) -> str:
+    if not isinstance(image := await image_fetch(event, bot, state, segment), bytes):
+        return "暂无信息"
+
+    image_base64 = base64.b64encode(image).decode("utf-8")
+    messages = [
+        generate_message(await lang.text("prompt_group.image_describe_system", event.get_user_id()), "system"),
+        generate_message(
+            [
+                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_base64}"}},
+                {"type": "text", "text": await lang.text("prompt_group.image_describe_user", event.get_user_id())},
+            ],
+            "user",
+        ),
+    ]
+
+    try:
+        summary = await fetch_messages(
+            messages,
+            event.get_user_id(),
+            model="google/gemini-2.5-flash",
+            extra_headers={"X-Title": "Moonlark - Image Describe", "HTTP-Referer": "https://image.moonlark.itcdt.top"},
+        )
+        return summary.strip()
+    except Exception:
+        logger.warning(traceback.format_exc())
+        return "暂无信息"
+
+
+async def parse_message_to_string(message: UniMessage, event: Event, bot: Bot, state: T_State) -> str:
+    str_msg = ""
+    for segment in message:
+        if isinstance(segment, Text):
+            str_msg += segment.text
+        elif isinstance(segment, At):
+            user = await get_user(segment.target)
+            if (not user.has_nickname()) and (user_info := await get_user_info(bot, event, segment.target)):
+                nickname = user_info.user_displayname
+            else:
+                nickname = user.get_nickname()
+            str_msg += f"@{nickname}"
+        elif isinstance(segment, Image):
+            str_msg += f"[图片: {await get_image_summary(segment, event, bot, state)}]"
+    return str_msg

@@ -1,0 +1,3 @@
+plugin: 'chat'
+commands:
+  chat: help;6;community
