@@ -147,9 +147,13 @@ class Group:
         for line in reply.splitlines():
             if line == ".skip":
                 return False
+            elif line.startswith("("):
+                continue
             elif line:
-                await asyncio.sleep(len(line) * 0.02)
+                await asyncio.sleep(len(line.strip()) * 0.1)
                 await self.format_message(line).send(target=self.target, bot=self.bot)
+            else:
+                await asyncio.sleep(1)
         self.cached_messages.append(
             {
                 "content": reply,
