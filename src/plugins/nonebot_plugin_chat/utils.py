@@ -22,6 +22,7 @@ from datetime import datetime
 from nonebot import Bot, logger
 from nonebot.internal.adapter import Event
 from nonebot.typing import T_State
+from nonebot_plugin_userinfo import get_user_info
 from nonebot_plugin_alconna import Image, image_fetch, UniMessage, Text, At
 from nonebot_plugin_orm import async_scoped_session, AsyncSession, get_session
 from sqlalchemy import select
@@ -140,7 +141,12 @@ async def parse_message_to_string(message: UniMessage, event: Event, bot: Bot, s
         if isinstance(segment, Text):
             str_msg += segment.text
         elif isinstance(segment, At):
-            str_msg += f" @{(await get_user(segment.target)).get_nickname()} "
+            user = await get_user(segment.target)
+            if (not user.has_nickname()) and (user_info := await get_user_info(bot, event, segment.target)):
+                nickname = user_info.user_displayname
+            else:
+                nickname = user.get_nickname()
+            str_msg += f"@{nickname}"
         elif isinstance(segment, Image):
             str_msg += f"[图片: {await get_image_summary(segment, event, bot, state)}]"
     return str_msg

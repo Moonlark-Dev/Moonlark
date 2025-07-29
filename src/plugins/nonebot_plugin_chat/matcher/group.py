@@ -150,7 +150,7 @@ class Group:
             elif line.startswith("("):
                 continue
             elif line:
-                await asyncio.sleep(len(line.strip()) * 0.1)
+                await asyncio.sleep(len(line.strip()) * 0.07)
                 await self.format_message(line).send(target=self.target, bot=self.bot)
             else:
                 await asyncio.sleep(1)
@@ -271,8 +271,9 @@ async def _(
         groups[session_id] = Group(session_id, user_id, bot, get_target(event))
     elif groups[session_id].mute_until is not None:
         return
-    user = await get_user(user_id)
+
     message = UniMessage.generate_without_reply(message=event.get_message(), event=event)
+    user = await get_user(user_id)
     if user.has_nickname():
         nickname = user.get_nickname()
     else:
