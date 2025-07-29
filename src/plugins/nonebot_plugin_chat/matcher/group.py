@@ -254,7 +254,12 @@ groups: dict[str, Group] = {}
 
 @on_message(priority=50, rule=enabled_group, block=True).handle()
 async def _(
-    event: Event, bot: Bot, state: T_State, user_info: UserInfo = EventUserInfo(), user_id: str = get_user_id(), session_id: str = get_group_id()
+    event: Event,
+    bot: Bot,
+    state: T_State,
+    user_info: UserInfo = EventUserInfo(),
+    user_id: str = get_user_id(),
+    session_id: str = get_group_id(),
 ) -> None:
     if isinstance(bot, BotQQ):
         return
@@ -270,16 +275,21 @@ async def _(
         nickname = user_info.user_displayname
     await groups[session_id].process_message(message, user_id, event, state, nickname, event.is_tome())
 
+
 async def group_disable(group_id: str, user_id: str) -> None:
     if group_id in groups:
         await groups[group_id].generate_memory(user_id)
         groups.pop(group_id)
 
 
-
 @on_command("chat").handle()
 async def _(
-    matcher: Matcher, bot: Bot, session: async_scoped_session, message: Message = CommandArg(), group_id: str = get_group_id(), user_id: str = get_user_id()
+    matcher: Matcher,
+    bot: Bot,
+    session: async_scoped_session,
+    message: Message = CommandArg(),
+    group_id: str = get_group_id(),
+    user_id: str = get_user_id(),
 ) -> None:
     if isinstance(bot, BotQQ):
         await lang.finish("command.not_available", user_id)
@@ -340,9 +350,6 @@ async def _(
     await session.merge(g)
     await session.commit()
     await matcher.finish()
-
-
-
 
 
 @scheduler.scheduled_job("cron", minute="*", id="trigger_group")
