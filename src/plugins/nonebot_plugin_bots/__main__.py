@@ -82,7 +82,6 @@ async def process_to_me_message(event: Event, bot: Bot, session_id: str) -> None
                 return
 
 
-
 @event_preprocessor
 async def _(bot: Bot, event: Event) -> None:
     if event.get_user_id() in get_bots().keys():
