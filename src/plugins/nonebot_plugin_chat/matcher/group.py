@@ -119,9 +119,8 @@ class Group:
             await session.commit()
         self.last_reward_participation = None
         # remove cached messages
-        self.cached_messages = self.cached_messages[len(cached_messages):]
+        self.cached_messages = self.cached_messages[len(cached_messages) :]
         self.memory_lock = False
-
 
     async def get_messages(self) -> Messages:
         messages = [
