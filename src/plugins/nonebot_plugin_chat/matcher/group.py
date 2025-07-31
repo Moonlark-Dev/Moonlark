@@ -14,7 +14,7 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
-
+import copy
 import random
 import re
 import asyncio
@@ -65,6 +65,7 @@ class Group:
         self.triggered = False
         self.last_reward_participation: Optional[datetime] = None
         self.mute_until: Optional[datetime] = None
+        self.memory_lock = False
 
     async def mute(self) -> None:
         self.mute_until = datetime.now() + timedelta(minutes=15)
@@ -87,14 +88,16 @@ class Group:
             await self.reply(user_id)
             await asyncio.sleep(round(self.desire / 100 * 2.5))
             self.triggered = False
-        elif len(self.cached_messages) >= 100 and not self.is_participation_boost_available():
-            await self.generate_memory(user_id)
+        elif len(self.cached_messages) >= 10 and not self.is_participation_boost_available():
+            asyncio.create_task(self.generate_memory(user_id))
 
     async def generate_memory(self, user_id: str) -> None:
         messages = ""
-        if not self.cached_messages:
+        if self.memory_lock or not self.cached_messages:
             return
-        for message in self.cached_messages:
+        self.memory_lock = True
+        cached_messages = copy.deepcopy(self.cached_messages)
+        for message in cached_messages:
             if message["self"]:
                 messages += f'[{message["send_time"].strftime("%H:%M")}][Moonlark]: {message["content"]}\n'
             else:
@@ -115,7 +118,10 @@ class Group:
             g.memory = memory
             await session.commit()
         self.last_reward_participation = None
-        self.cached_messages.clear()
+        # remove cached messages
+        self.cached_messages = self.cached_messages[len(cached_messages):]
+        self.memory_lock = False
+
 
     async def get_messages(self) -> Messages:
         messages = [
