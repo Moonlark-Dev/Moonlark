@@ -15,6 +15,8 @@ from typing import cast
 from .config import config
 from .types import BotStatus
 
+from nonebot import get_bots
+
 sessions: dict[str, tuple[str, float]] = {}
 
 
@@ -71,8 +73,8 @@ async def process_to_me_message(event: Event, bot: Bot, session_id: str) -> None
     for segment in message:
         if segment.type == "at":
             user_id = segment.get("user_id")
-            if user_id in config.bots_list.keys() and sessions.get(session_id, ("", 0.0))[0] != user_id:
-                if is_bot_online(user_id):
+            if user_id in config.bots_list.keys() and session_id in sessions and sessions[session_id] != user_id:
+                if await is_bot_online(user_id):
                     assign_session(session_id, user_id)
                 else:
                     segment.user_id = bot.self_id
@@ -82,6 +84,8 @@ async def process_to_me_message(event: Event, bot: Bot, session_id: str) -> None
 
 @event_preprocessor
 async def _(bot: Bot, event: Event) -> None:
+    if event.get_user_id() in get_bots().keys():
+        raise IgnoredException("忽略自身消息")
     try:
         session_id = event.get_session_id()
     except ValueError:
@@ -92,8 +96,6 @@ async def _(bot: Bot, event: Event) -> None:
         pass
     if session_id in sessions and sessions[session_id][0] != bot.self_id:
         raise IgnoredException(f"此群组已分配给帐号 {session_id}")
-    elif event.get_user_id() in config.bots_list.keys():
-        raise IgnoredException("忽略自身消息")
     assign_session(session_id, bot.self_id)
 
 
