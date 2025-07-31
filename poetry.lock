@@ -2064,7 +2064,7 @@ httpx = {version = "^0.28.1", extras = ["socks"]}
 jieba = "^0.42.1"
 matplotlib = "^3.10.0"
 nonebot-adapter-onebot = "^2.4.6"
-nonebot-adapter-qq = {git = "https://github.com/This-is-XiaoDeng/adapter-qq"}
+nonebot-adapter-qq = {git = "https://github.com/Moonlark-Dev/adapter-qq"}
 nonebot-plugin-alconna = "^0.59.2"
 nonebot-plugin-htmlrender = "^0.6.6"
 nonebot-plugin-orm = "^0.8.0"
@@ -2423,7 +2423,7 @@ typing-extensions = ">=4.0.0,<5.0.0"
 
 [[package]]
 name = "nonebot-adapter-qq"
-version = "1.6.4"
+version = "1.6.5"
 description = "QQ adapter for nonebot2"
 optional = false
 python-versions = "^3.9"
@@ -2440,9 +2440,9 @@ yarl = "^1.9.0"
 
 [package.source]
 type = "git"
-url = "https://github.com/This-is-XiaoDeng/adapter-qq"
+url = "https://github.com/Moonlark-Dev/adapter-qq"
 reference = "HEAD"
-resolved_reference = "3370110ed3cc275c049e08432ced2034ac424f3d"
+resolved_reference = "d6b39dae38004654717b7c1a469a2f2a287870e0"
 
 [[package]]
 name = "nonebot-plugin-alconna"
