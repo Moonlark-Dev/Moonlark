@@ -84,12 +84,12 @@ async def process_to_me_message(event: Event, bot: Bot, session_id: str) -> None
 
 @event_preprocessor
 async def _(bot: Bot, event: Event) -> None:
-    if event.get_user_id() in get_bots().keys():
-        raise IgnoredException("忽略自身消息")
     try:
         session_id = event.get_session_id()
     except ValueError:
         return
+    if event.get_user_id() in get_bots().keys():
+        raise IgnoredException("忽略自身消息")
     try:
         await process_to_me_message(event, bot, session_id)
     except ValueError:
