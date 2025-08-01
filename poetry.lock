@@ -2085,8 +2085,8 @@ httpx = {version = "^0.28.1", extras = ["socks"]}
 jieba = "^0.42.1"
 matplotlib = "^3.10.0"
 nonebot-adapter-onebot = "^2.4.6"
-nonebot-adapter-qq = {git = "https://github.com/This-is-XiaoDeng/adapter-qq"}
-nonebot-plugin-alconna = "^0.57.6"
+nonebot-adapter-qq = {git = "https://github.com/Moonlark-Dev/adapter-qq"}
+nonebot-plugin-alconna = "^0.59.2"
 nonebot-plugin-htmlrender = "^0.6.6"
 nonebot-plugin-orm = "^0.8.0"
 nonebot-plugin-session = "^0.3.2"
@@ -2461,24 +2461,24 @@ yarl = "^1.9.0"
 
 [package.source]
 type = "git"
-url = "https://github.com/This-is-XiaoDeng/adapter-qq"
+url = "https://github.com/Moonlark-Dev/adapter-qq"
 reference = "HEAD"
 resolved_reference = "d6b39dae38004654717b7c1a469a2f2a287870e0"
 
 [[package]]
 name = "nonebot-plugin-alconna"
-version = "0.57.6"
+version = "0.59.2"
 description = "Alconna Adapter for Nonebot"
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "nonebot_plugin_alconna-0.57.6-py3-none-any.whl", hash = "sha256:7690f4f1bfc1be8755080eea3554582cafe9cb44c1a1f270e30922d3d1f8358d"},
-    {file = "nonebot_plugin_alconna-0.57.6.tar.gz", hash = "sha256:f22357cf784358205b8ae76707627fd28d1a73b594e38b239619be4eea9fe6ae"},
+    {file = "nonebot_plugin_alconna-0.59.2-py3-none-any.whl", hash = "sha256:7a8cedcf73cb9c21c88b489ca41607feec3fa477d045db7761d5c36e0d28e1c9"},
+    {file = "nonebot_plugin_alconna-0.59.2.tar.gz", hash = "sha256:b2262641319eb88299cf9c123d530cbd3358d09524a6b2447586030413d34aa4"},
 ]
 
 [package.dependencies]
-arclet-alconna = ">=1.8.35,<2.0"
+arclet-alconna = ">=1.8.40,<2.0"
 arclet-alconna-tools = ">=0.7.10"
 importlib-metadata = ">=4.13.0"
 nepattern = ">=0.7.7,<1.0"
@@ -2505,20 +2505,18 @@ pydantic = ">=1.10.0,<2.5.0 || >2.5.0,<2.5.1 || >2.5.1,<3.0.0"
 
 [[package]]
 name = "nonebot-plugin-bilichat"
-version = "6.3.2"
+version = "6.3.4"
 description = "全功能的 bilibili 内容解析器及订阅器"
 optional = false
-python-versions = "<4.0,>=3.10"
+python-versions = ">=3.10,<4.0"
 groups = ["main"]
-files = [
-    {file = "nonebot_plugin_bilichat-6.3.2-py3-none-any.whl", hash = "sha256:25e63466cd60719cdbad93f1909c710a6a242beca4fd3f1b482f66ab0bc0848a"},
-    {file = "nonebot_plugin_bilichat-6.3.2.tar.gz", hash = "sha256:0267787f82e6a3344378a2854ae938c000f3aa6076fe7b8374c6ddadd72d7319"},
-]
+files = []
+develop = false
 
 [package.dependencies]
 deepdiff = ">=8.4.2"
 httpx = ">=0.28.1"
-nonebot-plugin-alconna = ">=0.57.2"
+nonebot-plugin-alconna = ">=0.59.0"
 nonebot-plugin-apscheduler = ">=0.5.0"
 nonebot-plugin-localstore = ">=0.7.4"
 nonebot-plugin-sentry = ">=2.0.0"
@@ -2534,6 +2532,12 @@ qrcode = ">=8.1"
 
 [package.extras]
 api = ["bilichat-request (>=0.4.0)"]
+
+[package.source]
+type = "git"
+url = "https://github.com/Moonlark-Dev/nonebot-plugin-bilichat.git"
+reference = "HEAD"
+resolved_reference = "67a2ab109db661be8d49792f570158999b0ff900"
 
 [[package]]
 name = "nonebot-plugin-htmlrender"
@@ -5454,4 +5458,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.11"
-content-hash = "8058780357cac327978fabde0c80a9ea51fa0592bf08c711628876bf25eb48fb"
+content-hash = "75dc238d682c38458ae267c48c983f2e00d661b7f8caf7df5e70e79a9cf37129"
