@@ -89,7 +89,7 @@ async def handle_main(
             [generate_message(await lang.text("prompt_topic", user_id), "system"), generate_message(messages, "user")],
             user_id,
         )
-        summary.finish(UniMessage().image(raw=md_to_pic(summary_string)))
+        await summary.finish(UniMessage().image(raw=await md_to_pic(summary_string)))
     else:
         summary_string = await fetch_messages(
             [generate_message(await lang.text("prompt", user_id), "system"), generate_message(messages, "user")],
