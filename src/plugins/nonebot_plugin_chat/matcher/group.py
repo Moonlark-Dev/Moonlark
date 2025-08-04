@@ -110,7 +110,7 @@ class Group:
                 ),
             ],
             user_id,
-            model="deepseek/deepseek-r1-0528:free",
+            model="moonshotai/Kimi-K2-Instruct",
             extra_headers={"X-Title": "Moonlark - Memory", "HTTP-Referer": "https://memory.moonlark.itcdt.top"},
         )
         async with get_session() as session:
