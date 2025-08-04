@@ -39,7 +39,7 @@ from nonebot.matcher import Matcher
 from ..lang import lang
 from ..utils import enabled_group, parse_message_to_string
 
-BASE_DESIRE = 35
+BASE_DESIRE = 30
 
 
 class CachedMessage(TypedDict):
@@ -352,7 +352,7 @@ async def _(
         case "reset-memory":
             if g is not None:
                 g.memory = ""
-                await lang.send("command.done")
+                await lang.send("command.done", user_id)
             else:
                 await lang.send("command.disabled", user_id)
         case _:
