@@ -25,8 +25,6 @@ from sqlalchemy import select
 from nonebot_plugin_everyday_wife.models import WifeData
 
 
-
-
 async def divorce(group_id: str, session: async_scoped_session, platform_user_id: str) -> None:
     query = cast(
         Optional[WifeData],
@@ -42,6 +40,7 @@ async def divorce(group_id: str, session: async_scoped_session, platform_user_id
             await session.delete(result)
         await session.delete(query)
     await session.commit()
+
 
 async def marry(couple: tuple[str, str], group_id: str) -> None:
     today = date.today()
