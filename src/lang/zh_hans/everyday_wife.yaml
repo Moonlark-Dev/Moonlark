@@ -1,0 +1,8 @@
+unmatched: |
+  呜喵~匹配失败啦！
+  狗修金撒嘛今天没有老婆呢...（委屈蹭手手）明天再来碰碰运气好不好喵？
+matched: "🍉你的今日群老婆是："
+help:
+  description: 今日群老婆
+  details: 匹配你的每日群老婆！
+  usage1: waifu
