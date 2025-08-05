@@ -29,7 +29,7 @@ class AttackTypes(Enum):
     fire = 2
     electricity = 3
     ice = 4
-    me = 5
+    sense = 5
     real = 6
     null = 7
 
@@ -66,7 +66,11 @@ ACTION_EVENT = MessageActionEvent | AttackEvent
 
 class BuffTypes(Enum):
     # buff_id, is_gain, keep
-    pass
+    standard_gain = "standard_gain", True, False
+    moonlark_moon_seal = "moonlark_moon_seal", False, False
+    instant_damage_increased_by_percent = "instant_damage_increased_by_percent", True, False
+    damage_increased_by_percent = "damage_increased_by_percent", True, False
+    standard_debuff = "standard_debuff", False, False
 
 
 class BuffData(TypedDict):

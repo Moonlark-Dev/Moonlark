@@ -129,7 +129,11 @@ class ControllableMonomer(Monomer, ABC):
             self.final_skill_power[1],
             self.get_charge_percent(True),
             "".join(skill_text_list),
+            extra=await self.get_extra_action_text()
         )
+
+    async def get_extra_action_text(self) -> str:
+        return ""
 
     @abstractmethod
     async def execute_skill(self, index: int, target: Optional[Monomer]) -> None:

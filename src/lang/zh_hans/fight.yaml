@@ -31,6 +31,7 @@ action_text:
     
     - COST: {}
     - CHARGE: {}/{} ({}%)
+    {extra}
     
     |     | 技能              | 费用 |
     |:---:|-------------------|-----|
@@ -65,7 +66,7 @@ harm_type:
   _2: F
   _3: E
   _4: I
-  _5: M
+  _5: S
   _6: R
   _7: N
 hp:
@@ -79,5 +80,7 @@ action:
 characters:
   delta:
     name: 德尔塔 (测试)
+  moonlark:
+    name: Moonlark
 buff: ''
 time_remain: '剩余时间: {}s'

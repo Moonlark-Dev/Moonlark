@@ -15,8 +15,6 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
-from .delta import Delta
-from .moonlark import Moonlark
-
-
-CHARACTERS = [Delta, Moonlark]
+from .standard_gain import StandardGain, StandardPercentGain
+from .empty_buff import EmptyBuff
+from .critical_strike_gains import CriticalStrikeHarmGain, CriticalStrikeRateGain

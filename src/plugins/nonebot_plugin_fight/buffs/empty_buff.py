@@ -15,8 +15,20 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
-from .delta import Delta
-from .moonlark import Moonlark
+from ..base import Buff, Monomer
+from ..types import BuffData
 
 
-CHARACTERS = [Delta, Moonlark]
+class EmptyBuff(Buff):
+
+    def __init__(self, data: BuffData, monomer: Monomer) -> None:
+        super().__init__(data, monomer)
+
+    async def setup(self) -> None:
+        pass
+
+    async def remove(self) -> None:
+        pass
+
+    async def action(self) -> None:
+        pass

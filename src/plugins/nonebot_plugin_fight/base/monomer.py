@@ -18,6 +18,7 @@
 from abc import ABC, abstractmethod
 import random
 from .team import Team
+from .buff import Buff
 from ..lang import lang
 from ..types import ACTION_EVENT, AttackTypes, BuffData, BuffTypes
 
@@ -25,7 +26,7 @@ from ..types import ACTION_EVENT, AttackTypes, BuffData, BuffTypes
 class Monomer(ABC):
 
     def __init__(self, team: Team):
-        self.buff_list: list[BuffData] = []
+        self.buff_list: list[Buff] = []
         self.attack = 20
         self.critical_strike = (0.05, 1.50)
         self.speed = 97
@@ -33,6 +34,7 @@ class Monomer(ABC):
         self.team = team.register_monomer(self)
         self.balance = 100
         self.final_skill_power = [0, 230]
+        self.base_action_value = 100000
         self.focus = 100
         self.shield = 0
         self.defuse = 20
@@ -98,7 +100,7 @@ class Monomer(ABC):
 
     def get_charge_percent(self, readable: bool = True) -> float:
         if self.has_final_skill():
-            percent = min(1, self.final_skill_power[0] / self.final_skill_power[1])
+            percent = min(1.0, self.final_skill_power[0] / self.final_skill_power[1])
             return percent if not readable else round(percent * 100)
         return 0
 
@@ -106,7 +108,8 @@ class Monomer(ABC):
     async def get_name(self, user_id: str) -> str:
         return ""
 
-    async def add_buff(self, buff: BuffData, force: bool = False) -> bool:
+    async def add_buff(self, buff: Buff, force: bool = False) -> bool:
+        await buff.setup()
         self.buff_list.append(buff)
         return True
 
@@ -123,25 +126,28 @@ class Monomer(ABC):
         self.reduced_action_value = 0
 
     def get_action_value(self) -> float:
-        return (100000 / self.speed) - self.reduced_action_value
+        return (self.base_action_value / self.speed) - self.reduced_action_value
 
     @abstractmethod
     async def on_action(self, teams: list[Team]) -> None:
         pass
 
-    def clean_buff(self) -> None:
-        removeable_index = []
+    async def clean_buff(self) -> None:
+        removable_index = []
         for i in range(len(self.buff_list)):
             if self.buff_list[i]["remain_rounds"] < 0:
-                removeable_index.append(i)
-        for index in removeable_index[::-1]:
-            self.buff_list.pop(index)
+                removable_index.append(i)
+        for index in removable_index[::-1]:
+            await self.buff_list.pop(index).remove()
 
     async def action(self, teams: list[Team]) -> None:
         for i in range(len(self.buff_list)):
-            self.buff_list[i]["remain_rounds"] -= 1
-        self.clean_buff()
+            if self.buff_list[i]["remain_rounds"] != 114514:
+                self.buff_list[i]["remain_rounds"] -= 1
+        await self.clean_buff()
         self.add_balance_value(round(self.focus * 0.12))
+        for i in range(len(self.buff_list)):
+            await self.buff_list[i].action()
         if self.balance <= 0:
             self.balance = 100
         else:
@@ -218,7 +224,18 @@ class Monomer(ABC):
         else:
             await self.power_final_skill(5)
         await self.power_final_skill(5)
-        result = await target.attacked(type_, round(harm), self)
+        removable_buff_index = []
+        damage_increased_by_percent = 0.0
+        for i in range(len(self.buff_list)):
+            if self.buff_list[i].data["buff_type"] == BuffTypes.instant_damage_increased_by_percent:
+                removable_buff_index.append(i)
+                damage_increased_by_percent += self.buff_list[i].data["data"]["percent"]
+            elif self.buff_list[i].data["buff_type"] == BuffTypes.damage_increased_by_percent:
+                damage_increased_by_percent += self.buff_list[i].data["data"]["percent"]
+        for i in removable_buff_index[::-1]:
+            await self.buff_list[i].pop()
+        print(f"{damage_increased_by_percent=} {harm=}")
+        result = await target.attacked(type_, round(harm * (1 + damage_increased_by_percent)), self)
         await self.get_team().scheduler.post_attack_event(
             self, [{"target": target, "harm_missed": missed, "harm_value": round(result), "harm_type": type_}]
         )

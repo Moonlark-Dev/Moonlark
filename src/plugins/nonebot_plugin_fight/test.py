@@ -18,7 +18,7 @@ from nonebot.plugin.on import on_command
 from nonebot.matcher import Matcher
 from nonebot_plugin_larkutils import get_user_id
 from .base import Scheduler, ControllableTeam, Team
-from .characters import Delta
+from .characters import Moonlark
 from .monomers import TestBot
 from datetime import datetime, timedelta
 
@@ -30,7 +30,7 @@ async def _(matcher: Matcher, user_id: str = get_user_id()) -> None:
     scheduler = Scheduler(datetime.now() + timedelta(minutes=4, seconds=30))
     player_team = ControllableTeam(scheduler, matcher, user_id)
     enemy_team = Team(scheduler, "B")
-    Delta(
+    Moonlark(
         player_team,
         {
             "experience": 0,
