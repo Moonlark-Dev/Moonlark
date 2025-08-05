@@ -28,32 +28,25 @@ from nonebot_plugin_everyday_wife.models import WifeData
 async def marry(couple: tuple[str, str], group_id: str) -> None:
     today = date.today()
     async with get_session() as session:
-        await session.merge(WifeData(
-            group_id=group_id,
-            user_id=couple[0],
-            wife_id=couple[1],
-            generate_date=today,
-            queried=False
-        ))
-        await session.merge(WifeData(
-            group_id=group_id,
-            user_id=couple[1],
-            wife_id=couple[0],
-            generate_date=today,
-            queried=False
-        ))
+        await session.merge(
+            WifeData(group_id=group_id, user_id=couple[0], wife_id=couple[1], generate_date=today, queried=False)
+        )
+        await session.merge(
+            WifeData(group_id=group_id, user_id=couple[1], wife_id=couple[0], generate_date=today, queried=False)
+        )
 
 
 async def divorce(group_id: str, session: async_scoped_session, platform_user_id: str) -> None:
-    query = cast(Optional[WifeData], await session.scalar(select(WifeData).where(
-        WifeData.user_id == platform_user_id,
-        WifeData.group_id == group_id
-    )))
+    query = cast(
+        Optional[WifeData],
+        await session.scalar(
+            select(WifeData).where(WifeData.user_id == platform_user_id, WifeData.group_id == group_id)
+        ),
+    )
     if query:
-        result = await session.scalar(select(WifeData).where(
-            WifeData.user_id == query.wife_id,
-            WifeData.group_id == group_id
-        ))
+        result = await session.scalar(
+            select(WifeData).where(WifeData.user_id == query.wife_id, WifeData.group_id == group_id)
+        )
         if result:
             await session.delete(result)
         await session.delete(query)

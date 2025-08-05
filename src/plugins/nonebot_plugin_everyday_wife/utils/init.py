@@ -35,10 +35,12 @@ async def init_group(members: list[str], group_id: str) -> None:
     async with get_session() as session:
         for member in members:
             user_id = str(member)
-            result = cast(Optional[WifeData], await session.scalar(select(WifeData).where(
-                WifeData.group_id == group_id,
-                WifeData.user_id == user_id
-            )))
+            result = cast(
+                Optional[WifeData],
+                await session.scalar(
+                    select(WifeData).where(WifeData.group_id == group_id, WifeData.user_id == user_id)
+                ),
+            )
             if result is None or result.generate_date != today:
                 unmatched_members.append(user_id)
     c = len(unmatched_members) // 2
