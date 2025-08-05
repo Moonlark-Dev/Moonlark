@@ -40,23 +40,18 @@ from .utils.init import init_onebot_v11_group, init_onebot_v12_group, init_qq_gr
 lang = LangHelper()
 
 
-
-
 @on_command("wife", aliases={"today-wife", "waifu"}).handle()
 async def _(
-        matcher: Matcher,
-        event: Event,
-        session: async_scoped_session,
-        bot: Bot,
-        user_id: str = get_user_id(),
-        group_id: str = SessionId(
-            SessionIdType.GROUP,
-            include_bot_type=False,
-            include_bot_id=False,
-            include_platform=False
-        ),
-        arg_message: Message = CommandArg(),
-        is_c2c: bool = is_private_message()
+    matcher: Matcher,
+    event: Event,
+    session: async_scoped_session,
+    bot: Bot,
+    user_id: str = get_user_id(),
+    group_id: str = SessionId(
+        SessionIdType.GROUP, include_bot_type=False, include_bot_id=False, include_platform=False
+    ),
+    arg_message: Message = CommandArg(),
+    is_c2c: bool = is_private_message(),
 ) -> None:
     if is_c2c:
         await lang.finish("unsupported", user_id)
@@ -80,11 +75,16 @@ async def _(
         await marry((platform_user_id, target), group_id)
         await lang.finish("force_success", user_id, at_sender=True, reply_message=True)
 
-    query = cast(Optional[WifeData], await session.scalar(select(WifeData).where(
-        WifeData.user_id == platform_user_id,
-        WifeData.group_id == group_id,
-        WifeData.generate_date == date.today()
-    )))
+    query = cast(
+        Optional[WifeData],
+        await session.scalar(
+            select(WifeData).where(
+                WifeData.user_id == platform_user_id,
+                WifeData.group_id == group_id,
+                WifeData.generate_date == date.today(),
+            )
+        ),
+    )
     if query is None:
         await lang.finish("unmatched", user_id, at_sender=True)
     user_info = await get_user_info(bot, event, query.wife_id)
@@ -96,11 +96,3 @@ async def _(
     query.queried = True
     await session.commit()
     await matcher.finish(await message.export(), reply_message=True)
-
-
-
-
-
-
-
-
