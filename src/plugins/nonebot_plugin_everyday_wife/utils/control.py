@@ -19,21 +19,12 @@ from datetime import date
 from typing import cast, Optional
 
 from nonebot.internal.adapter import Message
-from nonebot_plugin_orm import get_session, async_scoped_session
+from nonebot_plugin_orm import get_session, async_scoped_session, get_scoped_session
 from sqlalchemy import select
 
 from nonebot_plugin_everyday_wife.models import WifeData
 
 
-async def marry(couple: tuple[str, str], group_id: str) -> None:
-    today = date.today()
-    async with get_session() as session:
-        await session.merge(
-            WifeData(group_id=group_id, user_id=couple[0], wife_id=couple[1], generate_date=today, queried=False)
-        )
-        await session.merge(
-            WifeData(group_id=group_id, user_id=couple[1], wife_id=couple[0], generate_date=today, queried=False)
-        )
 
 
 async def divorce(group_id: str, session: async_scoped_session, platform_user_id: str) -> None:
@@ -51,6 +42,21 @@ async def divorce(group_id: str, session: async_scoped_session, platform_user_id
             await session.delete(result)
         await session.delete(query)
     await session.commit()
+
+async def marry(couple: tuple[str, str], group_id: str) -> None:
+    today = date.today()
+    session = get_scoped_session()
+    for user in couple:
+        await divorce(group_id, session, user)
+    await session.close()
+    async with get_session() as session:
+        session.add(
+            WifeData(group_id=group_id, user_id=couple[0], wife_id=couple[1], generate_date=today, queried=False)
+        )
+        session.add(
+            WifeData(group_id=group_id, user_id=couple[1], wife_id=couple[0], generate_date=today, queried=False)
+        )
+        await session.commit()
 
 
 def get_at_argument(message: Message) -> Optional[str]:
