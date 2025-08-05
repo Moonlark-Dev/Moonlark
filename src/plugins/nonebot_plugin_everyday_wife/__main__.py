@@ -29,7 +29,7 @@ from nonebot.matcher import Matcher
 from nonebot.adapters import Event, Bot, Message
 from nonebot.params import CommandArg
 from nonebot_plugin_session import SessionId, SessionIdType
-from nonebot_plugin_larkutils import get_user_id
+from nonebot_plugin_larkutils import get_user_id, is_private_message
 from nonebot_plugin_userinfo import get_user_info
 
 
@@ -55,8 +55,11 @@ async def _(
             include_bot_id=False,
             include_platform=False
         ),
-        arg_message: Message = CommandArg()
+        arg_message: Message = CommandArg(),
+        is_c2c: bool = is_private_message()
 ) -> None:
+    if is_c2c:
+        await lang.finish("unsupported", user_id)
     argv = arg_message.extract_plain_text().strip().lower()
     if isinstance(bot, OneBotV11Bot):
         await init_onebot_v11_group(bot, group_id)
