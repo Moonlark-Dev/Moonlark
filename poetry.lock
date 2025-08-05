@@ -2616,10 +2616,8 @@ description = "A NoneBot2 plugin generates a pic from a Minecraft server's MOTD"
 optional = false
 python-versions = "<4.0,>=3.9"
 groups = ["main"]
-files = [
-    {file = "nonebot_plugin_picmcstat-0.7.2-py3-none-any.whl", hash = "sha256:b272a3a097d6fdff981863040078c2edb1ea3df516d42d8c851d33dd98e8c00e"},
-    {file = "nonebot_plugin_picmcstat-0.7.2.tar.gz", hash = "sha256:8f631882d0108df41c7a6ebbf616cc66d9b58fe61c9e59d8a0e33eb88c11fc68"},
-]
+files = []
+develop = false
 
 [package.dependencies]
 cookit = {version = ">=0.9.3", extras = ["pydantic"]}
@@ -2629,6 +2627,12 @@ nonebot-plugin-alconna = ">=0.54.2"
 nonebot2 = ">=2.4.1"
 pil-utils = ">=0.2.2"
 punycode = ">=0.2.1"
+
+[package.source]
+type = "git"
+url = "https://github.com/Moonlark-Dev/nonebot-plugin-picmcstat.git"
+reference = "HEAD"
+resolved_reference = "b9f843fe913e5a1c8f858a43402993f286604969"
 
 [[package]]
 name = "nonebot-plugin-picstatus"
@@ -5469,4 +5473,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.11"
-content-hash = "75dc238d682c38458ae267c48c983f2e00d661b7f8caf7df5e70e79a9cf37129"
+content-hash = "ae5f387f0fbb8f10ea93f9dbbaf08f72495bcbc72a1afd8be3fd8ce4f303a148"

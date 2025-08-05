@@ -327,4 +327,6 @@ Moonlark 投票
 匹配你的每日群老婆！
 
 ### 用法
-- `/waifu`
+- `/waifu (今日群老婆)`
+- `/waifu divorce (离婚)`
+- `/waifu force-marry <@群员> (强娶)`
