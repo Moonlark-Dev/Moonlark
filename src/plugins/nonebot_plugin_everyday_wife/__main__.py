@@ -149,7 +149,7 @@ async def _(
         if target is None:
             await lang.finish("no_target", user_id, at_sender=True, reply_message=True)
         await divorce(group_id, session, platform_user_id)
-        await divorce(group_id, session, platform_user_id)
+        await divorce(group_id, session, target)
         await marry((platform_user_id, target), group_id)
         await lang.finish("force_success", user_id, at_sender=True, reply_message=True)
 
