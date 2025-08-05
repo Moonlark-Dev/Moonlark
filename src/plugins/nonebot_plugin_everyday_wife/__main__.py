@@ -35,6 +35,7 @@ from nonebot_plugin_larkutils import get_user_id, get_group_id
 
 lang = LangHelper()
 
+
 class WifeData(Model):
     id_: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     group_id: Mapped[str] = mapped_column(String(128))
@@ -50,10 +51,12 @@ async def init_group(members: list[str], group_id: str) -> None:
     async with get_session() as session:
         for member in members:
             user_id = str(member)
-            result = cast(Optional[WifeData], await session.scalar(select(WifeData).where(
-                WifeData.group_id == group_id,
-                WifeData.user_id == user_id
-            )))
+            result = cast(
+                Optional[WifeData],
+                await session.scalar(
+                    select(WifeData).where(WifeData.group_id == group_id, WifeData.user_id == user_id)
+                ),
+            )
             if result is None or result.generate_date != today:
                 unmatched_members.append(user_id)
         c = len(unmatched_members) // 2
@@ -62,21 +65,14 @@ async def init_group(members: list[str], group_id: str) -> None:
                 unmatched_members.pop(random.randint(0, len(unmatched_members) - 1)),
                 unmatched_members.pop(random.randint(0, len(unmatched_members) - 1)),
             )
-            await session.merge(WifeData(
-                group_id=group_id,
-                user_id=couple[0],
-                wife_id=couple[1],
-                generate_date=today,
-                queried=False
-            ))
-            await session.merge(WifeData(
-                group_id=group_id,
-                user_id=couple[1],
-                wife_id=couple[0],
-                generate_date=today,
-                queried=False
-            ))
+            await session.merge(
+                WifeData(group_id=group_id, user_id=couple[0], wife_id=couple[1], generate_date=today, queried=False)
+            )
+            await session.merge(
+                WifeData(group_id=group_id, user_id=couple[1], wife_id=couple[0], generate_date=today, queried=False)
+            )
         await session.commit()
+
 
 async def init_onebot_v11_group(bot: OneBotV11Bot, group_id: str) -> None:
     members = await bot.get_group_member_list(group_id=int(group_id))
@@ -87,25 +83,25 @@ async def init_onebot_v12_group(bot: OneBotV12Bot, group_id: str) -> None:
     members = await bot.get_group_member_list(group_id=group_id)
     await init_group([user["user_id"] for user in members], group_id)
 
+
 async def init_qq_group(bot: QQBot, group_id: str) -> None:
     members = await bot.post_group_members(group_id=group_id)
     await init_group([user.member_openid for user in members.members], group_id)
 
+
 from nonebot_plugin_userinfo import get_user_info
+
 
 @on_command("wife", aliases={"today-wife", "waifu"}).handle()
 async def _(
-        matcher: Matcher,
-        event: Event,
-        session: async_scoped_session,
-        bot: Bot,
-        user_id: str = get_user_id(),
-        group_id: str = SessionId(
-            SessionIdType.GROUP,
-            include_bot_type=False,
-            include_bot_id=False,
-            include_platform=False
-        )
+    matcher: Matcher,
+    event: Event,
+    session: async_scoped_session,
+    bot: Bot,
+    user_id: str = get_user_id(),
+    group_id: str = SessionId(
+        SessionIdType.GROUP, include_bot_type=False, include_bot_id=False, include_platform=False
+    ),
 ) -> None:
     if isinstance(bot, OneBotV11Bot):
         await init_onebot_v11_group(bot, group_id)
@@ -114,11 +110,16 @@ async def _(
     elif isinstance(bot, QQBot):
         await init_qq_group(bot, group_id)
     platform_user_id = event.get_user_id()
-    query = cast(Optional[WifeData], await session.scalar(select(WifeData).where(
-        WifeData.user_id == platform_user_id,
-        WifeData.group_id == group_id,
-        WifeData.generate_date == date.today()
-    )))
+    query = cast(
+        Optional[WifeData],
+        await session.scalar(
+            select(WifeData).where(
+                WifeData.user_id == platform_user_id,
+                WifeData.group_id == group_id,
+                WifeData.generate_date == date.today(),
+            )
+        ),
+    )
     if query is None:
         await lang.finish("unmatched", user_id, at_sender=True)
     query.queried = True
@@ -128,11 +129,3 @@ async def _(
     if user_info.user_avatar:
         message = message.image(url=user_info.user_avatar.get_url())
     await matcher.finish(await message.export(), reply_message=True)
-
-
-
-
-
-
-
-
