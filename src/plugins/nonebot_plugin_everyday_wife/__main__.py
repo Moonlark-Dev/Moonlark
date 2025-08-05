@@ -14,109 +14,33 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
-import random
 
 from nonebot import on_command
 from nonebot_plugin_alconna import UniMessage
-
 from nonebot_plugin_larklang import LangHelper
-from nonebot_plugin_orm import Model, get_session, async_scoped_session
-from sqlalchemy import String, select
+from nonebot_plugin_orm import async_scoped_session
+from sqlalchemy import select
 from datetime import date
-from sqlalchemy.orm import mapped_column, Mapped
 from nonebot.adapters.onebot.v11 import Bot as OneBotV11Bot
 from nonebot.adapters.onebot.v12 import Bot as OneBotV12Bot
 from nonebot.adapters.qq import Bot as QQBot
-from typing import cast, Optional, NoReturn
+from typing import cast, Optional
 from nonebot.matcher import Matcher
 from nonebot.adapters import Event, Bot, Message
 from nonebot.params import CommandArg
 from nonebot_plugin_session import SessionId, SessionIdType
-from nonebot_plugin_larkutils import get_user_id, get_group_id
+from nonebot_plugin_larkutils import get_user_id
+from nonebot_plugin_userinfo import get_user_info
+
+
+from .models import WifeData
+from .utils.control import marry, divorce, get_at_argument
+from .utils.init import init_onebot_v11_group, init_onebot_v12_group, init_qq_group
 
 lang = LangHelper()
 
-class WifeData(Model):
-    id_: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    group_id: Mapped[str] = mapped_column(String(128))
-    user_id: Mapped[str] = mapped_column(String(128))
-    wife_id: Mapped[str] = mapped_column(String(128))
-    queried: Mapped[bool] = mapped_column(default=False)
-    generate_date: Mapped[date]
-
-async def marry(couple: tuple[str, str], group_id: str) -> None:
-    today = date.today()
-    async with get_session() as session:
-        await session.merge(WifeData(
-            group_id=group_id,
-            user_id=couple[0],
-            wife_id=couple[1],
-            generate_date=today,
-            queried=False
-        ))
-        await session.merge(WifeData(
-            group_id=group_id,
-            user_id=couple[1],
-            wife_id=couple[0],
-            generate_date=today,
-            queried=False
-        ))
-
-async def init_group(members: list[str], group_id: str) -> None:
-    unmatched_members = []
-    today = date.today()
-    async with get_session() as session:
-        for member in members:
-            user_id = str(member)
-            result = cast(Optional[WifeData], await session.scalar(select(WifeData).where(
-                WifeData.group_id == group_id,
-                WifeData.user_id == user_id
-            )))
-            if result is None or result.generate_date != today:
-                unmatched_members.append(user_id)
-    c = len(unmatched_members) // 2
-    for i in range(c):
-        couple = (
-            unmatched_members.pop(random.randint(0, len(unmatched_members) - 1)),
-            unmatched_members.pop(random.randint(0, len(unmatched_members) - 1)),
-        )
-        await marry(couple, group_id)
-
-async def init_onebot_v11_group(bot: OneBotV11Bot, group_id: str) -> None:
-    members = await bot.get_group_member_list(group_id=int(group_id))
-    await init_group([user["user_id"] for user in members], group_id)
 
 
-async def init_onebot_v12_group(bot: OneBotV12Bot, group_id: str) -> None:
-    members = await bot.get_group_member_list(group_id=group_id)
-    await init_group([user["user_id"] for user in members], group_id)
-
-async def init_qq_group(bot: QQBot, group_id: str) -> None:
-    members = await bot.post_group_members(group_id=group_id)
-    await init_group([user.member_openid for user in members.members], group_id)
-
-from nonebot_plugin_userinfo import get_user_info
-
-async def divorce(group_id: str, session: async_scoped_session, platform_user_id: str) -> None:
-    query = cast(Optional[WifeData], await session.scalar(select(WifeData).where(
-        WifeData.user_id == platform_user_id,
-        WifeData.group_id == group_id
-    )))
-    if query:
-        result = await session.scalar(select(WifeData).where(
-            WifeData.user_id == query.wife_id,
-            WifeData.group_id == group_id
-        ))
-        if result:
-            await session.delete(result)
-        await session.delete(query)
-    await session.commit()
-
-def get_at_argument(message: Message) -> Optional[str]:
-    for seg in message:
-        if seg.type == "at":
-            return seg.data["user_id"]
-    return None
 
 @on_command("wife", aliases={"today-wife", "waifu"}).handle()
 async def _(
