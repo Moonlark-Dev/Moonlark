@@ -322,3 +322,9 @@ Moonlark 投票
 ### 用法
 - `/schdeule (查看每日任务列表)`
 - `/schdeule collect (领取可领取的奖励)`
+## `waifu`: 今日群老婆
+
+匹配你的每日群老婆！
+
+### 用法
+- `/waifu`
