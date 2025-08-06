@@ -34,7 +34,7 @@ from nonebot_plugin_userinfo import get_user_info
 
 
 from .models import WifeData
-from .utils.control import marry, divorce, get_at_argument
+from .utils.control import marry, divorce, get_at_argument, fake_divorce
 from .utils.init import init_onebot_v11_group, init_onebot_v12_group, init_qq_group
 
 lang = LangHelper()
@@ -64,7 +64,7 @@ async def _(
         await init_qq_group(bot, group_id)
     platform_user_id = event.get_user_id()
     if argv == "divorce":
-        await divorce(group_id, session, platform_user_id)
+        await fake_divorce(group_id, session, platform_user_id)
         await lang.finish("divorce", user_id, at_sender=True, reply_message=True)
     elif argv.startswith("force-marry"):
         target = get_at_argument(arg_message)
@@ -74,7 +74,6 @@ async def _(
         await divorce(group_id, session, target)
         await marry((platform_user_id, target), group_id)
         await lang.finish("force_success", user_id, at_sender=True, reply_message=True)
-
     query = cast(
         Optional[WifeData],
         await session.scalar(
@@ -85,7 +84,7 @@ async def _(
             )
         ),
     )
-    if query is None:
+    if query is None or query.wife_id is None:
         await lang.finish("unmatched", user_id, at_sender=True)
     user_info = await get_user_info(bot, event, query.wife_id)
     message = UniMessage().text(text=await lang.text("matched", user_id)).at(user_id=query.wife_id)

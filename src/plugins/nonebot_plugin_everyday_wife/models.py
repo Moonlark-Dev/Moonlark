@@ -16,7 +16,7 @@
 # ##############################################################################
 
 from datetime import date
-
+from typing import Optional
 from nonebot_plugin_orm import Model
 from sqlalchemy import String
 from sqlalchemy.orm import Mapped, mapped_column
@@ -26,6 +26,6 @@ class WifeData(Model):
     id_: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     group_id: Mapped[str] = mapped_column(String(128))
     user_id: Mapped[str] = mapped_column(String(128))
-    wife_id: Mapped[str] = mapped_column(String(128))
+    wife_id: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
     queried: Mapped[bool] = mapped_column(default=False)
     generate_date: Mapped[date]

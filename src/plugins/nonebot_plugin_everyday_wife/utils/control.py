@@ -42,6 +42,21 @@ async def divorce(group_id: str, session: async_scoped_session, platform_user_id
     await session.commit()
 
 
+async def fake_divorce(group_id: str, session: async_scoped_session, platform_user_id: str) -> None:
+    query = await session.scalar(
+        select(WifeData).where(WifeData.user_id == platform_user_id, WifeData.group_id == group_id)
+    )
+    if query and query.wife_id is not None:
+        wife_result = await session.scalar(
+            select(WifeData).where(
+                WifeData.user_id == query.wife_id,
+                WifeData.group_id == group_id
+            )
+        )
+        wife_result.wife_id = None
+        query.wife_id = None
+    await session.commit()
+
 async def marry(couple: tuple[str, str], group_id: str) -> None:
     today = date.today()
     session = get_scoped_session()
