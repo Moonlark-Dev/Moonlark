@@ -1,0 +1,15 @@
+unmatched: |
+  呜喵~匹配失败啦！
+  狗修金撒嘛今天没有老婆呢...（委屈蹭手手）明天再来碰碰运气好不好喵？
+matched: "🍉你的今日群老婆是："
+help:
+  description: 今日群老婆
+  details: 匹配你的每日群老婆！（仅支持群聊使用）
+  usage1: waifu (今日群老婆)
+  usage2: waifu divorce (离婚)
+  usage3: waifu force-marry <@群员> (强娶)
+divorce: 成功离婚。
+force_success: 成功！
+no_target: 你要娶谁？
+queried: 提示：你已经认领过群老婆了哦，不许当花心大萝卜！
+unsupported: 不支持私聊使用此指令！
