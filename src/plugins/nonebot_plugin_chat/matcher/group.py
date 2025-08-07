@@ -97,6 +97,11 @@ class Group:
                 user_count_removable_keys.append(key)
             else:
                 user_count += value
+        # remove removable keys
+        for key in msg_count_removable_keys:
+            self.message_counter.pop(key)
+        for key in user_count_removable_keys:
+            self.user_counter.pop(key)
         return message_count, user_count
 
     async def process_message(
