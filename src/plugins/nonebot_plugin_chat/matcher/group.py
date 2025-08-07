@@ -119,15 +119,15 @@ class Group:
             await self.reply(user_id)
             await asyncio.sleep(round(self.desire / 100 * 2.5))
             self.triggered = False
-        if len(self.cached_messages) >= 20:
+        if len(self.cached_messages) >= 15:
             asyncio.create_task(self.generate_memory(user_id))
 
-    async def generate_memory(self, user_id: str) -> None:
+    async def generate_memory(self, user_id: str, clean_all: bool = False) -> None:
         messages = ""
         if self.memory_lock or not self.cached_messages:
             return
         self.memory_lock = True
-        if len(self.cached_messages) >= 20:
+        if len(self.cached_messages) >= 15 and not clean_all:
             cached_messages = copy.deepcopy(self.cached_messages[:10])
         else:
             cached_messages = copy.deepcopy(self.cached_messages)
@@ -290,7 +290,7 @@ class Group:
             and not self.cached_messages[-1]["self"]
         ):
             await self.reply(self.cached_user_id)
-        await self.generate_memory(self.cached_user_id)
+        await self.generate_memory(self.cached_user_id, True)
 
 
 groups: dict[str, Group] = {}
