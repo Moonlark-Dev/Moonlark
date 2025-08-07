@@ -99,8 +99,6 @@ class Group:
                 user_count += value
         return message_count, user_count
 
-
-
     async def process_message(
         self, message: UniMessage, user_id: str, event: Event, state: T_State, nickname: str, mentioned: bool = False
     ) -> NoReturn:
@@ -153,7 +151,7 @@ class Group:
             await session.commit()
         self.last_reward_participation = None
         # remove cached messages
-        self.cached_messages = self.cached_messages[len(cached_messages):]
+        self.cached_messages = self.cached_messages[len(cached_messages) :]
         self.memory_lock = False
 
     async def get_messages(self) -> Messages:
@@ -244,12 +242,9 @@ class Group:
 
     def calculate_desire_on_timer(self) -> None:
         msg_count, user_msg_count = self.get_counters()[1]
-        loneliness_boost = (
-            10 if (msg_count >= 3 and user_msg_count <= 2) else 0
-        )
+        loneliness_boost = 10 if (msg_count >= 3 and user_msg_count <= 2) else 0
         activity_penalty = 10 - min(30.0, 0.3 * msg_count)
         self.desire = self.desire + activity_penalty + loneliness_boost
-
 
     async def calculate_desire_on_message(self, mentioned: bool = False) -> None:
         dt = datetime.now()
@@ -284,11 +279,7 @@ class Group:
         if not self.cached_messages:
             return
         time_to_last_message = (dt - self.cached_messages[-1]["send_time"]).total_seconds()
-        if (
-            time_to_last_message > 300
-            and random.random() <= self.desire / 100
-            and not self.cached_messages[-1]["self"]
-        ):
+        if time_to_last_message > 300 and random.random() <= self.desire / 100 and not self.cached_messages[-1]["self"]:
             await self.reply(self.cached_user_id)
         await self.generate_memory(self.cached_user_id)
 
