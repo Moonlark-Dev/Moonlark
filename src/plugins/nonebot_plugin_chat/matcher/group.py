@@ -96,7 +96,7 @@ class Group:
             if (dt - key) > timedelta(minutes=10):
                 user_count_removable_keys.append(key)
             else:
-                user_count += value
+                user_count += len(value)
         # remove removable keys
         for key in msg_count_removable_keys:
             self.message_counter.pop(key)
