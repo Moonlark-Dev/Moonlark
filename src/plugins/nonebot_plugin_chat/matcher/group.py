@@ -66,10 +66,43 @@ class Group:
         self.last_reward_participation: Optional[datetime] = None
         self.mute_until: Optional[datetime] = None
         self.memory_lock = False
+        self.message_counter: dict[datetime, int] = {}
+        self.user_counter: dict[datetime, set[str]] = {}
 
     async def mute(self) -> None:
         self.mute_until = datetime.now() + timedelta(minutes=15)
         asyncio.create_task(self.generate_memory(self.cached_user_id))
+
+    def update_counters(self, user_id: str) -> None:
+        dt = datetime.now().replace(second=0, microsecond=0)
+        if dt in self.user_counter:
+            self.user_counter[dt].add(user_id)
+        else:
+            self.user_counter[dt] = {user_id}
+        self.message_counter[dt] = self.message_counter.get(dt, 0) + 1
+
+    def get_counters(self) -> tuple[int, int]:
+        msg_count_removable_keys = []
+        dt = datetime.now()
+        message_count = 0
+        for key, value in self.message_counter.items():
+            if (dt - key) > timedelta(minutes=10):
+                msg_count_removable_keys.append(key)
+            else:
+                message_count += value
+        user_count_removable_keys = []
+        user_count = 0
+        for key, value in self.user_counter.items():
+            if (dt - key) > timedelta(minutes=10):
+                user_count_removable_keys.append(key)
+            else:
+                user_count += value
+        # remove removable keys
+        for key in msg_count_removable_keys:
+            self.message_counter.pop(key)
+        for key in user_count_removable_keys:
+            self.user_counter.pop(key)
+        return message_count, user_count
 
     async def process_message(
         self, message: UniMessage, user_id: str, event: Event, state: T_State, nickname: str, mentioned: bool = False
@@ -80,7 +113,8 @@ class Group:
         self.cached_messages.append(
             {"content": msg, "nickname": nickname, "send_time": datetime.now(), "user_id": user_id, "self": False}
         )
-        await self.calculate_desire(mentioned)
+        self.update_counters(user_id)
+        await self.calculate_desire_on_message(mentioned)
 
         logger.debug(self.desire)
         if mentioned or (random.random() <= self.desire / 100 and msg != "[图片: 暂无信息]" and not self.triggered):
@@ -88,15 +122,18 @@ class Group:
             await self.reply(user_id)
             await asyncio.sleep(round(self.desire / 100 * 2.5))
             self.triggered = False
-        elif len(self.cached_messages) >= 10 and not self.is_participation_boost_available():
+        if len(self.cached_messages) >= 15:
             asyncio.create_task(self.generate_memory(user_id))
 
-    async def generate_memory(self, user_id: str) -> None:
+    async def generate_memory(self, user_id: str, clean_all: bool = False) -> None:
         messages = ""
         if self.memory_lock or not self.cached_messages:
             return
         self.memory_lock = True
-        cached_messages = copy.deepcopy(self.cached_messages)
+        if len(self.cached_messages) >= 15 and not clean_all:
+            cached_messages = copy.deepcopy(self.cached_messages[:10])
+        else:
+            cached_messages = copy.deepcopy(self.cached_messages)
         for message in cached_messages:
             if message["self"]:
                 messages += f'[{message["send_time"].strftime("%H:%M")}][Moonlark]: {message["content"]}\n'
@@ -208,32 +245,29 @@ class Group:
                 users[message["nickname"]] = message["user_id"]
         return users
 
-    async def calculate_desire(self, mentioned: bool = False) -> None:
+    def calculate_desire_on_timer(self) -> None:
+        msg_count, user_msg_count = self.get_counters()[1]
+        loneliness_boost = 10 if (msg_count >= 3 and user_msg_count <= 2) else 0
+        activity_penalty = 10 - min(30.0, 0.3 * msg_count)
+        self.desire = self.desire + activity_penalty + loneliness_boost
+
+    async def calculate_desire_on_message(self, mentioned: bool = False) -> None:
         dt = datetime.now()
         cached_messages = [m for m in self.cached_messages if (dt - m["send_time"]).total_seconds() <= 600]
-        msg_count = len(cached_messages)
+        msg_count = self.get_counters()[0]
         base = self.desire * 0.8 + BASE_DESIRE * 0.2
         mention_boost = 30 if mentioned else 0
-        user_msg_count = {}
         bot_participate = False
         for msg in cached_messages:
-            if not msg["self"]:
-                if msg["user_id"] in user_msg_count:
-                    user_msg_count[msg["user_id"]] += 1
-                else:
-                    user_msg_count[msg["user_id"]] = 1
-            else:
+            if msg["self"]:
                 bot_participate = True
-        activity_penalty = min(30.0, 0.3 * msg_count)
-        loneliness_boost = (
-            30 if (msg_count >= 3 and len(user_msg_count) == 1 and bot_participate and not mentioned) else 0
-        )
+        activity_penalty = min(30.0, 0.1 * msg_count)
         if bot_participate and self.is_participation_boost_available():
             participation_boost = -10
             self.last_reward_participation = datetime.now()
         else:
             participation_boost = 0
-        new_desire = base + mention_boost + participation_boost - activity_penalty + loneliness_boost
+        new_desire = base + mention_boost + participation_boost - activity_penalty
         self.desire = max(0.0, min(100.0, new_desire))
 
     def is_participation_boost_available(self) -> bool:
@@ -244,18 +278,15 @@ class Group:
 
     async def process_timer(self) -> None:
         dt = datetime.now()
+        self.calculate_desire_on_timer()
         if self.mute_until and dt > self.mute_until:
             self.mute_until = None
         if not self.cached_messages:
             return
         time_to_last_message = (dt - self.cached_messages[-1]["send_time"]).total_seconds()
-        if (
-            time_to_last_message > 600
-            and random.random() <= (100 - self.desire) / 100
-            and not self.cached_messages[-1]["self"]
-        ):
+        if time_to_last_message > 300 and random.random() <= self.desire / 100 and not self.cached_messages[-1]["self"]:
             await self.reply(self.cached_user_id)
-            await self.generate_memory(self.cached_user_id)
+        await self.generate_memory(self.cached_user_id, True)
 
 
 groups: dict[str, Group] = {}
