@@ -30,12 +30,13 @@ from nonebot_plugin_hkrpg_calendar.data_source.models import BiliGameEventInfo
 async def fetch_page(url: str) -> str:
     """异步获取网页内容"""
     headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     }
 
     async with AsyncClient(headers=headers) as client:
         response = await client.get(url)
         return response.text
+
 
 def parse_time_string(time_string: str) -> Optional[datetime]:
     time_string = time_string.strip()
@@ -47,12 +48,7 @@ def parse_time_string(time_string: str) -> Optional[datetime]:
 def parse_datetime(date_str: str) -> ParseDatetimeReturn:
     """解析日期时间字符串"""
     start_time, end_time = date_str.split("~")
-    return {
-        "start_time": parse_time_string(start_time),
-        "end_time": parse_time_string(end_time)
-    }
-
-
+    return {"start_time": parse_time_string(start_time), "end_time": parse_time_string(end_time)}
 
 
 def extract_text_from_element(element) -> str:
@@ -61,8 +57,8 @@ def extract_text_from_element(element) -> str:
         return ""
 
     # 获取所有文本，移除多余的空白
-    text = element.get_text(strip=True, separator=' ')
-    return ' '.join(text.split())
+    text = element.get_text(strip=True, separator=" ")
+    return " ".join(text.split())
 
 
 async def parse_sr_events(url: str) -> List[BiliGameEventInfo]:
@@ -77,24 +73,23 @@ async def parse_sr_events(url: str) -> List[BiliGameEventInfo]:
     """
     events = []
 
-
     try:
         # 获取页面内容
         html_content = await fetch_page(url)
 
         # 解析HTML
-        soup = BeautifulSoup(html_content, 'html.parser')
+        soup = BeautifulSoup(html_content, "html.parser")
 
         # 查找id="CardSelectTr"的表格
-        table = soup.find('table', {'id': 'CardSelectTr'})
+        table = soup.find("table", {"id": "CardSelectTr"})
 
         if not table:
             # 如果没有找到指定ID的表格，尝试查找包含活动信息的其他表格
-            tables = soup.find_all('table', class_=['wikitable', 'mw-collapsible'])
+            tables = soup.find_all("table", class_=["wikitable", "mw-collapsible"])
             for t in tables:
                 # 检查表格是否包含活动相关的关键词
                 table_text = t.get_text().lower()
-                if '活动' in table_text or '版本' in table_text:
+                if "活动" in table_text or "版本" in table_text:
                     table = t
                     break
 
@@ -103,11 +98,11 @@ async def parse_sr_events(url: str) -> List[BiliGameEventInfo]:
             return events
 
         # 获取所有行
-        rows = table.find_all('tr')
+        rows = table.find_all("tr")
 
         # 跳过表头（通常是第一行）
         for row in rows[1:]:
-            cells = row.find_all(['td', 'th'])
+            cells = row.find_all(["td", "th"])
 
             if len(cells) < 2:  # 确保有足够的列
                 continue
@@ -118,15 +113,15 @@ async def parse_sr_events(url: str) -> List[BiliGameEventInfo]:
                     version=float(extract_text_from_element(cells[5])),
                     event_name=extract_text_from_element(cells[2]) if len(cells) > 1 else "未知活动",
                     event_type=extract_text_from_element(cells[3]) if len(cells) > 2 else "未知类型",
-                    start_time=time_info['start_time'],
-                    end_time=time_info['end_time'],
+                    start_time=time_info["start_time"],
+                    end_time=time_info["end_time"],
                 )
 
                 # 尝试提取图片URL
-                img = cells[1].find('img') if len(cells) > 1 else None
-                if img and img.get('src'):
-                    img_url = img['src']
-                    if not img_url.startswith('http'):
+                img = cells[1].find("img") if len(cells) > 1 else None
+                if img and img.get("src"):
+                    img_url = img["src"]
+                    if not img_url.startswith("http"):
                         img_url = f"https://wiki.biligame.com{img_url}"
                     event.image_url = img_url
 
@@ -140,6 +135,7 @@ async def parse_sr_events(url: str) -> List[BiliGameEventInfo]:
         logger.exception(e)
 
     return events
+
 
 async def get_events() -> list[BiliGameEventInfo]:
     return await parse_sr_events("https://wiki.biligame.com/sr/%E6%B4%BB%E5%8A%A8%E4%B8%80%E8%A7%88")

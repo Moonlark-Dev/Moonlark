@@ -29,9 +29,11 @@ from .models import TakumiAPIResponse
 headers_file = get_config_file("nonebot_plugin_hkrpg_calendar", "headers.txt")
 role_id_file = get_config_file("nonebot_plugin_hkrpg_calendar", "role_id.txt")
 
+
 async def get_role_id() -> str:
     async with aiofiles.open(role_id_file, "r", encoding="utf-8") as f:
         return await f.readline()
+
 
 async def get_headers() -> dict[str, str]:
     async with aiofiles.open(headers_file, encoding="utf-8") as f:
@@ -41,10 +43,10 @@ async def get_headers() -> dict[str, str]:
         line = line.strip()
         if not line:
             continue
-        colon_index = line.find(':')
+        colon_index = line.find(":")
         if colon_index != -1:
             key = line[:colon_index].strip()
-            value = line[colon_index + 1:].strip()
+            value = line[colon_index + 1 :].strip()
             headers[key] = value
     return headers
 
@@ -53,7 +55,9 @@ async def request_takumi_api() -> Optional[TakumiAPIResponse]:
     headers = await get_headers()
     role_id = await get_role_id()
     async with httpx.AsyncClient(headers=headers) as client:
-        response = await client.get(f"https://api-takumi-record.mihoyo.com/game_record/app/hkrpg/api/get_act_calender?server=prod_gf_cn&role_id={role_id}")
+        response = await client.get(
+            f"https://api-takumi-record.mihoyo.com/game_record/app/hkrpg/api/get_act_calender?server=prod_gf_cn&role_id={role_id}"
+        )
     if response.status_code == 200:
         try:
             return type_validate_json(TakumiAPIResponse, response.text)
@@ -61,4 +65,3 @@ async def request_takumi_api() -> Optional[TakumiAPIResponse]:
             logger.exception(e)
     logger.warning(f"请求米游社 API 失败 ({response.status_code}): {response.text}")
     return None
-

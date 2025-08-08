@@ -40,6 +40,7 @@ def parse_datetime(value: str) -> Optional[datetime]:
         return datetime.strptime(value, "%Y-%m-%d %H:%M:%S")
     return None
 
+
 class TakumiAPITimeInfo(BaseModel):
     start_time: Annotated[Optional[datetime], BeforeValidator(parse_datetime)]
     end_time: Annotated[Optional[datetime], BeforeValidator(parse_datetime)]
@@ -50,10 +51,12 @@ class CardPoolCharacter(BaseModel):
     icon_url: str
     rarity: str
 
+
 class CardPoolEquipment(BaseModel):
     item_name: str
     item_url: str
     rarity: str
+
 
 class CardPool(BaseModel):
     name: str
@@ -61,11 +64,14 @@ class CardPool(BaseModel):
     time_info: TakumiAPITimeInfo
     version: str
 
+
 class CharacterCardPool(CardPool):
     avatar_list: list[CardPoolCharacter]
 
+
 class EquipmentCardPool(CardPool):
     equip_list: list[CardPoolEquipment]
+
 
 class TakumiAPIActItem(BaseModel):
     version: Annotated[float, BeforeValidator(lambda target: float(target))]
@@ -73,11 +79,13 @@ class TakumiAPIActItem(BaseModel):
     time_info: TakumiAPITimeInfo
     panel_desc: str
 
+
 class TakumiAPIData(BaseModel):
     avatar_card_pool_list: list[CharacterCardPool]
     equip_card_pool_list: list[EquipmentCardPool]
     act_list: list[TakumiAPIActItem]
     cur_game_version: Annotated[float, BeforeValidator(lambda target: float(target))]
+
 
 class TakumiAPIResponse(BaseModel):
     retcode: int
@@ -87,6 +95,7 @@ class TakumiAPIResponse(BaseModel):
 
 class BiliGameEventInfo(BaseModel):
     """活动信息模型"""
+
     version: float
     event_name: str
     event_type: str
