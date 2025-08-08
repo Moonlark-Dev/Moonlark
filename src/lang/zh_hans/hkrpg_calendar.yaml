@@ -22,3 +22,4 @@ help:
   details: 《崩坏：星穹铁道》活动日历
   description: 崩铁活动日历
   usage1: hsrc
+takumi_failed: 从米游社抓取数据失败，可能是 Cookie 失效。

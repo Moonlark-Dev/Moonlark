@@ -33,36 +33,36 @@ lang = LangHelper()
 
 @matcher.handle()
 async def _(user_id: str = get_user_id()) -> None:
+    takumi_api_result = await request_takumi_api()
+    if takumi_api_result is None:
+        await lang.finish("takumi_failed", user_id=user_id)
     image = await render_template(
         "hkrpg_calendar.html.jinja",
         await lang.text("title", user_id),
         user_id,
-        {"wiki_info": await get_events(), "mhy_bbs": await request_takumi_api(), "dt": datetime.now()},
-        keys=await generate_render_keys(
-            lang,
-            user_id,
-            [
-                f"template.{k}"
-                for k in [
-                    "day",
-                    "card_pool.title",
-                    "card_pool.coming",
-                    "card_pool.up_at",
-                    "card_pool.co_running",
-                    "card_pool.current",
-                    "card_pool.open_forever",
-                    "card_pool.up_remain",
-                    "event.time_to_open",
-                    "event.title",
-                    "event.at",
-                    "event.coming",
-                    "event.after_update",
-                    "event.close_at",
-                    "event.ongoing",
-                    "cur_ver",
-                ]
-            ],
-        ),
+        {
+            "wiki_info": await get_events(),
+            "mhy_bbs": takumi_api_result,
+            "dt": datetime.now()
+        },
+        keys=await generate_render_keys(lang, user_id, [f"template.{k}" for k in [
+            "day",
+            "card_pool.title",
+            "card_pool.coming",
+            "card_pool.up_at",
+            "card_pool.co_running",
+            "card_pool.current",
+            "card_pool.open_forever",
+            "card_pool.up_remain",
+            "event.time_to_open",
+            "event.title",
+            "event.at",
+            "event.coming",
+            "event.after_update",
+            "event.close_at",
+            "event.ongoing",
+            "cur_ver"
+        ]])
     )
     await UniMessage().image(raw=image).send()
     await matcher.finish()
