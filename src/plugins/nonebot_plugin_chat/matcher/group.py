@@ -110,19 +110,21 @@ class Group:
         msg = await parse_message_to_string(message, event, self.bot, state)
         if not msg:
             return
-        self.cached_messages.append(
-            {"content": msg, "nickname": nickname, "send_time": datetime.now(), "user_id": user_id, "self": False}
-        )
+        msg_dict: CachedMessage = {"content": msg, "nickname": nickname, "send_time": datetime.now(), "user_id": user_id,
+                         "self": False}
+        self.cached_messages.append(msg_dict)
         self.update_counters(user_id)
         await self.calculate_desire_on_message(mentioned)
-
         logger.debug(self.desire)
-        if mentioned or (random.random() <= self.desire / 100 and msg != "[图片: 暂无信息]" and not self.triggered):
+        await asyncio.sleep(3)
+        if self.cached_messages[-1] is not msg_dict:
+            pass
+        elif mentioned or (random.random() <= self.desire / 100 and msg != "[图片: 暂无信息]" and not self.triggered):
             self.triggered = True
             await self.reply(user_id)
             await asyncio.sleep(round(self.desire / 100 * 2.5))
             self.triggered = False
-        if len(self.cached_messages) >= 15:
+        elif len(self.cached_messages) >= 15:
             asyncio.create_task(self.generate_memory(user_id))
 
     async def generate_memory(self, user_id: str, clean_all: bool = False) -> None:
@@ -186,13 +188,16 @@ class Group:
             user_id,
             extra_headers={"X-Title": "Moonlark - Chat", "HTTP-Referer": "https://chat.moonlark.itcdt.top"},
         )
+        is_first_message = True
         for line in reply.splitlines():
             if line == ".skip":
                 return False
             elif line.startswith("("):
                 continue
             elif line:
-                await asyncio.sleep(len(line.strip()) * 0.07)
+                if is_first_message:
+                    await asyncio.sleep(len(line.strip()) * 0.07)
+                    is_first_message = False
                 await self.format_message(line).send(target=self.target, bot=self.bot)
             else:
                 await asyncio.sleep(1)
