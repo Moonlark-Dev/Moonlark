@@ -110,8 +110,13 @@ class Group:
         msg = await parse_message_to_string(message, event, self.bot, state)
         if not msg:
             return
-        msg_dict: CachedMessage = {"content": msg, "nickname": nickname, "send_time": datetime.now(), "user_id": user_id,
-                         "self": False}
+        msg_dict: CachedMessage = {
+            "content": msg,
+            "nickname": nickname,
+            "send_time": datetime.now(),
+            "user_id": user_id,
+            "self": False,
+        }
         self.cached_messages.append(msg_dict)
         self.update_counters(user_id)
         await self.calculate_desire_on_message(mentioned)
