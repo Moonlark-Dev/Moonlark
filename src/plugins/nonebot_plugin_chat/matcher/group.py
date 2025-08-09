@@ -288,10 +288,12 @@ class Group:
             await self.reply(self.cached_user_id)
         await self.generate_memory(self.cached_user_id, True)
 
+
 from ..config import config
 
 groups: dict[str, Group] = {}
 matcher = on_message(priority=50, rule=enabled_group, block=False)
+
 
 @matcher.handle()
 async def _(

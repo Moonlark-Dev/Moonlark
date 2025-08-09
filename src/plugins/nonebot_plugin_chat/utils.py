@@ -110,11 +110,11 @@ async def enabled_group(
     )
 
 
-
 def find_image_cache(image: bytes) -> Optional[str]:
     if (img_hash := hashlib.sha256(image).hexdigest()) in cached_images:
         return cached_images[img_hash]
     return None
+
 
 def update_image_cache(image: bytes, summary: str):
     cached_images[hashlib.sha256(image).hexdigest()] = summary
@@ -138,12 +138,17 @@ async def get_image_summary(segment: Image, event: Event, bot: Bot, state: T_Sta
     ]
 
     try:
-        summary = (await fetch_messages(
-            messages,
-            event.get_user_id(),
-            model="google/gemini-2.5-flash",
-            extra_headers={"X-Title": "Moonlark - Image Describe", "HTTP-Referer": "https://image.moonlark.itcdt.top"},
-        )).strip()
+        summary = (
+            await fetch_messages(
+                messages,
+                event.get_user_id(),
+                model="google/gemini-2.5-flash",
+                extra_headers={
+                    "X-Title": "Moonlark - Image Describe",
+                    "HTTP-Referer": "https://image.moonlark.itcdt.top",
+                },
+            )
+        ).strip()
         update_image_cache(image, summary)
         return summary
     except Exception:
