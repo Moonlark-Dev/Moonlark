@@ -339,7 +339,6 @@ async def group_disable(group_id: str, user_id: str) -> None:
         await group.generate_memory(user_id)
 
 
-
 @on_command("chat").handle()
 async def _(
     matcher: Matcher,
