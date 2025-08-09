@@ -1,11 +1,25 @@
 template:
-  ongoing: 正在进行
-  remain: 剩余
   day: 天
-  coming: 即将开始
-  coming_day: 距开始
+  card_pool:
+    title: 卡池
+    coming: 即将开放
+    up_at: 距离 UP
+    co_running: 陪跑
+    current: 当前 UP
+    open_forever: 长期开放
+    up_remain: 剩余 UP
+  event:
+    time_to_open: 距离开放
+    title: 活动
+    at: 在
+    coming: 即将开始
+    after_update: 更新后开放
+    close_at: 距离结束
+    ongoing: 正在进行
+  cur_ver: '当前版本: '
 title: 崩铁活动日历
 help:
   details: '《崩坏：星穹铁道》活动日历'
   description: 崩铁活动日历
   usage1: hsrc
+takumi_failed: 从米游社抓取数据失败，可能是 Cookie 失效。
