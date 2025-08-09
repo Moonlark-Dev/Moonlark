@@ -164,7 +164,7 @@ async def parse_message_to_string(message: UniMessage, event: Event, bot: Bot, s
         elif isinstance(segment, At):
             user = await get_user(segment.target)
             if (not user.has_nickname()) and (user_info := await get_user_info(bot, event, segment.target)):
-                nickname = user_info.user_displayname
+                nickname = user_info.user_displayname or user_info.user_name
             else:
                 nickname = user.get_nickname()
             str_msg += f"@{nickname}"
