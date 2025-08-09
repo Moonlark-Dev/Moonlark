@@ -287,7 +287,7 @@ class Group:
                 bot_participate = True
         activity_penalty = min(30.0, 0.1 * msg_count)
         if bot_participate and self.is_participation_boost_available():
-            participation_boost = -10
+            participation_boost = -20
             self.last_reward_participation = datetime.now()
         else:
             participation_boost = 0
