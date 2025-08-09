@@ -294,9 +294,10 @@ class Group:
         if not self.cached_messages:
             return
         time_to_last_message = (dt - self.cached_messages[-1]["send_time"]).total_seconds()
-        if time_to_last_message > 300 and random.random() <= self.desire / 100 and not self.cached_messages[-1]["self"]:
-            await self.reply(self.cached_user_id)
-        await self.generate_memory(self.cached_user_id, True)
+        if time_to_last_message > 300:
+            if random.random() <= self.desire / 100 and not self.cached_messages[-1]["self"]:
+                await self.reply(self.cached_user_id)
+            await self.generate_memory(self.cached_user_id, True)
 
 
 from ..config import config
