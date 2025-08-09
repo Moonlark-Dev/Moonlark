@@ -112,12 +112,12 @@ async def enabled_group(
 
 
 def find_image_cache(image: bytes) -> Optional[str]:
-    if (img_hash := hashlib.sha1(image).hexdigest()) in cached_images:
+    if (img_hash := hashlib.sha256(image).hexdigest()) in cached_images:
         return cached_images[img_hash]
     return None
 
 def update_image_cache(image: bytes, summary: str):
-    cached_images[hashlib.sha1(image).hexdigest()] = summary
+    cached_images[hashlib.sha256(image).hexdigest()] = summary
 
 
 async def get_image_summary(segment: Image, event: Event, bot: Bot, state: T_State) -> str:
