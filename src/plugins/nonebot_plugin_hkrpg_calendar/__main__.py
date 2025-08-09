@@ -25,6 +25,8 @@ from nonebot_plugin_larklang import LangHelper
 from nonebot_plugin_larkutils import get_user_id
 from nonebot_plugin_render import render_template, generate_render_keys
 
+from nonebot.log import logger
+
 from .data_source import get_events, request_takumi_api
 
 matcher = on_command("hsr-calendar", aliases={"hsrc"})
@@ -34,6 +36,7 @@ lang = LangHelper()
 @matcher.handle()
 async def _(user_id: str = get_user_id()) -> None:
     takumi_api_result = await request_takumi_api()
+    logger.debug(f"{takumi_api_result=}")
     if takumi_api_result is None:
         await lang.finish("takumi_failed", user_id=user_id)
     image = await render_template(

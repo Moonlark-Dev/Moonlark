@@ -22,7 +22,7 @@ from datetime import datetime, timedelta
 from nonebot.adapters.qq import Bot as BotQQ
 from nonebot.params import CommandArg
 from nonebot.typing import T_State
-from typing import TypedDict, NoReturn, Optional
+from typing import TypedDict, Optional
 from nonebot_plugin_apscheduler import scheduler
 from nonebot_plugin_alconna import UniMessage, Target, get_target
 from nonebot_plugin_userinfo import EventUserInfo, UserInfo
@@ -106,7 +106,7 @@ class Group:
 
     async def process_message(
         self, message: UniMessage, user_id: str, event: Event, state: T_State, nickname: str, mentioned: bool = False
-    ) -> NoReturn:
+    ) -> None:
         msg = await parse_message_to_string(message, event, self.bot, state)
         if not msg:
             return
@@ -289,10 +289,13 @@ class Group:
         await self.generate_memory(self.cached_user_id, True)
 
 
+from ..config import config
+
 groups: dict[str, Group] = {}
+matcher = on_message(priority=50, rule=enabled_group, block=False)
 
 
-@on_message(priority=50, rule=enabled_group, block=True).handle()
+@matcher.handle()
 async def _(
     event: Event,
     bot: Bot,
@@ -302,13 +305,16 @@ async def _(
     session_id: str = get_group_id(),
 ) -> None:
     if isinstance(bot, BotQQ):
-        return
+        await matcher.finish()
     elif session_id not in groups:
         groups[session_id] = Group(session_id, user_id, bot, get_target(event))
     elif groups[session_id].mute_until is not None:
-        return
-
-    message = UniMessage.generate_without_reply(message=event.get_message(), event=event)
+        await matcher.finish()
+    plaintext = event.get_plaintext().strip()
+    if any([plaintext.startswith(p) for p in config.command_start]):
+        await matcher.finish()
+    platform_message = event.get_message()
+    message = UniMessage.of(message=platform_message, bot=bot)
     user = await get_user(user_id)
     if user.has_nickname():
         nickname = user.get_nickname()
