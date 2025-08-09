@@ -234,18 +234,22 @@ class Group:
         users = self.get_users()
         uni_msg = UniMessage().text(text="")
         segment = ""
+        processing_at = False
         for char in message:
             if char == "@":
                 uni_msg[-1].text += segment
                 segment = "@"
+                processing_at = True
             elif segment:
                 segment += char
-                if segment[1:] in users:
+                if segment[1:] in users and processing_at:
                     user_id = users[segment[1:]]
                     uni_msg = uni_msg.at(user_id=user_id).text(text="")
                     segment = ""
+                    processing_at = False
             else:
                 uni_msg[-1].text += char
+        uni_msg[-1].text += segment
         return uni_msg
 
     def get_users(self) -> dict[str, str]:
