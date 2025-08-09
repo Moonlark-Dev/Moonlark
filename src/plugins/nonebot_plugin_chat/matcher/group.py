@@ -246,7 +246,7 @@ class Group:
         return users
 
     def calculate_desire_on_timer(self) -> None:
-        msg_count, user_msg_count = self.get_counters()[1]
+        msg_count, user_msg_count = self.get_counters()
         loneliness_boost = 10 if (msg_count >= 3 and user_msg_count <= 2) else 0
         activity_penalty = 10 - min(30.0, 0.3 * msg_count)
         self.desire = self.desire + activity_penalty + loneliness_boost
