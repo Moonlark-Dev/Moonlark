@@ -319,7 +319,7 @@ async def _(
     if any([plaintext.startswith(p) for p in config.command_start]):
         await matcher.finish()
     platform_message = event.get_message()
-    message = UniMessage.of(message=platform_message, bot=bot)
+    message = await UniMessage.of(message=platform_message, bot=bot).attach_reply(event, bot)
     user = await get_user(user_id)
     if user.has_nickname():
         nickname = user.get_nickname()
