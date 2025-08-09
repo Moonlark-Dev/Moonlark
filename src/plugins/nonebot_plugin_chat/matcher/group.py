@@ -121,18 +121,25 @@ class Group:
         self.update_counters(user_id)
         await self.calculate_desire_on_message(mentioned)
         logger.debug(self.desire)
-        if not mentioned:
-            # 减少在连续消息中间被触发的频率
-            await asyncio.sleep(3)
-        if ((not mentioned) and self.cached_messages[-1] is not msg_dict) or self.triggered:
-            pass
-        elif mentioned or (random.random() <= self.desire / 100 and msg != "[图片: 暂无信息]"):
+        if mentioned:
+            await self.handle_mention(user_id)
+            return
+        await asyncio.sleep(3)
+        if self.triggered or self.cached_messages[-1] is not msg_dict:
+            return
+        elif random.random() <= self.desire / 100:
             self.triggered = True
             await self.reply(user_id)
             await asyncio.sleep(round(self.desire / 100 * 2.5))
             self.triggered = False
         elif len(self.cached_messages) >= 15:
             asyncio.create_task(self.generate_memory(user_id))
+
+    async def handle_mention(self, user_id: str) -> None:
+        self.triggered = True
+        await self.reply(user_id)
+        self.triggered = False
+
 
     async def generate_memory(self, user_id: str, clean_all: bool = False) -> None:
         messages = ""
