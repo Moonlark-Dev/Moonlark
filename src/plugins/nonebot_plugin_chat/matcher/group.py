@@ -140,7 +140,6 @@ class Group:
         await self.reply(user_id)
         self.triggered = False
 
-
     async def generate_memory(self, user_id: str, clean_all: bool = False) -> None:
         messages = ""
         if self.memory_lock or not self.cached_messages:
