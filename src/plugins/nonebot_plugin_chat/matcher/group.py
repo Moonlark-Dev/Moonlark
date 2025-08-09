@@ -110,20 +110,35 @@ class Group:
         msg = await parse_message_to_string(message, event, self.bot, state)
         if not msg:
             return
-        self.cached_messages.append(
-            {"content": msg, "nickname": nickname, "send_time": datetime.now(), "user_id": user_id, "self": False}
-        )
+        msg_dict: CachedMessage = {
+            "content": msg,
+            "nickname": nickname,
+            "send_time": datetime.now(),
+            "user_id": user_id,
+            "self": False,
+        }
+        self.cached_messages.append(msg_dict)
         self.update_counters(user_id)
         await self.calculate_desire_on_message(mentioned)
-
         logger.debug(self.desire)
-        if mentioned or (random.random() <= self.desire / 100 and msg != "[图片: 暂无信息]" and not self.triggered):
+        if mentioned:
+            await self.handle_mention(user_id)
+            return
+        await asyncio.sleep(3)
+        if self.triggered or self.cached_messages[-1] is not msg_dict:
+            return
+        elif random.random() <= self.desire / 100:
             self.triggered = True
             await self.reply(user_id)
             await asyncio.sleep(round(self.desire / 100 * 2.5))
             self.triggered = False
-        if len(self.cached_messages) >= 15:
+        elif len(self.cached_messages) >= 15:
             asyncio.create_task(self.generate_memory(user_id))
+
+    async def handle_mention(self, user_id: str) -> None:
+        self.triggered = True
+        await self.reply(user_id)
+        self.triggered = False
 
     async def generate_memory(self, user_id: str, clean_all: bool = False) -> None:
         messages = ""
@@ -186,13 +201,17 @@ class Group:
             user_id,
             extra_headers={"X-Title": "Moonlark - Chat", "HTTP-Referer": "https://chat.moonlark.itcdt.top"},
         )
+        is_first_message = True
         for line in reply.splitlines():
             if line == ".skip":
                 return False
             elif line.startswith("("):
                 continue
             elif line:
-                await asyncio.sleep(len(line.strip()) * 0.07)
+                if is_first_message:
+                    is_first_message = False
+                else:
+                    await asyncio.sleep(len(line.strip()) * 0.07)
                 await self.format_message(line).send(target=self.target, bot=self.bot)
             else:
                 await asyncio.sleep(1)
@@ -224,18 +243,22 @@ class Group:
         users = self.get_users()
         uni_msg = UniMessage().text(text="")
         segment = ""
+        processing_at = False
         for char in message:
             if char == "@":
                 uni_msg[-1].text += segment
                 segment = "@"
+                processing_at = True
             elif segment:
                 segment += char
-                if segment[1:] in users:
+                if segment[1:] in users and processing_at:
                     user_id = users[segment[1:]]
                     uni_msg = uni_msg.at(user_id=user_id).text(text="")
                     segment = ""
+                    processing_at = False
             else:
                 uni_msg[-1].text += char
+        uni_msg[-1].text += segment
         return uni_msg
 
     def get_users(self) -> dict[str, str]:
@@ -263,7 +286,7 @@ class Group:
                 bot_participate = True
         activity_penalty = min(30.0, 0.1 * msg_count)
         if bot_participate and self.is_participation_boost_available():
-            participation_boost = -10
+            participation_boost = -20
             self.last_reward_participation = datetime.now()
         else:
             participation_boost = 0
@@ -284,9 +307,10 @@ class Group:
         if not self.cached_messages:
             return
         time_to_last_message = (dt - self.cached_messages[-1]["send_time"]).total_seconds()
-        if time_to_last_message > 300 and random.random() <= self.desire / 100 and not self.cached_messages[-1]["self"]:
-            await self.reply(self.cached_user_id)
-        await self.generate_memory(self.cached_user_id, True)
+        if time_to_last_message > 300:
+            if random.random() <= self.desire / 100 and not self.cached_messages[-1]["self"]:
+                await self.reply(self.cached_user_id)
+            await self.generate_memory(self.cached_user_id, True)
 
 
 from ..config import config
@@ -314,19 +338,19 @@ async def _(
     if any([plaintext.startswith(p) for p in config.command_start]):
         await matcher.finish()
     platform_message = event.get_message()
-    message = UniMessage.of(message=platform_message, bot=bot)
+    message = await UniMessage.of(message=platform_message, bot=bot).attach_reply(event, bot)
     user = await get_user(user_id)
     if user.has_nickname():
         nickname = user.get_nickname()
     else:
-        nickname = user_info.user_displayname
+        nickname = user_info.user_displayname or user_info.user_name
     await groups[session_id].process_message(message, user_id, event, state, nickname, event.is_tome())
 
 
 async def group_disable(group_id: str, user_id: str) -> None:
     if group_id in groups:
-        await groups[group_id].generate_memory(user_id)
-        groups.pop(group_id)
+        group = groups.pop(group_id)
+        await group.generate_memory(user_id)
 
 
 @on_command("chat").handle()
