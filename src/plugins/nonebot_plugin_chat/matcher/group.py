@@ -329,14 +329,15 @@ async def _(
     if user.has_nickname():
         nickname = user.get_nickname()
     else:
-        nickname = user_info.user_displayname
+        nickname = user_info.user_displayname or user_info.user_name
     await groups[session_id].process_message(message, user_id, event, state, nickname, event.is_tome())
 
 
 async def group_disable(group_id: str, user_id: str) -> None:
     if group_id in groups:
-        await groups[group_id].generate_memory(user_id)
-        groups.pop(group_id)
+        group = groups.pop(group_id)
+        await group.generate_memory(user_id)
+
 
 
 @on_command("chat").handle()
