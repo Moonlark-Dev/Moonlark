@@ -18,21 +18,16 @@ import json
 from datetime import datetime
 from typing import Optional
 
-from arclet.alconna import MultiVar
 from nonebot_plugin_alconna import Alconna, on_alconna, Subcommand, Args, UniMessage
 from nonebot_plugin_orm import async_scoped_session
 from sqlalchemy import select
 
 from nonebot_plugin_larkuser import patch_matcher
 from nonebot_plugin_larkutils import get_user_id
-from nonebot_plugin_render import render_template
-
-from ..utils import level
 from ..base import ControllableTeam, Scheduler
 from ..characters import get_character_by_data
 from ..models import PlayerTeam, Character as CharacterData
 from ..lang import lang
-from ..utils.initial_character import init_user_character
 
 team_cmd = on_alconna(Alconna(
     "team",
