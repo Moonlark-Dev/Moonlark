@@ -30,7 +30,7 @@ class TargetBot(SimpleMonster):
         return AttackTypes.physical
 
     async def get_name(self, user_id: str) -> str:
-        return lang.text("monsters.target_bot", user_id)
+        return await lang.text("monsters.target_bot", user_id)
 
     def has_final_skill(self) -> bool:
         return False

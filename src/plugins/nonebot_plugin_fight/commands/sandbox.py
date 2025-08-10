@@ -43,11 +43,13 @@ async def get_player_team(user_id: str, scheduler: Scheduler, matcher: Matcher, 
         if result is None:
             raise ValueError("user hasn't set team yet")
         team_data = json.loads(result.character_list)
-    team = ControllableTeam(scheduler, matcher, user_id, team_id)
-    for i in range(PLAYER_TEAM_CHARACTER_COUNT_LIMIT):
-        if team_data.get(str(i)) is not None:
-            await get_character_by_data(team, team_data[i])
-    return team
+        team = ControllableTeam(scheduler, matcher, user_id, team_id)
+        for i in range(PLAYER_TEAM_CHARACTER_COUNT_LIMIT):
+            index = str(i+1)
+            if team_data.get(index) is not None:
+                data = await session.get_one(CharacterData, {"character_id": team_data[index]})
+                await get_character_by_data(team, data)
+        return team
 
 
 @sandbox.handle()
@@ -58,6 +60,8 @@ async def _(monster_level: int, monster_count: int, user_id: str = get_user_id()
     except ValueError:
         await lang.finish("no_team", user_id=user_id)
         return
+    if not any([c.is_actionable() for c in player_team.get_monomers()]):
+        await lang.finish("no_team", user_id=user_id)
     monster_team = Team(scheduler, "B")
     for i in range(monster_count):
         TargetBot(monster_team, monster_level)

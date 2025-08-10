@@ -97,7 +97,7 @@ cmd:
     empty: "\n{}. 空"
     success: 队伍成员调整完成！
     wrong_pos: 失败：包含错误的位置
-no_team: 您没有设置您的队伍，请使用 {__prefix__}team 设置。
+no_team: 您没有设置您的队伍，或当前设置的队伍无法战斗，请使用 {__prefix__}team 调整。
 result:
   time_ran_out: 时间耗尽
   player_team_win: 胜利
