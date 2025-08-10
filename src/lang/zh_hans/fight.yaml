@@ -106,3 +106,19 @@ result:
     - 战败
     - 胜败乃兵家常事，但是下一次，我们会赢回来的
     - 我方已消耗殆尽，全速撤退
+help_character:
+  description: 成员列表
+  details: （该功能仍在测试中）查看当前拥有的角色。
+  usage1: character (查看角色列表)
+  usage2: character <index> (查看角色详情)
+
+help_team:
+  description: 设置战斗队伍
+  details: （该功能仍在测试中）设置战斗有关模块使用的队伍，配合 character 指令使用。
+  usage1: team (查看当前队伍)
+  usage2: team set <位置> <index> (成员入队)
+
+help_sandbox:
+  description: 战斗沙箱
+  details: （该功能仍在测试中）启动战斗沙箱，进行模拟战斗。
+  usage1: sandbox [标靶等级] [标靶数量]
