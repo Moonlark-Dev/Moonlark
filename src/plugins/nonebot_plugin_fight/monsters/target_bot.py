@@ -14,8 +14,27 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
+import random
+
+from ..base import SimpleMonster, Team
+from ..lang import lang
+from ..types import AttackTypes
 
 
-from .test_bot import TestBot
+class TargetBot(SimpleMonster):
 
-MONOMERS = [TestBot]
+    def get_weakness_type(self) -> AttackTypes:
+        return AttackTypes.physical
+
+    def get_attack_type(self) -> AttackTypes:
+        return AttackTypes.physical
+
+    async def get_name(self, user_id: str) -> str:
+        return lang.text("monsters.target_bot", user_id)
+
+    def has_final_skill(self) -> bool:
+        return False
+
+    async def on_action(self, teams: list[Team]) -> None:
+        target = random.choice(teams[0].get_monomers())
+        await self.on_attack(self.get_attack_type(), self.get_attack_value(), target)

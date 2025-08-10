@@ -77,6 +77,8 @@ action:
   myteam: 我方队伍 (按行动顺序排序)
   title: 行动面板
   invalid: 无效输入，请检查输入内容
+monsters:
+  target_bot: 标靶机器
 characters:
   delta:
     name: 德尔塔 (测试)

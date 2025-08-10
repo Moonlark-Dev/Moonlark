@@ -20,7 +20,7 @@ import random
 from .team import Team
 from .buff import Buff
 from ..lang import lang
-from ..types import ACTION_EVENT, AttackTypes, BuffData, BuffTypes
+from ..types import ACTION_EVENT, AttackTypes, BuffTypes
 
 
 class Monomer(ABC):
