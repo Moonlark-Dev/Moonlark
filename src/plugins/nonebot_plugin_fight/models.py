@@ -6,18 +6,17 @@ from sqlalchemy.orm import mapped_column, Mapped
 from sqlalchemy import String, Text
 
 
-class ControllableCharacter(Model):
+class Character(Model):
     character_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     user_id: Mapped[str] = mapped_column(String(128))
     get_time: Mapped[datetime]
     character_type: Mapped[int]
     experience: Mapped[int]
-    current_hp: Mapped[int]
-    fav: Mapped[Optional[float]] = mapped_column(nullable=True)
-    buff: Mapped[bytes] = mapped_column(default=b"{}")
-    weapon: Mapped[int]
+    hp_percent: Mapped[int]
+    fav: Mapped[float] = mapped_column(default=0)
+    buff_list: Mapped[bytes] = mapped_column(default=b"[]")
     equipment: Mapped[bytes] = mapped_column(default=b"{}")
-    talent_level: Mapped[bytes]
+    talent_level: Mapped[bytes] = mapped_column(default=b"{}")
     weapon_experience: Mapped[int]
     weapon_damage: Mapped[int]
 
@@ -27,7 +26,7 @@ class EquipmentData(Model):
     equipment_type: Mapped[int]
     experience: Mapped[int]
     user_id: Mapped[str] = mapped_column(String(128))
-    gains: Mapped[bytes]
+    gains: Mapped[bytes] = mapped_column(default=b"{}")
 
 
 class PlayerTeam(Model):

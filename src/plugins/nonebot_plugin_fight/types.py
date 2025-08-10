@@ -82,7 +82,6 @@ class BuffData(TypedDict):
 class WeaponData(TypedDict):
     experience: int
     damage_level: int
-    talent_level: dict[str, int]
 
 
 class CharacterData(TypedDict):

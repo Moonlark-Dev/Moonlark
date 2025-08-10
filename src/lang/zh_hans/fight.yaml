@@ -84,3 +84,8 @@ characters:
     name: Moonlark
 buff: ''
 time_remain: '剩余时间: {}s'
+cmd:
+  c:
+    main: '角色列表: {}'
+    line: "\n{}. {} (Lv{} HP:{}%)"
+    title: 角色详情 - {}

@@ -41,7 +41,7 @@ class Character(ControllableMonomer, ABC):
         pass
 
     def get_level(self, allow_lv0: bool = True) -> int:
-        return max(not allow_lv0, level.character.get_current_level(self.character_data["experience"])["level"])
+        return max(int(not allow_lv0), level.character.get_current_level(self.character_data["experience"])["level"])
 
     def get_max_hp(self) -> int:
         origin_hp = 900 + 350 * math.log(self.get_level(False), 10)

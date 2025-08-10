@@ -14,9 +14,38 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
+import json
+from typing import Optional
 
 from .delta import Delta
 from .moonlark import Moonlark
 
+from ..base import ControllableTeam, Character
+from ..models import Character as CharacterModel
+from ..types import CharacterData
 
-CHARACTERS = [Delta, Moonlark]
+CHARACTERS: list[type[Character]] = [Delta, Moonlark]
+
+async def get_character_by_data(team: ControllableTeam, data: CharacterModel) -> Optional[Character]:
+    data_dict: CharacterData = {
+        "experience": data.experience,
+        "current_hp": 1145141919810,        # will be set later
+        "fav": data.fav,
+        "equipment": [],
+        "talent_level": json.loads(data.talent_level),
+        "buff": [],
+        "weapon": {
+            "experience": data.weapon_experience,
+            "damage_level": data.weapon_damage
+        }
+    }
+    for character in CHARACTERS:
+        if character.get_character_id()[0] == data.character_type:
+            target = character
+            break
+    else:
+        return None
+    c = target(team, data_dict)
+    hp = c.get_max_hp() * (data.hp_percent / 100)
+    c.health = hp
+    return c
