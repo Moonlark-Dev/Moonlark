@@ -14,4 +14,4 @@ require("nonebot_plugin_larkutils")
 require("nonebot_plugin_orm")
 require("nonebot_plugin_alconna")
 
-from . import __main__
+from . import commands as __main__

@@ -89,3 +89,9 @@ cmd:
     main: '角色列表: {}'
     line: "\n{}. {} (Lv{} HP:{}%)"
     title: 角色详情 - {}
+  t:
+    title: '队伍成员: {}'
+    none: 当前队伍中没有成员。
+    empty: "\n{}. 空"
+    success: 队伍成员调整完成！
+    wrong_pos: 失败：包含错误的位置

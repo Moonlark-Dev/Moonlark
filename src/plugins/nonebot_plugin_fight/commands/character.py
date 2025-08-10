@@ -14,41 +14,42 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
+#
+#  This program is free software: you can redistribute it and/or modify
+#  it under the terms of the GNU Affero General Public License as published
+#  by the Free Software Foundation, either version 3 of the License, or
+#  (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU Affero General Public License for more details.
+#
+#  You should have received a copy of the GNU Affero General Public License
+#  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+# ##############################################################################
 from datetime import datetime
 
 from nonebot_plugin_alconna import Alconna, on_alconna, Subcommand, Args, UniMessage
-from nonebot_plugin_orm import get_session, async_scoped_session
+from nonebot_plugin_orm import async_scoped_session
 from sqlalchemy import select
 
 from nonebot_plugin_larkuser import patch_matcher
 from nonebot_plugin_larkutils import get_user_id
 from nonebot_plugin_render import render_template
-from .utils import level
-from .base import ControllableTeam, Scheduler
-from .characters import get_character_by_data
-from .models import Character as CharacterData
-from .lang import lang
+
+from ..utils import level
+from ..base import ControllableTeam, Scheduler
+from ..characters import get_character_by_data
+from ..models import Character as CharacterData
+from ..lang import lang
+from ..utils.initial_character import init_user_character
 
 character_cmd = on_alconna(Alconna(
     "character",
     Subcommand("show", Args["index", int])
 ))
 patch_matcher(character_cmd)
-
-async def init_user_character(user_id: str) -> None:
-    async with get_session() as session:
-        if not await session.scalar(select(CharacterData).where(CharacterData.user_id == user_id)):
-            session.add(CharacterData(
-                user_id=user_id,
-                character_type=2,
-                experience=0,
-                fav=-1,
-                get_time=datetime.now(),
-                hp_percent=100,
-                weapon_experience=0,
-                weapon_damage=0
-            ))
-            await session.commit()
 
 
 @character_cmd.handle()

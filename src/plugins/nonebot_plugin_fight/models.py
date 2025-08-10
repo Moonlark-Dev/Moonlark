@@ -31,5 +31,4 @@ class EquipmentData(Model):
 
 class PlayerTeam(Model):
     user_id: Mapped[str] = mapped_column(String(128), primary_key=True)
-    characters: Mapped[bytes] = mapped_column(default=b"[]")
-    name: Mapped[Optional[str]] = mapped_column(Text(), nullable=True)
+    character_list: Mapped[bytes] = mapped_column(default=b"{}")
