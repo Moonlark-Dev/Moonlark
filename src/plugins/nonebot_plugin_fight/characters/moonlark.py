@@ -20,12 +20,14 @@ from ..base import Character, ControllableTeam, Monomer, Team
 from ..buffs import StandardPercentGain, EmptyBuff, CriticalStrikeHarmGain, StandardGain
 from ..types import CharacterData, AttackTypes, SkillInfo, BuffTypes
 
-from enum import  Enum
+from enum import Enum
+
 
 class MoonType(Enum):
     new = 0
     quarter = 1
     full = 2
+
 
 class Moonlark(Character):
 
@@ -34,21 +36,14 @@ class Moonlark(Character):
 
     async def get_skill_info_list(self) -> list[SkillInfo]:
         return [
-            {
-                "name": "[普攻]",
-                "monomer": self,
-                "cost": -1,
-                "charge": False,
-                "instant": False,
-                "target_type": "enemy"
-            },
+            {"name": "[普攻]", "monomer": self, "cost": -1, "charge": False, "instant": False, "target_type": "enemy"},
             {
                 "name": "[战技]",
                 "monomer": self,
                 "cost": 1,
                 "charge": False,
                 "instant": False,
-                "target_type": "none" if self.moon_type == MoonType.full else "enemy"
+                "target_type": "none" if self.moon_type == MoonType.full else "enemy",
             },
             {
                 "name": "[终结技]",
@@ -56,7 +51,7 @@ class Moonlark(Character):
                 "cost": 0,
                 "charge": True,
                 "instant": True,
-                "target_type": "enemy" if self.moon_type == MoonType.quarter else "none"
+                "target_type": "enemy" if self.moon_type == MoonType.quarter else "none",
             },
         ]
 
@@ -77,11 +72,9 @@ class Moonlark(Character):
         elif index == 1:
             if self.moon_type == MoonType.new:
                 await self.on_attack(AttackTypes.sense, self.get_attack_value() * 0.80, target)
-                await target.add_buff(EmptyBuff({
-                    "buff_type": BuffTypes.moonlark_moon_seal,
-                    "remain_rounds": 114514,
-                    "data": {}
-                }, target))
+                await target.add_buff(
+                    EmptyBuff({"buff_type": BuffTypes.moonlark_moon_seal, "remain_rounds": 114514, "data": {}}, target)
+                )
             elif self.moon_type == MoonType.quarter:
                 gain = 0
                 buff_index_list = []
@@ -91,111 +84,120 @@ class Moonlark(Character):
                         buff_index_list.append(i)
                 for index in buff_index_list[::-1]:
                     await target.buff_list[index].pop()
-                await self.add_buff(EmptyBuff({
-                    "buff_type": BuffTypes.instant_damage_increased_by_percent,
-                    "remain_rounds": 0,
-                    "data": {
-                        "percent": gain / 100
-                    }
-                }, self))
+                await self.add_buff(
+                    EmptyBuff(
+                        {
+                            "buff_type": BuffTypes.instant_damage_increased_by_percent,
+                            "remain_rounds": 0,
+                            "data": {"percent": gain / 100},
+                        },
+                        self,
+                    )
+                )
                 await self.on_attack(AttackTypes.sense, self.get_attack_value() * 0.70, target)
             elif self.moon_type == MoonType.full:
                 for monomer in self.team.scheduler.get_another_team(self.team).get_monomers():
                     await self.on_attack(AttackTypes.sense, self.get_attack_value(), monomer)
                     for _ in range(2):
-                        await monomer.add_buff(EmptyBuff({
-                            "buff_type": BuffTypes.moonlark_moon_seal,
-                            "remain_rounds": 114514,
-                            "data": {}
-                        }, monomer))
+                        await monomer.add_buff(
+                            EmptyBuff(
+                                {"buff_type": BuffTypes.moonlark_moon_seal, "remain_rounds": 114514, "data": {}},
+                                monomer,
+                            )
+                        )
         elif index == 2:
             if self.moon_type == MoonType.new:
                 await self.switch_moon_type(MoonType.full)
                 for monomer in self.team.get_monomers():
-                    await monomer.add_buff(EmptyBuff({
-                        "buff_type": BuffTypes.damage_increased_by_percent,
-                        "remain_rounds": 1,
-                        "data": {
-                            "percent": 0.20
-                        }
-                    }, monomer))
+                    await monomer.add_buff(
+                        EmptyBuff(
+                            {
+                                "buff_type": BuffTypes.damage_increased_by_percent,
+                                "remain_rounds": 1,
+                                "data": {"percent": 0.20},
+                            },
+                            monomer,
+                        )
+                    )
                 await self.on_action(self.team.scheduler.get_selectable_teams(self), False)
             elif self.moon_type == MoonType.quarter:
                 gain = 0
                 for i in range(len(target.buff_list)):
                     if target.buff_list[i].data["buff_type"] == BuffTypes.moonlark_moon_seal:
                         gain += 15
-                await self.add_buff(EmptyBuff({
-                    "buff_type": BuffTypes.instant_damage_increased_by_percent,
-                    "remain_rounds": 0,
-                    "data": {
-                        "percent": gain / 100
-                    }
-                }, self))
+                await self.add_buff(
+                    EmptyBuff(
+                        {
+                            "buff_type": BuffTypes.instant_damage_increased_by_percent,
+                            "remain_rounds": 0,
+                            "data": {"percent": gain / 100},
+                        },
+                        self,
+                    )
+                )
                 await self.on_attack(AttackTypes.sense, self.get_attack_value() * 0.97, target)
             elif self.moon_type == MoonType.full:
                 for monomer in self.team.scheduler.get_another_team(self.team).get_monomers():
                     await self.on_attack(AttackTypes.sense, self.get_attack_value() * 1.05, monomer)
                     for _ in range(4):
-                        await monomer.add_buff(EmptyBuff({
-                            "buff_type": BuffTypes.moonlark_moon_seal,
-                            "remain_rounds": 114514,
-                            "data": {}
-                        }, monomer))
-                        await monomer.add_buff(StandardPercentGain({
-                            "buff_type": BuffTypes.standard_debuff,
-                            "remain_rounds": 1,
-                            "data": {
-                                "attr": "base_action_value",
-                                "percent": 0.2
-                            }
-                        }, monomer))
+                        await monomer.add_buff(
+                            EmptyBuff(
+                                {"buff_type": BuffTypes.moonlark_moon_seal, "remain_rounds": 114514, "data": {}},
+                                monomer,
+                            )
+                        )
+                        await monomer.add_buff(
+                            StandardPercentGain(
+                                {
+                                    "buff_type": BuffTypes.standard_debuff,
+                                    "remain_rounds": 1,
+                                    "data": {"attr": "base_action_value", "percent": 0.2},
+                                },
+                                monomer,
+                            )
+                        )
 
     async def on_action(self, teams: list[Team], change_moon_type: bool = True) -> None:
         await super().on_action(teams)
         if change_moon_type:
-            await self.switch_moon_type({
-                MoonType.full: MoonType.new,
-                MoonType.quarter: MoonType.full,
-                MoonType.new: MoonType.quarter
-            }[self.moon_type])
-
+            await self.switch_moon_type(
+                {MoonType.full: MoonType.new, MoonType.quarter: MoonType.full, MoonType.new: MoonType.quarter}[
+                    self.moon_type
+                ]
+            )
 
     async def switch_moon_type(self, moon_type: MoonType) -> None:
         self.moon_type = moon_type
         if self.moon_type == MoonType.full:
-            await self.add_buff(StandardPercentGain({
-                "buff_type": BuffTypes.standard_gain,
-                "remain_rounds": 1,
-                "data": {
-                    "attr": "attack",
-                    "percent": 1.2
-                }
-            }, self))
-            await self.add_buff(EmptyBuff({
-                "buff_type": BuffTypes.damage_increased_by_percent,
-                "remain_rounds": 1,
-                "data": {
-                    "percent": 1.05
-                }
-            }, self))
+            await self.add_buff(
+                StandardPercentGain(
+                    {
+                        "buff_type": BuffTypes.standard_gain,
+                        "remain_rounds": 1,
+                        "data": {"attr": "attack", "percent": 1.2},
+                    },
+                    self,
+                )
+            )
+            await self.add_buff(
+                EmptyBuff(
+                    {"buff_type": BuffTypes.damage_increased_by_percent, "remain_rounds": 1, "data": {"percent": 1.05}},
+                    self,
+                )
+            )
         elif self.moon_type == MoonType.quarter:
-            await self.add_buff(CriticalStrikeHarmGain({
-                "buff_type": BuffTypes.standard_gain,
-                "remain_rounds": 1,
-                "data": {
-                    "value": 0.5
-                }
-            }, self))
+            await self.add_buff(
+                CriticalStrikeHarmGain(
+                    {"buff_type": BuffTypes.standard_gain, "remain_rounds": 1, "data": {"value": 0.5}}, self
+                )
+            )
         else:
-            await self.add_buff(StandardGain({
-                "buff_type": BuffTypes.standard_gain,
-                "remain_rounds": 1,
-                "data": {
-                    "attr": "speed",
-                    "value": 1.5
-                }
-            }, self))
+            await self.add_buff(
+                StandardGain(
+                    {"buff_type": BuffTypes.standard_gain, "remain_rounds": 1, "data": {"attr": "speed", "value": 1.5}},
+                    self,
+                )
+            )
 
     async def get_extra_action_text(self) -> str:
         origin = super().get_extra_action_text()

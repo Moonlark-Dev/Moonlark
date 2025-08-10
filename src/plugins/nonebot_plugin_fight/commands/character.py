@@ -45,10 +45,7 @@ from ..models import Character as CharacterData
 from ..lang import lang
 from ..utils.initial_character import init_user_character
 
-character_cmd = on_alconna(Alconna(
-    "character",
-    Subcommand("show", Args["index", int])
-))
+character_cmd = on_alconna(Alconna("character", Subcommand("show", Args["index", int])))
 patch_matcher(character_cmd)
 
 
@@ -56,9 +53,12 @@ patch_matcher(character_cmd)
 async def _(user_id: str = get_user_id()) -> None:
     await init_user_character(user_id)
 
+
 @character_cmd.assign("$main")
 async def _(session: async_scoped_session, user_id: str = get_user_id()) -> None:
-    result = await session.scalars(select(CharacterData).where(CharacterData.user_id == user_id).order_by(CharacterData.character_id))
+    result = await session.scalars(
+        select(CharacterData).where(CharacterData.user_id == user_id).order_by(CharacterData.character_id)
+    )
     character_list = ""
     temp_scheduler = Scheduler(datetime.now())
     temp_team = ControllableTeam(temp_scheduler, character_cmd, user_id)
@@ -73,43 +73,43 @@ async def _(session: async_scoped_session, user_id: str = get_user_id()) -> None
                 index,
                 await character.get_name(user_id),
                 character.get_level(True),
-                round(character.get_hp_percent() * 100)
+                round(character.get_hp_percent() * 100),
             )
     await lang.finish("cmd.c.main", user_id, character_list)
 
 
 @character_cmd.assign("show")
 async def _(session: async_scoped_session, index: int, user_id: str = get_user_id()) -> None:
-    result = await session.scalars(select(CharacterData).where(CharacterData.user_id == user_id).order_by(CharacterData.character_id))
+    result = await session.scalars(
+        select(CharacterData).where(CharacterData.user_id == user_id).order_by(CharacterData.character_id)
+    )
     temp_scheduler = Scheduler(datetime.now())
     temp_team = ControllableTeam(temp_scheduler, character_cmd, user_id)
     character = await get_character_by_data(temp_team, result.all()[index - 1])
-    await character_cmd.finish(UniMessage().image(raw=await render_template(
-        "fight_character.html.jinja",
-        await lang.text("cmd.c.title", user_id, await character.get_name(user_id)),
-        user_id,
-        {
-            "round": round,
-            "c": {
-                "name": await character.get_name(user_id),
-                "greeting": None,
-                "hp": character.get_hp(),
-                "max_hp": character.get_max_hp(),
-                "level": level.character.get_current_level(character.character_data["experience"]),
-                "attack": character.get_attack_value(),
-                "defuse": character.get_defuse(),
-                "crit_rate": character.critical_strike[0],
-                "crit_damage": character.critical_strike[1],
-                "speed": character.speed,
-                "max_power": character.final_skill_power[1],
-                "weapon_lv": level.weapon.get_current_level(character.character_data["weapon"]["experience"]),
-                "weapon": {
-                    "damage": character.character_data["weapon"]["damage_level"],
-                    "story": None
-                }
-            }
-        }
-    )))
-
-
-
+    await character_cmd.finish(
+        UniMessage().image(
+            raw=await render_template(
+                "fight_character.html.jinja",
+                await lang.text("cmd.c.title", user_id, await character.get_name(user_id)),
+                user_id,
+                {
+                    "round": round,
+                    "c": {
+                        "name": await character.get_name(user_id),
+                        "greeting": None,
+                        "hp": character.get_hp(),
+                        "max_hp": character.get_max_hp(),
+                        "level": level.character.get_current_level(character.character_data["experience"]),
+                        "attack": character.get_attack_value(),
+                        "defuse": character.get_defuse(),
+                        "crit_rate": character.critical_strike[0],
+                        "crit_damage": character.critical_strike[1],
+                        "speed": character.speed,
+                        "max_power": character.final_skill_power[1],
+                        "weapon_lv": level.weapon.get_current_level(character.character_data["weapon"]["experience"]),
+                        "weapon": {"damage": character.character_data["weapon"]["damage_level"], "story": None},
+                    },
+                },
+            )
+        )
+    )

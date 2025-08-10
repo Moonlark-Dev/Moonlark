@@ -26,14 +26,16 @@ from ..models import Character as CharacterData
 async def init_user_character(user_id: str) -> None:
     async with get_session() as session:
         if not await session.scalar(select(CharacterData).where(CharacterData.user_id == user_id)):
-            session.add(CharacterData(
-                user_id=user_id,
-                character_type=2,
-                experience=0,
-                fav=-1,
-                get_time=datetime.now(),
-                hp_percent=100,
-                weapon_experience=0,
-                weapon_damage=0
-            ))
+            session.add(
+                CharacterData(
+                    user_id=user_id,
+                    character_type=2,
+                    experience=0,
+                    fav=-1,
+                    get_time=datetime.now(),
+                    hp_percent=100,
+                    weapon_experience=0,
+                    weapon_damage=0,
+                )
+            )
             await session.commit()

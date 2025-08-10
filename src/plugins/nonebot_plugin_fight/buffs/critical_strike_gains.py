@@ -20,7 +20,6 @@ from ..base import Buff, Monomer
 from ..types import BuffData
 
 
-
 class CriticalStrikeRateGain(Buff):
 
     def __init__(self, data: BuffData, monomer: Monomer) -> None:
@@ -35,6 +34,7 @@ class CriticalStrikeRateGain(Buff):
 
     async def action(self) -> None:
         pass
+
 
 class CriticalStrikeHarmGain(Buff):
 

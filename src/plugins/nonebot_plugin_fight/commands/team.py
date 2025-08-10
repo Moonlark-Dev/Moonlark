@@ -30,11 +30,13 @@ from ..consts import PLAYER_TEAM_CHARACTER_COUNT_LIMIT
 from ..models import PlayerTeam, Character as CharacterData
 from ..lang import lang
 
-team_cmd = on_alconna(Alconna(
-    "team",
-    Subcommand("set", Args["pos", int], Args["character_index", int]),
-    # Subcommand("fast-set", Args["characters", MultiVar(int)])
-))
+team_cmd = on_alconna(
+    Alconna(
+        "team",
+        Subcommand("set", Args["pos", int], Args["character_index", int]),
+        # Subcommand("fast-set", Args["characters", MultiVar(int)])
+    )
+)
 patch_matcher(team_cmd)
 
 
@@ -55,7 +57,9 @@ async def _(session: async_scoped_session, user_id: str = get_user_id()) -> None
         if character_id is None:
             character_list += await lang.text("cmd.t.empty", user_id, index)
             continue
-        character = await get_character_by_data(team, await session.get_one(CharacterData, {"character_id": character_id}))
+        character = await get_character_by_data(
+            team, await session.get_one(CharacterData, {"character_id": character_id})
+        )
         if character:
             character_list += await lang.text(
                 "cmd.c.line",
@@ -63,7 +67,7 @@ async def _(session: async_scoped_session, user_id: str = get_user_id()) -> None
                 index,
                 await character.get_name(user_id),
                 character.get_level(True),
-                round(character.get_hp_percent() * 100)
+                round(character.get_hp_percent() * 100),
             )
     await lang.finish("cmd.t.title", user_id, character_list)
 
@@ -73,7 +77,11 @@ async def _(session: async_scoped_session, pos: int, character_index: int, user_
     if not 0 < pos <= PLAYER_TEAM_CHARACTER_COUNT_LIMIT:
         await lang.finish("cmd.t.wrong_pos", user_id)
     pos = str(pos)
-    character = (await session.scalars(select(CharacterData).where(CharacterData.user_id == user_id).order_by(CharacterData.character_id))).all()[character_index - 1]
+    character = (
+        await session.scalars(
+            select(CharacterData).where(CharacterData.user_id == user_id).order_by(CharacterData.character_id)
+        )
+    ).all()[character_index - 1]
     team_result = await session.get(PlayerTeam, {"user_id": user_id})
     if team_result is None:
         team_result = PlayerTeam(user_id=user_id, character_list=json.dumps({pos: character.character_id}).encode())
@@ -88,5 +96,3 @@ async def _(session: async_scoped_session, pos: int, character_index: int, user_
         team_result.character_list = json.dumps(data).encode()
         await session.commit()
         await lang.finish("cmd.t.success", user_id)
-
-

@@ -19,7 +19,6 @@ from ..base import Buff, Monomer
 from ..types import BuffData
 
 
-
 class StandardGain(Buff):
 
     def __init__(self, data: BuffData, monomer: Monomer) -> None:
@@ -39,7 +38,6 @@ class StandardGain(Buff):
         pass
 
 
-
 class StandardPercentGain(Buff):
 
     def __init__(self, data: BuffData, monomer: Monomer) -> None:
@@ -47,7 +45,6 @@ class StandardPercentGain(Buff):
         self.attr = data["data"]["attr"]
         self.value = 0
         self.percent = data["data"]["percent"]
-
 
     async def setup(self) -> None:
         value = getattr(self.monomer, self.attr) * self.percent

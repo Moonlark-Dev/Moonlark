@@ -26,18 +26,16 @@ from ..types import CharacterData
 
 CHARACTERS: list[type[Character]] = [Delta, Moonlark]
 
+
 async def get_character_by_data(team: ControllableTeam, data: CharacterModel) -> Optional[Character]:
     data_dict: CharacterData = {
         "experience": data.experience,
-        "current_hp": 1145141919810,        # will be set later
+        "current_hp": 1145141919810,  # will be set later
         "fav": data.fav,
         "equipment": [],
         "talent_level": json.loads(data.talent_level),
         "buff": [],
-        "weapon": {
-            "experience": data.weapon_experience,
-            "damage_level": data.weapon_damage
-        }
+        "weapon": {"experience": data.weapon_experience, "damage_level": data.weapon_damage},
     }
     for character in CHARACTERS:
         if character.get_character_id()[0] == data.character_type:

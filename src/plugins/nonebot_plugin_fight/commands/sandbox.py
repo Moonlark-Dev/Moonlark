@@ -37,6 +37,7 @@ from ..lang import lang
 
 sandbox = on_alconna(Alconna("sandbox", Args["monster_level", int, 1], Args["monster_count", int, 1]))
 
+
 async def get_player_team(user_id: str, scheduler: Scheduler, matcher: Matcher, team_id: str = "A") -> ControllableTeam:
     async with get_session() as session:
         result = await session.get(PlayerTeam, user_id)
@@ -45,7 +46,7 @@ async def get_player_team(user_id: str, scheduler: Scheduler, matcher: Matcher, 
         team_data = json.loads(result.character_list)
         team = ControllableTeam(scheduler, matcher, user_id, team_id)
         for i in range(PLAYER_TEAM_CHARACTER_COUNT_LIMIT):
-            index = str(i+1)
+            index = str(i + 1)
             if team_data.get(index) is not None:
                 data = await session.get_one(CharacterData, {"character_id": team_data[index]})
                 await get_character_by_data(team, data)
@@ -74,6 +75,3 @@ async def _(monster_level: int, monster_count: int, user_id: str = get_user_id()
     else:
         fight_result = await lang.text("result.time_ran_out", user_id=user_id)
     await lang.finish("result.main", user_id, fight_result)
-
-
-

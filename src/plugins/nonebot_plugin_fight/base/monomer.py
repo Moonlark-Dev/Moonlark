@@ -195,7 +195,11 @@ class Monomer(ABC):
         if monomer in self.team.get_monomers():
             self.reduce_balance_value(15)
             return 0
-        if type_ == AttackTypes.real or type_ == self.get_weakness_type() or (self.get_weakness_type() == AttackTypes.physical and type_ not in [AttackTypes.null, AttackTypes.sense]):
+        if (
+            type_ == AttackTypes.real
+            or type_ == self.get_weakness_type()
+            or (self.get_weakness_type() == AttackTypes.physical and type_ not in [AttackTypes.null, AttackTypes.sense])
+        ):
             real_harm = harm
             self.reduce_balance_value(random.randint(25, 35))
         else:

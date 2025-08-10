@@ -26,9 +26,11 @@ def monster_attack(lv: int) -> float:
     # 怪物输出曲线：前期稍弱于玩家，中后期渐强
     return (40 + 4.6 * lv) * math.log10(lv + 8)
 
+
 def monster_hp(lv: int) -> float:
     # 怪物硬度曲线：前期接近玩家，越往后差距越大
     return (850 + 380 * math.log10(lv + 5)) * (1 + 0.0125 * lv)
+
 
 class SimpleMonster(Monomer, ABC):
 
@@ -43,9 +45,3 @@ class SimpleMonster(Monomer, ABC):
 
     def get_attack_value(self) -> int:
         return round(monster_attack(self.level))
-
-
-
-
-
-

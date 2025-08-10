@@ -21,6 +21,7 @@ if TYPE_CHECKING:
 from ..types import BuffData
 from abc import ABC, abstractmethod
 
+
 class Buff(ABC):
 
     def __init__(self, data: BuffData, monomer: "Monomer") -> None:
@@ -50,5 +51,3 @@ class Buff(ABC):
 
     def __setitem__(self, key: Literal["buff_type", "remain_rounds", "data"], value):
         self.data[key] = value
-
-
