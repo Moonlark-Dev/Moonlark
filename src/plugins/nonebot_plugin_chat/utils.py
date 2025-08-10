@@ -18,12 +18,13 @@ import base64
 import json
 import traceback
 from datetime import datetime
+from typing import Optional
 
 from nonebot import Bot, logger
 from nonebot.internal.adapter import Event
 from nonebot.typing import T_State
 from nonebot_plugin_userinfo import get_user_info
-from nonebot_plugin_alconna import Image, image_fetch, UniMessage, Text, At
+from nonebot_plugin_alconna import Image, image_fetch, UniMessage, Text, At, Reply
 from nonebot_plugin_orm import async_scoped_session, AsyncSession, get_session
 from sqlalchemy import select
 
@@ -34,6 +35,9 @@ from nonebot_plugin_larkutils import get_group_id, get_user_id
 from nonebot_plugin_openai.types import Messages
 from nonebot_plugin_openai.utils.chat import fetch_messages
 from nonebot_plugin_openai.utils.message import generate_message
+import hashlib
+
+cached_images: dict[str, str] = {}
 
 
 async def get_history(session: async_scoped_session | AsyncSession, user_id: str) -> Messages:
@@ -106,10 +110,21 @@ async def enabled_group(
     )
 
 
+def find_image_cache(image: bytes) -> Optional[str]:
+    if (img_hash := hashlib.sha256(image).hexdigest()) in cached_images:
+        return cached_images[img_hash]
+    return None
+
+
+def update_image_cache(image: bytes, summary: str):
+    cached_images[hashlib.sha256(image).hexdigest()] = summary
+
+
 async def get_image_summary(segment: Image, event: Event, bot: Bot, state: T_State) -> str:
     if not isinstance(image := await image_fetch(event, bot, state, segment), bytes):
         return "暂无信息"
-
+    if (cache := find_image_cache(image)) is not None:
+        return cache
     image_base64 = base64.b64encode(image).decode("utf-8")
     messages = [
         generate_message(await lang.text("prompt_group.image_describe_system", event.get_user_id()), "system"),
@@ -123,13 +138,19 @@ async def get_image_summary(segment: Image, event: Event, bot: Bot, state: T_Sta
     ]
 
     try:
-        summary = await fetch_messages(
-            messages,
-            event.get_user_id(),
-            model="google/gemini-2.5-flash",
-            extra_headers={"X-Title": "Moonlark - Image Describe", "HTTP-Referer": "https://image.moonlark.itcdt.top"},
-        )
-        return summary.strip()
+        summary = (
+            await fetch_messages(
+                messages,
+                event.get_user_id(),
+                model="google/gemini-2.5-flash",
+                extra_headers={
+                    "X-Title": "Moonlark - Image Describe",
+                    "HTTP-Referer": "https://image.moonlark.itcdt.top",
+                },
+            )
+        ).strip()
+        update_image_cache(image, summary)
+        return summary
     except Exception:
         logger.warning(traceback.format_exc())
         return "暂无信息"
@@ -143,10 +164,15 @@ async def parse_message_to_string(message: UniMessage, event: Event, bot: Bot, s
         elif isinstance(segment, At):
             user = await get_user(segment.target)
             if (not user.has_nickname()) and (user_info := await get_user_info(bot, event, segment.target)):
-                nickname = user_info.user_displayname
+                nickname = user_info.user_displayname or user_info.user_name
             else:
                 nickname = user.get_nickname()
             str_msg += f"@{nickname}"
         elif isinstance(segment, Image):
             str_msg += f"[图片: {await get_image_summary(segment, event, bot, state)}]"
+        elif isinstance(segment, Reply) and segment.msg is not None:
+            if isinstance(segment.msg, UniMessage):
+                str_msg += f"[回复: {await parse_message_to_string(segment.msg, event, bot, state)}]"
+            else:
+                str_msg += f"[回复: {segment.msg}]"
     return str_msg
