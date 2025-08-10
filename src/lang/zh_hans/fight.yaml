@@ -97,3 +97,12 @@ cmd:
     empty: "\n{}. 空"
     success: 队伍成员调整完成！
     wrong_pos: 失败：包含错误的位置
+no_team: 您没有设置您的队伍，请使用 {__prefix__}team 设置。
+result:
+  time_ran_out: 时间耗尽
+  player_team_win: 胜利
+  main: 战斗结束：{}。
+  monster_win:
+    - 战败
+    - 胜败乃兵家常事，但是下一次，我们会赢回来的
+    - 我方已消耗殆尽，全速撤退

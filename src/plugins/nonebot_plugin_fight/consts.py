@@ -15,4 +15,4 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
-from . import character, team, sandbox
+PLAYER_TEAM_CHARACTER_COUNT_LIMIT = 3
