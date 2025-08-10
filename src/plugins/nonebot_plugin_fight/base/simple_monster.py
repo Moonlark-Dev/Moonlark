@@ -33,8 +33,8 @@ def monster_hp(lv: int) -> float:
 class SimpleMonster(Monomer, ABC):
 
     def __init__(self, team: Team, level: int) -> None:
-        super().__init__(team)
         self.level = level
+        super().__init__(team)
         self.health = self.get_max_hp()
         self.attack = self.get_attack_value()
 

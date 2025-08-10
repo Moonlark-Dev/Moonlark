@@ -45,7 +45,7 @@ async def get_player_team(user_id: str, scheduler: Scheduler, matcher: Matcher, 
         team_data = json.loads(result.character_list)
     team = ControllableTeam(scheduler, matcher, user_id, team_id)
     for i in range(PLAYER_TEAM_CHARACTER_COUNT_LIMIT):
-        if team_data[i] is not None:
+        if team_data.get(str(i)) is not None:
             await get_character_by_data(team, team_data[i])
     return team
 
