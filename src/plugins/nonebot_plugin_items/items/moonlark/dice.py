@@ -79,17 +79,14 @@ class Dice(UseableItem):
                 stack.user_id,
                 count,
                 await self.lang.text(f"dice.result_multi._{type_id}", stack.user_id),
-                vim
+                vim,
             )
-
 
     def setupLang(self) -> None:
         self.lang = lang
 
     async def getDefaultName(self, stack: ItemStack) -> str:
         return await self.getText("dice.name", stack.user_id)
-
-
 
 
 LOCATION = ResourceLocation("moonlark", "dice")
