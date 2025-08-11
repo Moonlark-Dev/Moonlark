@@ -31,6 +31,7 @@ action_text:
     
     - COST: {}
     - CHARGE: {}/{} ({}%)
+    {extra}
     
     |     | 技能              | 费用 |
     |:---:|-------------------|-----|
@@ -65,7 +66,7 @@ harm_type:
   _2: F
   _3: E
   _4: I
-  _5: M
+  _5: S
   _6: R
   _7: N
 hp:
@@ -76,8 +77,48 @@ action:
   myteam: 我方队伍 (按行动顺序排序)
   title: 行动面板
   invalid: 无效输入，请检查输入内容
+monsters:
+  target_bot: 标靶机器
 characters:
   delta:
     name: 德尔塔 (测试)
+  moonlark:
+    name: Moonlark
 buff: ''
 time_remain: '剩余时间: {}s'
+cmd:
+  c:
+    main: '角色列表: {}'
+    line: "\n{}. {} (Lv{} HP:{}%)"
+    title: 角色详情 - {}
+  t:
+    title: '队伍成员: {}'
+    none: 当前队伍中没有成员。
+    empty: "\n{}. 空"
+    success: 队伍成员调整完成！
+    wrong_pos: 失败：包含错误的位置
+no_team: 您没有设置您的队伍，或当前设置的队伍无法战斗，请使用 {__prefix__}team 调整。
+result:
+  time_ran_out: 时间耗尽
+  player_team_win: 胜利
+  main: 战斗结束：{}。
+  monster_win:
+    - 战败
+    - 胜败乃兵家常事，但是下一次，我们会赢回来的
+    - 我方已消耗殆尽，全速撤退
+help_character:
+  description: 成员列表
+  details: （该功能仍在测试中）查看当前拥有的角色。
+  usage1: character (查看角色列表)
+  usage2: character <index> (查看角色详情)
+
+help_team:
+  description: 设置战斗队伍
+  details: （该功能仍在测试中）设置战斗有关模块使用的队伍，配合 character 指令使用。
+  usage1: team (查看当前队伍)
+  usage2: team set <位置> <index> (成员入队)
+
+help_sandbox:
+  description: 战斗沙箱
+  details: （该功能仍在测试中）启动战斗沙箱，进行模拟战斗。
+  usage1: sandbox [标靶等级] [标靶数量]

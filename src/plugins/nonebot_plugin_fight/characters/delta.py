@@ -23,7 +23,7 @@ from ..types import CharacterData, AttackTypes, SkillInfo
 class Delta(Character):
 
     def get_weakness_type(self) -> AttackTypes:
-        return AttackTypes.me
+        return AttackTypes.sense
 
     async def get_skill_info_list(self) -> list[SkillInfo]:
         return [
