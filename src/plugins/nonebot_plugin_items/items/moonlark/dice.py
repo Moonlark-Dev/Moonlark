@@ -99,4 +99,4 @@ def get_location() -> ResourceLocation:
     return LOCATION
 
 
-ITEMS.registry(LOCATION, Dice(get_properties(False, 1, 64)))
+ITEMS.registry(LOCATION, Dice(get_properties(True, 1, 64, True)))
