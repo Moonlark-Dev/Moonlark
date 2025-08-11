@@ -15,7 +15,4 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
-
-from .test_bot import TestBot
-
-MONOMERS = [TestBot]
+from . import character, team, sandbox
