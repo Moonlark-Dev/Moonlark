@@ -1,0 +1,16 @@
+help:
+  description:
+  details:
+  usage1:
+  usage2:
+  usage3:
+main:
+  info:
+sell:
+  index_error:
+  item_not_enough:
+  wrong_count:
+  not_soldable:
+  done:
+buy:
+  finish:
