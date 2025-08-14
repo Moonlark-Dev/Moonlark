@@ -1,0 +1,3 @@
+plugin: market
+commands:
+  market: help;3;game

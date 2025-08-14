@@ -22,7 +22,6 @@ plugins = [
     "nonebot_plugin_waiter",
     "nonebot_plugin_bilichat",
     "nonebot_plugin_picmcstat",
-    "nonebot_plugin_fakepic",
 
     # Custom plugins
     "nonebot_plugin_access",
@@ -82,7 +81,8 @@ plugins = [
     "nonebot_plugin_cave_image_prompt",
     "nonebot_plugin_hkrpg_calendar",
     "nonebot_plugin_ba_calendar",
-    "nonebot_plugin_everyday_wife"
+    "nonebot_plugin_everyday_wife",
+    "nonebot_plugin_market"
 ]
 plugin_dirs = []
 builtin_plugins = []

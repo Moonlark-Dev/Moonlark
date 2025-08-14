@@ -304,18 +304,6 @@ files = [
 chardet = ">=3.0.2"
 
 [[package]]
-name = "cachetools"
-version = "5.5.2"
-description = "Extensible memoizing collections and decorators"
-optional = false
-python-versions = ">=3.7"
-groups = ["main"]
-files = [
-    {file = "cachetools-5.5.2-py3-none-any.whl", hash = "sha256:d26a22bcc62eb95c3beabd9f1ee5e820d3d2704fe2967cbe350e20c8ffcd3f0a"},
-    {file = "cachetools-5.5.2.tar.gz", hash = "sha256:1a661caa9175d26759571b2e19580f9d6393969e5dfca11fdb1f947a23e640d4"},
-]
-
-[[package]]
 name = "cashews"
 version = "7.4.1"
 description = "cache tools with async power"
@@ -925,21 +913,6 @@ doq = ["aioquic (>=1.0.0)"]
 idna = ["idna (>=3.7)"]
 trio = ["trio (>=0.23)"]
 wmi = ["wmi (>=1.5.1)"]
-
-[[package]]
-name = "emoji"
-version = "2.14.1"
-description = "Emoji for Python"
-optional = false
-python-versions = ">=3.7"
-groups = ["main"]
-files = [
-    {file = "emoji-2.14.1-py3-none-any.whl", hash = "sha256:35a8a486c1460addb1499e3bf7929d3889b2e2841a57401903699fef595e942b"},
-    {file = "emoji-2.14.1.tar.gz", hash = "sha256:f8c50043d79a2c1410ebfae833ae1868d5941a67a6cd4d18377e2eb0bd79346b"},
-]
-
-[package.extras]
-dev = ["coverage", "pytest (>=7.4.4)"]
 
 [[package]]
 name = "exceptiongroup"
@@ -2044,14 +2017,14 @@ traitlets = "*"
 
 [[package]]
 name = "mcstatus"
-version = "12.0.3"
+version = "12.0.5"
 description = "A library to query Minecraft Servers for their status and capabilities."
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "mcstatus-12.0.3-py3-none-any.whl", hash = "sha256:823f2ec2120cedb8adb1625868fccb4353fb92de02fcc592c044deed02921968"},
-    {file = "mcstatus-12.0.3.tar.gz", hash = "sha256:67a204033aa09065490766e6ff98342617f57e4b4d4bf59483187aa2b3c6578a"},
+    {file = "mcstatus-12.0.5-py3-none-any.whl", hash = "sha256:24b99acdb06687eac3851b797c8af4a23f0b1bed81ecd33897b12922e456d116"},
+    {file = "mcstatus-12.0.5.tar.gz", hash = "sha256:db7721ef6be1de67509251fff27db86abba48f9794145587adb3f66de57faef5"},
 ]
 
 [package.dependencies]
@@ -2644,29 +2617,29 @@ resolved_reference = "b9f843fe913e5a1c8f858a43402993f286604969"
 
 [[package]]
 name = "nonebot-plugin-picstatus"
-version = "2.1.3.post1"
+version = "2.1.4"
 description = "A NoneBot2 plugin generates a picture which shows the status of current device"
 optional = false
-python-versions = "<4.0,>=3.9"
+python-versions = "<4.0,>=3.10"
 groups = ["main"]
 files = [
-    {file = "nonebot_plugin_picstatus-2.1.3.post1-py3-none-any.whl", hash = "sha256:1385fa91b4ebbd7d733836fbe5b6eaeba43f8055ebf03997272d6ca2dbf3afdc"},
-    {file = "nonebot_plugin_picstatus-2.1.3.post1.tar.gz", hash = "sha256:4fc4421550c30446cf0bf130569c571789bfef916a3652a4cd7fc6074d119528"},
+    {file = "nonebot_plugin_picstatus-2.1.4-py3-none-any.whl", hash = "sha256:14c1b76b8ae283f86af47923d61e33c3492d5640250e084808e3d09bc6ba14f5"},
+    {file = "nonebot_plugin_picstatus-2.1.4.tar.gz", hash = "sha256:1ca69f2fc6d129836517eb4eba9a233ccdaeb948eebb0a70a385f58bf15bc99a"},
 ]
 
 [package.dependencies]
-anyio = ">=4.6.2.post1"
-cookit = {version = ">=0.8.2", extras = ["jinja", "loguru", "playwright", "pydantic"]}
-httpx = ">=0.27.2"
-jinja2 = ">=3.1.4"
-nonebot-plugin-alconna = ">=0.54.0"
+anyio = ">=4.10.0"
+cookit = {version = ">=0.13.0", extras = ["jinja", "loguru", "playwright", "pydantic"]}
+httpx = ">=0.28.1"
+jinja2 = ">=3.1.6"
+nonebot-plugin-alconna = ">=0.59.4"
 nonebot-plugin-apscheduler = ">=0.5.0"
-nonebot-plugin-htmlrender = ">=0.4.0"
-nonebot-plugin-userinfo = ">=0.2.6"
-nonebot2 = ">=2.4.0"
-psutil = ">=6.1.0"
+nonebot-plugin-htmlrender = ">=0.6.6"
+nonebot-plugin-uninfo = ">=0.9.0"
+nonebot2 = ">=2.4.3"
+psutil = ">=7.0.0"
 py-cpuinfo = ">=9.0.0"
-yarl = ">=1.18.3"
+yarl = ">=1.20.1"
 
 [[package]]
 name = "nonebot-plugin-sentry"
@@ -2716,25 +2689,6 @@ files = [
 [package.dependencies]
 importlib-metadata = ">=7.2.1"
 nonebot2 = ">=2.4.2"
-
-[[package]]
-name = "nonebot-plugin-userinfo"
-version = "0.2.6"
-description = "Nonebot2 用户信息获取插件"
-optional = false
-python-versions = "<4.0,>=3.9"
-groups = ["main"]
-files = [
-    {file = "nonebot_plugin_userinfo-0.2.6-py3-none-any.whl", hash = "sha256:79d2481af08a5ec77cf171c685eecd14eaf1ce4d5a1ec1fd22fbb0b85e06c260"},
-    {file = "nonebot_plugin_userinfo-0.2.6.tar.gz", hash = "sha256:0d1ce897e94a9d4c0b5300bc8f239a4676f9bb62c78a14e0f0527e5398ffc840"},
-]
-
-[package.dependencies]
-cachetools = ">=5.0.0,<6.0.0"
-emoji = ">=2.0.0,<3.0.0"
-httpx = ">=0.20.0,<1.0.0"
-nonebot2 = ">=2.3.0,<3.0.0"
-strenum = ">=0.4.15,<0.5.0"
 
 [[package]]
 name = "nonebot-plugin-waiter"
@@ -4560,7 +4514,9 @@ groups = ["main"]
 files = [
     {file = "SQLAlchemy-2.0.43-cp37-cp37m-macosx_10_9_x86_64.whl", hash = "sha256:21ba7a08a4253c5825d1db389d4299f64a100ef9800e4624c8bf70d8f136e6ed"},
     {file = "SQLAlchemy-2.0.43-cp37-cp37m-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:11b9503fa6f8721bef9b8567730f664c5a5153d25e247aadc69247c4bc605227"},
+    {file = "SQLAlchemy-2.0.43-cp37-cp37m-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:07097c0a1886c150ef2adba2ff7437e84d40c0f7dcb44a2c2b9c905ccfc6361c"},
     {file = "SQLAlchemy-2.0.43-cp37-cp37m-musllinux_1_2_aarch64.whl", hash = "sha256:cdeff998cb294896a34e5b2f00e383e7c5c4ef3b4bfa375d9104723f15186443"},
+    {file = "SQLAlchemy-2.0.43-cp37-cp37m-musllinux_1_2_x86_64.whl", hash = "sha256:bcf0724a62a5670e5718957e05c56ec2d6850267ea859f8ad2481838f889b42c"},
     {file = "SQLAlchemy-2.0.43-cp37-cp37m-win32.whl", hash = "sha256:c697575d0e2b0a5f0433f679bda22f63873821d991e95a90e9e52aae517b2e32"},
     {file = "SQLAlchemy-2.0.43-cp37-cp37m-win_amd64.whl", hash = "sha256:d34c0f6dbefd2e816e8f341d0df7d4763d382e3f452423e752ffd1e213da2512"},
     {file = "sqlalchemy-2.0.43-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:70322986c0c699dca241418fcf18e637a4369e0ec50540a2b907b184c8bca069"},
@@ -4595,12 +4551,20 @@ files = [
     {file = "sqlalchemy-2.0.43-cp313-cp313-musllinux_1_2_x86_64.whl", hash = "sha256:9df7126fd9db49e3a5a3999442cc67e9ee8971f3cb9644250107d7296cb2a164"},
     {file = "sqlalchemy-2.0.43-cp313-cp313-win32.whl", hash = "sha256:7f1ac7828857fcedb0361b48b9ac4821469f7694089d15550bbcf9ab22564a1d"},
     {file = "sqlalchemy-2.0.43-cp313-cp313-win_amd64.whl", hash = "sha256:971ba928fcde01869361f504fcff3b7143b47d30de188b11c6357c0505824197"},
+    {file = "sqlalchemy-2.0.43-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:4e6aeb2e0932f32950cf56a8b4813cb15ff792fc0c9b3752eaf067cfe298496a"},
+    {file = "sqlalchemy-2.0.43-cp38-cp38-macosx_11_0_arm64.whl", hash = "sha256:61f964a05356f4bca4112e6334ed7c208174511bd56e6b8fc86dad4d024d4185"},
     {file = "sqlalchemy-2.0.43-cp38-cp38-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:46293c39252f93ea0910aababa8752ad628bcce3a10d3f260648dd472256983f"},
+    {file = "sqlalchemy-2.0.43-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:136063a68644eca9339d02e6693932116f6a8591ac013b0014479a1de664e40a"},
     {file = "sqlalchemy-2.0.43-cp38-cp38-musllinux_1_2_aarch64.whl", hash = "sha256:6e2bf13d9256398d037fef09fd8bf9b0bf77876e22647d10761d35593b9ac547"},
+    {file = "sqlalchemy-2.0.43-cp38-cp38-musllinux_1_2_x86_64.whl", hash = "sha256:44337823462291f17f994d64282a71c51d738fc9ef561bf265f1d0fd9116a782"},
     {file = "sqlalchemy-2.0.43-cp38-cp38-win32.whl", hash = "sha256:13194276e69bb2af56198fef7909d48fd34820de01d9c92711a5fa45497cc7ed"},
     {file = "sqlalchemy-2.0.43-cp38-cp38-win_amd64.whl", hash = "sha256:334f41fa28de9f9be4b78445e68530da3c5fa054c907176460c81494f4ae1f5e"},
+    {file = "sqlalchemy-2.0.43-cp39-cp39-macosx_10_9_x86_64.whl", hash = "sha256:ceb5c832cc30663aeaf5e39657712f4c4241ad1f638d487ef7216258f6d41fe7"},
+    {file = "sqlalchemy-2.0.43-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:11f43c39b4b2ec755573952bbcc58d976779d482f6f832d7f33a8d869ae891bf"},
     {file = "sqlalchemy-2.0.43-cp39-cp39-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:413391b2239db55be14fa4223034d7e13325a1812c8396ecd4f2c08696d5ccad"},
+    {file = "sqlalchemy-2.0.43-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:c379e37b08c6c527181a397212346be39319fb64323741d23e46abd97a400d34"},
     {file = "sqlalchemy-2.0.43-cp39-cp39-musllinux_1_2_aarch64.whl", hash = "sha256:03d73ab2a37d9e40dec4984d1813d7878e01dbdc742448d44a7341b7a9f408c7"},
+    {file = "sqlalchemy-2.0.43-cp39-cp39-musllinux_1_2_x86_64.whl", hash = "sha256:8cee08f15d9e238ede42e9bbc1d6e7158d0ca4f176e4eab21f88ac819ae3bd7b"},
     {file = "sqlalchemy-2.0.43-cp39-cp39-win32.whl", hash = "sha256:b3edaec7e8b6dc5cd94523c6df4f294014df67097c8217a89929c99975811414"},
     {file = "sqlalchemy-2.0.43-cp39-cp39-win_amd64.whl", hash = "sha256:227119ce0a89e762ecd882dc661e0aa677a690c914e358f0dd8932a2e8b2765b"},
     {file = "sqlalchemy-2.0.43-py3-none-any.whl", hash = "sha256:1681c21dd2ccee222c2fe0bef671d1aef7c504087c9c4e800371cfcc8ac966fc"},
@@ -5091,14 +5055,14 @@ test = ["aiohttp (>=3.10.5)", "flake8 (>=5.0,<6.0)", "mypy (>=0.800)", "psutil",
 
 [[package]]
 name = "virtualenv"
-version = "20.33.1"
+version = "20.34.0"
 description = "Virtual Python Environment builder"
 optional = false
 python-versions = ">=3.8"
 groups = ["dev"]
 files = [
-    {file = "virtualenv-20.33.1-py3-none-any.whl", hash = "sha256:07c19bc66c11acab6a5958b815cbcee30891cd1c2ccf53785a28651a0d8d8a67"},
-    {file = "virtualenv-20.33.1.tar.gz", hash = "sha256:1b44478d9e261b3fb8baa5e74a0ca3bc0e05f21aa36167bf9cbf850e542765b8"},
+    {file = "virtualenv-20.34.0-py3-none-any.whl", hash = "sha256:341f5afa7eee943e4984a9207c025feedd768baff6753cd660c857ceb3e36026"},
+    {file = "virtualenv-20.34.0.tar.gz", hash = "sha256:44815b2c9dee7ed86e387b842a84f20b93f7f417f95886ca1996a72a4138eb1a"},
 ]
 
 [package.dependencies]
