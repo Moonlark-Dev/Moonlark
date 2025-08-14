@@ -13,6 +13,7 @@ class MarketItem(Model):
     user_id: Mapped[str] = mapped_column(String(128))
     item_data: Mapped[bytes]
 
+
 class SellLog(Model):
     item_namespace: Mapped[str] = mapped_column(String(64), primary_key=True)
     sold_count: Mapped[int]

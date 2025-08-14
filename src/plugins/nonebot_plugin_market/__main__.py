@@ -13,11 +13,13 @@ from sqlalchemy import select
 
 
 lang = LangHelper()
-matcher = on_alconna(Alconna(
-    "market",
-    Subcommand("sell", Args["bag_index", int], Args["count", int, 0], Args["price_diff", str, ""]),
-    Subcommand("buy", Args["name", str], Args["count", int, 1])
-))
+matcher = on_alconna(
+    Alconna(
+        "market",
+        Subcommand("sell", Args["bag_index", int], Args["count", int, 0], Args["price_diff", str, ""]),
+        Subcommand("buy", Args["name", str], Args["count", int, 1]),
+    )
+)
 
 
 async def get_average_price(item_data: ItemStack, session: AsyncSession) -> float:
@@ -27,8 +29,6 @@ async def get_average_price(item_data: ItemStack, session: AsyncSession) -> floa
     if (p := item_data.getNbt("price")) is not None:
         return p
     raise TypeError
-    
-
 
 
 @matcher.assign("$main")
@@ -36,6 +36,7 @@ async def _(user_id: str = get_user_id()) -> None:
     async with get_session() as session:
         count = len((await session.scalars(select(MarketItem).where(MarketItem.remain_count > 0))).all())
     await lang.finish("main.info", user_id, count)
+
 
 @matcher.assign("sell")
 async def _(bag_index: int, count: int, price_diff: str, user_id: str = get_user_id()) -> None:
@@ -60,22 +61,24 @@ async def _(bag_index: int, count: int, price_diff: str, user_id: str = get_user
             price = round(avg_price * (1 - 0.01 * min(5, len(price_diff))), 2)
         else:
             price = avg_price
-        session.add(MarketItem(
-            user_id=user_id,
-            remain_count=count,
-            item_data=json.dumps(item.stack.data).encode("utf-8"),
-            price=price,
-            item_namespace=str(item.stack.item.getLocation())
-        ))
+        session.add(
+            MarketItem(
+                user_id=user_id,
+                remain_count=count,
+                item_data=json.dumps(item.stack.data).encode("utf-8"),
+                price=price,
+                item_namespace=str(item.stack.item.getLocation()),
+            )
+        )
         await session.commit()
     item.stack.count -= count
     await lang.finish("sell.done", user_id, item.stack.getName(), count, price)
-    
 
 
 async def get_market_item(user_id: str, data: MarketItem) -> ItemStack:
     location = get_location_by_id(data.item_namespace)
     return await get_item(location, user_id, data.remain_count, json.loads(data.item_data))
+
 
 async def get_market_items_by_name(user_id: str, session: AsyncSession, name: str) -> list[MarketItem]:
     items = []
@@ -85,10 +88,12 @@ async def get_market_items_by_name(user_id: str, session: AsyncSession, name: st
             items.append(item_data)
     return items
 
+
 async def give_market_item(count: int, item_data: MarketItem, user_id: str) -> None:
     item = await get_market_item(user_id, item_data)
     item.count = count
     await give_item(user_id, item)
+
 
 @matcher.assign("buy")
 async def _(name: str, count: int, user_id: str = get_user_id()) -> None:
@@ -115,6 +120,3 @@ async def _(name: str, count: int, user_id: str = get_user_id()) -> None:
                 used_vimcoin += p
         await session.commit()
     await lang.finish("buy.finish", user_id, p, bought_count, name)
-
-                
-
