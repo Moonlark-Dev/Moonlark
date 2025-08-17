@@ -1,8 +1,8 @@
 """add timestamp to GroupMessage
 
-迁移 ID: add_timestamp_to_groupmessage
+迁移 ID: fb34943a3f97
 父迁移: 36722c1b0659
-创建时间: 2025-08-17 12:00:00.000000
+创建时间: 2025-08-17 12:38:00.000000
 
 """
 
@@ -15,7 +15,7 @@ import sqlalchemy as sa
 from datetime import datetime
 
 
-revision: str = "add_timestamp_to_groupmessage"
+revision: str = "fb34943a3f97"
 down_revision: str | Sequence[str] | None = "36722c1b0659"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None

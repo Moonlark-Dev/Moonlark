@@ -73,8 +73,8 @@ async def handle_main(
     messages = ""
     for message in result[::-1]:
         if style in ["broadcast", "bc"]:
-            # Format timestamp to Beijing time for broadcast style
-            timestamp_str = message.timestamp.strftime("%H:%M:%S")
+            # Format timestamp to include both date and time for broadcast style
+            timestamp_str = message.timestamp.strftime("%Y-%m-%d %H:%M:%S")
             messages += f"[{timestamp_str}] [{message.sender_nickname}] {message.message}\n"
         else:
             messages += f"[{message.sender_nickname}] {message.message}\n"
