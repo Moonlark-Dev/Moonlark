@@ -1,7 +1,7 @@
 from datetime import datetime
 from nonebot_plugin_orm import Model
 from sqlalchemy.orm import mapped_column, Mapped
-from sqlalchemy import String, Text, DateTime
+from sqlalchemy import String, Text
 
 
 class GroupMessage(Model):
@@ -9,4 +9,4 @@ class GroupMessage(Model):
     message: Mapped[str] = mapped_column(Text())
     sender_nickname: Mapped[str] = mapped_column(String(128))
     group_id: Mapped[str] = mapped_column(String(128))
-    timestamp: Mapped[datetime] = mapped_column(DateTime)
+    timestamp: Mapped[datetime] = mapped_column(default_factory=datetime.now)
