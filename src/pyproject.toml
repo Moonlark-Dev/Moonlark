@@ -30,6 +30,7 @@ nonebot-plugin-htmlrender = "^0.6.6"
 nonebot-plugin-alconna = "^0.59.2"
 nonebot-plugin-orm = "^0.8.0"
 nonebot-plugin-session = "^0.3.2"
+nonebot-plugin-userinfo = "^0.2.6"
 nonebot-adapter-qq = {git = "https://github.com/Moonlark-Dev/adapter-qq"}
 
 

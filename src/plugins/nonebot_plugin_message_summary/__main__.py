@@ -72,7 +72,12 @@ async def handle_main(
     ).all()
     messages = ""
     for message in result[::-1]:
-        messages += f"[{message.sender_nickname}] {message.message}\n"
+        if style in ["broadcast", "bc"]:
+            # Format timestamp to include both date and time for broadcast style
+            timestamp_str = message.timestamp.strftime("%Y-%m-%d %H:%M:%S")
+            messages += f"[{timestamp_str}] [{message.sender_nickname}] {message.message}\n"
+        else:
+            messages += f"[{message.sender_nickname}] {message.message}\n"
     if style in ["broadcast", "bc"]:
         time_str = datetime.now(timezone(timedelta(hours=8))).strftime("%Y-%m-%d %H:%M:%S")
         summary_string = await fetch_messages(
