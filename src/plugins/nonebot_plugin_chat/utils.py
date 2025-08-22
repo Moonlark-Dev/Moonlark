@@ -74,15 +74,12 @@ async def generate_memory(user_id: str) -> None:
     async with get_session() as session:
         messages = await get_history(session, user_id)
         message_string = generate_message_string(messages)
-        memory = await fetch_messages(
-            [
-                generate_message(
-                    await lang.text("prompt.memory", user_id, await get_memory(user_id, session)), "system"
-                ),
-                generate_message(await lang.text("prompt.memory_2", user_id, message_string, "user")),
-            ],
-            user_id,
-        )
+        memory = await fetch_messages([
+            generate_message(
+                await lang.text("prompt.memory", user_id, await get_memory(user_id, session)), "system"
+            ),
+            generate_message(await lang.text("prompt.memory_2", user_id, message_string, "user")),
+        ])
         user_data = await session.get(ChatUser, {"user_id": user_id})
         if user_data is None:
             user_data = ChatUser(user_id=user_id, memory="None", latest_chat=datetime.now())
@@ -139,15 +136,10 @@ async def get_image_summary(segment: Image, event: Event, bot: Bot, state: T_Sta
 
     try:
         summary = (
-            await fetch_messages(
-                messages,
-                event.get_user_id(),
-                model="google/gemini-2.5-flash",
-                extra_headers={
-                    "X-Title": "Moonlark - Image Describe",
-                    "HTTP-Referer": "https://image.moonlark.itcdt.top",
-                },
-            )
+            await fetch_messages(messages, model="google/gemini-2.5-flash", extra_headers={
+                "X-Title": "Moonlark - Image Describe",
+                "HTTP-Referer": "https://image.moonlark.itcdt.top",
+            })
         ).strip()
         update_image_cache(image, summary)
         return summary

@@ -58,7 +58,7 @@ async def _(event: Event, bot: Bot, session: async_scoped_session, user_id: str 
         return
     history = (await get_history(session, user_id)) or await generate_history(user_id, session)
     history.append(generate_message(message, "user"))
-    reply = await fetch_messages(history, user_id)
+    reply = await fetch_messages(history)
     for line in reply.splitlines():
         if line:
             await asyncio.sleep(random.random() / 20 * len(line))

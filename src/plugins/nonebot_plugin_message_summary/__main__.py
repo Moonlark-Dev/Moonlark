@@ -75,26 +75,18 @@ async def handle_main(
         messages += f"[{message.sender_nickname}] {message.message}\n"
     if style in ["broadcast", "bc"]:
         time_str = datetime.now(timezone(timedelta(hours=8))).strftime("%Y-%m-%d %H:%M:%S")
-        summary_string = await fetch_messages(
-            [
-                generate_message(await lang.text("prompt2s", user_id, time_str), "system"),
-                generate_message(await lang.text("prompt2u", user_id, messages), "user"),
-            ],
-            user_id,
-            model="gemini-2.5-pro",
-        )
+        summary_string = await fetch_messages([
+            generate_message(await lang.text("prompt2s", user_id, time_str), "system"),
+            generate_message(await lang.text("prompt2u", user_id, messages), "user"),
+        ], model="gemini-2.5-pro")
         await summary.finish(summary_string)
     elif style == "topic":
         summary_string = await fetch_messages(
-            [generate_message(await lang.text("prompt_topic", user_id), "system"), generate_message(messages, "user")],
-            user_id,
-        )
+            [generate_message(await lang.text("prompt_topic", user_id), "system"), generate_message(messages, "user")])
         await summary.finish(UniMessage().image(raw=await md_to_pic(summary_string)))
     else:
         summary_string = await fetch_messages(
-            [generate_message(await lang.text("prompt", user_id), "system"), generate_message(messages, "user")],
-            user_id,
-        )
+            [generate_message(await lang.text("prompt", user_id), "system"), generate_message(messages, "user")])
         await summary.finish(UniMessage().image(raw=await md_to_pic(summary_string)))
 
 

@@ -43,13 +43,10 @@ def get_verify_function(answer: str, user_id: str) -> Callable[[str], Awaitable[
     logger.debug(answer)
 
     async def verify(string: str) -> bool:
-        reply = await fetch_messages(
-            [
-                generate_message(AI_PROMPT_SYSTEM, "system"),
-                generate_message(AI_PROMPT_TEMPLATE.format(answer, string), "user"),
-            ],
-            user_id,
-        )
+        reply = await fetch_messages([
+            generate_message(AI_PROMPT_SYSTEM, "system"),
+            generate_message(AI_PROMPT_TEMPLATE.format(answer, string), "user"),
+        ])
         return reply == "true"
 
     return verify

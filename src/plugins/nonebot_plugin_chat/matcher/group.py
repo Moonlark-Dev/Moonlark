@@ -154,17 +154,13 @@ class Group:
                 messages += f'[{message["send_time"].strftime("%H:%M")}][Moonlark]: {message["content"]}\n'
             else:
                 messages += f"[{message['send_time'].strftime('%H:%M')}][{message['nickname']}]: {message['content']}\n"
-        memory = await fetch_messages(
-            [
-                generate_message(await lang.text("prompt_group.memory", self.user_id), "system"),
-                generate_message(
-                    await lang.text("prompt_group.memory_2", self.user_id, await self.get_memory(), messages), "user"
-                ),
-            ],
-            user_id,
-            model="moonshotai/kimi-k2:free",
-            extra_headers={"X-Title": "Moonlark - Memory", "HTTP-Referer": "https://memory.moonlark.itcdt.top"},
-        )
+        memory = await fetch_messages([
+            generate_message(await lang.text("prompt_group.memory", self.user_id), "system"),
+            generate_message(
+                await lang.text("prompt_group.memory_2", self.user_id, await self.get_memory(), messages), "user"
+            ),
+        ], model="moonshotai/kimi-k2:free",
+            extra_headers={"X-Title": "Moonlark - Memory", "HTTP-Referer": "https://memory.moonlark.itcdt.top"})
         async with get_session() as session:
             g = await session.get_one(ChatGroup, {"group_id": self.group_id})
             g.memory = memory
@@ -196,11 +192,8 @@ class Group:
 
     async def reply(self, user_id: str) -> bool:
         messages = await self.get_messages()
-        reply = await fetch_messages(
-            messages,
-            user_id,
-            extra_headers={"X-Title": "Moonlark - Chat", "HTTP-Referer": "https://chat.moonlark.itcdt.top"},
-        )
+        reply = await fetch_messages(messages, extra_headers={"X-Title": "Moonlark - Chat",
+                                                              "HTTP-Referer": "https://chat.moonlark.itcdt.top"})
         is_first_message = True
         for line in reply.splitlines():
             if line == ".skip":
