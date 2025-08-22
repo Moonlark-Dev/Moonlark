@@ -41,7 +41,7 @@ from nonebot_plugin_alconna import UniMessage
 
 from nonebot_plugin_larkutils import get_user_id, is_private_message
 from nonebot_plugin_orm import async_scoped_session
-from nonebot_plugin_openai import generate_message, fetch_messages
+from nonebot_plugin_openai import generate_message, fetch_message
 
 from nonebot_plugin_chat.models import SessionMessage, ChatUser
 from nonebot_plugin_chat.utils import get_history, generate_history, generate_memory
@@ -58,7 +58,7 @@ async def _(event: Event, bot: Bot, session: async_scoped_session, user_id: str 
         return
     history = (await get_history(session, user_id)) or await generate_history(user_id, session)
     history.append(generate_message(message, "user"))
-    reply = await fetch_messages(history)
+    reply = await fetch_message(history)
     for line in reply.splitlines():
         if line:
             await asyncio.sleep(random.random() / 20 * len(line))

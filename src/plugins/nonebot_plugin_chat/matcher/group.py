@@ -32,7 +32,7 @@ from nonebot.adapters import Event, Bot, Message
 from nonebot_plugin_larkutils import get_user_id, get_group_id
 from nonebot_plugin_orm import async_scoped_session, get_session
 from nonebot.log import logger
-from nonebot_plugin_openai import generate_message, fetch_messages
+from nonebot_plugin_openai import generate_message, fetch_message
 from nonebot_plugin_openai.types import Messages
 from nonebot_plugin_chat.models import ChatGroup
 from nonebot.matcher import Matcher
@@ -154,7 +154,7 @@ class Group:
                 messages += f'[{message["send_time"].strftime("%H:%M")}][Moonlark]: {message["content"]}\n'
             else:
                 messages += f"[{message['send_time'].strftime('%H:%M')}][{message['nickname']}]: {message['content']}\n"
-        memory = await fetch_messages([
+        memory = await fetch_message([
             generate_message(await lang.text("prompt_group.memory", self.user_id), "system"),
             generate_message(
                 await lang.text("prompt_group.memory_2", self.user_id, await self.get_memory(), messages), "user"
@@ -192,7 +192,7 @@ class Group:
 
     async def reply(self, user_id: str) -> bool:
         messages = await self.get_messages()
-        reply = await fetch_messages(messages, extra_headers={"X-Title": "Moonlark - Chat",
+        reply = await fetch_message(messages, extra_headers={"X-Title": "Moonlark - Chat",
                                                               "HTTP-Referer": "https://chat.moonlark.itcdt.top"})
         is_first_message = True
         for line in reply.splitlines():

@@ -33,7 +33,7 @@ from nonebot_plugin_chat.models import SessionMessage, ChatUser, ChatGroup
 from nonebot_plugin_larkuser import get_user
 from nonebot_plugin_larkutils import get_group_id, get_user_id
 from nonebot_plugin_openai.types import Messages
-from nonebot_plugin_openai.utils.chat import fetch_messages
+from nonebot_plugin_openai.utils.chat import fetch_message
 from nonebot_plugin_openai.utils.message import generate_message
 import hashlib
 
@@ -74,7 +74,7 @@ async def generate_memory(user_id: str) -> None:
     async with get_session() as session:
         messages = await get_history(session, user_id)
         message_string = generate_message_string(messages)
-        memory = await fetch_messages([
+        memory = await fetch_message([
             generate_message(
                 await lang.text("prompt.memory", user_id, await get_memory(user_id, session)), "system"
             ),
@@ -136,7 +136,7 @@ async def get_image_summary(segment: Image, event: Event, bot: Bot, state: T_Sta
 
     try:
         summary = (
-            await fetch_messages(messages, model="google/gemini-2.5-flash", extra_headers={
+            await fetch_message(messages, model="google/gemini-2.5-flash", extra_headers={
                 "X-Title": "Moonlark - Image Describe",
                 "HTTP-Referer": "https://image.moonlark.itcdt.top",
             })
