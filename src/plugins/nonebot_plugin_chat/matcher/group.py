@@ -181,11 +181,37 @@ class MessageProcessor:
         logger.debug(self.openai_messages)
 
     async def generate_system_prompt(self) -> OpenAIMessage:
+        from ..utils.memory_activator import memory_activator
+        
+        # 获取传统记忆
+        base_memory = await self.session.get_memory()
+        
+        # 获取最近几条缓存消息作为上下文
+        recent_messages = self.session.cached_messages[-5:] if self.session.cached_messages else []
+        recent_context = " ".join([msg["content"] for msg in recent_messages])
+        
+        # 激活相关记忆
+        activated_memories = await memory_activator.activate_memories_from_text(
+            user_id=self.session.group_id,
+            target_message=recent_context,
+            max_memories=3
+        )
+        
+        # 构建记忆文本
+        memory_text_parts = [base_memory] if base_memory != "暂无" else []
+        
+        if activated_memories:
+            memory_text_parts.append("相关群组记忆:")
+            for concept, memory_content in activated_memories:
+                memory_text_parts.append(f"- {concept}: {memory_content}")
+        
+        final_memory_text = "\n".join(memory_text_parts) if memory_text_parts else "暂无"
+        
         return generate_message(
             await lang.text(
                 "prompt_group.default",
                 self.session.user_id,
-                await self.session.get_memory(),
+                final_memory_text,
                 datetime.now().isoformat(),
             ),
             "system",
@@ -488,11 +514,44 @@ async def _(
         case "reset-memory":
             if g is not None:
                 g.memory = ""
+                # 同时清理图形记忆
+                from ..utils.memory_graph import cleanup_old_memories
+                await cleanup_old_memories(group_id, forget_ratio=1.0)  # 清除所有记忆
                 await lang.send("command.done", user_id)
             else:
                 await lang.send("command.disabled", user_id)
         case "show-memory":
             await matcher.finish(g.memory)
+        case "cleanup-memory":
+            if g is not None:
+                from ..utils.memory_graph import cleanup_old_memories
+                forgotten_count = await cleanup_old_memories(group_id, forget_ratio=0.3)
+                await lang.send("command.done", user_id)
+                await matcher.finish(f"已清理 {forgotten_count} 条旧记忆")
+            else:
+                await lang.send("command.disabled", user_id)
+        case "show-graph-memory":
+            if g is not None:
+                from ..utils.memory_graph import MemoryGraph
+                memory_graph = MemoryGraph(group_id)
+                await memory_graph.load_from_db()
+                
+                if memory_graph.nodes:
+                    memory_summary = []
+                    for concept, data in list(memory_graph.nodes.items())[:5]:  # 显示前5个
+                        memory_summary.append(f"概念: {concept}")
+                        memory_summary.append(f"记忆: {data['memory_items'][:100]}...")
+                        memory_summary.append(f"权重: {data['weight']:.1f}")
+                        memory_summary.append("---")
+                    
+                    total_nodes = len(memory_graph.nodes)
+                    total_edges = len(memory_graph.edges)
+                    summary_text = f"记忆图统计: {total_nodes}个概念, {total_edges}个连接\n\n" + "\n".join(memory_summary)
+                    await matcher.finish(summary_text)
+                else:
+                    await matcher.finish("暂无图形记忆数据")
+            else:
+                await lang.send("command.disabled", user_id)
         case _:
             await lang.finish("command.no_argv", user_id)
     await session.merge(g)

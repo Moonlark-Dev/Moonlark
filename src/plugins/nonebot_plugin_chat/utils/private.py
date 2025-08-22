@@ -77,7 +77,36 @@ async def get_relevant_memories(user_id: str, text: str, max_memories: int = 3) 
 
 
 async def generate_history(user_id: str, session: async_scoped_session) -> Messages:
-    text = await lang.text("prompt.default", user_id, await get_memory(user_id, session))
+    from .memory_activator import memory_activator
+    
+    # 获取传统记忆
+    base_memory = await get_memory(user_id, session)
+    
+    # 获取最近几条消息作为上下文
+    recent_messages = await session.scalars(
+        select(SessionMessage).where(SessionMessage.user_id == user_id)
+        .order_by(SessionMessage.id_.desc()).limit(5)
+    )
+    recent_context = " ".join([msg.content for msg in recent_messages])
+    
+    # 激活相关记忆
+    activated_memories = await memory_activator.activate_memories_from_text(
+        user_id=user_id,
+        target_message=recent_context,
+        max_memories=3
+    )
+    
+    # 构建记忆文本
+    memory_text_parts = [base_memory] if base_memory != "None" else []
+    
+    if activated_memories:
+        memory_text_parts.append("相关记忆:")
+        for concept, memory_content in activated_memories:
+            memory_text_parts.append(f"- {concept}: {memory_content}")
+    
+    final_memory_text = "\n".join(memory_text_parts) if memory_text_parts else "None"
+    
+    text = await lang.text("prompt.default", user_id, final_memory_text)
     session.add(SessionMessage(user_id=user_id, content=text, role="system"))
     return [generate_message(text, "system")]
 
