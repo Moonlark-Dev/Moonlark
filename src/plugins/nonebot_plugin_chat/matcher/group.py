@@ -34,13 +34,16 @@ from nonebot_plugin_larkutils import get_user_id, get_group_id
 from nonebot_plugin_orm import async_scoped_session, get_session
 from nonebot.log import logger
 from nonebot_plugin_openai import generate_message, fetch_message
-from nonebot_plugin_openai.types import Messages, Message as OpenAIMessage
-from nonebot_plugin_chat.models import ChatGroup
+from nonebot_plugin_openai.types import Messages, Message as OpenAIMessage, AsyncFunction, FunctionParameter
+from nonebot_plugin_openai.utils.chat import MessageFetcher
 from nonebot.matcher import Matcher
 
-from nonebot_plugin_openai.utils.chat import MessageFetcher
+
+
 from ..lang import lang
+from ..models import ChatGroup
 from ..utils import enabled_group, parse_message_to_string
+from ..utils.tools import browse_webpage
 
 BASE_DESIRE = 30
 
@@ -55,6 +58,7 @@ class CachedMessage(TypedDict):
 
 def generate_message_string(message: CachedMessage) -> str:
     return f"[{message['send_time'].strftime('%H:%M')}][{message['nickname']}]: {message['content']}\n"
+
 
 
 class MessageProcessor:
@@ -102,6 +106,8 @@ class MessageProcessor:
 
     async def pop_first_message(self) -> None:
         self.clean_special_message()
+        if len(self.openai_messages) == 0:
+            return
         if self.openai_messages[0]["role"] == "assistant":
             self.openai_messages.pop(0)
         elif self.openai_messages[0]["role"] == "user":
@@ -121,10 +127,23 @@ class MessageProcessor:
     async def generate_reply(self, ignore_desire: bool = False) -> None:
         if not (ignore_desire or random.random() <= self.session.desire * 0.0085):
             return
+        elif len(self.openai_messages) <= 0 or ((not isinstance(self.openai_messages[-1], dict)) and self.openai_messages[-1].role in ["system", "assistant"]):
+            return
         await self.update_system_message()
         fetcher = MessageFetcher(
             self.openai_messages,
             False,
+            functions=[AsyncFunction(
+                func=browse_webpage,
+                description="使用浏览器访问指定 URL 并获取网页内容的 Markdown 格式文本",
+                parameters={
+                    "url": FunctionParameter(
+                        type="string",
+                        description="要访问的网页的 URL 地址",
+                        required=True
+                    )
+                }
+            )],
             extra_headers={
                 "X-Title": "Moonlark - Chat",
                 "HTTP-Referer": "https://chat.moonlark.itcdt.top"
@@ -137,6 +156,7 @@ class MessageProcessor:
     async def process_reply_text(self, reply_text: str) -> None:
         for line in reply_text.splitlines():
             line = line.strip()
+            await asyncio.sleep(len(line) * 0.01)
             if not line:
                 continue
             elif line.startswith(".skip"):

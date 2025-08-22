@@ -1,7 +1,7 @@
-from typing import TypedDict, Awaitable, Callable
-from openai.types.chat import ChatCompletionMessageParam, ChatCompletionToolMessageParam, ChatCompletionMessage, ChatCompletionTool
+from typing import TypedDict, Awaitable, Callable, Any
+from openai.types.chat import ChatCompletionMessageParam, ChatCompletionToolMessageParam, ChatCompletionMessage
 
-Message = ChatCompletionMessageParam | ChatCompletionToolMessageParam | ChatCompletionMessage | ChatCompletionTool
+Message = ChatCompletionMessageParam | ChatCompletionToolMessageParam | ChatCompletionMessage
 Messages = list[Message]
 
 class FunctionParameter(TypedDict):
@@ -14,7 +14,7 @@ class FunctionParameterWithEnum(FunctionParameter):
 
 
 class AsyncFunction(TypedDict):
-    func: Callable[[...], Awaitable[str]]
+    func: Callable[[...], Awaitable[Any]]
     description: str
     parameters: dict[str, FunctionParameter | FunctionParameterWithEnum]
 
