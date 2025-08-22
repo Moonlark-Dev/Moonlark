@@ -34,15 +34,15 @@ def is_internal_url(parsed_url: ParseResult) -> bool:
     scheme = parsed_url.scheme.lower()
 
     # data协议直接返回True
-    if scheme == 'data':
+    if scheme == "data":
         return True
 
     # file协议指向本地文件
-    if scheme == 'file':
+    if scheme == "file":
         return True
 
     # 非网络协议的其他本地协议
-    if scheme in ['javascript', 'vbscript', 'about']:
+    if scheme in ["javascript", "vbscript", "about"]:
         return True
 
     # 获取主机名
@@ -70,7 +70,7 @@ def is_internal_url(parsed_url: ParseResult) -> bool:
             if ip.is_link_local:
                 return True
             # 0.0.0.0/8 - 本网络
-            if str(ip).startswith('0.'):
+            if str(ip).startswith("0."):
                 return True
 
         # IPv6私有地址范围
@@ -96,16 +96,15 @@ def is_internal_url(parsed_url: ParseResult) -> bool:
         hostname_lower = hostname.lower()
 
         # 本地主机名
-        if hostname_lower in ['localhost', 'localhost.localdomain']:
+        if hostname_lower in ["localhost", "localhost.localdomain"]:
             return True
 
         # .local 域名（mDNS）
-        if hostname_lower.endswith('.local'):
+        if hostname_lower.endswith(".local"):
             return True
 
         # .internal 等内部域名
-        if hostname_lower.endswith(('.internal', '.corp', '.home', '.lan')):
+        if hostname_lower.endswith((".internal", ".corp", ".home", ".lan")):
             return True
 
     return False
-

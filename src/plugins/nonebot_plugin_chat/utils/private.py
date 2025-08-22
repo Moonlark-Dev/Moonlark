@@ -61,12 +61,14 @@ async def generate_memory(user_id: str) -> None:
     async with get_session() as session:
         messages = await get_history(session, user_id)
         message_string = generate_message_string(messages)
-        memory = await fetch_message([
-            generate_message(
-                await lang.text("prompt.memory", user_id, await get_memory(user_id, session)), "system"
-            ),
-            generate_message(await lang.text("prompt.memory_2", user_id, message_string, "user")),
-        ])
+        memory = await fetch_message(
+            [
+                generate_message(
+                    await lang.text("prompt.memory", user_id, await get_memory(user_id, session)), "system"
+                ),
+                generate_message(await lang.text("prompt.memory_2", user_id, message_string, "user")),
+            ]
+        )
         user_data = await session.get(ChatUser, {"user_id": user_id})
         if user_data is None:
             user_data = ChatUser(user_id=user_id, memory="None", latest_chat=datetime.now())

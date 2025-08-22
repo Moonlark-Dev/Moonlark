@@ -74,7 +74,6 @@ async def enabled_group(
     )
 
 
-
 async def parse_message_to_string(message: UniMessage, event: Event, bot: Bot, state: T_State) -> str:
     str_msg = ""
     for segment in message:

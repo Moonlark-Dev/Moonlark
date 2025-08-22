@@ -27,10 +27,10 @@ from ..url_validator import is_internal_url
 
 def _clean_markdown(markdown: str) -> str:
     """清理Markdown文本"""
-    markdown = re.sub(r'\n{3,}', '\n\n', markdown)
-    markdown = re.sub(r'[ \t]+$', '', markdown, flags=re.MULTILINE)
-    markdown = re.sub(r'\[([^]]+)]\s+\(([^)]+)\)', r'[\1](\2)', markdown)
-    markdown = re.sub(r'\[([^]]+)]\(\s*\)', r'\1', markdown)
+    markdown = re.sub(r"\n{3,}", "\n\n", markdown)
+    markdown = re.sub(r"[ \t]+$", "", markdown, flags=re.MULTILINE)
+    markdown = re.sub(r"\[([^]]+)]\s+\(([^)]+)\)", r"[\1](\2)", markdown)
+    markdown = re.sub(r"\[([^]]+)]\(\s*\)", r"\1", markdown)
 
     return markdown.strip()
 
@@ -38,13 +38,15 @@ def _clean_markdown(markdown: str) -> str:
 async def _get_meta_content(page, name: str) -> Optional[str]:
     """获取meta标签内容"""
     try:
-        return await page.evaluate(f'''
+        return await page.evaluate(
+            f"""
             () => {{
                 const meta = document.querySelector('meta[name="{name}"]') || 
                             document.querySelector('meta[property="og:{name}"]');
                 return meta ? meta.content : null;
             }}
-        ''')
+        """
+        )
     except Exception as e:
         logger.exception(e)
         return None
@@ -53,12 +55,21 @@ async def _get_meta_content(page, name: str) -> Optional[str]:
 async def _remove_unwanted_elements(page):
     """移除不需要的页面元素"""
     selectors_to_remove = [
-        'nav', 'header', 'footer',  # 导航元素
-        '.advertisement', '.ads', '#ads',  # 广告
-        '.popup', '.modal', '.overlay',  # 弹窗
-        '.cookie-notice', '.gdpr',  # Cookie提示
-        '.sidebar', '.social-share',  # 侧边栏和分享按钮
-        'iframe[src*="youtube"]', 'iframe[src*="google"]'  # 嵌入内容
+        "nav",
+        "header",
+        "footer",  # 导航元素
+        ".advertisement",
+        ".ads",
+        "#ads",  # 广告
+        ".popup",
+        ".modal",
+        ".overlay",  # 弹窗
+        ".cookie-notice",
+        ".gdpr",  # Cookie提示
+        ".sidebar",
+        ".social-share",  # 侧边栏和分享按钮
+        'iframe[src*="youtube"]',
+        'iframe[src*="google"]',  # 嵌入内容
     ]
 
     for selector in selectors_to_remove:
@@ -73,21 +84,26 @@ async def _extract_main_content(page) -> str:
     """提取页面主要内容"""
     # 尝试查找主要内容区域
     main_selectors = [
-        'main', 'article',
+        "main",
+        "article",
         '[role="main"]',
-        '#content', '.content',
-        '#main-content', '.main-content',
-        'body'
+        "#content",
+        ".content",
+        "#main-content",
+        ".main-content",
+        "body",
     ]
 
     for selector in main_selectors:
         try:
-            content = await page.evaluate(f'''
+            content = await page.evaluate(
+                f"""
                 () => {{
                     const el = document.querySelector('{selector}');
                     return el ? el.innerHTML : null;
                 }}
-            ''')
+            """
+            )
             if content:
                 return content
         except Exception as e:
@@ -101,11 +117,13 @@ async def _extract_main_content(page) -> str:
 class AsyncBrowserTool:
     """异步浏览器工具，用于OpenAI函数调用"""
 
-    def __init__(self,
-                 timeout: int = 30000,
-                 wait_until: str = "networkidle",
-                 remove_scripts: bool = True,
-                 remove_styles: bool = True):
+    def __init__(
+        self,
+        timeout: int = 30000,
+        wait_until: str = "networkidle",
+        remove_scripts: bool = True,
+        remove_styles: bool = True,
+    ):
         """
         初始化浏览器工具
 
@@ -144,24 +162,17 @@ class AsyncBrowserTool:
         try:
             parsed = urlparse(url)
             if is_internal_url(parsed):
-                return {
-                "success": False,
-                "url": url,
-                "error": "无法访问本地资源",
-                "content": None
-            }
+                return {"success": False, "url": url, "error": "无法访问本地资源", "content": None}
             if not parsed.scheme:
                 url = f"https://{url}"
             async with get_new_page() as page:
-                await page.set_extra_http_headers({
-                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-                    "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8"
-                })
-                response = await page.goto(
-                    url,
-                    wait_until=self.wait_until,
-                    timeout=self.timeout
+                await page.set_extra_http_headers(
+                    {
+                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                        "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+                    }
                 )
+                response = await page.goto(url, wait_until=self.wait_until, timeout=self.timeout)
                 logger.debug("页面已打开")
                 # 等待页面稳定
                 await page.wait_for_load_state("domcontentloaded", timeout=self.timeout)
@@ -179,7 +190,8 @@ class AsyncBrowserTool:
 
                 if self.remove_styles:
                     await page.evaluate(
-                        "() => { document.querySelectorAll('style, link[rel=\"stylesheet\"]').forEach(el => el.remove()) }")
+                        "() => { document.querySelectorAll('style, link[rel=\"stylesheet\"]').forEach(el => el.remove()) }"
+                    )
 
                 # 移除不必要的元素
                 await _remove_unwanted_elements(page)
@@ -200,17 +212,12 @@ class AsyncBrowserTool:
                     "description": meta_description,
                     "keywords": meta_keywords,
                     "status_code": response.status if response else None,
-                    "content_length": len(markdown_content)
-                }
+                    "content_length": len(markdown_content),
+                },
             }
 
         except Exception as e:
-            return {
-                "success": False,
-                "url": url,
-                "error": str(e),
-                "content": None
-            }
+            return {"success": False, "url": url, "error": str(e), "content": None}
 
     def _html_to_markdown(self, html: str) -> str:
         """将HTML转换为Markdown"""
@@ -239,8 +246,7 @@ class AsyncBrowserTool:
 
 browser_tool = AsyncBrowserTool()
 
+
 async def browse_webpage(url: str) -> dict[str, Any]:
     logger.info(f"Moonlark 正在访问: {url}")
     return await browser_tool.browse(url)
-
-

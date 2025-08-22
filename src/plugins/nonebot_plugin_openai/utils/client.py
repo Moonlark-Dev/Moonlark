@@ -11,12 +11,10 @@ from ..types import Messages
 client = AsyncOpenAI(api_key=config.openai_api_key, base_url=config.openai_base_url)
 
 
-async def get_completion(messages: Messages, functions: list[dict[str, Any]],  model: str = config.openai_default_model, **kwargs) -> ChatCompletion:
-    return await client.chat.completions.create(
-        messages=messages,
-        model=model,
-        **kwargs
-    )
+async def get_completion(
+    messages: Messages, functions: list[dict[str, Any]], model: str = config.openai_default_model, **kwargs
+) -> ChatCompletion:
+    return await client.chat.completions.create(messages=messages, model=model, **kwargs)
 
 
 def get_reply_message(completion: ChatCompletion) -> ChatCompletionMessage:

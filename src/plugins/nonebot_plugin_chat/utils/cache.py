@@ -42,10 +42,7 @@ class AsyncCache:
         ttl = ttl if ttl is not None else self.expiration_time
         expiration = time.time() + ttl  # 计算过期时间
         async with self.lock:
-            self.cache[key] = {
-                "value": value,
-                "expiration": expiration
-            }
+            self.cache[key] = {"value": value, "expiration": expiration}
 
     async def get(self, key: str) -> Optional[Any]:
         """

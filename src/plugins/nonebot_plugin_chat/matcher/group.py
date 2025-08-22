@@ -39,7 +39,6 @@ from nonebot_plugin_openai.utils.chat import MessageFetcher
 from nonebot.matcher import Matcher
 
 
-
 from ..lang import lang
 from ..models import ChatGroup
 from ..utils import enabled_group, parse_message_to_string
@@ -58,7 +57,6 @@ class CachedMessage(TypedDict):
 
 def generate_message_string(message: CachedMessage) -> str:
     return f"[{message['send_time'].strftime('%H:%M')}][{message['nickname']}]: {message['content']}\n"
-
 
 
 class MessageProcessor:
@@ -112,14 +110,17 @@ class MessageProcessor:
             self.openai_messages.pop(0)
         elif self.openai_messages[0]["role"] == "user":
             content = self.openai_messages[0]["content"]
-            self.openai_messages[0]["content"] = content[content.find("\n[")+1:]
+            self.openai_messages[0]["content"] = content[content.find("\n[") + 1 :]
             if not self.openai_messages[0]["content"]:
                 self.openai_messages.pop(0)
         self.message_count -= 1
 
-
     async def update_system_message(self) -> None:
-        if len(self.openai_messages) >= 1 and isinstance(self.openai_messages[0], dict) and self.openai_messages[0]["role"] == "system":        # 这里不会出现非 dict 还是 role=system 的情况
+        if (
+            len(self.openai_messages) >= 1
+            and isinstance(self.openai_messages[0], dict)
+            and self.openai_messages[0]["role"] == "system"
+        ):  # 这里不会出现非 dict 还是 role=system 的情况
             self.openai_messages[0] = await self.generate_system_prompt()
         else:
             self.openai_messages.insert(0, await self.generate_system_prompt())
@@ -127,27 +128,25 @@ class MessageProcessor:
     async def generate_reply(self, ignore_desire: bool = False) -> None:
         if not (ignore_desire or random.random() <= self.session.desire * 0.0085):
             return
-        elif len(self.openai_messages) <= 0 or ((not isinstance(self.openai_messages[-1], dict)) and self.openai_messages[-1].role in ["system", "assistant"]):
+        elif len(self.openai_messages) <= 0 or (
+            (not isinstance(self.openai_messages[-1], dict))
+            and self.openai_messages[-1].role in ["system", "assistant"]
+        ):
             return
         await self.update_system_message()
         fetcher = MessageFetcher(
             self.openai_messages,
             False,
-            functions=[AsyncFunction(
-                func=browse_webpage,
-                description="使用浏览器访问指定 URL 并获取网页内容的 Markdown 格式文本",
-                parameters={
-                    "url": FunctionParameter(
-                        type="string",
-                        description="要访问的网页的 URL 地址",
-                        required=True
-                    )
-                }
-            )],
-            extra_headers={
-                "X-Title": "Moonlark - Chat",
-                "HTTP-Referer": "https://chat.moonlark.itcdt.top"
-            }
+            functions=[
+                AsyncFunction(
+                    func=browse_webpage,
+                    description="使用浏览器访问指定 URL 并获取网页内容的 Markdown 格式文本",
+                    parameters={
+                        "url": FunctionParameter(type="string", description="要访问的网页的 URL 地址", required=True)
+                    },
+                )
+            ],
+            extra_headers={"X-Title": "Moonlark - Chat", "HTTP-Referer": "https://chat.moonlark.itcdt.top"},
         )
         reply_text = await fetcher.fetch()
         self.openai_messages = fetcher.get_messages()
@@ -170,7 +169,11 @@ class MessageProcessor:
 
     async def process_messages(self, msg_dict: CachedMessage) -> None:
         logger.debug(self.openai_messages)
-        if len(self.openai_messages) <= 0 or (not isinstance(self.openai_messages[-1], dict)) or self.openai_messages[-1]["role"] != "user":
+        if (
+            len(self.openai_messages) <= 0
+            or (not isinstance(self.openai_messages[-1], dict))
+            or self.openai_messages[-1]["role"] != "user"
+        ):
             self.openai_messages.append(generate_message(generate_message_string(msg_dict), "user"))
         else:
             self.openai_messages[-1]["content"] += generate_message_string(msg_dict)
@@ -180,19 +183,18 @@ class MessageProcessor:
     async def generate_system_prompt(self) -> OpenAIMessage:
         return generate_message(
             await lang.text(
-                "prompt_group.default", self.session.user_id, await self.session.get_memory(), datetime.now().isoformat()
+                "prompt_group.default",
+                self.session.user_id,
+                await self.session.get_memory(),
+                datetime.now().isoformat(),
             ),
-        "system",
+            "system",
         )
-
-
 
 
 class GroupSession:
 
-    def __init__(
-        self, group_id: str, bot: Bot, target: Target, lang_name: str = "zh_hans"
-    ) -> None:
+    def __init__(self, group_id: str, bot: Bot, target: Target, lang_name: str = "zh_hans") -> None:
         self.group_id = group_id
         self.target = target
         self.bot = bot
@@ -269,21 +271,22 @@ class GroupSession:
                 messages += f'[{message["send_time"].strftime("%H:%M")}][Moonlark]: {message["content"]}\n'
             else:
                 messages += f"[{message['send_time'].strftime('%H:%M')}][{message['nickname']}]: {message['content']}\n"
-        memory = await fetch_message([
-            generate_message(await lang.text("prompt_group.memory", self.user_id), "system"),
-            generate_message(
-                await lang.text("prompt_group.memory_2", self.user_id, await self.get_memory(), messages), "user"
-            ),
-        ], model="moonshotai/kimi-k2:free",
-            extra_headers={"X-Title": "Moonlark - Memory", "HTTP-Referer": "https://memory.moonlark.itcdt.top"})
+        memory = await fetch_message(
+            [
+                generate_message(await lang.text("prompt_group.memory", self.user_id), "system"),
+                generate_message(
+                    await lang.text("prompt_group.memory_2", self.user_id, await self.get_memory(), messages), "user"
+                ),
+            ],
+            model="moonshotai/kimi-k2:free",
+            extra_headers={"X-Title": "Moonlark - Memory", "HTTP-Referer": "https://memory.moonlark.itcdt.top"},
+        )
         async with get_session() as session:
             g = await session.get_one(ChatGroup, {"group_id": self.group_id})
             g.memory = memory
             await session.commit()
         self.last_reward_participation = None
         self.cached_messages.clear()
-
-
 
     async def get_memory(self) -> str:
         async with get_session() as session:

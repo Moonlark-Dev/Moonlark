@@ -32,10 +32,12 @@ from .cache import AsyncCache
 
 image_cache: AsyncCache
 
+
 @get_driver().on_startup
 async def _() -> None:
     global image_cache
     image_cache = AsyncCache(600)
+
 
 async def get_image_summary(segment: Image, event: Event, bot: Bot, state: T_State) -> str:
     if not isinstance(image := await image_fetch(event, bot, state, segment), bytes):
@@ -57,10 +59,14 @@ async def get_image_summary(segment: Image, event: Event, bot: Bot, state: T_Sta
 
     try:
         summary = (
-            await fetch_message(messages, model="google/gemini-2.5-flash", extra_headers={
-                "X-Title": "Moonlark - Image Describe",
-                "HTTP-Referer": "https://image.moonlark.itcdt.top",
-            })
+            await fetch_message(
+                messages,
+                model="google/gemini-2.5-flash",
+                extra_headers={
+                    "X-Title": "Moonlark - Image Describe",
+                    "HTTP-Referer": "https://image.moonlark.itcdt.top",
+                },
+            )
         ).strip()
         await image_cache.set(img_hash, summary)
         return summary

@@ -18,8 +18,12 @@
 from nonebot_plugin_orm import get_session
 from typing import Literal
 
-from openai.types.chat import ChatCompletionMessageParam, ChatCompletionSystemMessageParam, \
-    ChatCompletionUserMessageParam, ChatCompletionAssistantMessageParam
+from openai.types.chat import (
+    ChatCompletionMessageParam,
+    ChatCompletionSystemMessageParam,
+    ChatCompletionUserMessageParam,
+    ChatCompletionAssistantMessageParam,
+)
 from sqlalchemy import select
 
 from ..types import Message, Messages
