@@ -22,10 +22,11 @@ from datetime import datetime, timedelta
 from nonebot.adapters.qq import Bot as BotQQ
 from nonebot.params import CommandArg
 from nonebot.typing import T_State
-from typing import TypedDict, Optional
+from typing import TypedDict, Optional, Any, Coroutine
 from nonebot_plugin_apscheduler import scheduler
 from nonebot_plugin_alconna import UniMessage, Target, get_target
 from nonebot_plugin_userinfo import EventUserInfo, UserInfo
+
 from nonebot_plugin_larkuser import get_user
 from nonebot import on_message, on_command
 from nonebot.adapters import Event, Bot, Message
@@ -33,9 +34,11 @@ from nonebot_plugin_larkutils import get_user_id, get_group_id
 from nonebot_plugin_orm import async_scoped_session, get_session
 from nonebot.log import logger
 from nonebot_plugin_openai import generate_message, fetch_message
-from nonebot_plugin_openai.types import Messages
+from nonebot_plugin_openai.types import Messages, Message as OpenAIMessage
 from nonebot_plugin_chat.models import ChatGroup
 from nonebot.matcher import Matcher
+
+from nonebot_plugin_openai.utils.chat import MessageFetcher
 from ..lang import lang
 from ..utils import enabled_group, parse_message_to_string
 
@@ -50,16 +53,130 @@ class CachedMessage(TypedDict):
     self: bool
 
 
-class Group:
+def generate_message_string(message: CachedMessage) -> str:
+    return f"[{message['send_time'].strftime('%H:%M')}][{message['nickname']}]: {message['content']}\n"
+
+
+class MessageProcessor:
+
+    def __init__(self, session: "GroupSession"):
+        self.openai_messages: Messages = []
+        self.session = session
+        self.message_count = 0
+        self.enabled = True
+        asyncio.create_task(self.loop())
+
+    async def loop(self):
+        while self.enabled:
+            await self.get_message()
+            for _ in range(self.message_count - 10):
+                await self.pop_first_message()
+
+    async def get_message(self) -> None:
+        if not self.session.message_queue:
+            await asyncio.sleep(3)
+            return
+        message, event, state, user_id, nickname, dt, mentioned = self.session.message_queue.pop(0)
+        text = await parse_message_to_string(message, event, self.session.bot, state)
+        msg_dict: CachedMessage = {
+            "content": text,
+            "nickname": nickname,
+            "send_time": dt,
+            "user_id": user_id,
+            "self": False,
+        }
+        await self.process_messages(msg_dict)
+        self.session.cached_messages.append(msg_dict)
+        if mentioned or not self.session.message_queue:
+            await self.generate_reply(mentioned)
+
+    def clean_special_message(self) -> None:
+        while True:
+            if isinstance(self.openai_messages[0], dict):
+                if not self.openai_messages[0]["role"] in ["system", "tool"]:
+                    break
+            elif not self.openai_messages[0].role in ["system", "tool"]:
+                break
+            self.openai_messages.pop(0)
+
+    async def pop_first_message(self) -> None:
+        self.clean_special_message()
+        if self.openai_messages[0]["role"] == "assistant":
+            self.openai_messages.pop(0)
+        elif self.openai_messages[0]["role"] == "user":
+            content = self.openai_messages[0]["content"]
+            self.openai_messages[0]["content"] = content[content.find("\n[")+1:]
+            if not self.openai_messages[0]["content"]:
+                self.openai_messages.pop(0)
+        self.message_count -= 1
+
+
+    async def update_system_message(self) -> None:
+        if len(self.openai_messages) >= 1 and isinstance(self.openai_messages[0], dict) and self.openai_messages[0]["role"] == "system":        # 这里不会出现非 dict 还是 role=system 的情况
+            self.openai_messages[0] = await self.generate_system_prompt()
+        else:
+            self.openai_messages.insert(0, await self.generate_system_prompt())
+
+    async def generate_reply(self, ignore_desire: bool = False) -> None:
+        if not (ignore_desire or random.random() <= self.session.desire * 0.0085):
+            return
+        await self.update_system_message()
+        fetcher = MessageFetcher(
+            self.openai_messages,
+            False,
+            extra_headers={
+                "X-Title": "Moonlark - Chat",
+                "HTTP-Referer": "https://chat.moonlark.itcdt.top"
+            }
+        )
+        reply_text = await fetcher.fetch()
+        self.openai_messages = fetcher.get_messages()
+        await self.process_reply_text(reply_text)
+
+    async def process_reply_text(self, reply_text: str) -> None:
+        for line in reply_text.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            elif line.startswith(".skip"):
+                return
+            elif line.startswith(".leave"):
+                await self.session.mute()
+                return
+            else:
+                await self.session.format_message(line).send(target=self.session.target, bot=self.session.bot)
+        self.message_count += 1
+
+    async def process_messages(self, msg_dict: CachedMessage) -> None:
+        logger.debug(self.openai_messages)
+        if len(self.openai_messages) <= 0 or (not isinstance(self.openai_messages[-1], dict)) or self.openai_messages[-1]["role"] != "user":
+            self.openai_messages.append(generate_message(generate_message_string(msg_dict), "user"))
+        else:
+            self.openai_messages[-1]["content"] += generate_message_string(msg_dict)
+        self.message_count += 1
+        logger.debug(self.openai_messages)
+
+    async def generate_system_prompt(self) -> OpenAIMessage:
+        return generate_message(
+            await lang.text(
+                "prompt_group.default", self.session.user_id, await self.session.get_memory(), datetime.now().isoformat()
+            ),
+        "system",
+        )
+
+
+
+
+class GroupSession:
 
     def __init__(
-        self, group_id: str, cached_user_id: str, bot: Bot, target: Target, lang_name: str = "zh_hans"
+        self, group_id: str, bot: Bot, target: Target, lang_name: str = "zh_hans"
     ) -> None:
         self.group_id = group_id
         self.target = target
-        self.cached_user_id = cached_user_id
         self.bot = bot
         self.user_id = f"mlsid::--lang={lang_name}"
+        self.message_queue: list[tuple[UniMessage, Event, T_State, str, str, datetime, bool]] = []
         self.cached_messages: list[CachedMessage] = []
         self.desire = BASE_DESIRE
         self.triggered = False
@@ -68,10 +185,11 @@ class Group:
         self.memory_lock = False
         self.message_counter: dict[datetime, int] = {}
         self.user_counter: dict[datetime, set[str]] = {}
+        self.processor = MessageProcessor(self)
 
     async def mute(self) -> None:
         self.mute_until = datetime.now() + timedelta(minutes=15)
-        asyncio.create_task(self.generate_memory(self.cached_user_id))
+        asyncio.create_task(self.update_memory())
 
     def update_counters(self, user_id: str) -> None:
         dt = datetime.now().replace(second=0, microsecond=0)
@@ -104,51 +222,28 @@ class Group:
             self.user_counter.pop(key)
         return message_count, user_count
 
-    async def process_message(
+    async def handle_message(
         self, message: UniMessage, user_id: str, event: Event, state: T_State, nickname: str, mentioned: bool = False
     ) -> None:
-        msg = await parse_message_to_string(message, event, self.bot, state)
-        if not msg:
-            return
-        msg_dict: CachedMessage = {
-            "content": msg,
-            "nickname": nickname,
-            "send_time": datetime.now(),
-            "user_id": user_id,
-            "self": False,
-        }
-        self.cached_messages.append(msg_dict)
+        self.message_queue.append((message, event, state, user_id, nickname, datetime.now(), mentioned))
         self.update_counters(user_id)
         await self.calculate_desire_on_message(mentioned)
-        logger.debug(self.desire)
-        if mentioned:
-            await self.handle_mention(user_id)
-            return
-        await asyncio.sleep(3)
-        if self.triggered or self.cached_messages[-1] is not msg_dict:
-            return
-        elif random.random() <= self.desire / 100:
-            self.triggered = True
-            await self.reply(user_id)
-            await asyncio.sleep(round(self.desire / 100 * 2.5))
-            self.triggered = False
-        elif len(self.cached_messages) >= 15:
-            asyncio.create_task(self.generate_memory(user_id))
+        if len(self.cached_messages) >= 20:
+            await self.update_memory()
 
-    async def handle_mention(self, user_id: str) -> None:
-        self.triggered = True
-        await self.reply(user_id)
-        self.triggered = False
-
-    async def generate_memory(self, user_id: str, clean_all: bool = False) -> None:
-        messages = ""
+    async def update_memory(self) -> None:
         if self.memory_lock or not self.cached_messages:
             return
         self.memory_lock = True
-        if len(self.cached_messages) >= 15 and not clean_all:
-            cached_messages = copy.deepcopy(self.cached_messages[:10])
-        else:
-            cached_messages = copy.deepcopy(self.cached_messages)
+        try:
+            await self.generate_memory()
+        except Exception as e:
+            logger.exception(e)
+        self.memory_lock = False
+
+    async def generate_memory(self) -> None:
+        messages = ""
+        cached_messages = copy.deepcopy(self.cached_messages)
         for message in cached_messages:
             if message["self"]:
                 messages += f'[{message["send_time"].strftime("%H:%M")}][Moonlark]: {message["content"]}\n'
@@ -166,59 +261,9 @@ class Group:
             g.memory = memory
             await session.commit()
         self.last_reward_participation = None
-        # remove cached messages
-        self.cached_messages = self.cached_messages[len(cached_messages) :]
-        self.memory_lock = False
+        self.cached_messages.clear()
 
-    async def get_messages(self) -> Messages:
-        messages = [
-            generate_message(
-                await lang.text(
-                    "prompt_group.default", self.user_id, await self.get_memory(), datetime.now().isoformat()
-                ),
-                "system",
-            ),
-            generate_message("", "user"),
-        ]
-        for message in self.cached_messages:
-            if message["self"]:
-                messages.append(generate_message(message["content"], "assistant"))
-                messages.append(generate_message("", "user"))
-            else:
-                messages[-1][
-                    "content"
-                ] += f"[{message['send_time'].strftime('%H:%M')}][{message['nickname']}]: {message['content']}\n"
-        return messages
 
-    async def reply(self, user_id: str) -> bool:
-        messages = await self.get_messages()
-        reply = await fetch_message(messages, extra_headers={"X-Title": "Moonlark - Chat",
-                                                              "HTTP-Referer": "https://chat.moonlark.itcdt.top"})
-        is_first_message = True
-        for line in reply.splitlines():
-            if line == ".skip":
-                return False
-            elif line.startswith("("):
-                continue
-            elif line:
-                if is_first_message:
-                    is_first_message = False
-                else:
-                    await asyncio.sleep(len(line.strip()) * 0.07)
-                await self.format_message(line).send(target=self.target, bot=self.bot)
-            else:
-                await asyncio.sleep(1)
-        self.cached_messages.append(
-            {
-                "content": reply,
-                "self": True,
-                "send_time": datetime.now(),
-                # NOTE Not important
-                "nickname": "",
-                "user_id": "",
-            }
-        )
-        return True
 
     async def get_memory(self) -> str:
         async with get_session() as session:
@@ -302,13 +347,13 @@ class Group:
         time_to_last_message = (dt - self.cached_messages[-1]["send_time"]).total_seconds()
         if time_to_last_message > 300:
             if random.random() <= self.desire / 100 and not self.cached_messages[-1]["self"]:
-                await self.reply(self.cached_user_id)
-            await self.generate_memory(self.cached_user_id, True)
+                await self.processor.generate_reply()
+            await self.update_memory()
 
 
 from ..config import config
 
-groups: dict[str, Group] = {}
+groups: dict[str, GroupSession] = {}
 matcher = on_message(priority=50, rule=enabled_group, block=False)
 
 
@@ -324,7 +369,7 @@ async def _(
     if isinstance(bot, BotQQ):
         await matcher.finish()
     elif session_id not in groups:
-        groups[session_id] = Group(session_id, user_id, bot, get_target(event))
+        groups[session_id] = GroupSession(session_id, bot, get_target(event))
     elif groups[session_id].mute_until is not None:
         await matcher.finish()
     plaintext = event.get_plaintext().strip()
@@ -337,13 +382,13 @@ async def _(
         nickname = user.get_nickname()
     else:
         nickname = user_info.user_displayname or user_info.user_name
-    await groups[session_id].process_message(message, user_id, event, state, nickname, event.is_tome())
+    await groups[session_id].handle_message(message, user_id, event, state, nickname, event.is_tome())
 
 
 async def group_disable(group_id: str, user_id: str) -> None:
     if group_id in groups:
         group = groups.pop(group_id)
-        await group.generate_memory(user_id)
+        await group.update_memory()
 
 
 @on_command("chat").handle()
@@ -409,6 +454,8 @@ async def _(
                 await lang.send("command.done", user_id)
             else:
                 await lang.send("command.disabled", user_id)
+        case "show-memory":
+            await matcher.finish(g.memory)
         case _:
             await lang.finish("command.no_argv", user_id)
     await session.merge(g)

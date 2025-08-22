@@ -15,6 +15,7 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 import base64
+import copy
 import json
 import traceback
 from datetime import datetime
@@ -37,7 +38,81 @@ from nonebot_plugin_openai.utils.chat import fetch_message
 from nonebot_plugin_openai.utils.message import generate_message
 import hashlib
 
-cached_images: dict[str, str] = {}
+import asyncio
+import time
+from collections import defaultdict
+from typing import Any, Optional
+
+class AsyncCache:
+    def __init__(self, expiration_time: int = 60):
+        """
+        初始化缓存管理系统
+        :param expiration_time: 缓存项的默认过期时间（秒）
+        """
+        self.cache = {}  # 存储缓存数据的字典
+        self.expiration_time = expiration_time  # 缓存过期时间
+        self.lock = asyncio.Lock()  # 异步锁，确保缓存操作的原子性
+        # 启动异步任务来定期清理过期缓存
+        asyncio.create_task(self.cleanup())
+
+    async def set(self, key: str, value: Any, ttl: Optional[int] = None):
+        """
+        设置缓存项，支持自动过期
+        :param key: 缓存的键
+        :param value: 缓存的值
+        :param ttl: 缓存项的过期时间，默认为 None 使用默认的过期时间
+        """
+        ttl = ttl if ttl is not None else self.expiration_time
+        expiration = time.time() + ttl  # 计算过期时间
+        async with self.lock:
+            self.cache[key] = {
+                "value": value,
+                "expiration": expiration
+            }
+
+    async def get(self, key: str) -> Optional[Any]:
+        """
+        获取缓存项的值
+        :param key: 缓存的键
+        :return: 缓存的值，若不存在或已过期返回 None
+        """
+        async with self.lock:
+            cache_item = self.cache.get(key)
+            if cache_item:
+                # 检查是否过期
+                if time.time() < cache_item["expiration"]:
+                    return cache_item["value"]
+                else:
+                    # 缓存过期，删除该项
+                    del self.cache[key]
+            return None
+
+    async def delete(self, key: str):
+        """
+        删除缓存项
+        :param key: 缓存的键
+        """
+        async with self.lock:
+            if key in self.cache:
+                del self.cache[key]
+
+    async def cleanup(self):
+        """
+        定期清理过期的缓存项
+        """
+        while True:
+            await asyncio.sleep(30)  # 每30秒执行一次清理操作
+            async with self.lock:
+                # 当前时间
+                current_time = time.time()
+                # 清理所有过期的缓存项
+                keys_to_delete = [key for key, item in self.cache.items() if item["expiration"] < current_time]
+                for key in keys_to_delete:
+                    del self.cache[key]
+
+
+image_cache = AsyncCache(600)
+
 
 
 async def get_history(session: async_scoped_session | AsyncSession, user_id: str) -> Messages:
@@ -105,22 +180,26 @@ async def enabled_group(
         and g.enabled
         and user_id not in json.loads(g.blocked_user)
     )
-
-
-def find_image_cache(image: bytes) -> Optional[str]:
-    if (img_hash := hashlib.sha256(image).hexdigest()) in cached_images:
-        return cached_images[img_hash]
-    return None
-
-
-def update_image_cache(image: bytes, summary: str):
-    cached_images[hashlib.sha256(image).hexdigest()] = summary
+#
+#
+# def find_image_cache(image: bytes) -> Optional[str]:
+#     if (img_hash := hashlib.sha256(image).hexdigest()) in cached_images:
+#         return cached_images[img_hash][0]
+#     return None
+#
+#
+# def update_image_cache(image: bytes, summary: str):
+#     dt = datetime.now()
+#     cached_images[hashlib.sha256(image).hexdigest()] = summary, dt
+#     for key, data in copy.deepcopy(cached_images):
+#         if (data[1] - dt).total_seconds() > 10000:
 
 
 async def get_image_summary(segment: Image, event: Event, bot: Bot, state: T_State) -> str:
     if not isinstance(image := await image_fetch(event, bot, state, segment), bytes):
         return "暂无信息"
-    if (cache := find_image_cache(image)) is not None:
+    img_hash = hashlib.sha256(image).hexdigest()
+    if (cache := await image_cache.get(img_hash)) is not None:
         return cache
     image_base64 = base64.b64encode(image).decode("utf-8")
     messages = [
@@ -141,7 +220,7 @@ async def get_image_summary(segment: Image, event: Event, bot: Bot, state: T_Sta
                 "HTTP-Referer": "https://image.moonlark.itcdt.top",
             })
         ).strip()
-        update_image_cache(image, summary)
+        await image_cache.set(img_hash, summary)
         return summary
     except Exception:
         logger.warning(traceback.format_exc())

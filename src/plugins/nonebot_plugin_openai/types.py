@@ -1,6 +1,7 @@
 from typing import Literal, Union, TypedDict, Awaitable, Callable
-from openai.types.responses.response_input_param import Message
+from openai.types.chat import ChatCompletionMessageParam, ChatCompletionToolMessageParam, ChatCompletionMessage, ChatCompletionTool
 
+Message = ChatCompletionMessageParam | ChatCompletionToolMessageParam | ChatCompletionMessage | ChatCompletionTool
 Messages = list[Message]
 
 class FunctionParameter(TypedDict):

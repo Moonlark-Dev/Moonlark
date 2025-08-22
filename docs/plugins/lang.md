@@ -164,7 +164,7 @@ await lang.send("xxx2.xxx3", user_id, reply_message=True, at_sender=False)
 和
 
 ```python
-await lang.reply("xxx2.xxx3", user_id)
+await lang.reply()
 ```
 
 等效。
