@@ -21,13 +21,3 @@ async def fetch_messages(
     logger.debug(reply := get_reply(completion))
     return reply
 
-
-async def fetch(
-    prompt: str,
-    role: Literal["system", "user"] = "user",
-    use_default_message: bool = False,
-    model: str = config.openai_default_model,
-    **kwargs,
-) -> str:
-    messages = [generate_message(prompt, role)]
-    return await fetch_messages(messages, use_default_message, model, **kwargs)
