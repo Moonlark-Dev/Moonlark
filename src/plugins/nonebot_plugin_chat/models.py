@@ -25,6 +25,7 @@ class ChatGroup(Model):
 
 class MemoryNode(Model):
     """Memory graph node representing a concept with associated memories"""
+
     concept: Mapped[str] = mapped_column(String(256), primary_key=True)
     context_id: Mapped[str] = mapped_column(String(128), primary_key=True)  # user_id for private, group_id for groups
     memory_items: Mapped[str] = mapped_column(Text(), default="")
@@ -36,6 +37,7 @@ class MemoryNode(Model):
 
 class MemoryEdge(Model):
     """Memory graph edge representing relationships between concepts"""
+
     source: Mapped[str] = mapped_column(String(256), primary_key=True)
     target: Mapped[str] = mapped_column(String(256), primary_key=True)
     context_id: Mapped[str] = mapped_column(String(128), primary_key=True)  # user_id for private, group_id for groups

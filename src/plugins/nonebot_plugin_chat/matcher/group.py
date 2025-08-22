@@ -182,28 +182,26 @@ class MessageProcessor:
 
     async def generate_system_prompt(self) -> OpenAIMessage:
         from ..utils.memory_activator import memory_activator
-        
+
         # 获取最近几条缓存消息作为上下文
         recent_messages = self.session.cached_messages[-5:] if self.session.cached_messages else []
         recent_context = " ".join([msg["content"] for msg in recent_messages])
-        
+
         # 激活相关记忆
         activated_memories = await memory_activator.activate_memories_from_text(
-            context_id=self.session.group_id,
-            target_message=recent_context,
-            max_memories=3
+            context_id=self.session.group_id, target_message=recent_context, max_memories=3
         )
-        
+
         # 构建记忆文本
         memory_text_parts = []
-        
+
         if activated_memories:
             memory_text_parts.append("相关群组记忆:")
             for concept, memory_content in activated_memories:
                 memory_text_parts.append(f"- {concept}: {memory_content}")
-        
+
         final_memory_text = "\n".join(memory_text_parts) if memory_text_parts else "暂无"
-        
+
         return generate_message(
             await lang.text(
                 "prompt_group.default",
@@ -288,7 +286,7 @@ class GroupSession:
 
     async def generate_memory(self) -> None:
         from ..utils.memory_graph import MemoryGraph
-        
+
         messages = ""
         cached_messages = copy.deepcopy(self.cached_messages)
         for message in cached_messages:
@@ -296,17 +294,17 @@ class GroupSession:
                 messages += f'[{message["send_time"].strftime("%H:%M")}][Moonlark]: {message["content"]}\n'
             else:
                 messages += f"[{message['send_time'].strftime('%H:%M')}][{message['nickname']}]: {message['content']}\n"
-        
+
         # 使用新的记忆图系统
         memory_graph = MemoryGraph(self.group_id)
         await memory_graph.load_from_db()
-        
+
         # 从消息历史构建记忆
         await memory_graph.build_memory_from_text(messages, compress_rate=0.15)
-        
+
         # 保存记忆图到数据库
         await memory_graph.save_to_db()
-        
+
         self.last_reward_participation = None
         self.cached_messages.clear()
 
@@ -492,6 +490,7 @@ async def _(
             if g is not None:
                 # 清理图形记忆
                 from ..utils.memory_graph import cleanup_old_memories
+
                 await cleanup_old_memories(group_id, forget_ratio=1.0)  # 清除所有记忆
                 await lang.send("command.done", user_id)
             else:
@@ -499,9 +498,10 @@ async def _(
         case "show-memory":
             # 显示图形记忆而不是传统记忆
             from ..utils.memory_graph import MemoryGraph
+
             memory_graph = MemoryGraph(group_id)
             await memory_graph.load_from_db()
-            
+
             if memory_graph.nodes:
                 memory_summary = []
                 for concept, data in list(memory_graph.nodes.items())[:3]:  # 显示前3个
@@ -512,6 +512,7 @@ async def _(
         case "cleanup-memory":
             if g is not None:
                 from ..utils.memory_graph import cleanup_old_memories
+
                 forgotten_count = await cleanup_old_memories(group_id, forget_ratio=0.3)
                 await lang.send("command.done", user_id)
                 await matcher.finish(f"已清理 {forgotten_count} 条旧记忆")
@@ -520,9 +521,10 @@ async def _(
         case "show-graph-memory":
             if g is not None:
                 from ..utils.memory_graph import MemoryGraph
+
                 memory_graph = MemoryGraph(group_id)
                 await memory_graph.load_from_db()
-                
+
                 if memory_graph.nodes:
                     memory_summary = []
                     for concept, data in list(memory_graph.nodes.items())[:5]:  # 显示前5个
@@ -530,10 +532,12 @@ async def _(
                         memory_summary.append(f"记忆: {data['memory_items'][:100]}...")
                         memory_summary.append(f"权重: {data['weight']:.1f}")
                         memory_summary.append("---")
-                    
+
                     total_nodes = len(memory_graph.nodes)
                     total_edges = len(memory_graph.edges)
-                    summary_text = f"记忆图统计: {total_nodes}个概念, {total_edges}个连接\n\n" + "\n".join(memory_summary)
+                    summary_text = f"记忆图统计: {total_nodes}个概念, {total_edges}个连接\n\n" + "\n".join(
+                        memory_summary
+                    )
                     await matcher.finish(summary_text)
                 else:
                     await matcher.finish("暂无图形记忆数据")
