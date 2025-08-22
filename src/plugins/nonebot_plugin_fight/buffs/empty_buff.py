@@ -1,5 +1,5 @@
 #  Moonlark - A new ChatBot
-#  Copyright (C) 2024  Moonlark Development Team
+#  Copyright (C) 2025  Moonlark Development Team
 #
 #  This program is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU Affero General Public License as published
@@ -15,9 +15,20 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
-from .character import Character
-from .monomer import Monomer
-from .team import ControllableTeam, Team
-from .scheduler import Scheduler
-from .buff import Buff
-from .simple_monster import SimpleMonster
+from ..base import Buff, Monomer
+from ..types import BuffData
+
+
+class EmptyBuff(Buff):
+
+    def __init__(self, data: BuffData, monomer: Monomer) -> None:
+        super().__init__(data, monomer)
+
+    async def setup(self) -> None:
+        pass
+
+    async def remove(self) -> None:
+        pass
+
+    async def action(self) -> None:
+        pass
