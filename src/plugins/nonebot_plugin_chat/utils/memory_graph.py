@@ -59,8 +59,8 @@ def cosine_similarity(v1: List[float], v2: List[float]) -> float:
 class MemoryGraph:
     """基于图的记忆系统，适配自MaiBot的实现"""
     
-    def __init__(self, user_id: str):
-        self.user_id = user_id
+    def __init__(self, context_id: str):
+        self.context_id = context_id  # 可以是 user_id 或 group_id
         self.nodes: Dict[str, Dict[str, Any]] = {}
         self.edges: Dict[Tuple[str, str], Dict[str, Any]] = {}
         
@@ -69,7 +69,7 @@ class MemoryGraph:
         async with get_session() as session:
             # 加载节点
             nodes = await session.scalars(
-                select(MemoryNode).where(MemoryNode.user_id == self.user_id)
+                select(MemoryNode).where(MemoryNode.context_id == self.context_id)
             )
             for node in nodes:
                 self.nodes[node.concept] = {
@@ -82,7 +82,7 @@ class MemoryGraph:
             
             # 加载边
             edges = await session.scalars(
-                select(MemoryEdge).where(MemoryEdge.user_id == self.user_id)
+                select(MemoryEdge).where(MemoryEdge.context_id == self.context_id)
             )
             for edge in edges:
                 self.edges[(edge.source, edge.target)] = {
@@ -96,14 +96,14 @@ class MemoryGraph:
         """将记忆图保存到数据库"""
         async with get_session() as session:
             # 清除旧数据
-            await session.execute(delete(MemoryNode).where(MemoryNode.user_id == self.user_id))
-            await session.execute(delete(MemoryEdge).where(MemoryEdge.user_id == self.user_id))
+            await session.execute(delete(MemoryNode).where(MemoryNode.context_id == self.context_id))
+            await session.execute(delete(MemoryEdge).where(MemoryEdge.context_id == self.context_id))
             
             # 保存节点
             for concept, data in self.nodes.items():
                 node = MemoryNode(
                     concept=concept,
-                    user_id=self.user_id,
+                    context_id=self.context_id,
                     memory_items=data["memory_items"],
                     weight=data["weight"],
                     created_time=data["created_time"],
@@ -117,7 +117,7 @@ class MemoryGraph:
                 edge = MemoryEdge(
                     source=source,
                     target=target,
-                    user_id=self.user_id,
+                    context_id=self.context_id,
                     strength=data["strength"],
                     created_time=data["created_time"],
                     last_modified=data["last_modified"],
@@ -312,9 +312,9 @@ class MemoryGraph:
                 self.connect_concepts(topic1, topic2)
 
 
-async def cleanup_old_memories(user_id: str, forget_ratio: float = 0.1) -> int:
+async def cleanup_old_memories(context_id: str, forget_ratio: float = 0.1) -> int:
     """清理旧记忆的公共接口"""
-    memory_graph = MemoryGraph(user_id)
+    memory_graph = MemoryGraph(context_id)
     await memory_graph.load_from_db()
     forgotten_count = memory_graph.forget_random_memories(forget_ratio)
     if forgotten_count > 0:

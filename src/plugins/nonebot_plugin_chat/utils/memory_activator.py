@@ -41,7 +41,7 @@ class MemoryActivator:
     
     async def activate_memories_from_text(
         self, 
-        user_id: str, 
+        context_id: str, 
         target_message: str, 
         chat_history: str = "", 
         max_memories: int = 5
@@ -50,7 +50,7 @@ class MemoryActivator:
         从文本中激活相关记忆
         
         Args:
-            user_id: 用户ID
+            context_id: 上下文ID（私聊为user_id，群聊为group_id）
             target_message: 目标消息
             chat_history: 聊天历史上下文
             max_memories: 最大返回记忆数量
@@ -59,7 +59,7 @@ class MemoryActivator:
             List[Tuple[str, str]]: 激活的记忆列表，格式为 (concept, memory_content)
         """
         # 加载记忆图
-        memory_graph = MemoryGraph(user_id)
+        memory_graph = MemoryGraph(context_id)
         await memory_graph.load_from_db()
         
         if not memory_graph.nodes:

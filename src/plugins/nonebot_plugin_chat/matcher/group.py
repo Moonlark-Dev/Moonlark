@@ -183,22 +183,19 @@ class MessageProcessor:
     async def generate_system_prompt(self) -> OpenAIMessage:
         from ..utils.memory_activator import memory_activator
         
-        # 获取传统记忆
-        base_memory = await self.session.get_memory()
-        
         # 获取最近几条缓存消息作为上下文
         recent_messages = self.session.cached_messages[-5:] if self.session.cached_messages else []
         recent_context = " ".join([msg["content"] for msg in recent_messages])
         
         # 激活相关记忆
         activated_memories = await memory_activator.activate_memories_from_text(
-            user_id=self.session.group_id,
+            context_id=self.session.group_id,
             target_message=recent_context,
             max_memories=3
         )
         
         # 构建记忆文本
-        memory_text_parts = [base_memory] if base_memory != "暂无" else []
+        memory_text_parts = []
         
         if activated_memories:
             memory_text_parts.append("相关群组记忆:")
@@ -310,28 +307,8 @@ class GroupSession:
         # 保存记忆图到数据库
         await memory_graph.save_to_db()
         
-        # 生成传统格式的记忆摘要用于兼容性
-        memory = await fetch_message(
-            [
-                generate_message(await lang.text("prompt_group.memory", self.user_id), "system"),
-                generate_message(
-                    await lang.text("prompt_group.memory_2", self.user_id, await self.get_memory(), messages), "user"
-                ),
-            ],
-            model="moonshotai/kimi-k2:free",
-            extra_headers={"X-Title": "Moonlark - Memory", "HTTP-Referer": "https://memory.moonlark.itcdt.top"},
-        )
-        async with get_session() as session:
-            g = await session.get_one(ChatGroup, {"group_id": self.group_id})
-            g.memory = memory
-            await session.commit()
         self.last_reward_participation = None
         self.cached_messages.clear()
-
-    async def get_memory(self) -> str:
-        async with get_session() as session:
-            g = await session.get_one(ChatGroup, {"group_id": self.group_id})
-            return str(g.memory)
 
     def format_message(self, origin_message: str) -> UniMessage:
         if "[Moonlark]:" in origin_message:
@@ -513,15 +490,25 @@ async def _(
                 await lang.send("command.disabled", user_id)
         case "reset-memory":
             if g is not None:
-                g.memory = ""
-                # 同时清理图形记忆
+                # 清理图形记忆
                 from ..utils.memory_graph import cleanup_old_memories
                 await cleanup_old_memories(group_id, forget_ratio=1.0)  # 清除所有记忆
                 await lang.send("command.done", user_id)
             else:
                 await lang.send("command.disabled", user_id)
         case "show-memory":
-            await matcher.finish(g.memory)
+            # 显示图形记忆而不是传统记忆
+            from ..utils.memory_graph import MemoryGraph
+            memory_graph = MemoryGraph(group_id)
+            await memory_graph.load_from_db()
+            
+            if memory_graph.nodes:
+                memory_summary = []
+                for concept, data in list(memory_graph.nodes.items())[:3]:  # 显示前3个
+                    memory_summary.append(f"{concept}: {data['memory_items'][:200]}...")
+                await matcher.finish("当前记忆:\n" + "\n\n".join(memory_summary))
+            else:
+                await matcher.finish("暂无记忆")
         case "cleanup-memory":
             if g is not None:
                 from ..utils.memory_graph import cleanup_old_memories

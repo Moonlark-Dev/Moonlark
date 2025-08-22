@@ -46,17 +46,15 @@ async def get_history(session: async_scoped_session | AsyncSession, user_id: str
 
 
 async def get_memory(user_id: str, session: async_scoped_session | AsyncSession) -> str:
-    result = await session.get(ChatUser, {"user_id": user_id})
-    if result:
-        return result.memory
+    """获取用户记忆 - 现在只返回空字符串，因为已移除传统记忆"""
     return "None"
 
 
-async def get_relevant_memories(user_id: str, text: str, max_memories: int = 3) -> List[str]:
+async def get_relevant_memories(context_id: str, text: str, max_memories: int = 3) -> List[str]:
     """获取与文本相关的记忆"""
     from .memory_graph import MemoryGraph
     
-    memory_graph = MemoryGraph(user_id)
+    memory_graph = MemoryGraph(context_id)
     await memory_graph.load_from_db()
     
     # 从文本中提取关键词
@@ -79,9 +77,6 @@ async def get_relevant_memories(user_id: str, text: str, max_memories: int = 3) 
 async def generate_history(user_id: str, session: async_scoped_session) -> Messages:
     from .memory_activator import memory_activator
     
-    # 获取传统记忆
-    base_memory = await get_memory(user_id, session)
-    
     # 获取最近几条消息作为上下文
     recent_messages = await session.scalars(
         select(SessionMessage).where(SessionMessage.user_id == user_id)
@@ -91,13 +86,13 @@ async def generate_history(user_id: str, session: async_scoped_session) -> Messa
     
     # 激活相关记忆
     activated_memories = await memory_activator.activate_memories_from_text(
-        user_id=user_id,
+        context_id=user_id,
         target_message=recent_context,
         max_memories=3
     )
     
     # 构建记忆文本
-    memory_text_parts = [base_memory] if base_memory != "None" else []
+    memory_text_parts = []
     
     if activated_memories:
         memory_text_parts.append("相关记忆:")
@@ -128,22 +123,11 @@ async def generate_memory(user_id: str) -> None:
         # 保存记忆图到数据库
         await memory_graph.save_to_db()
         
-        # 生成传统格式的记忆摘要用于兼容性
-        memory = await fetch_message(
-            [
-                generate_message(
-                    await lang.text("prompt.memory", user_id, await get_memory(user_id, session)), "system"
-                ),
-                generate_message(await lang.text("prompt.memory_2", user_id, message_string), "user"),
-            ]
-        )
-        
-        # 更新用户记忆
+        # 确保用户存在于数据库中（移除了memory字段更新）
         user_data = await session.get(ChatUser, {"user_id": user_id})
         if user_data is None:
-            user_data = ChatUser(user_id=user_id, memory="None", latest_chat=datetime.now())
-        user_data.memory = memory
-        await session.merge(user_data)
+            user_data = ChatUser(user_id=user_id, latest_chat=datetime.now())
+            await session.merge(user_data)
         
         # 清除已处理的消息
         for message in await session.scalars(
