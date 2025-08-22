@@ -25,7 +25,7 @@ async def _(
         await lang.finish("remove_comment.no_result", user_id, comment_id)
         return
     if not (comment.author == user_id or is_superuser):
-        await lang.reply("remove_comment.no_permission", user_id)
+        await lang.reply()
         await cave.finish()
     await lang.send(
         "remove_comment.info",
@@ -47,13 +47,13 @@ async def _(
     try:
         cave_data = await session.get_one(CaveData, {"id": cave_id})
     except NoResultFound:
-        await lang.reply("remove.no_result", user_id)
+        await lang.reply()
         await cave.finish()
     if not (cave_data.author == user_id or is_superuser):
-        await lang.reply("remove.no_permission", user_id)
+        await lang.reply()
         await cave.finish()
     if not cave_data.public:
-        await lang.reply("remove.private", user_id, cave_id)
+        await lang.reply()
         await cave.finish()
     cave_data.public = False
     session.add(

@@ -1,43 +1,120 @@
-from typing import Literal
+import json
+from typing import Optional, Any
 
 from nonebot import logger
+from openai.types.shared_params import FunctionDefinition
+from openai.types.chat import ChatCompletionToolMessageParam, ChatCompletionFunctionToolParam
 
-from ..types import Messages
+from ..types import Messages, AsyncFunction
 
 from ..config import config
-from ..exceptions import NoTokenException
-from .token import is_user_useable, reduce_completion_token
 from .message import generate_message
-from .client import get_completion, get_reply
+from .client import client
 
 
-async def fetch_messages(
+def generate_function_list(func_index: dict[str, AsyncFunction]) -> list[ChatCompletionFunctionToolParam]:
+    func_list = []
+    for name, data in func_index.items():
+        func_info = FunctionDefinition(
+            name=name, description=data["description"], parameters={"type": "object", "properties": {}, "required": []}
+        )
+        for p_name, p_data in data["parameters"].items():
+            param_info = {"type": p_data["type"], "description": p_data["description"]}
+            if "enum" in p_data:
+                param_info["enum"] = list(p_data["enum"])
+            func_info["parameters"]["properties"][p_name] = param_info
+            if p_data["required"]:
+                func_info["parameters"]["required"].append(p_name)
+        func_list.append(
+            ChatCompletionFunctionToolParam(
+                type="function",
+                function=func_info,
+            )
+        )
+    return func_list
+
+
+class LLMRequestSession:
+
+    def __init__(
+        self, messages: Messages, func_index: dict[str, AsyncFunction], model: str, kwargs: dict[str, Any]
+    ) -> None:
+        self.messages: Messages = messages
+        self.func_list = generate_function_list(func_index)
+        self.func_index = func_index
+        self.kwargs = kwargs
+        self.result_string = ""
+        self.model = model
+
+    async def fetch_llm_response(self) -> str:
+        while not self.result_string:
+            await self.request()
+        return self.result_string
+
+    async def request(self) -> None:
+        response = (
+            await client.chat.completions.create(
+                messages=self.messages,
+                model=self.model,
+                tools=self.func_list,
+                tool_choice="auto" if self.func_list else "none",
+                **self.kwargs,
+            )
+        ).choices[0]
+        logger.debug(f"{response=}\n{self.messages=}\n{self.model=}\n{self.func_list=}")
+        self.messages.append(response.message)
+        if response.finish_reason == "tool_calls":
+            for request in response.message.tool_calls:
+                await self.call_function(request.id, request.function.name, json.loads(request.function.arguments))
+        elif response.finish_reason == "stop":
+            self.result_string = response.message.content
+
+    async def call_function(self, call_id: str, name: str, params: dict[str, Any]) -> None:
+        result = await self.func_index[name]["func"](**params)
+        if result is None:
+            result = "success"
+        logger.debug(f"函数返回: {result}")
+        msg: ChatCompletionToolMessageParam = {"role": "tool", "tool_call_id": call_id, "content": json.dumps(result)}
+        self.messages.append(msg)
+
+
+async def fetch_message(
     messages: Messages,
-    user_id: str,
     use_default_message: bool = False,
-    multiple: float = 0.0,
     model: str = config.openai_default_model,
+    functions: Optional[list[AsyncFunction]] = None,
     **kwargs,
 ) -> str:
-    logger.debug(messages)
-    if multiple != 0 and not await is_user_useable(user_id):
-        raise NoTokenException()
     if use_default_message:
         messages.insert(0, generate_message(config.openai_default_message, "system"))
-    completion = await get_completion(messages, model, **kwargs)
-    await reduce_completion_token(user_id, completion, multiple)
-    logger.debug(reply := get_reply(completion))
-    return reply
+    func_index: dict[str, AsyncFunction] = {}
+    if functions:
+        for func in functions:
+            func_index[func.__name__] = func
+    session = LLMRequestSession(messages, func_index, model, kwargs)
+    return await session.fetch_llm_response()
 
 
-async def fetch(
-    prompt: str,
-    user_id: str,
-    role: Literal["system", "user"] = "user",
-    use_default_message: bool = False,
-    multiple: float = 0.0,
-    model: str = config.openai_default_model,
-    **kwargs,
-) -> str:
-    messages = [generate_message(prompt, role)]
-    return await fetch_messages(messages, user_id, use_default_message, multiple, model, **kwargs)
+class MessageFetcher:
+
+    def __init__(
+        self,
+        messages: Messages,
+        use_default_message: bool = False,
+        model: str = config.openai_default_model,
+        functions: Optional[list[AsyncFunction]] = None,
+        **kwargs,
+    ) -> None:
+        if use_default_message:
+            messages.insert(0, generate_message(config.openai_default_message, "system"))
+        func_index: dict[str, AsyncFunction] = {}
+        if functions:
+            for func in functions:
+                func_index[func["func"].__name__] = func
+        self.session = LLMRequestSession(messages, func_index, model, kwargs)
+
+    async def fetch(self) -> str:
+        return await self.session.fetch_llm_response()
+
+    def get_messages(self) -> Messages:
+        return self.session.messages
