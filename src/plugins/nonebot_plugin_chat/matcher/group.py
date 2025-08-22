@@ -89,6 +89,7 @@ class MessageProcessor:
         self.session.cached_messages.append(msg_dict)
         if mentioned or not self.session.message_queue:
             await self.generate_reply(mentioned)
+            await asyncio.sleep(5)
 
     def clean_special_message(self) -> None:
         while True:
@@ -179,7 +180,6 @@ class GroupSession:
         self.message_queue: list[tuple[UniMessage, Event, T_State, str, str, datetime, bool]] = []
         self.cached_messages: list[CachedMessage] = []
         self.desire = BASE_DESIRE
-        self.triggered = False
         self.last_reward_participation: Optional[datetime] = None
         self.mute_until: Optional[datetime] = None
         self.memory_lock = False
@@ -345,7 +345,7 @@ class GroupSession:
         if not self.cached_messages:
             return
         time_to_last_message = (dt - self.cached_messages[-1]["send_time"]).total_seconds()
-        if time_to_last_message > 300:
+        if time_to_last_message > 180:
             if random.random() <= self.desire / 100 and not self.cached_messages[-1]["self"]:
                 await self.processor.generate_reply()
             await self.update_memory()

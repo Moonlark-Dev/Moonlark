@@ -1,4 +1,4 @@
-from typing import Literal, Union, TypedDict, Awaitable, Callable
+from typing import TypedDict, Awaitable, Callable
 from openai.types.chat import ChatCompletionMessageParam, ChatCompletionToolMessageParam, ChatCompletionMessage, ChatCompletionTool
 
 Message = ChatCompletionMessageParam | ChatCompletionToolMessageParam | ChatCompletionMessage | ChatCompletionTool
