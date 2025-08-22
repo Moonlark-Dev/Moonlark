@@ -264,6 +264,8 @@ class GroupSession:
         self.memory_lock = False
 
     async def generate_memory(self) -> None:
+        from ..utils.memory_graph import MemoryGraph
+        
         messages = ""
         cached_messages = copy.deepcopy(self.cached_messages)
         for message in cached_messages:
@@ -271,6 +273,18 @@ class GroupSession:
                 messages += f'[{message["send_time"].strftime("%H:%M")}][Moonlark]: {message["content"]}\n'
             else:
                 messages += f"[{message['send_time'].strftime('%H:%M')}][{message['nickname']}]: {message['content']}\n"
+        
+        # 使用新的记忆图系统
+        memory_graph = MemoryGraph(self.group_id)
+        await memory_graph.load_from_db()
+        
+        # 从消息历史构建记忆
+        await memory_graph.build_memory_from_text(messages, compress_rate=0.15)
+        
+        # 保存记忆图到数据库
+        await memory_graph.save_to_db()
+        
+        # 生成传统格式的记忆摘要用于兼容性
         memory = await fetch_message(
             [
                 generate_message(await lang.text("prompt_group.memory", self.user_id), "system"),

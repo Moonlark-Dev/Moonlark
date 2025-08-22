@@ -15,6 +15,7 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 from datetime import datetime
+from typing import List
 
 from nonebot_plugin_orm import async_scoped_session, AsyncSession, get_session
 from sqlalchemy import select
@@ -51,6 +52,30 @@ async def get_memory(user_id: str, session: async_scoped_session | AsyncSession)
     return "None"
 
 
+async def get_relevant_memories(user_id: str, text: str, max_memories: int = 3) -> List[str]:
+    """获取与文本相关的记忆"""
+    from .memory_graph import MemoryGraph
+    
+    memory_graph = MemoryGraph(user_id)
+    await memory_graph.load_from_db()
+    
+    # 从文本中提取关键词
+    topics = memory_graph.extract_topics_from_text(text)
+    
+    relevant_memories = []
+    for topic in topics:
+        memories = memory_graph.get_related_memories(topic, max_depth=2)
+        for concept, memory_content in memories:
+            if memory_content not in relevant_memories:
+                relevant_memories.append(memory_content)
+                if len(relevant_memories) >= max_memories:
+                    break
+        if len(relevant_memories) >= max_memories:
+            break
+    
+    return relevant_memories
+
+
 async def generate_history(user_id: str, session: async_scoped_session) -> Messages:
     text = await lang.text("prompt.default", user_id, await get_memory(user_id, session))
     session.add(SessionMessage(user_id=user_id, content=text, role="system"))
@@ -58,22 +83,40 @@ async def generate_history(user_id: str, session: async_scoped_session) -> Messa
 
 
 async def generate_memory(user_id: str) -> None:
+    from .memory_graph import MemoryGraph
+    
     async with get_session() as session:
         messages = await get_history(session, user_id)
         message_string = generate_message_string(messages)
+        
+        # 使用新的记忆图系统
+        memory_graph = MemoryGraph(user_id)
+        await memory_graph.load_from_db()
+        
+        # 从消息历史构建记忆
+        await memory_graph.build_memory_from_text(message_string, compress_rate=0.1)
+        
+        # 保存记忆图到数据库
+        await memory_graph.save_to_db()
+        
+        # 生成传统格式的记忆摘要用于兼容性
         memory = await fetch_message(
             [
                 generate_message(
                     await lang.text("prompt.memory", user_id, await get_memory(user_id, session)), "system"
                 ),
-                generate_message(await lang.text("prompt.memory_2", user_id, message_string, "user")),
+                generate_message(await lang.text("prompt.memory_2", user_id, message_string), "user"),
             ]
         )
+        
+        # 更新用户记忆
         user_data = await session.get(ChatUser, {"user_id": user_id})
         if user_data is None:
             user_data = ChatUser(user_id=user_id, memory="None", latest_chat=datetime.now())
         user_data.memory = memory
         await session.merge(user_data)
+        
+        # 清除已处理的消息
         for message in await session.scalars(
             select(SessionMessage).where(SessionMessage.user_id == user_id).order_by(SessionMessage.id_)
         ):
