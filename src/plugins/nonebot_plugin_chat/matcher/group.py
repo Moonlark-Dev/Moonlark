@@ -42,7 +42,7 @@ from ..utils.memory_activator import activate_memories_from_text
 from ..lang import lang
 from ..models import ChatGroup
 from ..utils import enabled_group, parse_message_to_string
-from ..utils.tools import browse_webpage
+from ..utils.tools import browse_webpage, search_on_bing
 
 BASE_DESIRE = 30
 
@@ -143,6 +143,13 @@ class MessageProcessor:
                     description="使用浏览器访问指定 URL 并获取网页内容的 Markdown 格式文本",
                     parameters={
                         "url": FunctionParameter(type="string", description="要访问的网页的 URL 地址", required=True)
+                    },
+                ),
+                AsyncFunction(
+                    func=search_on_bing,
+                    description="使用微软必应搜索信息",
+                    parameters={
+                        "keyword": FunctionParameter(type="string", description="搜索关键词", required=True)
                     },
                 )
             ],
