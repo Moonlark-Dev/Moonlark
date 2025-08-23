@@ -84,7 +84,7 @@ async def generate_history(user_id: str, session: async_scoped_session) -> Messa
     recent_context = " ".join([msg.content for msg in recent_messages])
 
     # 激活相关记忆
-    activated_memories = await memory_activator.activate_memories_from_text(
+    activated_memories = await activate_memories_from_text(
         context_id=user_id, target_message=recent_context, max_memories=3
     )
 

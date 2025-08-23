@@ -22,7 +22,7 @@ from datetime import datetime, timedelta
 from nonebot.adapters.qq import Bot as BotQQ
 from nonebot.params import CommandArg
 from nonebot.typing import T_State
-from typing import TypedDict, Optional, Any, Coroutine
+from typing import TypedDict, Optional
 from nonebot_plugin_apscheduler import scheduler
 from nonebot_plugin_alconna import UniMessage, Target, get_target
 from nonebot_plugin_userinfo import EventUserInfo, UserInfo
@@ -31,14 +31,14 @@ from nonebot_plugin_larkuser import get_user
 from nonebot import on_message, on_command
 from nonebot.adapters import Event, Bot, Message
 from nonebot_plugin_larkutils import get_user_id, get_group_id
-from nonebot_plugin_orm import async_scoped_session, get_session
+from nonebot_plugin_orm import async_scoped_session
 from nonebot.log import logger
-from nonebot_plugin_openai import generate_message, fetch_message
+from nonebot_plugin_openai import generate_message
 from nonebot_plugin_openai.types import Messages, Message as OpenAIMessage, AsyncFunction, FunctionParameter
 from nonebot_plugin_openai.utils.chat import MessageFetcher
 from nonebot.matcher import Matcher
 
-
+from ..utils.memory_activator import activate_memories_from_text
 from ..lang import lang
 from ..models import ChatGroup
 from ..utils import enabled_group, parse_message_to_string
@@ -181,14 +181,14 @@ class MessageProcessor:
         logger.debug(self.openai_messages)
 
     async def generate_system_prompt(self) -> OpenAIMessage:
-        from ..utils.memory_activator import memory_activator
+
 
         # 获取最近几条缓存消息作为上下文
         recent_messages = self.session.cached_messages[-5:] if self.session.cached_messages else []
         recent_context = " ".join([msg["content"] for msg in recent_messages])
 
         # 激活相关记忆
-        activated_memories = await memory_activator.activate_memories_from_text(
+        activated_memories = await activate_memories_from_text(
             context_id=self.session.group_id, target_message=recent_context, max_memories=3
         )
 
@@ -423,7 +423,7 @@ async def _(
     await groups[session_id].handle_message(message, user_id, event, state, nickname, event.is_tome())
 
 
-async def group_disable(group_id: str, user_id: str) -> None:
+async def group_disable(group_id: str) -> None:
     if group_id in groups:
         group = groups.pop(group_id)
         await group.update_memory()
@@ -451,11 +451,11 @@ async def _(
                 await lang.send("command.switch.enabled", user_id)
             else:
                 g.enabled = False
-                await group_disable(group_id, user_id)
+                await group_disable(group_id)
                 await lang.send("command.switch.disabled", user_id)
         case "off":
             g = ChatGroup(group_id=group_id, enabled=False)
-            await group_disable(group_id, user_id)
+            await group_disable(group_id)
             await lang.send("command.switch.disabled", user_id)
         case "on":
             g = ChatGroup(group_id=group_id, enabled=True)
