@@ -1,16 +1,27 @@
-from datetime import datetime, timedelta
-from typing import List
-from nonebot import on_message
+from datetime import datetime, timedelta, date
+from typing import List, Optional
+from nonebot import on_message, logger
 from nonebot.adapters import Bot, Event
 from nonebot_plugin_alconna import Alconna, Args, on_alconna, Match, At
 from nonebot_plugin_larkutils import get_user_id
 from nonebot_plugin_larklang import LangHelper
 from nonebot_plugin_orm import get_session
-from nonebot_plugin_render import render_template, generate_render_keys
 from nonebot_plugin_apscheduler import scheduler
 from sqlalchemy import select, delete
 from .models import OnlineTimeRecord
 import asyncio
+from io import BytesIO
+from PIL import Image, ImageDraw, ImageFont
+
+def format_duration(duration: timedelta) -> str:
+    """Format timedelta into a readable string"""
+    total_seconds = int(duration.total_seconds())
+    hours = total_seconds // 3600
+    minutes = (total_seconds % 3600) // 60
+    if hours > 0:
+        return f"{hours}小时{minutes}分钟"
+    else:
+        return f"{minutes}分钟"
 
 # Initialize language helper
 lang = LangHelper()
@@ -88,11 +99,11 @@ async def handle_online_timer(
     async with get_session() as session:
         stmt = select(OnlineTimeRecord).where(
             OnlineTimeRecord.user_id == target_user_id
-        ).order_by(OnlineTimeRecord.start_time.desc())  # Limit to last 100 records
+        ).order_by(OnlineTimeRecord.start_time.desc())
         
-        result = await session.execute(stmt)
-        records = result.scalars().all()
-    
+        result = await session.scalars(stmt)
+        records = result.all()
+    logger.debug(records)
     # Render timeline
     image_bytes = await render_online_timeline(target_user_id, list(records))
     
@@ -102,39 +113,128 @@ async def handle_online_timer(
         UniMessage().image(raw=image_bytes, name="online_timeline.png")
     )
 
-async def render_online_timeline(user_id: str, records: List[OnlineTimeRecord]) -> bytes:
-    """Render online timeline as an image"""
-    # Prepare data for template
-    timeline_data = []
-    if records:
-        # Get the time range (last 3 days)
-        end_time = datetime.now()
-        start_time = end_time - timedelta(days=3)
+async def render_online_timeline(user_id: str, records: List[OnlineTimeRecord], timeline_date: Optional[date] = None) -> bytes:
+    """Render online timeline as an image using Pillow"""
+    if timeline_date is None:
+        timeline_date = date.today()
+    # Get user nickname
+    from nonebot_plugin_larkuser.utils.user import get_user
+    user = await get_user(user_id)
+    nickname = user.get_nickname()
+    
+    # Get the time range (last 3 days)
+    end_time = (datetime.now() + timedelta(minutes=3)).replace(hour=23, minute=59, second=59)
+    start_time = (end_time - timedelta(days=3, minutes=3)).replace(hour=0, minute=0, second=0, microsecond=0)
+    
+    # Filter records within the time range
+    filtered_records = [
+        record for record in records
+        if record.start_time >= start_time and record.end_time <= end_time
+    ]
+    
+    # Calculate statistics
+    total_online_time = timedelta()
+    daily_online_time = {}  # day -> total time for that day
+    
+    for record in filtered_records:
+        # Calculate the time this record contributes to online time
+        record_duration = record.end_time - record.start_time
+        total_online_time += record_duration
         
-        # Filter records within the time range
-        filtered_records = [
-            record for record in records 
-            if record.start_time >= start_time and record.end_time <= end_time
-        ]
-        
-        # Convert to template-friendly format
-        for record in filtered_records:
-            timeline_data.append({
-                "start": record.start_time.isoformat(),
-                "end": record.end_time.isoformat()
-            })
+        # Group by day for daily statistics
+        day = record.start_time.date()
+        if day not in daily_online_time:
+            daily_online_time[day] = timedelta()
+        daily_online_time[day] += record_duration
+    logger.debug(f"{filtered_records=} {start_time=} {end_time=}")
+    # Calculate average and total online time
+    average_daily_online = total_online_time / 3 if daily_online_time else timedelta()
+    total_online_str = format_duration(total_online_time)
+    average_daily_str = format_duration(average_daily_online)
+    
+    # Create image
+    image_width = 600
+    image_height = 270
+    background_color = (255, 255, 255)  # White background
+    text_color = (0, 0, 0)  # Black text
+    online_color = (0, 128, 0)  # Green for online time
+    offline_color = (128, 128, 128)  # Gray for offline time
+    font_path = "./src/static/SarasaGothicSC-Regular.ttf"
+    
+    # Create image
+    image = Image.new("RGB", (image_width, image_height), background_color)
+    draw = ImageDraw.Draw(image)
+    
+    # Load fonts
+    try:
+        # Try to load the custom font
+        title_font = ImageFont.truetype(font_path, 24)
+        text_font = ImageFont.truetype(font_path, 16)
+        small_font = ImageFont.truetype(font_path, 12)
+    except Exception as e:
+        logger.exception(e)
+        # Fallback to default font if custom font fails
+        title_font = ImageFont.load_default()
+        text_font = ImageFont.load_default()
+        small_font = ImageFont.load_default()
+    
+    # Draw title
+    title = f"{nickname} 的在线时间统计"
+    draw.text((20, 20), title, fill=text_color, font=title_font)
+    
+    # Draw user ID
+    user_id_text = f"用户ID: {user_id}"
+    draw.text((20, 60), user_id_text, fill=text_color, font=small_font)
+    
+    # Draw statistics
+    stats_y = 90
+    draw.text((20, stats_y), f"近三天总在线时间: {total_online_str}", fill=text_color, font=text_font)
+    draw.text((20, stats_y + 25), f"平均每天在线时间: {average_daily_str}", fill=text_color, font=text_font)
+    
+    # Draw timeline
+    timeline_y = stats_y + 70
+    timeline_height = 50
+    timeline_width = image_width - 40
+    timeline_start_x = 20
+    timeline_end_x = timeline_start_x + timeline_width
+    timeline_start_y = timeline_y
+    timeline_end_y = timeline_y + timeline_height
+    
+    # Draw timeline background (gray for offline)
+    draw.rectangle([timeline_start_x, timeline_start_y, timeline_end_x, timeline_end_y], fill=offline_color)
+    
+    # Draw online segments (green)
+    # for day in range(3):
+    #     day_date = start_time.date() + timedelta(days=day)
+    #     if day_date in daily_online_time:
+    #         online_duration = daily_online_time[day_date]
+    #         # Convert online duration to pixels (1 day = 200px)
+    #         day_width = 200  # 200px per day
+    #         start_x = timeline_start_x + day * day_width
+    #         end_x = start_x + day_width
+    #         # Calculate online portion based on duration (assuming 24h = 200px)
+    #         online_width = min(day_width, (online_duration.total_seconds() / (24 * 3600)) * day_width)
+    #         if online_width > 0:
+    #             draw.rectangle([start_x, timeline_start_y, start_x + online_width, timeline_end_y], fill=online_color)
+    for record in [item for item in filtered_records if timeline_date in [item.start_time.date(), item.end_time.date()]]:
+        day_start_time = datetime(year=timeline_date.year, month=timeline_date.month, day=timeline_date.day, hour=0, minute=0, second=0, microsecond=0)
+        day_end_time = datetime(
+            year=timeline_date.year, month=timeline_date.month, day=timeline_date.day, hour=23, minute=59, second=59,
+            microsecond=999)
+        record_start_time = record.start_time if record.start_time.date() == timeline_date else day_start_time
+        record_end_time = record.end_time if record.end_time.date() == timeline_date else day_end_time
+        start_x = timeline_start_x + ((record_start_time - day_start_time).total_seconds() / 86400) * timeline_width
+        end_x = timeline_start_x + ((record_end_time - day_start_time).total_seconds() / 86400) * timeline_width
+        online_width = end_x - start_x
+        draw.rectangle([start_x, timeline_start_y, start_x + online_width, timeline_end_y], fill=online_color)
 
-    # Render template
-    return await render_template(
-        "online_timer.html.jinja",
-        await lang.text("online_timer.title", user_id),
-        user_id,
-        {
-            "records": timeline_data,
-            "target_user_id": user_id
-        },
-        await generate_render_keys(lang, user_id, ["online_timer.title"])
-    )
+
+    
+    # Save image to bytes
+    img_bytes = BytesIO()
+    image.save(img_bytes, format="PNG")
+    img_bytes.seek(0)
+    return img_bytes.getvalue()
 
 # Scheduled task to clean up old records
 @scheduler.scheduled_job("cron", hour=2, minute=0)  # Run daily at 2:00 AM

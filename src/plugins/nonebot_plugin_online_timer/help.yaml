@@ -1,0 +1,3 @@
+plugin: online_timer
+commands:
+  online-timer: help;3;community

@@ -4,3 +4,7 @@ online_timer:
   online: "在线"
   offline: "离线"
   no_data: "暂无数据"
+help:
+  details: 查询 Moonlark 记录的群友在线时间段
+  description: 在线时间段
+  usage1: online-timer [@用户]
