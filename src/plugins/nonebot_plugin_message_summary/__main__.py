@@ -104,8 +104,8 @@ async def clean_recorded_message(session: async_scoped_session, group_id: str) -
     result = (
         await session.scalars(select(GroupMessage).where(GroupMessage.group_id == group_id).order_by(GroupMessage.id_))
     ).all()
-    if len(result) > 270:
-        for i in range(270 - len(result)):
+    if len(result) > 300:
+        for i in range(len(result) - 300):
             await session.delete(result[i])
 
 
