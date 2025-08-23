@@ -65,7 +65,7 @@ async def extract_topics_from_text(text: str, max_topics: int = 5) -> List[str]:
     result = await fetch_message([generate_message(prompt, "user")])
     if result == "<none>":
         return []
-    return result.split(",")
+    return [i[1:-1] for i in result.split(",")]
 
 
 async def _integrate_memories_with_llm(existing_memory: str, new_memory: str) -> str:
