@@ -97,9 +97,9 @@ class MessageProcessor:
     def clean_special_message(self) -> None:
         while True:
             if isinstance(self.openai_messages[0], dict):
-                if not self.openai_messages[0]["role"] in ["system", "tool"]:
+                if self.openai_messages[0]["role"] not in ["system", "tool"]:
                     break
-            elif not self.openai_messages[0].role in ["system", "tool"]:
+            elif self.openai_messages[0].role not in ["system", "tool"]:
                 break
             self.openai_messages.pop(0)
 
@@ -175,7 +175,6 @@ class MessageProcessor:
         self.message_count += 1
 
     async def process_messages(self, msg_dict: CachedMessage) -> None:
-        logger.debug(self.openai_messages)
         if (
             len(self.openai_messages) <= 0
             or (not isinstance(self.openai_messages[-1], dict))
