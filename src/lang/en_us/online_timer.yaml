@@ -1,0 +1,6 @@
+online_timer:
+  title: "Online Time Statistics"
+  description: "Here are the user's online time records from the last 3 days"
+  online: "Online"
+  offline: "Offline"
+  no_data: "No data"
