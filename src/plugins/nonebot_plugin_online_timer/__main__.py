@@ -129,7 +129,7 @@ async def render_online_timeline(user_id: str, records: List[OnlineTimeRecord], 
     # Filter records within the time range
     filtered_records = [
         record for record in records
-        if record.start_time >= start_time and record.end_time <= end_time
+        if start_time <= record.start_time <= end_time or start_time <= record.end_time <= end_time
     ]
     
     # Calculate statistics
@@ -202,20 +202,7 @@ async def render_online_timeline(user_id: str, records: List[OnlineTimeRecord], 
     
     # Draw timeline background (gray for offline)
     draw.rectangle([timeline_start_x, timeline_start_y, timeline_end_x, timeline_end_y], fill=offline_color)
-    
-    # Draw online segments (green)
-    # for day in range(3):
-    #     day_date = start_time.date() + timedelta(days=day)
-    #     if day_date in daily_online_time:
-    #         online_duration = daily_online_time[day_date]
-    #         # Convert online duration to pixels (1 day = 200px)
-    #         day_width = 200  # 200px per day
-    #         start_x = timeline_start_x + day * day_width
-    #         end_x = start_x + day_width
-    #         # Calculate online portion based on duration (assuming 24h = 200px)
-    #         online_width = min(day_width, (online_duration.total_seconds() / (24 * 3600)) * day_width)
-    #         if online_width > 0:
-    #             draw.rectangle([start_x, timeline_start_y, start_x + online_width, timeline_end_y], fill=online_color)
+
     for record in [item for item in filtered_records if timeline_date in [item.start_time.date(), item.end_time.date()]]:
         day_start_time = datetime(year=timeline_date.year, month=timeline_date.month, day=timeline_date.day, hour=0, minute=0, second=0, microsecond=0)
         day_end_time = datetime(
@@ -228,6 +215,21 @@ async def render_online_timeline(user_id: str, records: List[OnlineTimeRecord], 
         online_width = end_x - start_x
         draw.rectangle([start_x, timeline_start_y, start_x + online_width, timeline_end_y], fill=online_color)
 
+    # Draw time labels below the timeline
+    time_labels_y = timeline_end_y + 10  # Position below the timeline
+    time_labels = ["0:00", "6:00", "12:00", "18:00", "24:00"]
+    for i, label in enumerate(time_labels):
+        # Calculate position for each label (0, 6, 12, 18, 24 hours)
+        label_x = timeline_start_x + (i * timeline_width / 4)
+        # Get text width to center the label
+        try:
+            text_bbox = draw.textbbox((0, 0), label, font=small_font)
+            text_width = text_bbox[2] - text_bbox[0]
+        except:
+            # Fallback if textbbox is not available
+            text_width = len(label) * 6  # Approximate width
+        # Draw the label centered at the calculated position
+        draw.text((label_x - text_width / 2, time_labels_y), label, fill=text_color, font=small_font)
 
     
     # Save image to bytes
