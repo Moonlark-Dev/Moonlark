@@ -148,10 +148,8 @@ class MessageProcessor:
                 AsyncFunction(
                     func=search_on_bing,
                     description="使用微软必应搜索信息",
-                    parameters={
-                        "keyword": FunctionParameter(type="string", description="搜索关键词", required=True)
-                    },
-                )
+                    parameters={"keyword": FunctionParameter(type="string", description="搜索关键词", required=True)},
+                ),
             ],
             extra_headers={"X-Title": "Moonlark - Chat", "HTTP-Referer": "https://chat.moonlark.itcdt.top"},
         )
