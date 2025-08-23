@@ -15,6 +15,7 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 import base64
+import datetime
 import hashlib
 import traceback
 
@@ -47,7 +48,7 @@ async def get_image_summary(segment: Image, event: Event, bot: Bot, state: T_Sta
         return cache
     image_base64 = base64.b64encode(image).decode("utf-8")
     messages = [
-        generate_message(await lang.text("prompt_group.image_describe_system", event.get_user_id()), "system"),
+        generate_message(await lang.text("prompt_group.image_describe_system", event.get_user_id(), datetime.datetime.now().isoformat()), "system"),
         generate_message(
             [
                 {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_base64}"}},

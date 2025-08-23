@@ -19,6 +19,7 @@ import time
 import math
 import random
 from collections import Counter
+from datetime import datetime
 from typing import List, Tuple, Dict, Any
 
 from nonebot import logger
@@ -60,7 +61,8 @@ async def extract_topics_from_text(text: str, max_topics: int = 5) -> List[str]:
     prompt = (
         f"这是一段文字：\n{text}\n\n请你从这段话中总结出最多{max_topics}个关键的概念，必须是某种概念，比如人，事，物，概念，事件，地点 等等，帮我列出来，"
         f"将主题用逗号隔开，并加上<>,例如<主题1>,<主题2>......尽可能精简。只需要列举最多{max_topics}个话题就好，不要有序号，不要告诉我其他内容。"
-        f"如果确定找不出主题或者没有明显主题，返回<none>。"
+        f"如果确定找不出主题或者没有明显主题，返回<none>。\n"
+        f"当前时间: {datetime.now().isoformat()}"
     )
     result = await fetch_message([generate_message(prompt, "user")])
     if result == "<none>":
@@ -85,6 +87,9 @@ async def _integrate_memories_with_llm(existing_memory: str, new_memory: str) ->
 3. 将相关信息合并，形成更完整的描述
 4. 保持语言简洁、准确
 5. 只返回整合后的记忆内容，不要添加任何解释
+
+当前时间：
+{datetime.now().isoformat()}
 
 整合后的记忆："""
 

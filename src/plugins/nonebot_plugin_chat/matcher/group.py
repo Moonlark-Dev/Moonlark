@@ -73,6 +73,7 @@ class MessageProcessor:
             await self.get_message()
             for _ in range(self.message_count - 10):
                 await self.pop_first_message()
+            await asyncio.sleep(1)
 
     async def get_message(self) -> None:
         if not self.session.message_queue:
@@ -91,7 +92,7 @@ class MessageProcessor:
         self.session.cached_messages.append(msg_dict)
         if mentioned or not self.session.message_queue:
             await self.generate_reply(mentioned)
-            await asyncio.sleep(5)
+            await asyncio.sleep(10)
 
     def clean_special_message(self) -> None:
         while True:
@@ -391,7 +392,7 @@ class GroupSession:
         if time_to_last_message > 180:
             if random.random() <= self.desire / 100 and not self.cached_messages[-1]["self"]:
                 await self.processor.generate_reply()
-            await self.update_memory()
+            # await self.update_memory()
 
 
 from ..config import config
