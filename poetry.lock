@@ -1143,6 +1143,18 @@ files = [
 ]
 
 [[package]]
+name = "html2text"
+version = "2025.4.15"
+description = "Turn HTML into equivalent Markdown-structured text."
+optional = false
+python-versions = ">=3.9"
+groups = ["main"]
+files = [
+    {file = "html2text-2025.4.15-py3-none-any.whl", hash = "sha256:00569167ffdab3d7767a4cdf589b7f57e777a5ed28d12907d8c58769ec734acc"},
+    {file = "html2text-2025.4.15.tar.gz", hash = "sha256:948a645f8f0bc3abe7fd587019a2197a12436cd73d0d4908af95bfc8da337588"},
+]
+
+[[package]]
 name = "httpcore"
 version = "1.0.9"
 description = "A minimal low-level HTTP client."
@@ -2079,6 +2091,7 @@ nonebot-plugin-alconna = "^0.59.2"
 nonebot-plugin-htmlrender = "^0.6.6"
 nonebot-plugin-orm = "^0.8.0"
 nonebot-plugin-session = "^0.3.2"
+nonebot-plugin-userinfo = "^0.2.6"
 nonebot2 = {version = "^2.3.1", extras = ["fastapi"]}
 numpy = "^2.3.1"
 openai = "^1.34.0"
@@ -5458,4 +5471,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.11"
-content-hash = "ae5f387f0fbb8f10ea93f9dbbaf08f72495bcbc72a1afd8be3fd8ce4f303a148"
+content-hash = "ea6d59865f2e841211d147390b42ed8c527bc4adb3e52b69cec21940f893f22d"

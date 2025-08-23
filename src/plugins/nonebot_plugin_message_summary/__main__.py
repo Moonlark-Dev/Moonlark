@@ -11,7 +11,7 @@ from datetime import datetime, timedelta, timezone
 from nonebot_plugin_orm import async_scoped_session
 from nonebot_plugin_alconna import on_alconna, Alconna, Subcommand, Args, UniMessage
 from typing import Literal
-from nonebot_plugin_openai import fetch_messages, generate_message
+from nonebot_plugin_openai import fetch_message, generate_message
 from nonebot_plugin_larkutils import get_user_id, get_group_id
 from nonebot_plugin_larklang import LangHelper
 from nonebot_plugin_localstore import get_cache_file
@@ -72,28 +72,30 @@ async def handle_main(
     ).all()
     messages = ""
     for message in result[::-1]:
-        messages += f"[{message.sender_nickname}] {message.message}\n"
+        if style in ["broadcast", "bc"]:
+            # Format timestamp to include both date and time for broadcast style
+            timestamp_str = message.timestamp.strftime("%Y-%m-%d %H:%M:%S")
+            messages += f"[{timestamp_str}] [{message.sender_nickname}] {message.message}\n"
+        else:
+            messages += f"[{message.sender_nickname}] {message.message}\n"
     if style in ["broadcast", "bc"]:
         time_str = datetime.now(timezone(timedelta(hours=8))).strftime("%Y-%m-%d %H:%M:%S")
-        summary_string = await fetch_messages(
+        summary_string = await fetch_message(
             [
                 generate_message(await lang.text("prompt2s", user_id, time_str), "system"),
                 generate_message(await lang.text("prompt2u", user_id, messages), "user"),
             ],
-            user_id,
             model="gemini-2.5-pro",
         )
         await summary.finish(summary_string)
     elif style == "topic":
-        summary_string = await fetch_messages(
-            [generate_message(await lang.text("prompt_topic", user_id), "system"), generate_message(messages, "user")],
-            user_id,
+        summary_string = await fetch_message(
+            [generate_message(await lang.text("prompt_topic", user_id), "system"), generate_message(messages, "user")]
         )
         await summary.finish(UniMessage().image(raw=await md_to_pic(summary_string)))
     else:
-        summary_string = await fetch_messages(
-            [generate_message(await lang.text("prompt", user_id), "system"), generate_message(messages, "user")],
-            user_id,
+        summary_string = await fetch_message(
+            [generate_message(await lang.text("prompt", user_id), "system"), generate_message(messages, "user")]
         )
         await summary.finish(UniMessage().image(raw=await md_to_pic(summary_string)))
 

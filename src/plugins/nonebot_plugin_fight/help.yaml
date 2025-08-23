@@ -1,0 +1,5 @@
+plugin: fight
+commands:
+  character: help_character;2;game
+  team: help_team;2;game
+  sandbox: help_sandbox;1;game

@@ -4,37 +4,34 @@
 {% block body %}
 
 <span class="h2">{{ c.name }}</span>
-<span class="badge bg-{{ c.star_color }}">{% for _ in range(c.star) %}⭐{% endfor %}</span>
 {% if c.greeting %}<p>{{ c.greeting }}</p>{% endif %}
 <hr>
-<table>
+<table class="table table-striped">
     <tbody>
         <tr>
             <td>生命值:</td>
-            <td>{{ c.hp }}/{{ c.max_hp }}</td>
             <td>
+                {{ c.hp }}/{{ c.max_hp }}
                 <div class="progress" style="height:16px">
-                    <div class="progress-bar bg-danger" style="width:{{ c.weapon_lv.progress }}%">
+                    <div class="progress-bar bg-danger" style="width:{{ round(c.hp / c.max_hp * 100) }}%">
                     </div>
                 </div>
             </td>
         </tr>
         <tr>
             <td>角色等级:</td>
-            <td>{{ c.level.level }}</td>
             <td>
+                {{ c.level.level }} ({{ c.level.current_exp }}/{{ c.level.exp_to_next }})
                 <div class="progress" style="height:16px">
                     <div class="progress-bar" style="width:{{ c.level.progress }}%">
-                        {{ c.level.current_exp }}/{{ c.level.exp_to_next }}
+
                     </div>
                 </div>
             </td>
         </tr>
     </tbody>
 </table>
-
-{# 如果有，在此表左侧添加立绘 #}
-<table>
+<table class="table table-striped">
     <tbody>
         <tr>
             <td>攻击力:</td>
@@ -44,9 +41,9 @@
         </tr>
         <tr>
             <td>暴击率:</td>
-            <td>{{ c.crit_rate }}</td>
+            <td>{{ c.crit_rate * 100 }}%</td>
             <td>暴击伤害:</td>
-            <td>{{ c.crit_damage }}</td>
+            <td>{{ c.crit_damage * 100 }}%</td>
         </tr>
         <tr>
             <td>速度:</td>
@@ -57,25 +54,24 @@
     </tbody>
 </table>
 
-<hr>
+{#<hr>#}
 <h2>武器</h2>
-<table>
+<table class="table table-striped">
     <tbody>
         <tr>
             <td>武器等级:</td>
-            <td>{{ c.weapon_lv.level }}</td>
             <td>
+                {{ c.weapon_lv.level }} ({{ c.weapon_lv.current_exp }}/{{ c.weapon_lv.exp_to_next }})
                 <div class="progress" style="height:16px">
                     <div class="progress-bar bg-info" style="width:{{ c.weapon_lv.progress }}%">
-                        {{ c.weapon_lv.current_exp }}/{{ c.weapon_lv.exp_to_next }}
                     </div>
                 </div>
             </td>
         </tr>
         <tr>
             <td>受损级:</td>
-            <td>{{ c.weapon.damage }}</td>
             <td>
+                {{ c.weapon.damage }}
                 {% if c.weapon.damage <= 100 %}
                 <span class="badge bg-success">崭新</span>
                 {% elif c.weapon.damage <= 200 %}

@@ -111,8 +111,11 @@ class MoonlarkUser(ABC):
     async def add_vimcoin(self, count: float) -> None:
         await self.set_data(self.user_id, vimcoin=self.vimcoin + count)
 
-    async def use_vimcoin(self, count: float) -> None:
-        await self.set_data(self.user_id, vimcoin=self.vimcoin + count)
+    async def use_vimcoin(self, count: float, force: bool = False) -> bool:
+        if force or await self.has_vimcoin(count):
+            await self.set_data(self.user_id, vimcoin=self.vimcoin - count)
+            return True
+        return False
 
     async def has_vimcoin(self, count: float) -> bool:
         return self.vimcoin >= count
