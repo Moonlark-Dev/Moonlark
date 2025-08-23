@@ -58,7 +58,7 @@ async def get_relevant_memories(context_id: str, text: str, max_memories: int = 
     await memory_graph.load_from_db()
 
     # 从文本中提取关键词
-    topics = memory_graph.extract_topics_from_text(text)
+    topics = extract_topics_from_text(text)
 
     relevant_memories = []
     for topic in topics:

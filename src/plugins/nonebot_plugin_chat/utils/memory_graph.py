@@ -18,10 +18,10 @@
 import time
 import math
 import random
-import re
-from datetime import datetime
 from collections import Counter
-from typing import List, Tuple, Set, Dict, Any
+from typing import List, Tuple, Dict, Any
+
+from nonebot import logger
 from nonebot_plugin_orm import get_session
 from sqlalchemy import select, delete
 
@@ -29,7 +29,6 @@ from nonebot_plugin_openai.utils.chat import fetch_message
 from nonebot_plugin_openai.utils.message import generate_message
 
 from ..models import MemoryNode, MemoryEdge
-from ..lang import lang
 
 
 def calculate_information_content(text: str) -> float:
@@ -55,6 +54,50 @@ def cosine_similarity(v1: List[float], v2: List[float]) -> float:
     if norm1 == 0 or norm2 == 0:
         return 0
     return dot_product / (norm1 * norm2)
+
+
+async def extract_topics_from_text(text: str, max_topics: int = 5) -> List[str]:
+    prompt = (
+        f"这是一段文字：\n{text}\n\n请你从这段话中总结出最多{max_topics}个关键的概念，必须是某种概念，比如人，事，物，概念，事件，地点 等等，帮我列出来，"
+        f"将主题用逗号隔开，并加上<>,例如<主题1>,<主题2>......尽可能精简。只需要列举最多{max_topics}个话题就好，不要有序号，不要告诉我其他内容。"
+        f"如果确定找不出主题或者没有明显主题，返回<none>。"
+    )
+    result = await fetch_message([generate_message(prompt, "user")])
+    if result == "<none>":
+        return []
+    return result.split(",")
+
+
+async def _integrate_memories_with_llm(existing_memory: str, new_memory: str) -> str:
+    """使用LLM整合新旧记忆"""
+    try:
+        integration_prompt = f"""你是一个记忆整合专家。请将以下的旧记忆和新记忆整合成一条更完整、更准确的记忆内容。
+
+旧记忆内容：
+{existing_memory}
+
+新记忆内容：
+{new_memory}
+
+整合要求：
+1. 保留重要信息，去除重复内容
+2. 如果新旧记忆有冲突，合理整合矛盾的地方
+3. 将相关信息合并，形成更完整的描述
+4. 保持语言简洁、准确
+5. 只返回整合后的记忆内容，不要添加任何解释
+
+整合后的记忆："""
+
+        content = await fetch_message([generate_message(integration_prompt, "user")])
+
+        if content and content.strip():
+            return content.strip()
+        else:
+            return f"{existing_memory} | {new_memory}"
+
+    except Exception as e:
+        logger.exception(e)
+        return f"{existing_memory} | {new_memory}"
 
 
 class MemoryGraph:
@@ -151,7 +194,7 @@ class MemoryGraph:
             existing_memory = self.nodes[concept]["memory_items"]
             if existing_memory and existing_memory.strip():
                 # 使用LLM整合新旧记忆
-                integrated_memory = await self._integrate_memories_with_llm(existing_memory, memory)
+                integrated_memory = await _integrate_memories_with_llm(existing_memory, memory)
                 self.nodes[concept]["memory_items"] = integrated_memory
                 self.nodes[concept]["weight"] += 1.0
             else:
@@ -165,36 +208,6 @@ class MemoryGraph:
                 "last_modified": current_time,
                 "hash_value": hash(f"{concept}:{memory}"),
             }
-
-    async def _integrate_memories_with_llm(self, existing_memory: str, new_memory: str) -> str:
-        """使用LLM整合新旧记忆"""
-        try:
-            integration_prompt = f"""你是一个记忆整合专家。请将以下的旧记忆和新记忆整合成一条更完整、更准确的记忆内容。
-
-旧记忆内容：
-{existing_memory}
-
-新记忆内容：
-{new_memory}
-
-整合要求：
-1. 保留重要信息，去除重复内容
-2. 如果新旧记忆有冲突，合理整合矛盾的地方
-3. 将相关信息合并，形成更完整的描述
-4. 保持语言简洁、准确
-5. 只返回整合后的记忆内容，不要添加任何解释
-
-整合后的记忆："""
-
-            content = await fetch_message([generate_message(integration_prompt, "user")])
-
-            if content and content.strip():
-                return content.strip()
-            else:
-                return f"{existing_memory} | {new_memory}"
-
-        except Exception:
-            return f"{existing_memory} | {new_memory}"
 
     def get_related_memories(self, topic: str, max_depth: int = 2) -> List[Tuple[str, str]]:
         """获取相关记忆"""
@@ -263,21 +276,13 @@ class MemoryGraph:
 
         return forgotten_count
 
-    def extract_topics_from_text(self, text: str, max_topics: int = 5) -> List[str]:
-        """从文本中提取主题（简化版，实际可用LLM）"""
-        # 简单的关键词提取
-        words = re.findall(r"\b\w{2,}\b", text)
-        word_freq = Counter(words)
-        topics = [word for word, freq in word_freq.most_common(max_topics) if freq > 1]
-        return topics[:max_topics]
-
     async def build_memory_from_text(self, text: str, compress_rate: float = 0.1) -> None:
         """从文本构建记忆"""
         # 计算主题数量
         topic_num = max(1, min(5, int(len(text) * compress_rate / 10)))
 
         # 提取主题
-        topics = self.extract_topics_from_text(text, topic_num)
+        topics = await extract_topics_from_text(text, topic_num)
 
         if not topics:
             return
@@ -295,8 +300,8 @@ class MemoryGraph:
                 if summary and summary.strip():
                     await self.add_memory_to_concept(topic, summary.strip())
 
-            except Exception:
-                # 如果LLM失败，使用简单的文本摘要
+            except Exception as e:
+                logger.exception(e)
                 await self.add_memory_to_concept(topic, f"关于{topic}的记忆：{text[:100]}...")
 
         # 连接相关概念

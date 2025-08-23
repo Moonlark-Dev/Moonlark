@@ -64,11 +64,11 @@ class MemoryActivator:
             return []
 
         # 从目标消息中提取关键词
-        keywords = memory_graph.extract_topics_from_text(target_message)
+        keywords = extract_topics_from_text(target_message)
 
         # 如果有聊天历史，也提取关键词
         if chat_history:
-            history_keywords = memory_graph.extract_topics_from_text(chat_history)
+            history_keywords = extract_topics_from_text(chat_history)
             keywords.extend(history_keywords)
 
         # 去重并限制关键词数量
