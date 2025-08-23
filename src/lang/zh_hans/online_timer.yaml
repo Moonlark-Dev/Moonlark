@@ -1,9 +1,11 @@
-online_timer:
-  title: "在线时间统计"
-  description: "以下是用户最近3天的在线时间记录"
-  online: "在线"
-  offline: "离线"
-  no_data: "暂无数据"
+duration:
+  minute: "{}分钟"
+  hr: "{}小时{}分钟"
+image:
+  title: "{} 的在线时间统计"
+  user_id: "用户ID: {}"
+  three_day: "近三天总在线时间: {}"
+  avg: "平均每天在线时间: {}"
 help:
   details: 查询 Moonlark 记录的群友在线时间段
   description: 在线时间段

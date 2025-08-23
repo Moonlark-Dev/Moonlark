@@ -13,15 +13,14 @@ import asyncio
 from io import BytesIO
 from PIL import Image, ImageDraw, ImageFont
 
-def format_duration(duration: timedelta) -> str:
-    """Format timedelta into a readable string"""
+async def format_duration(duration: timedelta, user_id: str) -> str:
     total_seconds = int(duration.total_seconds())
     hours = total_seconds // 3600
     minutes = (total_seconds % 3600) // 60
     if hours > 0:
-        return f"{hours}小时{minutes}分钟"
+        return await lang.text("duration.hr", user_id, hours, minutes)
     else:
-        return f"{minutes}分钟"
+        return await lang.text("duration.minute", user_id, hours, minutes)
 
 # Initialize language helper
 lang = LangHelper()
@@ -99,7 +98,7 @@ async def handle_online_timer(
     async with get_session() as session:
         stmt = select(OnlineTimeRecord).where(
             OnlineTimeRecord.user_id == target_user_id
-        ).order_by(OnlineTimeRecord.start_time.desc())
+        ).order_by(OnlineTimeRecord.start_time.desc()).limit(200)
         
         result = await session.scalars(stmt)
         records = result.all()
@@ -149,8 +148,8 @@ async def render_online_timeline(user_id: str, records: List[OnlineTimeRecord], 
     logger.debug(f"{filtered_records=} {start_time=} {end_time=}")
     # Calculate average and total online time
     average_daily_online = total_online_time / 3 if daily_online_time else timedelta()
-    total_online_str = format_duration(total_online_time)
-    average_daily_str = format_duration(average_daily_online)
+    total_online_str = await format_duration(total_online_time, user_id)
+    average_daily_str = await format_duration(average_daily_online, user_id)
     
     # Create image
     image_width = 600
@@ -179,17 +178,17 @@ async def render_online_timeline(user_id: str, records: List[OnlineTimeRecord], 
         small_font = ImageFont.load_default()
     
     # Draw title
-    title = f"{nickname} 的在线时间统计"
+    title = await lang.text("image.title", user_id, nickname)
     draw.text((20, 20), title, fill=text_color, font=title_font)
     
     # Draw user ID
-    user_id_text = f"用户ID: {user_id}"
+    user_id_text = await lang.text("image.user_id", user_id ,user_id)
     draw.text((20, 60), user_id_text, fill=text_color, font=small_font)
     
     # Draw statistics
     stats_y = 90
-    draw.text((20, stats_y), f"近三天总在线时间: {total_online_str}", fill=text_color, font=text_font)
-    draw.text((20, stats_y + 25), f"平均每天在线时间: {average_daily_str}", fill=text_color, font=text_font)
+    draw.text((20, stats_y), await lang.text("image.three_day", user_id, total_online_str), fill=text_color, font=text_font)
+    draw.text((20, stats_y + 25), await lang.text("image.avg", user_id, average_daily_str), fill=text_color, font=text_font)
     
     # Draw timeline
     timeline_y = stats_y + 70
@@ -225,7 +224,8 @@ async def render_online_timeline(user_id: str, records: List[OnlineTimeRecord], 
         try:
             text_bbox = draw.textbbox((0, 0), label, font=small_font)
             text_width = text_bbox[2] - text_bbox[0]
-        except:
+        except Exception as e:
+            logger.exception(e)
             # Fallback if textbbox is not available
             text_width = len(label) * 6  # Approximate width
         # Draw the label centered at the calculated position
