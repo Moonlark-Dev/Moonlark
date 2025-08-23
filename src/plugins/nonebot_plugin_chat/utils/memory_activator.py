@@ -44,15 +44,13 @@ def _calculate_relevance(keyword: str, target_message: str, memory_content: str)
     keyword_in_memory = 1.0 if keyword.lower() in memory_content.lower() else 0.0
 
     # 计算文本长度匹配度
-    length_similarity = min(len(target_message), len(memory_content)) / max(
-        len(target_message), len(memory_content)
-    )
+    length_similarity = min(len(target_message), len(memory_content)) / max(len(target_message), len(memory_content))
 
     return (keyword_in_message + keyword_in_memory + length_similarity) / 3.0
 
 
 async def _select_memories_with_llm(
-        target_message: str, chat_history: str, candidate_memories: List[Dict[str, Any]], max_memories: int
+    target_message: str, chat_history: str, candidate_memories: List[Dict[str, Any]], max_memories: int
 ) -> List[Tuple[str, str]]:
     """使用LLM选择最相关的记忆"""
     try:
@@ -129,7 +127,7 @@ async def _select_memories_with_llm(
 
 
 async def activate_memories_from_text(
-        context_id: str, target_message: str, chat_history: str = "", max_memories: int = 5
+    context_id: str, target_message: str, chat_history: str = "", max_memories: int = 5
 ) -> List[Tuple[str, str]]:
     """
     从文本中激活相关记忆
@@ -195,11 +193,10 @@ async def activate_memories_from_text(
         return [(mem["concept"], mem["content"]) for mem in candidate_memories]
 
     # 使用LLM选择最相关的记忆
-    selected_memories = await _select_memories_with_llm(
-        target_message, chat_history, candidate_memories, max_memories
-    )
+    selected_memories = await _select_memories_with_llm(target_message, chat_history, candidate_memories, max_memories)
 
     return selected_memories
+
 
 #
 # class MemoryActivator:

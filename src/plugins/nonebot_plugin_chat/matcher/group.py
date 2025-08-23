@@ -182,7 +182,6 @@ class MessageProcessor:
 
     async def generate_system_prompt(self) -> OpenAIMessage:
 
-
         # 获取最近几条缓存消息作为上下文
         recent_messages = self.session.cached_messages[-5:] if self.session.cached_messages else []
         recent_context = " ".join([msg["content"] for msg in recent_messages])
