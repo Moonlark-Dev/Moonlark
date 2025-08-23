@@ -250,7 +250,7 @@ class MemoryGraph:
         for concept, data in self.nodes.items():
             time_diff = current_time - data["last_modified"]
             # 基于权重调整遗忘阈值
-            forget_threshold = 3600 * 24 * 7 * data["weight"]  # 基础一周，权重越高越难遗忘
+            forget_threshold = 3600 * 24 * 3 * data["weight"]
 
             if time_diff > forget_threshold and random.random() < forget_ratio:
                 nodes_to_remove.append(concept)
