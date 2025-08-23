@@ -304,6 +304,18 @@ files = [
 chardet = ">=3.0.2"
 
 [[package]]
+name = "cachetools"
+version = "5.5.2"
+description = "Extensible memoizing collections and decorators"
+optional = false
+python-versions = ">=3.7"
+groups = ["main"]
+files = [
+    {file = "cachetools-5.5.2-py3-none-any.whl", hash = "sha256:d26a22bcc62eb95c3beabd9f1ee5e820d3d2704fe2967cbe350e20c8ffcd3f0a"},
+    {file = "cachetools-5.5.2.tar.gz", hash = "sha256:1a661caa9175d26759571b2e19580f9d6393969e5dfca11fdb1f947a23e640d4"},
+]
+
+[[package]]
 name = "cashews"
 version = "7.4.1"
 description = "cache tools with async power"
@@ -913,6 +925,21 @@ doq = ["aioquic (>=1.0.0)"]
 idna = ["idna (>=3.7)"]
 trio = ["trio (>=0.23)"]
 wmi = ["wmi (>=1.5.1)"]
+
+[[package]]
+name = "emoji"
+version = "2.14.1"
+description = "Emoji for Python"
+optional = false
+python-versions = ">=3.7"
+groups = ["main"]
+files = [
+    {file = "emoji-2.14.1-py3-none-any.whl", hash = "sha256:35a8a486c1460addb1499e3bf7929d3889b2e2841a57401903699fef595e942b"},
+    {file = "emoji-2.14.1.tar.gz", hash = "sha256:f8c50043d79a2c1410ebfae833ae1868d5941a67a6cd4d18377e2eb0bd79346b"},
+]
+
+[package.extras]
+dev = ["coverage", "pytest (>=7.4.4)"]
 
 [[package]]
 name = "exceptiongroup"
@@ -2713,6 +2740,25 @@ files = [
 [package.dependencies]
 importlib-metadata = ">=7.2.1"
 nonebot2 = ">=2.4.2"
+
+[[package]]
+name = "nonebot-plugin-userinfo"
+version = "0.2.6"
+description = "Nonebot2 用户信息获取插件"
+optional = false
+python-versions = "<4.0,>=3.9"
+groups = ["main"]
+files = [
+    {file = "nonebot_plugin_userinfo-0.2.6-py3-none-any.whl", hash = "sha256:79d2481af08a5ec77cf171c685eecd14eaf1ce4d5a1ec1fd22fbb0b85e06c260"},
+    {file = "nonebot_plugin_userinfo-0.2.6.tar.gz", hash = "sha256:0d1ce897e94a9d4c0b5300bc8f239a4676f9bb62c78a14e0f0527e5398ffc840"},
+]
+
+[package.dependencies]
+cachetools = ">=5.0.0,<6.0.0"
+emoji = ">=2.0.0,<3.0.0"
+httpx = ">=0.20.0,<1.0.0"
+nonebot2 = ">=2.3.0,<3.0.0"
+strenum = ">=0.4.15,<0.5.0"
 
 [[package]]
 name = "nonebot-plugin-waiter"
