@@ -12,7 +12,7 @@ from nonebot_plugin_openai.utils.message import generate_message
 from ....exceptions import GenerateFailed
 
 from ....config import config
-from nonebot_plugin_openai.utils.chat import fetch_messages
+from nonebot_plugin_openai.utils.chat import fetch_message
 from ....types import Question
 from ....__main__ import lang
 

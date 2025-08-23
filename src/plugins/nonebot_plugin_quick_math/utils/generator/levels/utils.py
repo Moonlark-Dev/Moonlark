@@ -16,7 +16,7 @@
 # ##############################################################################
 from typing import Callable, Awaitable
 from nonebot.log import logger
-from nonebot_plugin_openai.utils.chat import fetch_messages
+from nonebot_plugin_openai.utils.chat import fetch_message
 from nonebot_plugin_openai.utils.message import generate_message
 
 
@@ -43,12 +43,11 @@ def get_verify_function(answer: str, user_id: str) -> Callable[[str], Awaitable[
     logger.debug(answer)
 
     async def verify(string: str) -> bool:
-        reply = await fetch_messages(
+        reply = await fetch_message(
             [
                 generate_message(AI_PROMPT_SYSTEM, "system"),
                 generate_message(AI_PROMPT_TEMPLATE.format(answer, string), "user"),
-            ],
-            user_id,
+            ]
         )
         return reply == "true"
 

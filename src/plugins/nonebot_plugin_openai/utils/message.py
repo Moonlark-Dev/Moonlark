@@ -17,6 +17,13 @@
 
 from nonebot_plugin_orm import get_session
 from typing import Literal
+
+from openai.types.chat import (
+    ChatCompletionMessageParam,
+    ChatCompletionSystemMessageParam,
+    ChatCompletionUserMessageParam,
+    ChatCompletionAssistantMessageParam,
+)
 from sqlalchemy import select
 
 from ..types import Message, Messages
@@ -29,11 +36,11 @@ def generate_message(content: str | list, role: Literal["system", "user", "assis
     #     "content": content
     # }
     if role == "system":
-        return {"role": "system", "content": content}
+        return ChatCompletionSystemMessageParam(content=content, role="system")
     elif role == "user":
-        return {"role": "user", "content": content}
+        return ChatCompletionUserMessageParam(content=content, role="user")
     elif role == "assistant":
-        return {"role": "assistant", "content": content}
+        return ChatCompletionAssistantMessageParam(content=content, role="assistant")
     else:
         raise ValueError(f"Invalid role: {role}")
 
