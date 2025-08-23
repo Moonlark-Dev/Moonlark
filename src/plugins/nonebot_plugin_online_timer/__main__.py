@@ -13,6 +13,7 @@ import asyncio
 from io import BytesIO
 from PIL import Image, ImageDraw, ImageFont
 
+
 async def format_duration(duration: timedelta, user_id: str) -> str:
     total_seconds = int(duration.total_seconds())
     hours = total_seconds // 3600
@@ -22,15 +23,14 @@ async def format_duration(duration: timedelta, user_id: str) -> str:
     else:
         return await lang.text("duration.minute", user_id, hours, minutes)
 
+
 # Initialize language helper
 lang = LangHelper()
 
 # Initialize command
-alc = Alconna(
-    "online-timer",
-    Args["user?", At]
-)
+alc = Alconna("online-timer", Args["user?", At])
 online_timer = on_alconna(alc)
+
 
 # Message handler to track online time
 async def is_group_message_and_not_qq(bot: Bot, event: Event) -> bool:
@@ -45,29 +45,28 @@ async def is_group_message_and_not_qq(bot: Bot, event: Event) -> bool:
     except ValueError:
         return False
 
+
 # Message handler with priority and blocking
-message_handler = on_message(
-    rule=is_group_message_and_not_qq,
-    priority=10,
-    block=False
-)
+message_handler = on_message(rule=is_group_message_and_not_qq, priority=10, block=False)
+
 
 @message_handler.handle()
-async def handle_message(
-    user_id: str = get_user_id()
-):
+async def handle_message(user_id: str = get_user_id()):
     """Handle group messages to track user online time"""
     async with get_session() as session:
         # Get the latest record for this user
-        stmt = select(OnlineTimeRecord).where(
-            OnlineTimeRecord.user_id == user_id
-        ).order_by(OnlineTimeRecord.end_time.desc()).limit(1)
-        
+        stmt = (
+            select(OnlineTimeRecord)
+            .where(OnlineTimeRecord.user_id == user_id)
+            .order_by(OnlineTimeRecord.end_time.desc())
+            .limit(1)
+        )
+
         result = await session.execute(stmt)
         latest_record = result.scalar_one_or_none()
-        
+
         current_time = datetime.now()
-        
+
         # Check if we should extend the existing session or create a new one
         if latest_record and latest_record.end_time + timedelta(minutes=10) > current_time:
             # Extend the existing session
@@ -75,71 +74,74 @@ async def handle_message(
         else:
             # Create a new session
             new_record = OnlineTimeRecord(
-                user_id=user_id,
-                start_time=current_time,
-                end_time=current_time + timedelta(minutes=3)
+                user_id=user_id, start_time=current_time, end_time=current_time + timedelta(minutes=3)
             )
             session.add(new_record)
-        
+
         await session.commit()
 
+
 @online_timer.handle()
-async def handle_online_timer(
-    user: Match[At],
-    sender_id: str = get_user_id()
-):
+async def handle_online_timer(user: Match[At], sender_id: str = get_user_id()):
     """Handle the /online-timer command"""
     # Determine which user to query
     target_user_id = sender_id
     if user.available:
         target_user_id = user.result.target
-    
+
     # Get online time data for the user
     async with get_session() as session:
-        stmt = select(OnlineTimeRecord).where(
-            OnlineTimeRecord.user_id == target_user_id
-        ).order_by(OnlineTimeRecord.start_time.desc()).limit(200)
-        
+        stmt = (
+            select(OnlineTimeRecord)
+            .where(OnlineTimeRecord.user_id == target_user_id)
+            .order_by(OnlineTimeRecord.start_time.desc())
+            .limit(200)
+        )
+
         result = await session.scalars(stmt)
         records = result.all()
     logger.debug(records)
     # Render timeline
     image_bytes = await render_online_timeline(target_user_id, list(records))
-    
+
     # Send the rendered image
     from nonebot_plugin_alconna.uniseg import UniMessage
-    await online_timer.finish(
-        UniMessage().image(raw=image_bytes, name="online_timeline.png")
-    )
 
-async def render_online_timeline(user_id: str, records: List[OnlineTimeRecord], timeline_date: Optional[date] = None) -> bytes:
+    await online_timer.finish(UniMessage().image(raw=image_bytes, name="online_timeline.png"))
+
+
+async def render_online_timeline(
+    user_id: str, records: List[OnlineTimeRecord], timeline_date: Optional[date] = None
+) -> bytes:
     """Render online timeline as an image using Pillow"""
     if timeline_date is None:
         timeline_date = date.today()
     # Get user nickname
     from nonebot_plugin_larkuser.utils.user import get_user
+
     user = await get_user(user_id)
     nickname = user.get_nickname()
-    
+
     # Get the time range (last 3 days)
     end_time = (datetime.now() + timedelta(minutes=3)).replace(hour=23, minute=59, second=59)
     start_time = (end_time - timedelta(days=3, minutes=3)).replace(hour=0, minute=0, second=0, microsecond=0)
-    
+
     # Filter records within the time range
     filtered_records = [
-        record for record in records
+        record
+        for record in records
         if start_time <= record.start_time <= end_time or start_time <= record.end_time <= end_time
     ]
-    
+
     # Calculate statistics
     total_online_time = timedelta()
     daily_online_time = {}  # day -> total time for that day
-    
+
     for record in filtered_records:
         # Calculate the time this record contributes to online time
         record_duration = record.end_time - record.start_time
         total_online_time += record_duration
-        
+
         # Group by day for daily statistics
         day = record.start_time.date()
         if day not in daily_online_time:
@@ -150,7 +152,7 @@ async def render_online_timeline(user_id: str, records: List[OnlineTimeRecord], 
     average_daily_online = total_online_time / 3 if daily_online_time else timedelta()
     total_online_str = await format_duration(total_online_time, user_id)
     average_daily_str = await format_duration(average_daily_online, user_id)
-    
+
     # Create image
     image_width = 600
     image_height = 270
@@ -159,11 +161,11 @@ async def render_online_timeline(user_id: str, records: List[OnlineTimeRecord], 
     online_color = (0, 128, 0)  # Green for online time
     offline_color = (128, 128, 128)  # Gray for offline time
     font_path = "./src/static/SarasaGothicSC-Regular.ttf"
-    
+
     # Create image
     image = Image.new("RGB", (image_width, image_height), background_color)
     draw = ImageDraw.Draw(image)
-    
+
     # Load fonts
     try:
         # Try to load the custom font
@@ -176,20 +178,24 @@ async def render_online_timeline(user_id: str, records: List[OnlineTimeRecord], 
         title_font = ImageFont.load_default()
         text_font = ImageFont.load_default()
         small_font = ImageFont.load_default()
-    
+
     # Draw title
     title = await lang.text("image.title", user_id, nickname)
     draw.text((20, 20), title, fill=text_color, font=title_font)
-    
+
     # Draw user ID
-    user_id_text = await lang.text("image.user_id", user_id ,user_id)
+    user_id_text = await lang.text("image.user_id", user_id, user_id)
     draw.text((20, 60), user_id_text, fill=text_color, font=small_font)
-    
+
     # Draw statistics
     stats_y = 90
-    draw.text((20, stats_y), await lang.text("image.three_day", user_id, total_online_str), fill=text_color, font=text_font)
-    draw.text((20, stats_y + 25), await lang.text("image.avg", user_id, average_daily_str), fill=text_color, font=text_font)
-    
+    draw.text(
+        (20, stats_y), await lang.text("image.three_day", user_id, total_online_str), fill=text_color, font=text_font
+    )
+    draw.text(
+        (20, stats_y + 25), await lang.text("image.avg", user_id, average_daily_str), fill=text_color, font=text_font
+    )
+
     # Draw timeline
     timeline_y = stats_y + 70
     timeline_height = 50
@@ -198,15 +204,31 @@ async def render_online_timeline(user_id: str, records: List[OnlineTimeRecord], 
     timeline_end_x = timeline_start_x + timeline_width
     timeline_start_y = timeline_y
     timeline_end_y = timeline_y + timeline_height
-    
+
     # Draw timeline background (gray for offline)
     draw.rectangle([timeline_start_x, timeline_start_y, timeline_end_x, timeline_end_y], fill=offline_color)
 
-    for record in [item for item in filtered_records if timeline_date in [item.start_time.date(), item.end_time.date()]]:
-        day_start_time = datetime(year=timeline_date.year, month=timeline_date.month, day=timeline_date.day, hour=0, minute=0, second=0, microsecond=0)
+    for record in [
+        item for item in filtered_records if timeline_date in [item.start_time.date(), item.end_time.date()]
+    ]:
+        day_start_time = datetime(
+            year=timeline_date.year,
+            month=timeline_date.month,
+            day=timeline_date.day,
+            hour=0,
+            minute=0,
+            second=0,
+            microsecond=0,
+        )
         day_end_time = datetime(
-            year=timeline_date.year, month=timeline_date.month, day=timeline_date.day, hour=23, minute=59, second=59,
-            microsecond=999)
+            year=timeline_date.year,
+            month=timeline_date.month,
+            day=timeline_date.day,
+            hour=23,
+            minute=59,
+            second=59,
+            microsecond=999,
+        )
         record_start_time = record.start_time if record.start_time.date() == timeline_date else day_start_time
         record_end_time = record.end_time if record.end_time.date() == timeline_date else day_end_time
         start_x = timeline_start_x + ((record_start_time - day_start_time).total_seconds() / 86400) * timeline_width
@@ -231,12 +253,12 @@ async def render_online_timeline(user_id: str, records: List[OnlineTimeRecord], 
         # Draw the label centered at the calculated position
         draw.text((label_x - text_width / 2, time_labels_y), label, fill=text_color, font=small_font)
 
-    
     # Save image to bytes
     img_bytes = BytesIO()
     image.save(img_bytes, format="PNG")
     img_bytes.seek(0)
     return img_bytes.getvalue()
+
 
 # Scheduled task to clean up old records
 @scheduler.scheduled_job("cron", hour=2, minute=0)  # Run daily at 2:00 AM
@@ -244,14 +266,14 @@ async def cleanup_old_records():
     """Delete records older than 3 days"""
     async with get_session() as session:
         three_days_ago = datetime.now() - timedelta(days=3)
-        stmt = delete(OnlineTimeRecord).where(
-            OnlineTimeRecord.end_time < three_days_ago
-        )
+        stmt = delete(OnlineTimeRecord).where(OnlineTimeRecord.end_time < three_days_ago)
         await session.execute(stmt)
         await session.commit()
 
+
 # Import on_shutdown from nonebot
 from nonebot import get_driver
+
 
 @get_driver().on_shutdown
 async def cleanup_on_shutdown():
