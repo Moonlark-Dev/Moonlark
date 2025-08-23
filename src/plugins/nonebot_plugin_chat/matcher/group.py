@@ -126,7 +126,8 @@ class MessageProcessor:
             self.openai_messages.insert(0, await self.generate_system_prompt())
 
     async def generate_reply(self, ignore_desire: bool = False) -> None:
-        if not (ignore_desire or random.random() <= self.session.desire * 0.0085):
+        logger.debug(desire := self.session.desire * 0.0075)
+        if not (ignore_desire or random.random() <= desire):
             return
         elif len(self.openai_messages) <= 0 or (
             (not isinstance(self.openai_messages[-1], dict))
