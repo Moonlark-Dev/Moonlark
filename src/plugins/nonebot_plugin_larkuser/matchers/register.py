@@ -46,6 +46,7 @@ async def _(
     # await gain_invite(invite_user, user_id, user)
     await lang.finish("welcome", user_id, nickname or f"用户-{user_id}")
 
+
 #
 # async def gain_invite(user_id: str, invited_user_id: str, invited_user_data: UserInfo) -> None:
 #     await send_email(
