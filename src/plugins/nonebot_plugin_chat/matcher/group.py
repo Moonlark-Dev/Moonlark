@@ -22,7 +22,7 @@ from datetime import datetime, timedelta
 from nonebot.adapters.qq import Bot as BotQQ
 from nonebot.params import CommandArg
 from nonebot.typing import T_State
-from typing import TypedDict, Optional, Any, Coroutine
+from typing import TypedDict, Optional
 from nonebot_plugin_apscheduler import scheduler
 from nonebot_plugin_alconna import UniMessage, Target, get_target
 from nonebot_plugin_userinfo import EventUserInfo, UserInfo
@@ -31,18 +31,18 @@ from nonebot_plugin_larkuser import get_user
 from nonebot import on_message, on_command
 from nonebot.adapters import Event, Bot, Message
 from nonebot_plugin_larkutils import get_user_id, get_group_id
-from nonebot_plugin_orm import async_scoped_session, get_session
+from nonebot_plugin_orm import async_scoped_session
 from nonebot.log import logger
-from nonebot_plugin_openai import generate_message, fetch_message
+from nonebot_plugin_openai import generate_message
 from nonebot_plugin_openai.types import Messages, Message as OpenAIMessage, AsyncFunction, FunctionParameter
 from nonebot_plugin_openai.utils.chat import MessageFetcher
 from nonebot.matcher import Matcher
 
-
+from ..utils.memory_activator import activate_memories_from_text
 from ..lang import lang
 from ..models import ChatGroup
 from ..utils import enabled_group, parse_message_to_string
-from ..utils.tools import browse_webpage
+from ..utils.tools import browse_webpage, search_on_bing
 
 BASE_DESIRE = 30
 
@@ -73,6 +73,7 @@ class MessageProcessor:
             await self.get_message()
             for _ in range(self.message_count - 10):
                 await self.pop_first_message()
+            await asyncio.sleep(1)
 
     async def get_message(self) -> None:
         if not self.session.message_queue:
@@ -91,14 +92,14 @@ class MessageProcessor:
         self.session.cached_messages.append(msg_dict)
         if mentioned or not self.session.message_queue:
             await self.generate_reply(mentioned)
-            await asyncio.sleep(5)
+            await asyncio.sleep(10)
 
     def clean_special_message(self) -> None:
         while True:
             if isinstance(self.openai_messages[0], dict):
-                if not self.openai_messages[0]["role"] in ["system", "tool"]:
+                if self.openai_messages[0]["role"] not in ["system", "tool"]:
                     break
-            elif not self.openai_messages[0].role in ["system", "tool"]:
+            elif self.openai_messages[0].role not in ["system", "tool"]:
                 break
             self.openai_messages.pop(0)
 
@@ -126,7 +127,8 @@ class MessageProcessor:
             self.openai_messages.insert(0, await self.generate_system_prompt())
 
     async def generate_reply(self, ignore_desire: bool = False) -> None:
-        if not (ignore_desire or random.random() <= self.session.desire * 0.0085):
+        logger.debug(desire := self.session.desire * 0.0075)
+        if not (ignore_desire or random.random() <= desire):
             return
         elif len(self.openai_messages) <= 0 or (
             (not isinstance(self.openai_messages[-1], dict))
@@ -144,7 +146,12 @@ class MessageProcessor:
                     parameters={
                         "url": FunctionParameter(type="string", description="要访问的网页的 URL 地址", required=True)
                     },
-                )
+                ),
+                AsyncFunction(
+                    func=search_on_bing,
+                    description="使用微软必应搜索信息",
+                    parameters={"keyword": FunctionParameter(type="string", description="搜索关键词", required=True)},
+                ),
             ],
             extra_headers={"X-Title": "Moonlark - Chat", "HTTP-Referer": "https://chat.moonlark.itcdt.top"},
         )
@@ -168,7 +175,6 @@ class MessageProcessor:
         self.message_count += 1
 
     async def process_messages(self, msg_dict: CachedMessage) -> None:
-        logger.debug(self.openai_messages)
         if (
             len(self.openai_messages) <= 0
             or (not isinstance(self.openai_messages[-1], dict))
@@ -181,11 +187,31 @@ class MessageProcessor:
         logger.debug(self.openai_messages)
 
     async def generate_system_prompt(self) -> OpenAIMessage:
+
+        # 获取最近几条缓存消息作为上下文
+        recent_messages = self.session.cached_messages[-5:] if self.session.cached_messages else []
+        recent_context = " ".join([msg["content"] for msg in recent_messages])
+
+        # 激活相关记忆
+        activated_memories = await activate_memories_from_text(
+            context_id=self.session.group_id, target_message=recent_context, max_memories=3
+        )
+
+        # 构建记忆文本
+        memory_text_parts = []
+
+        if activated_memories:
+            memory_text_parts.append("相关群组记忆:")
+            for concept, memory_content in activated_memories:
+                memory_text_parts.append(f"- {concept}: {memory_content}")
+
+        final_memory_text = "\n".join(memory_text_parts) if memory_text_parts else "暂无"
+
         return generate_message(
             await lang.text(
                 "prompt_group.default",
                 self.session.user_id,
-                await self.session.get_memory(),
+                final_memory_text,
                 datetime.now().isoformat(),
             ),
             "system",
@@ -264,6 +290,8 @@ class GroupSession:
         self.memory_lock = False
 
     async def generate_memory(self) -> None:
+        from ..utils.memory_graph import MemoryGraph
+
         messages = ""
         cached_messages = copy.deepcopy(self.cached_messages)
         for message in cached_messages:
@@ -271,27 +299,19 @@ class GroupSession:
                 messages += f'[{message["send_time"].strftime("%H:%M")}][Moonlark]: {message["content"]}\n'
             else:
                 messages += f"[{message['send_time'].strftime('%H:%M')}][{message['nickname']}]: {message['content']}\n"
-        memory = await fetch_message(
-            [
-                generate_message(await lang.text("prompt_group.memory", self.user_id), "system"),
-                generate_message(
-                    await lang.text("prompt_group.memory_2", self.user_id, await self.get_memory(), messages), "user"
-                ),
-            ],
-            model="moonshotai/kimi-k2:free",
-            extra_headers={"X-Title": "Moonlark - Memory", "HTTP-Referer": "https://memory.moonlark.itcdt.top"},
-        )
-        async with get_session() as session:
-            g = await session.get_one(ChatGroup, {"group_id": self.group_id})
-            g.memory = memory
-            await session.commit()
+
+        # 使用新的记忆图系统
+        memory_graph = MemoryGraph(self.group_id)
+        await memory_graph.load_from_db()
+
+        # 从消息历史构建记忆
+        await memory_graph.build_memory_from_text(messages, compress_rate=0.15)
+
+        # 保存记忆图到数据库
+        await memory_graph.save_to_db()
+
         self.last_reward_participation = None
         self.cached_messages.clear()
-
-    async def get_memory(self) -> str:
-        async with get_session() as session:
-            g = await session.get_one(ChatGroup, {"group_id": self.group_id})
-            return str(g.memory)
 
     def format_message(self, origin_message: str) -> UniMessage:
         if "[Moonlark]:" in origin_message:
@@ -371,7 +391,7 @@ class GroupSession:
         if time_to_last_message > 180:
             if random.random() <= self.desire / 100 and not self.cached_messages[-1]["self"]:
                 await self.processor.generate_reply()
-            await self.update_memory()
+            # await self.update_memory()
 
 
 from ..config import config
@@ -408,7 +428,7 @@ async def _(
     await groups[session_id].handle_message(message, user_id, event, state, nickname, event.is_tome())
 
 
-async def group_disable(group_id: str, user_id: str) -> None:
+async def group_disable(group_id: str) -> None:
     if group_id in groups:
         group = groups.pop(group_id)
         await group.update_memory()
@@ -436,11 +456,11 @@ async def _(
                 await lang.send("command.switch.enabled", user_id)
             else:
                 g.enabled = False
-                await group_disable(group_id, user_id)
+                await group_disable(group_id)
                 await lang.send("command.switch.disabled", user_id)
         case "off":
             g = ChatGroup(group_id=group_id, enabled=False)
-            await group_disable(group_id, user_id)
+            await group_disable(group_id)
             await lang.send("command.switch.disabled", user_id)
         case "on":
             g = ChatGroup(group_id=group_id, enabled=True)
@@ -473,12 +493,61 @@ async def _(
                 await lang.send("command.disabled", user_id)
         case "reset-memory":
             if g is not None:
-                g.memory = ""
+                # 清理图形记忆
+                from ..utils.memory_graph import cleanup_old_memories
+
+                await cleanup_old_memories(group_id, forget_ratio=1.0)  # 清除所有记忆
                 await lang.send("command.done", user_id)
             else:
                 await lang.send("command.disabled", user_id)
         case "show-memory":
-            await matcher.finish(g.memory)
+            # 显示图形记忆而不是传统记忆
+            from ..utils.memory_graph import MemoryGraph
+
+            memory_graph = MemoryGraph(group_id)
+            await memory_graph.load_from_db()
+
+            if memory_graph.nodes:
+                memory_summary = []
+                for concept, data in list(memory_graph.nodes.items())[:3]:  # 显示前3个
+                    memory_summary.append(f"{concept}: {data['memory_items'][:200]}...")
+                await matcher.finish("当前记忆:\n" + "\n\n".join(memory_summary))
+            else:
+                await matcher.finish("暂无记忆")
+        case "cleanup-memory":
+            if g is not None:
+                from ..utils.memory_graph import cleanup_old_memories
+
+                forgotten_count = await cleanup_old_memories(group_id, forget_ratio=0.3)
+                await lang.send("command.done", user_id)
+                await matcher.finish(f"已清理 {forgotten_count} 条旧记忆")
+            else:
+                await lang.send("command.disabled", user_id)
+        case "show-graph-memory":
+            if g is not None:
+                from ..utils.memory_graph import MemoryGraph
+
+                memory_graph = MemoryGraph(group_id)
+                await memory_graph.load_from_db()
+
+                if memory_graph.nodes:
+                    memory_summary = []
+                    for concept, data in list(memory_graph.nodes.items())[:5]:  # 显示前5个
+                        memory_summary.append(f"概念: {concept}")
+                        memory_summary.append(f"记忆: {data['memory_items'][:100]}...")
+                        memory_summary.append(f"权重: {data['weight']:.1f}")
+                        memory_summary.append("---")
+
+                    total_nodes = len(memory_graph.nodes)
+                    total_edges = len(memory_graph.edges)
+                    summary_text = f"记忆图统计: {total_nodes}个概念, {total_edges}个连接\n\n" + "\n".join(
+                        memory_summary
+                    )
+                    await matcher.finish(summary_text)
+                else:
+                    await matcher.finish("暂无图形记忆数据")
+            else:
+                await lang.send("command.disabled", user_id)
         case _:
             await lang.finish("command.no_argv", user_id)
     await session.merge(g)
