@@ -111,7 +111,7 @@ class MessageProcessor:
             self.openai_messages.pop(0)
         elif self.openai_messages[0]["role"] == "user":
             content = self.openai_messages[0]["content"]
-            if (next_message_pos := content.find("\n[") + 1)
+            if (next_message_pos := content.find("\n[") + 1):
                 self.openai_messages[0]["content"] = content[next_message_pos:]
             else:
                 self.openai_messages.pop(0)
