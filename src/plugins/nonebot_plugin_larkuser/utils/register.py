@@ -27,15 +27,14 @@ from nonebot_plugin_alconna import UniMessage
 from nonebot_plugin_orm import async_scoped_session
 from nonebot_plugin_userinfo import UserInfo
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from nonebot_plugin_larkuser import prompt
-from nonebot_plugin_larkuser.exceptions import PromptTimeout
-
-from nonebot_plugin_larkuser.lang import lang
-from nonebot_plugin_larkuser.models import UserData
-from nonebot_plugin_larkuser.user.utils import is_user_registered
 from nonebot_plugin_larkutils import review_text
 from nonebot_plugin_preview.preview import screenshot
+
+from .waiter import prompt
+from ..exceptions import PromptTimeout
+from ..lang import lang
+from ..models import UserData
+from ..user.utils import is_user_registered
 
 
 async def send_eula_screenshot(user_id: str) -> None:
