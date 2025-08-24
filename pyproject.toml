@@ -61,7 +61,6 @@ plugins = [
     "nonebot_plugin_preview",
     "nonebot_plugin_quick_math",
     "nonebot_plugin_ranking",
-    "nonebot_plugin_registry",
     "nonebot_plugin_render",
     "nonebot_plugin_sign",
     "nonebot_plugin_sudoku",

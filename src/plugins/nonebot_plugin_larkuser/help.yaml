@@ -5,7 +5,6 @@ commands:
     details: help.details
     usages:
       - help.usage
-      - help.usage_invite
     category: setting
   whoami:
     description: help_whoami.description

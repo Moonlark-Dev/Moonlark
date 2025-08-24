@@ -202,7 +202,9 @@ MoonlarkUser 对象依赖其中属性缓存，不要长时间占有一个 Moonla
 ### 获取用户数据
 
 ```python
-nickname = user.get_nickname()
+import nonebot_plugin_larkuser.utils.register
+
+nickname = nonebot_plugin_larkuser.utils.register.get_nickname()
 level = user.get_level()
 ```
 

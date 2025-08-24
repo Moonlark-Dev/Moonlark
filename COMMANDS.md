@@ -157,7 +157,6 @@ Moonlark 本地化设置
 
 ### 用法
 - `/panel (查看面板)`
-- `/panel i (查看邀请指令)`
 ## `status`: 系统状态
 
 [lgc-NB2Dev/nonebot-plugin-picstatus] 获取 Moonlark 运行状态
