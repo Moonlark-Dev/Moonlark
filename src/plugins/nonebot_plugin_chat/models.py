@@ -2,7 +2,7 @@ from datetime import datetime
 
 from nonebot_plugin_orm import Model
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy import String, Text, Float, Integer
+from sqlalchemy import BigInteger, String, Text, Float, Integer
 
 
 class SessionMessage(Model):
@@ -32,7 +32,7 @@ class MemoryNode(Model):
     weight: Mapped[float] = mapped_column(Float(), default=1.0)
     created_time: Mapped[float] = mapped_column(Float())
     last_modified: Mapped[float] = mapped_column(Float())
-    hash_value: Mapped[int] = mapped_column(Integer(), default=0)
+    hash_value: Mapped[int] = mapped_column(BigInteger(), default=0)
 
 
 class MemoryEdge(Model):
@@ -44,4 +44,4 @@ class MemoryEdge(Model):
     strength: Mapped[int] = mapped_column(Integer(), default=1)
     created_time: Mapped[float] = mapped_column(Float())
     last_modified: Mapped[float] = mapped_column(Float())
-    hash_value: Mapped[int] = mapped_column(Integer(), default=0)
+    hash_value: Mapped[int] = mapped_column(BigInteger(), default=0)
