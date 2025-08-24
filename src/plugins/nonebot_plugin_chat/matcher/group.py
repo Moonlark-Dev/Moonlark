@@ -59,6 +59,14 @@ def generate_message_string(message: CachedMessage) -> str:
     return f"[{message['send_time'].strftime('%H:%M')}][{message['nickname']}]: {message['content']}\n"
 
 
+def get_role(message: OpenAIMessage) -> str:
+    if isinstance(message, dict):
+        role = message["role"]
+    else:
+        role = message.role
+    return role
+
+
 class MessageProcessor:
 
     def __init__(self, session: "GroupSession"):
@@ -68,7 +76,7 @@ class MessageProcessor:
         self.enabled = True
         asyncio.create_task(self.loop())
 
-    async def loop(self):
+    async def loop(self) -> None:
         while self.enabled:
             try:
                 await self.get_message()
@@ -100,18 +108,19 @@ class MessageProcessor:
 
     def clean_special_message(self) -> None:
         while True:
-            if isinstance(self.openai_messages[0], dict):
-                if self.openai_messages[0]["role"] not in ["system", "tool"]:
-                    break
+            role = get_role(self.openai_messages[0])
+            if role in ["user", "assistant"]:
+                break
             self.openai_messages.pop(0)
 
     async def pop_first_message(self) -> None:
         self.clean_special_message()
         if len(self.openai_messages) == 0:
             return
-        if self.openai_messages[0]["role"] == "assistant":
+        role = get_role(self.openai_messages[0])
+        if role == "assistant":
             self.openai_messages.pop(0)
-        elif self.openai_messages[0]["role"] == "user":
+        elif role == "user":
             content = self.openai_messages[0]["content"]
             if next_message_pos := content.find("\n[") + 1:
                 self.openai_messages[0]["content"] = content[next_message_pos:]
