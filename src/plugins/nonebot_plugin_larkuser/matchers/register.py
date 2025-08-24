@@ -22,14 +22,14 @@ from nonebot_plugin_orm import async_scoped_session
 
 from nonebot_plugin_email.utils.send import send_email
 
-from nonebot_plugin_larkuser.utils.base58 import base58_decode
-
 from nonebot_plugin_larkutils.user import get_user_id
-from ..lang import lang
-from nonebot_plugin_larkuser.user.utils import is_user_registered
 from nonebot_plugin_userinfo import EventUserInfo, UserInfo
 
 from ..utils.register import register_user
+from ..utils.base58 import base58_decode
+from ..lang import lang
+from ..user.utils import is_user_registered
+
 
 register = on_command("register")
 
