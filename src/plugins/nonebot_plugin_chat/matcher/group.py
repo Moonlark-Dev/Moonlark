@@ -166,7 +166,7 @@ class MessageProcessor:
         code_block_cache = None
         for origin_line in reply_text.splitlines():
             line = origin_line.strip()
-            await asyncio.sleep(len(line) * 0.01)
+            await asyncio.sleep(len(line.replace("\n", "")) * 0.01)
             if not line:
                 continue
             elif line.startswith(".skip"):
