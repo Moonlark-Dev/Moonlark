@@ -111,8 +111,9 @@ class MessageProcessor:
             self.openai_messages.pop(0)
         elif self.openai_messages[0]["role"] == "user":
             content = self.openai_messages[0]["content"]
-            self.openai_messages[0]["content"] = content[content.find("\n[") + 1 :]
-            if not self.openai_messages[0]["content"]:
+            if next_message_pos := content.find("\n[") + 1:
+                self.openai_messages[0]["content"] = content[next_message_pos:]
+            else:
                 self.openai_messages.pop(0)
         self.message_count -= 1
 
