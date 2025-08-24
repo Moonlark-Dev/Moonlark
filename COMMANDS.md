@@ -314,17 +314,6 @@ Moonlark 投票
 - `/cave-g <ID> (查看自己投稿的条目)`
 - `/cave-c [-u|--user|--set <时间(分钟)>] (查看或修改冷却状态)`
 - `/cave-s (统计投稿者)`
-## `chat`: 主动水群
-
-基于 LLM 的主动水群功能，可以尝试用于活跃群气氛。（启用后将会收集、处理、并储存启用群聊的聊天记录和群员的昵称，仅支持非 QQ 官方节点）
-
-### 用法
-- `/chat switch (修改功能启用状态)`
-- `/chat on (启用功能)`
-- `/chat off (禁用功能)`
-- `/chat mute (临时禁用水群功能)`
-- `/chat unmute (取消临时禁用)`
-- `/chat reset-memory (重置储存的记忆)`
 ## `email`: 邮件
 
 进入 Moonlark 邮箱
