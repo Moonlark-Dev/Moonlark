@@ -16,7 +16,7 @@ help_whoami:
   details: 查看用户帐号基本信息
   usage: whoami (查看帐号信息)
 matcher:
-  not_registered: 您无法使用这个指令，请先使用 {__prefix__}register 注册！
+  not_registered: 您还没有注册，正在跳转注册流程……
 whoami:
   info: |
     帐号实际ID: {}
@@ -37,4 +37,60 @@ invite:
     被邀请的用户只需执行以下指令即可 (在您的邀请下) 完成注册：
     
     {__prefix__}register {}
+    unknown: 邀请码无效！
+  inviter_email:
+    subject: 邀请用户成功
+    content: 您已成功使用您的邀请码邀请了用户 {}, 这是您的报酬。
+  invited_email:
+    subject: 注册成功！
+    content: |
+      欢迎使用 Moonlark！根据您的注册信息，您是通过 {} 的邀请加入 Moonlark 的。我们为您准备了一份礼物，期待您的探索之旅！
+
+command:
+  registered: 您已经注册过了，无法重复注册！
+  tip: |
+    在开始之前，我们相信您已经阅读了《Moonlark 最终许可协议》中的所有内容，它总结起来无非是这几点：
+
+    1. 您在使用 Moonlark 时应遵守最终许可协议和相关法律法规；
+    2. 您不能使用 Moonlark 进行任何违法活动和任何可能侵犯他人合法权益的目的；
+    3. 您需要承担所有由于不当使用 Moonlark 造成的后果及责任；
+    4. Moonlark 在运行时需要收集数据，您应当允许 Moonlark 收集和使用相关数据；
+    5. 在您没有同意《Moonlark 最终许可协议》时，您没有权利使用 Moonlark。
     
+    如果您还没有阅读，请前往 https://github.com/orgs/Moonlark-Dev/discussions/3 阅读后继续使用 Moonlark。
+
+    如果您不同意其中的任何条款，请立即停止使用 Moonlark，这是最后的警告。
+  tip_without_url: |
+    在开始之前，我们相信您已经阅读了《Moonlark 最终许可协议》中的所有内容，它总结起来无非是这几点：
+
+    1. 您在使用 Moonlark 时应遵守最终许可协议和相关法律法规；
+    2. 您不能使用 Moonlark 进行任何违法活动和任何可能侵犯他人合法权益的目的；
+    3. 您需要承担所有由于不当使用 Moonlark 造成的后果及责任；
+    4. Moonlark 在运行时需要收集数据，您应当允许 Moonlark 收集和使用相关数据；
+    5. 在您没有同意《Moonlark 最终许可协议》时，您没有权利使用 Moonlark。
+
+    具体的协议内容如下，如果您不同意其中的任何条款，请立即停止使用 Moonlark，这是最后的警告。
+  tip_failed_to_send_content: |
+    在开始之前，我们相信您已经阅读了《Moonlark 最终许可协议》中的所有内容，它总结起来无非是这几点：
+
+    1. 您在使用 Moonlark 时应遵守最终许可协议和相关法律法规；
+    2. 您不能使用 Moonlark 进行任何违法活动和任何可能侵犯他人合法权益的目的；
+    3. 您需要承担所有由于不当使用 Moonlark 造成的后果及责任；
+    4. Moonlark 在运行时需要收集数据，您应当允许 Moonlark 收集和使用相关数据；
+    5. 在您没有同意《Moonlark 最终许可协议》时，您没有权利使用 Moonlark。
+
+    协议内容发送失败，请自行前往 GitHub 搜索 Moonlark-Dev/Moonlark 仓库后进入 Discussions 阅读 《Moonlark 最终许可协议》。
+  cancel: 已取消
+  confirm_eula: 您是否接受《Moonlark 最终许可协议》中的所有条款？[y/N]
+welcome:
+  - 注册成功。你就是我的 Master 吗，{}？
+  - 注册成功。很高兴认识你，{}！
+  - 注册成功。你好喵~，{}！
+input:
+  user_nickname: |
+    Moonlark 没有办法读取您的展示名称（昵称）。请发送您的展示名称，也可以发送“q”留空。
+    如果留空，您的在 Moonlark 的展示名称将变为：“用户-{}”。
+  nickname_review_failed: |
+    昵称审查不通过：{}
+    请重新输入。
+  nickname_failed: 读取昵称失败。注册流程将继续，您仍可以在以后修改您的昵称。

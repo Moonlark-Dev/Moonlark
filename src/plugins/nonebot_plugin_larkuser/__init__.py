@@ -14,11 +14,13 @@ require("nonebot_plugin_larklang")
 require("nonebot_plugin_larkutils")
 require("nonebot_plugin_localstore")
 require("nonebot_plugin_render")
+require("nonebot_plugin_preview")
 require("nonebot_plugin_waiter")
 
 
-from .matchers import recorder, panel, whoami
+from .matchers import recorder, panel, whoami, register
 from .utils.matcher import patch_matcher
 from .utils.level import get_level_by_experience
 from .utils.user import get_user, MoonlarkUser, get_registered_users, get_registered_user_list, get_registered_user_ids
 from .utils.waiter import prompt
+from .utils.waiter2 import WaitUserInput
