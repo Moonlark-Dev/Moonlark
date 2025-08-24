@@ -175,15 +175,15 @@ class MessageProcessor:
                 if code_block_cache is None:
                     code_block_cache = []
                 else:
-                    await UniMessage().text(text="\n".join(code_block_cache)).send(target=self.session.target, bot=self.session.bot)
+                    await UniMessage().text(text="\n".join(code_block_cache)).send(
+                        target=self.session.target, bot=self.session.bot
+                    )
                     code_block_cache = None
             elif code_block_cache is not None:
                 code_block_cache.append(origin_line)
             else:
                 await self.session.format_message(line).send(target=self.session.target, bot=self.session.bot)
         self.message_count += 1
-
-
 
     async def process_messages(self, msg_dict: CachedMessage) -> None:
         if (
