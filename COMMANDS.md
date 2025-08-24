@@ -29,6 +29,14 @@
 ### 用法
 - `/character (查看角色列表)`
 - `/character <index> (查看角色详情)`
+## `chatterbox`: 群话痨排行
+
+统计群聊中的话痨，该功能不支持 QQ 节点且需要在群聊中手动启用。
+
+### 用法
+- `/ct (群话痨排行)`
+- `/ct -e|-d (功能开关)`
+- `/ct me|<@用户> (查询指定用户的话痨排行)`
 ## `defuse-tnt`: 拆除 TNT
 
 运气游戏——通过猜测排列出正确的拆除炸弹的密码。
@@ -78,6 +86,19 @@
 ### 用法
 - `/setu (随机图片)`
 - `/setu rank (查看使用排行)`
+## `sudoku`: 数独解谜游戏
+
+数独解谜游戏，提供不同难度级别的数独谜题。游戏可以错误检查功能，帮助用户学习数独技巧。
+
+### 用法
+- `/sudoku new <num-holes> (生成指定空格数的数独)`
+- `/sudoku change <row> <column> <value> (修改数独指定行列数字)`
+- `/sudoku erase <row> <column> (去除数独指定行列数字)`
+- `/sudoku hint (提供第一个空格的提示)`
+- `/sudoku reset (重置数独为初始状态)`
+- `/sudoku answer (展示答案)`
+- `/sudoku undo (撤销操作)`
+- `/sudoku redo (撤销操作)`
 ## `team`: 设置战斗队伍
 
 （该功能仍在测试中）设置战斗有关模块使用的队伍，配合 character 指令使用。
@@ -136,7 +157,6 @@ Moonlark 本地化设置
 
 ### 用法
 - `/panel (查看面板)`
-- `/panel i (查看邀请指令)`
 ## `status`: 系统状态
 
 [lgc-NB2Dev/nonebot-plugin-picstatus] 获取 Moonlark 运行状态
