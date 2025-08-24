@@ -86,7 +86,6 @@ class MessageProcessor:
             for _ in range(self.message_count - 10):
                 await self.pop_first_message()
 
-
     async def get_message(self) -> None:
         if not self.session.message_queue:
             await asyncio.sleep(3)
