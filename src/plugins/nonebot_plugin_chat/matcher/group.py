@@ -99,8 +99,6 @@ class MessageProcessor:
             if isinstance(self.openai_messages[0], dict):
                 if self.openai_messages[0]["role"] not in ["system", "tool"]:
                     break
-            elif self.openai_messages[0].role not in ["system", "tool"]:
-                break
             self.openai_messages.pop(0)
 
     async def pop_first_message(self) -> None:
