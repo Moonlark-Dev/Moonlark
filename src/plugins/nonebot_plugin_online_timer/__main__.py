@@ -21,7 +21,7 @@ async def format_duration(duration: timedelta, user_id: str) -> str:
     if hours > 0:
         return await lang.text("duration.hr", user_id, hours, minutes)
     else:
-        return await lang.text("duration.minute", user_id, hours, minutes)
+        return await lang.text("duration.minute", user_id, minutes)
 
 
 # Initialize language helper
