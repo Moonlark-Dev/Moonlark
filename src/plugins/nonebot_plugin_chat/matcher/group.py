@@ -157,12 +157,13 @@ class MessageProcessor:
         )
         reply_text = await fetcher.fetch()
         self.openai_messages = fetcher.get_messages()
-        await self.process_reply_text(reply_text)
+        await self.send_reply_text(reply_text)
 
-    async def process_reply_text(self, reply_text: str) -> None:
-        for line in reply_text.splitlines():
-            line = line.strip()
-            await asyncio.sleep(len(line) * 0.01)
+    async def send_reply_text(self, reply_text: str) -> None:
+        code_block_cache = None
+        for origin_line in reply_text.splitlines():
+            line = origin_line.strip()
+            await asyncio.sleep(len(line) * 0.02)
             if not line:
                 continue
             elif line.startswith(".skip"):
@@ -170,6 +171,16 @@ class MessageProcessor:
             elif line.startswith(".leave"):
                 await self.session.mute()
                 return
+            elif line.startswith("```"):
+                if code_block_cache is None:
+                    code_block_cache = []
+                else:
+                    await UniMessage().text(text="\n".join(code_block_cache)).send(
+                        target=self.session.target, bot=self.session.bot
+                    )
+                    code_block_cache = None
+            elif code_block_cache is not None:
+                code_block_cache.append(origin_line)
             else:
                 await self.session.format_message(line).send(target=self.session.target, bot=self.session.bot)
         self.message_count += 1

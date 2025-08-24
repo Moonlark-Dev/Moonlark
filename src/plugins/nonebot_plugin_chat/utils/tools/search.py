@@ -20,6 +20,6 @@ from .browser import browse_webpage
 
 
 async def search_on_bing(keyword: str) -> str:
-    q = quote(keyword.replace(" ", "+"))
+    q = quote(keyword)
     result = await browse_webpage(f"https://www.bing.com/search?q={q}")
     return result["content"]
