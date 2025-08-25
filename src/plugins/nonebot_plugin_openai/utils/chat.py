@@ -74,25 +74,11 @@ class LLMRequestSession:
         if result is None:
             result = "success"
         logger.debug(f"函数返回: {result}")
-        msg: ChatCompletionToolMessageParam = {"role": "tool", "tool_call_id": call_id, "content": json.dumps(result)}
+        msg: ChatCompletionToolMessageParam = {"role": "tool", "tool_call_id": call_id, "content": json.dumps(result, ensure_ascii=False)}
         self.messages.append(msg)
 
 
-async def fetch_message(
-    messages: Messages,
-    use_default_message: bool = False,
-    model: str = config.openai_default_model,
-    functions: Optional[list[AsyncFunction]] = None,
-    **kwargs,
-) -> str:
-    if use_default_message:
-        messages.insert(0, generate_message(config.openai_default_message, "system"))
-    func_index: dict[str, AsyncFunction] = {}
-    if functions:
-        for func in functions:
-            func_index[func.__name__] = func
-    session = LLMRequestSession(messages, func_index, model, kwargs)
-    return await session.fetch_llm_response()
+
 
 
 class MessageFetcher:
@@ -118,3 +104,13 @@ class MessageFetcher:
 
     def get_messages(self) -> Messages:
         return self.session.messages
+
+async def fetch_message(
+    messages: Messages,
+    use_default_message: bool = False,
+    model: str = config.openai_default_model,
+    functions: Optional[list[AsyncFunction]] = None,
+    **kwargs,
+) -> str:
+    fetcher = MessageFetcher(messages, use_default_message, model, functions, **kwargs)
+    return await fetcher.fetch()
