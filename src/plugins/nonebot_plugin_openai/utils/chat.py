@@ -74,11 +74,12 @@ class LLMRequestSession:
         if result is None:
             result = "success"
         logger.debug(f"函数返回: {result}")
-        msg: ChatCompletionToolMessageParam = {"role": "tool", "tool_call_id": call_id, "content": json.dumps(result, ensure_ascii=False)}
+        msg: ChatCompletionToolMessageParam = {
+            "role": "tool",
+            "tool_call_id": call_id,
+            "content": json.dumps(result, ensure_ascii=False),
+        }
         self.messages.append(msg)
-
-
-
 
 
 class MessageFetcher:
@@ -104,6 +105,7 @@ class MessageFetcher:
 
     def get_messages(self) -> Messages:
         return self.session.messages
+
 
 async def fetch_message(
     messages: Messages,
