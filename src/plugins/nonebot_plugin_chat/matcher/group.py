@@ -168,6 +168,7 @@ class MessageProcessor:
         )
         reply_text = await fetcher.fetch()
         self.openai_messages = fetcher.get_messages()
+        self.message_count += 1
         await self.send_reply_text(reply_text)
 
     async def send_reply_text(self, reply_text: str) -> None:
@@ -194,7 +195,6 @@ class MessageProcessor:
                 code_block_cache.append(origin_line)
             else:
                 await self.session.format_message(line).send(target=self.session.target, bot=self.session.bot)
-        self.message_count += 1
 
     async def process_messages(self, msg_dict: CachedMessage) -> None:
         if (
