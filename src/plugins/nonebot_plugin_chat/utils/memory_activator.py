@@ -72,10 +72,7 @@ async def _select_memories_with_llm(
         )
 
         # 调用LLM
-        response = await fetch_message(
-            [generate_message(selection_prompt, "user")],
-            identify="Memory Select"
-        )
+        response = await fetch_message([generate_message(selection_prompt, "user")], identify="Memory Select")
 
         # 解析响应
         try:

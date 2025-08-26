@@ -41,7 +41,12 @@ def generate_function_list(func_index: dict[str, AsyncFunction]) -> list[ChatCom
 class LLMRequestSession:
 
     def __init__(
-        self, messages: Messages, func_index: dict[str, AsyncFunction], model: str, kwargs: dict[str, Any], identify: str
+        self,
+        messages: Messages,
+        func_index: dict[str, AsyncFunction],
+        model: str,
+        kwargs: dict[str, Any],
+        identify: str,
     ) -> None:
         self.messages: Messages = messages
         self.identify = identify
@@ -65,7 +70,7 @@ class LLMRequestSession:
                 tool_choice="auto" if self.func_list else "none",
                 extra_headers={
                     "X-Title": (t := f"Moonlark - {self.identify}"),
-                    "HTTP-Referer": f"https://{hashlib.sha256(t.encode()).hexdigest()}.moonlark.itcdt.top"
+                    "HTTP-Referer": f"https://{hashlib.sha256(t.encode()).hexdigest()}.moonlark.itcdt.top",
                 },
                 **self.kwargs,
             )

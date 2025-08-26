@@ -172,7 +172,7 @@ class MessageProcessor:
                     },
                 ),
             ],
-            identify="Chat"
+            identify="Chat",
         )
         reply_text = await fetcher.fetch()
         self.openai_messages = fetcher.get_messages()

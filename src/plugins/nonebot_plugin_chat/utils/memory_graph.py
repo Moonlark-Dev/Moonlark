@@ -62,10 +62,7 @@ async def extract_topics_from_text(text: str, max_topics: int = 5) -> List[str]:
     if len(text) <= 5:
         return []
     prompt = await lang.text("prompt.memory.graph.extract", 0, text, max_topics, max_topics, datetime.now().isoformat())
-    result = await fetch_message(
-        [generate_message(prompt, "user")],
-        identify="Topic Extract"
-    )
+    result = await fetch_message([generate_message(prompt, "user")], identify="Topic Extract")
     if result == "<none>":
         return []
     return [i for i in result.splitlines() if i]
@@ -78,10 +75,7 @@ async def _integrate_memories_with_llm(existing_memory: str, new_memory: str) ->
             "prompt.memory.graph.integrate", 0, existing_memory, new_memory, datetime.now().isoformat()
         )
 
-        content = await fetch_message(
-            [generate_message(integration_prompt, "user")],
-            identify="Memory Integrate"
-        )
+        content = await fetch_message([generate_message(integration_prompt, "user")], identify="Memory Integrate")
 
         if content and content.strip():
             return content.strip()
@@ -285,10 +279,7 @@ class MemoryGraph:
             try:
                 summary_prompt = await lang.text("prompt.memory.graph.summary", 0, text, topic)
 
-                summary = await fetch_message(
-                    [generate_message(summary_prompt, "user")],
-                    identify="Topic Summary"
-                )
+                summary = await fetch_message([generate_message(summary_prompt, "user")], identify="Topic Summary")
 
                 if summary and summary.strip():
                     await self.add_memory_to_concept(topic, summary.strip())
