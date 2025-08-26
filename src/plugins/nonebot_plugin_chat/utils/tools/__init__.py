@@ -16,4 +16,4 @@
 # ##############################################################################
 
 from .browser import browse_webpage
-from .search import search_on_bing
+from .search import search_on_google

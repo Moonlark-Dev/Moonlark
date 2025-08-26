@@ -37,6 +37,8 @@ from .memory_graph import MemoryGraph
 
 from .memory_graph import extract_topics_from_text
 
+from ..lang import lang
+
 
 def _calculate_relevance(keyword: str, target_message: str, memory_content: str) -> float:
     """计算记忆相关性（简化版）"""
@@ -65,26 +67,15 @@ async def _select_memories_with_llm(
         memory_info = "\n".join(memory_lines)
 
         # 构建选择提示
-        selection_prompt = f"""你需要根据以下信息来挑选合适的记忆编号。
-
-当前消息: {target_message}
-
-聊天上下文:
-{chat_history}
-
-可用记忆:
-{memory_info}
-
-请从上述记忆中选择最多{max_memories}个与当前消息最相关的记忆，并输出一个JSON格式的响应：
-
-{{
-"memory_ids": "记忆1编号,记忆2编号,记忆3编号"
-}}
-
-只输出JSON格式，不要添加其他解释。"""
+        selection_prompt = await lang.text(
+            "prompt.memory.activator", 0, target_message, chat_history, memory_info, max_memories
+        )
 
         # 调用LLM
-        response = await fetch_message([generate_message(selection_prompt, "user")])
+        response = await fetch_message(
+            [generate_message(selection_prompt, "user")],
+            extra_headers={"X-Title": "Moonlark - Memory Select", "HTTP-Referer": "https://select.moonlark.itcdt.top"},
+        )
 
         # 解析响应
         try:

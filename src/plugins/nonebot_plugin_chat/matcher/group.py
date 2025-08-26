@@ -42,7 +42,7 @@ from ..utils.memory_activator import activate_memories_from_text
 from ..lang import lang
 from ..models import ChatGroup
 from ..utils import enabled_group, parse_message_to_string
-from ..utils.tools import browse_webpage, search_on_bing
+from ..utils.tools import browse_webpage, search_on_google
 
 BASE_DESIRE = 30
 
@@ -92,6 +92,8 @@ class MessageProcessor:
             return
         message, event, state, user_id, nickname, dt, mentioned = self.session.message_queue.pop(0)
         text = await parse_message_to_string(message, event, self.session.bot, state)
+        if not text:
+            return
         msg_dict: CachedMessage = {
             "content": text,
             "nickname": nickname,
@@ -159,9 +161,15 @@ class MessageProcessor:
                     },
                 ),
                 AsyncFunction(
-                    func=search_on_bing,
-                    description="使用微软必应搜索信息",
-                    parameters={"keyword": FunctionParameter(type="string", description="搜索关键词", required=True)},
+                    func=search_on_google,
+                    description="使用Google搜索信息",
+                    parameters={
+                        "keyword": FunctionParameter(
+                            type="string",
+                            description="搜索关键词。请使用简洁的关键词而非完整句子。将用户问题转换为2-5个相关的关键词，用空格分隔。例如：'人工智能 发展 趋势' 而不是 '人工智能的发展趋势是什么'",
+                            required=True,
+                        )
+                    },
                 ),
             ],
             extra_headers={"X-Title": "Moonlark - Chat", "HTTP-Referer": "https://chat.moonlark.itcdt.top"},
@@ -534,16 +542,15 @@ async def _(
                 memory_summary = []
                 for concept, data in list(memory_graph.nodes.items())[:3]:  # 显示前3个
                     memory_summary.append(f"{concept}: {data['memory_items'][:200]}...")
-                await matcher.finish("当前记忆:\n" + "\n\n".join(memory_summary))
+                await lang.send("command.memory.current", user_id, "\n\n".join(memory_summary))
             else:
-                await matcher.finish("暂无记忆")
+                await lang.send("command.memory.empty", user_id)
         case "cleanup-memory":
             if g is not None:
                 from ..utils.memory_graph import cleanup_old_memories
 
                 forgotten_count = await cleanup_old_memories(group_id, forget_ratio=0.3)
-                await lang.send("command.done", user_id)
-                await matcher.finish(f"已清理 {forgotten_count} 条旧记忆")
+                await lang.send("command.memory.clean", user_id, forgotten_count)
             else:
                 await lang.send("command.disabled", user_id)
         case "show-graph-memory":
@@ -556,19 +563,24 @@ async def _(
                 if memory_graph.nodes:
                     memory_summary = []
                     for concept, data in list(memory_graph.nodes.items())[:5]:  # 显示前5个
-                        memory_summary.append(f"概念: {concept}")
-                        memory_summary.append(f"记忆: {data['memory_items'][:100]}...")
-                        memory_summary.append(f"权重: {data['weight']:.1f}")
-                        memory_summary.append("---")
+                        memory_summary.append(
+                            await lang.text(
+                                "command.memory.graph_node",
+                                user_id,
+                                concept,
+                                data["memory_items"][:100],
+                                round(data["weight"], 1),
+                            )
+                        )
 
                     total_nodes = len(memory_graph.nodes)
                     total_edges = len(memory_graph.edges)
-                    summary_text = f"记忆图统计: {total_nodes}个概念, {total_edges}个连接\n\n" + "\n".join(
-                        memory_summary
+                    summary_text = await lang.text(
+                        "command.memory.summary", user_id, total_nodes, total_edges, "\n".join(memory_summary)
                     )
                     await matcher.finish(summary_text)
                 else:
-                    await matcher.finish("暂无图形记忆数据")
+                    await lang.send("command.memory.empty_graph", user_id)
             else:
                 await lang.send("command.disabled", user_id)
         case _:
