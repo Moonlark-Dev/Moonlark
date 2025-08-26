@@ -18,12 +18,21 @@
 import httpx
 from urllib.parse import quote
 from ...config import config
+from .browser import browse_webpage
 
+
+async def search_on_bing(keyword: str) -> str:
+    q = quote(keyword)
+    result = await browse_webpage(f"https://www.bing.com/search?q={q}")
+    return result["content"]
 
 async def search_on_google(keyword: str) -> str:
     """使用Google PSE API进行搜索"""
     api_key = config.google_api_key
     search_engine_id = config.google_search_engine_id
+
+    if not api_key or not search_engine_id:
+        return "Google 搜索暂不可用，以下是使用 Bing 搜索得到的结果：\n\n" + await search_on_bing(keyword)
 
     q = quote(keyword)
     url = f"https://www.googleapis.com/customsearch/v1?key={api_key}&cx={search_engine_id}&q={q}&num=6"
