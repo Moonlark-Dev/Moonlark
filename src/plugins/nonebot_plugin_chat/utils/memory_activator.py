@@ -72,10 +72,7 @@ async def _select_memories_with_llm(
         )
 
         # 调用LLM
-        response = await fetch_message(
-            [generate_message(selection_prompt, "user")],
-            extra_headers={"X-Title": "Moonlark - Memory Select", "HTTP-Referer": "https://select.moonlark.itcdt.top"},
-        )
+        response = await fetch_message([generate_message(selection_prompt, "user")], identify="Memory Select")
 
         # 解析响应
         try:
