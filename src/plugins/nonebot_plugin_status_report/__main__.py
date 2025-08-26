@@ -39,7 +39,7 @@ if TYPE_CHECKING:
 
 data_dir = get_data_dir("nonebot_plugin_status_report")
 app = cast(FastAPI, get_app())
-event_counter = (0, 0)      # total, success
+event_counter = (0, 0)  # total, success
 
 
 @run_postprocessor
@@ -60,13 +60,15 @@ async def _(event: Event, bot: Bot, exception: Optional[Exception]) -> None:
     except ValueError:
         message = None
         session_id = None
-    exc_list.append(ExceptionStatus(
-        timestamp=int(datetime.now().timestamp()),
-        bot_id=bot.self_id,
-        message=message,
-        session=session_id,
-        exception="".join(traceback.format_exception(exception))
-    ))
+    exc_list.append(
+        ExceptionStatus(
+            timestamp=int(datetime.now().timestamp()),
+            bot_id=bot.self_id,
+            message=message,
+            session=session_id,
+            exception="".join(traceback.format_exception(exception)),
+        )
+    )
     exc_list = exc_list[-20:]
     async with aiofiles.open(data_dir.joinpath("exceptions.json"), "w", encoding="utf-8") as f:
         await f.write(json.dumps(exc_list, ensure_ascii=False, indent=4))
@@ -79,11 +81,7 @@ async def report_openai_history(messages: "Messages", identify: str, model: str)
             history = json.loads(await f.read())
     else:
         history = []
-    history.append(OpenAIHistory(
-        model=model,
-        identify=identify,
-        messages=message_list
-    ))
+    history.append(OpenAIHistory(model=model, identify=identify, messages=message_list))
     async with aiofiles.open(data_dir.joinpath("openai.json"), "w", encoding="utf-8") as f:
         await f.write(json.dumps(history[-20:], ensure_ascii=False, indent=4))
 
@@ -93,6 +91,7 @@ async def get_exceptions() -> list[ExceptionStatus]:
         return []
     async with aiofiles.open(data_dir.joinpath("exceptions.json"), "r", encoding="utf-8") as f:
         return json.loads(await f.read())
+
 
 async def get_openai_history() -> list[OpenAIHistory]:
     if not data_dir.joinpath("openai.json").is_file():
@@ -114,6 +113,5 @@ async def get_status_report(request: Request, token: str, salt: str) -> StatusRe
             total=event_counter[0],
             failed=event_counter[0] - event_counter[1],
         ),
-        openai=await get_openai_history()
+        openai=await get_openai_history(),
     )
-
