@@ -172,7 +172,7 @@ class MessageProcessor:
                     },
                 ),
             ],
-            extra_headers={"X-Title": "Moonlark - Chat", "HTTP-Referer": "https://chat.moonlark.itcdt.top"},
+            identify="Chat"
         )
         reply_text = await fetcher.fetch()
         self.openai_messages = fetcher.get_messages()

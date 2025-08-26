@@ -64,7 +64,7 @@ async def extract_topics_from_text(text: str, max_topics: int = 5) -> List[str]:
     prompt = await lang.text("prompt.memory.graph.extract", 0, text, max_topics, max_topics, datetime.now().isoformat())
     result = await fetch_message(
         [generate_message(prompt, "user")],
-        extra_headers={"X-Title": "Moonlark - Topic Extract", "HTTP-Referer": "https://extract.moonlark.itcdt.top"},
+        identify="Topic Extract"
     )
     if result == "<none>":
         return []
@@ -80,10 +80,7 @@ async def _integrate_memories_with_llm(existing_memory: str, new_memory: str) ->
 
         content = await fetch_message(
             [generate_message(integration_prompt, "user")],
-            extra_headers={
-                "X-Title": "Moonlark - Memory Integrate",
-                "HTTP-Referer": "https://integrate.moonlark.itcdt.top",
-            },
+            identify="Memory Integrate"
         )
 
         if content and content.strip():
@@ -290,10 +287,7 @@ class MemoryGraph:
 
                 summary = await fetch_message(
                     [generate_message(summary_prompt, "user")],
-                    extra_headers={
-                        "X-Title": "Moonlark - Topic Summary",
-                        "HTTP-Referer": "https://summary.moonlark.itcdt.top",
-                    },
+                    identify="Topic Summary"
                 )
 
                 if summary and summary.strip():

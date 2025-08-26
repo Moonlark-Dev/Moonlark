@@ -1,3 +1,7 @@
+import hashlib
+
+from nonebot_plugin_larklang.__main__ import get_module_name
+import inspect
 import json
 from typing import Optional, Any
 
@@ -37,9 +41,10 @@ def generate_function_list(func_index: dict[str, AsyncFunction]) -> list[ChatCom
 class LLMRequestSession:
 
     def __init__(
-        self, messages: Messages, func_index: dict[str, AsyncFunction], model: str, kwargs: dict[str, Any]
+        self, messages: Messages, func_index: dict[str, AsyncFunction], model: str, kwargs: dict[str, Any], identify: str
     ) -> None:
         self.messages: Messages = messages
+        self.identify = identify
         self.func_list = generate_function_list(func_index)
         self.func_index = func_index
         self.kwargs = kwargs
@@ -58,6 +63,10 @@ class LLMRequestSession:
                 model=self.model,
                 tools=self.func_list,
                 tool_choice="auto" if self.func_list else "none",
+                extra_headers={
+                    "X-Title": (t := f"Moonlark - {self.identify}"),
+                    "HTTP-Referer": f"https://{hashlib.sha256(t.encode()).hexdigest()}.moonlark.itcdt.top"
+                },
                 **self.kwargs,
             )
         ).choices[0]
@@ -90,15 +99,22 @@ class MessageFetcher:
         use_default_message: bool = False,
         model: str = config.openai_default_model,
         functions: Optional[list[AsyncFunction]] = None,
+        identify: Optional[str] = None,
         **kwargs,
     ) -> None:
+        if identify is None:
+            stack = inspect.stack()[1]
+            function_name = stack.function
+            plugin_name = get_module_name(inspect.getmodule(stack[0]))
+            identify = f"{plugin_name}.{function_name}"
+        logger.debug(f"{identify=}")
         if use_default_message:
             messages.insert(0, generate_message(config.openai_default_message, "system"))
         func_index: dict[str, AsyncFunction] = {}
         if functions:
             for func in functions:
                 func_index[func["func"].__name__] = func
-        self.session = LLMRequestSession(messages, func_index, model, kwargs)
+        self.session = LLMRequestSession(messages, func_index, model, kwargs, identify)
 
     async def fetch(self) -> str:
         return await self.session.fetch_llm_response()
@@ -112,7 +128,13 @@ async def fetch_message(
     use_default_message: bool = False,
     model: str = config.openai_default_model,
     functions: Optional[list[AsyncFunction]] = None,
+    identify: Optional[str] = None,
     **kwargs,
 ) -> str:
-    fetcher = MessageFetcher(messages, use_default_message, model, functions, **kwargs)
+    if identify is None:
+        stack = inspect.stack()[1]
+        function_name = stack.function
+        plugin_name = get_module_name(inspect.getmodule(stack[0]))
+        identify = f"{plugin_name}.{function_name}"
+    fetcher = MessageFetcher(messages, use_default_message, model, functions, identify, **kwargs)
     return await fetcher.fetch()
