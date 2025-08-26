@@ -30,6 +30,7 @@ from nonebot_plugin_openai.utils.chat import fetch_message
 from nonebot_plugin_openai.utils.message import generate_message
 
 from ..models import MemoryNode, MemoryEdge
+from ..lang import lang
 
 
 def calculate_information_content(text: str) -> float:
@@ -60,13 +61,11 @@ def cosine_similarity(v1: List[float], v2: List[float]) -> float:
 async def extract_topics_from_text(text: str, max_topics: int = 5) -> List[str]:
     if len(text) <= 5:
         return []
-    prompt = (
-        f"这是一段文字：\n{text}\n\n请你从这段话中总结出最多{max_topics}个关键的概念，必须是某种概念，比如人，事，物，概念，事件，地点 等等，帮我列出来，"
-        f"一行一个，尽可能精简。只需要列举最多{max_topics}个话题就好，不要有序号，不要告诉我其他内容。"
-        f"如果确定找不出主题或者没有明显主题，返回<none>。\n"
-        f"当前时间: {datetime.now().isoformat()}"
+    prompt = await lang.text("prompt.memory.graph.extract", 0, text, max_topics, max_topics, datetime.now().isoformat())
+    result = await fetch_message(
+        [generate_message(prompt, "user")],
+        extra_headers={"X-Title": "Moonlark - Topic Extract", "HTTP-Referer": "https://extract.moonlark.itcdt.top"},
     )
-    result = await fetch_message([generate_message(prompt, "user")])
     if result == "<none>":
         return []
     return [i for i in result.splitlines() if i]
@@ -75,27 +74,17 @@ async def extract_topics_from_text(text: str, max_topics: int = 5) -> List[str]:
 async def _integrate_memories_with_llm(existing_memory: str, new_memory: str) -> str:
     """使用LLM整合新旧记忆"""
     try:
-        integration_prompt = f"""你是一个记忆整合专家。请将以下的旧记忆和新记忆整合成一条更完整、更准确的记忆内容。
+        integration_prompt = await lang.text(
+            "prompt.memory.graph.integrate", 0, existing_memory, new_memory, datetime.now().isoformat()
+        )
 
-旧记忆内容：
-{existing_memory}
-
-新记忆内容：
-{new_memory}
-
-整合要求：
-1. 保留重要信息，去除重复内容
-2. 如果新旧记忆有冲突，合理整合矛盾的地方
-3. 将相关信息合并，形成更完整的描述
-4. 保持语言简洁、准确
-5. 只返回整合后的记忆内容，不要添加任何解释
-
-当前时间：
-{datetime.now().isoformat()}
-
-整合后的记忆："""
-
-        content = await fetch_message([generate_message(integration_prompt, "user")])
+        content = await fetch_message(
+            [generate_message(integration_prompt, "user")],
+            extra_headers={
+                "X-Title": "Moonlark - Memory Integrate",
+                "HTTP-Referer": "https://integrate.moonlark.itcdt.top",
+            },
+        )
 
         if content and content.strip():
             return content.strip()
@@ -297,12 +286,15 @@ class MemoryGraph:
         # 为每个主题生成摘要
         for topic in topics:
             try:
-                summary_prompt = f"""这是一段文字：
-{text}
+                summary_prompt = await lang.text("prompt.memory.graph.summary", 0, text, topic)
 
-请基于这段文字来概括"{topic}"这个概念，帮我总结成几句自然的话，要求包含对这个概念的定义、内容、知识，这些信息必须来自这段文字。只输出几句自然的话就好。"""
-
-                summary = await fetch_message([generate_message(summary_prompt, "user")])
+                summary = await fetch_message(
+                    [generate_message(summary_prompt, "user")],
+                    extra_headers={
+                        "X-Title": "Moonlark - Topic Summary",
+                        "HTTP-Referer": "https://summary.moonlark.itcdt.top",
+                    },
+                )
 
                 if summary and summary.strip():
                     await self.add_memory_to_concept(topic, summary.strip())
