@@ -536,16 +536,15 @@ async def _(
                 memory_summary = []
                 for concept, data in list(memory_graph.nodes.items())[:3]:  # 显示前3个
                     memory_summary.append(f"{concept}: {data['memory_items'][:200]}...")
-                await matcher.finish("当前记忆:\n" + "\n\n".join(memory_summary))
+                await lang.send("command.memory.current", user_id, "\n\n".join(memory_summary))
             else:
-                await matcher.finish("暂无记忆")
+                await lang.send("command.memory.empty", user_id)
         case "cleanup-memory":
             if g is not None:
                 from ..utils.memory_graph import cleanup_old_memories
 
                 forgotten_count = await cleanup_old_memories(group_id, forget_ratio=0.3)
-                await lang.send("command.done", user_id)
-                await matcher.finish(f"已清理 {forgotten_count} 条旧记忆")
+                await lang.send("command.memory.clean", user_id, forgotten_count)
             else:
                 await lang.send("command.disabled", user_id)
         case "show-graph-memory":
@@ -558,19 +557,28 @@ async def _(
                 if memory_graph.nodes:
                     memory_summary = []
                     for concept, data in list(memory_graph.nodes.items())[:5]:  # 显示前5个
-                        memory_summary.append(f"概念: {concept}")
-                        memory_summary.append(f"记忆: {data['memory_items'][:100]}...")
-                        memory_summary.append(f"权重: {data['weight']:.1f}")
-                        memory_summary.append("---")
+                        memory_summary.append(
+                            await lang.text(
+                                "command.memory.graph_node",
+                                user_id,
+                                concept,
+                                data['memory_items'][:100],
+                                round(data['weight'],1)
+                            )
+                        )
 
                     total_nodes = len(memory_graph.nodes)
                     total_edges = len(memory_graph.edges)
-                    summary_text = f"记忆图统计: {total_nodes}个概念, {total_edges}个连接\n\n" + "\n".join(
-                        memory_summary
-                    )
+                    summary_text = await lang.text(
+                                "command.memory.summary",
+                                user_id,
+                                total_nodes,
+                                total_edges,
+                                "\n".join(memory_summary)
+                            )
                     await matcher.finish(summary_text)
                 else:
-                    await matcher.finish("暂无图形记忆数据")
+                    await lang.send("command.memory.empty_graph", user_id)
             else:
                 await lang.send("command.disabled", user_id)
         case _:
