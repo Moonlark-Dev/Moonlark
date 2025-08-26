@@ -8,6 +8,7 @@ from typing import Optional, Any
 from nonebot import logger
 from openai.types.shared_params import FunctionDefinition
 from openai.types.chat import ChatCompletionToolMessageParam, ChatCompletionFunctionToolParam
+from nonebot_plugin_status_report import report_openai_history
 
 from ..types import Messages, AsyncFunction
 
@@ -59,6 +60,7 @@ class LLMRequestSession:
     async def fetch_llm_response(self) -> str:
         while not self.result_string:
             await self.request()
+        await report_openai_history(self.messages, self.identify, self.model)
         return self.result_string
 
     async def request(self) -> None:
