@@ -59,6 +59,14 @@ def generate_message_string(message: CachedMessage) -> str:
     return f"[{message['send_time'].strftime('%H:%M')}][{message['nickname']}]: {message['content']}\n"
 
 
+def get_role(message: OpenAIMessage) -> str:
+    if isinstance(message, dict):
+        role = message["role"]
+    else:
+        role = message.role
+    return role
+
+
 class MessageProcessor:
 
     def __init__(self, session: "GroupSession"):
@@ -68,12 +76,15 @@ class MessageProcessor:
         self.enabled = True
         asyncio.create_task(self.loop())
 
-    async def loop(self):
+    async def loop(self) -> None:
         while self.enabled:
-            await self.get_message()
+            try:
+                await self.get_message()
+            except Exception as e:
+                logger.exception(e)
+                await asyncio.sleep(10)
             for _ in range(self.message_count - 10):
                 await self.pop_first_message()
-            await asyncio.sleep(1)
 
     async def get_message(self) -> None:
         if not self.session.message_queue:
@@ -92,14 +103,12 @@ class MessageProcessor:
         self.session.cached_messages.append(msg_dict)
         if mentioned or not self.session.message_queue:
             await self.generate_reply(mentioned)
-            await asyncio.sleep(10)
+            await asyncio.sleep(5)
 
     def clean_special_message(self) -> None:
         while True:
-            if isinstance(self.openai_messages[0], dict):
-                if self.openai_messages[0]["role"] not in ["system", "tool"]:
-                    break
-            elif self.openai_messages[0].role not in ["system", "tool"]:
+            role = get_role(self.openai_messages[0])
+            if role in ["user", "assistant"]:
                 break
             self.openai_messages.pop(0)
 
@@ -107,12 +116,14 @@ class MessageProcessor:
         self.clean_special_message()
         if len(self.openai_messages) == 0:
             return
-        if self.openai_messages[0]["role"] == "assistant":
+        role = get_role(self.openai_messages[0])
+        if role == "assistant":
             self.openai_messages.pop(0)
-        elif self.openai_messages[0]["role"] == "user":
+        elif role == "user":
             content = self.openai_messages[0]["content"]
-            self.openai_messages[0]["content"] = content[content.find("\n[") + 1 :]
-            if not self.openai_messages[0]["content"]:
+            if next_message_pos := content.find("\n[") + 1:
+                self.openai_messages[0]["content"] = content[next_message_pos:]
+            else:
                 self.openai_messages.pop(0)
         self.message_count -= 1
 
@@ -157,12 +168,13 @@ class MessageProcessor:
         )
         reply_text = await fetcher.fetch()
         self.openai_messages = fetcher.get_messages()
-        await self.process_reply_text(reply_text)
+        await self.send_reply_text(reply_text)
 
-    async def process_reply_text(self, reply_text: str) -> None:
-        for line in reply_text.splitlines():
-            line = line.strip()
-            await asyncio.sleep(len(line) * 0.01)
+    async def send_reply_text(self, reply_text: str) -> None:
+        code_block_cache = None
+        for origin_line in reply_text.splitlines():
+            line = origin_line.strip()
+            await asyncio.sleep(len(line.replace("\n", "")) * 0.01)
             if not line:
                 continue
             elif line.startswith(".skip"):
@@ -170,6 +182,16 @@ class MessageProcessor:
             elif line.startswith(".leave"):
                 await self.session.mute()
                 return
+            elif line.startswith("```"):
+                if code_block_cache is None:
+                    code_block_cache = []
+                else:
+                    await UniMessage().text(text="\n".join(code_block_cache)).send(
+                        target=self.session.target, bot=self.session.bot
+                    )
+                    code_block_cache = None
+            elif code_block_cache is not None:
+                code_block_cache.append(origin_line)
             else:
                 await self.session.format_message(line).send(target=self.session.target, bot=self.session.bot)
         self.message_count += 1
@@ -431,6 +453,7 @@ async def _(
 async def group_disable(group_id: str) -> None:
     if group_id in groups:
         group = groups.pop(group_id)
+        group.processor.enabled = False
         await group.update_memory()
 
 

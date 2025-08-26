@@ -77,7 +77,6 @@ packages = [
     { include = "nonebot_plugin_preview", from = "./plugins" },
     { include = "nonebot_plugin_quick_math", from = "./plugins" },
     { include = "nonebot_plugin_ranking", from = "./plugins" },
-    { include = "nonebot_plugin_registry", from = "./plugins" },
     { include = "nonebot_plugin_render", from = "./plugins" },
     { include = "nonebot_plugin_sign", from = "./plugins" },
     { include = "nonebot_plugin_time_progress", from = "./plugins" },
@@ -98,7 +97,8 @@ packages = [
     { include = "nonebot_plugin_cave_image_prompt", from = "./plugins" },
     { include = "nonebot_plugin_hkrpg_calendar", from = "./plugins" },
     { include = "nonebot_plugin_ba_calendar", from = "./plugins" },
-    { include = "nonebot_plugin_everyday_wife", from = "./plugins" }
+    { include = "nonebot_plugin_everyday_wife", from = "./plugins" },
+    { include = "nonebot_plugin_online_timer", from = "./plugins" }
 ]
 
 

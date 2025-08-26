@@ -58,16 +58,18 @@ def cosine_similarity(v1: List[float], v2: List[float]) -> float:
 
 
 async def extract_topics_from_text(text: str, max_topics: int = 5) -> List[str]:
+    if len(text) <= 5:
+        return []
     prompt = (
         f"这是一段文字：\n{text}\n\n请你从这段话中总结出最多{max_topics}个关键的概念，必须是某种概念，比如人，事，物，概念，事件，地点 等等，帮我列出来，"
-        f"将主题用逗号隔开，并加上<>,例如<主题1>,<主题2>......尽可能精简。只需要列举最多{max_topics}个话题就好，不要有序号，不要告诉我其他内容。"
+        f"一行一个，尽可能精简。只需要列举最多{max_topics}个话题就好，不要有序号，不要告诉我其他内容。"
         f"如果确定找不出主题或者没有明显主题，返回<none>。\n"
         f"当前时间: {datetime.now().isoformat()}"
     )
     result = await fetch_message([generate_message(prompt, "user")])
     if result == "<none>":
         return []
-    return [i[1:-1] for i in result.split(",")]
+    return [i for i in result.splitlines() if i]
 
 
 async def _integrate_memories_with_llm(existing_memory: str, new_memory: str) -> str:

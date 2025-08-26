@@ -157,7 +157,6 @@ Moonlark 本地化设置
 
 ### 用法
 - `/panel (查看面板)`
-- `/panel i (查看邀请指令)`
 ## `status`: 系统状态
 
 [lgc-NB2Dev/nonebot-plugin-picstatus] 获取 Moonlark 运行状态
@@ -335,6 +334,12 @@ Moonlark 投票
 - `/email claim <email_id> (领取指定邮件)`
 - `/email unread all (将所有邮件标为未读)`
 - `/email unread <email_id> (将邮件标为未读)`
+## `online-timer`: 在线时间段
+
+查询 Moonlark 记录的群友在线时间段
+
+### 用法
+- `/online-timer [@用户]`
 ## `schedule`: 每日任务
 
 查看每日任务或领取每日任务奖励，每日刷新，部分功能仅在签到后可用。

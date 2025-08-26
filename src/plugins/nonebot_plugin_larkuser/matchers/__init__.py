@@ -14,12 +14,3 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
-
-from urllib.parse import quote
-from .browser import browse_webpage
-
-
-async def search_on_bing(keyword: str) -> str:
-    q = quote(keyword)
-    result = await browse_webpage(f"https://www.bing.com/search?q={q}")
-    return result["content"]
