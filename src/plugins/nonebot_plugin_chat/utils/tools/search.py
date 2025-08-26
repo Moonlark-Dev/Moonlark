@@ -24,24 +24,24 @@ async def search_on_google(keyword: str) -> str:
     """使用Google PSE API进行搜索"""
     api_key = config.google_api_key
     search_engine_id = config.google_search_engine_id
-    
+
     q = quote(keyword)
     url = f"https://www.googleapis.com/customsearch/v1?key={api_key}&cx={search_engine_id}&q={q}&num=6"
-    
+
     try:
         async with httpx.AsyncClient() as client:
             response = await client.get(url)
             if response.status_code == 200:
                 data = response.json()
                 results = []
-                
+
                 if "items" in data:
                     for item in data["items"]:
                         title = item.get("title", "")
                         link = item.get("link", "")
                         snippet = item.get("snippet", "")
                         results.append(f"**{title}**\n{snippet}\n链接: {link}\n")
-                
+
                 return "\n".join(results) if results else "未找到相关搜索结果"
             else:
                 return f"搜索请求失败，状态码: {response.status_code}"

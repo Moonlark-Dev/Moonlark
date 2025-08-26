@@ -61,17 +61,10 @@ def cosine_similarity(v1: List[float], v2: List[float]) -> float:
 async def extract_topics_from_text(text: str, max_topics: int = 5) -> List[str]:
     if len(text) <= 5:
         return []
-    prompt = await lang.text(
-                "prompt.memory.graph.extract",
-                0,
-                text,
-                max_topics,
-                max_topics,
-                datetime.now().isoformat()
-            )
+    prompt = await lang.text("prompt.memory.graph.extract", 0, text, max_topics, max_topics, datetime.now().isoformat())
     result = await fetch_message(
         [generate_message(prompt, "user")],
-        extra_headers={"X-Title": "Moonlark - Topic Extract", "HTTP-Referer": "https://extract.moonlark.itcdt.top"}
+        extra_headers={"X-Title": "Moonlark - Topic Extract", "HTTP-Referer": "https://extract.moonlark.itcdt.top"},
     )
     if result == "<none>":
         return []
@@ -82,16 +75,15 @@ async def _integrate_memories_with_llm(existing_memory: str, new_memory: str) ->
     """使用LLM整合新旧记忆"""
     try:
         integration_prompt = await lang.text(
-                "prompt.memory.graph.integrate",
-                0,
-                existing_memory,
-                new_memory,
-                datetime.now().isoformat()
-            )
+            "prompt.memory.graph.integrate", 0, existing_memory, new_memory, datetime.now().isoformat()
+        )
 
         content = await fetch_message(
             [generate_message(integration_prompt, "user")],
-            extra_headers={"X-Title": "Moonlark - Memory Integrate", "HTTP-Referer": "https://integrate.moonlark.itcdt.top"}
+            extra_headers={
+                "X-Title": "Moonlark - Memory Integrate",
+                "HTTP-Referer": "https://integrate.moonlark.itcdt.top",
+            },
         )
 
         if content and content.strip():
@@ -294,16 +286,14 @@ class MemoryGraph:
         # 为每个主题生成摘要
         for topic in topics:
             try:
-                summary_prompt = await lang.text(
-                    "prompt.memory.graph.summary",
-                    0,
-                    text,
-                    topic
-                )
+                summary_prompt = await lang.text("prompt.memory.graph.summary", 0, text, topic)
 
                 summary = await fetch_message(
                     [generate_message(summary_prompt, "user")],
-                    extra_headers={"X-Title": "Moonlark - Topic Summary", "HTTP-Referer": "https://summary.moonlark.itcdt.top"}
+                    extra_headers={
+                        "X-Title": "Moonlark - Topic Summary",
+                        "HTTP-Referer": "https://summary.moonlark.itcdt.top",
+                    },
                 )
 
                 if summary and summary.strip():

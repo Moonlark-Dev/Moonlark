@@ -39,6 +39,7 @@ from .memory_graph import extract_topics_from_text
 
 from ..lang import lang
 
+
 def _calculate_relevance(keyword: str, target_message: str, memory_content: str) -> float:
     """计算记忆相关性（简化版）"""
     keyword_in_message = 1.0 if keyword.lower() in target_message.lower() else 0.0
@@ -67,18 +68,13 @@ async def _select_memories_with_llm(
 
         # 构建选择提示
         selection_prompt = await lang.text(
-            "prompt.memory.activator",
-            0,
-            target_message,
-            chat_history,
-            memory_info,
-            max_memories
+            "prompt.memory.activator", 0, target_message, chat_history, memory_info, max_memories
         )
 
         # 调用LLM
         response = await fetch_message(
             [generate_message(selection_prompt, "user")],
-            extra_headers={"X-Title": "Moonlark - Memory Select", "HTTP-Referer": "https://select.moonlark.itcdt.top"}
+            extra_headers={"X-Title": "Moonlark - Memory Select", "HTTP-Referer": "https://select.moonlark.itcdt.top"},
         )
 
         # 解析响应

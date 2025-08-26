@@ -163,7 +163,13 @@ class MessageProcessor:
                 AsyncFunction(
                     func=search_on_google,
                     description="使用Google搜索信息",
-                    parameters={"keyword": FunctionParameter(type="string", description="搜索关键词。请使用简洁的关键词而非完整句子。将用户问题转换为2-5个相关的关键词，用空格分隔。例如：'人工智能 发展 趋势' 而不是 '人工智能的发展趋势是什么'", required=True)},
+                    parameters={
+                        "keyword": FunctionParameter(
+                            type="string",
+                            description="搜索关键词。请使用简洁的关键词而非完整句子。将用户问题转换为2-5个相关的关键词，用空格分隔。例如：'人工智能 发展 趋势' 而不是 '人工智能的发展趋势是什么'",
+                            required=True,
+                        )
+                    },
                 ),
             ],
             extra_headers={"X-Title": "Moonlark - Chat", "HTTP-Referer": "https://chat.moonlark.itcdt.top"},
@@ -562,20 +568,16 @@ async def _(
                                 "command.memory.graph_node",
                                 user_id,
                                 concept,
-                                data['memory_items'][:100],
-                                round(data['weight'],1)
+                                data["memory_items"][:100],
+                                round(data["weight"], 1),
                             )
                         )
 
                     total_nodes = len(memory_graph.nodes)
                     total_edges = len(memory_graph.edges)
                     summary_text = await lang.text(
-                                "command.memory.summary",
-                                user_id,
-                                total_nodes,
-                                total_edges,
-                                "\n".join(memory_summary)
-                            )
+                        "command.memory.summary", user_id, total_nodes, total_edges, "\n".join(memory_summary)
+                    )
                     await matcher.finish(summary_text)
                 else:
                     await lang.send("command.memory.empty_graph", user_id)
