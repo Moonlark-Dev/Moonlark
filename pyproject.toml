@@ -82,7 +82,8 @@ plugins = [
     "nonebot_plugin_hkrpg_calendar",
     "nonebot_plugin_ba_calendar",
     "nonebot_plugin_everyday_wife",
-    "nonebot_plugin_online_timer"
+    "nonebot_plugin_online_timer",
+    "nonebot_plugin_status_report"
 ]
 plugin_dirs = []
 builtin_plugins = []
