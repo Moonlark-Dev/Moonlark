@@ -64,16 +64,7 @@ async def get_image_summary(segment: Image, event: Event, bot: Bot, state: T_Sta
     ]
 
     try:
-        summary = (
-            await fetch_message(
-                messages,
-                model="google/gemini-2.5-flash",
-                extra_headers={
-                    "X-Title": "Moonlark - Image Describe",
-                    "HTTP-Referer": "https://image.moonlark.itcdt.top",
-                },
-            )
-        ).strip()
+        summary = (await fetch_message(messages, model="google/gemini-2.5-flash", identify="Image Describe")).strip()
         await image_cache.set(img_hash, summary)
         return summary
     except Exception:
