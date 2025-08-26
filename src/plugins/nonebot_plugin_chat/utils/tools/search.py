@@ -26,6 +26,7 @@ async def search_on_bing(keyword: str) -> str:
     result = await browse_webpage(f"https://www.bing.com/search?q={q}")
     return result["content"]
 
+
 async def search_on_google(keyword: str) -> str:
     """使用Google PSE API进行搜索"""
     api_key = config.google_api_key
