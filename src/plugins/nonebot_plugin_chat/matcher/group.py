@@ -92,6 +92,8 @@ class MessageProcessor:
             return
         message, event, state, user_id, nickname, dt, mentioned = self.session.message_queue.pop(0)
         text = await parse_message_to_string(message, event, self.session.bot, state)
+        if not text:
+            return
         msg_dict: CachedMessage = {
             "content": text,
             "nickname": nickname,
