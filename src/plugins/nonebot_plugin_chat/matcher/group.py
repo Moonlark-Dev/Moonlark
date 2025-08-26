@@ -42,7 +42,7 @@ from ..utils.memory_activator import activate_memories_from_text
 from ..lang import lang
 from ..models import ChatGroup
 from ..utils import enabled_group, parse_message_to_string
-from ..utils.tools import browse_webpage, search_on_bing
+from ..utils.tools import browse_webpage, search_on_google
 
 BASE_DESIRE = 30
 
@@ -161,9 +161,9 @@ class MessageProcessor:
                     },
                 ),
                 AsyncFunction(
-                    func=search_on_bing,
-                    description="使用微软必应搜索信息",
-                    parameters={"keyword": FunctionParameter(type="string", description="搜索关键词", required=True)},
+                    func=search_on_google,
+                    description="使用Google搜索信息",
+                    parameters={"keyword": FunctionParameter(type="string", description="搜索关键词。请使用简洁的关键词而非完整句子。将用户问题转换为2-5个相关的关键词，用空格分隔。例如：'人工智能 发展 趋势' 而不是 '人工智能的发展趋势是什么'", required=True)},
                 ),
             ],
             extra_headers={"X-Title": "Moonlark - Chat", "HTTP-Referer": "https://chat.moonlark.itcdt.top"},
