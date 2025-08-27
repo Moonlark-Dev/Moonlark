@@ -55,7 +55,7 @@ async def simple_run(
     stack: Optional[AsyncExitStack] = None,
     dependency_cache: Optional[T_DependencyCache] = None,
 ) -> Any:
-    logger.info(f"{self} run with incoming args: " f"bot={bot}, event={event!r}, state={state!r}")
+    logger.trace(f"{self} run with incoming args: " f"bot={bot}, event={event!r}, state={state!r}")
 
     def _handle_stop_propagation(exc_group: BaseExceptionGroup[StopPropagation]):
         self.block = True
