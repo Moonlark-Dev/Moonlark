@@ -11,5 +11,6 @@ __plugin_meta__ = PluginMetadata(
 
 require("nonebot_plugin_bots")
 require("nonebot_plugin_localstore")
+require("nonebot_plugin_larklang")
 
 from .__main__ import report_openai_history

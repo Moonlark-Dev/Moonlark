@@ -15,7 +15,7 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
-from typing import Optional, Any
+from typing import Optional, Any, TypedDict, Literal
 
 from typing_extensions import TypedDict
 
@@ -42,9 +42,32 @@ class OpenAIHistory(TypedDict):
     messages: list[dict[str, Any]]
 
 
+class HandlerInfo(TypedDict):
+    lineno: int
+    filename: str
+    name: str
+    plugin: str
+
+
+class RunResult(TypedDict):
+    result: Literal["success", "skipped", "failed"]
+    message: str
+    handler: HandlerInfo
+    timestamp: int
+
+
+class HandlerResult(TypedDict):
+    command_name: str
+    message: str
+    result: list[RunResult]
+    matcher: str
+
+
 class StatusReport(TypedDict):
     bots: dict[str, BotStatus]
     exceptions: list[ExceptionStatus]
     plugins: list[str]
     event_counter: EventCounter
     openai: list[OpenAIHistory]
+    command_usage: dict[str, int]
+    handler_results: list[HandlerResult]
