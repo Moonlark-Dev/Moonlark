@@ -64,15 +64,6 @@
 
 ### 用法
 - `/minigame-rank`
-## `quick-math`: 快速数学
-
-以计算为核心的玩法。找到问题的答案，并在排行榜中获取更高的积分。（指令别名：qm）
-
-### 用法
-- `/quick-math [--level <开始的等级>] (开始挑战)`
-- `/quick-math rank [--total] (积分排行榜)`
-- `/quick-math points (查看总分详情)`
-- `/quick-math zen <等级> (禅模式)`
 ## `sandbox`: 战斗沙箱
 
 （该功能仍在测试中）启动战斗沙箱，进行模拟战斗。
@@ -262,15 +253,6 @@ Linux 手册 (ManPage) 查询
 
 ### 用法
 - `/raw <文本...>`
-## `summary`: 历史消息总结
-
-使用 AI 总结群聊中的历史消息。读取长度默认为 200 条消息，最大为 270，该功能不支持 QQ 节点且需要在群聊中手动启用。
-
-### 用法
-- `/summary [读取长度] (总结历史消息)`
-- `/summary -s broadcast (广播风格总结)`
-- `/summary -s topic (话题梳理)`
-- `/summary -e|-d (功能开关)`
 ## `t`: 翻译器
 
 翻译文本（默认英到中）
@@ -313,17 +295,6 @@ Moonlark 投票
 - `/cave-g <ID> (查看自己投稿的条目)`
 - `/cave-c [-u|--user|--set <时间(分钟)>] (查看或修改冷却状态)`
 - `/cave-s (统计投稿者)`
-## `chat`: 主动水群
-
-基于 LLM 的主动水群功能，可以尝试用于活跃群气氛。（启用后将会收集、处理、并储存启用群聊的聊天记录和群员的昵称，仅支持非 QQ 官方节点）
-
-### 用法
-- `/chat switch (修改功能启用状态)`
-- `/chat on (启用功能)`
-- `/chat off (禁用功能)`
-- `/chat mute (临时禁用水群功能)`
-- `/chat unmute (取消临时禁用)`
-- `/chat reset-memory (重置储存的记忆)`
 ## `email`: 邮件
 
 进入 Moonlark 邮箱
