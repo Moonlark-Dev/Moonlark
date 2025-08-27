@@ -117,7 +117,7 @@ class MessageFetcher:
         logger.debug(f"{identify=}")
 
         if model is None:
-            model = config.model_override_dict.get(identify, config.openai_default_model)
+            model = config.model_override.get(identify, config.openai_default_model)
 
         if use_default_message:
             messages.insert(0, generate_message(config.openai_default_message, "system"))
@@ -149,7 +149,7 @@ async def fetch_message(
         identify = f"{plugin_name}.{function_name}"
 
     if model is None:
-        model = config.model_override_dict.get(identify, config.openai_default_model)
+        model = config.model_override.get(identify, config.openai_default_model)
 
     fetcher = MessageFetcher(messages, use_default_message, model, functions, identify, **kwargs)
     return await fetcher.fetch()
