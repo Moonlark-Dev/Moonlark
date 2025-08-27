@@ -54,14 +54,17 @@ class LLMRequestSession:
         self.func_list = generate_function_list(func_index)
         self.func_index = func_index
         self.kwargs = kwargs
-        self.result_string = ""
+        self.stop = False
+        self.result_content = []
         self.model = model
 
-    async def fetch_llm_response(self) -> str:
-        while not self.result_string:
+    async def fetch_llm_response(self) -> None:
+        while not self.stop:
             await self.request()
         await report_openai_history(self.messages, self.identify, self.model)
-        return self.result_string
+
+    def get_last_message(self) -> str:
+        return self.result_content[-1]
 
     async def request(self) -> None:
         response = (
@@ -79,11 +82,13 @@ class LLMRequestSession:
         ).choices[0]
         logger.debug(f"{response=}\n{self.messages=}\n{self.model=}\n{self.func_list=}")
         self.messages.append(response.message)
+        if response.message.content:
+            self.result_content.append(response.message.content)
         if response.finish_reason == "tool_calls":
             for request in response.message.tool_calls:
                 await self.call_function(request.id, request.function.name, json.loads(request.function.arguments))
         elif response.finish_reason == "stop":
-            self.result_string = response.message.content
+            self.stop = True
 
     async def call_function(self, call_id: str, name: str, params: dict[str, Any]) -> None:
         result = await self.func_index[name]["func"](**params)
@@ -127,8 +132,15 @@ class MessageFetcher:
                 func_index[func["func"].__name__] = func
         self.session = LLMRequestSession(messages, func_index, model, kwargs, identify)
 
-    async def fetch(self) -> str:
-        return await self.session.fetch_llm_response()
+    async def fetch_last_message(self) -> str:
+        return (await self.fetch_messages())[-1]
+
+    async def fetch_all_messages(self, separation: str = "\n\n") -> str:
+        return separation.join(await self.fetch_messages())
+
+    async def fetch_messages(self) -> list[str]:
+        await self.session.fetch_llm_response()
+        return self.session.result_content
 
     def get_messages(self) -> Messages:
         return self.session.messages
@@ -152,4 +164,4 @@ async def fetch_message(
         model = config.model_override.get(identify, config.openai_default_model)
 
     fetcher = MessageFetcher(messages, use_default_message, model, functions, identify, **kwargs)
-    return await fetcher.fetch()
+    return await fetcher.fetch_last_message()

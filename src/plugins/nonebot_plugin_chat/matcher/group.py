@@ -174,7 +174,7 @@ class MessageProcessor:
             ],
             identify="Chat",
         )
-        reply_text = await fetcher.fetch()
+        reply_text = await fetcher.fetch_all_messages()
         self.openai_messages = fetcher.get_messages()
         self.message_count += 1
         await self.send_reply_text(reply_text)
