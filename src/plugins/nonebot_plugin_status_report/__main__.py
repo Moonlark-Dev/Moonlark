@@ -22,13 +22,14 @@ from typing import cast, Optional, TYPE_CHECKING
 
 import aiofiles
 from fastapi import FastAPI
-from nonebot import get_app, get_loaded_plugins
-from nonebot.message import run_postprocessor
+from nonebot import get_app, get_loaded_plugins, logger
+from nonebot.message import run_postprocessor, run_preprocessor
+from nonebot_plugin_alconna.matcher import AlconnaMatcherMeta, AlconnaMatcher
 
 from nonebot_plugin_bots.__main__ import bots_status
 from nonebot_plugin_localstore import get_data_dir
 from nonebot.adapters import Event, Bot
-
+from nonebot.matcher import Matcher
 from fastapi import Request, status
 from fastapi.exceptions import HTTPException
 from .config import config
@@ -41,6 +42,29 @@ data_dir = get_data_dir("nonebot_plugin_status_report")
 app = cast(FastAPI, get_app())
 event_counter = (0, 0)  # total, success
 
+async def get_command_usage() -> dict[str, int]:
+    if data_dir.joinpath("commands.json").is_file():
+        async with aiofiles.open(data_dir.joinpath("commands.json"), "r", encoding="utf-8") as f:
+            return json.loads(await f.read())
+    return {}
+
+@run_preprocessor
+async def _(matcher: Matcher) -> None:
+    if isinstance(matcher, AlconnaMatcher):
+        command_name = matcher.command().command
+    elif matcher.type == "message":
+        try:
+            command_name = list(matcher.rule.checkers)[0].call.cmds[0][0]
+        except Exception as _:
+            return
+    else:
+        return
+    commands = await get_command_usage()
+    commands[command_name] = commands.get(command_name, 0) + 1
+    async with aiofiles.open(data_dir.joinpath("commands.json"), "w", encoding="utf-8") as f:
+        await f.write(json.dumps(commands, ensure_ascii=False, indent=4))
+
+
 
 @run_postprocessor
 async def _(event: Event, bot: Bot, exception: Optional[Exception]) -> None:
@@ -49,11 +73,7 @@ async def _(event: Event, bot: Bot, exception: Optional[Exception]) -> None:
         event_counter = event_counter[0] + 1, event_counter[1] + 1
         return
     event_counter = event_counter[0] + 1, event_counter[1]
-    if data_dir.joinpath("exceptions.json").is_file():
-        async with aiofiles.open(data_dir.joinpath("exceptions.json"), "r", encoding="utf-8") as f:
-            exc_list = json.loads(await f.read())
-    else:
-        exc_list = []
+    exc_list = await get_exceptions()
     try:
         session_id = event.get_session_id()
         message = event.get_message()
@@ -74,13 +94,10 @@ async def _(event: Event, bot: Bot, exception: Optional[Exception]) -> None:
         await f.write(json.dumps(exc_list, ensure_ascii=False, indent=4))
 
 
+
 async def report_openai_history(messages: "Messages", identify: str, model: str) -> None:
     message_list = [message if isinstance(message, dict) else message.model_dump() for message in messages]
-    if data_dir.joinpath("openai.json").is_file():
-        async with aiofiles.open(data_dir.joinpath("openai.json"), "r", encoding="utf-8") as f:
-            history = json.loads(await f.read())
-    else:
-        history = []
+    history = await get_openai_history()
     history.append(OpenAIHistory(model=model, identify=identify, messages=message_list))
     async with aiofiles.open(data_dir.joinpath("openai.json"), "w", encoding="utf-8") as f:
         await f.write(json.dumps(history[-20:], ensure_ascii=False, indent=4))
@@ -114,4 +131,5 @@ async def get_status_report(request: Request, token: str, salt: str) -> StatusRe
             failed=event_counter[0] - event_counter[1],
         ),
         openai=await get_openai_history(),
+        command_usage=await get_command_usage()
     )

@@ -48,3 +48,4 @@ class StatusReport(TypedDict):
     plugins: list[str]
     event_counter: EventCounter
     openai: list[OpenAIHistory]
+    command_usage: dict[str, int]
