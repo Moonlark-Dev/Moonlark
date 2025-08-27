@@ -1,6 +1,8 @@
 from nonebot import get_driver, logger
 from nonebot.adapters import Bot, Event
+from nonebot.exception import IgnoredException
 from nonebot.matcher import Matcher, matchers
+from nonebot.message import run_preprocessor
 from nonebot.params import Depends
 from nonebot_plugin_alconna import MsgTarget, UniMessage
 from nonebot_plugin_orm import get_session
@@ -54,18 +56,26 @@ async def check_access(matcher: Matcher, event: Event, subject_list: list[str] =
         ]
     )
 
+#
+# async def handler(matcher: Matcher, user_id: str = get_user_id(), result: bool = Depends(check_access)) -> None:
+#     if config.access_fallback and not result:
+#         await UniMessage().text(await lang.text("access.failed", user_id)).send()
+#     if not result:
+#         await matcher.finish()
+#
+#
+# @get_driver().on_startup
+# async def _() -> None:
+#     for matcher in matchers.provider[1]:
+#         if (not matcher.plugin_name) or matcher.type != "message":
+#             continue
+#         matcher.handle()(handler)
+#         matcher.handlers.insert(0, matcher.handlers.pop(-1))
 
-async def handler(matcher: Matcher, user_id: str = get_user_id(), result: bool = Depends(check_access)) -> None:
+
+@run_preprocessor
+async def handler(user_id: str = get_user_id(), result: bool = Depends(check_access)) -> None:
     if config.access_fallback and not result:
         await UniMessage().text(await lang.text("access.failed", user_id)).send()
     if not result:
-        await matcher.finish()
-
-
-@get_driver().on_startup
-async def _() -> None:
-    for matcher in matchers.provider[1]:
-        if (not matcher.plugin_name) or matcher.type != "message":
-            continue
-        matcher.handle()(handler)
-        matcher.handlers.insert(0, matcher.handlers.pop(-1))
+        raise IgnoredException("权限检查不通过")
