@@ -41,25 +41,21 @@ def generator_run_result(func: Any, result: Literal["success", "skipped", "faile
             lineno=inspect.getsourcelines(func)[1],
             filename=inspect.getfile(func),
             name=func.__name__,
-            plugin=get_module_name(inspect.getmodule(func))
+            plugin=get_module_name(inspect.getmodule(func)),
         ),
         timestamp=int(datetime.now().timestamp()),
     )
 
 
-
 async def simple_run(
-        self: Matcher,
-        bot: Bot,
-        event: Event,
-        state: T_State,
-        stack: Optional[AsyncExitStack] = None,
-        dependency_cache: Optional[T_DependencyCache] = None,
+    self: Matcher,
+    bot: Bot,
+    event: Event,
+    state: T_State,
+    stack: Optional[AsyncExitStack] = None,
+    dependency_cache: Optional[T_DependencyCache] = None,
 ) -> Any:
-    logger.info(
-        f"{self} run with incoming args: "
-        f"bot={bot}, event={event!r}, state={state!r}"
-    )
+    logger.info(f"{self} run with incoming args: " f"bot={bot}, event={event!r}, state={state!r}")
 
     def _handle_stop_propagation(exc_group: BaseExceptionGroup[StopPropagation]):
         self.block = True
@@ -76,15 +72,11 @@ async def simple_run(
                     logger.debug(f"Running handler {handler}")
 
                     def _handle_skipped(
-                            exc_group: BaseExceptionGroup[SkippedException],
+                        exc_group: BaseExceptionGroup[SkippedException],
                     ):
                         reasons = [e for e in flatten_exception_group(exc_group)]
                         logger.debug(f"Handler {handler} skipped (due to {reasons})")
-                        state["handler_results"].append(generator_run_result(
-                            handler.call,
-                            "skipped",
-                            str(reasons)
-                        ))
+                        state["handler_results"].append(generator_run_result(handler.call, "skipped", str(reasons)))
 
                     with catch({SkippedException: _handle_skipped}):
                         await handler(
@@ -97,25 +89,13 @@ async def simple_run(
                         )
         except (FinishedException, RejectedException, PausedException) as e:
             if "handler" in locals():
-                state["handler_results"].append(generator_run_result(
-                    handler.call,
-                    "success",
-                    type(e).__name__[:-9]
-                ))
+                state["handler_results"].append(generator_run_result(handler.call, "success", type(e).__name__[:-9]))
             raise e
         except Exception as e:
             if "handler" in locals():
-                state["handler_results"].append(generator_run_result(
-                    handler.call,
-                    "failed",
-                    str(e)
-                ))
+                state["handler_results"].append(generator_run_result(handler.call, "failed", str(e)))
             raise e
         finally:
             logger.info(f"{self} running complete")
             if "handler" in locals():
-                state["handler_results"].append(generator_run_result(
-                    handler.call,
-                    "success",
-                    ""
-                ))
+                state["handler_results"].append(generator_run_result(handler.call, "success", ""))

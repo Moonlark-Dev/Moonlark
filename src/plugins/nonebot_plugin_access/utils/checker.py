@@ -56,6 +56,7 @@ async def check_access(matcher: Matcher, event: Event, subject_list: list[str] =
         ]
     )
 
+
 #
 # async def handler(matcher: Matcher, user_id: str = get_user_id(), result: bool = Depends(check_access)) -> None:
 #     if config.access_fallback and not result:

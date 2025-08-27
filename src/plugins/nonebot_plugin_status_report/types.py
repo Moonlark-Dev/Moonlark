@@ -42,7 +42,6 @@ class OpenAIHistory(TypedDict):
     messages: list[dict[str, Any]]
 
 
-
 class HandlerInfo(TypedDict):
     lineno: int
     filename: str
@@ -56,11 +55,13 @@ class RunResult(TypedDict):
     handler: HandlerInfo
     timestamp: int
 
+
 class HandlerResult(TypedDict):
     command_name: str
     message: str
     result: list[RunResult]
     matcher: str
+
 
 class StatusReport(TypedDict):
     bots: dict[str, BotStatus]
@@ -70,4 +71,3 @@ class StatusReport(TypedDict):
     openai: list[OpenAIHistory]
     command_usage: dict[str, int]
     handler_results: list[HandlerResult]
-

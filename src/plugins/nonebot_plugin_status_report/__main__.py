@@ -42,18 +42,22 @@ data_dir = get_data_dir("nonebot_plugin_status_report")
 app = cast(FastAPI, get_app())
 event_counter = (0, 0)  # total, success
 
+
 async def get_command_usage() -> dict[str, int]:
     if data_dir.joinpath("commands.json").is_file():
         async with aiofiles.open(data_dir.joinpath("commands.json"), "r", encoding="utf-8") as f:
             return json.loads(await f.read())
     return {}
 
+
 from .matcher import simple_run
+
 
 @get_driver().on_startup
 async def _() -> None:
     for matcher in matchers.provider[1]:
         matcher.simple_run = simple_run
+
 
 @run_preprocessor
 async def _(matcher: Matcher, state: T_State) -> None:
@@ -75,7 +79,6 @@ async def _(matcher: Matcher, state: T_State) -> None:
     state["original_simple_run_method"] = matcher.simple_run
 
 
-
 async def get_handler_results() -> list[HandlerResult]:
     if data_dir.joinpath("handler.json").is_file():
         async with aiofiles.open(data_dir.joinpath("handler.json"), "r", encoding="utf-8") as f:
@@ -92,17 +95,17 @@ async def _(matcher: Matcher, state: T_State, event: Event) -> None:
     except ValueError:
         message = ""
     results = await get_handler_results()
-    results.append(HandlerResult(
-        message=message,
-        command_name=state.get("status_report_command_name", ""),
-        result=state["handler_results"],
-        matcher=str(matcher)
-    ))
+    results.append(
+        HandlerResult(
+            message=message,
+            command_name=state.get("status_report_command_name", ""),
+            result=state["handler_results"],
+            matcher=str(matcher),
+        )
+    )
     async with aiofiles.open(data_dir.joinpath("handler.json"), "w", encoding="utf-8") as f:
         await f.write(json.dumps(results[-20:], ensure_ascii=False, indent=4))
     matcher.simple_run = state["original_simple_run_method"]
-
-
 
 
 @run_postprocessor
@@ -131,7 +134,6 @@ async def _(event: Event, bot: Bot, exception: Optional[Exception]) -> None:
     exc_list = exc_list[-20:]
     async with aiofiles.open(data_dir.joinpath("exceptions.json"), "w", encoding="utf-8") as f:
         await f.write(json.dumps(exc_list, ensure_ascii=False, indent=4))
-
 
 
 async def report_openai_history(messages: "Messages", identify: str, model: str) -> None:
@@ -171,5 +173,5 @@ async def get_status_report(request: Request, token: str, salt: str) -> StatusRe
         ),
         openai=await get_openai_history(),
         command_usage=await get_command_usage(),
-        handler_results=await get_handler_results()
+        handler_results=await get_handler_results(),
     )
