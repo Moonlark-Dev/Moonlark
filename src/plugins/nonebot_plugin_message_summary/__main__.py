@@ -85,19 +85,19 @@ async def handle_main(
                 generate_message(await lang.text("prompt2s", user_id, time_str), "system"),
                 generate_message(await lang.text("prompt2u", user_id, messages), "user"),
             ],
-            identify="Message Summary (Boardcast)"
+            identify="Message Summary (Boardcast)",
         )
         await summary.finish(summary_string)
     elif style == "topic":
         summary_string = await fetch_message(
             [generate_message(await lang.text("prompt_topic", user_id), "system"), generate_message(messages, "user")],
-            identify="Message Summary (Topic)"
+            identify="Message Summary (Topic)",
         )
         await summary.finish(UniMessage().image(raw=await md_to_pic(summary_string)))
     else:
         summary_string = await fetch_message(
             [generate_message(await lang.text("prompt", user_id), "system"), generate_message(messages, "user")],
-            identify="Message Summary"
+            identify="Message Summary",
         )
         await summary.finish(UniMessage().image(raw=await md_to_pic(summary_string)))
 

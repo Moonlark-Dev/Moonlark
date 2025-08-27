@@ -115,10 +115,10 @@ class MessageFetcher:
             plugin_name = get_module_name(inspect.getmodule(stack[0]))
             identify = f"{plugin_name}.{function_name}"
         logger.debug(f"{identify=}")
-        
+
         if model is None:
             model = config.model_override_dict.get(identify, config.openai_default_model)
-        
+
         if use_default_message:
             messages.insert(0, generate_message(config.openai_default_message, "system"))
         func_index: dict[str, AsyncFunction] = {}
@@ -147,9 +147,9 @@ async def fetch_message(
         function_name = stack.function
         plugin_name = get_module_name(inspect.getmodule(stack[0]))
         identify = f"{plugin_name}.{function_name}"
-    
+
     if model is None:
         model = config.model_override_dict.get(identify, config.openai_default_model)
-    
+
     fetcher = MessageFetcher(messages, use_default_message, model, functions, identify, **kwargs)
     return await fetcher.fetch()
