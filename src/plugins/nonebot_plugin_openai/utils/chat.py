@@ -130,7 +130,7 @@ class MessageFetcher:
 
     async def fetch_last_message(self) -> str:
         return (await self.fetch_messages())[-1]
-    
+
     async def fetch_all_messages(self, separation: str = "\n\n") -> str:
         return separation.join(await self.fetch_messages())
 
