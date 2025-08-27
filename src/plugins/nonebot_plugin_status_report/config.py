@@ -5,9 +5,7 @@ from pydantic import BaseModel
 class Config(BaseModel):
     """Plugin Config Here"""
 
-    command_start: list[str] = ["/"]
-    google_api_key: str = ""
-    google_search_engine_id: str = ""
+    status_report_password: str = "Moonlark"
 
 
 config = get_plugin_config(Config)
