@@ -58,6 +58,14 @@
 - `/jrrp (获取今天的人品值)`
 - `/jrrp r (今日幸运星[--rank])`
 - `/jrrp rr (今日倒霉蛋[--rank-r])`
+## `market`: None
+
+None
+
+### 用法
+- `/None`
+- `/None`
+- `/None`
 ## `minigame`: 小游戏积分排名
 
 查看 Moonlark 中游玩玩法的用户的排名
