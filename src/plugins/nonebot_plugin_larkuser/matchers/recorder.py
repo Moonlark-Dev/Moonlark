@@ -49,5 +49,7 @@ async def _(session: async_scoped_session, user: UserInfo = EventUserInfo()) -> 
         user_data = GuestUser(user_id=user.user_id, nickname=nickname)
     elif user_data.nickname != nickname:
         user_data.nickname = nickname
+    else:
+        return
     await session.merge(user_data)
     await session.commit()
