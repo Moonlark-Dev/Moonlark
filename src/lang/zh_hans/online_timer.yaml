@@ -12,3 +12,4 @@ help:
   details: 查询 Moonlark 记录的群友在线时间段
   description: 在线时间段
   usage1: online-timer [@用户]
+  usage2: online-timer rank (在线排行)
