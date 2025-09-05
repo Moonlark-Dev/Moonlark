@@ -340,6 +340,7 @@ Moonlark 投票
 
 ### 用法
 - `/online-timer [@用户]`
+- `/online-timer rank (在线排行)`
 ## `schedule`: 每日任务
 
 查看每日任务或领取每日任务奖励，每日刷新，部分功能仅在签到后可用。
