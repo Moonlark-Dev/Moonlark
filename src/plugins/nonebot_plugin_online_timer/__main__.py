@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta, date
-from typing import List, Optional
+from typing import List, Optional, NoReturn
 from nonebot import on_message, logger
 from nonebot.adapters import Bot, Event
 from nonebot_plugin_alconna import Alconna, Args, on_alconna, Match, At
@@ -7,11 +7,13 @@ from nonebot_plugin_larkutils import get_user_id
 from nonebot_plugin_larklang import LangHelper
 from nonebot_plugin_orm import get_session
 from nonebot_plugin_apscheduler import scheduler
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete, func
 from .models import OnlineTimeRecord
 import asyncio
 from io import BytesIO
 from PIL import Image, ImageDraw, ImageFont
+from nonebot_plugin_ranking import generate_image
+from nonebot_plugin_alconna.uniseg import UniMessage
 
 
 async def format_duration(duration: timedelta, user_id: str) -> str:
@@ -28,7 +30,7 @@ async def format_duration(duration: timedelta, user_id: str) -> str:
 lang = LangHelper()
 
 # Initialize command
-alc = Alconna("online-timer", Args["user?", At])
+alc = Alconna("online-timer", Args["subcommand?", str]["user?", At])
 online_timer = on_alconna(alc)
 
 
@@ -55,14 +57,12 @@ async def handle_message(user_id: str = get_user_id()):
     """Handle group messages to track user online time"""
     async with get_session() as session:
         # Get the latest record for this user
-        stmt = (
+        result = await session.execute(
             select(OnlineTimeRecord)
             .where(OnlineTimeRecord.user_id == user_id)
             .order_by(OnlineTimeRecord.end_time.desc())
             .limit(1)
         )
-
-        result = await session.execute(stmt)
         latest_record = result.scalar_one_or_none()
 
         current_time = datetime.now()
@@ -80,10 +80,61 @@ async def handle_message(user_id: str = get_user_id()):
 
         await session.commit()
 
+async def handle_ranking(sender_id: str) -> NoReturn:
+    # Handle ranking
+    # Calculate the total online time for each user in the last 3 days
+    async with get_session() as session:
+        # Get the time range (last 3 days)
+        start_time = datetime.now() - timedelta(days=3)
+
+        # Query to get all records in the last 3 days
+        stmt = select(OnlineTimeRecord).where(
+            OnlineTimeRecord.start_time >= start_time
+        )
+
+        result = await session.scalars(stmt)
+        records = result.all()
+
+        # Calculate total online time for each user
+        user_online_time = {}
+        for record in records:
+            user_id = record.user_id
+            # Calculate the time this record contributes to online time
+            record_duration = record.end_time - record.start_time
+            if user_id not in user_online_time:
+                user_online_time[user_id] = timedelta()
+            user_online_time[user_id] += record_duration
+
+        # Convert to minutes and sort
+        user_minutes = []
+        for user_id, total_time in user_online_time.items():
+            total_minutes = int(total_time.total_seconds() / 60)
+            if total_minutes > 0:  # Only include users with more than 0 minutes
+                user_minutes.append({"user_id": user_id, "info": None, "data": total_minutes})
+
+        # Sort by minutes in descending order
+        user_minutes.sort(key=lambda x: x["data"], reverse=True)
+
+    # Generate ranking image
+    return await online_timer.finish(
+        UniMessage().image(
+            raw=await generate_image(
+                user_minutes,
+                sender_id,
+                await lang.text("rank.title", sender_id),
+            ),
+            name="online_timer_rank.png",
+        )
+    )
+
 
 @online_timer.handle()
-async def handle_online_timer(user: Match[At], sender_id: str = get_user_id()):
+async def handle_online_timer(subcommand: Match[str], user: Match[At], sender_id: str = get_user_id()):
     """Handle the /online-timer command"""
+    # Check if this is a rank command
+    if subcommand.available and subcommand.result == "rank":
+        await handle_ranking(sender_id)
+    # Handle regular online-timer command
     # Determine which user to query
     target_user_id = sender_id
     if user.available:
@@ -105,8 +156,6 @@ async def handle_online_timer(user: Match[At], sender_id: str = get_user_id()):
     image_bytes = await render_online_timeline(target_user_id, list(records))
 
     # Send the rendered image
-    from nonebot_plugin_alconna.uniseg import UniMessage
-
     await online_timer.finish(UniMessage().image(raw=image_bytes, name="online_timeline.png"))
 
 

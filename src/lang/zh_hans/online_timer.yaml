@@ -6,6 +6,8 @@ image:
   user_id: "用户ID: {}"
   three_day: "近三天总在线时间: {}"
   avg: "平均每天在线时间: {}"
+rank:
+    title: 近三天在线时间排行（分钟）
 help:
   details: 查询 Moonlark 记录的群友在线时间段
   description: 在线时间段
