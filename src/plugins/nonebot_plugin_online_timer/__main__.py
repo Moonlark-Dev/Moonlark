@@ -80,6 +80,7 @@ async def handle_message(user_id: str = get_user_id()):
 
         await session.commit()
 
+
 async def handle_ranking(sender_id: str) -> NoReturn:
     # Handle ranking
     # Calculate the total online time for each user in the last 3 days
@@ -88,9 +89,7 @@ async def handle_ranking(sender_id: str) -> NoReturn:
         start_time = datetime.now() - timedelta(days=3)
 
         # Query to get all records in the last 3 days
-        stmt = select(OnlineTimeRecord).where(
-            OnlineTimeRecord.start_time >= start_time
-        )
+        stmt = select(OnlineTimeRecord).where(OnlineTimeRecord.start_time >= start_time)
 
         result = await session.scalars(stmt)
         records = result.all()
