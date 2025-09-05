@@ -19,4 +19,3 @@ class UserData(Model):
 class GuestUser(Model):
     user_id: Mapped[str] = mapped_column(String(128), primary_key=True)
     nickname: Mapped[str] = mapped_column(String(256))
-

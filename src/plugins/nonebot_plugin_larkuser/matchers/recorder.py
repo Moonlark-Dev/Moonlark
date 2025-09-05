@@ -15,9 +15,11 @@ async def checker_registered(user: UserInfo = EventUserInfo()) -> bool:
     u = await get_user(user.user_id)
     return u.is_main_account() and not u.get_config_key("lock_nickname_and_avatar", False)
 
+
 async def checker_guest(user: UserInfo = EventUserInfo()) -> bool:
     u = await get_user(user.user_id)
     return u.is_main_account() and not u.is_registered()
+
 
 @on_message(block=False, priority=5, rule=checker_registered).handle()
 async def _(session: async_scoped_session, user: UserInfo = EventUserInfo()) -> None:
@@ -44,12 +46,8 @@ async def _(session: async_scoped_session, user: UserInfo = EventUserInfo()) -> 
         return
     user_data = await session.get(GuestUser, {"user_id": user.user_id})
     if user_data is None:
-        user_data = GuestUser(
-            user_id=user.user_id,
-            nickname=nickname
-        )
+        user_data = GuestUser(user_id=user.user_id, nickname=nickname)
     elif user_data.nickname != nickname:
         user_data.nickname = nickname
     await session.merge(user_data)
     await session.commit()
-
