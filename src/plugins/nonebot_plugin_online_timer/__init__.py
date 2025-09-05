@@ -17,5 +17,6 @@ require("nonebot_plugin_larklang")
 require("nonebot_plugin_orm")
 require("nonebot_plugin_render")
 require("nonebot_plugin_apscheduler")
+require("nonebot_plugin_ranking")
 
 from . import __main__
