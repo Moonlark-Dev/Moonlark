@@ -9,4 +9,5 @@ class Config(BaseModel):
     baidu_secret_key: str
     superusers: set[str]
 
+
 config = get_plugin_config(Config)

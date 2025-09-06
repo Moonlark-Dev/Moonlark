@@ -22,17 +22,19 @@ lang = LangHelper()
 data_file = get_data_file("nonebot_plugin_broadcast", "data.json")
 
 
-
 class BroadcastDataCounter(TypedDict):
     update_at: list[int]
     sent_count: int
+
 
 class BroadcastDataFile(TypedDict):
     counter: BroadcastDataCounter
     latest: str
     disabled_groups: list[str]
 
+
 AvailableGroups = dict[str, list[V11Bot]]
+
 
 async def get_plugin_data() -> BroadcastDataFile:
     if data_file.exists():
@@ -40,13 +42,9 @@ async def get_plugin_data() -> BroadcastDataFile:
             return BroadcastDataFile(**json.loads(await f.read()))
     dt = datetime.now()
     return BroadcastDataFile(
-        counter=BroadcastDataCounter(
-            update_at=[dt.year, dt.month],
-            sent_count=0
-        ),
-        latest="",
-        disabled_groups=[]
+        counter=BroadcastDataCounter(update_at=[dt.year, dt.month], sent_count=0), latest="", disabled_groups=[]
     )
+
 
 cached_broadcast_content = ""
 
@@ -60,16 +58,10 @@ bcsu_cmd = on_alconna(
         Args["content?", MultiVar(str)],
     ),
     permission=is_superuser,
-    block=True
+    block=True,
 )
 
-bc_cmd = on_alconna(
-    Alconna(
-        "bc",
-        Args["action?", Literal["on", "off", "enable",  "disable", ""], ""]
-    ),
-    block=False
-)
+bc_cmd = on_alconna(Alconna("bc", Args["action?", Literal["on", "off", "enable", "disable", ""], ""]), block=False)
 
 
 async def get_available_groups() -> AvailableGroups:
@@ -142,7 +134,9 @@ async def set_latest_broadcast_content(content: str) -> None:
     async with aiofiles.open(data_file, "w", encoding="utf-8") as file:
         await file.write(json.dumps(data, indent=4, ensure_ascii=False))
 
+
 from nonebot_plugin_alconna import Target
+
 
 @bcsu_cmd.assign("submit")
 async def submit_broadcast(user_id: str = get_user_id()):
@@ -160,15 +154,17 @@ async def submit_broadcast(user_id: str = get_user_id()):
     for group_id, bots in (await get_available_groups()).items():
         for bot in bots:
             try:
-                await message.send(target=Target(group_id, self_id=bot.self_id, adapter=bot.adapter.get_name()), bot=bot)
+                await message.send(
+                    target=Target(group_id, self_id=bot.self_id, adapter=bot.adapter.get_name()), bot=bot
+                )
                 succeed_group += 1
                 break
             except Exception as _:
                 logger.warning(f"使用 {bot.self_id} 在 {group_id} 推送失败：{traceback.format_exc()}")
             await asyncio.sleep(random.randint(1, 7))
     await lang.finish("bcsu.broadcast_sent", user_id, succeed_group)
-    
-    
+
+
 @bc_cmd.handle()
 async def handle_bc(
     event: GroupMessageEvent,
@@ -180,9 +176,9 @@ async def handle_bc(
     if not isinstance(event, GroupMessageEvent):
         await lang.send("bc.group_only", user_id)
         return
-    
+
     group_id = str(event.group_id)
-    
+
     # If no action, show current status
     if not action:
         data = await get_plugin_data()

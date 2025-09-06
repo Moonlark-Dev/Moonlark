@@ -7,7 +7,6 @@ from .subaccount import get_main_account
 from .config import config
 
 
-
 async def is_superuser(event: Event, bot: Bot) -> bool:
     try:
         return await get_main_account(event.get_user_id()) in config.superusers
