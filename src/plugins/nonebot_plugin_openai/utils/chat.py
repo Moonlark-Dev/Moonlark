@@ -3,7 +3,7 @@ import hashlib
 from nonebot_plugin_larklang.__main__ import get_module_name
 import inspect
 import json
-from typing import Optional, Any
+from typing import Optional, Any, AsyncGenerator
 
 from nonebot import logger
 from openai.types.shared_params import FunctionDefinition
@@ -55,18 +55,17 @@ class LLMRequestSession:
         self.func_index = func_index
         self.kwargs = kwargs
         self.stop = False
-        self.result_content = []
         self.model = model
 
-    async def fetch_llm_response(self) -> None:
+    async def fetch_llm_response(self) -> AsyncGenerator[str, None]:
         while not self.stop:
-            await self.request()
+            message = await self.request()
+            if message is not None:
+                yield message
         await report_openai_history(self.messages, self.identify, self.model)
 
-    def get_last_message(self) -> str:
-        return self.result_content[-1]
 
-    async def request(self) -> None:
+    async def request(self) -> Optional[str]:
         response = (
             await client.chat.completions.create(
                 messages=self.messages,
@@ -83,12 +82,13 @@ class LLMRequestSession:
         logger.debug(f"{response=}\n{self.messages=}\n{self.model=}\n{self.func_list=}")
         self.messages.append(response.message)
         if response.message.content:
-            self.result_content.append(response.message.content)
+            return response.message.content
         if response.finish_reason == "tool_calls":
             for request in response.message.tool_calls:
                 await self.call_function(request.id, request.function.name, json.loads(request.function.arguments))
         elif response.finish_reason == "stop":
             self.stop = True
+        return None
 
     async def call_function(self, call_id: str, name: str, params: dict[str, Any]) -> None:
         result = await self.func_index[name]["func"](**params)
@@ -133,14 +133,13 @@ class MessageFetcher:
         self.session = LLMRequestSession(messages, func_index, model, kwargs, identify)
 
     async def fetch_last_message(self) -> str:
-        return (await self.fetch_messages())[-1]
+        # return (await self.fetch_messages())[-1]
+        return [msg async for msg in self.session.fetch_llm_response()][-1]
 
-    async def fetch_all_messages(self, separation: str = "\n\n") -> str:
-        return separation.join(await self.fetch_messages())
+    async def fetch_message_stream(self) -> AsyncGenerator[str, None]:
+        async for msg in self.session.fetch_llm_response():
+            yield msg
 
-    async def fetch_messages(self) -> list[str]:
-        await self.session.fetch_llm_response()
-        return self.session.result_content
 
     def get_messages(self) -> Messages:
         return self.session.messages

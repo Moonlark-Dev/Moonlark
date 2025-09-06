@@ -192,10 +192,10 @@ class MessageProcessor:
             ],
             identify="Chat",
         )
-        reply_text = await fetcher.fetch_all_messages()
+        async for message in fetcher.fetch_message_stream():
+            self.message_count += 1
+            await self.send_reply_text(message)
         self.openai_messages = fetcher.get_messages()
-        self.message_count += 1
-        await self.send_reply_text(reply_text)
 
     async def send_reply_text(self, reply_text: str) -> None:
         if len(reply_text) >= 100:
