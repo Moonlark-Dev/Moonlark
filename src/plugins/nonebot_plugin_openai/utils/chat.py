@@ -59,12 +59,11 @@ class LLMRequestSession:
 
     async def fetch_llm_response(self) -> AsyncGenerator[str, None]:
         while not self.stop:
-            message = await self.request()
-            if message is not None:
+            async for message in self.request():
                 yield message
         await report_openai_history(self.messages, self.identify, self.model)
 
-    async def request(self) -> Optional[str]:
+    async def request(self) -> AsyncGenerator[str, None]:
         response = (
             await client.chat.completions.create(
                 messages=self.messages,
@@ -81,13 +80,12 @@ class LLMRequestSession:
         logger.debug(f"{response=}\n{self.messages=}\n{self.model=}\n{self.func_list=}")
         self.messages.append(response.message)
         if response.message.content:
-            return response.message.content
+            yield response.message.content
         if response.finish_reason == "tool_calls":
             for request in response.message.tool_calls:
                 await self.call_function(request.id, request.function.name, json.loads(request.function.arguments))
         elif response.finish_reason in ["stop", "eos"]:
             self.stop = True
-        return None
 
     async def call_function(self, call_id: str, name: str, params: dict[str, Any]) -> None:
         result = await self.func_index[name]["func"](**params)
