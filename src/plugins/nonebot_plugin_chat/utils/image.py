@@ -39,10 +39,7 @@ async def _() -> None:
     global image_cache
     image_cache = AsyncCache(600)
 
-
-async def get_image_summary(segment: Image, event: Event, bot: Bot, state: T_State) -> str:
-    if not isinstance(image := await image_fetch(event, bot, state, segment), bytes):
-        return "暂无信息"
+async def request_describe_image(image: bytes, user_id: str) -> str:
     img_hash = hashlib.sha256(image).hexdigest()
     if (cache := await image_cache.get(img_hash)) is not None:
         return cache
@@ -50,14 +47,14 @@ async def get_image_summary(segment: Image, event: Event, bot: Bot, state: T_Sta
     messages = [
         generate_message(
             await lang.text(
-                "prompt_group.image_describe_system", event.get_user_id(), datetime.datetime.now().isoformat()
+                "prompt_group.image_describe_system", user_id, datetime.datetime.now().isoformat()
             ),
             "system",
         ),
         generate_message(
             [
                 {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_base64}"}},
-                {"type": "text", "text": await lang.text("prompt_group.image_describe_user", event.get_user_id())},
+                {"type": "text", "text": await lang.text("prompt_group.image_describe_user", user_id)},
             ],
             "user",
         ),
@@ -67,6 +64,13 @@ async def get_image_summary(segment: Image, event: Event, bot: Bot, state: T_Sta
         summary = (await fetch_message(messages, identify="Image Describe")).strip()
         await image_cache.set(img_hash, summary)
         return summary
-    except Exception:
+    except Exception as e:
         logger.warning(traceback.format_exc())
+        return f"暂无信息 ({e})"
+
+async def get_image_summary(segment: Image, event: Event, bot: Bot, state: T_State) -> str:
+    if not isinstance(image := await image_fetch(event, bot, state, segment), bytes):
         return "暂无信息"
+    return await request_describe_image(image, event.get_user_id())
+
+

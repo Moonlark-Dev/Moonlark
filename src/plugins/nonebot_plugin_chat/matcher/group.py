@@ -42,7 +42,7 @@ from ..utils.memory_activator import activate_memories_from_text
 from ..lang import lang
 from ..models import ChatGroup
 from ..utils import enabled_group, parse_message_to_string
-from ..utils.tools import browse_webpage, search_on_google
+from ..utils.tools import browse_webpage, search_on_google, describe_image, request_wolfram_alpha
 
 BASE_DESIRE = 30
 
@@ -171,6 +171,24 @@ class MessageProcessor:
                         )
                     },
                 ),
+                AsyncFunction(
+                    func=describe_image,
+                    description="获取一张图片的内容的描述。",
+                    parameters={
+                        "image_url": FunctionParameter(type="string", description="目标图片的 URL 地址", required=True)
+                    },
+                ),
+                AsyncFunction(
+                    func=request_wolfram_alpha,
+                    description="调用 Wolfram|Alpha 进行计算。",
+                    parameters={
+                        "question": FunctionParameter(
+                            type="string",
+                            description="输入 Wolfram|Alpha 的内容，形式可以是数学表达式、Wolfram Language、LaTeX 或自然语言",
+                            required=True
+                        )
+                    },
+                ),
             ],
             identify="Chat",
         )
@@ -180,6 +198,9 @@ class MessageProcessor:
         await self.send_reply_text(reply_text)
 
     async def send_reply_text(self, reply_text: str) -> None:
+        if len(reply_text) >= 100:
+            await self.session.format_message(reply_text).send(target=self.session.target, bot=self.session.bot)
+            return
         code_block_cache = None
         for origin_line in reply_text.splitlines():
             line = origin_line.strip()
