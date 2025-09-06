@@ -85,7 +85,7 @@ class LLMRequestSession:
         if response.finish_reason == "tool_calls":
             for request in response.message.tool_calls:
                 await self.call_function(request.id, request.function.name, json.loads(request.function.arguments))
-        elif response.finish_reason == "stop":
+        elif response.finish_reason in ["stop", "eos"]:
             self.stop = True
         return None
 
