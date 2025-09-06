@@ -11,6 +11,7 @@ bcsu:
   no_content: "暂无广播内容"
   no_bots: "未找到 OneBot V11 适配器的机器人"
   broadcast_sent: "广播已发送至 {0} 个群聊"
+  start: 已开始推送广播内容
 
 bc:
   group_only: "此命令只能在群聊中使用"

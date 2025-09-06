@@ -7,7 +7,7 @@ import aiofiles
 from nonebot_plugin_alconna import on_alconna, Alconna, Args, MultiVar, Subcommand, UniMessage
 from nonebot_plugin_larkutils import get_user_id
 from nonebot_plugin_larklang import LangHelper
-from nonebot_plugin_larkutils.superuser import _is_superuser
+from nonebot_plugin_larkutils.superuser import is_superuser
 from nonebot.adapters.onebot.v11 import Bot as V11Bot, GroupMessageEvent
 from nonebot import get_bots
 from nonebot.log import logger
@@ -59,14 +59,14 @@ bcsu_cmd = on_alconna(
         Subcommand("preview"),
         Args["content?", MultiVar(str)],
     ),
-    permission=_is_superuser,
+    permission=is_superuser,
     block=True
 )
 
 bc_cmd = on_alconna(
     Alconna(
         "bc",
-        Args["action?", Literal["on", "off"]]
+        Args["action?", Literal["on", "off", "enable",  "disable", ""], ""]
     ),
     block=False
 )
@@ -99,8 +99,8 @@ async def show_broadcast_menu(user_id: str = get_user_id()):
         data["counter"]["sent_count"] = 0
     sent_count = data["counter"]["sent_count"]
     # Count enabled groups
-    enabled_groups = list((await get_available_groups()).keys())
-    await lang.finish("bcsu.menu", user_id, sent_count, enabled_groups)
+    enabled_count = len((await get_available_groups()).keys())
+    await lang.finish("bcsu.menu", user_id, sent_count, enabled_count)
 
 
 @bcsu_cmd.assign("content")
@@ -187,7 +187,12 @@ async def handle_bc(
     if not action:
         data = await get_plugin_data()
         state = group_id not in data["disabled_groups"]
-        await bc_cmd.finish(UniMessage().text(text=await lang.text("bc.state", user_id, state)).image(raw=await md_to_pic(data["latest"])))
+        msg = UniMessage().text(text=await lang.text("bc.state", user_id, state))
+        if data["latest"]:
+            msg = msg.image(raw=await md_to_pic(data["latest"]))
+        else:
+            msg = msg.text(text=await lang.text("bcsu.no_content", user_id))
+        await bc_cmd.finish(msg)
     # Handle enable/disable
     if action.lower() in ["on", "enable"]:
         await set_group_broadcast_setting(group_id, True)
