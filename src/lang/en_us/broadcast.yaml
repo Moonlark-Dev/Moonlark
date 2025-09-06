@@ -1,19 +1,22 @@
 bcsu:
   menu: |
-    Broadcast Management Menu:
-    Broadcasts sent this month: {0}
-    Groups with broadcast enabled: {1}
-  content_set: "Broadcast content has been set"
-  cleared: "Broadcast content has been cleared"
+    广播管理菜单：
+    本月已发送广播：{0} 条
+    当前启用广播的群聊数：{1} 个
+  content_set: "广播内容已设置"
+  cleared: "广播内容已清除"
   preview: |
-    Current broadcast content:
+    当前广播内容：
     {0}
-  no_content: "No broadcast content available"
-  no_bots: "No OneBot V11 adapter bots found"
-  broadcast_sent: "Broadcast sent to {0} groups"
-
+  no_content: "暂无广播内容"
+  no_bots: "未找到 OneBot V11 适配器的机器人"
+  broadcast_sent: "广播已发送至 {0} 个群聊"
+  start: 已开始推送广播内容
 bc:
-  group_only: "This command can only be used in group chats"
-  enabled: "Broadcast function enabled"
-  disabled: "Broadcast function disabled"
-  invalid_action: "Invalid action, please use on/off"
+  group_only: "此命令只能在群聊中使用"
+  enabled: "广播功能已启用"
+  state: |
+    功能开关：{}
+    最后一次广播内容：
+  disabled: "广播功能已禁用"
+  invalid_action: "无效的操作，请使用 on/off"
