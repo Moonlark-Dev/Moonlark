@@ -64,7 +64,6 @@ class LLMRequestSession:
                 yield message
         await report_openai_history(self.messages, self.identify, self.model)
 
-
     async def request(self) -> Optional[str]:
         response = (
             await client.chat.completions.create(
@@ -139,7 +138,6 @@ class MessageFetcher:
     async def fetch_message_stream(self) -> AsyncGenerator[str, None]:
         async for msg in self.session.fetch_llm_response():
             yield msg
-
 
     def get_messages(self) -> Messages:
         return self.session.messages

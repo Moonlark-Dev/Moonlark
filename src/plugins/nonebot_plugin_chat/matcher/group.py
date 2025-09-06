@@ -185,7 +185,7 @@ class MessageProcessor:
                         "question": FunctionParameter(
                             type="string",
                             description="输入 Wolfram|Alpha 的内容，形式可以是数学表达式、Wolfram Language、LaTeX 或自然语言",
-                            required=True
+                            required=True,
                         )
                     },
                 ),

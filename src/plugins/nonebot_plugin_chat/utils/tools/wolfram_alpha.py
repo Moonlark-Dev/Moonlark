@@ -18,7 +18,5 @@
 from nonebot_plugin_wolfram_alpha import request_llm_api
 
 
-
-
 async def request_wolfram_alpha(question: str) -> str:
     return await request_llm_api(question)

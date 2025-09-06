@@ -19,8 +19,6 @@ from httpx import AsyncClient
 from ..image import request_describe_image
 
 
-
-
 async def describe_image(image_url: str) -> str:
     async with AsyncClient() as client:
         response = await client.get(image_url)

@@ -39,6 +39,7 @@ async def _() -> None:
     global image_cache
     image_cache = AsyncCache(600)
 
+
 async def request_describe_image(image: bytes, user_id: str) -> str:
     img_hash = hashlib.sha256(image).hexdigest()
     if (cache := await image_cache.get(img_hash)) is not None:
@@ -46,9 +47,7 @@ async def request_describe_image(image: bytes, user_id: str) -> str:
     image_base64 = base64.b64encode(image).decode("utf-8")
     messages = [
         generate_message(
-            await lang.text(
-                "prompt_group.image_describe_system", user_id, datetime.datetime.now().isoformat()
-            ),
+            await lang.text("prompt_group.image_describe_system", user_id, datetime.datetime.now().isoformat()),
             "system",
         ),
         generate_message(
@@ -68,9 +67,8 @@ async def request_describe_image(image: bytes, user_id: str) -> str:
         logger.warning(traceback.format_exc())
         return f"暂无信息 ({e})"
 
+
 async def get_image_summary(segment: Image, event: Event, bot: Bot, state: T_State) -> str:
     if not isinstance(image := await image_fetch(event, bot, state, segment), bytes):
         return "暂无信息"
     return await request_describe_image(image, event.get_user_id())
-
-
