@@ -1,0 +1,19 @@
+bcsu:
+  menu: |
+    廣播管理菜單：
+    本月已發送廣播：{0} 條
+    當前啟用廣播的群聊數：{1} 個
+  content_set: "廣播內容已設置"
+  cleared: "廣播內容已清除"
+  preview: |
+    當前廣播內容：
+    {0}
+  no_content: "暫無廣播內容"
+  no_bots: "未找到 OneBot V11 適配器的機器人"
+  broadcast_sent: "廣播已發送至 {0} 個群聊"
+
+bc:
+  group_only: "此命令只能在群聊中使用"
+  enabled: "廣播功能已啟用"
+  disabled: "廣播功能已禁用"
+  invalid_action: "無效的操作，請使用 on/off"

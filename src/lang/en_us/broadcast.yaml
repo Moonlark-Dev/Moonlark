@@ -1,0 +1,19 @@
+bcsu:
+  menu: |
+    Broadcast Management Menu:
+    Broadcasts sent this month: {0}
+    Groups with broadcast enabled: {1}
+  content_set: "Broadcast content has been set"
+  cleared: "Broadcast content has been cleared"
+  preview: |
+    Current broadcast content:
+    {0}
+  no_content: "No broadcast content available"
+  no_bots: "No OneBot V11 adapter bots found"
+  broadcast_sent: "Broadcast sent to {0} groups"
+
+bc:
+  group_only: "This command can only be used in group chats"
+  enabled: "Broadcast function enabled"
+  disabled: "Broadcast function disabled"
+  invalid_action: "Invalid action, please use on/off"
