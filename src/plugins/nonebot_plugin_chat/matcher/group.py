@@ -173,7 +173,7 @@ class MessageProcessor:
                 ),
                 AsyncFunction(
                     func=describe_image,
-                    description="获取一张图片的内容的描述。",
+                    description="获取一张网络图片的内容的描述。",
                     parameters={
                         "image_url": FunctionParameter(type="string", description="目标图片的 URL 地址", required=True)
                     },
