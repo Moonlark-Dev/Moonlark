@@ -14,8 +14,15 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
+from httpx import AsyncClient
 
-from .browser import browse_webpage
-from .search import search_on_google
-from .wolfram_alpha import request_wolfram_alpha
-from .describe_image import describe_image
+from ..image import request_describe_image
+
+
+async def describe_image(image_url: str) -> str:
+    async with AsyncClient() as client:
+        response = await client.get(image_url)
+    if response.is_success:
+        image_bytes = response.read()
+        return await request_describe_image(image_bytes, "mlsid::--lang=zh-hans")
+    return f"获取信息失败 (HTTP {response.status_code})"

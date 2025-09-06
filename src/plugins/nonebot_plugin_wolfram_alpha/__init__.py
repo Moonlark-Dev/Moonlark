@@ -15,3 +15,4 @@ __plugin_meta__ = PluginMetadata(
 )
 
 from . import __main__
+from .wolfram import request_llm_api

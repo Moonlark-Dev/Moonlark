@@ -15,7 +15,8 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
-from .browser import browse_webpage
-from .search import search_on_google
-from .wolfram_alpha import request_wolfram_alpha
-from .describe_image import describe_image
+from nonebot_plugin_wolfram_alpha import request_llm_api
+
+
+async def request_wolfram_alpha(question: str) -> str:
+    return await request_llm_api(question)
