@@ -214,11 +214,12 @@ class MessageProcessor:
             text = text.replace(m[0], "")
         return text, reply_message_id
 
-
     async def send_reply_text(self, reply_text: str) -> None:
         if len(reply_text) >= 100:
             reply_text, reply_message_id = self.get_reply_message_id(reply_text)
-            await parse_reply(self.session.format_message(reply_text), reply_message_id).send(target=self.session.target, bot=self.session.bot)
+            await parse_reply(self.session.format_message(reply_text), reply_message_id).send(
+                target=self.session.target, bot=self.session.bot
+            )
             return
         code_block_cache = None
         lines = reply_text.splitlines()
@@ -244,8 +245,9 @@ class MessageProcessor:
                 code_block_cache.append(origin_line)
             else:
                 line, reply_message_id = self.get_reply_message_id(line)
-                await parse_reply(self.session.format_message(line), reply_message_id).send(target=self.session.target, bot=self.session.bot)
-
+                await parse_reply(self.session.format_message(line), reply_message_id).send(
+                    target=self.session.target, bot=self.session.bot
+                )
 
     async def process_messages(self, msg_dict: CachedMessage) -> None:
         if (
@@ -291,7 +293,10 @@ class MessageProcessor:
             "system",
         )
 
+
 from nonebot_plugin_alconna import get_message_id
+
+
 class GroupSession:
 
     def __init__(self, group_id: str, bot: Bot, target: Target, lang_name: str = "zh_hans") -> None:
