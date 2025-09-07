@@ -53,10 +53,11 @@ class CachedMessage(TypedDict):
     user_id: str
     send_time: datetime
     self: bool
+    message_id: str
 
 
 def generate_message_string(message: CachedMessage) -> str:
-    return f"[{message['send_time'].strftime('%H:%M')}][{message['nickname']}]: {message['content']}\n"
+    return f"[{message['send_time'].strftime('%H:%M:%S')}][{message['nickname']}]: {message['content']}\n"
 
 
 def get_role(message: OpenAIMessage) -> str:
@@ -67,6 +68,12 @@ def get_role(message: OpenAIMessage) -> str:
     return role
 
 
+def parse_reply(message: UniMessage, reply_message_id: Optional[str] = None) -> UniMessage:
+    if reply_message_id:
+        return message.reply(reply_message_id)
+    return message
+
+
 class MessageProcessor:
 
     def __init__(self, session: "GroupSession"):
@@ -74,6 +81,7 @@ class MessageProcessor:
         self.session = session
         self.message_count = 0
         self.enabled = True
+        self.reply_message_ids = []
         asyncio.create_task(self.loop())
 
     async def loop(self) -> None:
@@ -90,7 +98,7 @@ class MessageProcessor:
         if not self.session.message_queue:
             await asyncio.sleep(3)
             return
-        message, event, state, user_id, nickname, dt, mentioned = self.session.message_queue.pop(0)
+        message, event, state, user_id, nickname, dt, mentioned, message_id = self.session.message_queue.pop(0)
         text = await parse_message_to_string(message, event, self.session.bot, state)
         if not text:
             return
@@ -100,6 +108,7 @@ class MessageProcessor:
             "send_time": dt,
             "user_id": user_id,
             "self": False,
+            "message_id": message_id,
         }
         await self.process_messages(msg_dict)
         self.session.cached_messages.append(msg_dict)
@@ -127,6 +136,7 @@ class MessageProcessor:
                 self.openai_messages[0]["content"] = content[next_message_pos:]
             else:
                 self.openai_messages.pop(0)
+            self.reply_message_ids.pop(0)
         self.message_count -= 1
 
     async def update_system_message(self) -> None:
@@ -197,12 +207,23 @@ class MessageProcessor:
             await self.send_reply_text(message)
         self.openai_messages = fetcher.get_messages()
 
+    def get_reply_message_id(self, text: str) -> tuple[str, Optional[str]]:
+        reply_message_id = None
+        while m := re.match(r"\{REPLY:\d+}", text):
+            reply_message_id = self.reply_message_ids[-int(m[0][7:-1])]
+            text = text.replace(m[0], "")
+        return text, reply_message_id
+
     async def send_reply_text(self, reply_text: str) -> None:
         if len(reply_text) >= 100:
-            await self.session.format_message(reply_text).send(target=self.session.target, bot=self.session.bot)
+            reply_text, reply_message_id = self.get_reply_message_id(reply_text)
+            await parse_reply(self.session.format_message(reply_text), reply_message_id).send(
+                target=self.session.target, bot=self.session.bot
+            )
             return
         code_block_cache = None
-        for origin_line in reply_text.splitlines():
+        lines = reply_text.splitlines()
+        for origin_line in lines:
             line = origin_line.strip()
             await asyncio.sleep(len(line.replace("\n", "")) * 0.01)
             if not line:
@@ -223,7 +244,10 @@ class MessageProcessor:
             elif code_block_cache is not None:
                 code_block_cache.append(origin_line)
             else:
-                await self.session.format_message(line).send(target=self.session.target, bot=self.session.bot)
+                line, reply_message_id = self.get_reply_message_id(line)
+                await parse_reply(self.session.format_message(line), reply_message_id).send(
+                    target=self.session.target, bot=self.session.bot
+                )
 
     async def process_messages(self, msg_dict: CachedMessage) -> None:
         if (
@@ -235,6 +259,7 @@ class MessageProcessor:
         else:
             self.openai_messages[-1]["content"] += generate_message_string(msg_dict)
         self.message_count += 1
+        self.reply_message_ids.append(msg_dict["message_id"])
         logger.debug(self.openai_messages)
 
     async def generate_system_prompt(self) -> OpenAIMessage:
@@ -269,6 +294,9 @@ class MessageProcessor:
         )
 
 
+from nonebot_plugin_alconna import get_message_id
+
+
 class GroupSession:
 
     def __init__(self, group_id: str, bot: Bot, target: Target, lang_name: str = "zh_hans") -> None:
@@ -276,7 +304,7 @@ class GroupSession:
         self.target = target
         self.bot = bot
         self.user_id = f"mlsid::--lang={lang_name}"
-        self.message_queue: list[tuple[UniMessage, Event, T_State, str, str, datetime, bool]] = []
+        self.message_queue: list[tuple[UniMessage, Event, T_State, str, str, datetime, bool, str]] = []
         self.cached_messages: list[CachedMessage] = []
         self.desire = BASE_DESIRE
         self.last_reward_participation: Optional[datetime] = None
@@ -324,7 +352,8 @@ class GroupSession:
     async def handle_message(
         self, message: UniMessage, user_id: str, event: Event, state: T_State, nickname: str, mentioned: bool = False
     ) -> None:
-        self.message_queue.append((message, event, state, user_id, nickname, datetime.now(), mentioned))
+        message_id = get_message_id(event)
+        self.message_queue.append((message, event, state, user_id, nickname, datetime.now(), mentioned, message_id))
         self.update_counters(user_id)
         await self.calculate_desire_on_message(mentioned)
         if len(self.cached_messages) >= 20:
