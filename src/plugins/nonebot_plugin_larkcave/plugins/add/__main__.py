@@ -22,6 +22,7 @@ from .checker import check_cave
 
 lock = asyncio.Lock()
 
+
 async def get_cave_id(session: async_scoped_session) -> int:
     result = await session.scalar(select(func.max(CaveData.id)))
     return (result + 1) if result is not None else 0
