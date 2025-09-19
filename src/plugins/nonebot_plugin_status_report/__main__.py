@@ -40,6 +40,7 @@ from .types import ExceptionStatus, EventCounter, OpenAIHistory, StatusReport, H
 if TYPE_CHECKING:
     from nonebot_plugin_openai.types import Messages
 
+
 class DataLocks:
 
     def __init__(self) -> None:
@@ -60,9 +61,6 @@ async def get_command_usage() -> dict[str, int]:
         async with aiofiles.open(data_dir.joinpath("commands.json"), "r", encoding="utf-8") as f:
             return json.loads(await f.read())
     return {}
-
-
-
 
 
 @get_driver().on_startup
