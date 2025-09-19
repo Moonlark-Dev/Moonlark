@@ -271,6 +271,7 @@ Linux 手册 (ManPage) 查询
 - `/summary -s broadcast (广播风格总结)`
 - `/summary -s topic (话题梳理)`
 - `/summary -e|-d (功能开关)`
+- `/summary --everyday-summary <on/off> (每日总结开关)`
 ## `t`: 翻译器
 
 翻译文本（默认英到中）
