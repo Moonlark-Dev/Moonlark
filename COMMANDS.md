@@ -189,12 +189,6 @@ Moonlark 本地化设置
 
 ### 用法
 - `/calc <问题> (询问 WolframAlpha)`
-## `ghot`: 群发言热度
-
-计算群聊消息的热度分数，并进行排名。使用此功能需要先使用 /summary -e 启用群历史消息总结功能，否则群热度分数恒为 0。
-
-### 用法
-- `/ghot`
 ## `github`: GitHub 链接解析
 
 预览 GitHub 链接内容
@@ -340,6 +334,13 @@ Moonlark 投票
 - `/email claim <email_id> (领取指定邮件)`
 - `/email unread all (将所有邮件标为未读)`
 - `/email unread <email_id> (将邮件标为未读)`
+## `ghot`: 群发言热度
+
+计算群聊消息的热度分数，并进行排名。使用此功能需要先使用 /summary -e 启用群历史消息总结功能，否则群热度分数恒为 0。
+
+### 用法
+- `/ghot (当前群聊热度分数)`
+- `/ghot history (近三天分数历史)`
 ## `online-timer`: 在线时间段
 
 查询 Moonlark 记录的群友在线时间段
