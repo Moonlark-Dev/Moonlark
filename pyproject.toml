@@ -84,7 +84,8 @@ plugins = [
     "nonebot_plugin_everyday_wife",
     "nonebot_plugin_online_timer",
     "nonebot_plugin_status_report",
-    "nonebot_plugin_broadcast"
+    "nonebot_plugin_broadcast",
+    "nonebot_plugin_ghot"
 ]
 plugin_dirs = []
 builtin_plugins = []
