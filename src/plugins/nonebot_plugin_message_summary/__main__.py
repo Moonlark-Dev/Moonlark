@@ -1,14 +1,15 @@
-import aiofiles
 from nonebot_plugin_htmlrender import md_to_pic
+
+from nonebot_plugin_broadcast import get_available_groups
 from nonebot_plugin_larkuser import get_user
 from sqlalchemy import select
 from nonebot.adapters import Event, Bot
 from nonebot.adapters.qq import Bot as Bot_QQ
 from nonebot.adapters.onebot.v11 import GroupMessageEvent
-from nonebot import on_message
-import json
+from nonebot import on_message, logger
+
 from datetime import datetime, timedelta, timezone
-from nonebot_plugin_orm import async_scoped_session
+from nonebot_plugin_orm import async_scoped_session, get_session
 from nonebot_plugin_alconna import on_alconna, Alconna, Subcommand, Args, UniMessage
 from typing import Literal
 
@@ -16,6 +17,8 @@ from nonebot_plugin_larkutils.file import FileManager
 from nonebot_plugin_openai import fetch_message, generate_message
 from nonebot_plugin_larkutils import get_user_id, get_group_id, open_file, FileType
 from nonebot_plugin_larklang import LangHelper
+from nonebot_plugin_apscheduler import scheduler
+from nonebot import get_bots
 
 from .models import GroupMessage
 
@@ -25,6 +28,7 @@ summary = on_alconna(
         "summary",
         Subcommand("--enable|-e"),
         Subcommand("--disable|-d"),
+        Subcommand("--everyday-summary", Args["status", Literal["on", "off"]]),
         Args["limit", int, 200],
         Subcommand("-s|--style", Args["style_type", Literal["default", "broadcast", "bc", "topic"], "default"]),
     )
@@ -33,7 +37,7 @@ recorder = on_message(priority=3, block=False)
 
 
 def get_config() -> FileManager:
-    return open_file("config.json", FileType.config, [])
+    return open_file("config.json", FileType.CONFIG, [])
 
 
 @summary.assign("style")
@@ -105,10 +109,27 @@ async def fetch_broadcast_summary(user_id: str, messages: str) -> str:
     return summary_string
 
 
+async def fetch_mvp_summary(user_id: str, messages: str) -> str:
+    time_str = datetime.now(timezone(timedelta(hours=8))).strftime("%Y-%m-%d %H:%M:%S")
+    summary_string = await fetch_message(
+        [
+            generate_message(await lang.text("prompt_mvp", user_id, time_str), "system"),
+            generate_message(messages, "user"),
+        ],
+        identify="Message Summary (MVP)",
+    )
+    return summary_string
+
 async def fetch_default_summary(user_id: str, messages: str) -> str:
     summary_string = await fetch_message(
         [generate_message(await lang.text("prompt", user_id), "system"), generate_message(messages, "user")],
         identify="Message Summary",
+    )
+    return summary_string
+
+async def fetch_short_summary(user_id: str, messages: str) -> str:
+    summary_string = await fetch_message(
+        [generate_message(await lang.text("prompt_short", user_id), "system"), generate_message(messages, "user")],
     )
     return summary_string
 
@@ -158,10 +179,105 @@ async def _(bot: Bot, user_id: str = get_user_id(), group_id: str = get_group_id
 
 @summary.assign("disable")
 async def _(user_id: str = get_user_id(), group_id: str = get_group_id()) -> None:
-    config = await get_config()
-    if group_id in config:
-        config.pop(config.index(group_id))
+    async with get_config() as config:
+        if group_id in config.data:
+            config.data(config.data(group_id))
     async with get_config() as conf:
         if group_id not in conf.data:
             conf.data.append(group_id)
     await lang.finish("switch.disable", user_id)
+
+
+@summary.assign("everyday-summary")
+async def _(status: str, bot: Bot, user_id: str = get_user_id(), group_id: str = get_group_id()) -> None:
+    if isinstance(bot, Bot_QQ):
+        await lang.finish("switch.unsupported", user_id)
+    everyday_config = open_file("everyday_summary_config.json", FileType.CONFIG, [])
+    async with everyday_config as conf:
+        if status == "on":
+            if group_id not in conf.data:
+                conf.data.append(group_id)
+            await lang.finish("everyday_summary.enable", user_id)
+        else:
+            if group_id in conf.data:
+                conf.data.remove(group_id)
+            await lang.finish("everyday_summary.disable", user_id)
+
+
+test_summary = on_alconna(Alconna("test-daily-summary"))
+
+
+@test_summary.handle()
+async def _(group_id: str = get_group_id()) -> None:
+    """Temporary test command to send daily summary to the current group"""
+    await send_daily_summary_to_group(group_id)
+    await test_summary.finish("每日群消息总结已发送")
+
+def get_everyday_summary_config() -> FileManager:
+    """Get the config file for everyday summary feature"""
+    return open_file("everyday_summary_config.json", FileType.CONFIG, [])
+
+
+async def send_daily_summary_to_group(group_id: str) -> None:
+    """Send daily summary to a specific group"""
+    # Get all messages for the group from the last 24 hours
+    async with get_session() as session:
+        end_time = datetime.now()
+        start_time = end_time - timedelta(days=1)
+        
+        result = await session.scalars(
+            select(GroupMessage)
+            .where(GroupMessage.group_id == group_id)
+            .where(GroupMessage.timestamp >= start_time)
+            .where(GroupMessage.timestamp <= end_time)
+            .order_by(GroupMessage.id_)
+        )
+        messages = result.all()
+
+    
+        if not messages:
+            return
+
+        # Generate message string
+        messages_str = generate_message_string(list(messages), "default")
+
+        # Get a user ID from the group for language processing
+        # We'll use the first message's sender as the user ID
+        user_id = messages[0].sender_nickname
+
+    # Generate the three summaries
+    broadcast_summary = await fetch_broadcast_summary(user_id, messages_str)
+    mvp_summary = await fetch_mvp_summary(user_id, messages_str)
+    default_summary = await fetch_short_summary(user_id, messages_str)
+    
+    # Format the content for the template
+    broadcast_lines = broadcast_summary.splitlines()
+    formatted_broadcast = "\n".join([f"> {line}" for line in broadcast_lines])
+    
+    # Get bots to send the message
+    target_group_id = group_id.split("_", 1)[1]
+    bot = (await get_available_groups()).get(target_group_id)[0]
+    
+    # Render the markdown template
+    try:
+        image_bytes = await md_to_pic(
+            await lang.text("md_everyday_summary", user_id, formatted_broadcast, mvp_summary, default_summary)
+        )
+        await bot.send_group_msg(group_id=int(target_group_id), message=await UniMessage().image(raw=image_bytes).export(bot))
+    except Exception as e:
+        logger.exception(e)
+
+
+@scheduler.scheduled_job("cron", hour=6, minute=0, id="daily_message_summary")
+async def send_daily_message_summary() -> None:
+    """Send daily message summary to all groups that have enabled this feature"""
+    # Get the list of groups that have enabled everyday summary
+    async with get_everyday_summary_config() as config:
+        enabled_groups = config.data
+    
+    # Send summary to each enabled group
+    for group_id in enabled_groups:
+        try:
+            await send_daily_summary_to_group(group_id)
+        except Exception as e:
+            logger.warning(e)

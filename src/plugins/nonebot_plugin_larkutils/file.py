@@ -16,7 +16,7 @@
 # ##############################################################################
 import inspect
 from types import ModuleType
-from typing import Any, TypeVar, Optional, Callable
+from typing import TypeVar, Optional, Callable
 
 from nonebot import get_plugin_by_module_name
 from nonebot_plugin_localstore import get_config_file, get_cache_file, get_data_file
@@ -31,9 +31,19 @@ file_locks: dict[Path, asyncio.Lock] = {}
 T = TypeVar("T")
 
 class FileType(Enum):
-    data: GetFilePathFunc = get_data_file
-    cache: GetFilePathFunc = get_cache_file
-    config: GetFilePathFunc = get_config_file
+    DATA = "data"
+    CACHE = "cache"
+    CONFIG = "config"
+
+def get_file_function(file_type: FileType) -> GetFilePathFunc:
+    if file_type == FileType.DATA:
+        return get_data_file
+    elif file_type == FileType.CACHE:
+        return get_cache_file
+    elif file_type == FileType.CONFIG:
+        return get_config_file
+    raise ValueError(f"Unknown file type: {file_type}")
+
 
 
 
@@ -90,7 +100,6 @@ def open_file(file_name: str, file_type: FileType, default: T = {}, plugin_name:
     plugin_name = plugin_name or get_module_name(module) or ""
     if not plugin_name:
         raise ValueError("plugin_name cannot be empty")
-    return FileManager(file_type.value(plugin_name, file_name), default)
-
-
+    file_func = get_file_function(file_type)
+    return FileManager(file_func(plugin_name, file_name), default)
 
