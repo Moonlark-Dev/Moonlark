@@ -50,6 +50,7 @@ async def _(
 ) -> None:
     await handle_main(limit, session, style_type, user_id, group_id)
 
+
 def generate_message_string(result: list[GroupMessage], style: str) -> str:
     messages = ""
     for message in result[::-1]:
@@ -60,6 +61,7 @@ def generate_message_string(result: list[GroupMessage], style: str) -> str:
         else:
             messages += f"[{message.sender_nickname}] {message.message}\n"
     return messages
+
 
 @summary.assign("$main")
 async def handle_main(
@@ -120,12 +122,14 @@ async def fetch_mvp_summary(user_id: str, messages: str) -> str:
     )
     return summary_string
 
+
 async def fetch_default_summary(user_id: str, messages: str) -> str:
     summary_string = await fetch_message(
         [generate_message(await lang.text("prompt", user_id), "system"), generate_message(messages, "user")],
         identify="Message Summary",
     )
     return summary_string
+
 
 async def fetch_short_summary(user_id: str, messages: str) -> str:
     summary_string = await fetch_message(
@@ -213,6 +217,7 @@ async def _(group_id: str = get_group_id()) -> None:
     await send_daily_summary_to_group(group_id)
     await test_summary.finish("每日群消息总结已发送")
 
+
 def get_everyday_summary_config() -> FileManager:
     """Get the config file for everyday summary feature"""
     return open_file("everyday_summary_config.json", FileType.CONFIG, [])
@@ -224,7 +229,7 @@ async def send_daily_summary_to_group(group_id: str) -> None:
     async with get_session() as session:
         end_time = datetime.now()
         start_time = end_time - timedelta(days=1)
-        
+
         result = await session.scalars(
             select(GroupMessage)
             .where(GroupMessage.group_id == group_id)
@@ -234,7 +239,6 @@ async def send_daily_summary_to_group(group_id: str) -> None:
         )
         messages = result.all()
 
-    
         if not messages:
             return
 
@@ -249,21 +253,23 @@ async def send_daily_summary_to_group(group_id: str) -> None:
     broadcast_summary = await fetch_broadcast_summary(user_id, messages_str)
     mvp_summary = await fetch_mvp_summary(user_id, messages_str)
     default_summary = await fetch_short_summary(user_id, messages_str)
-    
+
     # Format the content for the template
     broadcast_lines = broadcast_summary.splitlines()
     formatted_broadcast = "\n".join([f"> {line}" for line in broadcast_lines])
-    
+
     # Get bots to send the message
     target_group_id = group_id.split("_", 1)[1]
     bot = (await get_available_groups()).get(target_group_id)[0]
-    
+
     # Render the markdown template
     try:
         image_bytes = await md_to_pic(
             await lang.text("md_everyday_summary", user_id, formatted_broadcast, mvp_summary, default_summary)
         )
-        await bot.send_group_msg(group_id=int(target_group_id), message=await UniMessage().image(raw=image_bytes).export(bot))
+        await bot.send_group_msg(
+            group_id=int(target_group_id), message=await UniMessage().image(raw=image_bytes).export(bot)
+        )
     except Exception as e:
         logger.exception(e)
 
@@ -274,7 +280,7 @@ async def send_daily_message_summary() -> None:
     # Get the list of groups that have enabled everyday summary
     async with get_everyday_summary_config() as config:
         enabled_groups = config.data
-    
+
     # Send summary to each enabled group
     for group_id in enabled_groups:
         try:

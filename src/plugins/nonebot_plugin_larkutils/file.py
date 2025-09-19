@@ -30,10 +30,12 @@ GetFilePathFunc = Callable[[str, str], Path]
 file_locks: dict[Path, asyncio.Lock] = {}
 T = TypeVar("T")
 
+
 class FileType(Enum):
     DATA = "data"
     CACHE = "cache"
     CONFIG = "config"
+
 
 def get_file_function(file_type: FileType) -> GetFilePathFunc:
     if file_type == FileType.DATA:
@@ -43,8 +45,6 @@ def get_file_function(file_type: FileType) -> GetFilePathFunc:
     elif file_type == FileType.CONFIG:
         return get_config_file
     raise ValueError(f"Unknown file type: {file_type}")
-
-
 
 
 class FileManager:
@@ -74,7 +74,7 @@ class FileManager:
 
     # 考虑使用临时文件+原子替换的方式，避免写入过程中断导致文件损坏
     async def save_file(self) -> None:
-        temp_path = self.path.with_suffix('.tmp')
+        temp_path = self.path.with_suffix(".tmp")
         try:
             async with aiofiles.open(temp_path, mode="w", encoding="utf-8") as f:
                 await f.write(json.dumps(self.data, indent=4, ensure_ascii=False))
@@ -102,4 +102,3 @@ def open_file(file_name: str, file_type: FileType, default: T = {}, plugin_name:
         raise ValueError("plugin_name cannot be empty")
     file_func = get_file_function(file_type)
     return FileManager(file_func(plugin_name, file_name), default)
-

@@ -99,6 +99,7 @@ async def _(bot: Bot, event: Event, session_id: str = get_group_id()) -> None:
         raise IgnoredException(f"此群组已分配给帐号 {session_id}")
     assign_session(session_id, bot.self_id)
 
+
 @scheduler.scheduled_job("cron", minute="*", id="remove_expired_email")
 async def _() -> None:
     expired_sessions = []
@@ -108,5 +109,3 @@ async def _() -> None:
             logger.debug(f"将回收过期或不可用会话: {key} ({value})")
     for key in expired_sessions:
         sessions.pop(key)
-
-
