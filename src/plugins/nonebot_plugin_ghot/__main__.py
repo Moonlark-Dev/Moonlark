@@ -224,66 +224,66 @@ async def handle_ghot_history_command(
     Handle /ghot history command to show group heat score history chart.
     """
     # Get all messages for this group
-    result = await session.scalars(
-        select(GroupMessage).where(GroupMessage.group_id == group_id)
-    )
+    result = await session.scalars(select(GroupMessage).where(GroupMessage.group_id == group_id))
     messages = result.all()
-    
+
     if not messages:
         response = await lang.text("ghot.no_messages", user_id)
         await ghot_cmd.finish(response)
-    
+
     # Get the earliest and latest timestamps
     timestamps = [msg.timestamp for msg in messages]
     earliest_time = min(timestamps)
     latest_time = max(timestamps)
-    
+
     # Create 10-minute intervals
     interval = timedelta(minutes=10)
     current_time = earliest_time + interval / 2
     time_points = []
     heat_scores = []
-    
+
     # Calculate heat score for each 10-minute interval
     while current_time <= latest_time:
         # For history, we'll use a 15-minute window (same as the main command)
         window_end = current_time + interval / 2
         window_start = current_time - interval / 2
-        
+
         # Filter messages within the window
         window_messages = [t for t in timestamps if window_start <= t <= window_end]
-        
+
         # Calculate heat score using the same algorithm as the main function
-        score = await calculate_heat_score(window_messages, current_time, round(interval.total_seconds()), config.ghot_max_message_rate)
+        score = await calculate_heat_score(
+            window_messages, current_time, round(interval.total_seconds()), config.ghot_max_message_rate
+        )
         heat_scores.append(score)
         time_points.append(current_time + interval / 2)
-        
+
         current_time += interval
-    
+
     # Create the chart
     plt.figure(figsize=(12, 6))
-    plt.plot(time_points, heat_scores, marker='o', linestyle='-', linewidth=2, markersize=4)
+    plt.plot(time_points, heat_scores, marker="o", linestyle="-", linewidth=2, markersize=4)
     plt.title(await lang.text("history.title", user_id))
     plt.xlabel(await lang.text("history.xlabel", user_id))
     plt.ylabel(await lang.text("history.ylabel", user_id))
     plt.grid(True, alpha=0.3)
-    
+
     # Format x-axis as time
-    plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%H:%M'))
+    plt.gca().xaxis.set_major_formatter(mdates.DateFormatter("%H:%M"))
     plt.gca().xaxis.set_major_locator(mdates.MinuteLocator(interval=30))
     plt.xticks(rotation=45)
-    
+
     # Set y-axis limits
     plt.ylim(0, round(max(heat_scores) // 10 * 10 + 10))
-    
+
     # Adjust layout to prevent label cutoff
     plt.tight_layout()
-    
+
     # Save to bytes
     buf = io.BytesIO()
-    plt.savefig(buf, format='png', dpi=300, bbox_inches='tight')
+    plt.savefig(buf, format="png", dpi=300, bbox_inches="tight")
     buf.seek(0)
     plt.close()
-    
+
     # Send the chart
     await ghot_cmd.finish(UniMessage().image(raw=buf.getvalue()))
