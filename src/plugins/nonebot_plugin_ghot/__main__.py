@@ -1,5 +1,12 @@
 from datetime import datetime, timedelta
 from typing import List, Tuple
+import io
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+from matplotlib.font_manager import FontProperties
+import numpy as np
+
+from nonebot_plugin_alconna import Alconna, on_alconna, Subcommand, UniMessage
 
 from nonebot_plugin_alconna import Alconna, on_alconna
 from nonebot_plugin_larkutils import get_user_id, get_group_id
@@ -16,7 +23,12 @@ from .config import config
 lang = LangHelper()
 
 # Create command matcher for /ghot
-ghot_cmd = on_alconna(Alconna("ghot"))
+ghot_cmd = on_alconna(
+    Alconna(
+        "ghot",
+        Subcommand("history"),
+    )
+)
 
 
 async def calculate_heat_score(
@@ -167,7 +179,7 @@ async def get_group_rankings(group_scores: dict, target_group_id: str) -> Tuple[
     return rank_1min, rank_5min, rank_15min
 
 
-@ghot_cmd.handle()
+@ghot_cmd.assign("$main")
 async def handle_ghot_command(
     _event: GroupMessageEvent,
     session: async_scoped_session,
@@ -201,5 +213,77 @@ async def handle_ghot_command(
     await ghot_cmd.finish(response)
 
 
-# Export the API function
-__all__ = ["get_group_hot_score"]
+@ghot_cmd.assign("history")
+async def handle_ghot_history_command(
+    _event: GroupMessageEvent,
+    session: async_scoped_session,
+    user_id: str = get_user_id(),
+    group_id: str = get_group_id(),
+) -> None:
+    """
+    Handle /ghot history command to show group heat score history chart.
+    """
+    # Get all messages for this group
+    result = await session.scalars(
+        select(GroupMessage).where(GroupMessage.group_id == group_id)
+    )
+    messages = result.all()
+    
+    if not messages:
+        response = await lang.text("ghot.no_messages", user_id)
+        await ghot_cmd.finish(response)
+    
+    # Get the earliest and latest timestamps
+    timestamps = [msg.timestamp for msg in messages]
+    earliest_time = min(timestamps)
+    latest_time = max(timestamps)
+    
+    # Create 10-minute intervals
+    interval = timedelta(minutes=10)
+    current_time = earliest_time + interval / 2
+    time_points = []
+    heat_scores = []
+    
+    # Calculate heat score for each 10-minute interval
+    while current_time <= latest_time:
+        # For history, we'll use a 15-minute window (same as the main command)
+        window_end = current_time + interval / 2
+        window_start = current_time - interval / 2
+        
+        # Filter messages within the window
+        window_messages = [t for t in timestamps if window_start <= t <= window_end]
+        
+        # Calculate heat score using the same algorithm as the main function
+        score = await calculate_heat_score(window_messages, current_time, round(interval.total_seconds()), config.ghot_max_message_rate)
+        heat_scores.append(score)
+        time_points.append(current_time + interval / 2)
+        
+        current_time += interval
+    
+    # Create the chart
+    plt.figure(figsize=(12, 6))
+    plt.plot(time_points, heat_scores, marker='o', linestyle='-', linewidth=2, markersize=4)
+    plt.title(await lang.text("history.title", user_id))
+    plt.xlabel(await lang.text("history.xlabel", user_id))
+    plt.ylabel(await lang.text("history.ylabel", user_id))
+    plt.grid(True, alpha=0.3)
+    
+    # Format x-axis as time
+    plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%H:%M'))
+    plt.gca().xaxis.set_major_locator(mdates.MinuteLocator(interval=30))
+    plt.xticks(rotation=45)
+    
+    # Set y-axis limits
+    plt.ylim(0, round(max(heat_scores) // 10 * 10 + 10))
+    
+    # Adjust layout to prevent label cutoff
+    plt.tight_layout()
+    
+    # Save to bytes
+    buf = io.BytesIO()
+    plt.savefig(buf, format='png', dpi=300, bbox_inches='tight')
+    buf.seek(0)
+    plt.close()
+    
+    # Send the chart
+    await ghot_cmd.finish(UniMessage().image(raw=buf.getvalue()))
