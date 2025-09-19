@@ -49,6 +49,16 @@ async def _(
 ) -> None:
     await handle_main(limit, session, style_type, user_id, group_id)
 
+def generate_message_string(result: list[GroupMessage], style: str) -> str:
+    messages = ""
+    for message in result[::-1]:
+        if style in ["broadcast", "bc"]:
+            # Format timestamp to include both date and time for broadcast style
+            timestamp_str = message.timestamp.strftime("%Y-%m-%d %H:%M:%S")
+            messages += f"[{timestamp_str}] [{message.sender_nickname}] {message.message}\n"
+        else:
+            messages += f"[{message.sender_nickname}] {message.message}\n"
+    return messages
 
 @summary.assign("$main")
 async def handle_main(
@@ -70,23 +80,9 @@ async def handle_main(
             .order_by(GroupMessage.id_)
         )
     ).all()
-    messages = ""
-    for message in result[::-1]:
-        if style in ["broadcast", "bc"]:
-            # Format timestamp to include both date and time for broadcast style
-            timestamp_str = message.timestamp.strftime("%Y-%m-%d %H:%M:%S")
-            messages += f"[{timestamp_str}] [{message.sender_nickname}] {message.message}\n"
-        else:
-            messages += f"[{message.sender_nickname}] {message.message}\n"
+    messages = generate_message_string(result, style)
     if style in ["broadcast", "bc"]:
-        time_str = datetime.now(timezone(timedelta(hours=8))).strftime("%Y-%m-%d %H:%M:%S")
-        summary_string = await fetch_message(
-            [
-                generate_message(await lang.text("prompt2s", user_id, time_str), "system"),
-                generate_message(await lang.text("prompt2u", user_id, messages), "user"),
-            ],
-            identify="Message Summary (Boardcast)",
-        )
+        summary_string = await fetch_broadcast_summary(user_id, messages)
         await summary.finish(summary_string)
     elif style == "topic":
         summary_string = await fetch_message(
@@ -95,11 +91,30 @@ async def handle_main(
         )
         await summary.finish(UniMessage().image(raw=await md_to_pic(summary_string)))
     else:
-        summary_string = await fetch_message(
-            [generate_message(await lang.text("prompt", user_id), "system"), generate_message(messages, "user")],
-            identify="Message Summary",
-        )
+        summary_string = await fetch_default_summary(user_id, messages)
         await summary.finish(UniMessage().image(raw=await md_to_pic(summary_string)))
+
+
+async def fetch_broadcast_summary(user_id: str, messages: str) -> str:
+    time_str = datetime.now(timezone(timedelta(hours=8))).strftime("%Y-%m-%d %H:%M:%S")
+    summary_string = await fetch_message(
+        [
+            generate_message(await lang.text("prompt2s", user_id, time_str), "system"),
+            generate_message(await lang.text("prompt2u", user_id, messages), "user"),
+        ],
+        identify="Message Summary (Broadcast)",
+    )
+    return summary_string
+
+
+async def fetch_default_summary(user_id: str, messages: str) -> str:
+    summary_string = await fetch_message(
+        [generate_message(await lang.text("prompt", user_id), "system"), generate_message(messages, "user")],
+        identify="Message Summary",
+    )
+    return summary_string
+
+
 
 
 async def clean_recorded_message(session: async_scoped_session) -> None:
