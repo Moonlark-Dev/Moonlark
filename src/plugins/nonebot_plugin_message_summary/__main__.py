@@ -11,10 +11,11 @@ from datetime import datetime, timedelta, timezone
 from nonebot_plugin_orm import async_scoped_session
 from nonebot_plugin_alconna import on_alconna, Alconna, Subcommand, Args, UniMessage
 from typing import Literal
+
+from nonebot_plugin_larkutils.file import FileManager
 from nonebot_plugin_openai import fetch_message, generate_message
-from nonebot_plugin_larkutils import get_user_id, get_group_id
+from nonebot_plugin_larkutils import get_user_id, get_group_id, open_file, FileType
 from nonebot_plugin_larklang import LangHelper
-from nonebot_plugin_localstore import get_cache_file
 
 from .models import GroupMessage
 
@@ -28,15 +29,11 @@ summary = on_alconna(
         Subcommand("-s|--style", Args["style_type", Literal["default", "broadcast", "bc", "topic"], "default"]),
     )
 )
-config_file = get_cache_file("nonebot-plugin-message-summary", "config.json")
 recorder = on_message(priority=3, block=False)
 
 
-async def get_config() -> list[str]:
-    if not config_file.is_file():
-        return []
-    async with aiofiles.open(config_file, "r") as f:
-        return json.loads(await f.read())
+def get_config() -> FileManager:
+    return open_file("config.json", FileType.config, [])
 
 
 @summary.assign("style")
@@ -69,8 +66,9 @@ async def handle_main(
     group_id: str = get_group_id(),
 ) -> None:
     style = style_type
-    if group_id not in await get_config():
-        await lang.finish("disabled", user_id)
+    async with get_config() as conf:
+        if group_id not in conf.data:
+            await lang.finish("disabled", user_id)
     result = (
         await session.scalars(
             select(GroupMessage)
@@ -115,8 +113,6 @@ async def fetch_default_summary(user_id: str, messages: str) -> str:
     return summary_string
 
 
-
-
 async def clean_recorded_message(session: async_scoped_session) -> None:
     end_time = datetime.now() - timedelta(days=2)
     for item in await session.scalars(select(GroupMessage).where(GroupMessage.timestamp < end_time)):
@@ -125,9 +121,9 @@ async def clean_recorded_message(session: async_scoped_session) -> None:
 
 @recorder.handle()
 async def _(event: GroupMessageEvent, session: async_scoped_session, group_id: str = get_group_id()) -> None:
-
-    if group_id not in await get_config():
-        await recorder.finish()
+    async with get_config() as conf:
+        if group_id not in conf.data:
+            await recorder.finish()
     await clean_recorded_message(session)
     session.add(GroupMessage(message=event.raw_message, sender_nickname=event.sender.nickname, group_id=group_id))
     await session.commit()
@@ -138,8 +134,9 @@ async def _(event: GroupMessageEvent, session: async_scoped_session, group_id: s
 async def _(
     event: Event, session: async_scoped_session, group_id: str = get_group_id(), user_id: str = get_user_id()
 ) -> None:
-    if group_id not in await get_config():
-        await recorder.finish()
+    async with get_config() as conf:
+        if group_id not in conf.data:
+            await recorder.finish()
     await clean_recorded_message(session)
     session.add(
         GroupMessage(
@@ -153,11 +150,9 @@ async def _(
 async def _(bot: Bot, user_id: str = get_user_id(), group_id: str = get_group_id()) -> None:
     if isinstance(bot, Bot_QQ):
         await lang.finish("switch.unsupported", user_id)
-    config = await get_config()
-    if group_id not in config:
-        config.append(group_id)
-    async with aiofiles.open(config_file, "w") as f:
-        await f.write(json.dumps(config))
+    async with get_config() as conf:
+        if group_id not in conf.data:
+            conf.data.append(group_id)
     await lang.finish("switch.enable", user_id)
 
 
@@ -166,6 +161,7 @@ async def _(user_id: str = get_user_id(), group_id: str = get_group_id()) -> Non
     config = await get_config()
     if group_id in config:
         config.pop(config.index(group_id))
-    async with aiofiles.open(config_file, "w") as f:
-        await f.write(json.dumps(config))
+    async with get_config() as conf:
+        if group_id not in conf.data:
+            conf.data.append(group_id)
     await lang.finish("switch.disable", user_id)
