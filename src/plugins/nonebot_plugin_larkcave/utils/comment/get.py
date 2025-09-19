@@ -48,6 +48,7 @@ async def generate(comments: list[CommentData], cave_id: int, user_id: str) -> b
         },
     )
 
+
 async def get_comments(cave_id: int, session: async_scoped_session, user_id: str) -> Optional[UniMessage]:
     if not (comment_list := await get_comment_list(cave_id, session)):
         return None

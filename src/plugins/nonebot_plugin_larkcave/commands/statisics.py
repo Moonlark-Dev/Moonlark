@@ -20,8 +20,12 @@ from nonebot_plugin_orm import async_scoped_session
 
 from nonebot_plugin_larkcave.__main__ import cave
 from nonebot_plugin_larkcave.lang import lang
-from nonebot_plugin_larkcave.utils.statisics import merge_small_poster, set_nickname_for_posters, get_poster_data, \
-    render_pie
+from nonebot_plugin_larkcave.utils.statisics import (
+    merge_small_poster,
+    set_nickname_for_posters,
+    get_poster_data,
+    render_pie,
+)
 from nonebot_plugin_larkutils import get_user_id
 
 

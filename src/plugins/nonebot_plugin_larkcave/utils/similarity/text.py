@@ -39,11 +39,7 @@ async def get_cave_similarity(posting: str, cave: CaveData) -> float:
 
 async def compare_cave_content(posting: str, cave: CaveData) -> CheckResult:
     if (similarity := await get_cave_similarity(posting, cave)) >= config.cave_maximum_similarity:
-        return CheckFailedResult(
-            passed=False,
-            similarity=similarity,
-            similar_cave=cave
-        )
+        return CheckFailedResult(passed=False, similarity=similarity, similar_cave=cave)
     else:
         return CheckPassedResult(passed=True)
 

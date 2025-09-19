@@ -45,11 +45,7 @@ async def get_image_data(cave_id: int) -> AsyncGenerator[Image, None]:
     for image in await session.scalars(select(ImageData).where(ImageData.belong == cave_id)):
         try:
             data = await get_image(image.id, session)
-            yield Image(
-                id=float(image.id),
-                name=str(image.name),
-                data=base64.b64encode(data.data).decode()
-            )
+            yield Image(id=float(image.id), name=str(image.name), data=base64.b64encode(data.data).decode())
         except Exception as e:
             logger.error(f"获取 CAVE 图片信息失败 ({image.id=}, {e=}): {traceback.format_exc()}")
     await session.close()
@@ -68,7 +64,6 @@ async def _() -> RandomCaveResponse:
         }
 
 
-
 async def get_images() -> AsyncGenerator[ImageData, None]:
     session = get_scoped_session()
     image_list = await session.scalars(select(ImageData.id))
@@ -80,7 +75,6 @@ async def get_images() -> AsyncGenerator[ImageData, None]:
     await session.close()
 
 
-
 @app.get("/api/cave/images")
 async def _() -> dict[str, str]:
     response = {}
@@ -88,7 +82,6 @@ async def _() -> dict[str, str]:
         file_name = f"{image.id}.{image.name.split('.')[-1]}"
         response[file_name] = f"{config.moonlark_api_base}/api/cave/images/{file_name}"
     return response
-
 
 
 @app.get("/api/cave/images/{file_name}")

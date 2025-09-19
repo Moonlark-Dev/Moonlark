@@ -32,8 +32,6 @@ plt.rcParams["font.sans-serif"] = ["Sarasa Gothic SC"]
 plt.rcParams["axes.unicode_minus"] = False
 
 
-
-
 async def get_poster_data(session: async_scoped_session) -> dict[str, int]:
     posters = {}
     for poster in await session.scalars(select(CaveData.author).where(CaveData.public == True)):

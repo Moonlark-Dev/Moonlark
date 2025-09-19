@@ -54,6 +54,3 @@ async def _(
     if not (result := await review_text(content))["compliance"]:
         await lang.finish("comment.review_fail", user_id, result["message"])
     await lang.finish("comment.success", user_id, await post(user_id, session, content, cave_id))
-
-
-

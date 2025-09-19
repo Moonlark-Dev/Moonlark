@@ -15,12 +15,4 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
-from . import (
-cave,
-cd_set,
-get,
-post,
-remove,
-restore,
-statisics
-)
+from . import cave, cd_set, get, post, remove, restore, statisics

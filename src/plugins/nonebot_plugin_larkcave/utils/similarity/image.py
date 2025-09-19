@@ -58,8 +58,6 @@ async def check_image(posting: bytes, session: async_scoped_session, name: str) 
     for image, score in zip(images, scores):
         if score >= 0.9:
             return CheckFailedResult(
-                passed=False,
-                similar_cave=await session.get_one(CaveData, {"id": image.belong}),
-                similarity=score
+                passed=False, similar_cave=await session.get_one(CaveData, {"id": image.belong}), similarity=score
             )
     return CheckPassedResult(passed=True)

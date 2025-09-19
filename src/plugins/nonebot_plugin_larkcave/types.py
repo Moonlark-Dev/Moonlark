@@ -39,7 +39,6 @@ class CaveMessage(TypedDict):
     message_id: str
 
 
-
 class Image(ExtensionTypedDict):
     id: float
     data: str
