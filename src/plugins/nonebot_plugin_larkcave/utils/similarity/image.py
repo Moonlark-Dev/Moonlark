@@ -1,0 +1,65 @@
+import asyncio
+import io
+from typing import AsyncGenerator
+from nonebot_plugin_orm import async_scoped_session
+from sqlalchemy import select
+from PIL import UnidentifiedImageError
+from ...types import CheckPassedResult, CheckFailedResult, CheckResult
+import numpy as np
+from PIL import Image
+
+from nonebot_plugin_larkcave.models import CaveData, ImageData, CaveImage
+from nonebot_plugin_larkcave.utils.decoder import get_image
+
+# FROM https://github.com/xxtg666/XDbot2FTTsolver/blob/main/xdbot_ftt_solver.py#L23C5-L28C30
+from skimage.metrics import structural_similarity as ssim
+
+
+def _compare_image(img1, img2) -> int | float:
+    if img1.shape != img2.shape:
+        return 0
+    s = ssim(img1, img2, channel_axis=2, multichannel=True)
+    return s
+
+
+def compare_image(image1: bytes, image2: CaveImage, *_) -> float:
+    try:  # NOTE 解决数据库内空白图片的问题
+        img2 = np.array(Image.open(io.BytesIO(image2.data)))
+    except UnidentifiedImageError:
+        return 0
+    return _compare_image(np.array(Image.open(io.BytesIO(image1))), img2)
+
+
+async def compare_image_async(image1: bytes, image2: CaveImage, image1_name: str) -> float:
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, compare_image, image1, image2, image1_name)
+
+
+async def get_image_list(session: async_scoped_session) -> AsyncGenerator[CaveImage, None]:
+    image_list = await session.scalars(select(ImageData.id))
+    for image_id in image_list.all():
+        try:
+            yield await get_image(str(image_id), session)
+        except FileNotFoundError:
+            pass
+
+
+async def check_image(posting: bytes, session: async_scoped_session, name: str) -> CheckResult:
+    """
+    投稿图片相似度检查
+    :param posting: 正在投稿的图片
+    :param session: 数据库会话
+    :param name: 图片文件名
+    :return: 检查结果
+    """
+    images = [i async for i in get_image_list(session)]
+    tasks = [compare_image_async(posting, image, name) for image in images]
+    scores = await asyncio.gather(*tasks)
+    for image, score in zip(images, scores):
+        if score >= 0.9:
+            return CheckFailedResult(
+                passed=False,
+                similar_cave=await session.get_one(CaveData, {"id": image.belong}),
+                similarity=score
+            )
+    return CheckPassedResult(passed=True)
