@@ -14,6 +14,7 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
+import asyncio
 import hashlib
 import json
 import traceback
@@ -33,11 +34,23 @@ from nonebot.matcher import Matcher, matchers
 from fastapi import Request, status
 from fastapi.exceptions import HTTPException
 from .config import config
+from .matcher import simple_run
 from .types import ExceptionStatus, EventCounter, OpenAIHistory, StatusReport, HandlerResult
 
 if TYPE_CHECKING:
     from nonebot_plugin_openai.types import Messages
 
+
+class DataLocks:
+
+    def __init__(self) -> None:
+        self.commands = asyncio.Lock()
+        self.handler = asyncio.Lock()
+        self.openai = asyncio.Lock()
+        self.exceptions = asyncio.Lock()
+
+
+lock = DataLocks()
 data_dir = get_data_dir("nonebot_plugin_status_report")
 app = cast(FastAPI, get_app())
 event_counter = (0, 0)  # total, success
@@ -48,9 +61,6 @@ async def get_command_usage() -> dict[str, int]:
         async with aiofiles.open(data_dir.joinpath("commands.json"), "r", encoding="utf-8") as f:
             return json.loads(await f.read())
     return {}
-
-
-from .matcher import simple_run
 
 
 @get_driver().on_startup
@@ -73,8 +83,9 @@ async def _(matcher: Matcher, state: T_State) -> None:
         return
     commands = await get_command_usage()
     commands[command_name] = commands.get(command_name, 0) + 1
-    async with aiofiles.open(data_dir.joinpath("commands.json"), "w", encoding="utf-8") as f:
-        await f.write(json.dumps(commands, ensure_ascii=False, indent=4))
+    async with lock.commands:
+        async with aiofiles.open(data_dir.joinpath("commands.json"), "w", encoding="utf-8") as f:
+            await f.write(json.dumps(commands, ensure_ascii=False, indent=4))
     state["status_report_command_name"] = command_name
     state["original_simple_run_method"] = matcher.simple_run
 
@@ -103,8 +114,9 @@ async def _(matcher: Matcher, state: T_State, event: Event) -> None:
             matcher=str(matcher),
         )
     )
-    async with aiofiles.open(data_dir.joinpath("handler.json"), "w", encoding="utf-8") as f:
-        await f.write(json.dumps(results[-20:], ensure_ascii=False, indent=4))
+    async with lock.handler:
+        async with aiofiles.open(data_dir.joinpath("handler.json"), "w", encoding="utf-8") as f:
+            await f.write(json.dumps(results[-20:], ensure_ascii=False, indent=4))
     matcher.simple_run = state["original_simple_run_method"]
 
 
@@ -132,16 +144,18 @@ async def _(event: Event, bot: Bot, exception: Optional[Exception]) -> None:
         )
     )
     exc_list = exc_list[-20:]
-    async with aiofiles.open(data_dir.joinpath("exceptions.json"), "w", encoding="utf-8") as f:
-        await f.write(json.dumps(exc_list, ensure_ascii=False, indent=4))
+    async with lock.exceptions:
+        async with aiofiles.open(data_dir.joinpath("exceptions.json"), "w", encoding="utf-8") as f:
+            await f.write(json.dumps(exc_list, ensure_ascii=False, indent=4))
 
 
 async def report_openai_history(messages: "Messages", identify: str, model: str) -> None:
     message_list = [message if isinstance(message, dict) else message.model_dump() for message in messages]
     history = await get_openai_history()
     history.append(OpenAIHistory(model=model, identify=identify, messages=message_list))
-    async with aiofiles.open(data_dir.joinpath("openai.json"), "w", encoding="utf-8") as f:
-        await f.write(json.dumps(history[-20:], ensure_ascii=False, indent=4))
+    async with lock.openai:
+        async with aiofiles.open(data_dir.joinpath("openai.json"), "w", encoding="utf-8") as f:
+            await f.write(json.dumps(history[-20:], ensure_ascii=False, indent=4))
 
 
 async def get_exceptions() -> list[ExceptionStatus]:
