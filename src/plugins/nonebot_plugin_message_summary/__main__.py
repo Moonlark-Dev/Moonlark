@@ -208,15 +208,6 @@ async def _(status: str, bot: Bot, user_id: str = get_user_id(), group_id: str =
             await lang.finish("everyday_summary.disable", user_id)
 
 
-test_summary = on_alconna(Alconna("test-daily-summary"))
-
-
-@test_summary.handle()
-async def _(group_id: str = get_group_id()) -> None:
-    """Temporary test command to send daily summary to the current group"""
-    await send_daily_summary_to_group(group_id)
-    await test_summary.finish("每日群消息总结已发送")
-
 
 def get_everyday_summary_config() -> FileManager:
     """Get the config file for everyday summary feature"""
@@ -249,24 +240,23 @@ async def send_daily_summary_to_group(group_id: str) -> None:
         # We'll use the first message's sender as the user ID
         user_id = messages[0].sender_nickname
 
-    # Generate the three summaries
-    broadcast_summary = await fetch_broadcast_summary(user_id, messages_str)
-    mvp_summary = await fetch_mvp_summary(user_id, messages_str)
-    default_summary = await fetch_short_summary(user_id, messages_str)
-
-    # Format the content for the template
-    broadcast_lines = broadcast_summary.splitlines()
-    formatted_broadcast = "\n".join([f"> {line}" for line in broadcast_lines])
-
     # Get bots to send the message
     target_group_id = group_id.split("_", 1)[1]
-    bot = (await get_available_groups()).get(target_group_id)[0]
+    if bot_list := (await get_available_groups()).get(target_group_id):
+        bot = bot_list[0]
+    else:
+        return
+
+    summary_string = await fetch_message(
+        [
+            generate_message(await lang.text("prompt_everyday_summary", user_id, datetime.now().isoformat()), "system"),
+            generate_message(messages, "user"),
+        ]
+    )
 
     # Render the markdown template
     try:
-        image_bytes = await md_to_pic(
-            await lang.text("md_everyday_summary", user_id, formatted_broadcast, mvp_summary, default_summary)
-        )
+        image_bytes = await md_to_pic(summary_string)
         await bot.send_group_msg(
             group_id=int(target_group_id), message=await UniMessage().image(raw=image_bytes).export(bot)
         )
