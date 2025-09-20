@@ -1,90 +1,71 @@
 # Email
 
-> 部分不常用的用法此处不介绍，请参考源码中相关定义。
+`nonebot_plugin_email` 用于给用户发送邮件或获取用户的收件箱状态。
 
-## 声明依赖
+## 发送邮件 `send_email`
 
 ```python
-from nonebot import require
-require('nonebot_plugin_email')
+async def send_email(
+    receivers: list[str], subject: str, content: str, author: Optional[str] = None, items: list[EmailItemData] = []
+) -> int:
 ```
 
-## 发送邮件
+向指定用户发送邮件。
 
-> Import 位置： `src.plugins.nonebot_plugin_email.utils.send`。
+### 参数
 
-### 定义
+- `receivers`: 接收者用户ID列表
+- `subject`: 邮件主题
+- `content`: 邮件内容
+- `author`: 邮件作者，默认为 `None`
+- `items`: 邮件附件物品列表，默认为空列表
 
-#### `async def send_email(receivers: list[str], subject: str, content: str, author: Optional[str] = None, items: list[EmailItemData] = []) -> int`
+### 返回
 
-##### 参数
+`int` - 邮件ID
 
-- `receivers` (`list[str]`): 收件人列表。
-- `subject` (`str`): 邮件主题。
-- `content` (`str`): 邮件内容。
-- `author` (`Optional[str]`): 邮件作者 (一般不需要指定)。
-- `items` (`list[EmailItemData]`): 邮件包含的物品列表。
-
-##### 返回值
-
-`int`: 邮件编号。
-
-### 使用
-
-以下是 QuickMath 插件中向用户发送邮件的代码:
+## 发送全局邮件 `send_global_email`
 
 ```python
-from nonebot_plugin_email.utils.send import send_email 
-await send_email(
-    
-    # 收件人（只有一个）
-    [user.user_id],
-    
-    # 邮件主题（即标题）
-    await lang.text("award_email.subject", user.user_id),
-    
-    # 邮件内容（即正文）
-    await lang.text("award_email.body", user.user_id, cycle["number"], point, rank, level),
-    
-    # 邮件附带物品（若干经验和猫爪币）
-    items=[
-        {"item_id": "moonlark:pawcoin", "count": award_pawcoin, "data": {}},
-        {"item_id": "special:experience", "count": award_exp, "data": {}},
-    ],
-)
+async def send_global_email(
+    subject: str, content: str, author: Optional[str] = None, items: list[EmailItemData] = []
+) -> int:
 ```
 
-### 类型定义
+向所有已注册用户发送全局邮件。
+
+### 参数
+
+- `subject`: 邮件主题
+- `content`: 邮件内容
+- `author`: 邮件作者，默认为 `None`
+- `items`: 邮件附件物品列表，默认为空列表
+
+### 返回
+
+`int` - 邮件ID
+
+## 邮件附件物品类型 `EmailItemData`
 
 ```python
-from typing import TypedDict, Any
 class EmailItemData(TypedDict):
     item_id: str
     count: int
     data: dict[str, Any]
 ```
 
-## 未读邮件
+邮件附件物品的数据类型。
 
-> Import 包名: `src.plugins.nonebot_plugin_email.utils.unread`
+### 字段
 
-### 定义
+- `item_id`: 物品ID
+- `count`: 物品数量
+- `data`: 物品数据
 
-#### `async def get_unread_email(user_id: str) -> AsyncGenerator[EmailData, None]`
-
-获取用户未读邮件。
-
-#### `async def get_unread_email_count(user_id: str) -> int`
-
-获取用户的未读邮件数量。
-
-### 类型定义
+## 邮件数据类型 `DictEmailData`
 
 ```python
-from typing import TypedDict
-from datetime import datetime
-
-class EmailData(TypedDict):
+class DictEmailData(TypedDict):
     id: int
     author: str
     content: str
@@ -93,5 +74,49 @@ class EmailData(TypedDict):
     items: list[EmailItemData]
     is_read: bool
     is_claimed: bool
-
 ```
+
+邮件数据的字典类型。
+
+### 字段
+
+- `id`: 邮件ID
+- `author`: 邮件作者
+- `content`: 邮件内容
+- `subject`: 邮件主题
+- `time`: 邮件发送时间
+- `items`: 邮件附件物品列表
+- `is_read`: 是否已读
+- `is_claimed`: 是否已领取附件
+
+## （生成器）获取未读邮件 `get_unread_email`
+
+```python
+async def get_unread_email(user_id: str) -> AsyncGenerator[DictEmailData, None]:
+```
+
+获取指定用户的未读邮件。
+
+### 参数
+
+- `user_id`: 用户ID
+
+### 返回
+
+`AsyncGenerator[DictEmailData, None]` - 未读邮件的异步生成器
+
+## 获取未读邮件数 `get_unread_email_count`
+
+```python
+async def get_unread_email_count(user_id: str) -> int:
+```
+
+获取指定用户的未读邮件数量。
+
+### 参数
+
+- `user_id`: 用户ID
+
+### 返回
+
+`int` - 未读邮件数量

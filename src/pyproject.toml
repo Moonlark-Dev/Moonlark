@@ -100,7 +100,8 @@ packages = [
     { include = "nonebot_plugin_everyday_wife", from = "./plugins" },
     { include = "nonebot_plugin_online_timer", from = "./plugins" },
     { include = "nonebot_plugin_status_report", from = "./plugins" },
-    { include = "nonebot_plugin_broadcast", from = "./plugins" }
+    { include = "nonebot_plugin_broadcast", from = "./plugins" },
+    { include = "nonebot_plugin_ghot", from = "./plugins" }
 ]
 
 

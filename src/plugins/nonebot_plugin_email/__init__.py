@@ -22,3 +22,7 @@ from .web import create, manage, edit, remove
 from . import __main__
 from .utils import cleaner
 from .commands import email, unread, claim
+
+from .utils.send import send_email, send_global_email
+from .types import EmailItemData, DictEmailData
+from .utils.unread import get_unread_email, get_unread_email_count

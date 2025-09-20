@@ -6,12 +6,12 @@ Moonlark 内置了一些 Library 型插件，以下是这些插件的说明及�
 
 ## 功能类
 
-- [LarkLang](lang): 本地化插件
-- [LarkUtils](utils): 小型工具包
-- [LarkUser](user): 用户数据
+- [LarkLang](larklang): 本地化插件
+- [LarkUtils](larkutils): 小型工具包
+- [LarkUser](larkuser): 用户数据
 - [Render](render): Jinja 模板渲染器
-- [LarkUID](uid): API 鉴权相关
-- [LarkHelp](help): 插件帮助
+- [LarkUID](larkuid): API 鉴权相关
+- [LarkHelp](larkhelp): 插件帮助
 - [OpenAI](openai): GPT 相关
 - [Ranking](ranking): 排行榜制作工具
 
@@ -26,7 +26,7 @@ Moonlark 内置了一些 Library 型插件，以下是这些插件的说明及�
 - [Email](email): Moonlark 内置邮件
 - [Achievement](achievement): 成就相关
 - [Bag](bag): 用户背包
-- [Item](item): 物品基类相关
+- [Items](items): 物品基类相关
 - [Jrrp](jrrp): 今日人品
 
 

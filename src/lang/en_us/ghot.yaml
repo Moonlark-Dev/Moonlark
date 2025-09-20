@@ -1,0 +1,8 @@
+ghot:
+  response: "Current group heat score (1/5/15 minutes):\n {0} / {1} / {2}\nGroup heat ranking (1/5/15 minutes):\n {3} / {4} / {5}"
+  no_messages: "No message records found for this group. Unable to generate heat score history chart."
+help:
+  description: Group message heat
+  details: Calculate the heat score of group messages and rank them. To use this feature, you need to first enable group message history summary with {__prefix__}summary -e, otherwise the group heat score will always be 0.
+  usage1: ghot
+  usage2: ghot history
