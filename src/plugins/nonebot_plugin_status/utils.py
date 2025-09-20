@@ -4,6 +4,7 @@ from typing import Dict, Any
 
 try:
     import psutil
+
     PSUTIL_AVAILABLE = True
 except ImportError:
     PSUTIL_AVAILABLE = False
@@ -22,7 +23,7 @@ def get_windows_load_avg(sample_interval: int = 5) -> float:
     """
     if not PSUTIL_AVAILABLE:
         return 0.0
-    
+
     # 获取初始 CPU 时间和系统启动后的时间
     cpu_percent_start = psutil.cpu_percent(interval=None)
     # 第一次调用 cpu_percent(interval=None) 会立即返回，需要手动采样
@@ -35,7 +36,9 @@ def get_windows_load_avg(sample_interval: int = 5) -> float:
 
     # 获取当前正在运行的进程数
     try:
-        running_processes = len([p for p in psutil.process_iter(['status']) if p.info['status'] == psutil.STATUS_RUNNING])
+        running_processes = len(
+            [p for p in psutil.process_iter(["status"]) if p.info["status"] == psutil.STATUS_RUNNING]
+        )
     except:
         running_processes = 0
 
@@ -49,57 +52,48 @@ def get_windows_load_avg(sample_interval: int = 5) -> float:
 
     return simulated_load
 
+
 import cpuinfo
+
 
 def get_system_info() -> Dict[str, Any]:
     """获取系统信息"""
     if not PSUTIL_AVAILABLE:
         return {
             "loadavg": 0.0,
-            "cpu": {
-                "usage": 0,
-                "name": "Unknown",
-                "freq": 0.0,
-                "core_count": 0
-            },
-            "mem": {
-                "used": 0,
-                "total": 0
-            },
-            "swap": {
-                "used": 0,
-                "total": 0
-            },
+            "cpu": {"usage": 0, "name": "Unknown", "freq": 0.0, "core_count": 0},
+            "mem": {"used": 0, "total": 0},
+            "swap": {"used": 0, "total": 0},
             "uptime": 0,
-            "os_name": platform.platform()
+            "os_name": platform.platform(),
         }
-    
+
     # 获取 CPU 信息
     cpu_usage = psutil.cpu_percent(interval=1)
     cpu_freq = psutil.cpu_freq()
     cpu_core_count = psutil.cpu_count()
-    
+
     # 获取 CPU 名称
     cpu_name = ""
     try:
         cpu_name = cpuinfo.get_cpu_info()["brand_raw"]
     except:
         cpu_name = "Unknown"
-    
+
     # 获取内存信息
     mem = psutil.virtual_memory()
     mem_used_gb = round(mem.used / (1024**3), 2)
     mem_total_gb = round(mem.total / (1024**3), 2)
-    
+
     # 获取交换内存信息
     swap = psutil.swap_memory()
     swap_used_gb = round(swap.used / (1024**3), 2) if swap.used else 0
     swap_total_gb = round(swap.total / (1024**3), 2) if swap.total else 0
-    
+
     # 获取系统启动时间
     boot_time = psutil.boot_time()
     system_uptime = time.time() - boot_time
-    
+
     # 获取负载平均值
     load_avg = 0.0
     try:
@@ -111,7 +105,7 @@ def get_system_info() -> Dict[str, Any]:
         load_avg = get_windows_load_avg(1)
     except:
         load_avg = 0.0
-    
+
     return {
         "loadavg": round(load_avg, 2),
         "cpu": {
@@ -119,18 +113,12 @@ def get_system_info() -> Dict[str, Any]:
             "name": cpu_name,
             "freq_current": round(cpu_freq.current / 1000, 2) if cpu_freq else 0.0,
             "freq_max": round(cpu_freq.max / 1000, 2) if cpu_freq else 0.0,
-            "core_count": cpu_core_count
+            "core_count": cpu_core_count,
         },
-        "mem": {
-            "used": mem_used_gb,
-            "total": mem_total_gb
-        },
-        "swap": {
-            "used": swap_used_gb,
-            "total": swap_total_gb
-        },
+        "mem": {"used": mem_used_gb, "total": mem_total_gb},
+        "swap": {"used": swap_used_gb, "total": swap_total_gb},
         "uptime": int(system_uptime),
-        "os_name": platform.platform()
+        "os_name": platform.platform(),
     }
 
 
