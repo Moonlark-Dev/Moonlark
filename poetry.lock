@@ -2122,35 +2122,35 @@ name = "moonlark-custom-plugins"
 version = "0.2.2"
 description = "Moonlark 中的自定义插件"
 optional = false
-python-versions = "^3.11"
+python-versions = ">=3.11, <4.0"
 groups = ["main"]
 files = []
 develop = true
 
 [package.dependencies]
-aiofiles = "^23.2.1"
-aiomysql = "^0.2.0"
-aiosqlite = "^0.20.0"
-beautifulsoup4 = "^4.12.3"
-cryptography = "^44.0.0"
-httpx = {version = "^0.28.1", extras = ["socks"]}
-jieba = "^0.42.1"
-matplotlib = "^3.10.0"
-nonebot-adapter-onebot = "^2.4.6"
+aiofiles = ">=23.2.1, <24.0.0"
+aiomysql = ">=0.2.0, <0.3.0"
+aiosqlite = ">=0.20.0, <0.21.0"
+beautifulsoup4 = ">=4.12.3, <5.0.0"
+cryptography = ">=44.0.0, <45.0.0"
+httpx = {version = ">=0.28.1, <0.29.0", extras = ["socks"]}
+jieba = ">=0.42.1, <0.43.0"
+matplotlib = ">=3.10.0, <4.0.0"
+nonebot-adapter-onebot = ">=2.4.6, <3.0.0"
 nonebot-adapter-qq = {git = "https://github.com/Moonlark-Dev/adapter-qq"}
-nonebot-plugin-alconna = "^0.59.2"
-nonebot-plugin-htmlrender = "^0.6.6"
-nonebot-plugin-orm = "^0.8.0"
-nonebot-plugin-session = "^0.3.2"
-nonebot-plugin-userinfo = "^0.2.6"
-nonebot2 = {version = "^2.3.1", extras = ["fastapi"]}
-numpy = "^2.3.1"
-openai = "^1.34.0"
-pillow = "^10.3.0"
-pypinyin = "^0.51.0"
-pyproject-toml = "^0.0.10"
-scikit-image = "^0.23.1"
-sympy = "^1.12.1"
+nonebot-plugin-alconna = ">=0.59.2, <0.60.0"
+nonebot-plugin-htmlrender = ">=0.6.6, <0.7.0"
+nonebot-plugin-orm = ">=0.8.0, <0.9.0"
+nonebot-plugin-session = ">=0.3.2, <0.4.0"
+nonebot-plugin-userinfo = ">=0.2.6, <0.3.0"
+nonebot2 = {version = ">=2.3.1, <3.0.0", extras = ["fastapi"]}
+numpy = ">=2.3.1, <3.0.0"
+openai = ">=1.34.0, <2.0.0"
+pillow = ">=10.3.0, <11.0.0"
+pypinyin = ">=0.51.0, <0.52.0"
+pyproject-toml = ">=0.0.10, <0.0.11"
+scikit-image = ">=0.23.1, <0.24.0"
+sympy = ">=1.12.1, <2.0.0"
 
 [package.source]
 type = "directory"
@@ -2950,14 +2950,14 @@ files = [
 
 [[package]]
 name = "openai"
-version = "1.108.0"
+version = "1.108.1"
 description = "The official Python library for the openai API"
 optional = false
 python-versions = ">=3.8"
 groups = ["main"]
 files = [
-    {file = "openai-1.108.0-py3-none-any.whl", hash = "sha256:31f2e58230e2703f13ddbb50c285f39dacf7fca64ab19882fd8a7a0b2bccd781"},
-    {file = "openai-1.108.0.tar.gz", hash = "sha256:e859c64e4202d7f5956f19280eee92bb281f211c41cdd5be9e63bf51a024ff72"},
+    {file = "openai-1.108.1-py3-none-any.whl", hash = "sha256:952fc027e300b2ac23be92b064eac136a2bc58274cec16f5d2906c361340d59b"},
+    {file = "openai-1.108.1.tar.gz", hash = "sha256:6648468c1aec4eacfa554001e933a9fa075f57bacfc27588c2e34456cee9fef9"},
 ]
 
 [package.dependencies]
@@ -5079,14 +5079,14 @@ zstd = ["zstandard (>=0.18.0)"]
 
 [[package]]
 name = "uvicorn"
-version = "0.35.0"
+version = "0.36.0"
 description = "The lightning-fast ASGI server."
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "uvicorn-0.35.0-py3-none-any.whl", hash = "sha256:197535216b25ff9b785e29a0b79199f55222193d47f820816e7da751e9bc8d4a"},
-    {file = "uvicorn-0.35.0.tar.gz", hash = "sha256:bc662f087f7cf2ce11a1d7fd70b90c9f98ef2e2831556dd078d131b96cc94a01"},
+    {file = "uvicorn-0.36.0-py3-none-any.whl", hash = "sha256:6bb4ba67f16024883af8adf13aba3a9919e415358604ce46780d3f9bdc36d731"},
+    {file = "uvicorn-0.36.0.tar.gz", hash = "sha256:527dc68d77819919d90a6b267be55f0e76704dca829d34aea9480be831a9b9d9"},
 ]
 
 [package.dependencies]
@@ -5548,5 +5548,5 @@ type = ["pytest-mypy"]
 
 [metadata]
 lock-version = "2.1"
-python-versions = "^3.11"
-content-hash = "7838d0184677fb973b030eff53190919ca15cf4a0152732471b537ae3374dce2"
+python-versions = ">=3.11, <4.0"
+content-hash = "55f117f5439f869e3118cb087d04f46d93c0ff43f106ba4a0d5e75e2818a3dbb"

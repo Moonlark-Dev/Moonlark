@@ -6,32 +6,35 @@ requires-python = ">=3.11, <4.0"
 
 
 [tool.poetry.dependencies]
-python = "^3.11"
-nonebot2 = {extras = ["fastapi"], version = "^2.3.1"}
+python = ">=3.11, <4.0"
+nonebot2 = {extras = ["fastapi"], version = ">=2.3.1, <3.0.0"}
 
-httpx = {extras = ["socks"], version = "^0.28.1"}
-aiofiles = "^23.2.1"
-numpy = "^2.3.1"
-pillow = "^10.3.0"
-scikit-image = "^0.23.1"
-beautifulsoup4 = "^4.12.3"
-pypinyin = "^0.51.0"
-jieba = "^0.42.1"
-sympy = "^1.12.1"
-openai = "^1.34.0"
-aiosqlite = "^0.20.0"
-aiomysql = "^0.2.0"
-cryptography = "^44.0.0"
-pyproject-toml = "^0.0.10"
-matplotlib = "^3.10.0"
+httpx = {extras = ["socks"], version = ">=0.28.1, <0.29.0"}
+aiofiles = ">=23.2.1, <24.0.0"
+numpy = ">=2.3.1, <3.0.0"
+pillow = ">=10.3.0, <11.0.0"
+scikit-image = ">=0.23.1, <0.24.0"
+beautifulsoup4 = ">=4.12.3, <5.0.0"
+pypinyin = ">=0.51.0, <0.52.0"
+jieba = ">=0.42.1, <0.43.0"
+sympy = ">=1.12.1, <2.0.0"
+openai = ">=1.34.0, <2.0.0"
+aiosqlite = ">=0.20.0, <0.21.0"
+aiomysql = ">=0.2.0, <0.3.0"
+cryptography = ">=44.0.0, <45.0.0"
+pyproject-toml = ">=0.0.10, <0.0.11"
+matplotlib = ">=3.10.0, <4.0.0"
 
-nonebot-adapter-onebot = "^2.4.6"
-nonebot-plugin-htmlrender = "^0.6.6"
-nonebot-plugin-alconna = "^0.59.2"
-nonebot-plugin-orm = "^0.8.0"
-nonebot-plugin-session = "^0.3.2"
-nonebot-plugin-userinfo = "^0.2.6"
+nonebot-adapter-onebot = ">=2.4.6, <3.0.0"
+nonebot-plugin-htmlrender = ">=0.6.6, <0.7.0"
+nonebot-plugin-alconna = ">=0.59.2, <0.60.0"
+nonebot-plugin-orm = ">=0.8.0, <0.9.0"
+nonebot-plugin-session = ">=0.3.2, <0.4.0"
+nonebot-plugin-userinfo = ">=0.2.6, <0.3.0"
 nonebot-adapter-qq = {git = "https://github.com/Moonlark-Dev/adapter-qq"}
+
+py-cpuinfo = ">= 9.0.0, < 10.0.0"
+psutil = ">= 7.1.0, < 8.0.0"
 
 
 [build-system]
@@ -100,7 +103,9 @@ packages = [
     { include = "nonebot_plugin_everyday_wife", from = "./plugins" },
     { include = "nonebot_plugin_online_timer", from = "./plugins" },
     { include = "nonebot_plugin_status_report", from = "./plugins" },
-    { include = "nonebot_plugin_broadcast", from = "./plugins" }
+    { include = "nonebot_plugin_broadcast", from = "./plugins" },
+    { include = "nonebot_plugin_ghot", from = "./plugins" },
+    { include = "nonebot_plugin_status", from = "./plugins" }
 ]
 
 
