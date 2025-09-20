@@ -18,7 +18,7 @@ Moonlark 使用 [poetry](https://python-poetry.org/) 管理项目依赖，依赖
 poetry install
 ```
 
-在运行前，您需要将 [`.env.template`](.env.template) 复制为 `.env` 文件并按提示填写相关环境变量。
+在运行前，您需要将 [`.env.template`](.env.template) 复制为 `.env` 文件。
 
 ### 代码规范
 
