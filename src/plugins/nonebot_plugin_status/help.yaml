@@ -1,0 +1,4 @@
+plugin: status
+commands:
+  status: help;1;setting
+  
