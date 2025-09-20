@@ -249,16 +249,18 @@ async def send_daily_summary_to_group(group_id: str) -> None:
         # We'll use the first message's sender as the user ID
         user_id = messages[0].sender_nickname
 
-
     # Get bots to send the message
     target_group_id = group_id.split("_", 1)[1]
-    if (bot_list := (await get_available_groups()).get(target_group_id)):
+    if bot_list := (await get_available_groups()).get(target_group_id):
         bot = bot_list[0]
     else:
         return
 
     summary_string = await fetch_message(
-        [generate_message(await lang.text("prompt_everyday_summary", user_id, datetime.now().isoformat()), "system"), generate_message(messages, "user")]
+        [
+            generate_message(await lang.text("prompt_everyday_summary", user_id, datetime.now().isoformat()), "system"),
+            generate_message(messages, "user"),
+        ]
     )
 
     # Render the markdown template
