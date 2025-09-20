@@ -2950,14 +2950,14 @@ files = [
 
 [[package]]
 name = "openai"
-version = "1.108.0"
+version = "1.108.1"
 description = "The official Python library for the openai API"
 optional = false
 python-versions = ">=3.8"
 groups = ["main"]
 files = [
-    {file = "openai-1.108.0-py3-none-any.whl", hash = "sha256:31f2e58230e2703f13ddbb50c285f39dacf7fca64ab19882fd8a7a0b2bccd781"},
-    {file = "openai-1.108.0.tar.gz", hash = "sha256:e859c64e4202d7f5956f19280eee92bb281f211c41cdd5be9e63bf51a024ff72"},
+    {file = "openai-1.108.1-py3-none-any.whl", hash = "sha256:952fc027e300b2ac23be92b064eac136a2bc58274cec16f5d2906c361340d59b"},
+    {file = "openai-1.108.1.tar.gz", hash = "sha256:6648468c1aec4eacfa554001e933a9fa075f57bacfc27588c2e34456cee9fef9"},
 ]
 
 [package.dependencies]
@@ -5079,14 +5079,14 @@ zstd = ["zstandard (>=0.18.0)"]
 
 [[package]]
 name = "uvicorn"
-version = "0.35.0"
+version = "0.36.0"
 description = "The lightning-fast ASGI server."
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "uvicorn-0.35.0-py3-none-any.whl", hash = "sha256:197535216b25ff9b785e29a0b79199f55222193d47f820816e7da751e9bc8d4a"},
-    {file = "uvicorn-0.35.0.tar.gz", hash = "sha256:bc662f087f7cf2ce11a1d7fd70b90c9f98ef2e2831556dd078d131b96cc94a01"},
+    {file = "uvicorn-0.36.0-py3-none-any.whl", hash = "sha256:6bb4ba67f16024883af8adf13aba3a9919e415358604ce46780d3f9bdc36d731"},
+    {file = "uvicorn-0.36.0.tar.gz", hash = "sha256:527dc68d77819919d90a6b267be55f0e76704dca829d34aea9480be831a9b9d9"},
 ]
 
 [package.dependencies]
