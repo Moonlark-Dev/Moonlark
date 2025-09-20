@@ -1,0 +1,18 @@
+template:
+  loadavg: 平均负载
+  cpu: CPU
+  memory: 内存
+  gb: GB
+  of: /
+  total: 总共
+  swap: 虚拟内存
+  online: 在线
+  plugin_count: 插件数量
+  offline: 离线
+  run_time: 运行时间
+  uptime: 开机时间
+title: "系统状态"
+help:
+  description: 系统状态
+  details: 显示系统状态信息
+  usage1: status

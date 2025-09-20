@@ -159,7 +159,7 @@ Moonlark 本地化设置
 - `/panel (查看面板)`
 ## `status`: 系统状态
 
-[lgc-NB2Dev/nonebot-plugin-picstatus] 获取 Moonlark 运行状态
+显示系统状态信息
 
 ### 用法
 - `/status`
