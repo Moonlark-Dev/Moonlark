@@ -17,4 +17,3 @@ from .base.stack import ItemStack
 from .base.properties import ItemProperties, get_properties
 from .base.useable import UseableItem
 from .registry import registry
-
