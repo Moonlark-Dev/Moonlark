@@ -33,6 +33,9 @@ nonebot-plugin-session = ">=0.3.2, <0.4.0"
 nonebot-plugin-userinfo = ">=0.2.6, <0.3.0"
 nonebot-adapter-qq = {git = "https://github.com/Moonlark-Dev/adapter-qq"}
 
+py-cpuinfo = ">= 9.0.0, < 10.0.0"
+psutil = ">= 7.1.0, < 8.0.0"
+
 
 [build-system]
 requires = ["poetry-core"]
@@ -101,7 +104,8 @@ packages = [
     { include = "nonebot_plugin_online_timer", from = "./plugins" },
     { include = "nonebot_plugin_status_report", from = "./plugins" },
     { include = "nonebot_plugin_broadcast", from = "./plugins" },
-    { include = "nonebot_plugin_ghot", from = "./plugins" }
+    { include = "nonebot_plugin_ghot", from = "./plugins" },
+    { include = "nonebot_plugin_status", from = "./plugins" }
 ]
 
 
