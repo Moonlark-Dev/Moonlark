@@ -1,132 +1,105 @@
 # Render
 
-> Import 位置: `src.plugins.nonebot_plugin_render`
+`nonebot_plugin_render` 用于将 src/templates 下的 jinja 模板渲染为图片。
 
-
-## 定义
-
-### `async def render_template(name: str, title: str, user_id: str, templates: dict) -> bytes`
-
-#### 参数
-
-- `name` (str): 模板名称
-- `title` (str): 标题
-- `user_id` (str): 用户ID
-- `templates` (dict): 模板变量
-
-#### 返回
-
-`bytes`: 渲染后的图片
-
-## 模板编写
+::: tip 模板
 
 Render 读取的模板储存在 `src/templates` 中，后缀为 `*.jinja`。
 
 一个模板的格式如下：
 
-```html
+```jinja
 {% extends base %}
 {% block body %}
-{{ content }}
+{# Your content here #}
 {% endblock body %}
 ```
 
-### 基模板
-
-```html
-{% extends base %}
-```
-
-这里使用了一个模板变量 `base` 作为基模板的名称，这个变量在渲染时会自动填充为对应主题的基模板。
-
-### 内容块
-
-#### `header`
-
-拓展页面页面的头部。
-
-#### `body`
-
-卡片主体内容。
-
-#### `card`
-
-卡片。
-
-::: warning
-
-此块会覆盖 `body` 块。
-
-:::
+| 内容块            | 位置                                 |
+|-------------------|-------------------------------------|
+| `header`         | 页面 `<header>` 末尾                  |
+| `body`           |  `<div class="card-body">` 内部       |
+| `card`           |  `<div class="card-body">` 外部，会覆盖 `body` 块 |
 
 ### 保留变量
-
-::: danger
-
-这些变量会在渲染时被自动填充，请避免使用这些模板变量名。
-
-:::
 
 - `base`: 主题基模板的相对路径。
 - `main_title`: 页面主标题。
 - `footer`: 页面页脚（版权信息）。
-
-## 主题
-
-Render 支持主题，主题基模板储存在 `src/templates/base` 中，主题列表储存在 `src/plugins/nonebot_plugin_render/themes.json` 中。
-
-### 基模板
-
-一个主题的基模板需要定义以下变量和内容块：
-
-#### 模板变量
-
-- `main_title`: 页面主标题。
-- `footer`: 页面页脚（版权信息）。
-
-#### 内容块
-
-- `header`: 页面拓展头部。
-- `body`: 卡片主体内容。
-- `card`: 卡片。
-
-::: tip
-
-一般来说，`card` 会覆盖 `body` 块。
+- `text`: 本地化文本。
 
 :::
 
-### 主题配置
+::: tip 主题
+
+主题基模板储存在 `src/templates/base` 中，主题列表储存在 `src/plugins/nonebot_plugin_render/themes.json` 中。
 
 主题配置是一个 JSON 文件，格式为 `"主题ID": "主题模板相对于 src/templates 的路径"`。
 
-## 本地化
-
-所有向用户展示的文本都要被本地化。
-
-## 本地文件引用
-
 可以使用 `{% include "xx" %}` 块或 `src=xxx` 引入本地文件。 使用相对引入时，基路径为 `src/templates`。
 
-## 使用
+:::
 
-这是 Boothill 插件中渲染的代码：
+## 渲染模板 `render_template`
 
 ```python
-await render_template(
-    "boothill.html.jinja",
-    await lang.text("image.title", user_id),
-    user_id,
-    {
-        "content": ...,
-    },
-)
+async def render_template(
+    name: str,
+    title: str,
+    user_id: str,
+    templates: dict,
+    keys: dict[str, str] = {},
+    cache: bool = False,
+    resize: bool = False,
+) -> bytes:
 ```
 
-`render_template` 函数会自动根据用户加载主题配置，并渲染模板。
+渲染模板为图片。
 
-::: tip
+### 参数
 
-Render 插件的 Jinja2 配置会转义模板变量的所有 HTML 标记。
+- `name`: 模板名称
+- `title`: 页面标题
+- `user_id`: 用户 ID
+- `templates`: 模板参数字典
+- `keys`: 本地化文本字典，默认为空字典
+- `cache`: 是否使用缓存，默认为 `False`
+- `resize`: 是否调整图片大小，默认为 `False`
 
-:::
+### 返回
+
+`bytes` - 渲染后的图片字节数据
+
+## （修饰器）添加缓存创建函数 `creator`
+
+```python
+def creator(template_name: str):
+```
+
+添加缓存创建函数的修饰器。
+
+### 参数
+
+- `template_name`: 模板名称
+
+### 返回
+
+修饰器函数
+
+## 生成本地化文本表 `generate_render_keys`
+
+```python
+async def generate_render_keys(helper: LangHelper, user_id: str, keys: list[str]) -> dict[str, str]:
+```
+
+生成本地化文本表。
+
+### 参数
+
+- `helper`: 本地化助手对象
+- `user_id`: 用户 ID
+- `keys`: 本地化键名列表
+
+### 返回
+
+`dict[str, str]` - 本地化文本字典

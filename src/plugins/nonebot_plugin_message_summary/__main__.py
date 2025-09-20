@@ -208,16 +208,6 @@ async def _(status: str, bot: Bot, user_id: str = get_user_id(), group_id: str =
             await lang.finish("everyday_summary.disable", user_id)
 
 
-# test_summary = on_alconna(Alconna("test-daily-summary"))
-
-
-# @test_summary.handle()
-# async def _(group_id: str = get_group_id()) -> None:
-#     """Temporary test command to send daily summary to the current group"""
-#     await send_daily_summary_to_group(group_id)
-#     await test_summary.finish("每日群消息总结已发送")
-
-
 def get_everyday_summary_config() -> FileManager:
     """Get the config file for everyday summary feature"""
     return open_file("everyday_summary_config.json", FileType.CONFIG, [])
