@@ -208,7 +208,6 @@ async def _(status: str, bot: Bot, user_id: str = get_user_id(), group_id: str =
             await lang.finish("everyday_summary.disable", user_id)
 
 
-
 def get_everyday_summary_config() -> FileManager:
     """Get the config file for everyday summary feature"""
     return open_file("everyday_summary_config.json", FileType.CONFIG, [])
