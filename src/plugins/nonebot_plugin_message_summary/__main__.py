@@ -102,13 +102,10 @@ async def handle_main(
         await summary.finish(UniMessage().image(raw=await md_to_pic(summary_string)))
 
 
-async def clean_recorded_message(session: async_scoped_session, group_id: str) -> None:
-    result = (
-        await session.scalars(select(GroupMessage).where(GroupMessage.group_id == group_id).order_by(GroupMessage.id_))
-    ).all()
-    if len(result) > 300:
-        for i in range(len(result) - 300):
-            await session.delete(result[i])
+async def clean_recorded_message(session: async_scoped_session) -> None:
+    end_time = datetime.now() - timedelta(days=2)
+    for item in await session.scalars(select(GroupMessage).where(GroupMessage.timestamp < end_time)):
+        await session.delete(item)
 
 
 @recorder.handle()
@@ -116,7 +113,7 @@ async def _(event: GroupMessageEvent, session: async_scoped_session, group_id: s
 
     if group_id not in await get_config():
         await recorder.finish()
-    await clean_recorded_message(session, group_id)
+    await clean_recorded_message(session)
     session.add(GroupMessage(message=event.raw_message, sender_nickname=event.sender.nickname, group_id=group_id))
     await session.commit()
     await recorder.finish()
@@ -128,7 +125,7 @@ async def _(
 ) -> None:
     if group_id not in await get_config():
         await recorder.finish()
-    await clean_recorded_message(session, group_id)
+    await clean_recorded_message(session)
     session.add(
         GroupMessage(
             message=event.get_plaintext(), sender_nickname=(await get_user(user_id)).get_nickname(), group_id=group_id

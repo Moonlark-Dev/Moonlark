@@ -1,0 +1,3 @@
+plugin: ghot
+commands:
+  ghot: help;1;tools
