@@ -16,5 +16,5 @@ require("nonebot_plugin_larklang")
 require("nonebot_plugin_larkuser")
 require("nonebot_plugin_status_report")
 
-from .utils.chat import fetch_message
+from .utils.chat import fetch_message, MessageFetcher
 from .utils.message import generate_message

@@ -17,4 +17,5 @@ require("nonebot_plugin_larklang")
 require("nonebot_plugin_orm")
 
 from .render import render_template, generate_render_keys
+from .cache import creator
 from . import __main__
