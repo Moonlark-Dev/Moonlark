@@ -17,5 +17,6 @@ require("nonebot_plugin_openai")
 require("nonebot_plugin_orm")
 require("nonebot_plugin_localstore")
 require("nonebot_plugin_alconna")
+require("nonebot_plugin_apscheduler")
 
 from . import __main__

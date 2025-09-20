@@ -1,8 +1,3 @@
 plugin: larkhelp
 commands:
   help: help;2;tools
-#    description: help.description
-#    details: help.details
-#    usages:
-#      - help.usage1
-#      - help.usage2

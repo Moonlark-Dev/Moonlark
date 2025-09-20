@@ -17,3 +17,4 @@ require("nonebot_plugin_htmlrender")
 
 
 from . import __main__
+from .__main__ import get_available_groups
