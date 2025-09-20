@@ -13,6 +13,7 @@ __plugin_meta__ = PluginMetadata(
 require("nonebot_plugin_larkutils")
 require("nonebot_plugin_larkuser")
 require("nonebot_plugin_render")
+require("nonebot_plugin_larklang")
 require("nonebot_plugin_status_report")
 
 from . import __main__ as __main__

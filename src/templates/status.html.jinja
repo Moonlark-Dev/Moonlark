@@ -105,7 +105,7 @@
   <div class="row text-center">
     <!-- 负载指示器 -->
     <div class="col-md-5 mb-4 center-content">
-      <h5>平均负载</h5>
+      <h5>{{ text.loadavg }}</h5>
       <div class="progress-circle info lg">
         <svg width="150" height="150" viewBox="0 0 150 150">
           <circle class="progress-bar-bg" cx="75" cy="75" r="68" stroke-width="8"></circle>
@@ -121,7 +121,7 @@
       <div class="row">
         <!-- CPU -->
         <div class="col-6 mb-4 center-content">
-          <h5>CPU</h5>
+          <h5>{{ text.cpu }}</h5>
           <div class="progress-circle warning">
             <svg width="120" height="120" viewBox="0 0 120 120">
               <circle class="progress-bar-bg" cx="60" cy="60" r="54" stroke-width="6"></circle>
@@ -136,18 +136,18 @@
 
         <!-- 内存 -->
         <div class="col-6 mb-4 center-content">
-          <h5>内存</h5>
+          <h5>{{ text.memory }}</h5>
           <div class="progress-circle success">
             <svg width="120" height="120" viewBox="0 0 120 120">
               <circle class="progress-bar-bg" cx="60" cy="60" r="54" stroke-width="6"></circle>
               <circle class="progress-bar" id="cpu" cx="60" cy="60" r="54" stroke-width="6" stroke-dasharray="226"
                 stroke-dashoffset="0"></circle>
             </svg>
-            <div class="progress-text">{{ system.mem.used }}GB</div>
+            <div class="progress-text">{{ system.mem.used }}{{ text.gb }}</div>
           </div>
-          <small class="text-muted">总共 {{ system.mem.total }}GB</small>
+          <small class="text-muted">{{ text.total}} {{ system.mem.total }}{{ text.gb }}</small>
           <br>
-          <small class="text-muted">虚拟内存 {{ system.swap.used }}/{{ system.swap.total }}GB</small>
+          <small class="text-muted">{{ text.swap }} {{ system.swap.used }}{{ text.of }}{{ system.swap.total }}{{ text.gb }}</small>
         </div>
       </div>
     </div>
@@ -167,12 +167,12 @@
         {{ node.user_id }}
       </small>
     </div>
-    <span class="badge bg-success">在线</span>
+    <span class="badge bg-success">{{ text.online }}</span>
     {% else %}
     <div>
       <span class="ms-2">{{ node.nickname }} ({{ node_id }})</span>
     </div>
-    <span class="badge bg-danger">离线</span>
+    <span class="badge bg-danger">{{ text.offline }}</span>
     {% endif %}
   </li>
   {% endfor %}
@@ -183,9 +183,9 @@
 
 
 <div class="row text-center">
-  <div class="col-4">开机时间<br><span id="system_uptime"></span></div>
-  <div class="col-4">运行时间<br><span id="nb_uptime"></span></div>
-  <div class="col-4">插件数量<br><span id="loaded_plugin_count"></span></div>
+  <div class="col-4">{{ text.uptime }}<br><span id="system_uptime"></span></div>
+  <div class="col-4">{{ text.run_time }}<br><span id="nb_uptime"></span></div>
+  <div class="col-4">{{ text.plugin_count }}<br><span id="loaded_plugin_count"></span></div>
 </div>
 <div class="text-center">{{ system.os_name }}</div>
 
