@@ -108,7 +108,6 @@ nonebot-plugin-sentry = "^2.0.0"
 moonlark-custom-plugins = {path = "./src", develop = true}
 nonebot-plugin-bilichat = {git = "https://github.com/Moonlark-Dev/nonebot-plugin-bilichat.git"}
 html2text = "^2025.4.15"
-py-cpuinfo = "^9.0.0"
 
 [tool.poetry.group.dev.dependencies]
 nb-cli = "^1.4.2"

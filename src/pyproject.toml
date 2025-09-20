@@ -33,6 +33,9 @@ nonebot-plugin-session = "^0.3.2"
 nonebot-plugin-userinfo = "^0.2.6"
 nonebot-adapter-qq = {git = "https://github.com/Moonlark-Dev/adapter-qq"}
 
+py-cpuinfo = ">= 9.0.0, < 10.0.0"
+psutil = ">= 7.1.0, < 8.0.0"
+
 
 [build-system]
 requires = ["poetry-core"]
