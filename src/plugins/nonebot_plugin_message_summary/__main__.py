@@ -111,29 +111,10 @@ async def fetch_broadcast_summary(user_id: str, messages: str) -> str:
     return summary_string
 
 
-async def fetch_mvp_summary(user_id: str, messages: str) -> str:
-    time_str = datetime.now(timezone(timedelta(hours=8))).strftime("%Y-%m-%d %H:%M:%S")
-    summary_string = await fetch_message(
-        [
-            generate_message(await lang.text("prompt_mvp", user_id, time_str), "system"),
-            generate_message(messages, "user"),
-        ],
-        identify="Message Summary (MVP)",
-    )
-    return summary_string
-
-
 async def fetch_default_summary(user_id: str, messages: str) -> str:
     summary_string = await fetch_message(
         [generate_message(await lang.text("prompt", user_id), "system"), generate_message(messages, "user")],
         identify="Message Summary",
-    )
-    return summary_string
-
-
-async def fetch_short_summary(user_id: str, messages: str) -> str:
-    summary_string = await fetch_message(
-        [generate_message(await lang.text("prompt_short", user_id), "system"), generate_message(messages, "user")],
     )
     return summary_string
 
@@ -250,7 +231,8 @@ async def send_daily_summary_to_group(group_id: str) -> None:
         [
             generate_message(await lang.text("prompt_everyday_summary", user_id, datetime.now().isoformat()), "system"),
             generate_message(messages, "user"),
-        ]
+        ],
+        identify="Message Summary (Daily)",
     )
 
     # Render the markdown template
