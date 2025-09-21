@@ -4,17 +4,16 @@ from nonebot.plugin import PluginMetadata
 from .config import Config
 
 __plugin_meta__ = PluginMetadata(
-    name="nonebot-plugin-openai",
-    description="",
+    name="nonebot-plugin-status",
+    description="System status monitoring plugin",
     usage="",
     config=Config,
 )
 
-require("nonebot_plugin_orm")
 require("nonebot_plugin_larkutils")
-require("nonebot_plugin_larklang")
 require("nonebot_plugin_larkuser")
+require("nonebot_plugin_render")
+require("nonebot_plugin_larklang")
 require("nonebot_plugin_status_report")
 
-from .utils.chat import fetch_message, MessageFetcher
-from .utils.message import generate_message
+from . import __main__ as __main__

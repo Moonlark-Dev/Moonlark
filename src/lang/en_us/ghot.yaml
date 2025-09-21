@@ -1,13 +1,8 @@
 ghot:
-  response: "当前群热度（1/5/15 分钟）：\n {0} / {1} / {2}\n群热度排名（1/5/15 分钟）：\n {3} / {4} / {5}"
-  no_messages: "该群暂无消息记录，无法生成热度历史图表。"
+  response: "Current group heat score (1/5/15 minutes):\n {0} / {1} / {2}\nGroup heat ranking (1/5/15 minutes):\n {3} / {4} / {5}"
+  no_messages: "No message records found for this group. Unable to generate heat score history chart."
 help:
-  description: 群发言热度
-  details: 计算群聊消息的热度分数，并进行排名。使用此功能需要先使用 {__prefix__}summary -e 启用群历史消息总结功能，否则群热度分数恒为 0。
-  usage1: ghot (当前群聊热度分数)
-  usage2: ghot history (近三天分数历史)
-history:
-  title: 群热度分数历史
-  xlabel: 时间
-  ylabel: 热度
-
+  description: Group message heat
+  details: Calculate the heat score of group messages and rank them. To use this feature, you need to first enable group message history summary with {__prefix__}summary -e, otherwise the group heat score will always be 0.
+  usage1: ghot
+  usage2: ghot history

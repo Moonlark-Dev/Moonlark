@@ -1,0 +1,220 @@
+{% extends base %}
+
+{% block header %}
+<style>
+  .progress-circle {
+    position: relative;
+    display: inline-block;
+    margin: 0 auto;
+    /* 居中 */
+  }
+
+  .progress-circle svg {
+    transform: rotate(-90deg);
+    display: block;
+    /* 防止SVG产生额外空间 */
+  }
+
+  .progress-circle circle {
+    fill: none;
+    stroke-linecap: round;
+  }
+
+  .progress-circle .progress-bar-bg {
+    stroke: var(--bs-light, #f8f9fa);
+  }
+
+  .progress-circle .progress-bar {
+    stroke: var(--primary, #0d6efd);
+    transition: stroke-dashoffset 0.7s ease;
+  }
+
+  .progress-circle .progress-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin: 0;
+    width: 100%;
+    text-align: center;
+  }
+
+  /* 颜色变体 */
+  .progress-circle.primary .progress-bar {
+    stroke: var(--bs-primary, #0d6efd);
+  }
+
+  .progress-circle.success .progress-bar {
+    stroke: var(--bs-success, #198754);
+  }
+
+  .progress-circle.danger .progress-bar {
+    stroke: var(--bs-danger, #dc3545);
+  }
+
+  .progress-circle.warning .progress-bar {
+    stroke: var(--bs-warning, #ffc107);
+  }
+
+  .progress-circle.info .progress-bar {
+    stroke: var(--bs-info, #0dcaf0);
+  }
+
+  /* 尺寸变体 */
+  .progress-circle.sm {
+    width: 80px;
+    height: 80px;
+  }
+
+  .progress-circle.sm .progress-text {
+    font-size: 1rem;
+  }
+
+  .progress-circle.lg {
+    width: 150px;
+    height: 150px;
+  }
+
+  .progress-circle.lg .progress-text {
+    font-size: 2rem;
+  }
+
+  /* 新增样式确保内容居中 */
+  .center-content {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+  }
+
+  .resource-container {
+    /* background-color: rgba(255, 255, 255, 0.85); */
+    border-radius: 15px;
+    padding: 20px;
+    /* box-shadow: 0 0 15px rgba(0, 0, 0, 0.1); */
+  }
+</style>
+{% endblock header %}
+
+{% block body %}
+
+
+<div class="resource-container">
+  <div class="row text-center">
+    <!-- 负载指示器 -->
+    <div class="col-md-5 mb-4 center-content">
+      <h5>{{ text.loadavg }}</h5>
+      <div class="progress-circle info lg">
+        <svg width="150" height="150" viewBox="0 0 150 150">
+          <circle class="progress-bar-bg" cx="75" cy="75" r="68" stroke-width="8"></circle>
+          <circle class="progress-bar" id="loadavg" cx="75" cy="75" r="68" stroke-width="8" stroke-dasharray="427"
+            stroke-dashoffset="0"></circle>
+        </svg>
+        <div class="progress-text">{{ system.loadavg }}</div>
+      </div>
+    </div>
+
+    <!-- CPU和内存 -->
+    <div class="col-md-7">
+      <div class="row">
+        <!-- CPU -->
+        <div class="col-6 mb-4 center-content">
+          <h5>{{ text.cpu }}</h5>
+          <div class="progress-circle warning">
+            <svg width="120" height="120" viewBox="0 0 120 120">
+              <circle class="progress-bar-bg" cx="60" cy="60" r="54" stroke-width="6"></circle>
+              <circle class="progress-bar" id="cpu" cx="60" cy="60" r="54" stroke-width="6" stroke-dasharray="226"
+                stroke-dashoffset="0"></circle>
+            </svg>
+            <div class="progress-text">{{ system.cpu.usage }}%</div>
+          </div>
+          <small class="text-muted">{{ system.cpu.name }}</small>
+          
+        </div>
+
+        <!-- 内存 -->
+        <div class="col-6 mb-4 center-content">
+          <h5>{{ text.memory }}</h5>
+          <div class="progress-circle success">
+            <svg width="120" height="120" viewBox="0 0 120 120">
+              <circle class="progress-bar-bg" cx="60" cy="60" r="54" stroke-width="6"></circle>
+              <circle class="progress-bar" id="cpu" cx="60" cy="60" r="54" stroke-width="6" stroke-dasharray="226"
+                stroke-dashoffset="0"></circle>
+            </svg>
+            <div class="progress-text">{{ system.mem.used }}{{ text.gb }}</div>
+          </div>
+          <small class="text-muted">{{ text.total}} {{ system.mem.total }}{{ text.gb }}</small>
+          <br>
+          <small class="text-muted">{{ text.swap }} {{ system.swap.used }}{{ text.of }}{{ system.swap.total }}{{ text.gb }}</small>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<hr>
+
+<ul class="list-group list-group-flush">
+  {% for node_id, node in admin_status.nodes.items() %}
+  <li class="list-group-item d-flex justify-content-between align-items-center">
+    {% if node.online %}
+    <div>
+      <span class="ms-2">{{ node.nickname }} ({{ node_id }})</span>
+      <small class="text-muted d-block">
+        <span class="badge bg-info">{{ node.adapter_name }}</span>
+        {{ node.user_id }}
+      </small>
+    </div>
+    <span class="badge bg-success">{{ text.online }}</span>
+    {% else %}
+    <div>
+      <span class="ms-2">{{ node.nickname }} ({{ node_id }})</span>
+    </div>
+    <span class="badge bg-danger">{{ text.offline }}</span>
+    {% endif %}
+  </li>
+  {% endfor %}
+</ul>
+
+<hr>
+
+
+
+<div class="row text-center">
+  <div class="col-4">{{ text.uptime }}<br><span id="system_uptime"></span></div>
+  <div class="col-4">{{ text.run_time }}<br><span id="nb_uptime"></span></div>
+  <div class="col-4">{{ text.plugin_count }}<br><span id="loaded_plugin_count"></span></div>
+</div>
+<div class="text-center">{{ system.os_name }}</div>
+
+<script>
+  function parseTime(t) {
+    const hours = parseInt(t / 3600);
+    const mins = parseInt((t - hours * 3600) / 60);
+    const secs = parseInt(t - hours * 3600 - mins * 60);
+    return `${hours < 10 ? '0' : ''}${hours}:${mins < 10 ? '0' : ''}${mins}:${secs < 10 ? '0' : ''}${secs}`;
+  }
+
+  const pluginCount = {{ admin_status.plugins | tojson }}.length;
+
+  document.getElementById("system_uptime").innerHTML = parseTime({{ system.uptime }});
+  document.getElementById("nb_uptime").innerHTML = parseTime({{ system.nb_uptime }});
+  document.getElementById("loaded_plugin_count").innerHTML = pluginCount;
+
+  function updateProgress(progressBarId, percent) {
+    const progressBar = document.getElementById(progressBarId);
+    const r = parseInt(progressBar.getAttribute("r"));
+    const circumference = 2 * Math.PI * r;
+    const offset = circumference - (percent / 100) * circumference;
+    progressBar.style.strokeDashoffset = offset;
+    progressBar.style.strokeDasharray = circumference;
+  }
+
+  // 更新进度条
+  updateProgress("loadavg", Math.min(parseInt({{ system.loadavg }} * 20), 100));
+  updateProgress("memory", Math.min(parseInt({{ system.mem.used }} / {{ system.mem.total }} * 100), 100));
+  updateProgress("cpu", Math.min(parseInt({{ system.cpu.usage }}), 100));
+</script>
+{% endblock body %}
