@@ -1,1 +1,0 @@
-import{_ as i,c as s,o as e,ae as t}from"./chunks/framework.BHrE6nLq.js";const c=JSON.parse('{"title":"Bag","description":"","frontmatter":{},"headers":[],"relativePath":"plugins/bag.md","filePath":"plugins/bag.md"}'),l={name:"plugins/bag.md"};function n(o,a,h,r,p,d){return e(),s("div",null,a[0]||(a[0]=[t("",36)]))}const g=i(l,[["render",n]]);export{c as __pageData,g as default};
