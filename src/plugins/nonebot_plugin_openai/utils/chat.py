@@ -53,7 +53,7 @@ class LLMRequestSession:
         kwargs: dict[str, Any],
         identify: str,
         pre_function_call: Optional[
-            Callable[[str, str, dict[str, Any]], Awaitable[tuple[[str, str, dict[str, Any]]]]]
+            Callable[[str, str, dict[str, Any]], Awaitable[tuple[str, str, dict[str, Any]]]]
         ] = None,
         post_function_call: Optional[Callable[[T], Awaitable[T]]] = None,
     ) -> None:
@@ -126,7 +126,7 @@ class MessageFetcher:
         functions: Optional[list[AsyncFunction]] = None,
         identify: Optional[str] = None,
         pre_function_call: Optional[
-            Callable[[str, str, dict[str, Any]], Awaitable[tuple[[str, str, dict[str, Any]]]]]
+            Callable[[str, str, dict[str, Any]], Awaitable[tuple[str, str, dict[str, Any]]]]
         ] = None,
         post_function_call: Optional[Callable[[T], Awaitable[T]]] = None,
         **kwargs,
@@ -170,7 +170,7 @@ async def fetch_message(
     functions: Optional[list[AsyncFunction]] = None,
     identify: Optional[str] = None,
     pre_function_call: Optional[
-        Callable[[str, str, dict[str, Any]], Awaitable[tuple[[str, str, dict[str, Any]]]]]
+        Callable[[str, str, dict[str, Any]], Awaitable[tuple[str, str, dict[str, Any]]]]
     ] = None,
     post_function_call: Optional[Callable[[T], Awaitable[T]]] = None,
     **kwargs,
