@@ -1,9 +1,10 @@
 import hashlib
+from collections.abc import Awaitable
 
 from nonebot_plugin_larklang.__main__ import get_module_name
 import inspect
 import json
-from typing import Optional, Any, AsyncGenerator
+from typing import Optional, Any, AsyncGenerator, Callable, TypeVar
 
 from nonebot import logger
 from openai.types.shared_params import FunctionDefinition
@@ -39,6 +40,9 @@ def generate_function_list(func_index: dict[str, AsyncFunction]) -> list[ChatCom
     return func_list
 
 
+T = TypeVar("T")
+
+
 class LLMRequestSession:
 
     def __init__(
@@ -48,6 +52,10 @@ class LLMRequestSession:
         model: str,
         kwargs: dict[str, Any],
         identify: str,
+        pre_function_call: Optional[
+            Callable[[str, str, dict[str, Any]], Awaitable[tuple[str, str, dict[str, Any]]]]
+        ] = None,
+        post_function_call: Optional[Callable[[T], Awaitable[T]]] = None,
     ) -> None:
         self.messages: Messages = messages
         self.identify = identify
@@ -56,6 +64,10 @@ class LLMRequestSession:
         self.kwargs = kwargs
         self.stop = False
         self.model = model
+        self.tigger_functions = {
+            "pre_function_call": pre_function_call,
+            "post_function_call": post_function_call,
+        }
 
     async def fetch_llm_response(self) -> AsyncGenerator[str, None]:
         while not self.stop:
@@ -88,7 +100,11 @@ class LLMRequestSession:
             self.stop = True
 
     async def call_function(self, call_id: str, name: str, params: dict[str, Any]) -> None:
+        if self.tigger_functions["pre_function_call"]:
+            call_id, name, params = self.tigger_functions["pre_function_call"](call_id, name, params)
         result = await self.func_index[name]["func"](**params)
+        if self.tigger_functions["post_function_call"]:
+            result = await self.tigger_functions["post_function_call"](result)
         if result is None:
             result = "success"
         logger.debug(f"函数返回: {result}")
@@ -109,6 +125,10 @@ class MessageFetcher:
         model: Optional[str] = None,
         functions: Optional[list[AsyncFunction]] = None,
         identify: Optional[str] = None,
+        pre_function_call: Optional[
+            Callable[[str, str, dict[str, Any]], Awaitable[tuple[str, str, dict[str, Any]]]]
+        ] = None,
+        post_function_call: Optional[Callable[[T], Awaitable[T]]] = None,
         **kwargs,
     ) -> None:
         if identify is None:
@@ -127,7 +147,9 @@ class MessageFetcher:
         if functions:
             for func in functions:
                 func_index[func["func"].__name__] = func
-        self.session = LLMRequestSession(messages, func_index, model, kwargs, identify)
+        self.session = LLMRequestSession(
+            messages, func_index, model, kwargs, identify, pre_function_call, post_function_call
+        )
 
     async def fetch_last_message(self) -> str:
         # return (await self.fetch_messages())[-1]
@@ -147,6 +169,10 @@ async def fetch_message(
     model: Optional[str] = None,
     functions: Optional[list[AsyncFunction]] = None,
     identify: Optional[str] = None,
+    pre_function_call: Optional[
+        Callable[[str, str, dict[str, Any]], Awaitable[tuple[str, str, dict[str, Any]]]]
+    ] = None,
+    post_function_call: Optional[Callable[[T], Awaitable[T]]] = None,
     **kwargs,
 ) -> str:
     if identify is None:
@@ -158,5 +184,7 @@ async def fetch_message(
     if model is None:
         model = config.model_override.get(identify, config.openai_default_model)
 
-    fetcher = MessageFetcher(messages, use_default_message, model, functions, identify, **kwargs)
+    fetcher = MessageFetcher(
+        messages, use_default_message, model, functions, identify, pre_function_call, post_function_call, **kwargs
+    )
     return await fetcher.fetch_last_message()
