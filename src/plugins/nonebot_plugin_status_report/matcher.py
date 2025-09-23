@@ -97,5 +97,5 @@ async def simple_run(
             raise e
         finally:
             logger.info(f"{self} running complete")
-            if "handler" in locals():
-                state["handler_results"].append(generator_run_result(handler.call, "success", ""))
+        if "handler" in locals():
+            state["handler_results"].append(generator_run_result(handler.call, "success", ""))

@@ -14,8 +14,10 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
+from nonebot_plugin_orm import get_session
 
-from nonebot_plugin_larkuser.user.registered import MoonlarkRegisteredUser
+from ..user.registered import MoonlarkRegisteredUser
+from ..models import GuestUser
 
 
 class MoonlarkGuestUser(MoonlarkRegisteredUser):
@@ -30,11 +32,11 @@ class MoonlarkGuestUser(MoonlarkRegisteredUser):
         self.main_account = False
 
     async def setup_user(self) -> None:
-        await super().setup_user()
-        if not self.nickname:
-            self.nickname = f"Guest用户-{self.original_user_id}"
-        else:
-            self.user_has_nickname = True
+        async with get_session() as session:
+            result = await session.get(GuestUser, {"user_id": self.user_id})
+            if result is not None:
+                self.nickname = result.nickname
+                self.user_has_nickname = True
 
     def has_nickname(self) -> bool:
         return self.user_has_nickname

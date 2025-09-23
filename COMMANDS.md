@@ -167,7 +167,7 @@ Moonlark 本地化设置
 - `/panel (查看面板)`
 ## `status`: 系统状态
 
-[lgc-NB2Dev/nonebot-plugin-picstatus] 获取 Moonlark 运行状态
+显示系统状态信息
 
 ### 用法
 - `/status`
@@ -279,6 +279,7 @@ Linux 手册 (ManPage) 查询
 - `/summary -s broadcast (广播风格总结)`
 - `/summary -s topic (话题梳理)`
 - `/summary -e|-d (功能开关)`
+- `/summary --everyday-summary <on/off> (每日总结开关)`
 ## `t`: 翻译器
 
 翻译文本（默认英到中）
@@ -342,12 +343,20 @@ Moonlark 投票
 - `/email claim <email_id> (领取指定邮件)`
 - `/email unread all (将所有邮件标为未读)`
 - `/email unread <email_id> (将邮件标为未读)`
+## `ghot`: 群发言热度
+
+计算群聊消息的热度分数，并进行排名。使用此功能需要先使用 /summary -e 启用群历史消息总结功能，否则群热度分数恒为 0。
+
+### 用法
+- `/ghot (当前群聊热度分数)`
+- `/ghot history (近三天分数历史)`
 ## `online-timer`: 在线时间段
 
 查询 Moonlark 记录的群友在线时间段
 
 ### 用法
 - `/online-timer [@用户]`
+- `/online-timer rank (在线排行)`
 ## `schedule`: 每日任务
 
 查看每日任务或领取每日任务奖励，每日刷新，部分功能仅在签到后可用。
