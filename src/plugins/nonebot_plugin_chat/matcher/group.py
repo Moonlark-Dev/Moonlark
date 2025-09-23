@@ -22,7 +22,7 @@ from datetime import datetime, timedelta
 from nonebot.adapters.qq import Bot as BotQQ
 from nonebot.params import CommandArg
 from nonebot.typing import T_State
-from typing import TypedDict, Optional
+from typing import TypedDict, Optional, Any
 from nonebot_plugin_apscheduler import scheduler
 from nonebot_plugin_alconna import UniMessage, Target, get_target
 from nonebot_plugin_userinfo import EventUserInfo, UserInfo
@@ -213,6 +213,16 @@ class MessageProcessor:
             reply_message_id = self.reply_message_ids[-int(m[0][7:-1])]
             text = text.replace(m[0], "")
         return text, reply_message_id
+
+    async def send_function_call_feedback(self, call_id: str, name: str, param: dict[str, Any]) -> tuple[str, str, dict[str, Any]]:
+        match name:
+            case "browse_webpage":
+                await UniMessage().text(text=await lang.text("tools.browse", self.session.user_id, param.get("url"))).send(target=self.session.target, bot=self.session.bot)
+            case "request_wolfram_alpha":
+                await UniMessage().text(text=await lang.text("tools.wolfram", self.session.user_id, param.get("question"))).send(target=self.session.target, bot=self.session.bot)
+            case "search_on_google":
+                await UniMessage().text(text=await lang.text("tools.google", self.session.user_id, param.get("keyword"))).send(target=self.session.target, bot=self.session.bot)
+        return call_id, name, param
 
     async def send_reply_text(self, reply_text: str) -> None:
         if len(reply_text) >= 100:

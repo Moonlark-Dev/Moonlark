@@ -262,3 +262,7 @@ help:
   usage4: chat mute (临时禁用水群功能)
   usage5: chat unmute (取消临时禁用)
   usage6: chat reset-memory (重置储存的记忆)
+tools:
+  google: '(搜索了: {})'
+  browse: '(访问了: {})'
+  wolfram: '(计算了: {})'
