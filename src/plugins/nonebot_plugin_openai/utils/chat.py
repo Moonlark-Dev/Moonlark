@@ -42,6 +42,7 @@ def generate_function_list(func_index: dict[str, AsyncFunction]) -> list[ChatCom
 
 T = TypeVar("T")
 
+
 class LLMRequestSession:
 
     def __init__(
@@ -51,8 +52,10 @@ class LLMRequestSession:
         model: str,
         kwargs: dict[str, Any],
         identify: str,
-        pre_function_call: Optional[Callable[[str, str, dict[str, Any]], Awaitable[tuple[[str, str, dict[str, Any]]]]]] = None,
-        post_function_call: Optional[Callable[[T], Awaitable[T]]] = None
+        pre_function_call: Optional[
+            Callable[[str, str, dict[str, Any]], Awaitable[tuple[[str, str, dict[str, Any]]]]]
+        ] = None,
+        post_function_call: Optional[Callable[[T], Awaitable[T]]] = None,
     ) -> None:
         self.messages: Messages = messages
         self.identify = identify
@@ -123,7 +126,8 @@ class MessageFetcher:
         functions: Optional[list[AsyncFunction]] = None,
         identify: Optional[str] = None,
         pre_function_call: Optional[
-            Callable[[str, str, dict[str, Any]], Awaitable[tuple[[str, str, dict[str, Any]]]]]] = None,
+            Callable[[str, str, dict[str, Any]], Awaitable[tuple[[str, str, dict[str, Any]]]]]
+        ] = None,
         post_function_call: Optional[Callable[[T], Awaitable[T]]] = None,
         **kwargs,
     ) -> None:
@@ -143,7 +147,9 @@ class MessageFetcher:
         if functions:
             for func in functions:
                 func_index[func["func"].__name__] = func
-        self.session = LLMRequestSession(messages, func_index, model, kwargs, identify, pre_function_call, post_function_call)
+        self.session = LLMRequestSession(
+            messages, func_index, model, kwargs, identify, pre_function_call, post_function_call
+        )
 
     async def fetch_last_message(self) -> str:
         # return (await self.fetch_messages())[-1]
@@ -163,9 +169,9 @@ async def fetch_message(
     model: Optional[str] = None,
     functions: Optional[list[AsyncFunction]] = None,
     identify: Optional[str] = None,
-
     pre_function_call: Optional[
-        Callable[[str, str, dict[str, Any]], Awaitable[tuple[[str, str, dict[str, Any]]]]]] = None,
+        Callable[[str, str, dict[str, Any]], Awaitable[tuple[[str, str, dict[str, Any]]]]]
+    ] = None,
     post_function_call: Optional[Callable[[T], Awaitable[T]]] = None,
     **kwargs,
 ) -> str:
@@ -178,5 +184,7 @@ async def fetch_message(
     if model is None:
         model = config.model_override.get(identify, config.openai_default_model)
 
-    fetcher = MessageFetcher(messages, use_default_message, model, functions, identify, pre_function_call, post_function_call, **kwargs)
+    fetcher = MessageFetcher(
+        messages, use_default_message, model, functions, identify, pre_function_call, post_function_call, **kwargs
+    )
     return await fetcher.fetch_last_message()
