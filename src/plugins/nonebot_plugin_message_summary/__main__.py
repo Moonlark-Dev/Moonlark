@@ -6,7 +6,7 @@ from sqlalchemy import select
 from nonebot.adapters import Event, Bot
 from nonebot.adapters.qq import Bot as Bot_QQ
 from nonebot.adapters.onebot.v11 import GroupMessageEvent
-from nonebot import on_message, logger
+from nonebot import on_command, on_message, logger
 
 from datetime import datetime, timedelta, timezone
 from nonebot_plugin_orm import async_scoped_session, get_session
@@ -208,7 +208,7 @@ async def send_daily_summary_to_group(group_id: str) -> None:
             .where(GroupMessage.timestamp <= end_time)
             .order_by(GroupMessage.id_)
         )
-        messages = result.all()
+        messages = list(result.all())
 
         if not messages:
             return
@@ -230,7 +230,7 @@ async def send_daily_summary_to_group(group_id: str) -> None:
     summary_string = await fetch_message(
         [
             generate_message(await lang.text("prompt_everyday_summary", user_id, datetime.now().isoformat()), "system"),
-            generate_message(messages, "user"),
+            generate_message(messages_str, "user"),
         ],
         identify="Message Summary (Daily)",
     )
@@ -246,6 +246,7 @@ async def send_daily_summary_to_group(group_id: str) -> None:
 
 
 @scheduler.scheduled_job("cron", hour=6, minute=0, id="daily_message_summary")
+# @on_command("daily_message_summary").handle()
 async def send_daily_message_summary() -> None:
     """Send daily message summary to all groups that have enabled this feature"""
     # Get the list of groups that have enabled everyday summary
@@ -257,4 +258,4 @@ async def send_daily_message_summary() -> None:
         try:
             await send_daily_summary_to_group(group_id)
         except Exception as e:
-            logger.warning(e)
+            logger.exception(e)
