@@ -201,6 +201,7 @@ class MessageProcessor:
                 ),
             ],
             identify="Chat",
+            pre_function_call=self.send_function_call_feedback
         )
         async for message in fetcher.fetch_message_stream():
             self.message_count += 1
