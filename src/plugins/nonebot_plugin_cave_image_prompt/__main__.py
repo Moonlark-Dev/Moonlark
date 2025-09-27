@@ -6,7 +6,7 @@ from nonebot_plugin_larklang import LangHelper
 from nonebot_plugin_larkutils import get_user_id
 from nonebot_plugin_larkutils.user import private_message as is_private_message
 from nonebot_plugin_larkuser import prompt
-from nonebot_plugin_larkcave.plugins.add.__main__ import post_cave
+from nonebot_plugin_larkcave.utils.post import post_cave
 from nonebot.typing import T_State
 from nonebot_plugin_orm import async_scoped_session
 

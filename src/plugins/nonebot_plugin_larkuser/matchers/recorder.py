@@ -1,6 +1,5 @@
 from ..utils.avatar import is_user_avatar_updated, update_user_avatar
 from ..utils.user import get_user
-from nonebot_plugin_larkutils import get_main_account
 from nonebot import on_message
 from nonebot.log import logger
 from nonebot_plugin_orm import async_scoped_session
