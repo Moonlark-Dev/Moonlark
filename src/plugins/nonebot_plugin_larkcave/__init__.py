@@ -15,18 +15,9 @@ require("nonebot_plugin_larklang")
 require("nonebot_plugin_larkuser")
 require("nonebot_plugin_localstore")
 require("nonebot_plugin_larkutils")
+require("nonebot_plugin_render")
 require("nonebot_plugin_alconna")
 require("nonebot_plugin_schedule")
 
-load_plugin("nonebot_plugin_larkcave.plugins.similarity_check")
-load_plugin("nonebot_plugin_larkcave.plugins.comment")
-load_plugin("nonebot_plugin_larkcave.plugins.add")
-load_plugin("nonebot_plugin_larkcave.plugins.statisics")
-load_plugin("nonebot_plugin_larkcave.plugins.remove")
-load_plugin("nonebot_plugin_larkcave.plugins.restore")
-load_plugin("nonebot_plugin_larkcave.plugins.archive")
-load_plugin("nonebot_plugin_larkcave.plugins.cool_down")
-load_plugin("nonebot_plugin_larkcave.plugins.get")
-load_plugin("nonebot_plugin_larkcave.plugins.api")
 
-from . import __main__
+from . import comment, archiver, api, commands

@@ -1,2 +1,0 @@
-class ImageOnlyCave(Exception):
-    pass

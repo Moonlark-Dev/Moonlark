@@ -37,3 +37,17 @@ class GroupData(Model):
 class UserCoolDownData(Model):
     user_id: Mapped[str] = mapped_column(String(128), primary_key=True)
     last_use: Mapped[datetime] = mapped_column(default=datetime.fromtimestamp(0))
+
+
+class RemovedCave(Model):
+    id: Mapped[int] = mapped_column(primary_key=True)
+    expiration_time: Mapped[datetime]
+    superuser: Mapped[bool] = mapped_column(default=False)
+
+
+class CommentData(Model):
+    id: Mapped[int] = mapped_column(primary_key=True)
+    author: Mapped[str] = mapped_column(String(128))
+    content: Mapped[str] = mapped_column(Text)
+    time: Mapped[datetime]
+    belong: Mapped[int]
