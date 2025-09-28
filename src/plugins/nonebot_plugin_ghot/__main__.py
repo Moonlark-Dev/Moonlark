@@ -270,7 +270,7 @@ async def handle_ghot_history_command(
 
     # Format x-axis as time
     plt.gca().xaxis.set_major_formatter(mdates.DateFormatter("%H:%M"))
-    plt.gca().xaxis.set_major_locator(mdates.MinuteLocator(interval=30))
+    plt.gca().xaxis.set_major_locator(mdates.MinuteLocator(interval=60))
     plt.xticks(rotation=45)
 
     # Set y-axis limits
