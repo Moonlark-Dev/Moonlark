@@ -120,9 +120,11 @@ pre-commit = ">=4.1.0, <5.0.0"
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "session"
 
+
 [tool.poetry.group.test.dependencies]
 nonebug = "^0.4.3"
 pytest-asyncio = "^1.2.0"
+nonebot-adapter-console = "^0.9.0"
 
 [build-system]
 requires = ["poetry-core"]

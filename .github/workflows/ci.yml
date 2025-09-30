@@ -29,13 +29,15 @@ jobs:
           poetry install --all-groups
           poetry update
       
-      - name: Check and update database migrations file
+      - name: Check database update
         run: |
           cp .env.template .env
           poetry run nb orm upgrade
           poetry run nb orm check | grep '没有检测到新的升级操作' && exit 0
-          poetry run nb orm revision
-          poetry run nb orm upgrade
+          exit 1
+
+      - name: Run pytest
+        run: poetry run pytest
       
       - name: Generate COMMANDS.md
         run: |
@@ -53,6 +55,5 @@ jobs:
             echo "No changes to commit."
           fi
 
-      - name: Run pytest
-        run: poetry run pytest
+      
 
