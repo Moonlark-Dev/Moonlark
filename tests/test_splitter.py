@@ -25,8 +25,8 @@ print("hello")
 结束"""
     result2 = splitter.split_message(test_text2)
     assert len(result2) == 5
-    assert any('.skip' in msg for msg in result2)
-    assert any('.leave' in msg for msg in result2)
+    assert any(".skip" in msg for msg in result2)
+    assert any(".leave" in msg for msg in result2)
 
     # 测试用例3: 单 REPLY 标签限制
     test_text3 = """开始 {REPLY:111} 内容1 {REPLY:222} 内容2"""
@@ -44,7 +44,7 @@ print("hello")
     result4 = splitter.split_message(test_text4)
     for msg in result4:
         if splitter.reply_pattern.search(msg):
-            text_without_reply = splitter.reply_pattern.sub('', msg).strip()
+            text_without_reply = splitter.reply_pattern.sub("", msg).strip()
             assert len(text_without_reply) > 0
 
     # 测试用例5: 代码块内容保持原样（包括内部的特殊内容）
@@ -71,9 +71,9 @@ console.log("hello");
     result6 = splitter.split_message(test_text6)
     for msg in result6:
         if "```" not in msg:  # 非代码块
-            for line in msg.split('\n'):
+            for line in msg.split("\n"):
                 if line.strip():  # 非空行
-                    assert not line.startswith(' ') and not line.startswith('\t')
+                    assert not line.startswith(" ") and not line.startswith("\t")
 
     # 测试用例7: 复杂场景综合测试
     test_text7 = """开始 {REPLY:111}
@@ -104,9 +104,9 @@ console.log("hello");
         assert reply_count <= 1
 
         # 检查特殊命令是否独立
-        if splitter.special_pattern.search(msg) and '```' not in msg:
+        if splitter.special_pattern.search(msg) and "```" not in msg:
             # 特殊命令行应该独立成消息
-            lines = msg.strip().split('\n')
+            lines = msg.strip().split("\n")
             assert len(lines) == 1 or (len(lines) > 1 and all(not line.strip() for line in lines[1:]))
 
     # 测试用例8: 空消息过滤

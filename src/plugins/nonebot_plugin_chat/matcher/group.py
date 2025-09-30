@@ -254,7 +254,6 @@ class MessageProcessor:
             if msg:
                 await self.send_text(msg)
 
-
     async def process_messages(self, msg_dict: CachedMessage) -> None:
         if (
             len(self.openai_messages) <= 0
