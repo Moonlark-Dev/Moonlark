@@ -54,5 +54,5 @@ jobs:
           fi
 
       - name: Run pytest
-        run: pytest
+        run: poetry run pytest
 
