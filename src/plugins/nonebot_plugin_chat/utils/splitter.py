@@ -1,4 +1,3 @@
-
 import re
 from typing import List, Tuple
 
@@ -6,13 +5,13 @@ from typing import List, Tuple
 class MessageSplitter:
     def __init__(self):
         # 匹配 {REPLY:\d+} 的正则表达式
-        self.reply_pattern = re.compile(r'\{REPLY:\d+\}')
+        self.reply_pattern = re.compile(r"\{REPLY:\d+\}")
         # 匹配代码块的正则表达式
-        self.code_block_pattern = re.compile(r'^```.*?^```', re.MULTILINE | re.DOTALL)
+        self.code_block_pattern = re.compile(r"^```.*?^```", re.MULTILINE | re.DOTALL)
         # 匹配列表项的正则表达式
-        self.list_pattern = re.compile(r'^(\s*[-*+]\s+.*|^\s*\d+\.\s+.*)', re.MULTILINE)
+        self.list_pattern = re.compile(r"^(\s*[-*+]\s+.*|^\s*\d+\.\s+.*)", re.MULTILINE)
         # 匹配 .skip 和 .leave 文本
-        self.special_pattern = re.compile(r'^\s*\.(skip|leave)\b.*', re.MULTILINE | re.IGNORECASE)
+        self.special_pattern = re.compile(r"^\s*\.(skip|leave)\b.*", re.MULTILINE | re.IGNORECASE)
 
     def _identify_special_blocks(self, text: str) -> List[Tuple[int, int, str]]:
         """识别特殊块（代码块、列表、.skip、.leave）的位置和类型"""
@@ -20,19 +19,19 @@ class MessageSplitter:
 
         # 识别代码块
         for match in self.code_block_pattern.finditer(text):
-            blocks.append((match.start(), match.end(), 'code_block'))
+            blocks.append((match.start(), match.end(), "code_block"))
 
         # 识别列表项
         for match in self.list_pattern.finditer(text):
             start, end = self._expand_list_block(text, match.start())
-            blocks.append((start, end, 'list'))
+            blocks.append((start, end, "list"))
 
         # 识别 .skip 和 .leave 文本
         for match in self.special_pattern.finditer(text):
             start = match.start()
             # 找到这个特殊文本的完整段落
             end = self._find_paragraph_end(text, start)
-            blocks.append((start, end, 'special'))
+            blocks.append((start, end, "special"))
 
         # 按起始位置排序并合并重叠的块
         blocks.sort(key=lambda x: x[0])
@@ -42,7 +41,7 @@ class MessageSplitter:
                 # 合并重叠的块
                 prev_start, prev_end, prev_type = merged_blocks.pop()
                 new_end = max(prev_end, block[1])
-                merged_blocks.append((prev_start, new_end, 'mixed'))
+                merged_blocks.append((prev_start, new_end, "mixed"))
             else:
                 merged_blocks.append(block)
 
@@ -50,7 +49,7 @@ class MessageSplitter:
 
     def _expand_list_block(self, text: str, list_start: int) -> Tuple[int, int]:
         """扩展列表块到完整的列表项"""
-        lines = text[list_start:].split('\n')
+        lines = text[list_start:].split("\n")
         end = list_start
 
         for i, line in enumerate(lines):
@@ -61,8 +60,9 @@ class MessageSplitter:
                 break
 
             # 如果是列表项或缩进的行（属于同一个列表项）
-            if (self.list_pattern.match(line) or
-                    (i > 0 and line.strip() and (line.startswith('  ') or line.startswith('\t')))):
+            if self.list_pattern.match(line) or (
+                i > 0 and line.strip() and (line.startswith("  ") or line.startswith("\t"))
+            ):
                 end = current_pos + len(line)
             else:
                 # 如果不是列表项且没有缩进，列表结束
@@ -75,7 +75,7 @@ class MessageSplitter:
         """找到段落的结束位置"""
         # 从start位置开始，找到下一个空行或文本结束
         remaining_text = text[start:]
-        lines = remaining_text.split('\n')
+        lines = remaining_text.split("\n")
 
         for i, line in enumerate(lines):
             if i > 0 and not line.strip():  # 遇到空行
@@ -92,7 +92,7 @@ class MessageSplitter:
             # 添加特殊块之前的内容（去除行首空格）
             if last_pos < start:
                 normal_text = text[last_pos:start]
-                cleaned_text = '\n'.join(line.lstrip() for line in normal_text.split('\n'))
+                cleaned_text = "\n".join(line.lstrip() for line in normal_text.split("\n"))
                 result.append(cleaned_text)
 
             # 添加特殊块（保持原样）
@@ -102,21 +102,21 @@ class MessageSplitter:
         # 添加最后的内容
         if last_pos < len(text):
             normal_text = text[last_pos:]
-            cleaned_text = '\n'.join(line.lstrip() for line in normal_text.split('\n'))
+            cleaned_text = "\n".join(line.lstrip() for line in normal_text.split("\n"))
             result.append(cleaned_text)
 
-        return ''.join(result)
+        return "".join(result)
 
     def _split_by_paragraphs(self, text: str, max_paragraphs: int = 3) -> List[str]:
         """按段落分割文本，确保每个消息不超过指定段落数"""
         # 首先尝试用 \n\n 分割
-        paragraphs = re.split(r'\n\s*\n', text)
+        paragraphs = re.split(r"\n\s*\n", text)
 
         if len(paragraphs) <= max_paragraphs:
-            return ['\n\n'.join(paragraphs)] if paragraphs else []
+            return ["\n\n".join(paragraphs)] if paragraphs else []
 
         # 如果 \n\n 分割太碎，尝试用 \n 分割
-        lines = text.split('\n')
+        lines = text.split("\n")
         messages = []
         current_message = []
         current_line_count = 0
@@ -128,7 +128,7 @@ class MessageSplitter:
             if is_paragraph_sep and current_line_count > 0:
                 # 如果遇到空行且当前消息已有内容，考虑结束当前消息
                 if len(current_message) >= max_paragraphs * 2:  # 估计的段落数
-                    messages.append('\n'.join(current_message))
+                    messages.append("\n".join(current_message))
                     current_message = []
                     current_line_count = 0
                     continue
@@ -138,12 +138,12 @@ class MessageSplitter:
 
             # 如果达到最大段落数的估计行数，结束当前消息
             if current_line_count >= max_paragraphs * 10:  # 假设每个段落平均10行
-                messages.append('\n'.join(current_message))
+                messages.append("\n".join(current_message))
                 current_message = []
                 current_line_count = 0
 
         if current_message:
-            messages.append('\n'.join(current_message))
+            messages.append("\n".join(current_message))
 
         return messages
 
@@ -170,7 +170,7 @@ class MessageSplitter:
                 last_pos = end
 
                 # 检查这个片段是否只有 REPLY 标签
-                text_without_reply = self.reply_pattern.sub('', segment).strip()
+                text_without_reply = self.reply_pattern.sub("", segment).strip()
 
                 if text_without_reply:  # 有其他内容
                     current_parts.append(segment)
@@ -183,7 +183,7 @@ class MessageSplitter:
 
                 # 如果当前片段包含内容且不是最后一个，可以考虑分割
                 if text_without_reply and i < len(reply_matches) - 1:
-                    result.append(''.join(current_parts))
+                    result.append("".join(current_parts))
                     current_parts = []
 
             # 添加剩余内容
@@ -191,7 +191,7 @@ class MessageSplitter:
                 remaining = message[last_pos:]
                 if remaining.strip():
                     current_parts.append(remaining)
-                result.append(''.join(current_parts))
+                result.append("".join(current_parts))
 
         return result
 
@@ -217,10 +217,12 @@ class MessageSplitter:
 
         return final_messages
 
+
 splitter = MessageSplitter()
+
+
 # 使用示例
 def main():
-
 
     # 测试文本
     test_text = """
