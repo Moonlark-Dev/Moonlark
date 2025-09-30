@@ -41,7 +41,7 @@ from nonebot.matcher import Matcher
 from ..utils.memory_activator import activate_memories_from_text
 from ..lang import lang
 from ..models import ChatGroup
-from ..utils import enabled_group, parse_message_to_string
+from ..utils import enabled_group, parse_message_to_string, splitter
 from ..utils.tools import browse_webpage, search_on_google, describe_image, request_wolfram_alpha
 
 BASE_DESIRE = 30
@@ -210,9 +210,13 @@ class MessageProcessor:
 
     def get_reply_message_id(self, text: str) -> tuple[str, Optional[str]]:
         reply_message_id = None
-        while m := re.match(r"\{REPLY:\d+}", text):
-            reply_message_id = self.reply_message_ids[-int(m[0][7:-1])]
+        while m := re.search(r"\{REPLY:\d+}", text):
+            try:
+                reply_message_id = self.reply_message_ids[-int(m[0][7:-1])]
+            except IndexError:
+                continue
             text = text.replace(m[0], "")
+            break
         return text, reply_message_id
 
     async def send_function_call_feedback(
@@ -233,40 +237,22 @@ class MessageProcessor:
                 ).send(target=self.session.target, bot=self.session.bot)
         return call_id, name, param
 
+    async def send_text(self, reply_text: str) -> None:
+        reply_text, reply_message_id = self.get_reply_message_id(reply_text)
+        await parse_reply(self.session.format_message(reply_text), reply_message_id).send(
+            target=self.session.target, bot=self.session.bot
+        )
+
     async def send_reply_text(self, reply_text: str) -> None:
-        if len(reply_text) >= 100:
-            reply_text, reply_message_id = self.get_reply_message_id(reply_text)
-            await parse_reply(self.session.format_message(reply_text), reply_message_id).send(
-                target=self.session.target, bot=self.session.bot
-            )
-            return
-        code_block_cache = None
-        lines = reply_text.splitlines()
-        for origin_line in lines:
-            line = origin_line.strip()
-            await asyncio.sleep(len(line.replace("\n", "")) * 0.01)
-            if not line:
-                continue
-            elif line.startswith(".skip"):
-                return
-            elif line.startswith(".leave"):
-                await self.session.mute()
-                return
-            elif line.startswith("```"):
-                if code_block_cache is None:
-                    code_block_cache = []
-                else:
-                    await UniMessage().text(text="\n".join(code_block_cache)).send(
-                        target=self.session.target, bot=self.session.bot
-                    )
-                    code_block_cache = None
-            elif code_block_cache is not None:
-                code_block_cache.append(origin_line)
-            else:
-                line, reply_message_id = self.get_reply_message_id(line)
-                await parse_reply(self.session.format_message(line), reply_message_id).send(
-                    target=self.session.target, bot=self.session.bot
-                )
+        for msg in splitter.split_message(reply_text):
+            for line in msg.splitlines():
+                if line.startswith(".skip"):
+                    return
+                elif line.startswith(".leave"):
+                    await self.session.mute()
+                    return
+            if msg:
+                await self.send_text(msg)
 
     async def process_messages(self, msg_dict: CachedMessage) -> None:
         if (
