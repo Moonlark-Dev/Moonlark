@@ -26,7 +26,7 @@ jobs:
       - name: Install and update requirements
         run: |
           poetry lock
-          poetry install
+          poetry install --all-groups
           poetry update
       
       - name: Check and update database migrations file
@@ -53,4 +53,6 @@ jobs:
             echo "No changes to commit."
           fi
 
+      - name: Run pytest
+        run: pytest
 
