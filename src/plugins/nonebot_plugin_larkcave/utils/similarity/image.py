@@ -1,63 +1,68 @@
 import asyncio
 import io
-from typing import AsyncGenerator
 from nonebot_plugin_orm import async_scoped_session
 from sqlalchemy import select
-from PIL import UnidentifiedImageError
 from ...types import CheckPassedResult, CheckFailedResult, CheckResult
-import numpy as np
-from PIL import Image
+from ..encoder import calculate_perceptual_hash
+import imagehash
 
-from nonebot_plugin_larkcave.models import CaveData, ImageData, CaveImage
-from nonebot_plugin_larkcave.utils.decoder import get_image
-
-# FROM https://github.com/xxtg666/XDbot2FTTsolver/blob/main/xdbot_ftt_solver.py#L23C5-L28C30
-from skimage.metrics import structural_similarity as ssim
+from nonebot_plugin_larkcave.models import CaveData, ImageData
 
 
-def _compare_image(img1, img2) -> int | float:
-    if img1.shape != img2.shape:
-        return 0
-    s = ssim(img1, img2, channel_axis=2, multichannel=True)
-    return s
-
-
-def compare_image(image1: bytes, image2: CaveImage, *_) -> float:
-    try:  # NOTE 解决数据库内空白图片的问题
-        img2 = np.array(Image.open(io.BytesIO(image2.data)))
-    except UnidentifiedImageError:
-        return 0
-    return _compare_image(np.array(Image.open(io.BytesIO(image1))), img2)
-
-
-async def compare_image_async(image1: bytes, image2: CaveImage, image1_name: str) -> float:
-    loop = asyncio.get_running_loop()
-    return await loop.run_in_executor(None, compare_image, image1, image2, image1_name)
-
-
-async def get_image_list(session: async_scoped_session) -> AsyncGenerator[CaveImage, None]:
-    image_list = await session.scalars(select(ImageData.id))
-    for image_id in image_list.all():
-        try:
-            yield await get_image(str(image_id), session)
-        except FileNotFoundError:
-            pass
+def compare_hash(hash1: str, hash2: str) -> float:
+    """
+    比较两个感知哈希的相似度
+    :param hash1: 第一个哈希值
+    :param hash2: 第二个哈希值
+    :return: 相似度分数 (0-1)，1 表示完全相同
+    """
+    if not hash1 or not hash2:
+        return 0.0
+    try:
+        h1 = imagehash.hex_to_hash(hash1)
+        h2 = imagehash.hex_to_hash(hash2)
+        # 计算汉明距离，转换为相似度分数
+        # hash_size=16 时，最大距离为 256 (16*16)
+        max_distance = len(hash1) * 4  # 每个十六进制字符代表4位
+        distance = h1 - h2
+        similarity = 1 - (distance / max_distance)
+        return max(0.0, similarity)
+    except Exception:
+        return 0.0
 
 
 async def check_image(posting: bytes, session: async_scoped_session, name: str) -> CheckResult:
     """
-    投稿图片相似度检查
+    投稿图片相似度检查（使用感知哈希）
     :param posting: 正在投稿的图片
     :param session: 数据库会话
     :param name: 图片文件名
     :return: 检查结果
     """
-    images = [i async for i in get_image_list(session)]
-    tasks = [compare_image_async(posting, image, name) for image in images]
-    scores = await asyncio.gather(*tasks)
-    for image, score in zip(images, scores):
-        if score >= 0.9:
+    # 计算待投稿图片的感知哈希
+    posting_hash = await asyncio.get_running_loop().run_in_executor(
+        None, calculate_perceptual_hash, posting
+    )
+    
+    if not posting_hash:
+        # 无法计算哈希，直接通过
+        return CheckPassedResult(passed=True)
+    
+    # 获取所有已存储图片的哈希值
+    image_data_list = (await session.scalars(select(ImageData))).all()
+    
+    # 比较哈希值
+    for image_data in image_data_list:
+        if not image_data.p_hash:
+            continue
+        
+        similarity = compare_hash(posting_hash, image_data.p_hash)
+        
+        # 相似度阈值设为 0.9
+        if similarity >= 0.9:
+            cave = await session.get_one(CaveData, {"id": image_data.belong})
             return CheckFailedResult(
-                passed=False, similar_cave=await session.get_one(CaveData, {"id": image.belong}), similarity=score
+                passed=False, similar_cave=cave, similarity=similarity
             )
+    
     return CheckPassedResult(passed=True)

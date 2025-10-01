@@ -22,6 +22,24 @@ import aiofiles
 import zlib
 from .decoder import data_dir
 from nonebot_plugin_orm import async_scoped_session
+import io
+import imagehash
+from PIL import Image
+
+
+def calculate_perceptual_hash(image_data: bytes) -> str:
+    """
+    计算图片的感知哈希值
+    :param image_data: 图片的字节数据
+    :return: 感知哈希的十六进制字符串
+    """
+    try:
+        img = Image.open(io.BytesIO(image_data))
+        # 使用 average hash 算法，哈希大小为 16x16 以提高精度
+        hash_value = imagehash.average_hash(img, hash_size=16)
+        return str(hash_value)
+    except Exception:
+        return ""
 
 
 async def encode_text(text: str) -> str:
@@ -31,7 +49,9 @@ async def encode_text(text: str) -> str:
 async def encode_image(cave_id: int, name: str, data: bytes, session: async_scoped_session) -> str:
     image_id = time.time()
     file_id = uuid.uuid4().hex
-    session.add(ImageData(id=image_id, file_id=file_id, name=name, belong=cave_id))
+    # 计算感知哈希
+    p_hash = calculate_perceptual_hash(data)
+    session.add(ImageData(id=image_id, file_id=file_id, name=name, belong=cave_id, p_hash=p_hash))
     async with aiofiles.open(data_dir.joinpath(file_id), "wb") as f:
         await f.write(zlib.compress(data))
     await session.commit()
