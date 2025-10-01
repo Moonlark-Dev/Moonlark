@@ -77,6 +77,4 @@ async def check_and_update_hashes() -> None:
 
         # 提交所有更改
         await session.commit()
-        logger.success(
-            f"pHash 初始化完成: 成功 {success_count} 张，失败 {fail_count} 张"
-        )
+        logger.success(f"pHash 初始化完成: 成功 {success_count} 张，失败 {fail_count} 张")

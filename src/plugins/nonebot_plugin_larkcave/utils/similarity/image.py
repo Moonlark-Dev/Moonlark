@@ -40,29 +40,25 @@ async def check_image(posting: bytes, session: async_scoped_session, name: str) 
     :return: 检查结果
     """
     # 计算待投稿图片的感知哈希
-    posting_hash = await asyncio.get_running_loop().run_in_executor(
-        None, calculate_perceptual_hash, posting
-    )
-    
+    posting_hash = await asyncio.get_running_loop().run_in_executor(None, calculate_perceptual_hash, posting)
+
     if not posting_hash:
         # 无法计算哈希，直接通过
         return CheckPassedResult(passed=True)
-    
+
     # 获取所有已存储图片的哈希值
     image_data_list = (await session.scalars(select(ImageData))).all()
-    
+
     # 比较哈希值
     for image_data in image_data_list:
         if not image_data.p_hash:
             continue
-        
+
         similarity = compare_hash(posting_hash, image_data.p_hash)
-        
+
         # 相似度阈值设为 0.9
         if similarity >= 0.9:
             cave = await session.get_one(CaveData, {"id": image_data.belong})
-            return CheckFailedResult(
-                passed=False, similar_cave=cave, similarity=similarity
-            )
-    
+            return CheckFailedResult(passed=False, similar_cave=cave, similarity=similarity)
+
     return CheckPassedResult(passed=True)
