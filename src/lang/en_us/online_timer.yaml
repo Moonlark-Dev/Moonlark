@@ -1,15 +1,15 @@
 duration:
-  minute: "{} minutes"
-  hr: "{} hours {} minutes"
+  minute: "{}分钟"
+  hr: "{}小时{}分钟"
 image:
-  title: "{} Online Time Statistics"
-  user_id: "User ID: {}"
-  three_day: "Total online time (3 days): {}"
-  today: "Today online time: {}"
+  title: "{} 的在线时间统计"
+  user_id: "用户ID: {}"
+  three_day: "近三天总在线时间: {}"
+  today: "今日在线时间: {}"
 rank:
-    title: Online Time Ranking (3 days)
+    title: 近三天在线时间排行（分钟）
 help:
-  details: Query group member online time recorded by Moonlark
-  description: Online time periods
-  usage1: online-timer [@user]
-  usage2: online-timer rank (online ranking)
+  details: 查询 Moonlark 记录的群友在线时间段
+  description: 在线时间段
+  usage1: online-timer [@用户]
+  usage2: online-timer rank (在线排行)
