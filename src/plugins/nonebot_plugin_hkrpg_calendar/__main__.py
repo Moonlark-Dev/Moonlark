@@ -15,9 +15,6 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 from datetime import datetime
-from typing import TypedDict
-
-import httpx
 from nonebot_plugin_alconna import UniMessage
 from nonebot import on_command
 from nonebot_plugin_preview.preview import screenshot
@@ -27,7 +24,7 @@ from nonebot_plugin_render import render_template, generate_render_keys
 
 from nonebot.log import logger
 
-from .data_source import get_events, request_takumi_api
+from .data_source import get_events, request_sr_wiki
 
 matcher = on_command("hsr-calendar", aliases={"hsrc"})
 lang = LangHelper()
@@ -35,40 +32,41 @@ lang = LangHelper()
 
 @matcher.handle()
 async def _(user_id: str = get_user_id()) -> None:
-    takumi_api_result = await request_takumi_api()
+    takumi_api_result = await request_sr_wiki()
     logger.debug(f"{takumi_api_result=}")
     if takumi_api_result is None:
         await lang.finish("takumi_failed", user_id=user_id)
+    keys = await generate_render_keys(
+        lang,
+        user_id,
+        [
+            f"template.{k}"
+            for k in [
+                "day",
+                "card_pool_title",
+                "card_pool_coming",
+                "card_pool_up_at",
+                "card_pool_co_running",
+                "card_pool_current",
+                "card_pool_open_forever",
+                "card_pool_up_remain",
+                "event_time_to_open",
+                "event_title",
+                "event_at",
+                "event_coming",
+                "event_after_update",
+                "event_close_at",
+                "event_ongoing",
+                "cur_ver",
+            ]
+        ],
+    )
     image = await render_template(
         "hkrpg_calendar.html.jinja",
         await lang.text("title", user_id),
         user_id,
         {"wiki_info": await get_events(), "mhy_bbs": takumi_api_result, "dt": datetime.now()},
-        keys=await generate_render_keys(
-            lang,
-            user_id,
-            [
-                f"template.{k}"
-                for k in [
-                    "day",
-                    "card_pool.title",
-                    "card_pool.coming",
-                    "card_pool.up_at",
-                    "card_pool.co_running",
-                    "card_pool.current",
-                    "card_pool.open_forever",
-                    "card_pool.up_remain",
-                    "event.time_to_open",
-                    "event.title",
-                    "event.at",
-                    "event.coming",
-                    "event.after_update",
-                    "event.close_at",
-                    "event.ongoing",
-                    "cur_ver",
-                ]
-            ],
-        ),
+        keys=keys
     )
     await UniMessage().image(raw=image).send()
     await matcher.finish()
