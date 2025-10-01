@@ -65,6 +65,7 @@ async def handle_status(user_id: str = get_user_id()) -> None:
                 "run_time",
                 "uptime",
             ],
+            "template.",
         ),
     )
     msg = UniMessage().image(raw=image)
