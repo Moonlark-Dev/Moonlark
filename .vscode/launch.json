@@ -5,11 +5,13 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python 调试程序: 模块",
+            "name": "启动 NoneBot",
             "type": "debugpy",
             "request": "launch",
             "module": "nb_cli",
-            "args": ["run"]
+            "args": [
+                "run"
+            ]
         }
     ]
 }
