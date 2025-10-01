@@ -108,7 +108,8 @@ nonebot-plugin-sentry = ">=2.0.0, <3.0.0"
 
 moonlark-custom-plugins = {path = "./src", develop = true}
 nonebot-plugin-bilichat = {git = "https://github.com/Moonlark-Dev/nonebot-plugin-bilichat.git"}
-html2text = ">=2025.4.15, <2026.0.0"
+
+
 
 [tool.poetry.group.dev.dependencies]
 nb-cli = ">=1.4.2, <2.0.0"
@@ -119,6 +120,7 @@ pre-commit = ">=4.1.0, <5.0.0"
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "session"
+
 
 
 [tool.poetry.group.test.dependencies]
