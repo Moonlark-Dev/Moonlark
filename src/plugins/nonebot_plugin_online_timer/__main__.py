@@ -196,10 +196,10 @@ async def render_online_timeline(
             daily_online_time[day] = timedelta()
         daily_online_time[day] += record_duration
     logger.debug(f"{filtered_records=} {start_time=} {end_time=}")
-    # Calculate average and total online time
-    average_daily_online = total_online_time / 3 if daily_online_time else timedelta()
+    # Calculate today and total online time
+    today_online_time = daily_online_time.get(timeline_date, timedelta())
     total_online_str = await format_duration(total_online_time, user_id)
-    average_daily_str = await format_duration(average_daily_online, user_id)
+    today_online_str = await format_duration(today_online_time, user_id)
 
     # Create image
     image_width = 600
@@ -241,7 +241,7 @@ async def render_online_timeline(
         (20, stats_y), await lang.text("image.three_day", user_id, total_online_str), fill=text_color, font=text_font
     )
     draw.text(
-        (20, stats_y + 25), await lang.text("image.avg", user_id, average_daily_str), fill=text_color, font=text_font
+        (20, stats_y + 25), await lang.text("image.today", user_id, today_online_str), fill=text_color, font=text_font
     )
 
     # Draw timeline

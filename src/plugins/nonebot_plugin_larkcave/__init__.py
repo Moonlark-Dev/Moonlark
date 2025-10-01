@@ -1,4 +1,4 @@
-from nonebot import require, load_plugin
+from nonebot import require, load_plugin, get_driver
 from nonebot.plugin import PluginMetadata
 
 from .config import Config
@@ -15,18 +15,19 @@ require("nonebot_plugin_larklang")
 require("nonebot_plugin_larkuser")
 require("nonebot_plugin_localstore")
 require("nonebot_plugin_larkutils")
+require("nonebot_plugin_render")
 require("nonebot_plugin_alconna")
 require("nonebot_plugin_schedule")
 
-load_plugin("nonebot_plugin_larkcave.plugins.similarity_check")
-load_plugin("nonebot_plugin_larkcave.plugins.comment")
-load_plugin("nonebot_plugin_larkcave.plugins.add")
-load_plugin("nonebot_plugin_larkcave.plugins.statisics")
-load_plugin("nonebot_plugin_larkcave.plugins.remove")
-load_plugin("nonebot_plugin_larkcave.plugins.restore")
-load_plugin("nonebot_plugin_larkcave.plugins.archive")
-load_plugin("nonebot_plugin_larkcave.plugins.cool_down")
-load_plugin("nonebot_plugin_larkcave.plugins.get")
-load_plugin("nonebot_plugin_larkcave.plugins.api")
 
-from . import __main__
+from . import comment, archiver, api, commands
+
+# # 启动时初始化感知哈希
+# driver = get_driver()
+
+
+# @driver.on_startup
+# async def _():
+from .utils.hash_initializer import check_and_update_hashes
+
+#     await check_and_update_hashes()

@@ -83,7 +83,7 @@ class LLMRequestSession:
                 tools=self.func_list,
                 tool_choice="auto" if self.func_list else "none",
                 extra_headers={
-                    "X-Title": (t := f"Moonlark - {self.identify}"),
+                    "X-Title": (t := f"{config.identify_prefix} - {self.identify}"),
                     "HTTP-Referer": f"https://{hashlib.sha256(t.encode()).hexdigest()}.moonlark.itcdt.top",
                 },
                 **self.kwargs,
@@ -101,7 +101,7 @@ class LLMRequestSession:
 
     async def call_function(self, call_id: str, name: str, params: dict[str, Any]) -> None:
         if self.tigger_functions["pre_function_call"]:
-            call_id, name, params = self.tigger_functions["pre_function_call"](call_id, name, params)
+            call_id, name, params = await self.tigger_functions["pre_function_call"](call_id, name, params)
         result = await self.func_index[name]["func"](**params)
         if self.tigger_functions["post_function_call"]:
             result = await self.tigger_functions["post_function_call"](result)

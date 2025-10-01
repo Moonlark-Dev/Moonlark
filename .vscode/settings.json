@@ -7,8 +7,10 @@
         "markdown": false,
         "scminput": false
     },
-    "python-envs.defaultEnvManager": "ms-python.python:poetry",
-    "python-envs.defaultPackageManager": "ms-python.python:poetry",
-    "python-envs.pythonProjects": [],
-    "Codegeex.RepoIndex": true
+    "Codegeex.RepoIndex": true,
+    "python.testing.pytestArgs": [
+        "tests"
+    ],
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestEnabled": true
 }
