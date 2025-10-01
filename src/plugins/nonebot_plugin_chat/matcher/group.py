@@ -15,6 +15,7 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 import copy
+import json
 import random
 import re
 import asyncio
@@ -31,7 +32,7 @@ from nonebot_plugin_larkuser import get_user
 from nonebot import on_message, on_command
 from nonebot.adapters import Event, Bot, Message
 from nonebot_plugin_larkutils import get_user_id, get_group_id
-from nonebot_plugin_orm import async_scoped_session
+from nonebot_plugin_orm import async_scoped_session, get_session
 from nonebot.log import logger
 from nonebot_plugin_openai import generate_message
 from nonebot_plugin_openai.types import Messages, Message as OpenAIMessage, AsyncFunction, FunctionParameter
@@ -81,7 +82,9 @@ class MessageProcessor:
         self.session = session
         self.message_count = 0
         self.enabled = True
+        self.cold_until = datetime.now()
         self.reply_message_ids = []
+        self.blocked = False
         asyncio.create_task(self.loop())
 
     async def loop(self) -> None:
@@ -112,9 +115,10 @@ class MessageProcessor:
         }
         await self.process_messages(msg_dict)
         self.session.cached_messages.append(msg_dict)
-        if mentioned or not self.session.message_queue:
+        if (mentioned or not self.session.message_queue) and not self.blocked:
             await self.generate_reply(mentioned)
-            await asyncio.sleep(5)
+            self.cold_until = datetime.now() + timedelta(seconds=5)
+
 
     def clean_special_message(self) -> None:
         while True:
@@ -149,9 +153,26 @@ class MessageProcessor:
         else:
             self.openai_messages.insert(0, await self.generate_system_prompt())
 
+    async def handle_group_cold(self, time_d: timedelta) -> None:
+        min_str = time_d.total_seconds() // 60
+        if len(self.openai_messages) > 0:
+            return
+        if isinstance(self.openai_messages[-1], dict) and self.openai_messages[-1]["role"] == "user":
+            self.openai_messages[-1].content += f"\n[{datetime.now().strftime('%H:%M:%S')}]: 当前群聊已经冷群了 {min_str} 分钟。"
+        elif (not isinstance(self.openai_messages[-1], dict)) and self.openai_messages[-1].role == "assistant":
+            self.openai_messages.append(generate_message(
+                content=f"[{datetime.now().strftime('%H:%M:%S')}]: 当前群聊已经冷群了 {min_str} 分钟。",
+                role="user"
+            ))
+        else:
+            return
+        if not self.blocked:
+            await self.generate_reply()
+            self.blocked = True         # 再次收到消息后才会解锁
+
     async def generate_reply(self, ignore_desire: bool = False) -> None:
         logger.debug(desire := self.session.desire * 0.0075)
-        if not (ignore_desire or random.random() <= desire):
+        if self.cold_until > datetime.now() and not (ignore_desire or random.random() <= desire):
             return
         elif len(self.openai_messages) <= 0 or (
             (not isinstance(self.openai_messages[-1], dict))
@@ -266,6 +287,11 @@ class MessageProcessor:
         self.message_count += 1
         self.reply_message_ids.append(msg_dict["message_id"])
         logger.debug(self.openai_messages)
+        async with get_session() as session:
+            r = await session.get(ChatGroup, {"group_id": self.session.group_id})
+            self.blocked = r and msg_dict["user_id"] in json.loads(r.blocked_user)
+
+
 
     async def generate_system_prompt(self) -> OpenAIMessage:
 
@@ -470,13 +496,12 @@ class GroupSession:
         self.calculate_desire_on_timer()
         if self.mute_until and dt > self.mute_until:
             self.mute_until = None
-        if not self.cached_messages:
+        if self.processor.blocked or not self.cached_messages:
             return
         time_to_last_message = (dt - self.cached_messages[-1]["send_time"]).total_seconds()
         if time_to_last_message > 180:
             if random.random() <= self.desire / 100 and not self.cached_messages[-1]["self"]:
                 await self.processor.generate_reply()
-            # await self.update_memory()
 
 
 from ..config import config
