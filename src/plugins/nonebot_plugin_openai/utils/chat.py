@@ -83,7 +83,7 @@ class LLMRequestSession:
                 tools=self.func_list,
                 tool_choice="auto" if self.func_list else "none",
                 extra_headers={
-                    "X-Title": (t := f"Moonlark - {self.identify}"),
+                    "X-Title": (t := f"{config.identify_prefix} - {self.identify}"),
                     "HTTP-Referer": f"https://{hashlib.sha256(t.encode()).hexdigest()}.moonlark.itcdt.top",
                 },
                 **self.kwargs,

@@ -9,6 +9,7 @@ class Config(BaseModel):
     openai_base_url: str
     openai_default_model: str
     model_override: dict[str, str] = {}
+    identify_prefix: str = "Moonlark"
     openai_free_token: int = 1000
     openai_min_allowed_token: tuple[int, int] = -2000, -1000
     # NOTE 懒得写，从 XDbot2 抄的，后续可能要根据 wiki 重写

@@ -67,10 +67,7 @@ async def enabled_group(
     event: Event, session: async_scoped_session, group_id: str = get_group_id(), user_id: str = get_user_id()
 ) -> bool:
     return bool(
-        (await group_message(event))
-        and (g := await session.get(ChatGroup, {"group_id": group_id}))
-        and g.enabled
-        and user_id not in json.loads(g.blocked_user)
+        (await group_message(event)) and (g := await session.get(ChatGroup, {"group_id": group_id})) and g.enabled
     )
 
 
@@ -95,4 +92,6 @@ async def parse_message_to_string(message: UniMessage, event: Event, bot: Bot, s
                 str_msg += f"[回复: {await parse_message_to_string(UniMessage.generate_without_reply(message=segment.msg), event, bot, state)}]"
             else:
                 str_msg += f"[回复: {segment.msg}]"
+        else:
+            str_msg += f"[特殊消息({segment.type}): {segment.data}]"
     return str_msg
