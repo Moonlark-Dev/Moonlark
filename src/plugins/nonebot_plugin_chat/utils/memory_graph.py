@@ -62,11 +62,21 @@ async def extract_topics_from_text(text: str, max_topics: int = 5, candidate: bo
     if len(text) <= 5:
         return []
     if not candidate:
-        prompt = await lang.text("prompt.memory.graph.extract", 0, text, max_topics, max_topics, datetime.now().isoformat())
+        prompt = await lang.text(
+            "prompt.memory.graph.extract", 0, text, max_topics, max_topics, datetime.now().isoformat()
+        )
     else:
         async with get_session() as session:
             candidate_list = " ".join((await session.scalars(select(MemoryNode.concept))).all())
-        prompt = await lang.text("prompt.memory.graph.extract_candidate", 1, text, max_topics, max_topics, candidate_list, datetime.now().isoformat())
+        prompt = await lang.text(
+            "prompt.memory.graph.extract_candidate",
+            1,
+            text,
+            max_topics,
+            max_topics,
+            candidate_list,
+            datetime.now().isoformat(),
+        )
     result = await fetch_message([generate_message(prompt, "user")], identify="Topic Extract")
     if result == "<none>":
         return []
