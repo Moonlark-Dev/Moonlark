@@ -17,14 +17,14 @@
 
 from nonebot.exception import ActionFailed
 from nonebot_plugin_orm import async_scoped_session
-
-from nonebot_plugin_larkcave.__main__ import cave
-from nonebot_plugin_larkcave.lang import lang
-from nonebot_plugin_larkcave.utils.cave import send_cave
-from nonebot_plugin_larkcave.utils.cool_down import is_user_cooled, is_group_cooled
 from nonebot_plugin_larkutils import get_user_id, get_group_id, is_public_qq_bot
 from nonebot_plugin_schedule import complete_schedule
 from nonebot import on_fullmatch
+
+from ..__main__ import cave
+from ..lang import lang
+from ..utils.cave import send_cave
+from ..utils.cool_down import is_user_cooled
 
 
 async def handle_get_cave(
@@ -32,8 +32,6 @@ async def handle_get_cave(
 ) -> None:
     if not (user_cd_data := await is_user_cooled(user_id, session, is_public_bot))[0]:
         await lang.finish("cave.user_cd", user_id, round(user_cd_data[1] / 60, 3))
-    if not (group_cd_data := await is_group_cooled(group_id, session, is_public_bot))[0]:
-        await lang.finish("cave.group_cd", user_id, round(group_cd_data[1] / 60, 3))
     for _ in range(3):
         try:
             await send_cave(session, user_id, group_id, reverse)

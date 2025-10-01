@@ -29,12 +29,6 @@ class CaveImage(BaseModel):
     name: str
 
 
-class GroupData(Model):
-    group_id: Mapped[str] = mapped_column(String(128), primary_key=True)
-    last_use: Mapped[datetime] = mapped_column(default=datetime.fromtimestamp(0))
-    cool_down_time: Mapped[float] = mapped_column(default=60)
-
-
 class UserCoolDownData(Model):
     user_id: Mapped[str] = mapped_column(String(128), primary_key=True)
     last_use: Mapped[datetime] = mapped_column(default=datetime.fromtimestamp(0))
