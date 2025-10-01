@@ -293,6 +293,15 @@ class MessageProcessor:
             r = await session.get(ChatGroup, {"group_id": self.session.group_id})
             self.blocked = r and msg_dict["user_id"] in json.loads(r.blocked_user)
 
+    def get_message_content_list(self) -> list[str]:
+        l = []
+        for msg in self.openai_messages:
+            if isinstance(msg, dict) and "content" in msg:
+                l.append(msg["content"])
+            elif hasattr(msg, "content"):
+                l.append(msg.content)  # pyright: ignore[reportAttributeAccessIssue]
+        return l
+
     async def generate_system_prompt(self) -> OpenAIMessage:
 
         # 获取最近几条缓存消息作为上下文
@@ -301,7 +310,10 @@ class MessageProcessor:
 
         # 激活相关记忆
         activated_memories = await activate_memories_from_text(
-            context_id=self.session.group_id, target_message=recent_context, max_memories=3
+            context_id=self.session.group_id,
+            target_message=recent_context,
+            max_memories=5,
+            chat_history="\n".join(self.get_message_content_list()),
         )
 
         # 构建记忆文本
