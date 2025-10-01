@@ -58,10 +58,12 @@ def resize_png_to_75_percent(png_bytes: bytes) -> bytes:
         return output_buffer.getvalue()
 
 
-async def generate_render_keys(helper: LangHelper, user_id: str, keys: list[str]) -> dict[str, str]:
+async def generate_render_keys(
+    helper: LangHelper, user_id: str, keys: list[str], key_prefix: str = ""
+) -> dict[str, str]:
     k = {}
     for key in keys:
-        k[key.split(".")[-1]] = await helper.text(key, user_id)
+        k[key.split(".")[-1]] = await helper.text(f"{key_prefix}{key}", user_id)
     return k
 
 
