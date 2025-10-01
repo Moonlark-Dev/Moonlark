@@ -119,7 +119,6 @@ class MessageProcessor:
             await self.generate_reply(mentioned)
             self.cold_until = datetime.now() + timedelta(seconds=5)
 
-
     def clean_special_message(self) -> None:
         while True:
             role = get_role(self.openai_messages[0])
@@ -158,17 +157,20 @@ class MessageProcessor:
         if len(self.openai_messages) > 0:
             return
         if isinstance(self.openai_messages[-1], dict) and self.openai_messages[-1]["role"] == "user":
-            self.openai_messages[-1].content += f"\n[{datetime.now().strftime('%H:%M:%S')}]: 当前群聊已经冷群了 {min_str} 分钟。"
+            self.openai_messages[
+                -1
+            ].content += f"\n[{datetime.now().strftime('%H:%M:%S')}]: 当前群聊已经冷群了 {min_str} 分钟。"
         elif (not isinstance(self.openai_messages[-1], dict)) and self.openai_messages[-1].role == "assistant":
-            self.openai_messages.append(generate_message(
-                content=f"[{datetime.now().strftime('%H:%M:%S')}]: 当前群聊已经冷群了 {min_str} 分钟。",
-                role="user"
-            ))
+            self.openai_messages.append(
+                generate_message(
+                    content=f"[{datetime.now().strftime('%H:%M:%S')}]: 当前群聊已经冷群了 {min_str} 分钟。", role="user"
+                )
+            )
         else:
             return
         if not self.blocked:
             await self.generate_reply()
-            self.blocked = True         # 再次收到消息后才会解锁
+            self.blocked = True  # 再次收到消息后才会解锁
 
     async def generate_reply(self, ignore_desire: bool = False) -> None:
         logger.debug(desire := self.session.desire * 0.0075)
@@ -290,8 +292,6 @@ class MessageProcessor:
         async with get_session() as session:
             r = await session.get(ChatGroup, {"group_id": self.session.group_id})
             self.blocked = r and msg_dict["user_id"] in json.loads(r.blocked_user)
-
-
 
     async def generate_system_prompt(self) -> OpenAIMessage:
 

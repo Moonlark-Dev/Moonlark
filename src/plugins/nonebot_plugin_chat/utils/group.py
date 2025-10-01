@@ -67,9 +67,7 @@ async def enabled_group(
     event: Event, session: async_scoped_session, group_id: str = get_group_id(), user_id: str = get_user_id()
 ) -> bool:
     return bool(
-        (await group_message(event))
-        and (g := await session.get(ChatGroup, {"group_id": group_id}))
-        and g.enabled
+        (await group_message(event)) and (g := await session.get(ChatGroup, {"group_id": group_id})) and g.enabled
     )
 
 
