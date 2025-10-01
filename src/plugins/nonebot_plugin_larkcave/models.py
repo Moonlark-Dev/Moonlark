@@ -20,6 +20,7 @@ class ImageData(Model):
     file_id: Mapped[str] = mapped_column(String(32))
     name: Mapped[str] = mapped_column(Text())
     belong: Mapped[int]
+    p_hash: Mapped[str] = mapped_column(String(64), nullable=True)
 
 
 class CaveImage(BaseModel):
