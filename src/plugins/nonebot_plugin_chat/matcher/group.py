@@ -196,7 +196,7 @@ class MessageProcessor:
                             description="转发消息的 ID，是“[合并转发: {一段数字ID}]”中间的“{一段数字}”，例如“[合并转发: 1234567890]”中的“1234567890”",
                             required=True,
                         ),
-                    }
+                    },
                 ),
                 AsyncFunction(
                     func=browse_webpage,
