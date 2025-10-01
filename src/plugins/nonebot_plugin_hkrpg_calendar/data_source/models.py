@@ -36,13 +36,16 @@ from typing import Annotated, Optional
 import re
 from nonebot.compat import type_validate_json
 
+
 def parse_datetime(value: str) -> Optional[datetime]:
     if re.match(r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$", value):
         return datetime.strptime(value, "%Y-%m-%d %H:%M:%S")
     return None
 
+
 def parse_character_url(value: str) -> str:
     return f"https://act-api-takumi-static.mihoyo.com/common/blackboard/sr_wiki/v1/content/info?app_sn=sr_wiki&content_id={value[39:-40]}"
+
 
 class GachaPoolCharacter(BaseModel):
     icon: str
@@ -56,12 +59,13 @@ class GachaPoolList(BaseModel):
     end_time: Annotated[Optional[datetime], BeforeValidator(parse_datetime)]
     pool: list[GachaPoolCharacter]
 
+
 class GachaPoolData(BaseModel):
     list: list[GachaPoolList]
 
+
 class GachaPoolResponse(BaseModel):
     data: GachaPoolData
-
 
 
 def get_rarity(value: str) -> int:
@@ -74,8 +78,6 @@ def get_rarity(value: str) -> int:
     if "星级/五星" in json.loads(data[k]["filter"]["text"]):
         return 5
     return 4
-    
-
 
 
 class SrWikiCharacter(BaseModel):
@@ -86,8 +88,10 @@ class SrWikiCharacter(BaseModel):
 class SrWikiContentData(BaseModel):
     content: SrWikiCharacter
 
+
 class SrWikiContentResponse(BaseModel):
     data: SrWikiContentData
+
 
 class CardPoolCharacter(BaseModel):
     icon: str
@@ -103,9 +107,10 @@ class CardPoolList(BaseModel):
     end_time: Optional[datetime]
     pool: list[CardPoolCharacter]
 
+
 class CardPoolData(BaseModel):
     list: list[CardPoolList]
-    
+
 
 class CardPoolResponse(BaseModel):
     data: CardPoolData

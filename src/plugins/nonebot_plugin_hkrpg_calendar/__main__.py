@@ -66,7 +66,7 @@ async def _(user_id: str = get_user_id()) -> None:
         await lang.text("title", user_id),
         user_id,
         {"wiki_info": await get_events(), "mhy_bbs": takumi_api_result, "dt": datetime.now()},
-        keys=keys
+        keys=keys,
     )
     await UniMessage().image(raw=image).send()
     await matcher.finish()

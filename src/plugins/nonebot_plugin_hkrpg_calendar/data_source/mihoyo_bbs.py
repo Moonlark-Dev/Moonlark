@@ -21,7 +21,15 @@ from nonebot.log import logger
 from nonebot.compat import type_validate_json
 import httpx
 
-from .models import CardPoolCharacter, CardPoolData, CardPoolList, GachaPoolResponse, CardPoolResponse, SrWikiContentResponse
+from .models import (
+    CardPoolCharacter,
+    CardPoolData,
+    CardPoolList,
+    GachaPoolResponse,
+    CardPoolResponse,
+    SrWikiContentResponse,
+)
+
 
 async def request_character_data(url: str) -> SrWikiContentResponse:
     async with httpx.AsyncClient() as client:
@@ -43,14 +51,14 @@ async def request_sr_wiki() -> Optional[CardPoolResponse]:
         )
     if response.status_code == 200:
         try:
-            gacha_response =  type_validate_json(GachaPoolResponse, response.text)
+            gacha_response = type_validate_json(GachaPoolResponse, response.text)
         except pydantic.ValidationError as e:
             logger.exception(e)
             return None
     else:
         logger.warning(f"请求米游社 API 失败 ({response.status_code}): {response.text}")
         return None
-    
+
     return CardPoolResponse(
         data=CardPoolData(
             list=[
@@ -59,13 +67,17 @@ async def request_sr_wiki() -> Optional[CardPoolResponse]:
                     start_time=pool.start_time,
                     end_time=pool.end_time,
                     content_before_act=pool.content_before_act,
-                    pool=[CardPoolCharacter(
-                        icon=c.icon,
-                        url=c.url,
-                        data=(d := (await request_character_data(c.url)).data.content),
-                        rarity=d.ext
-                    ) for c in pool.pool]
-                ) for pool in gacha_response.data.list
+                    pool=[
+                        CardPoolCharacter(
+                            icon=c.icon,
+                            url=c.url,
+                            data=(d := (await request_character_data(c.url)).data.content),
+                            rarity=d.ext,
+                        )
+                        for c in pool.pool
+                    ],
+                )
+                for pool in gacha_response.data.list
             ]
         )
     )
