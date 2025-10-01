@@ -16,7 +16,7 @@
 # ##############################################################################
 import inspect
 from types import ModuleType
-from typing import TypeVar, Optional, Callable
+from typing import Generic, TypeVar, Optional, Callable
 
 from nonebot import get_plugin_by_module_name
 from nonebot_plugin_localstore import get_config_file, get_cache_file, get_data_file
@@ -47,7 +47,7 @@ def get_file_function(file_type: FileType) -> GetFilePathFunc:
     raise ValueError(f"Unknown file type: {file_type}")
 
 
-class FileManager:
+class FileManager(Generic[T]):
 
     def __init__(self, path: Path, default: T) -> None:
         if path not in file_locks:
@@ -95,7 +95,12 @@ def get_module_name(module: ModuleType | None) -> str | None:
     return plugin.name
 
 
-def open_file(file_name: str, file_type: FileType, default: T = {}, plugin_name: Optional[str] = None) -> FileManager:
+T2 = TypeVar("T2")
+
+
+def open_file(
+    file_name: str, file_type: FileType, default: T2 = {}, plugin_name: Optional[str] = None
+) -> FileManager[T2]:
     module = inspect.getmodule(inspect.stack()[1][0])
     plugin_name = plugin_name or get_module_name(module) or ""
     if not plugin_name:
