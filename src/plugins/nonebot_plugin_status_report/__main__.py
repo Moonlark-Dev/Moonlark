@@ -25,9 +25,13 @@ import aiofiles
 from fastapi import FastAPI
 from nonebot import get_app, get_loaded_plugins, get_driver
 from nonebot.message import run_postprocessor, run_preprocessor
-from nonebot.params import T_State
+from nonebot.typing import T_State
+from nonebot_plugin_alconna import UniMessage
 from nonebot_plugin_alconna.matcher import AlconnaMatcher
 from nonebot_plugin_bots.__main__ import bots_status
+from nonebot_plugin_htmlrender import md_to_pic
+from nonebot_plugin_larklang.__main__ import LangHelper
+from nonebot_plugin_larkutils import get_main_account
 from nonebot_plugin_localstore import get_data_dir
 from nonebot.adapters import Event, Bot
 from nonebot.matcher import Matcher, matchers
@@ -120,6 +124,17 @@ async def _(matcher: Matcher, state: T_State, event: Event) -> None:
     matcher.simple_run = state["original_simple_run_method"]
 
 
+lang = LangHelper()
+
+@run_postprocessor
+async def _(matcher: Matcher, exception: Optional[Exception], state: T_State, event: Event) -> None:
+    if exception is None or "status_report_command_name" not in state:
+        return
+    user_id = await get_main_account(event.get_user_id())
+    exc = traceback.format_exception(exception)
+    await UniMessage().image(raw=await md_to_pic(await lang.text("error", user_id, "\n>\n".join([f"> `{e[:-1]}`" for e in exc])))).send()
+    
+
 @run_postprocessor
 async def _(event: Event, bot: Bot, exception: Optional[Exception]) -> None:
     global event_counter
@@ -147,6 +162,7 @@ async def _(event: Event, bot: Bot, exception: Optional[Exception]) -> None:
     async with lock.exceptions:
         async with aiofiles.open(data_dir.joinpath("exceptions.json"), "w", encoding="utf-8") as f:
             await f.write(json.dumps(exc_list, ensure_ascii=False, indent=4))
+    
 
 
 async def report_openai_history(messages: "Messages", identify: str, model: str) -> None:
