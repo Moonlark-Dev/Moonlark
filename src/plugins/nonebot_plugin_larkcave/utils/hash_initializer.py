@@ -15,6 +15,7 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
+import asyncio
 import zlib
 import aiofiles
 from nonebot import logger
@@ -26,7 +27,7 @@ from .decoder import data_dir
 from .encoder import calculate_perceptual_hash
 
 
-async def check_and_update_hashes() -> None:
+async def _check_and_update_hashes() -> None:
     """
     检查所有图片是否都保存了感知哈希，如果没有则计算并保存
     """
@@ -77,3 +78,7 @@ async def check_and_update_hashes() -> None:
         # 提交所有更改
         await session.commit()
         logger.success(f"pHash 初始化完成: 成功 {success_count} 张，失败 {fail_count} 张")
+
+
+def check_and_update_hashes() -> None:
+    asyncio.run(_check_and_update_hashes())

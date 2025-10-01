@@ -1,6 +1,6 @@
 [project]
 name = "moonlark_custom_plugins"
-version = "0.2.2"
+version = "0.2.3"
 description = "Moonlark 中的自定义插件"
 requires-python = ">=3.11, <4.0"
 
@@ -112,5 +112,6 @@ packages = [
 
 
 [tool.poetry.plugins.nb_scripts]
+larkcave-init-hash = "nonebot_plugin_larkcave:check_and_update_hashes"
 larkhelp-generate = "nonebot_plugin_larkhelp.__main__:generate_help_markdown"
-larkcave-init-hash = "nonebot_plugin_larkcave.utils.hash_initializer:check_and_update_hashes"
+
