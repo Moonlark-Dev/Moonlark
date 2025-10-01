@@ -5,7 +5,7 @@ image:
   title: "{} 的在线时间统计"
   user_id: "用户ID: {}"
   three_day: "近三天总在线时间: {}"
-  avg: "平均每天在线时间: {}"
+  today: "今日在线时间: {}"
 rank:
     title: 近三天在线时间排行（分钟）
 help:
