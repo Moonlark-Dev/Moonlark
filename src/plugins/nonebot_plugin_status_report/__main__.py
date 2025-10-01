@@ -126,14 +126,17 @@ async def _(matcher: Matcher, state: T_State, event: Event) -> None:
 
 lang = LangHelper()
 
+
 @run_postprocessor
 async def _(matcher: Matcher, exception: Optional[Exception], state: T_State, event: Event) -> None:
     if exception is None or "status_report_command_name" not in state:
         return
     user_id = await get_main_account(event.get_user_id())
     exc = traceback.format_exception(exception)
-    await UniMessage().image(raw=await md_to_pic(await lang.text("error", user_id, "\n>\n".join([f"> `{e[:-1]}`" for e in exc])))).send()
-    
+    await UniMessage().image(
+        raw=await md_to_pic(await lang.text("error", user_id, "\n>\n".join([f"> `{e[:-1]}`" for e in exc])))
+    ).send()
+
 
 @run_postprocessor
 async def _(event: Event, bot: Bot, exception: Optional[Exception]) -> None:
@@ -162,7 +165,6 @@ async def _(event: Event, bot: Bot, exception: Optional[Exception]) -> None:
     async with lock.exceptions:
         async with aiofiles.open(data_dir.joinpath("exceptions.json"), "w", encoding="utf-8") as f:
             await f.write(json.dumps(exc_list, ensure_ascii=False, indent=4))
-    
 
 
 async def report_openai_history(messages: "Messages", identify: str, model: str) -> None:
