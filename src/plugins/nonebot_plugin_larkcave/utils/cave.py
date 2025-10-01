@@ -41,14 +41,12 @@ async def send_cave(session: async_scoped_session, user_id: str, group_id: str, 
         content = await decode_cave(cave_data, session, user_id, cave_id == 398 or reverse)
     except NoResultFound:
         await lang.finish("cave.noresult", user_id)
-        raise
     except IndexError:
         await lang.finish("cave.nocave", user_id)
-        raise
     cave_message = await content.send()
     if msg := await get_comments(cave_id, session, user_id):
         await msg.send()
-    await on_use(group_id, user_id, session)
+    await on_use(user_id, session)
     try:
         add_cave_message(cave_id, str(cave_message.msg_ids[0]["message_id"]))
     except TypeError:
