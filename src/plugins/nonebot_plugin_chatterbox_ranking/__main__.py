@@ -1,6 +1,7 @@
 from typing import Literal
 import aiofiles
 from nonebot_plugin_larkuser import get_user
+from ..nonebot_plugin_larkutils.file import FileType
 from sqlalchemy import select
 from nonebot.adapters import Bot
 from nonebot.adapters.qq import Bot as Bot_QQ
@@ -8,41 +9,34 @@ from nonebot import on_message
 import json
 from nonebot_plugin_orm import async_scoped_session
 from nonebot_plugin_alconna import on_alconna, Alconna, Subcommand, UniMessage, Args, At
-from nonebot_plugin_larkutils import get_user_id, get_group_id
-from nonebot_plugin_localstore import get_cache_file
-
+from nonebot_plugin_larkutils import get_user_id, get_group_id, open_file
 from .image import render_bar
 from .lang import lang
 from .models import GroupChatterbox, GroupChatterboxWithNickname
 
-summary = on_alconna(
-    Alconna("chatterbox", Subcommand("--enable|-e"), Subcommand("--disable|-d"), Args["user_id?", Literal["me"] | At]),
+chatterbox = on_alconna(
+    Alconna("chatterbox", Subcommand("--enable|-e"), Subcommand("--disable|-d"), Args["user_id_arg?", Literal["me"] | At]),
     aliases={"ct"},
 )
-config_file = get_cache_file("nonebot-plugin-chatterbox-ranking", "config.json")
+
 recorder = on_message(priority=3, block=False)
 
 
-async def get_config() -> list[str]:
-    if not config_file.is_file():
-        return []
-    async with aiofiles.open(config_file, "r") as f:
-        return json.loads(await f.read())
 
-
-@summary.assign("user_id")
+@chatterbox.assign("user_id")
 async def _(
     session: async_scoped_session,
-    user_id: Literal["me"] | At = "me",
+    user_id_arg: Literal["me"] | At = "me",
     sender_id: str = get_user_id(),
     group_id: str = get_group_id(),
 ) -> None:
-    if group_id not in await get_config():
-        await lang.finish("disabled", user_id)
-    if user_id == "me":
+    async with open_file("disabled.json", FileType.CONFIG, []) as f:
+        if group_id in f.data:
+            await lang.finish("disabled", sender_id)
+    if user_id_arg == "me":
         user_id = sender_id
     else:
-        user_id = user_id.target
+        user_id = user_id_arg.target
     index = 1
     for user in await session.scalars(
         select(GroupChatterbox)
@@ -55,10 +49,11 @@ async def _(
     await lang.finish("find.not_found", user_id)
 
 
-@summary.assign("$main")
+@chatterbox.assign("$main")
 async def _(session: async_scoped_session, user_id: str = get_user_id(), group_id: str = get_group_id()) -> None:
-    if group_id not in await get_config():
-        await lang.finish("disabled", user_id)
+    async with open_file("disabled.json", FileType.CONFIG, []) as f:
+        if group_id in f.data:
+            await lang.finish("disabled", user_id)
     result = (
         await session.scalars(
             select(GroupChatterbox)
@@ -67,7 +62,7 @@ async def _(session: async_scoped_session, user_id: str = get_user_id(), group_i
             .limit(12)
         )
     ).all()
-    await summary.finish(
+    await chatterbox.finish(
         UniMessage().image(
             raw=await render_bar(
                 [
@@ -85,8 +80,9 @@ async def _(session: async_scoped_session, user_id: str = get_user_id(), group_i
 
 @recorder.handle()
 async def _(session: async_scoped_session, group_id: str = get_group_id(), user_id: str = get_user_id()) -> None:
-    if group_id not in await get_config():
-        await recorder.finish()
+    async with open_file("disabled.json", FileType.CONFIG, []) as f:
+        if group_id in f.data:
+            await recorder.finish()
     result = await session.scalar(
         select(GroupChatterbox).where(GroupChatterbox.group_id == group_id, GroupChatterbox.user_id == user_id)
     )
@@ -99,23 +95,19 @@ async def _(session: async_scoped_session, group_id: str = get_group_id(), user_
     await recorder.finish()
 
 
-@summary.assign("enable")
+@chatterbox.assign("enable")
 async def _(bot: Bot, user_id: str = get_user_id(), group_id: str = get_group_id()) -> None:
     if isinstance(bot, Bot_QQ):
         await lang.finish("switch.unsupported", user_id)
-    config = await get_config()
-    if group_id not in config:
-        config.append(group_id)
-    async with aiofiles.open(config_file, "w") as f:
-        await f.write(json.dumps(config))
+    async with open_file("disabled.json", FileType.CONFIG, []) as f:
+        if group_id not in f.data:
+            f.data.append(group_id)
     await lang.finish("switch.enable", user_id)
 
 
-@summary.assign("disable")
+@chatterbox.assign("disable")
 async def _(user_id: str = get_user_id(), group_id: str = get_group_id()) -> None:
-    config = await get_config()
-    if group_id in config:
-        config.pop(config.index(group_id))
-    async with aiofiles.open(config_file, "w") as f:
-        await f.write(json.dumps(config))
+    async with open_file("disabled.json", FileType.CONFIG, []) as f:
+        if group_id in f.data:
+            f.data.pop(f.data.index(group_id))
     await lang.finish("switch.disable", user_id)
