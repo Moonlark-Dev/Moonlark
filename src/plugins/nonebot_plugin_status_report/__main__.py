@@ -47,6 +47,7 @@ if TYPE_CHECKING:
 
 lang = LangHelper()
 
+
 class DataLocks:
 
     def __init__(self) -> None:
@@ -124,8 +125,6 @@ async def _(matcher: Matcher, state: T_State, event: Event) -> None:
         async with aiofiles.open(data_dir.joinpath("handler.json"), "w", encoding="utf-8") as f:
             await f.write(json.dumps(results[-20:], ensure_ascii=False, indent=4))
     matcher.simple_run = state["original_simple_run_method"]
-
-
 
 
 @run_postprocessor
