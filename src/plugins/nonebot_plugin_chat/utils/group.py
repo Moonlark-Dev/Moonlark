@@ -14,50 +14,24 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
-#
-#  This program is free software: you can redistribute it and/or modify
-#  it under the terms of the GNU Affero General Public License as published
-#  by the Free Software Foundation, either version 3 of the License, or
-#  (at your option) any later version.
-#
-#  This program is distributed in the hope that it will be useful,
-#  but WITHOUT ANY WARRANTY; without even the implied warranty of
-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#  GNU Affero General Public License for more details.
-#
-#  You should have received a copy of the GNU Affero General Public License
-#  along with this program.  If not, see <https://www.gnu.org/licenses/>.
-# ##############################################################################
-#
-#  This program is free software: you can redistribute it and/or modify
-#  it under the terms of the GNU Affero General Public License as published
-#  by the Free Software Foundation, either version 3 of the License, or
-#  (at your option) any later version.
-#
-#  This program is distributed in the hope that it will be useful,
-#  but WITHOUT ANY WARRANTY; without even the implied warranty of
-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#  GNU Affero General Public License for more details.
-#
-#  You should have received a copy of the GNU Affero General Public License
-#  along with this program.  If not, see <https://www.gnu.org/licenses/>.
-# ##############################################################################
-import json
 
-from nonebot import Bot
-from nonebot.internal.adapter import Event
+from typing import Optional, cast
+from nonebot import on_message
+from nonebot.adapters import Bot
+from nonebot.adapters import Event
 from nonebot.typing import T_State
 from nonebot_plugin_userinfo import get_user_info
-from nonebot_plugin_alconna import Image, UniMessage, Text, At, Reply
+from nonebot_plugin_alconna import Image, UniMessage, Text, At, Reply, Reference
 from nonebot_plugin_orm import async_scoped_session
-
-from nonebot_plugin_chat.models import ChatGroup
-from nonebot_plugin_chat.utils.image import get_image_summary
 from nonebot_plugin_larkuser import get_user
 from nonebot_plugin_larkutils import get_group_id, get_user_id
-
 from nonebot.adapters import Message
 
+from nonebot.adapters.onebot.v11 import Bot as OneBotV11Bot
+# from nonebot.adapters.onebot.v11 import MessageSegment as OneBotV11MessageSegment
+
+from ..models import ChatGroup
+from .image import get_image_summary
 
 async def group_message(event: Event) -> bool:
     return event.get_user_id() != event.get_session_id()
@@ -92,6 +66,19 @@ async def parse_message_to_string(message: UniMessage, event: Event, bot: Bot, s
                 str_msg += f"[回复: {await parse_message_to_string(UniMessage.generate_without_reply(message=segment.msg), event, bot, state)}]"
             else:
                 str_msg += f"[回复: {segment.msg}]"
+        elif isinstance(segment, Reference) and isinstance(bot, OneBotV11Bot) and segment.id is not None:
+            str_msg += f"[合并转发: {segment.id}]"
         else:
-            str_msg += f"[特殊消息({segment.type}): {segment.data}]"
+            str_msg += f"[特殊消息: {segment.dump()}]"
     return str_msg
+
+
+# from nonebot.adapters.onebot.v11 import GroupMessageEvent, Bot
+# from nonebot.matcher import Matcher
+
+# @on_message().handle()
+# async def _(matcher: Matcher, event: GroupMessageEvent, bot: Bot, state: T_State):
+#     if event.group_id == 598443695:
+#         message = UniMessage.of(event.get_message())
+#         await message.attach_reply()
+#         await matcher.finish(await parse_message_to_string(message, event, bot, state))
