@@ -28,10 +28,12 @@ from nonebot_plugin_larkutils import get_group_id, get_user_id
 from nonebot.adapters import Message
 
 from nonebot.adapters.onebot.v11 import Bot as OneBotV11Bot
+
 # from nonebot.adapters.onebot.v11 import MessageSegment as OneBotV11MessageSegment
 
 from ..models import ChatGroup
 from .image import get_image_summary
+
 
 async def group_message(event: Event) -> bool:
     return event.get_user_id() != event.get_session_id()
