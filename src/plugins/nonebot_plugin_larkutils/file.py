@@ -94,9 +94,13 @@ def get_module_name(module: ModuleType | None) -> str | None:
         return None
     return plugin.name
 
+
 T2 = TypeVar("T2")
 
-def open_file(file_name: str, file_type: FileType, default: T2 = {}, plugin_name: Optional[str] = None) -> FileManager[T2]:
+
+def open_file(
+    file_name: str, file_type: FileType, default: T2 = {}, plugin_name: Optional[str] = None
+) -> FileManager[T2]:
     module = inspect.getmodule(inspect.stack()[1][0])
     plugin_name = plugin_name or get_module_name(module) or ""
     if not plugin_name:

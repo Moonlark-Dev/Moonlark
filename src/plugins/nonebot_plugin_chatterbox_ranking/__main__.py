@@ -15,12 +15,13 @@ from .lang import lang
 from .models import GroupChatterbox, GroupChatterboxWithNickname
 
 chatterbox = on_alconna(
-    Alconna("chatterbox", Subcommand("--enable|-e"), Subcommand("--disable|-d"), Args["user_id_arg?", Literal["me"] | At]),
+    Alconna(
+        "chatterbox", Subcommand("--enable|-e"), Subcommand("--disable|-d"), Args["user_id_arg?", Literal["me"] | At]
+    ),
     aliases={"ct"},
 )
 
 recorder = on_message(priority=3, block=False)
-
 
 
 @chatterbox.assign("user_id")
