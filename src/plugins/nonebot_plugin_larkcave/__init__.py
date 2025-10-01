@@ -28,6 +28,6 @@ from . import comment, archiver, api, commands
 
 # @driver.on_startup
 # async def _():
-#     from .utils.hash_initializer import check_and_update_hashes
+from .utils.hash_initializer import check_and_update_hashes
 
 #     await check_and_update_hashes()
