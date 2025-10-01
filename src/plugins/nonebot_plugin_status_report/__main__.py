@@ -45,6 +45,8 @@ if TYPE_CHECKING:
     from nonebot_plugin_openai.types import Messages
 
 
+lang = LangHelper()
+
 class DataLocks:
 
     def __init__(self) -> None:
@@ -124,10 +126,9 @@ async def _(matcher: Matcher, state: T_State, event: Event) -> None:
     matcher.simple_run = state["original_simple_run_method"]
 
 
-lang = LangHelper()
 
 @run_postprocessor
-async def _(matcher: Matcher, exception: Optional[Exception], state: T_State, event: Event) -> None:
+async def _(exception: Optional[Exception], state: T_State, event: Event) -> None:
     if exception is None or "status_report_command_name" not in state:
         return
     user_id = await get_main_account(event.get_user_id())
