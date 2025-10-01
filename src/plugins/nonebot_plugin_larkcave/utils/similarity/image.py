@@ -1,5 +1,4 @@
 import asyncio
-import io
 from nonebot_plugin_orm import async_scoped_session
 from sqlalchemy import select
 from ...types import CheckPassedResult, CheckFailedResult, CheckResult

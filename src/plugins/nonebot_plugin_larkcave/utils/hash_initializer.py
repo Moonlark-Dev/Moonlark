@@ -30,7 +30,6 @@ async def check_and_update_hashes() -> None:
     """
     检查所有图片是否都保存了感知哈希，如果没有则计算并保存
     """
-    session: async_scoped_session
     async with get_session() as session:
         # 查询所有没有感知哈希的图片
         images_without_hash = (

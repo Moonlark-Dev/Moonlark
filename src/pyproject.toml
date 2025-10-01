@@ -113,3 +113,4 @@ packages = [
 
 [tool.poetry.plugins.nb_scripts]
 larkhelp-generate = "nonebot_plugin_larkhelp.__main__:generate_help_markdown"
+larkcave-init-hash = "nonebot_plugin_larkcave.utils.hash_initializer:check_and_update_hashes"

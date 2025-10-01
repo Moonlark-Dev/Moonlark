@@ -22,12 +22,12 @@ require("nonebot_plugin_schedule")
 
 from . import comment, archiver, api, commands
 
-# 启动时初始化感知哈希
-driver = get_driver()
+# # 启动时初始化感知哈希
+# driver = get_driver()
 
 
-@driver.on_startup
-async def _():
-    from .utils.hash_initializer import check_and_update_hashes
+# @driver.on_startup
+# async def _():
+#     from .utils.hash_initializer import check_and_update_hashes
 
-    await check_and_update_hashes()
+#     await check_and_update_hashes()
