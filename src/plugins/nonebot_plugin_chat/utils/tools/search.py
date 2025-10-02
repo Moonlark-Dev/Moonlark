@@ -35,18 +35,14 @@ async def web_search(keyword: str) -> str:
         return "Metaso 搜索暂不可用，以下是使用 Bing 搜索得到的结果：\n\n" + await search_on_bing(keyword)
 
     url = "https://metaso.cn/api/v1/search"
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Accept": "application/json",
-        "Content-Type": "application/json"
-    }
+    headers = {"Authorization": f"Bearer {api_key}", "Accept": "application/json", "Content-Type": "application/json"}
     payload = {
         "q": keyword,
         "scope": "webpage",
         "includeSummary": False,
         "size": 10,
         "includeRawContent": False,
-        "conciseSnippet": False
+        "conciseSnippet": False,
     }
 
     try:
