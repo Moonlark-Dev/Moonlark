@@ -19,3 +19,4 @@ from .browser import browse_webpage
 from .search import search_on_google
 from .wolfram_alpha import request_wolfram_alpha
 from .describe_image import describe_image
+from .fetch_forward_message import get_fetcher

@@ -26,6 +26,7 @@ from nonebot.typing import T_State
 from typing import TypedDict, Optional, Any
 from nonebot_plugin_apscheduler import scheduler
 from nonebot_plugin_alconna import UniMessage, Target, get_target
+from nonebot_plugin_chat.utils.tools.fetch_forward_message import get_fetcher
 from nonebot_plugin_userinfo import EventUserInfo, UserInfo
 
 from nonebot_plugin_larkuser import get_user
@@ -187,6 +188,17 @@ class MessageProcessor:
             False,
             functions=[
                 AsyncFunction(
+                    func=get_fetcher(self.session.bot),
+                    description="获取合并转发消息的内容。",
+                    parameters={
+                        "message_id": FunctionParameter(
+                            type="string",
+                            description="转发消息的 ID，是“[合并转发: {一段数字ID}]”中间的“{一段数字}”，例如“[合并转发: 1234567890]”中的“1234567890”",
+                            required=True,
+                        ),
+                    },
+                ),
+                AsyncFunction(
                     func=browse_webpage,
                     description="使用浏览器访问指定 URL 并获取网页内容的 Markdown 格式文本",
                     parameters={
@@ -293,6 +305,15 @@ class MessageProcessor:
             r = await session.get(ChatGroup, {"group_id": self.session.group_id})
             self.blocked = r and msg_dict["user_id"] in json.loads(r.blocked_user)
 
+    def get_message_content_list(self) -> list[str]:
+        l = []
+        for msg in self.openai_messages:
+            if isinstance(msg, dict) and "content" in msg:
+                l.append(msg["content"])
+            elif hasattr(msg, "content"):
+                l.append(msg.content)  # pyright: ignore[reportAttributeAccessIssue]
+        return l
+
     async def generate_system_prompt(self) -> OpenAIMessage:
 
         # 获取最近几条缓存消息作为上下文
@@ -301,7 +322,10 @@ class MessageProcessor:
 
         # 激活相关记忆
         activated_memories = await activate_memories_from_text(
-            context_id=self.session.group_id, target_message=recent_context, max_memories=3
+            context_id=self.session.group_id,
+            target_message=recent_context,
+            max_memories=5,
+            chat_history="\n".join(self.get_message_content_list()),
         )
 
         # 构建记忆文本
