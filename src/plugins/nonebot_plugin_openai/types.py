@@ -16,6 +16,6 @@ class FunctionParameterWithEnum(FunctionParameter):
 
 
 class AsyncFunction(TypedDict):
-    func: Callable[[...], Awaitable[Any]]
+    func: Callable[..., Awaitable[Any]]
     description: str
     parameters: dict[str, FunctionParameter | FunctionParameterWithEnum]
