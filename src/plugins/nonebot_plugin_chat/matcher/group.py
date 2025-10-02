@@ -47,7 +47,14 @@ from ..utils.note_manager import get_context_notes
 from ..utils.memory_graph import cleanup_old_memories
 from ..models import ChatGroup
 from ..utils import enabled_group, parse_message_to_string, splitter
-from ..utils.tools import browse_webpage, search_on_google, describe_image, request_wolfram_alpha, get_fetcher, get_note_poster
+from ..utils.tools import (
+    browse_webpage,
+    search_on_google,
+    describe_image,
+    request_wolfram_alpha,
+    get_fetcher,
+    get_note_poster,
+)
 
 BASE_DESIRE = 30
 
@@ -137,8 +144,8 @@ class MessageProcessor:
         first_msg = self.openai_messages[0]
         role = get_role(first_msg)
         if role == "assistant":
-            self.openai_messages.pop(0)    
-        elif role == "user" and isinstance(first_msg, dict) and isinstance(content := first_msg.get("content"), str):    
+            self.openai_messages.pop(0)
+        elif role == "user" and isinstance(first_msg, dict) and isinstance(content := first_msg.get("content"), str):
             if next_message_pos := content.find("\n[") + 1:
                 first_msg["content"] = content[next_message_pos:]
             else:
@@ -165,7 +172,7 @@ class MessageProcessor:
         if isinstance(latest_message, dict):
             if get_role(latest_message) == "user":
                 if (content := latest_message.get("content")) and isinstance(content, str):
-                        latest_message["content"] = content + delta_content
+                    latest_message["content"] = content + delta_content
                 else:
                     latest_message["content"] = delta_content
             else:
@@ -258,9 +265,9 @@ class MessageProcessor:
                             type="string",
                             description="笔记的关键词，用于搜索。如果未指定，则默认为空。",
                             required=False,
-                        )
-                    }
-                )
+                        ),
+                    },
+                ),
             ],
             identify="Chat",
             pre_function_call=self.send_function_call_feedback,
@@ -355,10 +362,7 @@ class MessageProcessor:
         # 激活相关记忆
         chat_history = "\n".join(self.get_message_content_list())
         activated_memories = await activate_memories_from_text(
-            context_id=self.session.group_id,
-            target_message=recent_context,
-            max_memories=5,
-            chat_history=chat_history
+            context_id=self.session.group_id, target_message=recent_context, max_memories=5, chat_history=chat_history
         )
 
         # 获取相关笔记
@@ -499,7 +503,7 @@ class GroupSession:
         at_list = re.finditer("|".join([f"@{user}" for user in users.keys()]), message)
         cursor_index = 0
         for at in at_list:
-            uni_msg = uni_msg.text(text=message[cursor_index:at.start()])
+            uni_msg = uni_msg.text(text=message[cursor_index : at.start()])
             at_nickname = at.group(0)[1:]
             if user_id := users.get(at_nickname):
                 uni_msg = uni_msg.at(user_id)
@@ -661,7 +665,6 @@ async def _(
         case "reset-memory":
             if g is not None:
                 # 清理图形记忆
-                
 
                 await cleanup_old_memories(group_id, forget_ratio=1.0)  # 清除所有记忆
                 await lang.send("command.done", user_id)
@@ -669,13 +672,12 @@ async def _(
                 await lang.send("command.disabled", user_id)
         case "cleanup-memory":
             if g is not None:
-                
 
                 forgotten_count = await cleanup_old_memories(group_id, forget_ratio=0.3)
                 await lang.send("command.memory.clean", user_id, forgotten_count)
             else:
                 await lang.send("command.disabled", user_id)
-        
+
         case _:
             await lang.finish("command.no_argv", user_id)
     await session.merge(g)
@@ -693,6 +695,7 @@ async def _() -> None:
 async def _() -> None:
     """Daily cleanup of expired notes at 3 AM"""
     from ..utils.note_manager import cleanup_expired_notes
+
     deleted_count = await cleanup_expired_notes()
     if deleted_count > 0:
         logger.info(f"Cleaned up {deleted_count} expired notes")
