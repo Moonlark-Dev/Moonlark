@@ -14,6 +14,7 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
+
 import copy
 import json
 import random
@@ -26,6 +27,8 @@ from nonebot.typing import T_State
 from typing import TypedDict, Optional, Any
 from nonebot_plugin_apscheduler import scheduler
 from nonebot_plugin_alconna import UniMessage, Target, get_target
+from nonebot_plugin_chat.utils.note_manager import get_context_notes
+from nonebot_plugin_chat.utils.tools.note import get_note_poster
 from nonebot_plugin_userinfo import EventUserInfo, UserInfo
 
 from nonebot_plugin_larkuser import get_user
@@ -41,6 +44,7 @@ from nonebot.matcher import Matcher
 
 from ..utils.memory_activator import activate_memories_from_text
 from ..lang import lang
+from ..utils.memory_graph import cleanup_old_memories
 from ..models import ChatGroup
 from ..utils import enabled_group, parse_message_to_string, splitter
 from ..utils.tools import browse_webpage, search_on_google, describe_image, request_wolfram_alpha
@@ -222,6 +226,27 @@ class MessageProcessor:
                         )
                     },
                 ),
+                AsyncFunction(
+                    func=get_note_poster(self.session.group_id),
+                    description="添加一段笔记到你的笔记本中。",
+                    parameters={
+                        "text": FunctionParameter(
+                            type="string",
+                            description="要添加的笔记内容。",
+                            required=True,
+                        ),
+                        "expire_days": FunctionParameter(
+                            type="integer",
+                            description="笔记的过期天数。如果未指定，则默认为 7 天。",
+                            required=False,
+                        ),
+                        "keywords": FunctionParameter(
+                            type="string",
+                            description="笔记的关键词，用于搜索。如果未指定，则默认为空。",
+                            required=False,
+                        )
+                    }
+                )
             ],
             identify="Chat",
             pre_function_call=self.send_function_call_feedback,
@@ -309,20 +334,29 @@ class MessageProcessor:
         recent_context = " ".join([msg["content"] for msg in recent_messages])
 
         # 激活相关记忆
+        chat_history = "\n".join(self.get_message_content_list())
         activated_memories = await activate_memories_from_text(
             context_id=self.session.group_id,
             target_message=recent_context,
             max_memories=5,
-            chat_history="\n".join(self.get_message_content_list()),
+            chat_history=chat_history
         )
+
+        # 获取相关笔记
+        note_manager = await get_context_notes(self.session.group_id)
+        notes = await note_manager.filter_note(chat_history, [m[0] for m in activated_memories])
 
         # 构建记忆文本
         memory_text_parts = []
 
         if activated_memories:
-            memory_text_parts.append("相关群组记忆:")
             for concept, memory_content in activated_memories:
                 memory_text_parts.append(f"- {concept}: {memory_content}")
+
+        # 添加笔记到记忆文本
+        if notes:
+            for note in notes:
+                memory_text_parts.append(f"- {note.content}")
 
         final_memory_text = "\n".join(memory_text_parts) if memory_text_parts else "暂无"
 
@@ -617,64 +651,21 @@ async def _(
         case "reset-memory":
             if g is not None:
                 # 清理图形记忆
-                from ..utils.memory_graph import cleanup_old_memories
+                
 
                 await cleanup_old_memories(group_id, forget_ratio=1.0)  # 清除所有记忆
                 await lang.send("command.done", user_id)
             else:
                 await lang.send("command.disabled", user_id)
-        case "show-memory":
-            # 显示图形记忆而不是传统记忆
-            from ..utils.memory_graph import MemoryGraph
-
-            memory_graph = MemoryGraph(group_id)
-            await memory_graph.load_from_db()
-
-            if memory_graph.nodes:
-                memory_summary = []
-                for concept, data in list(memory_graph.nodes.items())[:3]:  # 显示前3个
-                    memory_summary.append(f"{concept}: {data['memory_items'][:200]}...")
-                await lang.send("command.memory.current", user_id, "\n\n".join(memory_summary))
-            else:
-                await lang.send("command.memory.empty", user_id)
         case "cleanup-memory":
             if g is not None:
-                from ..utils.memory_graph import cleanup_old_memories
+                
 
                 forgotten_count = await cleanup_old_memories(group_id, forget_ratio=0.3)
                 await lang.send("command.memory.clean", user_id, forgotten_count)
             else:
                 await lang.send("command.disabled", user_id)
-        case "show-graph-memory":
-            if g is not None:
-                from ..utils.memory_graph import MemoryGraph
-
-                memory_graph = MemoryGraph(group_id)
-                await memory_graph.load_from_db()
-
-                if memory_graph.nodes:
-                    memory_summary = []
-                    for concept, data in list(memory_graph.nodes.items())[:5]:  # 显示前5个
-                        memory_summary.append(
-                            await lang.text(
-                                "command.memory.graph_node",
-                                user_id,
-                                concept,
-                                data["memory_items"][:100],
-                                round(data["weight"], 1),
-                            )
-                        )
-
-                    total_nodes = len(memory_graph.nodes)
-                    total_edges = len(memory_graph.edges)
-                    summary_text = await lang.text(
-                        "command.memory.summary", user_id, total_nodes, total_edges, "\n".join(memory_summary)
-                    )
-                    await matcher.finish(summary_text)
-                else:
-                    await lang.send("command.memory.empty_graph", user_id)
-            else:
-                await lang.send("command.disabled", user_id)
+        
         case _:
             await lang.finish("command.no_argv", user_id)
     await session.merge(g)
@@ -686,3 +677,12 @@ async def _(
 async def _() -> None:
     for group in groups.values():
         await group.process_timer()
+
+
+@scheduler.scheduled_job("cron", hour="3", id="cleanup_expired_notes")
+async def _() -> None:
+    """Daily cleanup of expired notes at 3 AM"""
+    from ..utils.note_manager import cleanup_expired_notes
+    deleted_count = await cleanup_expired_notes()
+    if deleted_count > 0:
+        logger.info(f"Cleaned up {deleted_count} expired notes")

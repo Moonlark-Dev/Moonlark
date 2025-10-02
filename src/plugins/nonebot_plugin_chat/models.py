@@ -45,3 +45,15 @@ class MemoryEdge(Model):
     created_time: Mapped[float] = mapped_column(Float())
     last_modified: Mapped[float] = mapped_column(Float())
     hash_value: Mapped[int] = mapped_column(BigInteger(), default=0)
+
+
+class Note(Model):
+    """Note model for storing user-generated notes with optional expiration and keywords"""
+
+    id: Mapped[int] = mapped_column(Integer(), primary_key=True, autoincrement=True)
+    context_id: Mapped[str] = mapped_column(String(128), index=True)  # user_id for private, group_id for groups
+    content: Mapped[str] = mapped_column(Text())
+    keywords: Mapped[str] = mapped_column(Text(), default="")  # Comma-separated keywords
+    created_time: Mapped[float] = mapped_column(Float())
+    expire_time: Mapped[float] = mapped_column(Float(), nullable=True)  # Optional expiration time
+    hash_value: Mapped[int] = mapped_column(BigInteger(), default=0)
