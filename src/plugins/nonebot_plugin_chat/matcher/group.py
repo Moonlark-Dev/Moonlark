@@ -49,7 +49,7 @@ from ..models import ChatGroup
 from ..utils import enabled_group, parse_message_to_string, splitter
 from ..utils.tools import (
     browse_webpage,
-    search_on_google,
+    web_search,
     describe_image,
     request_wolfram_alpha,
     get_fetcher,
@@ -219,8 +219,8 @@ class MessageProcessor:
                     },
                 ),
                 AsyncFunction(
-                    func=search_on_google,
-                    description="使用Google搜索信息",
+                    func=web_search,
+                    description="从网络搜索信息",
                     parameters={
                         "keyword": FunctionParameter(
                             type="string",
@@ -300,9 +300,9 @@ class MessageProcessor:
                 await UniMessage().text(
                     text=await lang.text("tools.wolfram", self.session.user_id, param.get("question"))
                 ).send(target=self.session.target, bot=self.session.bot)
-            case "search_on_google":
+            case "web_search":
                 await UniMessage().text(
-                    text=await lang.text("tools.google", self.session.user_id, param.get("keyword"))
+                    text=await lang.text("tools.search", self.session.user_id, param.get("keyword"))
                 ).send(target=self.session.target, bot=self.session.bot)
         return call_id, name, param
 
