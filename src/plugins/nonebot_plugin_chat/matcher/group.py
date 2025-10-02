@@ -28,8 +28,6 @@ from nonebot.typing import T_State
 from typing import TypedDict, Optional, Any
 from nonebot_plugin_apscheduler import scheduler
 from nonebot_plugin_alconna import UniMessage, Target, get_target
-from nonebot_plugin_chat.utils.note_manager import get_context_notes
-from nonebot_plugin_chat.utils.tools.note import get_note_poster
 from nonebot_plugin_userinfo import EventUserInfo, UserInfo
 
 from nonebot_plugin_larkuser import get_user
@@ -45,10 +43,11 @@ from nonebot.matcher import Matcher
 
 from ..utils.memory_activator import activate_memories_from_text
 from ..lang import lang
+from ..utils.note_manager import get_context_notes
 from ..utils.memory_graph import cleanup_old_memories
 from ..models import ChatGroup
 from ..utils import enabled_group, parse_message_to_string, splitter
-from ..utils.tools import browse_webpage, search_on_google, describe_image, request_wolfram_alpha
+from ..utils.tools import browse_webpage, search_on_google, describe_image, request_wolfram_alpha, get_fetcher, get_note_poster
 
 BASE_DESIRE = 30
 
@@ -194,6 +193,17 @@ class MessageProcessor:
             self.openai_messages,
             False,
             functions=[
+                AsyncFunction(
+                    func=get_fetcher(self.session.bot),
+                    description="获取合并转发消息的内容。",
+                    parameters={
+                        "message_id": FunctionParameter(
+                            type="string",
+                            description="转发消息的 ID，是“[合并转发: {一段数字ID}]”中间的“{一段数字}”，例如“[合并转发: 1234567890]”中的“1234567890”",
+                            required=True,
+                        ),
+                    },
+                ),
                 AsyncFunction(
                     func=browse_webpage,
                     description="使用浏览器访问指定 URL 并获取网页内容的 Markdown 格式文本",
