@@ -15,11 +15,11 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
-import time
+from datetime import datetime, timedelta
 from typing import List, Optional
 
 from nonebot_plugin_orm import get_session
-from sqlalchemy import select, or_
+from sqlalchemy import select
 
 from ..models import Note
 
@@ -42,13 +42,13 @@ class NoteManager:
         Returns:
             The created Note object
         """
-        current_time = time.time()
+        current_time = datetime.now()
         
         # Calculate expiration time (default 7 days)
         expire_time = None
         if expire_days is not None:
             if expire_days != -1:  # -1 means no expiration
-                expire_time = current_time + (expire_days * 24 * 60 * 60)
+                expire_time = current_time + timedelta(days=expire_days)
             
         # Create the note
         note = Note(
@@ -83,7 +83,7 @@ class NoteManager:
             
             # Filter out expired notes unless explicitly requested
             if not include_expired:
-                current_time = time.time()
+                current_time = datetime.now()
                 query = query.where(
                     (Note.expire_time.is_(None)) | 
                     (Note.expire_time > current_time)
@@ -135,11 +135,11 @@ class NoteManager:
             if keywords is not None:
                 note.keywords = keywords
             if expire_days is not None:
-                current_time = time.time()
+                current_time = datetime.now()
                 if expire_days == -1:  # No expiration
                     note.expire_time = None
                 else:
-                    note.expire_time = current_time + (expire_days * 24 * 60 * 60)
+                    note.expire_time = current_time + timedelta(days=expire_days)
                     
             # Update hash and last modified time
             note.hash_value = hash(f"{note.context_id}:{note.content}:{note.keywords}:{note.created_time}")
@@ -173,7 +173,7 @@ class NoteManager:
         Returns:
             Number of notes deleted
         """
-        current_time = time.time()
+        current_time = datetime.now()
         deleted_count = 0
         
         async with get_session() as session:
@@ -220,41 +220,6 @@ class NoteManager:
         return notes
 
 
-    # async def get_notes_by_keywords(self, keywords: List[str], include_expired: bool = False) -> List[Note]:
-    #     """
-    #     Get notes that match any of the provided keywords
-        
-    #     Args:
-    #         keywords: List of keywords to search for
-    #         include_expired: Whether to include expired notes
-            
-    #     Returns:
-    #         List of Note objects that match the keywords
-    #     """
-    #     if not keywords:
-    #         return []
-            
-    #     async with get_session() as session:
-    #         # Build query for notes with matching keywords
-    #         query = select(Note).where(Note.context_id == self.context_id)
-            
-    #         # Add keyword matching condition
-    #         keyword_conditions = []
-    #         for keyword in keywords:
-    #             keyword_conditions.append(Note.keywords.contains(keyword))
-            
-    #         query = query.where(or_(*keyword_conditions))
-            
-    #         # Filter out expired notes unless explicitly requested
-    #         if not include_expired:
-    #             current_time = time.time()
-    #             query = query.where(
-    #                 (Note.expire_time.is_(None)) | 
-    #                 (Note.expire_time > current_time)
-    #             )
-                
-    #         result = await session.scalars(query)
-    #         return list(result.all())
 
 
 # Helper function to get notes for a context
@@ -279,7 +244,7 @@ async def cleanup_expired_notes() -> int:
     Returns:
         Number of notes deleted
     """
-    current_time = time.time()
+    current_time = datetime.now()
     deleted_count = 0
     
     async with get_session() as session:

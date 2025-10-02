@@ -17,6 +17,7 @@
 
 import copy
 import json
+from nonebot_plugin_alconna import get_message_id
 import random
 import re
 import asyncio
@@ -324,7 +325,7 @@ class MessageProcessor:
             if isinstance(msg, dict) and "content" in msg:
                 l.append(msg["content"])
             elif hasattr(msg, "content"):
-                l.append(msg.content)  # pyright: ignore[reportAttributeAccessIssue]
+                l.append(msg.content)
         return l
 
     async def generate_system_prompt(self) -> OpenAIMessage:
@@ -369,9 +370,6 @@ class MessageProcessor:
             ),
             "system",
         )
-
-
-from nonebot_plugin_alconna import get_message_id
 
 
 class GroupSession:

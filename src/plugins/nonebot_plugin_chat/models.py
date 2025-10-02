@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Optional
 
 from nonebot_plugin_orm import Model
 from sqlalchemy.orm import Mapped, mapped_column
@@ -55,5 +56,5 @@ class Note(Model):
     content: Mapped[str] = mapped_column(Text())
     keywords: Mapped[str] = mapped_column(Text(), default="")  # Comma-separated keywords
     created_time: Mapped[float] = mapped_column(Float())
-    expire_time: Mapped[float] = mapped_column(Float(), nullable=True)  # Optional expiration time
+    expire_time: Mapped[Optional[datetime]] = mapped_column(nullable=True)  # Optional expiration time
     hash_value: Mapped[int] = mapped_column(BigInteger(), default=0)
