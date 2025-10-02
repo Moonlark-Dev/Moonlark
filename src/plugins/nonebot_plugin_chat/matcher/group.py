@@ -135,13 +135,13 @@ class MessageProcessor:
         self.clean_special_message()
         if len(self.openai_messages) == 0:
             return
-        role = get_role(self.openai_messages[0])
+        first_msg = self.openai_messages[0]
+        role = get_role(first_msg)
         if role == "assistant":
-            self.openai_messages.pop(0)
-        elif role == "user":
-            content = self.openai_messages[0]["content"]
+            self.openai_messages.pop(0)    
+        elif role == "user" and isinstance(first_msg, dict) and isinstance(content := first_msg.get("content"), str):    
             if next_message_pos := content.find("\n[") + 1:
-                self.openai_messages[0]["content"] = content[next_message_pos:]
+                first_msg["content"] = content[next_message_pos:]
             else:
                 self.openai_messages.pop(0)
             self.reply_message_ids.pop(0)
@@ -161,16 +161,19 @@ class MessageProcessor:
         min_str = time_d.total_seconds() // 60
         if len(self.openai_messages) > 0:
             return
-        if isinstance(self.openai_messages[-1], dict) and self.openai_messages[-1]["role"] == "user":
-            self.openai_messages[
-                -1
-            ].content += f"\n[{datetime.now().strftime('%H:%M:%S')}]: 当前群聊已经冷群了 {min_str} 分钟。"
-        elif (not isinstance(self.openai_messages[-1], dict)) and self.openai_messages[-1].role == "assistant":
-            self.openai_messages.append(
-                generate_message(
-                    content=f"[{datetime.now().strftime('%H:%M:%S')}]: 当前群聊已经冷群了 {min_str} 分钟。", role="user"
-                )
-            )
+        delta_content = f"\n[{datetime.now().strftime('%H:%M:%S')}]: 当前群聊已经冷群了 {min_str} 分钟。"
+        latest_message = self.openai_messages[-1]
+        if isinstance(latest_message, dict):
+            if get_role(latest_message) == "user":
+                if (content := latest_message.get("content")) and isinstance(content, str):
+                        latest_message["content"] = content + delta_content
+                else:
+                    latest_message["content"] = delta_content
+            else:
+                return
+
+        elif latest_message.role == "assistant":
+            self.openai_messages.append(generate_message(content=delta_content, role="user"))
         else:
             return
         if not self.blocked:
@@ -304,14 +307,18 @@ class MessageProcessor:
                 await self.send_text(msg)
 
     async def process_messages(self, msg_dict: CachedMessage) -> None:
-        if (
-            len(self.openai_messages) <= 0
-            or (not isinstance(self.openai_messages[-1], dict))
-            or self.openai_messages[-1]["role"] != "user"
-        ):
+        if len(self.openai_messages) <= 0:
             self.openai_messages.append(generate_message(generate_message_string(msg_dict), "user"))
         else:
-            self.openai_messages[-1]["content"] += generate_message_string(msg_dict)
+            last_message = self.openai_messages[-1]
+            if isinstance(last_message, dict) and last_message.get("role") == "user":
+                if content := last_message.get("content"):
+                    if isinstance(content, str):
+                        last_message["content"] = content + generate_message_string(msg_dict)
+                else:
+                    last_message["content"] = generate_message_string(msg_dict)
+            else:
+                self.openai_messages.append(generate_message(generate_message_string(msg_dict), "user"))
         self.message_count += 1
         self.reply_message_ids.append(msg_dict["message_id"])
         logger.debug(self.openai_messages)
@@ -322,8 +329,9 @@ class MessageProcessor:
     def get_message_content_list(self) -> list[str]:
         l = []
         for msg in self.openai_messages:
-            if isinstance(msg, dict) and "content" in msg:
-                l.append(msg["content"])
+            if isinstance(msg, dict):
+                if "content" in msg:
+                    l.append(msg["content"])
             elif hasattr(msg, "content"):
                 l.append(msg.content)
         return l
@@ -477,24 +485,18 @@ class GroupSession:
             message = origin_message
         message = message.strip()
         users = self.get_users()
-        uni_msg = UniMessage().text(text="")
-        segment = ""
-        processing_at = False
-        for char in message:
-            if char == "@":
-                uni_msg[-1].text += segment
-                segment = "@"
-                processing_at = True
-            elif segment:
-                segment += char
-                if segment[1:] in users and processing_at:
-                    user_id = users[segment[1:]]
-                    uni_msg = uni_msg.at(user_id=user_id).text(text="")
-                    segment = ""
-                    processing_at = False
+        uni_msg = UniMessage()
+        at_list = re.finditer("|".join([f"@{user}" for user in users.keys()]), message)
+        cursor_index = 0
+        for at in at_list:
+            uni_msg = uni_msg.text(text=message[cursor_index:at.start()])
+            at_nickname = at.group(0)[1:]
+            if user_id := users.get(at_nickname):
+                uni_msg = uni_msg.at(user_id)
             else:
-                uni_msg[-1].text += char
-        uni_msg[-1].text += segment
+                uni_msg = uni_msg.text(at.group(0))
+            cursor_index = at.end()
+        uni_msg = uni_msg.text(text=message[cursor_index:])
         return uni_msg
 
     def get_users(self) -> dict[str, str]:
