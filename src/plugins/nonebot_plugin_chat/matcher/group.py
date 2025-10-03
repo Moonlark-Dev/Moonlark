@@ -47,6 +47,7 @@ from ..utils.note_manager import get_context_notes
 from ..utils.memory_graph import cleanup_old_memories
 from ..models import ChatGroup
 from ..utils import enabled_group, parse_message_to_string, splitter
+from ..utils.interrupter import Interrupter
 from ..utils.tools import (
     browse_webpage,
     web_search,
@@ -69,7 +70,7 @@ class CachedMessage(TypedDict):
 
 
 def generate_message_string(message: CachedMessage) -> str:
-    return f"[{message['send_time'].strftime('%H:%M:%S')}][{message['nickname']}]: {message['content']}\n"
+    return f"[{message['send_time'].strftime('%H:%M:%S')}][{message['nickname']}]({message['message_id']}): {message['content']}\n"
 
 
 def get_role(message: OpenAIMessage) -> str:
@@ -93,8 +94,9 @@ class MessageProcessor:
         self.session = session
         self.message_count = 0
         self.enabled = True
+        self.interrupter = Interrupter(session)
         self.cold_until = datetime.now()
-        self.reply_message_ids = []
+        # self.reply_message_ids = []
         self.blocked = False
         asyncio.create_task(self.loop())
 
@@ -126,6 +128,10 @@ class MessageProcessor:
         }
         await self.process_messages(msg_dict)
         self.session.cached_messages.append(msg_dict)
+        self.interrupter.record_message()
+        if await self.interrupter.should_interrupt(text, user_id):
+            # 如果需要阻断，直接返回
+            return
         if (mentioned or not self.session.message_queue) and not self.blocked:
             await self.generate_reply(mentioned)
             self.cold_until = datetime.now() + timedelta(seconds=5)
@@ -150,7 +156,6 @@ class MessageProcessor:
                 first_msg["content"] = content[next_message_pos:]
             else:
                 self.openai_messages.pop(0)
-            self.reply_message_ids.pop(0)
         self.message_count -= 1
 
     async def update_system_message(self) -> None:
@@ -195,6 +200,9 @@ class MessageProcessor:
             and self.openai_messages[-1].role in ["system", "assistant"]
         ):
             return
+
+        # 记录一次机器人响应
+        self.interrupter.record_response()
         await self.update_system_message()
         fetcher = MessageFetcher(
             self.openai_messages,
@@ -276,13 +284,18 @@ class MessageProcessor:
             self.message_count += 1
             await self.send_reply_text(message)
         self.openai_messages = fetcher.get_messages()
+        if datetime.now() < self.interrupter.sleep_end_time:
+            self.interrupter.sleep_end_time = datetime.min
 
     def get_reply_message_id(self, text: str) -> tuple[str, Optional[str]]:
         reply_message_id = None
         while m := re.search(r"\{REPLY:\d+}", text):
             try:
-                reply_message_id = self.reply_message_ids[-int(m[0][7:-1])]
+                reply_message_id = m[0][7:-1]
             except IndexError:
+                continue
+            except ValueError:
+                # NOTE 一些其他的处理方式：将消息打回 LLM 进行重新编辑？
                 continue
             text = text.replace(m[0], "")
             break
@@ -324,20 +337,20 @@ class MessageProcessor:
                 await self.send_text(msg)
 
     async def process_messages(self, msg_dict: CachedMessage) -> None:
+        msg_str = generate_message_string(msg_dict)
         if len(self.openai_messages) <= 0:
-            self.openai_messages.append(generate_message(generate_message_string(msg_dict), "user"))
+            self.openai_messages.append(generate_message(msg_str, "user"))
         else:
             last_message = self.openai_messages[-1]
             if isinstance(last_message, dict) and last_message.get("role") == "user":
                 if content := last_message.get("content"):
                     if isinstance(content, str):
-                        last_message["content"] = content + generate_message_string(msg_dict)
+                        last_message["content"] = content + msg_str
                 else:
-                    last_message["content"] = generate_message_string(msg_dict)
+                    last_message["content"] = msg_str
             else:
-                self.openai_messages.append(generate_message(generate_message_string(msg_dict), "user"))
+                self.openai_messages.append(generate_message(msg_str, "user"))
         self.message_count += 1
-        self.reply_message_ids.append(msg_dict["message_id"])
         logger.debug(self.openai_messages)
         async with get_session() as session:
             r = await session.get(ChatGroup, {"group_id": self.session.group_id})
@@ -450,6 +463,15 @@ class GroupSession:
     async def handle_message(
         self, message: UniMessage, user_id: str, event: Event, state: T_State, nickname: str, mentioned: bool = False
     ) -> None:
+        # # 记录消息到频率计数器
+        # self.interrupter.record_message()
+
+        # # 检查是否应该阻断机器人响应
+        # message_text = await parse_message_to_string(message, event, self.bot, state)
+        # if await self.interrupter.should_interrupt(message_text, user_id):
+        #     # 如果需要阻断，直接返回
+        #     return
+
         message_id = get_message_id(event)
         self.message_queue.append((message, event, state, user_id, nickname, datetime.now(), mentioned, message_id))
         self.update_counters(user_id)
