@@ -18,8 +18,9 @@
 import random
 import re
 from datetime import datetime, timedelta
-from typing import List, Dict
-from ..matcher.group import GroupSession
+from typing import TYPE_CHECKING, List, Dict
+if TYPE_CHECKING:
+    from ..matcher.group import GroupSession
 from nonebot.log import logger
 
 # 预编译正则表达式以提高性能
@@ -97,7 +98,7 @@ class UserBehaviorTracker:
 
 
 class Interrupter:
-    def __init__(self, group_session: GroupSession):
+    def __init__(self, group_session: "GroupSession"):
         self.group_session = group_session
         self.cooldown_end_time = datetime.min  # 冷却结束时间
         self.sleep_end_time = datetime.min  # 休眠结束时间
