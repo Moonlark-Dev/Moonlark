@@ -9,6 +9,7 @@ from nonebot_plugin_larkutils import get_user_id
 from nonebot_plugin_larklang import LangHelper
 from nonebot_plugin_larkutils.superuser import is_superuser
 from nonebot.adapters.onebot.v11 import Bot as V11Bot, GroupMessageEvent
+from nonebot.adapters import Event
 from nonebot import get_bots
 from nonebot.log import logger
 from nonebot_plugin_htmlrender import md_to_pic
@@ -80,6 +81,16 @@ async def get_available_groups() -> AvailableGroups:
     return groups
 
 
+@bcsu_cmd.assign("content")
+async def handle_bcsu(
+    event: Event,
+    user_id: str = get_user_id(),
+):
+    """Handle broadcast superuser commands"""
+    content = event.get_plaintext()[6:].strip()
+    await set_broadcast_content(user_id,content )
+
+
 @bcsu_cmd.assign("$main")
 async def show_broadcast_menu(user_id: str = get_user_id()):
     """Show broadcast menu with stats"""
@@ -94,14 +105,6 @@ async def show_broadcast_menu(user_id: str = get_user_id()):
     enabled_count = len((await get_available_groups()).keys())
     await lang.finish("bcsu.menu", user_id, sent_count, enabled_count)
 
-
-@bcsu_cmd.assign("content")
-async def handle_bcsu(
-    content: List[str],
-    user_id: str = get_user_id(),
-):
-    """Handle broadcast superuser commands"""
-    await set_broadcast_content(user_id, " ".join(content))
 
 
 async def set_broadcast_content(user_id: str, content: str):
@@ -123,7 +126,12 @@ async def clear_broadcast(user_id: str = get_user_id()):
 async def preview_broadcast(user_id: str = get_user_id()):
     """Preview broadcast content"""
     if cached_broadcast_content:
-        await lang.finish("bcsu.preview", user_id, cached_broadcast_content)
+        broadcast = cached_broadcast_content
+        if len(broadcast) >= 200:
+            message = UniMessage().image(raw=await md_to_pic(broadcast))
+        else:
+            message = UniMessage().text(text=broadcast)
+        await message.send()
     else:
         await lang.finish("bcsu.no_content", user_id)
 

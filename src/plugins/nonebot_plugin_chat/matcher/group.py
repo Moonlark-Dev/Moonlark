@@ -342,6 +342,7 @@ class MessageProcessor:
         async with get_session() as session:
             r = await session.get(ChatGroup, {"group_id": self.session.group_id})
             self.blocked = r and msg_dict["user_id"] in json.loads(r.blocked_user)
+            logger.debug(f"{self.blocked}")
 
     def get_message_content_list(self) -> list[str]:
         l = []
