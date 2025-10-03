@@ -70,7 +70,7 @@ class CachedMessage(TypedDict):
 
 
 def generate_message_string(message: CachedMessage) -> str:
-    return f"[{message['send_time'].strftime('%H:%M:%S')}][{message['nickname']}]: {message['content']}\n"
+    return f"[{message['send_time'].strftime('%H:%M:%S')}][{message['nickname']}]({message['message_id']}): {message['content']}\n"
 
 
 def get_role(message: OpenAIMessage) -> str:
@@ -96,7 +96,7 @@ class MessageProcessor:
         self.enabled = True
         self.interrupter = Interrupter(session)
         self.cold_until = datetime.now()
-        self.reply_message_ids = []
+        # self.reply_message_ids = []
         self.blocked = False
         asyncio.create_task(self.loop())
 
@@ -156,7 +156,6 @@ class MessageProcessor:
                 first_msg["content"] = content[next_message_pos:]
             else:
                 self.openai_messages.pop(0)
-            self.reply_message_ids.pop(0)
         self.message_count -= 1
 
     async def update_system_message(self) -> None:
@@ -292,8 +291,11 @@ class MessageProcessor:
         reply_message_id = None
         while m := re.search(r"\{REPLY:\d+}", text):
             try:
-                reply_message_id = self.reply_message_ids[-int(m[0][7:-1])]
+                reply_message_id = m[0][7:-1]
             except IndexError:
+                continue
+            except ValueError:
+                # NOTE 一些其他的处理方式：将消息打回 LLM 进行重新编辑？
                 continue
             text = text.replace(m[0], "")
             break
@@ -337,20 +339,20 @@ class MessageProcessor:
         
 
     async def process_messages(self, msg_dict: CachedMessage) -> None:
+        msg_str = generate_message_string(msg_dict)
         if len(self.openai_messages) <= 0:
-            self.openai_messages.append(generate_message(generate_message_string(msg_dict), "user"))
+            self.openai_messages.append(generate_message(msg_str, "user"))
         else:
             last_message = self.openai_messages[-1]
             if isinstance(last_message, dict) and last_message.get("role") == "user":
                 if content := last_message.get("content"):
                     if isinstance(content, str):
-                        last_message["content"] = content + generate_message_string(msg_dict)
+                        last_message["content"] = content + msg_str
                 else:
-                    last_message["content"] = generate_message_string(msg_dict)
+                    last_message["content"] = msg_str
             else:
-                self.openai_messages.append(generate_message(generate_message_string(msg_dict), "user"))
+                self.openai_messages.append(generate_message(msg_str, "user"))
         self.message_count += 1
-        self.reply_message_ids.append(msg_dict["message_id"])
         logger.debug(self.openai_messages)
         async with get_session() as session:
             r = await session.get(ChatGroup, {"group_id": self.session.group_id})
