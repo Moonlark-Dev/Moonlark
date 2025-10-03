@@ -47,6 +47,7 @@ from ..utils.note_manager import get_context_notes
 from ..utils.memory_graph import cleanup_old_memories
 from ..models import ChatGroup
 from ..utils import enabled_group, parse_message_to_string, splitter
+from ..utils.interrupter import Interrupter
 from ..utils.tools import (
     browse_webpage,
     web_search,
@@ -93,6 +94,7 @@ class MessageProcessor:
         self.session = session
         self.message_count = 0
         self.enabled = True
+        self.interrupter = Interrupter(session)
         self.cold_until = datetime.now()
         self.reply_message_ids = []
         self.blocked = False
@@ -127,6 +129,10 @@ class MessageProcessor:
         await self.process_messages(msg_dict)
         self.session.cached_messages.append(msg_dict)
         if (mentioned or not self.session.message_queue) and not self.blocked:
+            self.interrupter.record_message()
+            if await self.interrupter.should_interrupt(text, user_id):
+                # 如果需要阻断，直接返回
+                return
             await self.generate_reply(mentioned)
             self.cold_until = datetime.now() + timedelta(seconds=5)
 
@@ -195,6 +201,9 @@ class MessageProcessor:
             and self.openai_messages[-1].role in ["system", "assistant"]
         ):
             return
+            
+        # 记录一次机器人响应
+        self.interrupter.record_response()
         await self.update_system_message()
         fetcher = MessageFetcher(
             self.openai_messages,
@@ -275,7 +284,9 @@ class MessageProcessor:
         async for message in fetcher.fetch_message_stream():
             self.message_count += 1
             await self.send_reply_text(message)
-        self.openai_messages = fetcher.get_messages()
+        self.openai_messages = fetcher.get_messages()        
+        if datetime.now() < self.interrupter.sleep_end_time:
+            self.interrupter.sleep_end_time = datetime.min
 
     def get_reply_message_id(self, text: str) -> tuple[str, Optional[str]]:
         reply_message_id = None
@@ -322,6 +333,8 @@ class MessageProcessor:
                     return
             if msg:
                 await self.send_text(msg)
+                
+        
 
     async def process_messages(self, msg_dict: CachedMessage) -> None:
         if len(self.openai_messages) <= 0:
@@ -410,6 +423,7 @@ class GroupSession:
         self.message_counter: dict[datetime, int] = {}
         self.user_counter: dict[datetime, set[str]] = {}
         self.processor = MessageProcessor(self)
+        
 
     async def mute(self) -> None:
         self.mute_until = datetime.now() + timedelta(minutes=15)
@@ -449,6 +463,15 @@ class GroupSession:
     async def handle_message(
         self, message: UniMessage, user_id: str, event: Event, state: T_State, nickname: str, mentioned: bool = False
     ) -> None:
+        # # 记录消息到频率计数器
+        # self.interrupter.record_message()
+        
+        # # 检查是否应该阻断机器人响应
+        # message_text = await parse_message_to_string(message, event, self.bot, state)
+        # if await self.interrupter.should_interrupt(message_text, user_id):
+        #     # 如果需要阻断，直接返回
+        #     return
+            
         message_id = get_message_id(event)
         self.message_queue.append((message, event, state, user_id, nickname, datetime.now(), mentioned, message_id))
         self.update_counters(user_id)
