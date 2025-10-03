@@ -88,7 +88,7 @@ async def handle_bcsu(
 ):
     """Handle broadcast superuser commands"""
     content = event.get_plaintext()[6:].strip()
-    await set_broadcast_content(user_id,content )
+    await set_broadcast_content(user_id, content)
 
 
 @bcsu_cmd.assign("$main")
@@ -104,7 +104,6 @@ async def show_broadcast_menu(user_id: str = get_user_id()):
     # Count enabled groups
     enabled_count = len((await get_available_groups()).keys())
     await lang.finish("bcsu.menu", user_id, sent_count, enabled_count)
-
 
 
 async def set_broadcast_content(user_id: str, content: str):
