@@ -19,7 +19,8 @@ import datetime
 import hashlib
 import traceback
 
-from nonebot import Bot, logger
+from nonebot import logger
+from nonebot.adapters import Bot
 from nonebot.internal.adapter import Event
 from nonebot.typing import T_State
 from nonebot_plugin_alconna import Image, image_fetch
