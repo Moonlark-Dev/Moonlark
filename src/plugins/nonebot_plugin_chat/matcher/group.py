@@ -128,11 +128,11 @@ class MessageProcessor:
         }
         await self.process_messages(msg_dict)
         self.session.cached_messages.append(msg_dict)
+        self.interrupter.record_message()
+        if await self.interrupter.should_interrupt(text, user_id):
+            # 如果需要阻断，直接返回
+            return
         if (mentioned or not self.session.message_queue) and not self.blocked:
-            self.interrupter.record_message()
-            if await self.interrupter.should_interrupt(text, user_id):
-                # 如果需要阻断，直接返回
-                return
             await self.generate_reply(mentioned)
             self.cold_until = datetime.now() + timedelta(seconds=5)
 
