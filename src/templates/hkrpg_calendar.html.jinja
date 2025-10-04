@@ -1,43 +1,35 @@
 {% extends base %}
-{#
-传入模板如下：
-
-wiki_info: list[BiliGameEventInfo]
-mhy_bbs: list[TakumiAPIResponse]
-dt: datetime
-
-#}
 
 {% block body %}
-    <h2 style="text-align: center">{{ text.card_pool.title }}</h2>
-    <h4 id="coming_card_pool_title">{{ text.card_pool.coming }}</h4>
+    <h2 style="text-align: center">{{ text.card_pool_title }}</h2>
+    <h4 id="coming_card_pool_title">{{ text.card_pool_coming }}</h4>
     <div id="coming_card_pool">
-        {% for card_pool in mhy_bbs.data.avatar_card_pool_list %}
-            {% if card_pool.time_info.start_time > dt %}
+        {% for card_pool in mhy_bbs.data.list %}
+            {% if card_pool.start_time > dt and (card_pool.content_before_act != "长期开放") %}
                 <span class="h5">
-                    {{ card_pool.name }}
+                    {{ card_pool.title }}
                 </span>
-                <span class="badge bg-warning">{{ text.card_pool.up_at }} {{ (card_pool.time_info.start_time - dt).total_seconds() // 86400 }} {{ text.day }}</span>
+                <span class="badge bg-warning">{{ text.card_pool_up_at }} {{ (card_pool.start_time - dt).total_seconds() // 86400 }} {{ text.day }}</span>
 
                 <br>
                 <div class="row">
                     <div class="col-7">
-                        {% for character in card_pool.avatar_list %}
-                            {% if character.rarity == "5" %}
-                                <img alt="{{ character.item_name }}" src="{{ character.icon_url }}" width="10%" />
+                        {% for character in card_pool.pool %}
+                            {% if character.rarity == 5 %}
+                                <img src="{{ character.icon }}" width="10%" />
                             {% endif %}
                         {% endfor %}
-                        {% for character in card_pool.avatar_list %}
-                            {% if character.rarity == "5" %}
-                                {{ character.item_name }}&nbsp;
+                        {% for character in card_pool.pool %}
+                            {% if character.rarity == 5 %}
+                                {{ character.data.title }}&nbsp;
                             {% endif %}
                         {% endfor %}
                     </div>
                     <div class="col-5">
-                        {{ text.card_pool.co_running }}
-                        {% for character in card_pool.avatar_list %}
-                            {% if character.rarity == "4" %}
-                                <img alt="{{ character.item_name }}" src="{{ character.icon_url }}" width="16%" />
+                        {{ text.card_pool_co_running }}
+                        {% for character in card_pool.pool %}
+                            {% if character.rarity != 5 %}
+                                <img src="{{ character.icon }}" width="16%" />
                             {% endif %}
                         {% endfor %}
                     </div>
@@ -47,38 +39,38 @@ dt: datetime
         {% endfor %}
     </div>
     <p style="margin-top: -2px;"></p>
-    <h4 id="ongoing_card_pool_title">{{ text.card_pool.current }}</h4>
+    <h4 id="ongoing_card_pool_title">{{ text.card_pool_current }}</h4>
     <div id="ongoing_card_pool">
-        {% for card_pool in mhy_bbs.data.avatar_card_pool_list %}
-            {% if (not card_pool.time_info.end_time) or (card_pool.time_info.end_time > dt and card_pool.time_info.start_time < dt) %}
+        {% for card_pool in mhy_bbs.data.list %}
+            {% if (card_pool.content_before_act == "长期开放") or (card_pool.end_time > dt and card_pool.start_time < dt) %}
                 <span class="h5">
-                    {{ card_pool.name }}
+                    {{ card_pool.title }}
                 </span>
-                {% if card_pool.time_info.end_time %}
-                    <span class="badge bg-success">{{ text.card_pool.up_remain }} {{ (card_pool.time_info.end_time - dt).total_seconds() // 86400 }} {{ text.day }}</span>
+                {% if card_pool.content_before_act != "长期开放" %}
+                    <span class="badge bg-success">{{ text.card_pool_up_remain }} {{ (card_pool.end_time - dt).total_seconds() // 86400 }} {{ text.day }}</span>
                 {% else %}
-                    <span class="badge bg-success">{{ text.card_pool.open_forever }}</span>
+                    <span class="badge bg-success">{{ text.card_pool_open_forever }}</span>
                 {% endif %}
 
                 <br>
                 <div class="row">
                     <div class="col-7">
-                        {% for character in card_pool.avatar_list %}
-                            {% if character.rarity == "5" %}
-                                <img alt="{{ character.item_name }}" src="{{ character.icon_url }}" width="10%" />
+                        {% for character in card_pool.pool %}
+                            {% if character.rarity == 5 %}
+                                <img src="{{ character.icon }}" width="10%" />
                             {% endif %}
                         {% endfor %}
-                        {% for character in card_pool.avatar_list %}
-                            {% if character.rarity == "5" %}
-                                {{ character.item_name }}&nbsp;
+                        {% for character in card_pool.pool %}
+                            {% if character.rarity == 5 %}
+                                {{ character.data.title }}&nbsp;
                             {% endif %}
                         {% endfor %}
                     </div>
                     <div class="col-5">
-                        {{ text.card_pool.co_running }}
-                        {% for character in card_pool.avatar_list %}
-                            {% if character.rarity == "4" %}
-                                <img alt="{{ character.item_name }}" src="{{ character.icon_url }}" width="16%" />
+                        {{ text.card_pool_co_running }}
+                        {% for character in card_pool.pool %}
+                            {% if character.rarity != 5 %}
+                                <img src="{{ character.icon }}" width="16%" />
                             {% endif %}
                         {% endfor %}
                     </div>
@@ -88,11 +80,11 @@ dt: datetime
         {% endfor %}
     </div>
     <hr>
-    <h2 style="text-align: center">{{ text.event.title }}</h2>
-    <h3 id="coming_events_title">{{ text.event.coming }}</h3>
+    <h2 style="text-align: center">{{ text.event_title }}</h2>
+    <h3 id="coming_events_title">{{ text.event_coming }}</h3>
     <div id="coming_events">
         {% for event in wiki_info %}
-            {% if ((not event.start_time) and event.version > mhy_bbs.data.cur_game_version) or (event.start_time and event.start_time > dt) %}
+            {% if ((not event.start_time) and event.version > game_ver) or (event.start_time and event.start_time > dt) %}
                 <div class="row">
                     <div class="col-4">
                         <img src="{{ event.image_url }}" width="100%" alt="" />
@@ -100,7 +92,7 @@ dt: datetime
                     <div class="col-8">
                         <h5>{{ event.event_name }}</h5>
                         {% if event.start_time %}
-                        <span class="badge bg-warning">{{ text.event.time_to_open }} {{ (event.start_time - dt).total_seconds() // 86400 }} {{ text.day }}</span>
+                        <span class="badge bg-warning">{{ text.event_time_to_open }} {{ (event.start_time - dt).total_seconds() // 86400 }} {{ text.day }}</span>
                         {% else %}
                             <span class="badge bg-warning">{{ text.at }} {{ event.version }} {{ text.after_update }}</span>
                         {% endif %}
@@ -114,17 +106,17 @@ dt: datetime
         {% endfor %}
     </div>
     <p style="margin-top: -2px;"></p>
-    <h3 id="ongoing_events_title">{{ text.event.ongoing }}</h3>
+    <h3 id="ongoing_events_title">{{ text.event_ongoing }}</h3>
     <div id="ongoing_events">
         {% for event in wiki_info %}
-            {% if (((not event.start_time) and event.version <= mhy_bbs.data.cur_game_version) or (event.start_time and event.start_time <= dt)) and (event.end_time and event.end_time > dt) %}
+            {% if (((not event.start_time) and event.version <= game_ver) or (event.start_time and event.start_time <= dt)) and (event.end_time and event.end_time > dt) %}
                 <div class="row">
                     <div class="col-4">
                         <img src="{{ event.image_url }}" width="100%" alt="{{ event.event_name }}" />
                     </div>
                     <div class="col-8">
                         <h5>{{ event.event_name }}</h5>
-                        <span class="badge bg-success">{{ text.event.close_at }} {{ (event.end_time - dt).total_seconds() // 86400 }} {{ text.day }}</span>
+                        <span class="badge bg-success">{{ text.event_close_at }} {{ (event.end_time - dt).total_seconds() // 86400 }} {{ text.day }}</span>
                         {% for type_tag in event.event_type.split(" ") %}
                             <span class="badge bg-info">{{ type_tag.replace(" ", "") }}</span>
                         {% endfor %}
@@ -135,7 +127,7 @@ dt: datetime
         {% endfor %}
     </div>
 
-    <p style="text-align: center">{{ text.cur_ver }} {{ mhy_bbs.data.cur_game_version }}</p>
+    <p style="text-align: center">{{ text.cur_ver }} {{ game_ver }}</p>
 
 
 {% endblock body %}
