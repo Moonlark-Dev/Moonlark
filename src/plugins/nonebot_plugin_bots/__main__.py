@@ -14,7 +14,7 @@ from typing import cast
 
 from nonebot_plugin_larkutils import get_group_id
 from .config import config
-from .types import BotStatus
+from .types import BotStatus, OnlineBotStatus
 
 from nonebot import get_bots
 
@@ -42,18 +42,25 @@ async def get_bot_status(user_id: str) -> BotStatus:
     except ActionFailed:
         good = False
         nickname = None
-    return {
-        "user_id": user_id,
-        "adapter_name": bot.adapter.get_name(),
-        "online": True,
-        "good": good,
-        "nickname": nickname,
-    }
+    return OnlineBotStatus(
+        user_id=user_id,
+        adapter_name=bot.adapter.get_name(),
+        online=True,
+        good=bool(good),
+        nickname=nickname,
+    )
+    # {
+    #     "user_id": user_id,
+    #     "adapter_name": bot.adapter.get_name(),
+    #     "online": True,
+    #     "good": good,
+    #     "nickname": nickname,
+    # }
 
 
 async def is_bot_online(bot_id: str) -> bool:
     status = await get_bot_status(bot_id)
-    return status["online"] and status["good"]
+    return bool(status["online"] and status.get("good"))
 
 
 @cast(FastAPI, get_app()).get("/api/bots")
@@ -73,14 +80,10 @@ async def process_to_me_message(event: Event, bot: Bot, session_id: str) -> None
     message = event.get_message()
     for segment in message:
         if segment.type == "at":
-            user_id = segment.get("user_id")
+            user_id = str(segment.get("user_id"))
             if user_id in config.bots_list.keys() and session_id in sessions and sessions[session_id] != user_id:
-                if await is_bot_online(user_id):
-                    assign_session(session_id, user_id)
-                else:
-                    segment.user_id = bot.self_id
-                    assign_session(session_id, bot.self_id)
-                return
+                segment.user_id = bot.self_id
+                assign_session(session_id, bot.self_id)
 
 
 @event_preprocessor
