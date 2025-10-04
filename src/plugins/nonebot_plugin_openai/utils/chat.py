@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 import hashlib
 from collections.abc import Awaitable
+import traceback
 
 from nonebot_plugin_larklang.__main__ import get_module_name
 import inspect
@@ -119,7 +120,11 @@ class LLMRequestSession:
     async def call_function(self, call_id: str, name: str, params: dict[str, Any]) -> None:
         if self.trigger_functions["pre_function_call"]:
             call_id, name, params = await self.trigger_functions["pre_function_call"](call_id, name, params)
-        result = await self.func_index[name]["func"](**params)
+        try:
+            result = await self.func_index[name]["func"](**params)
+        except Exception as e:
+            logger.exception(e)
+            result = f"工具调用失败：{traceback.format_exc()}"
         if self.trigger_functions["post_function_call"]:
             result = await self.trigger_functions["post_function_call"](result)
         if result is None:
