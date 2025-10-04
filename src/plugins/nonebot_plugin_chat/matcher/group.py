@@ -17,9 +17,10 @@
 
 import copy
 import json
+import re
 from nonebot_plugin_alconna import get_message_id
 import random
-import re
+from openai.types.chat import ChatCompletionMessage
 import asyncio
 from datetime import datetime, timedelta
 from nonebot.adapters.qq import Bot as BotQQ
@@ -279,6 +280,11 @@ class MessageProcessor:
             ],
             identify="Chat",
             pre_function_call=self.send_function_call_feedback,
+            timeout_per_request=15,
+            timeout_response=ChatCompletionMessage(
+                role="assistant",
+                content=".skip"
+            )
         )
         async for message in fetcher.fetch_message_stream():
             self.message_count += 1
