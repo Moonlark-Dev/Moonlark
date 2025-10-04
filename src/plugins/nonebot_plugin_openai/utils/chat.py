@@ -44,7 +44,6 @@ def generate_function_list(func_index: dict[str, AsyncFunction]) -> list[ChatCom
 T = TypeVar("T")
 
 
-
 class LLMRequestSession:
 
     def __init__(
@@ -59,7 +58,7 @@ class LLMRequestSession:
         ] = None,
         post_function_call: Optional[Callable[[T], Awaitable[T]]] = None,
         timeout_per_request: Optional[int] = None,
-        timeout_response: Optional[ChatCompletionMessage] = None
+        timeout_response: Optional[ChatCompletionMessage] = None,
     ) -> None:
         self.messages: Messages = messages
         self.identify = identify
@@ -80,7 +79,9 @@ class LLMRequestSession:
         while not self.stop:
             start_time = datetime.now()
             async for message in self.request():
-                if self.timeout_per_request and datetime.now() - start_time > timedelta(seconds=self.timeout_per_request):
+                if self.timeout_per_request and datetime.now() - start_time > timedelta(
+                    seconds=self.timeout_per_request
+                ):
                     self.stop = True
                     self.timeout_state = True
                     if self.timeout_response:
@@ -166,7 +167,15 @@ class MessageFetcher:
             for func in functions:
                 func_index[func["func"].__name__] = func
         self.session = LLMRequestSession(
-            messages, func_index, model, kwargs, identify, pre_function_call, post_function_call, timeout_per_request, timeout_response
+            messages,
+            func_index,
+            model,
+            kwargs,
+            identify,
+            pre_function_call,
+            post_function_call,
+            timeout_per_request,
+            timeout_response,
         )
 
     async def fetch_last_message(self) -> str:
@@ -182,6 +191,7 @@ class MessageFetcher:
 
     def is_time_outed(self) -> bool:
         return self.session.timeout_state
+
 
 async def fetch_message(
     messages: Messages,
@@ -207,6 +217,15 @@ async def fetch_message(
         model = config.model_override.get(identify, config.openai_default_model)
 
     fetcher = MessageFetcher(
-        messages, use_default_message, model, functions, identify, pre_function_call, post_function_call, timeout_per_request, timeout_response, **kwargs
+        messages,
+        use_default_message,
+        model,
+        functions,
+        identify,
+        pre_function_call,
+        post_function_call,
+        timeout_per_request,
+        timeout_response,
+        **kwargs,
     )
     return await fetcher.fetch_last_message()

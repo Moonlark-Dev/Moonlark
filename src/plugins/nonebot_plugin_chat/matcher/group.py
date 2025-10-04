@@ -281,10 +281,7 @@ class MessageProcessor:
             identify="Chat",
             pre_function_call=self.send_function_call_feedback,
             timeout_per_request=15,
-            timeout_response=ChatCompletionMessage(
-                role="assistant",
-                content=".skip"
-            )
+            timeout_response=ChatCompletionMessage(role="assistant", content=".skip"),
         )
         async for message in fetcher.fetch_message_stream():
             self.message_count += 1

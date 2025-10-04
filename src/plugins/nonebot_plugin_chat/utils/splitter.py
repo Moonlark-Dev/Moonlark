@@ -143,13 +143,13 @@ class MessageSplitter:
             for i, m in enumerate(matches):
                 # 先把 REPLY 之前的内容单独拿出
                 if prev_end < m.start():
-                    before = text[prev_end:m.start()].strip()
+                    before = text[prev_end : m.start()].strip()
                     if before:
                         out.append((mtype, before))
 
                 # 当前 REPLY 段，延伸到下一个 REPLY 前或末尾
                 seg_end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
-                reply_seg = text[m.start():seg_end]
+                reply_seg = text[m.start() : seg_end]
                 if self.reply_pattern.sub("", reply_seg).strip():
                     out.append((mtype, reply_seg))
                 prev_end = seg_end
@@ -253,5 +253,6 @@ class MessageSplitter:
         # 6) 输出
         result = [txt for _, txt in messages if txt.strip()]
         return result
+
 
 splitter = MessageSplitter()
