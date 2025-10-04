@@ -95,6 +95,7 @@ class MessageProcessor:
         self.openai_messages: Messages = []
         self.session = session
         self.message_count = 0
+        self.cached_activated_memories: list[tuple[str, str]] = []
         self.enabled = True
         self.interrupter = Interrupter(session)
         self.cold_until = datetime.now()
@@ -415,15 +416,16 @@ class MessageProcessor:
 
     async def generate_system_prompt(self) -> OpenAIMessage:
 
-        # 获取最近几条缓存消息作为上下文
-        recent_messages = self.session.cached_messages[-5:] if self.session.cached_messages else []
-        recent_context = " ".join([msg["content"] for msg in recent_messages])
+        # # 获取最近几条缓存消息作为上下文
+        # recent_messages = self.session.cached_messages[-5:] if self.session.cached_messages else []
+        # recent_context = " ".join([msg["content"] for msg in recent_messages])
 
-        # 激活相关记忆
+        # # 激活相关记忆
         chat_history = "\n".join(self.get_message_content_list())
-        activated_memories = await activate_memories_from_text(
-            context_id=self.session.group_id, target_message=recent_context, max_memories=5, chat_history=chat_history
-        )
+        # activated_memories = await activate_memories_from_text(
+        #     context_id=self.session.group_id, target_message=recent_context, max_memories=5, chat_history=chat_history
+        # )
+        activated_memories = self.cached_activated_memories
 
         # 获取相关笔记
         note_manager = await get_context_notes(self.session.group_id)
@@ -466,7 +468,7 @@ class GroupSession:
         self.desire = BASE_DESIRE
         self.last_reward_participation: Optional[datetime] = None
         self.mute_until: Optional[datetime] = None
-        self.memory_lock = False
+        self.memory_lock = asyncio.Lock()
         self.message_counter: dict[datetime, int] = {}
         self.user_counter: dict[datetime, set[str]] = {}
         self.processor = MessageProcessor(self)
@@ -509,31 +511,33 @@ class GroupSession:
     async def handle_message(
         self, message: UniMessage, user_id: str, event: Event, state: T_State, nickname: str, mentioned: bool = False
     ) -> None:
-        # # 记录消息到频率计数器
-        # self.interrupter.record_message()
-
-        # # 检查是否应该阻断机器人响应
-        # message_text = await parse_message_to_string(message, event, self.bot, state)
-        # if await self.interrupter.should_interrupt(message_text, user_id):
-        #     # 如果需要阻断，直接返回
-        #     return
-
         message_id = get_message_id(event)
         self.message_queue.append((message, event, state, user_id, nickname, datetime.now(), mentioned, message_id))
         self.update_counters(user_id)
         await self.calculate_desire_on_message(mentioned)
+        if len(self.cached_messages) % 10 == 0 and len(self.cached_messages) > 0:
+            asyncio.create_task(self.update_topic())
         if len(self.cached_messages) >= 20:
-            await self.update_memory()
+            asyncio.create_task(self.update_memory())
+
+    async def update_topic(self) -> None:
+        # # 激活相关记忆
+        recent_context = self.cached_messages[-1]["content"]
+        chat_history = "\n".join(self.processor.get_message_content_list())
+        activated_memories = await activate_memories_from_text(
+            context_id=self.group_id, target_message=recent_context, max_memories=5, chat_history=chat_history
+        )
+        self.processor.cached_activated_memories = activated_memories
+        
 
     async def update_memory(self) -> None:
-        if self.memory_lock or not self.cached_messages:
+        if self.memory_lock.locked() or not self.cached_messages:
             return
-        self.memory_lock = True
-        try:
-            await self.generate_memory()
-        except Exception as e:
-            logger.exception(e)
-        self.memory_lock = False
+        async with self.memory_lock:
+            try:
+                await self.generate_memory()
+            except Exception as e:
+                logger.exception(e)
 
     async def generate_memory(self) -> None:
         from ..utils.memory_graph import MemoryGraph
