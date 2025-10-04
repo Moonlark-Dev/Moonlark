@@ -121,10 +121,14 @@ class LLMRequestSession:
         if result is None:
             result = "success"
         logger.debug(f"函数返回: {result}")
+        if isinstance(result, str):
+            content = result
+        else:
+            content = json.dumps(result, ensure_ascii=False)
         msg: ChatCompletionToolMessageParam = {
             "role": "tool",
             "tool_call_id": call_id,
-            "content": json.dumps(result, ensure_ascii=False),
+            "content": content,
         }
         self.messages.append(msg)
 
