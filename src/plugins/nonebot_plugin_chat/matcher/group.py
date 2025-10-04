@@ -272,7 +272,7 @@ class MessageProcessor:
                                 "需要解释的图片的 URL 地址。\n"
                                 "注意，该参数一定是一个完整的 URL 地址， **消息中的 [图片: {描述}] 中的 {描述} 部分不能被填入！**"
                             ),
-                            required=True
+                            required=True,
                         )
                     },
                 ),

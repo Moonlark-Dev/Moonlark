@@ -62,7 +62,8 @@ async def _() -> RandomCaveResponse:
             "author": (await get_user(cave.author)).get_nickname(),
             "images": [img async for img in get_image_data(cave.id)],
         }
-    
+
+
 @app.get("/api/cave/index/{cave_id}")
 async def _(request: Request, cave_id: int) -> RandomCaveResponse:
     async with get_session() as session:
