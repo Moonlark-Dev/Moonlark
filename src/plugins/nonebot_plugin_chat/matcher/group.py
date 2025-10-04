@@ -21,6 +21,7 @@ import re
 from nonebot_plugin_alconna import get_message_id
 import random
 from openai.types.chat import ChatCompletionMessage
+from openai.types.chat.chat_completion import Choice
 import asyncio
 from datetime import datetime, timedelta
 from nonebot.adapters.qq import Bot as BotQQ
@@ -211,7 +212,12 @@ class MessageProcessor:
             functions=[
                 AsyncFunction(
                     func=get_fetcher(self.session.bot),
-                    description="获取合并转发消息的内容。",
+                    description=(
+                        "获取合并转发消息的内容。\n"
+                        "**何时必须调用**: 当聊天记录中出现形如 `[合并转发:...]` 的消息时。\n"
+                        "**判断标准**: 只要看到 `[合并转发: {ID}]` 格式的文本，就**必须**调用此工具来获取其内部的具体消息。这是理解对话上下文的关键步骤。\n"
+                        "**禁止行为**: 除非该工具报错，绝对禁止忽略合并转发消息或回复“咱看不到合并转发的内容喵”。"
+                    ),
                     parameters={
                         "message_id": FunctionParameter(
                             type="string",
@@ -222,14 +228,24 @@ class MessageProcessor:
                 ),
                 AsyncFunction(
                     func=browse_webpage,
-                    description="使用浏览器访问指定 URL 并获取网页内容的 Markdown 格式文本",
+                    description=(
+                        "使用浏览器访问指定 URL 并获取网页内容的 Markdown 格式文本。\n"
+                        "**何时必须调用**:\n"
+                        "1. 当用户直接提供一个 URL，或者要求你**总结、分析、提取特定网页的内容**时。\n"
+                        "2. 当你使用 web_search 获取到了一些结果，需要详细查看某个网页获取更多的信息时。\n"
+                        "**判断标准**: 只要输入中包含 `http://` 或 `https://`，并且用户的意图与该链接内容相关，就**必须**调用此工具。"
+                    ),
                     parameters={
                         "url": FunctionParameter(type="string", description="要访问的网页的 URL 地址", required=True)
                     },
                 ),
                 AsyncFunction(
                     func=web_search,
-                    description="从网络搜索信息",
+                    description=(
+                        "调用搜索引擎，从网络中搜索信息。\n"
+                        "**何时必须调用**: 当被问及任何关于**时事新闻、近期事件、特定人物、产品、公司、地点、定义、统计数据**或任何你的知识库可能未覆盖的现代事实性信息时。\n"
+                        "**判断标准**: 只要问题涉及“是什么”、“谁是”、“在哪里”、“最新的”、“...怎么样”等客观事实查询，就**必须**使用网络搜索。\n"
+                    ),
                     parameters={
                         "keyword": FunctionParameter(
                             type="string",
@@ -240,25 +256,45 @@ class MessageProcessor:
                 ),
                 AsyncFunction(
                     func=describe_image,
-                    description="获取一张网络图片的内容的描述。",
+                    description=(
+                        "获取一张网络图片的内容描述。\n"
+                        "**何时必须调用**: 在 `browse_webpage` 工具中看到了一张图片时，或用户发送了一个 **图片 URL**（如以 `.jpg`, `.png`, `.webp` 等结尾） 时。"
+
+                    ),
                     parameters={
                         "image_url": FunctionParameter(type="string", description="目标图片的 URL 地址", required=True)
                     },
                 ),
                 AsyncFunction(
                     func=request_wolfram_alpha,
-                    description="调用 Wolfram|Alpha 进行计算。",
+                    description=(
+                        "调用 Wolfram|Alpha 进行计算。\n"
+                        "**何时必须调用**: 当用户提出任何**数学计算（微积分、代数、方程求解等）、数据分析、单位换算、科学问题（物理、化学）、日期与时间计算**等需要精确计算和结构化数据的问题时。\n"
+                        "**判断标准**: 如果问题看起来像一个数学题、物理公式或需要精确数据的查询，优先选择 Wolfram|Alpha 而不是网络搜索。例如：“2x^2+5x-3=0 的解是什么？”或“今天的日落时间是几点？”。\n"
+                        "**禁止行为**: 不要尝试自己进行复杂的数学计算，这容易出错。"
+                    ),
                     parameters={
                         "question": FunctionParameter(
                             type="string",
-                            description="输入 Wolfram|Alpha 的内容，形式可以是数学表达式、Wolfram Language、LaTeX 或自然语言",
+                            description=(
+                                "输入 Wolfram|Alpha 的内容，形式可以是数学表达式、Wolfram Language、LaTeX 或自然语言。\n"
+                                "使用自然语言提问时，使用英文以保证 Wolfram|Alpha 可以理解问题。"
+                            ),
                             required=True,
                         )
                     },
                 ),
                 AsyncFunction(
                     func=get_note_poster(self.session.group_id),
-                    description="添加一段笔记到你的笔记本中。",
+                    description=(
+                        "添加一段笔记到你的笔记本中。\n"
+                        "**何时需要调用**: 当你认为某些信息对你理解群友或未来的互动非常重要时，可以自主选择使用它来记下。\n"
+                        "**建议的使用场景 (完全由你判断！)**:\n"
+                        "- 记下某位群友的**重要个人信息**，比如他们的生日、重要的纪念日、或提到的个人喜好（例如最喜欢的游戏、食物等），这样你可以在未来的对话中恰当地提及，显得更加体贴。\n"
+                        "- 记录群聊中达成的**重要共识或约定**，例如大家约定好下次一起玩游戏的时间。\n"
+                        "- 保存一些对你有用的**事实性知识**，特别是通过工具查询到的、并可能在未来对话中再次被提及的内容。\n"
+                        " **使用提示**: 把你需要记住的核心信息整理成简洁的句子放进 `text` 参数里，这个工具的目的是帮助你更好地维系和群友的关系。"
+                    ),
                     parameters={
                         "text": FunctionParameter(
                             type="string",
@@ -281,7 +317,11 @@ class MessageProcessor:
             identify="Chat",
             pre_function_call=self.send_function_call_feedback,
             timeout_per_request=15,
-            timeout_response=ChatCompletionMessage(role="assistant", content=".skip"),
+            timeout_response=Choice(
+                finish_reason="stop",
+                message=ChatCompletionMessage(role="assistant", content=".skip"),
+                index=0
+            ),
         )
         async for message in fetcher.fetch_message_stream():
             self.message_count += 1
@@ -364,7 +404,7 @@ class MessageProcessor:
         l = []
         for msg in self.openai_messages:
             if isinstance(msg, dict):
-                if "content" in msg:
+                if "content" in msg and msg["role"] == "user":
                     l.append(msg["content"])
             elif hasattr(msg, "content"):
                 l.append(msg.content)

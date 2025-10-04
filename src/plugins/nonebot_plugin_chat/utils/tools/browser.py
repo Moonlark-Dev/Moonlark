@@ -15,7 +15,7 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
-from typing import Optional, Dict, Any
+from typing import Literal, Optional, Dict, Any, TypedDict
 from urllib.parse import urlparse
 import html2text
 from nonebot_plugin_htmlrender import get_new_page
@@ -23,6 +23,16 @@ from nonebot.log import logger
 import re
 
 from ..url_validator import is_internal_url
+
+
+class BrowseResult(TypedDict):
+    """网页浏览结果""" 
+    success: bool
+    url: str
+    title: Optional[str]
+    content: Optional[str]
+    error: Optional[str]
+    metadata: Dict[str, Any]
 
 
 def _clean_markdown(markdown: str) -> str:
@@ -120,7 +130,7 @@ class AsyncBrowserTool:
     def __init__(
         self,
         timeout: int = 30000,
-        wait_until: str = "networkidle",
+        wait_until: Literal["commit", "domcontentloaded", "load", "networkidle"] = "networkidle",
         remove_scripts: bool = True,
         remove_styles: bool = True,
     ):
@@ -149,7 +159,7 @@ class AsyncBrowserTool:
         self.html_converter.protect_links = True
         self.html_converter.unicode_snob = True
 
-    async def browse(self, url: str) -> Dict[str, Any]:
+    async def browse(self, url: str) -> BrowseResult:
         """
         异步浏览网页并转换为Markdown
 
@@ -162,7 +172,14 @@ class AsyncBrowserTool:
         try:
             parsed = urlparse(url)
             if is_internal_url(parsed):
-                return {"success": False, "url": url, "error": "无法访问本地资源", "content": None}
+                return {
+                    "success": False,
+                    "url": url,
+                    "error": "无法访问本地资源",
+                    "content": None,
+                    "title": None,
+                    "metadata": {}
+                }
             if not parsed.scheme:
                 url = f"https://{url}"
             async with get_new_page() as page:
@@ -208,6 +225,7 @@ class AsyncBrowserTool:
                 "url": url,
                 "title": title,
                 "content": markdown_content,
+                "error": None,
                 "metadata": {
                     "description": meta_description,
                     "keywords": meta_keywords,
@@ -217,36 +235,39 @@ class AsyncBrowserTool:
             }
 
         except Exception as e:
-            return {"success": False, "url": url, "error": str(e), "content": None}
+            return {
+                "success": False,
+                "url": url,
+                "error": str(e),
+                "content": None,
+                "title": None,
+                "metadata": {}
+            }
 
     def _html_to_markdown(self, html: str) -> str:
         """将HTML转换为Markdown"""
         return self.html_converter.handle(html)
 
 
-# OpenAI 工具函数定义
-# async_browser_tool_schema = {
-#     "type": "function",
-#     "function": {
-#         "name": "browse_webpage",
-#         "description": "使用浏览器访问指定URL并获取网页内容的Markdown格式文本",
-#         "parameters": {
-#             "type": "object",
-#             "properties": {
-#                 "url": {
-#                     "type": "string",
-#                     "description": "要访问的网页URL地址"
-#                 }
-#             },
-#             "required": ["url"]
-#         }
-#     }
-# }
 
 
 browser_tool = AsyncBrowserTool()
 
 
-async def browse_webpage(url: str) -> dict[str, Any]:
+async def browse_webpage(url: str) -> str:
     logger.info(f"Moonlark 正在访问: {url}")
-    return await browser_tool.browse(url)
+    result = await browser_tool.browse(url)
+    if result["success"]:
+        return f"""页面信息:
+- URL: {result['url']}
+- 请求状态: {result['metadata']['status_code']}
+- 页面简介: {result['metadata']['description']}
+- 关键词: {result['metadata']['keywords']}
+- 内容长度: {result['metadata']['content_length']}
+
+# {result['title']}
+
+{result['content']}"""
+    else:
+        return f"""# 访问失败
+{result['error']}"""
