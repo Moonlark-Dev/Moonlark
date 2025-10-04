@@ -102,7 +102,7 @@ class LLMRequestSession:
             self.stop = True
             if self.timeout_response:
                 response = self.timeout_response
-        logger.debug(f"{response=}\n{self.messages=}\n{self.model=}\n{self.func_list=}")
+        logger.debug(f"{response=}\n{self.messages=}\n{self.model=}\n{self.func_list=}\n{completion=}")
         self.messages.append(response.message)
         if response.message.content:
             yield response.message.content
