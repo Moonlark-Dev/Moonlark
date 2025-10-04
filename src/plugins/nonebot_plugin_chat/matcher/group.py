@@ -259,7 +259,6 @@ class MessageProcessor:
                     description=(
                         "获取一张网络图片的内容描述。\n"
                         "**何时必须调用**: 在 `browse_webpage` 工具中看到了一张图片时，或用户发送了一个 **图片 URL**（如以 `.jpg`, `.png`, `.webp` 等结尾） 时。"
-
                     ),
                     parameters={
                         "image_url": FunctionParameter(type="string", description="目标图片的 URL 地址", required=True)
@@ -318,9 +317,7 @@ class MessageProcessor:
             pre_function_call=self.send_function_call_feedback,
             timeout_per_request=15,
             timeout_response=Choice(
-                finish_reason="stop",
-                message=ChatCompletionMessage(role="assistant", content=".skip"),
-                index=0
+                finish_reason="stop", message=ChatCompletionMessage(role="assistant", content=".skip"), index=0
             ),
         )
         async for message in fetcher.fetch_message_stream():

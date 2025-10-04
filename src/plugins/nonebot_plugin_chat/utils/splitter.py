@@ -256,4 +256,3 @@ class MessageSplitter:
 
 
 splitter = MessageSplitter()
-
