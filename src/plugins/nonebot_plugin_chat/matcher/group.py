@@ -14,8 +14,10 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
+
 import copy
 import json
+from nonebot_plugin_alconna import get_message_id
 import random
 import re
 import asyncio
@@ -41,9 +43,19 @@ from nonebot.matcher import Matcher
 
 from ..utils.memory_activator import activate_memories_from_text
 from ..lang import lang
+from ..utils.note_manager import get_context_notes
+from ..utils.memory_graph import cleanup_old_memories
 from ..models import ChatGroup
 from ..utils import enabled_group, parse_message_to_string, splitter
-from ..utils.tools import browse_webpage, search_on_google, describe_image, request_wolfram_alpha
+from ..utils.interrupter import Interrupter
+from ..utils.tools import (
+    browse_webpage,
+    web_search,
+    describe_image,
+    request_wolfram_alpha,
+    get_fetcher,
+    get_note_poster,
+)
 
 BASE_DESIRE = 30
 
@@ -58,7 +70,7 @@ class CachedMessage(TypedDict):
 
 
 def generate_message_string(message: CachedMessage) -> str:
-    return f"[{message['send_time'].strftime('%H:%M:%S')}][{message['nickname']}]: {message['content']}\n"
+    return f"[{message['send_time'].strftime('%H:%M:%S')}][{message['nickname']}]({message['message_id']}): {message['content']}\n"
 
 
 def get_role(message: OpenAIMessage) -> str:
@@ -82,8 +94,9 @@ class MessageProcessor:
         self.session = session
         self.message_count = 0
         self.enabled = True
+        self.interrupter = Interrupter(session)
         self.cold_until = datetime.now()
-        self.reply_message_ids = []
+        # self.reply_message_ids = []
         self.blocked = False
         asyncio.create_task(self.loop())
 
@@ -115,6 +128,10 @@ class MessageProcessor:
         }
         await self.process_messages(msg_dict)
         self.session.cached_messages.append(msg_dict)
+        self.interrupter.record_message()
+        if await self.interrupter.should_interrupt(text, user_id):
+            # 如果需要阻断，直接返回
+            return
         if (mentioned or not self.session.message_queue) and not self.blocked:
             await self.generate_reply(mentioned)
             self.cold_until = datetime.now() + timedelta(seconds=5)
@@ -130,16 +147,15 @@ class MessageProcessor:
         self.clean_special_message()
         if len(self.openai_messages) == 0:
             return
-        role = get_role(self.openai_messages[0])
+        first_msg = self.openai_messages[0]
+        role = get_role(first_msg)
         if role == "assistant":
             self.openai_messages.pop(0)
-        elif role == "user":
-            content = self.openai_messages[0]["content"]
+        elif role == "user" and isinstance(first_msg, dict) and isinstance(content := first_msg.get("content"), str):
             if next_message_pos := content.find("\n[") + 1:
-                self.openai_messages[0]["content"] = content[next_message_pos:]
+                first_msg["content"] = content[next_message_pos:]
             else:
                 self.openai_messages.pop(0)
-            self.reply_message_ids.pop(0)
         self.message_count -= 1
 
     async def update_system_message(self) -> None:
@@ -156,16 +172,19 @@ class MessageProcessor:
         min_str = time_d.total_seconds() // 60
         if len(self.openai_messages) > 0:
             return
-        if isinstance(self.openai_messages[-1], dict) and self.openai_messages[-1]["role"] == "user":
-            self.openai_messages[
-                -1
-            ].content += f"\n[{datetime.now().strftime('%H:%M:%S')}]: 当前群聊已经冷群了 {min_str} 分钟。"
-        elif (not isinstance(self.openai_messages[-1], dict)) and self.openai_messages[-1].role == "assistant":
-            self.openai_messages.append(
-                generate_message(
-                    content=f"[{datetime.now().strftime('%H:%M:%S')}]: 当前群聊已经冷群了 {min_str} 分钟。", role="user"
-                )
-            )
+        delta_content = f"\n[{datetime.now().strftime('%H:%M:%S')}]: 当前群聊已经冷群了 {min_str} 分钟。"
+        latest_message = self.openai_messages[-1]
+        if isinstance(latest_message, dict):
+            if get_role(latest_message) == "user":
+                if (content := latest_message.get("content")) and isinstance(content, str):
+                    latest_message["content"] = content + delta_content
+                else:
+                    latest_message["content"] = delta_content
+            else:
+                return
+
+        elif latest_message.role == "assistant":
+            self.openai_messages.append(generate_message(content=delta_content, role="user"))
         else:
             return
         if not self.blocked:
@@ -181,11 +200,25 @@ class MessageProcessor:
             and self.openai_messages[-1].role in ["system", "assistant"]
         ):
             return
+
+        # 记录一次机器人响应
+        self.interrupter.record_response()
         await self.update_system_message()
         fetcher = MessageFetcher(
             self.openai_messages,
             False,
             functions=[
+                AsyncFunction(
+                    func=get_fetcher(self.session.bot),
+                    description="获取合并转发消息的内容。",
+                    parameters={
+                        "message_id": FunctionParameter(
+                            type="string",
+                            description="转发消息的 ID，是“[合并转发: {一段数字ID}]”中间的“{一段数字}”，例如“[合并转发: 1234567890]”中的“1234567890”",
+                            required=True,
+                        ),
+                    },
+                ),
                 AsyncFunction(
                     func=browse_webpage,
                     description="使用浏览器访问指定 URL 并获取网页内容的 Markdown 格式文本",
@@ -194,8 +227,8 @@ class MessageProcessor:
                     },
                 ),
                 AsyncFunction(
-                    func=search_on_google,
-                    description="使用Google搜索信息",
+                    func=web_search,
+                    description="从网络搜索信息",
                     parameters={
                         "keyword": FunctionParameter(
                             type="string",
@@ -222,6 +255,27 @@ class MessageProcessor:
                         )
                     },
                 ),
+                AsyncFunction(
+                    func=get_note_poster(self.session.group_id),
+                    description="添加一段笔记到你的笔记本中。",
+                    parameters={
+                        "text": FunctionParameter(
+                            type="string",
+                            description="要添加的笔记内容。",
+                            required=True,
+                        ),
+                        "expire_days": FunctionParameter(
+                            type="integer",
+                            description="笔记的过期天数。如果未指定，则默认为 7 天。",
+                            required=False,
+                        ),
+                        "keywords": FunctionParameter(
+                            type="string",
+                            description="笔记的关键词，用于搜索。如果未指定，则默认为空。",
+                            required=False,
+                        ),
+                    },
+                ),
             ],
             identify="Chat",
             pre_function_call=self.send_function_call_feedback,
@@ -230,13 +284,18 @@ class MessageProcessor:
             self.message_count += 1
             await self.send_reply_text(message)
         self.openai_messages = fetcher.get_messages()
+        if datetime.now() < self.interrupter.sleep_end_time:
+            self.interrupter.sleep_end_time = datetime.min
 
     def get_reply_message_id(self, text: str) -> tuple[str, Optional[str]]:
         reply_message_id = None
         while m := re.search(r"\{REPLY:\d+}", text):
             try:
-                reply_message_id = self.reply_message_ids[-int(m[0][7:-1])]
+                reply_message_id = m[0][7:-1]
             except IndexError:
+                continue
+            except ValueError:
+                # NOTE 一些其他的处理方式：将消息打回 LLM 进行重新编辑？
                 continue
             text = text.replace(m[0], "")
             break
@@ -254,9 +313,9 @@ class MessageProcessor:
                 await UniMessage().text(
                     text=await lang.text("tools.wolfram", self.session.user_id, param.get("question"))
                 ).send(target=self.session.target, bot=self.session.bot)
-            case "search_on_google":
+            case "web_search":
                 await UniMessage().text(
-                    text=await lang.text("tools.google", self.session.user_id, param.get("keyword"))
+                    text=await lang.text("tools.search", self.session.user_id, param.get("keyword"))
                 ).send(target=self.session.target, bot=self.session.bot)
         return call_id, name, param
 
@@ -278,20 +337,35 @@ class MessageProcessor:
                 await self.send_text(msg)
 
     async def process_messages(self, msg_dict: CachedMessage) -> None:
-        if (
-            len(self.openai_messages) <= 0
-            or (not isinstance(self.openai_messages[-1], dict))
-            or self.openai_messages[-1]["role"] != "user"
-        ):
-            self.openai_messages.append(generate_message(generate_message_string(msg_dict), "user"))
+        msg_str = generate_message_string(msg_dict)
+        if len(self.openai_messages) <= 0:
+            self.openai_messages.append(generate_message(msg_str, "user"))
         else:
-            self.openai_messages[-1]["content"] += generate_message_string(msg_dict)
+            last_message = self.openai_messages[-1]
+            if isinstance(last_message, dict) and last_message.get("role") == "user":
+                if content := last_message.get("content"):
+                    if isinstance(content, str):
+                        last_message["content"] = content + msg_str
+                else:
+                    last_message["content"] = msg_str
+            else:
+                self.openai_messages.append(generate_message(msg_str, "user"))
         self.message_count += 1
-        self.reply_message_ids.append(msg_dict["message_id"])
         logger.debug(self.openai_messages)
         async with get_session() as session:
             r = await session.get(ChatGroup, {"group_id": self.session.group_id})
             self.blocked = r and msg_dict["user_id"] in json.loads(r.blocked_user)
+            logger.debug(f"{self.blocked}")
+
+    def get_message_content_list(self) -> list[str]:
+        l = []
+        for msg in self.openai_messages:
+            if isinstance(msg, dict):
+                if "content" in msg:
+                    l.append(msg["content"])
+            elif hasattr(msg, "content"):
+                l.append(msg.content)
+        return l
 
     async def generate_system_prompt(self) -> OpenAIMessage:
 
@@ -300,17 +374,26 @@ class MessageProcessor:
         recent_context = " ".join([msg["content"] for msg in recent_messages])
 
         # 激活相关记忆
+        chat_history = "\n".join(self.get_message_content_list())
         activated_memories = await activate_memories_from_text(
-            context_id=self.session.group_id, target_message=recent_context, max_memories=3
+            context_id=self.session.group_id, target_message=recent_context, max_memories=5, chat_history=chat_history
         )
+
+        # 获取相关笔记
+        note_manager = await get_context_notes(self.session.group_id)
+        notes = await note_manager.filter_note(chat_history, [m[0] for m in activated_memories])
 
         # 构建记忆文本
         memory_text_parts = []
 
         if activated_memories:
-            memory_text_parts.append("相关群组记忆:")
             for concept, memory_content in activated_memories:
                 memory_text_parts.append(f"- {concept}: {memory_content}")
+
+        # 添加笔记到记忆文本
+        if notes:
+            for note in notes:
+                memory_text_parts.append(f"- {note.content}")
 
         final_memory_text = "\n".join(memory_text_parts) if memory_text_parts else "暂无"
 
@@ -323,9 +406,6 @@ class MessageProcessor:
             ),
             "system",
         )
-
-
-from nonebot_plugin_alconna import get_message_id
 
 
 class GroupSession:
@@ -383,6 +463,15 @@ class GroupSession:
     async def handle_message(
         self, message: UniMessage, user_id: str, event: Event, state: T_State, nickname: str, mentioned: bool = False
     ) -> None:
+        # # 记录消息到频率计数器
+        # self.interrupter.record_message()
+
+        # # 检查是否应该阻断机器人响应
+        # message_text = await parse_message_to_string(message, event, self.bot, state)
+        # if await self.interrupter.should_interrupt(message_text, user_id):
+        #     # 如果需要阻断，直接返回
+        #     return
+
         message_id = get_message_id(event)
         self.message_queue.append((message, event, state, user_id, nickname, datetime.now(), mentioned, message_id))
         self.update_counters(user_id)
@@ -433,24 +522,18 @@ class GroupSession:
             message = origin_message
         message = message.strip()
         users = self.get_users()
-        uni_msg = UniMessage().text(text="")
-        segment = ""
-        processing_at = False
-        for char in message:
-            if char == "@":
-                uni_msg[-1].text += segment
-                segment = "@"
-                processing_at = True
-            elif segment:
-                segment += char
-                if segment[1:] in users and processing_at:
-                    user_id = users[segment[1:]]
-                    uni_msg = uni_msg.at(user_id=user_id).text(text="")
-                    segment = ""
-                    processing_at = False
+        uni_msg = UniMessage()
+        at_list = re.finditer("|".join([f"@{user}" for user in users.keys()]), message)
+        cursor_index = 0
+        for at in at_list:
+            uni_msg = uni_msg.text(text=message[cursor_index : at.start()])
+            at_nickname = at.group(0)[1:]
+            if user_id := users.get(at_nickname):
+                uni_msg = uni_msg.at(user_id)
             else:
-                uni_msg[-1].text += char
-        uni_msg[-1].text += segment
+                uni_msg = uni_msg.text(at.group(0))
+            cursor_index = at.end()
+        uni_msg = uni_msg.text(text=message[cursor_index:])
         return uni_msg
 
     def get_users(self) -> dict[str, str]:
@@ -605,64 +688,19 @@ async def _(
         case "reset-memory":
             if g is not None:
                 # 清理图形记忆
-                from ..utils.memory_graph import cleanup_old_memories
 
                 await cleanup_old_memories(group_id, forget_ratio=1.0)  # 清除所有记忆
                 await lang.send("command.done", user_id)
             else:
                 await lang.send("command.disabled", user_id)
-        case "show-memory":
-            # 显示图形记忆而不是传统记忆
-            from ..utils.memory_graph import MemoryGraph
-
-            memory_graph = MemoryGraph(group_id)
-            await memory_graph.load_from_db()
-
-            if memory_graph.nodes:
-                memory_summary = []
-                for concept, data in list(memory_graph.nodes.items())[:3]:  # 显示前3个
-                    memory_summary.append(f"{concept}: {data['memory_items'][:200]}...")
-                await lang.send("command.memory.current", user_id, "\n\n".join(memory_summary))
-            else:
-                await lang.send("command.memory.empty", user_id)
         case "cleanup-memory":
             if g is not None:
-                from ..utils.memory_graph import cleanup_old_memories
 
                 forgotten_count = await cleanup_old_memories(group_id, forget_ratio=0.3)
                 await lang.send("command.memory.clean", user_id, forgotten_count)
             else:
                 await lang.send("command.disabled", user_id)
-        case "show-graph-memory":
-            if g is not None:
-                from ..utils.memory_graph import MemoryGraph
 
-                memory_graph = MemoryGraph(group_id)
-                await memory_graph.load_from_db()
-
-                if memory_graph.nodes:
-                    memory_summary = []
-                    for concept, data in list(memory_graph.nodes.items())[:5]:  # 显示前5个
-                        memory_summary.append(
-                            await lang.text(
-                                "command.memory.graph_node",
-                                user_id,
-                                concept,
-                                data["memory_items"][:100],
-                                round(data["weight"], 1),
-                            )
-                        )
-
-                    total_nodes = len(memory_graph.nodes)
-                    total_edges = len(memory_graph.edges)
-                    summary_text = await lang.text(
-                        "command.memory.summary", user_id, total_nodes, total_edges, "\n".join(memory_summary)
-                    )
-                    await matcher.finish(summary_text)
-                else:
-                    await lang.send("command.memory.empty_graph", user_id)
-            else:
-                await lang.send("command.disabled", user_id)
         case _:
             await lang.finish("command.no_argv", user_id)
     await session.merge(g)
@@ -674,3 +712,13 @@ async def _(
 async def _() -> None:
     for group in groups.values():
         await group.process_timer()
+
+
+@scheduler.scheduled_job("cron", hour="3", id="cleanup_expired_notes")
+async def _() -> None:
+    """Daily cleanup of expired notes at 3 AM"""
+    from ..utils.note_manager import cleanup_expired_notes
+
+    deleted_count = await cleanup_expired_notes()
+    if deleted_count > 0:
+        logger.info(f"Cleaned up {deleted_count} expired notes")

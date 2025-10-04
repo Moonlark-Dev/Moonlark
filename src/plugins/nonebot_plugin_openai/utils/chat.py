@@ -93,7 +93,7 @@ class LLMRequestSession:
         self.messages.append(response.message)
         if response.message.content:
             yield response.message.content
-        if response.finish_reason == "tool_calls":
+        if response.message.tool_calls:
             for request in response.message.tool_calls:
                 await self.call_function(request.id, request.function.name, json.loads(request.function.arguments))
         elif response.finish_reason in ["stop", "eos"]:

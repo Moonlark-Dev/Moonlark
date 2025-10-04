@@ -137,11 +137,11 @@ async def activate_memories_from_text(
         return []
 
     # 从目标消息中提取关键词
-    keywords = await extract_topics_from_text(target_message)
+    keywords = await extract_topics_from_text(target_message, candidate=True)
 
     # 如果有聊天历史，也提取关键词
     if chat_history:
-        history_keywords = await extract_topics_from_text(chat_history)
+        history_keywords = await extract_topics_from_text(chat_history, candidate=True)
         keywords.extend(history_keywords)
 
     # 去重并限制关键词数量

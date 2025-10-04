@@ -11,8 +11,12 @@ async def fetch_message(
     model: Optional[str] = None,
     functions: Optional[list[AsyncFunction]] = None,
     identify: Optional[str] = None,
+    pre_function_call: Optional[
+        Callable[[str, str, dict[str, Any]], Awaitable[tuple[str, str, dict[str, Any]]]]
+    ] = None,
+    post_function_call: Optional[Callable[[T], Awaitable[T]]] = None,
     **kwargs,
-) -> str:
+) -> str
 ```
 
 获取模型的回复消息。
@@ -24,6 +28,8 @@ async def fetch_message(
 - `model`: 模型名称，默认为 `None`
 - `functions`: 函数列表，默认为 `None`
 - `identify`: 标识符，默认为 `None`
+- `pre_function_call`:函数调用钩子，默认为`None`
+- `post_function_call`:回调函数钩子，默认为`None`
 - `**kwargs`: 其他参数
 
 ### 返回
@@ -33,7 +39,7 @@ async def fetch_message(
 ## 生成一条消息 `generate_message`
 
 ```python
-def generate_message(content: str | list, role: Literal["system", "user", "assistant"] = "system") -> Message:
+def generate_message(content: str | list, role: Literal["system", "user", "assistant"] = "system") -> Message
 ```
 
 生成一条消息。
@@ -50,19 +56,19 @@ def generate_message(content: str | list, role: Literal["system", "user", "assis
 ## 回复获取类 `MessageFetcher`
 
 ```python
-class MessageFetcher:
-    def __init__(
+def __init__(
         self,
         messages: Messages,
         use_default_message: bool = False,
         model: Optional[str] = None,
         functions: Optional[list[AsyncFunction]] = None,
         identify: Optional[str] = None,
+        pre_function_call: Optional[
+            Callable[[str, str, dict[str, Any]], Awaitable[tuple[str, str, dict[str, Any]]]]
+        ] = None,
+        post_function_call: Optional[Callable[[T], Awaitable[T]]] = None,
         **kwargs,
-    ) -> None:
-    async def fetch_last_message(self) -> str:
-    async def fetch_message_stream(self) -> AsyncGenerator[str, None]:
-    def get_messages(self) -> Messages:
+    ) -> None
 ```
 
 用于获取模型回复的类。
@@ -74,6 +80,9 @@ class MessageFetcher:
 - `model`: 模型名称
 - `functions`: 函数列表
 - `identify`: 标识符
+- `pre_function_call`:函数调用钩子，默认为`None`
+- `post_function_call`:回调函数钩子，默认为`None`
+- `**kwargs`: 其他参数
 
 ### 方法说明
 
