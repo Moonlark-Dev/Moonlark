@@ -5,7 +5,7 @@ from collections.abc import Awaitable
 from nonebot_plugin_larklang.__main__ import get_module_name
 import inspect
 import json
-from typing import Optional, Any, AsyncGenerator, Callable, TypeVar
+from typing import Optional, Any, AsyncGenerator, Callable, TypeVar, cast
 from openai.types.chat import ChatCompletionMessage
 from nonebot import logger
 from openai.types.shared_params import FunctionDefinition
@@ -43,6 +43,8 @@ def generate_function_list(func_index: dict[str, AsyncFunction]) -> list[ChatCom
 
 T = TypeVar("T")
 
+from openai.types.chat import ChatCompletion
+from openai.types.chat.chat_completion import Choice
 
 class LLMRequestSession:
 
@@ -58,7 +60,7 @@ class LLMRequestSession:
         ] = None,
         post_function_call: Optional[Callable[[T], Awaitable[T]]] = None,
         timeout_per_request: Optional[int] = None,
-        timeout_response: Optional[ChatCompletionMessage] = None,
+        timeout_response: Optional[Choice] = None,
     ) -> None:
         self.messages: Messages = messages
         self.identify = identify
@@ -77,23 +79,12 @@ class LLMRequestSession:
 
     async def fetch_llm_response(self) -> AsyncGenerator[str, None]:
         while not self.stop:
-            start_time = datetime.now()
             async for message in self.request():
-                if self.timeout_per_request and datetime.now() - start_time > timedelta(
-                    seconds=self.timeout_per_request
-                ):
-                    self.stop = True
-                    self.timeout_state = True
-                    if self.timeout_response:
-                        self.messages.append(self.timeout_response)
-                        if self.timeout_response.content:
-                            yield self.timeout_response.content
-                else:
-                    yield message
+                yield message
         await report_openai_history(self.messages, self.identify, self.model)
 
     async def request(self) -> AsyncGenerator[str, None]:
-        response = (
+        completion = cast(ChatCompletion,
             await client.chat.completions.create(
                 messages=self.messages,
                 model=self.model,
@@ -105,8 +96,13 @@ class LLMRequestSession:
                 },
                 **self.kwargs,
             )
-        ).choices[0]
-        logger.debug(f"{response=}\n{self.messages=}\n{self.model=}\n{self.func_list=}")
+        )
+        response = completion.choices[0]
+        if self.timeout_per_request and datetime.now() - datetime.fromtimestamp(completion.created) > timedelta(seconds=self.timeout_per_request):
+            self.stop = True
+            if self.timeout_response:
+                response = self.timeout_response
+        logger.debug(f"{response=}\n{self.messages=}\n{self.model=}\n{self.func_list=}\n{completion=}")
         self.messages.append(response.message)
         if response.message.content:
             yield response.message.content
@@ -125,10 +121,14 @@ class LLMRequestSession:
         if result is None:
             result = "success"
         logger.debug(f"函数返回: {result}")
+        if isinstance(result, str):
+            content = result
+        else:
+            content = json.dumps(result, ensure_ascii=False)
         msg: ChatCompletionToolMessageParam = {
             "role": "tool",
             "tool_call_id": call_id,
-            "content": json.dumps(result, ensure_ascii=False),
+            "content": content,
         }
         self.messages.append(msg)
 
@@ -147,7 +147,7 @@ class MessageFetcher:
         ] = None,
         post_function_call: Optional[Callable[[T], Awaitable[T]]] = None,
         timeout_per_request: Optional[int] = None,
-        timeout_response: Optional[ChatCompletionMessage] = None,
+        timeout_response: Optional[Choice] = None,
         **kwargs,
     ) -> None:
         if identify is None:
@@ -204,7 +204,7 @@ async def fetch_message(
     ] = None,
     post_function_call: Optional[Callable[[T], Awaitable[T]]] = None,
     timeout_per_request: Optional[int] = None,
-    timeout_response: Optional[ChatCompletionMessage] = None,
+    timeout_response: Optional[Choice] = None,
     **kwargs,
 ) -> str:
     if identify is None:
