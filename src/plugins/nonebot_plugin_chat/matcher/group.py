@@ -95,6 +95,7 @@ class MessageProcessor:
         self.openai_messages: Messages = []
         self.session = session
         self.message_count = 0
+        self.cached_activated_memories: list[tuple[str, str]] = []
         self.enabled = True
         self.interrupter = Interrupter(session)
         self.cold_until = datetime.now()
@@ -219,7 +220,7 @@ class MessageProcessor:
                         "**禁止行为**: 除非该工具报错，绝对禁止忽略合并转发消息或回复“咱看不到合并转发的内容喵”。"
                     ),
                     parameters={
-                        "message_id": FunctionParameter(
+                        "forward_id": FunctionParameter(
                             type="string",
                             description="转发消息的 ID，是“[合并转发: {一段数字ID}]”中间的“{一段数字}”，例如“[合并转发: 1234567890]”中的“1234567890”",
                             required=True,
@@ -258,10 +259,21 @@ class MessageProcessor:
                     func=describe_image,
                     description=(
                         "获取一张网络图片的内容描述。\n"
-                        "**何时必须调用**: 在 `browse_webpage` 工具中看到了一张图片时，或用户发送了一个 **图片 URL**（如以 `.jpg`, `.png`, `.webp` 等结尾） 时。"
+                        "**何时必须调用**: \n"
+                        "1. 在 `browse_webpage` 工具中看到了一张图片时，或用户发送了一个 **图片 URL**（如以 `.jpg`, `.png`, `.webp` 等结尾） 时，实际上该工具获取到的图片会以 `![](图片URL)` 的形式展示）\n"
+                        "2. 用户发送了一个 **图片 URL**（如以 `.jpg`, `.png`, `.webp` 等结尾） 时。\n"
+                        "消息中的 [图片: {描述}] 中的 {描述} 是用户发送的图片已经经过该工具处理结果，即用户发送的图片的描述， **它不是一个 URL，不能被填入这个工具！！！**"
+                        "如果向这个工具传入的 URL 不对应一张图片的话，这个工具不会返回有效的内容。"
                     ),
                     parameters={
-                        "image_url": FunctionParameter(type="string", description="目标图片的 URL 地址", required=True)
+                        "image_url": FunctionParameter(
+                            type="string",
+                            description=(
+                                "需要解释的图片的 URL 地址。\n"
+                                "注意，该参数一定是一个完整的 URL 地址， **消息中的 [图片: {描述}] 中的 {描述} 部分不能被填入！**"
+                            ),
+                            required=True
+                        )
                     },
                 ),
                 AsyncFunction(
@@ -409,15 +421,16 @@ class MessageProcessor:
 
     async def generate_system_prompt(self) -> OpenAIMessage:
 
-        # 获取最近几条缓存消息作为上下文
-        recent_messages = self.session.cached_messages[-5:] if self.session.cached_messages else []
-        recent_context = " ".join([msg["content"] for msg in recent_messages])
+        # # 获取最近几条缓存消息作为上下文
+        # recent_messages = self.session.cached_messages[-5:] if self.session.cached_messages else []
+        # recent_context = " ".join([msg["content"] for msg in recent_messages])
 
-        # 激活相关记忆
+        # # 激活相关记忆
         chat_history = "\n".join(self.get_message_content_list())
-        activated_memories = await activate_memories_from_text(
-            context_id=self.session.group_id, target_message=recent_context, max_memories=5, chat_history=chat_history
-        )
+        # activated_memories = await activate_memories_from_text(
+        #     context_id=self.session.group_id, target_message=recent_context, max_memories=5, chat_history=chat_history
+        # )
+        activated_memories = self.cached_activated_memories
 
         # 获取相关笔记
         note_manager = await get_context_notes(self.session.group_id)
@@ -460,7 +473,7 @@ class GroupSession:
         self.desire = BASE_DESIRE
         self.last_reward_participation: Optional[datetime] = None
         self.mute_until: Optional[datetime] = None
-        self.memory_lock = False
+        self.memory_lock = asyncio.Lock()
         self.message_counter: dict[datetime, int] = {}
         self.user_counter: dict[datetime, set[str]] = {}
         self.processor = MessageProcessor(self)
@@ -503,31 +516,32 @@ class GroupSession:
     async def handle_message(
         self, message: UniMessage, user_id: str, event: Event, state: T_State, nickname: str, mentioned: bool = False
     ) -> None:
-        # # 记录消息到频率计数器
-        # self.interrupter.record_message()
-
-        # # 检查是否应该阻断机器人响应
-        # message_text = await parse_message_to_string(message, event, self.bot, state)
-        # if await self.interrupter.should_interrupt(message_text, user_id):
-        #     # 如果需要阻断，直接返回
-        #     return
-
         message_id = get_message_id(event)
         self.message_queue.append((message, event, state, user_id, nickname, datetime.now(), mentioned, message_id))
         self.update_counters(user_id)
         await self.calculate_desire_on_message(mentioned)
+        if len(self.cached_messages) % 10 == 0 and len(self.cached_messages) > 0:
+            asyncio.create_task(self.update_topic())
         if len(self.cached_messages) >= 20:
-            await self.update_memory()
+            asyncio.create_task(self.update_memory())
+
+    async def update_topic(self) -> None:
+        # # 激活相关记忆
+        recent_context = self.cached_messages[-1]["content"]
+        chat_history = "\n".join(self.processor.get_message_content_list())
+        activated_memories = await activate_memories_from_text(
+            context_id=self.group_id, target_message=recent_context, max_memories=5, chat_history=chat_history
+        )
+        self.processor.cached_activated_memories = activated_memories
 
     async def update_memory(self) -> None:
-        if self.memory_lock or not self.cached_messages:
+        if self.memory_lock.locked() or not self.cached_messages:
             return
-        self.memory_lock = True
-        try:
-            await self.generate_memory()
-        except Exception as e:
-            logger.exception(e)
-        self.memory_lock = False
+        async with self.memory_lock:
+            try:
+                await self.generate_memory()
+            except Exception as e:
+                logger.exception(e)
 
     async def generate_memory(self) -> None:
         from ..utils.memory_graph import MemoryGraph

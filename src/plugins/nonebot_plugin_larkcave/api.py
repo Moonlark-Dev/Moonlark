@@ -16,7 +16,7 @@
 # ##############################################################################
 
 import base64
-from fastapi import status, Response
+from fastapi import Request, status, Response
 import traceback
 
 from fastapi import HTTPException
@@ -62,6 +62,21 @@ async def _() -> RandomCaveResponse:
             "author": (await get_user(cave.author)).get_nickname(),
             "images": [img async for img in get_image_data(cave.id)],
         }
+    
+@app.get("/api/cave/index/{cave_id}")
+async def _(request: Request, cave_id: int) -> RandomCaveResponse:
+    async with get_session() as session:
+        cave = await session.get(CaveData, {"id": cave_id})
+        if cave is None:
+            raise HTTPException(status_code=404, detail="CAVE 不存在")
+        data = RandomCaveResponse(
+            id=int(cave.id),
+            content=str(cave.content),
+            time=cave.time.timestamp(),
+            author=(await get_user(cave.author)).get_nickname(),
+            images=[img async for img in get_image_data(cave.id)],
+        )
+    return data
 
 
 async def get_images() -> AsyncGenerator[ImageData, None]:

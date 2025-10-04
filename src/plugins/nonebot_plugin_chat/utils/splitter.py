@@ -13,7 +13,7 @@ class MessageSplitter:
     """
 
     def __init__(self):
-        self.reply_pattern = re.compile(r"REPLY:\d+")
+        self.reply_pattern = re.compile(r"\{REPLY:\d+}")
         # 围栏代码块（反引号），多行匹配
         self.code_block_pattern = re.compile(r"^\s*```.*?^\s*```", re.MULTILINE | re.DOTALL)
         # .skip/.leave（整行）
