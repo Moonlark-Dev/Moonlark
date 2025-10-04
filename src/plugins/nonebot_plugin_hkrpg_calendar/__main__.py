@@ -17,6 +17,7 @@
 from datetime import datetime
 from nonebot_plugin_alconna import UniMessage
 from nonebot import on_command
+from nonebot_plugin_hkrpg_calendar.data_source.version import get_game_version
 from nonebot_plugin_preview.preview import screenshot
 from nonebot_plugin_larklang import LangHelper
 from nonebot_plugin_larkutils import get_user_id
@@ -36,6 +37,7 @@ async def _(user_id: str = get_user_id()) -> None:
     logger.debug(f"{takumi_api_result=}")
     if takumi_api_result is None:
         await lang.finish("takumi_failed", user_id=user_id)
+    game_version = await get_game_version()
     keys = await generate_render_keys(
         lang,
         user_id,
@@ -65,7 +67,7 @@ async def _(user_id: str = get_user_id()) -> None:
         "hkrpg_calendar.html.jinja",
         await lang.text("title", user_id),
         user_id,
-        {"wiki_info": await get_events(), "mhy_bbs": takumi_api_result, "dt": datetime.now()},
+        {"wiki_info": await get_events(), "mhy_bbs": takumi_api_result, "dt": datetime.now(), "game_ver": game_version},
         keys=keys,
     )
     await UniMessage().image(raw=image).send()

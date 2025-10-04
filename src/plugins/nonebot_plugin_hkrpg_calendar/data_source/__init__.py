@@ -16,4 +16,5 @@
 # ##############################################################################
 
 from .biligame import get_events
+from .version import get_game_version
 from .mihoyo_bbs import request_sr_wiki

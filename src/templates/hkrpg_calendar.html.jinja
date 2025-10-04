@@ -84,7 +84,7 @@
     <h3 id="coming_events_title">{{ text.event_coming }}</h3>
     <div id="coming_events">
         {% for event in wiki_info %}
-            {% if ((not event.start_time) and event.version > 3.6) or (event.start_time and event.start_time > dt) %}
+            {% if ((not event.start_time) and event.version > game_ver) or (event.start_time and event.start_time > dt) %}
                 <div class="row">
                     <div class="col-4">
                         <img src="{{ event.image_url }}" width="100%" alt="" />
@@ -109,7 +109,7 @@
     <h3 id="ongoing_events_title">{{ text.event_ongoing }}</h3>
     <div id="ongoing_events">
         {% for event in wiki_info %}
-            {% if (((not event.start_time) and event.version <= 3.6) or (event.start_time and event.start_time <= dt)) and (event.end_time and event.end_time > dt) %}
+            {% if (((not event.start_time) and event.version <= game_ver) or (event.start_time and event.start_time <= dt)) and (event.end_time and event.end_time > dt) %}
                 <div class="row">
                     <div class="col-4">
                         <img src="{{ event.image_url }}" width="100%" alt="{{ event.event_name }}" />
@@ -127,7 +127,7 @@
         {% endfor %}
     </div>
 
-    <p style="text-align: center">{{ text.cur_ver }} 3.6</p>
+    <p style="text-align: center">{{ text.cur_ver }} {{ game_ver }}</p>
 
 
 {% endblock body %}

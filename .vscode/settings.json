@@ -12,5 +12,10 @@
         "tests"
     ],
     "python.testing.unittestEnabled": false,
-    "python.testing.pytestEnabled": true
+    "python.testing.pytestEnabled": true,
+    "cSpell.words": [
+        "hkrpg",
+        "hsrc",
+        "takumi"
+    ]
 }
