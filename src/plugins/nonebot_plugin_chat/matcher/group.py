@@ -220,7 +220,7 @@ class MessageProcessor:
                         "**禁止行为**: 除非该工具报错，绝对禁止忽略合并转发消息或回复“咱看不到合并转发的内容喵”。"
                     ),
                     parameters={
-                        "message_id": FunctionParameter(
+                        "forward_id": FunctionParameter(
                             type="string",
                             description="转发消息的 ID，是“[合并转发: {一段数字ID}]”中间的“{一段数字}”，例如“[合并转发: 1234567890]”中的“1234567890”",
                             required=True,
