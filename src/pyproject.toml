@@ -103,6 +103,7 @@ packages = [
     { include = "nonebot_plugin_hkrpg_calendar", from = "./plugins" },
     { include = "nonebot_plugin_ba_calendar", from = "./plugins" },
     { include = "nonebot_plugin_everyday_wife", from = "./plugins" },
+    { include = "nonebot_plugin_market", from = "./plugins" },
     { include = "nonebot_plugin_online_timer", from = "./plugins" },
     { include = "nonebot_plugin_status_report", from = "./plugins" },
     { include = "nonebot_plugin_broadcast", from = "./plugins" },

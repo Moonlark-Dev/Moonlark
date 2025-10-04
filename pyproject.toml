@@ -22,7 +22,6 @@ plugins = [
     "nonebot_plugin_waiter",
     "nonebot_plugin_bilichat",
     "nonebot_plugin_picmcstat",
-    "nonebot_plugin_fakepic",
 
     # Custom plugins
     "nonebot_plugin_access",
@@ -82,6 +81,7 @@ plugins = [
     "nonebot_plugin_hkrpg_calendar",
     "nonebot_plugin_ba_calendar",
     "nonebot_plugin_everyday_wife",
+    "nonebot_plugin_market",
     "nonebot_plugin_online_timer",
     "nonebot_plugin_status_report",
     "nonebot_plugin_broadcast",

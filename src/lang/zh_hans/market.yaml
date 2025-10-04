@@ -1,0 +1,16 @@
+help:
+  description: 全球市场
+  details: 玩家间物品交易市场：可以将自己背包中的物品上架出售，也可以购买其他玩家出售的物品
+  usage1: market
+  usage2: market sell <bag_index> [count] [price_diff]
+  usage3: market buy <name> [count]
+main:
+  info: 当前市场上有 {} 件商品正在出售
+sell:
+  index_error: 背包中不存在此物品
+  item_not_enough: 出售失败，选中的物品只有 {} 个，数量不足
+  wrong_count: 出售数量不能为负数！
+  not_soldable: 该物品不支持在市场上出售
+  done: 完成！已将 {} 个「{}」以单价 {} VimCoin 的价格上架至全球市场
+buy:
+  finish: 完成！购买了 {} 个「{}」，总共花费了 {} VimCoin
