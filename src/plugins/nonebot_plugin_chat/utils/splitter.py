@@ -1,249 +1,258 @@
 import re
 from typing import List, Tuple
-import pytest
 
 
 class MessageSplitter:
+    """
+    更精简、顺序清晰的消息分割器：
+    - 仅把围栏代码块和 .skip/.leave 当作“不可拆分的特殊块”，其余均为普通文本。
+    - 普通文本按空行分段；含 REPLY 的段落优先作为独立消息。
+    - 在最终阶段确保每条消息至多一个 REPLY，必要时拆分；删除仅包含 REPLY 的消息。
+    - 合并仅在最终阶段进行，且只合并不含 REPLY 的普通消息；不会合并代码块与 .skip/.leave。
+    - 尝试将消息总数控制在 3 条以内（尽力而为，不做违背约束的合并或丢弃）。
+    """
+
     def __init__(self):
-        # 匹配 {REPLY:\d+} 的正则表达式
-        self.reply_pattern = re.compile(r"\{REPLY:\d+\}")
-        # 匹配代码块的正则表达式
+        self.reply_pattern = re.compile(r"REPLY:\d+")
+        # 围栏代码块（反引号），多行匹配
         self.code_block_pattern = re.compile(r"^\s*```.*?^\s*```", re.MULTILINE | re.DOTALL)
-        # 匹配 .skip 和 .leave 文本
+        # .skip/.leave（整行）
         self.special_pattern = re.compile(r"^\s*\.(skip|leave)\s*$", re.MULTILINE | re.IGNORECASE)
 
-    def _identify_special_blocks(self, text: str) -> List[Tuple[int, int, str]]:
-        """识别特殊块（代码块、.skip、.leave）的位置和类型"""
-        blocks = []
+    # -------- 基础识别：代码块与特殊行 --------
 
-        # 首先识别代码块
-        code_blocks = []
-        for match in self.code_block_pattern.finditer(text):
-            code_blocks.append((match.start(), match.end()))
-            blocks.append((match.start(), match.end(), "code_block"))
+    def _find_code_blocks(self, text: str) -> List[Tuple[int, int]]:
+        return [(m.start(), m.end()) for m in self.code_block_pattern.finditer(text)]
 
-        # 识别 .skip 和 .leave 文本，但要排除在代码块内部的
-        for match in self.special_pattern.finditer(text):
-            # 检查这个匹配是否在任何一个代码块内部
-            inside_code_block = False
-            for code_start, code_end in code_blocks:
-                if code_start <= match.start() < code_end:
-                    inside_code_block = True
-                    break
+    def _in_any_block(self, pos: int, blocks: List[Tuple[int, int]]) -> bool:
+        for s, e in blocks:
+            if s <= pos < e:
+                return True
+        return False
 
-            if not inside_code_block:
-                # 找到包含这个特殊文本的完整行
-                line_start = text.rfind("\n", 0, match.start()) + 1
-                line_end = text.find("\n", match.end())
-                if line_end == -1:
-                    line_end = len(text)
-                blocks.append((line_start, line_end, "special"))
+    def _find_special_lines(self, text: str, code_blocks: List[Tuple[int, int]]) -> List[Tuple[int, int]]:
+        ranges = []
+        for m in self.special_pattern.finditer(text):
+            if self._in_any_block(m.start(), code_blocks):
+                continue
+            # 扩展到整行
+            line_start = text.rfind("\n", 0, m.start()) + 1
+            line_end = text.find("\n", m.end())
+            if line_end == -1:
+                line_end = len(text)
+            ranges.append((line_start, line_end))
+        return ranges
 
-        # 按起始位置排序
-        blocks.sort(key=lambda x: x[0])
-        return blocks
+    def _segments(self, text: str) -> List[Tuple[str, str]]:
+        """
+        将文本切分为有序段：
+        - ('code', code_text)
+        - ('special', special_line_text)
+        - ('normal', normal_text)
+        """
+        if not text:
+            return []
 
-    def _split_text_into_segments(self, text: str) -> List[Tuple[str, str]]:
-        """将文本分割成普通文本和特殊块的混合列表"""
-        special_blocks = self._identify_special_blocks(text)
-        segments = []
-        last_pos = 0
+        code_blocks = self._find_code_blocks(text)
+        special_lines = self._find_special_lines(text, code_blocks)
 
-        for start, end, block_type in special_blocks:
-            # 添加特殊块之前的内容
-            if last_pos < start:
-                normal_text = text[last_pos:start]
-                segments.append(("normal", normal_text))
+        # 汇总所有特殊区间并排序
+        specials = [(s, e, "code") for s, e in code_blocks] + [(s, e, "special") for s, e in special_lines]
+        specials.sort(key=lambda x: x[0])
 
-            # 添加特殊块
-            special_text = text[start:end]
-            segments.append((block_type, special_text))
-            last_pos = end
-
-        # 添加最后的内容
-        if last_pos < len(text):
-            normal_text = text[last_pos:]
-            segments.append(("normal", normal_text))
+        segments: List[Tuple[str, str]] = []
+        last = 0
+        for s, e, t in specials:
+            if last < s:
+                segments.append(("normal", text[last:s]))
+            segments.append((t, text[s:e]))
+            last = e
+        if last < len(text):
+            segments.append(("normal", text[last:]))
 
         return segments
 
-    def _process_normal_text(self, text: str) -> List[str]:
-        """处理普通文本：去除行首空格并按段落分割"""
-        # 去除所有行首的空格
-        cleaned_text = "\n".join(line.lstrip() for line in text.split("\n"))
+    # -------- 普通文本 -> 消息（初步） --------
 
-        if not cleaned_text.strip():
-            return []
+    def _split_normal_into_paragraphs(self, text: str) -> List[str]:
+        """
+        以空行分段；保留行内缩进与内容，不剥离空格。
+        """
+        # 将连续空行作为分隔符；两端空白行不产生空段
+        parts = re.split(r"(?:\r?\n\s*){2,}", text.strip("\n"))
+        # 过滤纯空白段，但保留原有行内空格
+        paragraphs = [p for p in parts if p.strip()]
+        return paragraphs
 
-        # 按空行分割段落
-        paragraphs = re.split(r"\n\s*\n", cleaned_text)
-        messages = []
-        current_message = []
-        current_paragraph_count = 0
+    def _build_normal_messages(self, text: str) -> List[Tuple[str, str]]:
+        """
+        将普通文本构造成消息（初步）：
+        - 含 REPLY 的段落独立为一个消息；
+        - 其他段落聚合。
+        返回 [('normal', text), ...]
+        """
+        paragraphs = self._split_normal_into_paragraphs(text)
+        messages: List[Tuple[str, str]] = []
 
-        for paragraph in paragraphs:
-            if not paragraph.strip():
+        buf: List[str] = []
+        for p in paragraphs:
+            if self.reply_pattern.search(p):
+                if buf:
+                    messages.append(("normal", "\n\n".join(buf)))
+                    buf = []
+                messages.append(("normal", p))
+            else:
+                buf.append(p)
+        if buf:
+            messages.append(("normal", "\n\n".join(buf)))
+        return messages
+
+    # -------- REPLY 规范化：每条 ≤ 1 个 REPLY --------
+
+    def _normalize_replies(self, messages: List[Tuple[str, str]]) -> List[Tuple[str, str]]:
+        """
+        对 'normal' 消息保证：
+        - 若 0 个 REPLY：保留
+        - 若 1 个 REPLY：若除 REPLY 外无内容则丢弃，否则保留
+        - 若 >=2 个 REPLY：拆分为多条，每条至多一个 REPLY；仅 REPLY 的段落丢弃
+        代码块与特殊消息不处理
+        """
+        out: List[Tuple[str, str]] = []
+
+        for mtype, text in messages:
+            if mtype != "normal":
+                if text.strip():
+                    out.append((mtype, text))
                 continue
 
-            # 检查段落中是否包含 REPLY 标签
-            reply_matches = list(self.reply_pattern.finditer(paragraph))
+            matches = list(self.reply_pattern.finditer(text))
+            if not matches:
+                if text.strip():
+                    out.append((mtype, text))
+                continue
 
-            if len(reply_matches) > 1:
-                # 如果段落中有多个 REPLY 标签，需要进一步分割
-                self._split_paragraph_with_multiple_replies(paragraph, messages)
-            else:
-                current_message.append(paragraph)
-                current_paragraph_count += 1
+            if len(matches) == 1:
+                # 检查是否还有其他内容
+                if self.reply_pattern.sub("", text).strip():
+                    out.append((mtype, text))
+                # 否则丢弃
+                continue
 
-                # 每3个段落形成一个消息，或者遇到 REPLY 标签时结束当前消息
-                if current_paragraph_count >= 3 or (reply_matches and current_paragraph_count > 0):
-                    if current_message:
-                        message_text = "\n\n".join(current_message)
-                        if message_text.strip():
-                            messages.append(message_text)
-                        current_message = []
-                        current_paragraph_count = 0
+            # 多个 REPLY，拆分
+            prev_end = 0
+            for i, m in enumerate(matches):
+                # 先把 REPLY 之前的内容单独拿出
+                if prev_end < m.start():
+                    before = text[prev_end : m.start()].strip()
+                    if before:
+                        out.append((mtype, before))
 
-        # 添加剩余的内容
-        if current_message:
-            message_text = "\n\n".join(current_message)
-            if message_text.strip():
-                messages.append(message_text)
+                # 当前 REPLY 段，延伸到下一个 REPLY 前或末尾
+                seg_end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
+                reply_seg = text[m.start() : seg_end]
+                if self.reply_pattern.sub("", reply_seg).strip():
+                    out.append((mtype, reply_seg))
+                prev_end = seg_end
+
+        return out
+
+    # -------- 合并与条数控制 --------
+
+    def _has_reply(self, text: str) -> bool:
+        return bool(self.reply_pattern.search(text))
+
+    def _merge_short_normals(self, messages: List[Tuple[str, str]]) -> List[Tuple[str, str]]:
+        """
+        仅合并相邻、都为 normal 且都不含 REPLY 的消息。
+        合并策略（温和）：
+        - 若当前很短(<50)，且合并后仍较短(<100)，则合并。
+        """
+        merged: List[Tuple[str, str]] = []
+        i = 0
+        while i < len(messages):
+            mtype, text = messages[i]
+            if (
+                i + 1 < len(messages)
+                and mtype == "normal"
+                and messages[i + 1][0] == "normal"
+                and not self._has_reply(text)
+                and not self._has_reply(messages[i + 1][1])
+            ):
+                if len(text) < 50 and len(text) + len(messages[i + 1][1]) < 100:
+                    merged.append(("normal", text + "\n\n" + messages[i + 1][1]))
+                    i += 2
+                    continue
+            merged.append((mtype, text))
+            i += 1
+        return merged
+
+    def _enforce_cap_best_effort(self, messages: List[Tuple[str, str]], cap: int = 3) -> List[Tuple[str, str]]:
+        """
+        尽力把总条数压到 cap：
+        - 仅尝试合并相邻 normal 且不含 REPLY 的消息（安全）。
+        - 不合并 code/special，也不跨越它们合并。
+        - 不丢弃消息；若无法进一步合并则保持现状。
+        """
+        if len(messages) <= cap:
+            return messages
+
+        # 尝试更积极合并：只要相邻 normal 且都不含 REPLY，就合并，直到不再下降或达到 cap
+        changed = True
+        while changed and len(messages) > cap:
+            changed = False
+            new_list: List[Tuple[str, str]] = []
+            i = 0
+            while i < len(messages):
+                if (
+                    i + 1 < len(messages)
+                    and messages[i][0] == "normal"
+                    and messages[i + 1][0] == "normal"
+                    and not self._has_reply(messages[i][1])
+                    and not self._has_reply(messages[i + 1][1])
+                ):
+                    new_list.append(("normal", messages[i][1] + "\n\n" + messages[i + 1][1]))
+                    i += 2
+                    changed = True
+                else:
+                    new_list.append(messages[i])
+                    i += 1
+            messages = new_list
 
         return messages
 
-    def _split_paragraph_with_multiple_replies(self, paragraph: str, messages: List[str]):
-        """分割包含多个 REPLY 标签的段落"""
-        parts = []
-        last_pos = 0
-
-        for match in self.reply_pattern.finditer(paragraph):
-            start, end = match.span()
-
-            # 添加 REPLY 标签之前的内容
-            if last_pos < start:
-                before_text = paragraph[last_pos:start].strip()
-                if before_text:
-                    parts.append(before_text)
-
-            # 添加 REPLY 标签和其后的内容
-            reply_text = paragraph[start:end]
-            after_text = paragraph[end:].split("\n")[0].strip()  # 只取同一行的内容
-
-            if after_text:
-                combined = f"{reply_text} {after_text}"
-                parts.append(combined)
-            else:
-                # 如果 REPLY 标签后没有内容，丢弃这个标签
-                pass
-
-            last_pos = end + len(after_text) if after_text else end
-
-        # 添加剩余内容
-        if last_pos < len(paragraph):
-            remaining = paragraph[last_pos:].strip()
-            if remaining:
-                parts.append(remaining)
-
-        # 将每个部分作为独立的消息
-        for part in parts:
-            if part.strip():
-                messages.append(part.strip())
-
-    def _ensure_single_reply_per_message(self, messages: List[str]) -> List[str]:
-        """确保每条消息最多只有一个 REPLY 标签且有其他内容"""
-        result = []
-
-        for message in messages:
-            reply_matches = list(self.reply_pattern.finditer(message))
-
-            if len(reply_matches) == 0:
-                result.append(message)
-            elif len(reply_matches) == 1:
-                # 检查是否只有 REPLY 标签没有其他内容
-                text_without_reply = self.reply_pattern.sub("", message).strip()
-                if text_without_reply:
-                    result.append(message)
-                # 否则丢弃这条消息（只有 REPLY 标签没有内容）
-            else:
-                # 多个 REPLY 标签的情况，需要分割
-                self._split_message_with_multiple_replies(message, result)
-
-        return result
-
-    def _split_message_with_multiple_replies(self, message: str, result: List[str]):
-        """分割包含多个 REPLY 标签的消息"""
-        parts = []
-        last_pos = 0
-
-        for match in self.reply_pattern.finditer(message):
-            start, end = match.span()
-
-            # 获取从上一个匹配结束到当前匹配开始的内容
-            if last_pos < start:
-                segment = message[last_pos:start].strip()
-                if segment:
-                    parts.append(segment)
-
-            # 获取 REPLY 标签和紧随其后的内容（直到下一个 REPLY 标签或消息结束）
-            reply_end = end
-            if match != [i for i in self.reply_pattern.finditer(message)][-1]:
-                next_match = None
-                for m in self.reply_pattern.finditer(message):
-                    if m.start() > end:
-                        next_match = m
-                        break
-                if next_match:
-                    reply_end = next_match.start()
-
-            reply_segment = message[start:reply_end].strip()
-            # 检查 REPLY 段是否有其他内容
-            text_without_reply = self.reply_pattern.sub("", reply_segment).strip()
-            if text_without_reply:
-                parts.append(reply_segment)
-
-            last_pos = reply_end
-
-        # 添加剩余内容
-        if last_pos < len(message):
-            remaining = message[last_pos:].strip()
-            if remaining:
-                parts.append(remaining)
-
-        result.extend(parts)
+    # -------- 主流程 --------
 
     def split_message(self, text: str) -> List[str]:
-        """主函数：分割消息"""
-        if not text.strip():
+        if not text or not text.strip():
             return []
 
-        # 1. 将文本分割成普通文本和特殊块的混合列表
-        segments = self._split_text_into_segments(text)
+        # 1) 切分为 code/special/normal 段
+        segs = self._segments(text)
 
-        # 2. 处理每个段
-        all_messages = []
-        for segment_type, segment_text in segments:
-            if segment_type == "normal":
-                # 处理普通文本
-                normal_messages = self._process_normal_text(segment_text)
-                all_messages.extend(normal_messages)
-            else:
-                # 特殊块（代码块或.special）独立成为一条消息
-                if segment_type == "code_block":
-                    # 代码块保持原样
-                    all_messages.append(segment_text)
-                else:  # special
-                    # .skip/.leave 行，去除行首空格
-                    cleaned_special = "\n".join(line.lstrip() for line in segment_text.split("\n"))
-                    all_messages.append(cleaned_special)
+        # 2) 普通段 -> 初步消息；特殊段保持独立
+        messages: List[Tuple[str, str]] = []
+        for mtype, seg in segs:
+            if mtype == "normal":
+                messages.extend(self._build_normal_messages(seg))
+            elif mtype == "special":
+                s = seg.strip()
+                if s:
+                    messages.append(("special", s))
+            else:  # code
+                messages.append(("code", seg))
 
-        # 3. 确保每条消息最多只有一个 REPLY 标签且有其他内容
-        final_messages = self._ensure_single_reply_per_message(all_messages)
+        # 3) 规范 REPLY（仅 normal）
+        messages = self._normalize_replies(messages)
 
-        # 4. 过滤空消息
-        final_messages = [msg for msg in final_messages if msg.strip()]
+        # 4) 合并短 normal（不含 REPLY）
+        messages = self._merge_short_normals(messages)
 
-        return final_messages
+        # 5) 尽力控制总条数到 3（安全合并，不合并 code/special/含 REPLY）
+        messages = self._enforce_cap_best_effort(messages, cap=3)
+
+        # 6) 输出
+        result = [txt for _, txt in messages if txt.strip()]
+        return result
 
 
 splitter = MessageSplitter()

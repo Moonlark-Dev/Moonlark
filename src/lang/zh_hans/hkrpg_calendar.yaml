@@ -1,21 +1,20 @@
 template:
   day: 天
-  card_pool:
-    title: 卡池
-    coming: 即将开放
-    up_at: 距离 UP
-    co_running: 陪跑
-    current: 当前 UP
-    open_forever: 长期开放
-    up_remain: 剩余 UP
-  event:
-    time_to_open: 距离开放
-    title: 活动
-    at: 在
-    coming: 即将开始
-    after_update: 更新后开放
-    close_at: 距离结束
-    ongoing: 正在进行
+  card_pool_title: 卡池
+  card_pool_coming: 即将开放
+  card_pool_up_at: 距离 UP
+  card_pool_co_running: 陪跑
+  card_pool_current: 当前 UP
+  card_pool_open_forever: 长期开放
+  card_pool_up_remain: 剩余 UP
+  
+  event_time_to_open: 距离开放
+  event_title: 活动
+  event_at: 在
+  event_coming: 即将开始
+  event_after_update: 更新后开放
+  event_close_at: 距离结束
+  event_ongoing: 正在进行
   cur_ver: '当前版本: '
 title: 崩铁活动日历
 help:

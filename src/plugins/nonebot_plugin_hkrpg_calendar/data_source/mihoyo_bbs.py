@@ -18,50 +18,66 @@ from typing import Optional
 
 import pydantic
 from nonebot.log import logger
-from nonebot_plugin_localstore import get_config_file
 from nonebot.compat import type_validate_json
 import httpx
-import aiofiles
 
-from .models import TakumiAPIResponse
-
-# 需要在开启前配置这些内容，否则无法请求。
-headers_file = get_config_file("nonebot_plugin_hkrpg_calendar", "headers.txt")
-role_id_file = get_config_file("nonebot_plugin_hkrpg_calendar", "role_id.txt")
-
-
-async def get_role_id() -> str:
-    async with aiofiles.open(role_id_file, "r", encoding="utf-8") as f:
-        return await f.readline()
+from .models import (
+    CardPoolCharacter,
+    CardPoolData,
+    CardPoolList,
+    GachaPoolResponse,
+    CardPoolResponse,
+    SrWikiContentResponse,
+)
 
 
-async def get_headers() -> dict[str, str]:
-    async with aiofiles.open(headers_file, encoding="utf-8") as f:
-        text = await f.read()
-    headers = {}
-    for line in text.splitlines():
-        line = line.strip()
-        if not line:
-            continue
-        colon_index = line.find(":")
-        if colon_index != -1:
-            key = line[:colon_index].strip()
-            value = line[colon_index + 1 :].strip()
-            headers[key] = value
-    return headers
+async def request_character_data(url: str) -> SrWikiContentResponse:
+    async with httpx.AsyncClient() as client:
+        response = await client.get(url)
+        if response.status_code == 200:
+            try:
+                data = type_validate_json(SrWikiContentResponse, response.text)
+                return data
+            except pydantic.ValidationError as e:
+                logger.error(f"Error parsing sr wiki data: {e}")
+                raise e
+    raise SystemError("Error fetching sr wiki data")
 
 
-async def request_takumi_api() -> Optional[TakumiAPIResponse]:
-    headers = await get_headers()
-    role_id = await get_role_id()
-    async with httpx.AsyncClient(headers=headers) as client:
+async def request_sr_wiki() -> Optional[CardPoolResponse]:
+    async with httpx.AsyncClient() as client:
         response = await client.get(
-            f"https://api-takumi-record.mihoyo.com/game_record/app/hkrpg/api/get_act_calender?server=prod_gf_cn&role_id={role_id}"
+            f"https://act-api-takumi.mihoyo.com/common/blackboard/sr_wiki/v1/gacha_pool?app_sn=sr_wiki"
         )
     if response.status_code == 200:
         try:
-            return type_validate_json(TakumiAPIResponse, response.text)
+            gacha_response = type_validate_json(GachaPoolResponse, response.text)
         except pydantic.ValidationError as e:
             logger.exception(e)
-    logger.warning(f"请求米游社 API 失败 ({response.status_code}): {response.text}")
-    return None
+            return None
+    else:
+        logger.warning(f"请求米游社 API 失败 ({response.status_code}): {response.text}")
+        return None
+
+    return CardPoolResponse(
+        data=CardPoolData(
+            list=[
+                CardPoolList(
+                    title=pool.title,
+                    start_time=pool.start_time,
+                    end_time=pool.end_time,
+                    content_before_act=pool.content_before_act,
+                    pool=[
+                        CardPoolCharacter(
+                            icon=c.icon,
+                            url=c.url,
+                            data=(d := (await request_character_data(c.url)).data.content),
+                            rarity=d.ext,
+                        )
+                        for c in pool.pool
+                    ],
+                )
+                for pool in gacha_response.data.list
+            ]
+        )
+    )
