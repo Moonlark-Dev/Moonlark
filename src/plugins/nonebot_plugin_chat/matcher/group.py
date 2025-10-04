@@ -263,7 +263,6 @@ class MessageProcessor:
                         "1. 在 `browse_webpage` 工具中看到了一张图片时，实际上该工具获取到的图片会以 `![](图片URL)` 的形式展示）\n"
                         "2. 用户发送了一个 **图片 URL**（如以 `.jpg`, `.png`, `.webp` 等结尾） 时。\n"
                         "如果向这个工具传入的 URL 不对应一张图片的话，这个工具不会返回有效的内容。"
-
                     ),
                     parameters={
                         "image_url": FunctionParameter(type="string", description="目标图片的 URL 地址", required=True)
@@ -322,9 +321,7 @@ class MessageProcessor:
             pre_function_call=self.send_function_call_feedback,
             timeout_per_request=15,
             timeout_response=Choice(
-                finish_reason="stop",
-                message=ChatCompletionMessage(role="assistant", content=".skip"),
-                index=0
+                finish_reason="stop", message=ChatCompletionMessage(role="assistant", content=".skip"), index=0
             ),
         )
         async for message in fetcher.fetch_message_stream():
@@ -528,7 +525,6 @@ class GroupSession:
             context_id=self.group_id, target_message=recent_context, max_memories=5, chat_history=chat_history
         )
         self.processor.cached_activated_memories = activated_memories
-        
 
     async def update_memory(self) -> None:
         if self.memory_lock.locked() or not self.cached_messages:

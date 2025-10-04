@@ -26,7 +26,8 @@ from ..url_validator import is_internal_url
 
 
 class BrowseResult(TypedDict):
-    """网页浏览结果""" 
+    """网页浏览结果"""
+
     success: bool
     url: str
     title: Optional[str]
@@ -178,7 +179,7 @@ class AsyncBrowserTool:
                     "error": "无法访问本地资源",
                     "content": None,
                     "title": None,
-                    "metadata": {}
+                    "metadata": {},
                 }
             if not parsed.scheme:
                 url = f"https://{url}"
@@ -235,20 +236,11 @@ class AsyncBrowserTool:
             }
 
         except Exception as e:
-            return {
-                "success": False,
-                "url": url,
-                "error": str(e),
-                "content": None,
-                "title": None,
-                "metadata": {}
-            }
+            return {"success": False, "url": url, "error": str(e), "content": None, "title": None, "metadata": {}}
 
     def _html_to_markdown(self, html: str) -> str:
         """将HTML转换为Markdown"""
         return self.html_converter.handle(html)
-
-
 
 
 browser_tool = AsyncBrowserTool()
