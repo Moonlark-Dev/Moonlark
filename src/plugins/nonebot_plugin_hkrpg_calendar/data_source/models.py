@@ -29,10 +29,12 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
+import json
 from pydantic import BaseModel, BeforeValidator, Field
 from datetime import datetime
 from typing import Annotated, Optional
 import re
+from nonebot.compat import type_validate_json
 
 
 def parse_datetime(value: str) -> Optional[datetime]:
@@ -41,56 +43,77 @@ def parse_datetime(value: str) -> Optional[datetime]:
     return None
 
 
-class TakumiAPITimeInfo(BaseModel):
+def parse_character_url(value: str) -> str:
+    return f"https://act-api-takumi-static.mihoyo.com/common/blackboard/sr_wiki/v1/content/info?app_sn=sr_wiki&content_id={value[39:-40]}"
+
+
+class GachaPoolCharacter(BaseModel):
+    icon: str
+    url: Annotated[str, BeforeValidator(parse_character_url)]
+
+
+class GachaPoolList(BaseModel):
+    title: str
+    content_before_act: str
     start_time: Annotated[Optional[datetime], BeforeValidator(parse_datetime)]
     end_time: Annotated[Optional[datetime], BeforeValidator(parse_datetime)]
+    pool: list[GachaPoolCharacter]
+
+
+class GachaPoolData(BaseModel):
+    list: list[GachaPoolList]
+
+
+class GachaPoolResponse(BaseModel):
+    data: GachaPoolData
+
+
+def get_rarity(value: str) -> int:
+    data = json.loads(value)
+    k = "c_18"
+    for key_name in data.keys():
+        if key_name.startswith("c_"):
+            k = key_name
+            break
+    if "星级/五星" in json.loads(data[k]["filter"]["text"]):
+        return 5
+    return 4
+
+
+class SrWikiCharacter(BaseModel):
+    title: str
+    ext: Annotated[int, BeforeValidator(get_rarity)]
+
+
+class SrWikiContentData(BaseModel):
+    content: SrWikiCharacter
+
+
+class SrWikiContentResponse(BaseModel):
+    data: SrWikiContentData
 
 
 class CardPoolCharacter(BaseModel):
-    item_name: str
-    icon_url: str
-    rarity: str
+    icon: str
+    url: str
+    data: SrWikiCharacter
+    rarity: int
 
 
-class CardPoolEquipment(BaseModel):
-    item_name: str
-    item_url: str
-    rarity: str
+class CardPoolList(BaseModel):
+    title: str
+    content_before_act: str
+    start_time: Optional[datetime]
+    end_time: Optional[datetime]
+    pool: list[CardPoolCharacter]
 
 
-class CardPool(BaseModel):
-    name: str
-    is_after_version: bool
-    time_info: TakumiAPITimeInfo
-    version: str
+class CardPoolData(BaseModel):
+    list: list[CardPoolList]
 
 
-class CharacterCardPool(CardPool):
-    avatar_list: list[CardPoolCharacter]
-
-
-class EquipmentCardPool(CardPool):
-    equip_list: list[CardPoolEquipment]
-
-
-class TakumiAPIActItem(BaseModel):
-    version: Annotated[float, BeforeValidator(lambda target: float(target))]
-    name: str
-    time_info: TakumiAPITimeInfo
-    panel_desc: str
-
-
-class TakumiAPIData(BaseModel):
-    avatar_card_pool_list: list[CharacterCardPool]
-    equip_card_pool_list: list[EquipmentCardPool]
-    act_list: list[TakumiAPIActItem]
-    cur_game_version: Annotated[float, BeforeValidator(lambda target: float(target))]
-
-
-class TakumiAPIResponse(BaseModel):
-    retcode: int
-    message: str
-    data: TakumiAPIData
+class CardPoolResponse(BaseModel):
+    data: CardPoolData
 
 
 class BiliGameEventInfo(BaseModel):
