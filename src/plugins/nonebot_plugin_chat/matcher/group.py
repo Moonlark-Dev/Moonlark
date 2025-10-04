@@ -258,7 +258,10 @@ class MessageProcessor:
                     func=describe_image,
                     description=(
                         "获取一张网络图片的内容描述。\n"
-                        "**何时必须调用**: 在 `browse_webpage` 工具中看到了一张图片时，或用户发送了一个 **图片 URL**（如以 `.jpg`, `.png`, `.webp` 等结尾） 时。"
+                        "**何时必须调用**: \n"
+                        "1. 在 `browse_webpage` 工具中看到了一张图片时，实际上该工具获取到的图片会以 `![](图片URL)` 的形式展示）\n"
+                        "2. 用户发送了一个 **图片 URL**（如以 `.jpg`, `.png`, `.webp` 等结尾） 时。\n"
+                        "如果向这个工具传入的 URL 不对应一张图片的，这个工具不会返回有效的内容。"
 
                     ),
                     parameters={
