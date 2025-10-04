@@ -46,6 +46,7 @@ T = TypeVar("T")
 from openai.types.chat import ChatCompletion
 from openai.types.chat.chat_completion import Choice
 
+
 class LLMRequestSession:
 
     def __init__(
@@ -84,7 +85,8 @@ class LLMRequestSession:
         await report_openai_history(self.messages, self.identify, self.model)
 
     async def request(self) -> AsyncGenerator[str, None]:
-        completion = cast(ChatCompletion,
+        completion = cast(
+            ChatCompletion,
             await client.chat.completions.create(
                 messages=self.messages,
                 model=self.model,
@@ -95,10 +97,12 @@ class LLMRequestSession:
                     "HTTP-Referer": f"https://{hashlib.sha256(t.encode()).hexdigest()}.moonlark.itcdt.top",
                 },
                 **self.kwargs,
-            )
+            ),
         )
         response = completion.choices[0]
-        if self.timeout_per_request and datetime.now() - datetime.fromtimestamp(completion.created) > timedelta(seconds=self.timeout_per_request):
+        if self.timeout_per_request and datetime.now() - datetime.fromtimestamp(completion.created) > timedelta(
+            seconds=self.timeout_per_request
+        ):
             self.stop = True
             if self.timeout_response:
                 response = self.timeout_response
