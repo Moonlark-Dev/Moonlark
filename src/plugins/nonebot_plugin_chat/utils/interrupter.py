@@ -109,6 +109,14 @@ class Interrupter:
         self.block_keywords = ["闭嘴", "别说话", "安静", "歇会"]  # 阻止关键词列表
         self.required_emojis = ["🐶", "😂"]  # 必须响应的表情符号
 
+    async def get_blocked_patterns(self) -> List[re.Pattern]:
+        group_user_pattern = "|".join([nickname for nickname in await self.group_session.get_users() if "moonlark" not in nickname.lower()])
+        return [
+            re.compile(r"^.*$"),
+            re.compile(r"@(group_user_pattern)"),
+            re.compile(r"^(\[图片: (?:(?!来源/梗).)+])+$")
+        ]
+
     async def should_interrupt(self, message: str, user_id: str) -> bool:
         """
         检查是否应该阻断机器人响应
@@ -139,6 +147,11 @@ class Interrupter:
         # 5. 最后应用基础随机阻断和用户行为阻断
         if self._check_random_interrupt(user_id):
             logger.debug("Interrupted by random check")
+            return True
+
+        # 6. 检查正则表达式：
+        if any([re.match(pattern, message) for pattern in await self.get_blocked_patterns()]):
+            logger.debug("Interrupted by regex check")
             return True
 
         # 更新活跃时间

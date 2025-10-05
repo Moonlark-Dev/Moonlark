@@ -166,7 +166,7 @@ class MessageProcessor:
             len(self.openai_messages) >= 1
             and isinstance(self.openai_messages[0], dict)
             and self.openai_messages[0]["role"] == "system"
-        ):  # 这里不会出现非 dict 还是 role=system 的情况
+        ):
             self.openai_messages[0] = await self.generate_system_prompt()
         else:
             self.openai_messages.insert(0, await self.generate_system_prompt())
