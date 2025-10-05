@@ -366,7 +366,7 @@ class MessageProcessor:
 
     async def send_text(self, reply_text: str) -> None:
         reply_text, reply_message_id = self.get_reply_message_id(reply_text)
-        await parse_reply(self.session.format_message(reply_text), reply_message_id).send(
+        await parse_reply(await self.session.format_message(reply_text), reply_message_id).send(
             target=self.session.target, bot=self.session.bot
         )
 
@@ -561,7 +561,7 @@ class GroupSession:
         self.last_reward_participation = None
         self.cached_messages.clear()
 
-    def format_message(self, origin_message: str) -> UniMessage:
+    async def format_message(self, origin_message: str) -> UniMessage:
         message = re.sub(r"\[\d\d:\d\d:\d\d]\[Moonlark]\(\d+\): ?", "", origin_message)
         message = message.strip()
         users = await self.get_users()
