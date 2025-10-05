@@ -34,6 +34,7 @@ from nonebot_plugin_userinfo import EventUserInfo, UserInfo
 
 from nonebot_plugin_larkuser import get_user
 from nonebot import on_message, on_command
+from nonebot.adapters.onebot.v11 import Bot as OB11Bot
 from nonebot.adapters import Event, Bot, Message
 from nonebot_plugin_larkutils import get_user_id, get_group_id
 from nonebot_plugin_orm import async_scoped_session, get_session
@@ -165,7 +166,7 @@ class MessageProcessor:
             len(self.openai_messages) >= 1
             and isinstance(self.openai_messages[0], dict)
             and self.openai_messages[0]["role"] == "system"
-        ):  # 这里不会出现非 dict 还是 role=system 的情况
+        ):
             self.openai_messages[0] = await self.generate_system_prompt()
         else:
             self.openai_messages.insert(0, await self.generate_system_prompt())
@@ -340,16 +341,9 @@ class MessageProcessor:
 
     def get_reply_message_id(self, text: str) -> tuple[str, Optional[str]]:
         reply_message_id = None
-        while m := re.search(r"\{REPLY:\d+}", text):
-            try:
-                reply_message_id = m[0][7:-1]
-            except IndexError:
-                continue
-            except ValueError:
-                # NOTE 一些其他的处理方式：将消息打回 LLM 进行重新编辑？
-                continue
+        if m := re.search(r"\{REPLY:\d+}", text):
+            reply_message_id = m[0][7:-1]
             text = text.replace(m[0], "")
-            break
         return text, reply_message_id
 
     async def send_function_call_feedback(
@@ -372,16 +366,16 @@ class MessageProcessor:
 
     async def send_text(self, reply_text: str) -> None:
         reply_text, reply_message_id = self.get_reply_message_id(reply_text)
-        await parse_reply(self.session.format_message(reply_text), reply_message_id).send(
+        await parse_reply(await self.session.format_message(reply_text), reply_message_id).send(
             target=self.session.target, bot=self.session.bot
         )
 
     async def send_reply_text(self, reply_text: str) -> None:
         for msg in splitter.split_message(reply_text):
             for line in msg.splitlines():
-                if line.startswith(".skip"):
+                if ".skip" in line:
                     return
-                elif line.startswith(".leave"):
+                elif ".leave" in line:
                     await self.session.mute()
                     return
             if msg:
@@ -474,6 +468,7 @@ class GroupSession:
         self.mute_until: Optional[datetime] = None
         self.memory_lock = asyncio.Lock()
         self.message_counter: dict[datetime, int] = {}
+        self.group_users: dict[str, str] = {}
         self.user_counter: dict[datetime, set[str]] = {}
         self.processor = MessageProcessor(self)
 
@@ -566,17 +561,12 @@ class GroupSession:
         self.last_reward_participation = None
         self.cached_messages.clear()
 
-    def format_message(self, origin_message: str) -> UniMessage:
-        if "[Moonlark]:" in origin_message:
-            message = "[Moonlark]:".join(origin_message.split("[Moonlark]:", 1)[1:])
-        elif "Moonlark:" in origin_message:
-            message = "[Moonlark]:".join(origin_message.split("Moonlark:", 1)[1:])
-        else:
-            message = origin_message
+    async def format_message(self, origin_message: str) -> UniMessage:
+        message = re.sub(r"\[\d\d:\d\d:\d\d]\[Moonlark]\(\d+\): ?", "", origin_message)
         message = message.strip()
-        users = self.get_users()
+        users = await self.get_users()
         uni_msg = UniMessage()
-        at_list = re.finditer("|".join([f"@{user}" for user in users.keys()]), message)
+        at_list = re.finditer("|".join([f"@{re.escape(user)}" for user in users.keys()]), message)
         cursor_index = 0
         for at in at_list:
             uni_msg = uni_msg.text(text=message[cursor_index : at.start()])
@@ -589,12 +579,25 @@ class GroupSession:
         uni_msg = uni_msg.text(text=message[cursor_index:])
         return uni_msg
 
-    def get_users(self) -> dict[str, str]:
+    async def _get_users_in_cached_message(self) -> dict[str, str]:
         users = {}
         for message in self.cached_messages:
             if not message["self"]:
                 users[message["nickname"]] = message["user_id"]
         return users
+
+    async def get_users(self) -> dict[str, str]:
+        cached_users = await self._get_users_in_cached_message()
+        if any([u not in self.group_users for u in cached_users.keys()]):
+            if isinstance(self.bot, OB11Bot):
+                self.group_users.clear()
+                for user in await self.bot.get_group_member_list(group_id=int(self.group_id.split("_")[1])):
+                    self.group_users[user["card"] or user["nickname"]] = str(user["user_id"])
+            else:
+                self.group_users = cached_users
+        return self.group_users
+            
+        
 
     def calculate_desire_on_timer(self) -> None:
         msg_count, user_msg_count = self.get_counters()
