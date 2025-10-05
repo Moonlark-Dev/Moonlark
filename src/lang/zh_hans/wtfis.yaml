@@ -1,5 +1,5 @@
 help:
-  details: 跨领域因果关系谬误生成器。
+  details: 随机跨领域因果关系谬误文案。（基于预先生成的文案，绝对没有使用大语言模型及人工智能！）
   description: 这在说啥
   usage1: wtfis
 prompt: |
