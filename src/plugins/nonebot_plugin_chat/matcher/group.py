@@ -566,7 +566,7 @@ class GroupSession:
         message = message.strip()
         users = await self.get_users()
         uni_msg = UniMessage()
-        at_list = re.finditer("|".join([f"@{user}" for user in users.keys()]), message)
+        at_list = re.finditer("|".join([f"@{re.escape(user)}" for user in users.keys()]), message)
         cursor_index = 0
         for at in at_list:
             uni_msg = uni_msg.text(text=message[cursor_index : at.start()])
