@@ -112,7 +112,7 @@ class Interrupter:
     async def get_blocked_patterns(self) -> List[re.Pattern]:
         group_user_pattern = "|".join([nickname for nickname in await self.group_session.get_users() if "moonlark" not in nickname.lower()])
         return [
-            re.compile(r"^.*$"),
+            re.compile(r"^(.)\1*$"),
             re.compile(r"@(group_user_pattern)"),
             re.compile(r"^(\[图片: (?:(?!来源/梗).)+])+$")
         ]
