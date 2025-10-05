@@ -259,6 +259,10 @@ splitter = MessageSplitter()
 
 
 if __name__ == "__main__":
-    print(splitter.split_message("""                                                  喵？三角洲听起来问题挺多的样子
+    print(
+        splitter.split_message(
+            """                                                  喵？三角洲听起来问题挺多的样子
 
-玩游戏遇到各种屏幕问题真是让人头大喵~"""))
+玩游戏遇到各种屏幕问题真是让人头大喵~"""
+        )
+    )
