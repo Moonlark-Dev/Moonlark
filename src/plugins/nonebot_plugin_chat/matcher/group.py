@@ -99,7 +99,6 @@ class MessageProcessor:
         self.enabled = True
         self.interrupter = Interrupter(session)
         self.cold_until = datetime.now()
-        # self.reply_message_ids = []
         self.blocked = False
         asyncio.create_task(self.loop())
 
