@@ -20,14 +20,17 @@ from nonebot_plugin_larklang.__main__ import LangHelper
 from nonebot_plugin_larkutils.user import get_user_id
 from nonebot_plugin_openai.utils.chat import fetch_message
 from nonebot_plugin_openai.utils.message import generate_message
-from nonebot_plugin_waiter import prompt_until
+from nonebot.adapters.qq import Bot as BotQQ
+from nonebot.adapters import Bot as BaseBot
 
 cmd = on_command("wtfis")
 lang = LangHelper()
 
 
 @cmd.handle()
-async def _(user_id: str = get_user_id()) -> None:
+async def _(bot: BaseBot, user_id: str = get_user_id()) -> None:
+    if isinstance(bot, BotQQ):
+        await lang.send("llm_tip", user_id)
     await cmd.finish(
         await fetch_message(
             [generate_message(await lang.text("prompt", user_id), "user")],
