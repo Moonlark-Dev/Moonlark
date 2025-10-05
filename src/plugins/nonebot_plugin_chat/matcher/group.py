@@ -347,7 +347,6 @@ class MessageProcessor:
                 "检测到无法被解析的被大括号包括的内容，请检查是否使用了错误的格式，如果这是一个预期的结果，请忽略此警告。"
                 f"(出现警告的内容为: {incorrect_text}，它在发送时将不会被解析)"
             )
-            
 
     def get_reply_message_id(self, text: str) -> tuple[str, Optional[str]]:
         reply_message_id = None
