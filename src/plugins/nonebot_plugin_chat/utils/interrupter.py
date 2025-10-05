@@ -110,11 +110,13 @@ class Interrupter:
         self.required_emojis = ["🐶", "😂"]  # 必须响应的表情符号
 
     async def get_blocked_patterns(self) -> List[re.Pattern]:
-        group_user_pattern = "|".join([nickname for nickname in await self.group_session.get_users() if "moonlark" not in nickname.lower()])
+        group_user_pattern = "|".join(
+            [nickname for nickname in await self.group_session.get_users() if "moonlark" not in nickname.lower()]
+        )
         return [
             re.compile(r"^(.)\1*$"),
             re.compile(r"@(group_user_pattern)"),
-            re.compile(r"^(\[图片: (?:(?!来源/梗).)+])+$")
+            re.compile(r"^(\[图片: (?:(?!来源/梗).)+])+$"),
         ]
 
     async def should_interrupt(self, message: str, user_id: str) -> bool:

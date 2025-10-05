@@ -596,8 +596,6 @@ class GroupSession:
             else:
                 self.group_users = cached_users
         return self.group_users
-            
-        
 
     def calculate_desire_on_timer(self) -> None:
         msg_count, user_msg_count = self.get_counters()
