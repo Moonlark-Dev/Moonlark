@@ -340,16 +340,9 @@ class MessageProcessor:
 
     def get_reply_message_id(self, text: str) -> tuple[str, Optional[str]]:
         reply_message_id = None
-        while m := re.search(r"\{REPLY:\d+}", text):
-            try:
-                reply_message_id = m[0][7:-1]
-            except IndexError:
-                continue
-            except ValueError:
-                # NOTE 一些其他的处理方式：将消息打回 LLM 进行重新编辑？
-                continue
+        if m := re.search(r"\{REPLY:\d+}", text):
+            reply_message_id = m[0][7:-1]
             text = text.replace(m[0], "")
-            break
         return text, reply_message_id
 
     async def send_function_call_feedback(
@@ -379,9 +372,9 @@ class MessageProcessor:
     async def send_reply_text(self, reply_text: str) -> None:
         for msg in splitter.split_message(reply_text):
             for line in msg.splitlines():
-                if line.startswith(".skip"):
+                if ".skip" in line:
                     return
-                elif line.startswith(".leave"):
+                elif ".leave" in line:
                     await self.session.mute()
                     return
             if msg:
