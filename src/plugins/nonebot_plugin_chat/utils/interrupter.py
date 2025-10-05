@@ -115,7 +115,7 @@ class Interrupter:
         )
         return [
             re.compile(r"^(.)\1*$"),
-            re.compile(r"@(group_user_pattern)"),
+            re.compile(f"@({group_user_pattern})"),
             re.compile(r"^(\[图片: (?:(?!来源/梗).)+])+$"),
         ]
 
