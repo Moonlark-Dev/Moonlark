@@ -25,8 +25,11 @@ from nonebot_plugin_waiter import prompt_until
 cmd = on_command("wtfis")
 lang = LangHelper()
 
+
 @cmd.handle()
 async def _(user_id: str = get_user_id()) -> None:
-    await cmd.finish(await fetch_message(
-        [generate_message(await lang.text("prompt", user_id), "user")],
-    ))
+    await cmd.finish(
+        await fetch_message(
+            [generate_message(await lang.text("prompt", user_id), "user")],
+        )
+    )
