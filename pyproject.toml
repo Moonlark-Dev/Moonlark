@@ -86,7 +86,8 @@ plugins = [
     "nonebot_plugin_status_report",
     "nonebot_plugin_broadcast",
     "nonebot_plugin_ghot",
-    "nonebot_plugin_status"
+    "nonebot_plugin_status",
+    "nonebot_plugin_wtfis"
 ]
 plugin_dirs = []
 builtin_plugins = []
