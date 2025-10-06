@@ -332,12 +332,21 @@ class MessageProcessor:
                 finish_reason="stop", message=ChatCompletionMessage(role="assistant", content=".skip"), index=0
             ),
         )
+        reply_texts = []
         async for message in fetcher.fetch_message_stream():
             self.message_count += 1
             await self.send_reply_text(message)
+            reply_texts.append(message)
         self.openai_messages = fetcher.get_messages()
         if datetime.now() < self.interrupter.sleep_end_time:
             self.interrupter.sleep_end_time = datetime.min
+        if m := re.search(r"{((?!REPLY:\d+).*)}", "\n\n".join(reply_texts)):
+            incorrect_text = m[0]
+            self.append_user_message(
+                f"[{datetime.now().strftime('%H:%M:%S')}]: "
+                "检测到无法被解析的被大括号包括的内容，请检查是否使用了错误的格式，如果这是一个预期的结果，请忽略此警告。"
+                f"(出现警告的内容为: {incorrect_text}，它在发送时将不会被解析)"
+            )
 
     def get_reply_message_id(self, text: str) -> tuple[str, Optional[str]]:
         reply_message_id = None
@@ -381,8 +390,7 @@ class MessageProcessor:
             if msg:
                 await self.send_text(msg)
 
-    async def process_messages(self, msg_dict: CachedMessage) -> None:
-        msg_str = generate_message_string(msg_dict)
+    def append_user_message(self, msg_str: str) -> None:
         if len(self.openai_messages) <= 0:
             self.openai_messages.append(generate_message(msg_str, "user"))
         else:
@@ -396,6 +404,10 @@ class MessageProcessor:
             else:
                 self.openai_messages.append(generate_message(msg_str, "user"))
         self.message_count += 1
+
+    async def process_messages(self, msg_dict: CachedMessage) -> None:
+        msg_str = generate_message_string(msg_dict)
+        self.append_user_message(msg_str)
         logger.debug(self.openai_messages)
         async with get_session() as session:
             r = await session.get(ChatGroup, {"group_id": self.session.group_id})
