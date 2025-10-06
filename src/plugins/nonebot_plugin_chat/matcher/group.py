@@ -604,7 +604,7 @@ class GroupSession:
             if isinstance(self.bot, OB11Bot):
                 self.group_users.clear()
                 for user in await self.bot.get_group_member_list(group_id=int(self.group_id.split("_")[1])):
-                    self.group_users[user["card"] or user["nickname"]] = str(user["user_id"])
+                    self.group_users[user["nickname"]] = str(user["user_id"])
             else:
                 self.group_users = cached_users
         return self.group_users
