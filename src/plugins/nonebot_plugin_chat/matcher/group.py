@@ -195,7 +195,7 @@ class MessageProcessor:
             self.blocked = True  # 再次收到消息后才会解锁
 
     async def generate_reply(self, ignore_desire: bool = False) -> None:
-        logger.debug(desire := self.session.desire * 0.0075)
+        logger.debug(desire := 1)
         if self.cold_until > datetime.now() or not (ignore_desire or random.random() <= desire):
             return
         elif len(self.openai_messages) <= 0 or (
