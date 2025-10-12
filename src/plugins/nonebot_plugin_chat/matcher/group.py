@@ -60,7 +60,44 @@ from ..utils.tools import (
     get_note_poster,
 )
 
-BASE_DESIRE = 30
+
+def calculate_trigger_probability(accumulated_length: int) -> float:
+    """
+    根据累计文本长度计算触发概率
+
+    测试：
+    0 字 ->  0.00%
+    10 字 ->  2.53%
+    20 字 ->  3.72%
+    30 字 ->  5.45%
+    40 字 ->  7.90%
+    50 字 -> 11.32%
+    60 字 -> 15.96%
+    70 字 -> 21.99%
+    80 字 -> 29.45%
+    90 字 -> 38.12%
+    100 字 -> 47.50%
+    110 字 -> 56.88%
+    120 字 -> 65.55%
+    130 字 -> 73.01%
+    140 字 -> 79.04%
+    150 字 -> 83.68%
+    160 字 -> 87.10%
+    180 字 -> 91.28%
+    200 字 -> 93.29%
+
+    使用 sigmoid 函数变体实现平滑过渡
+    """
+    if accumulated_length <= 0:
+        return 0.0
+
+    # 使用修改的 sigmoid 函数: P(x) = 0.95 / (1 + e^(-(x-100)/25))
+    # 中心点在100字，斜率适中
+    import math
+
+    probability = 0.95 / (1 + math.exp(-(accumulated_length - 100) / 25))
+
+    return max(0.0, min(0.95, probability))
 
 
 class CachedMessage(TypedDict):
@@ -136,8 +173,10 @@ class MessageProcessor:
             # 如果需要阻断，直接返回
             return
         if (mentioned or not self.session.message_queue) and not self.blocked:
-            await self.generate_reply(mentioned)
+            await self.generate_reply(force_reply=mentioned)
             self.cold_until = datetime.now() + timedelta(seconds=5)
+            # 触发回复后重置累计长度
+            self.session.accumulated_text_length = 0
 
     def clean_special_message(self) -> None:
         while True:
@@ -194,15 +233,24 @@ class MessageProcessor:
             await self.generate_reply()
             self.blocked = True  # 再次收到消息后才会解锁
 
-    async def generate_reply(self, ignore_desire: bool = False) -> None:
-        logger.debug(desire := 1)
-        if self.cold_until > datetime.now() or not (ignore_desire or random.random() <= desire):
+    async def generate_reply(self, force_reply: bool = False) -> None:
+        # 如果在冷却期或消息为空，直接返回
+        if self.cold_until > datetime.now():
             return
-        elif len(self.openai_messages) <= 0 or (
+        if len(self.openai_messages) <= 0 or (
             (not isinstance(self.openai_messages[-1], dict))
             and self.openai_messages[-1].role in ["system", "assistant"]
         ):
             return
+
+        # 检查是否应该触发回复
+        if not force_reply:
+            probability = calculate_trigger_probability(self.session.accumulated_text_length)
+            logger.debug(
+                f"Accumulated length: {self.session.accumulated_text_length}, Trigger probability: {probability:.2%}"
+            )
+            if random.random() > probability:
+                return
 
         # 记录一次机器人响应
         self.interrupter.record_response()
@@ -390,6 +438,8 @@ class MessageProcessor:
                     return
             if msg:
                 await self.send_text(msg)
+        # 发送回复后重置累计长度
+        self.session.accumulated_text_length = 0
 
     def append_user_message(self, msg_str: str) -> None:
         if len(self.openai_messages) <= 0:
@@ -414,6 +464,12 @@ class MessageProcessor:
             r = await session.get(ChatGroup, {"group_id": self.session.group_id})
             self.blocked = r and msg_dict["user_id"] in json.loads(r.blocked_user)
             logger.debug(f"{self.blocked}")
+
+            # 如果不是blocked用户且不是机器人自己的消息，则累计文本长度
+            if not self.blocked and not msg_dict["self"]:
+                # 只统计消息内容的长度，不包括时间戳和昵称
+                self.session.accumulated_text_length += len(msg_dict["content"])
+                logger.debug(f"Accumulated text length: {self.session.accumulated_text_length}")
 
     def get_message_content_list(self) -> list[str]:
         l = []
@@ -476,7 +532,7 @@ class GroupSession:
         self.user_id = f"mlsid::--lang={lang_name}"
         self.message_queue: list[tuple[UniMessage, Event, T_State, str, str, datetime, bool, str]] = []
         self.cached_messages: list[CachedMessage] = []
-        self.desire = BASE_DESIRE
+        self.accumulated_text_length = 0  # 累计文本长度
         self.last_reward_participation: Optional[datetime] = None
         self.mute_until: Optional[datetime] = None
         self.memory_lock = asyncio.Lock()
@@ -526,7 +582,6 @@ class GroupSession:
         message_id = get_message_id(event)
         self.message_queue.append((message, event, state, user_id, nickname, datetime.now(), mentioned, message_id))
         self.update_counters(user_id)
-        await self.calculate_desire_on_message(mentioned)
         if len(self.cached_messages) % 10 == 0 and len(self.cached_messages) > 0:
             asyncio.create_task(self.update_topic())
         if len(self.cached_messages) >= 20:
@@ -610,48 +665,18 @@ class GroupSession:
                 self.group_users = cached_users
         return self.group_users
 
-    def calculate_desire_on_timer(self) -> None:
-        msg_count, user_msg_count = self.get_counters()
-        loneliness_boost = 10 if (msg_count >= 3 and user_msg_count <= 2) else 0
-        activity_penalty = 10 - min(30.0, 0.3 * msg_count)
-        self.desire = self.desire + activity_penalty + loneliness_boost
-
-    async def calculate_desire_on_message(self, mentioned: bool = False) -> None:
-        dt = datetime.now()
-        cached_messages = [m for m in self.cached_messages if (dt - m["send_time"]).total_seconds() <= 600]
-        msg_count = self.get_counters()[0]
-        base = self.desire * 0.8 + BASE_DESIRE * 0.2
-        mention_boost = 30 if mentioned else 0
-        bot_participate = False
-        for msg in cached_messages:
-            if msg["self"]:
-                bot_participate = True
-        activity_penalty = min(30.0, 0.1 * msg_count)
-        if bot_participate and self.is_participation_boost_available():
-            participation_boost = -20
-            self.last_reward_participation = datetime.now()
-        else:
-            participation_boost = 0
-        new_desire = base + mention_boost + participation_boost - activity_penalty
-        self.desire = max(0.0, min(100.0, new_desire))
-
-    def is_participation_boost_available(self) -> bool:
-        if self.last_reward_participation is None:
-            return True
-        dt = datetime.now()
-        return (dt - self.last_reward_participation).total_seconds() >= 180
-
     async def process_timer(self) -> None:
         dt = datetime.now()
-        self.calculate_desire_on_timer()
         if self.mute_until and dt > self.mute_until:
             self.mute_until = None
         if self.processor.blocked or not self.cached_messages:
             return
         time_to_last_message = (dt - self.cached_messages[-1]["send_time"]).total_seconds()
-        if time_to_last_message > 180:
-            if random.random() <= self.desire / 100 and not self.cached_messages[-1]["self"]:
-                await self.processor.generate_reply()
+        # 如果群聊冷却超过3分钟，根据累计文本长度判断是否主动发言
+        if time_to_last_message > 180 and not self.cached_messages[-1]["self"]:
+            probability = calculate_trigger_probability(self.accumulated_text_length)
+            if random.random() <= probability:
+                await self.processor.generate_reply(force_reply=False)
 
 
 from ..config import config
@@ -727,11 +752,10 @@ async def _(
             g = ChatGroup(group_id=group_id, enabled=True)
             await lang.send("command.switch.enabled", user_id)
         case "desire":
-            if len(argv) > 1 and re.match(r"^\d+\.?\d*$", argv[1]) and group_id in groups:
-                groups[group_id].desire = float(argv[1])
-                await lang.send("command.desire.set", user_id)
-            elif group_id in groups:
-                await lang.send("command.desire.get", user_id, groups[group_id].desire)
+            if group_id in groups:
+                length = groups[group_id].accumulated_text_length
+                probability = calculate_trigger_probability(length)
+                await lang.send("command.desire.get", user_id, length, round(probability, 2))
             elif g and g.enabled:
                 await lang.send("command.not_inited", user_id)
             else:
