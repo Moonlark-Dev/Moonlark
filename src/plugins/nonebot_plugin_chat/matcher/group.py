@@ -176,7 +176,7 @@ class MessageProcessor:
             await self.generate_reply(force_reply=mentioned)
             self.cold_until = datetime.now() + timedelta(seconds=5)
             # 触发回复后重置累计长度
-            self.session.accumulated_text_length = 0
+            # self.session.accumulated_text_length = 0
 
     def clean_special_message(self) -> None:
         while True:
@@ -674,9 +674,9 @@ class GroupSession:
         time_to_last_message = (dt - self.cached_messages[-1]["send_time"]).total_seconds()
         # 如果群聊冷却超过3分钟，根据累计文本长度判断是否主动发言
         if time_to_last_message > 180 and not self.cached_messages[-1]["self"]:
-            probability = calculate_trigger_probability(self.accumulated_text_length)
+            probability = calculate_trigger_probability(self.accumulated_text_length+50)
             if random.random() <= probability:
-                await self.processor.generate_reply(force_reply=False)
+                await self.processor.generate_reply(force_reply=True)
 
 
 from ..config import config
