@@ -15,7 +15,7 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
-from nonebot_plugin_alconna import Alconna, Args, Image, MultiVar, Option, Subcommand, Text, on_alconna
+from nonebot_plugin_alconna import Alconna, Args, on_alconna
 from nonebot_plugin_larklang.__main__ import LangHelper
 from nonebot_plugin_larkutils.user import get_user_id
 from nonebot_plugin_openai.utils.chat import fetch_message
