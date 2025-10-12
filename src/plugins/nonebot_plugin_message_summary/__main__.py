@@ -208,13 +208,13 @@ async def send_daily_summary_to_group(group_id: str) -> None:
             .where(GroupMessage.timestamp <= end_time)
             .order_by(GroupMessage.id_)
         )
-        messages = list(result.all())
+        messages = list(result.all())[::-1]
 
         if not messages:
             return
 
         # Generate message string
-        messages_str = generate_message_string(list(messages), "default")
+        messages_str = generate_message_string(list(messages), "broadcast")
 
         # Get a user ID from the group for language processing
         # We'll use the first message's sender as the user ID
