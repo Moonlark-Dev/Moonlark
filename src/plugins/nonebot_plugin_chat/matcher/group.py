@@ -64,7 +64,7 @@ from ..utils.tools import (
 def calculate_trigger_probability(accumulated_length: int) -> float:
     """
     根据累计文本长度计算触发概率
-    
+
     测试：
     0 字 ->  0.00%
     10 字 ->  2.53%
@@ -85,17 +85,18 @@ def calculate_trigger_probability(accumulated_length: int) -> float:
     160 字 -> 87.10%
     180 字 -> 91.28%
     200 字 -> 93.29%
-    
+
     使用 sigmoid 函数变体实现平滑过渡
     """
     if accumulated_length <= 0:
         return 0.0
-    
+
     # 使用修改的 sigmoid 函数: P(x) = 0.95 / (1 + e^(-(x-100)/25))
     # 中心点在100字，斜率适中
     import math
+
     probability = 0.95 / (1 + math.exp(-(accumulated_length - 100) / 25))
-    
+
     return max(0.0, min(0.95, probability))
 
 
@@ -241,11 +242,13 @@ class MessageProcessor:
             and self.openai_messages[-1].role in ["system", "assistant"]
         ):
             return
-        
+
         # 检查是否应该触发回复
         if not force_reply:
             probability = calculate_trigger_probability(self.session.accumulated_text_length)
-            logger.debug(f"Accumulated length: {self.session.accumulated_text_length}, Trigger probability: {probability:.2%}")
+            logger.debug(
+                f"Accumulated length: {self.session.accumulated_text_length}, Trigger probability: {probability:.2%}"
+            )
             if random.random() > probability:
                 return
 
@@ -461,7 +464,7 @@ class MessageProcessor:
             r = await session.get(ChatGroup, {"group_id": self.session.group_id})
             self.blocked = r and msg_dict["user_id"] in json.loads(r.blocked_user)
             logger.debug(f"{self.blocked}")
-            
+
             # 如果不是blocked用户且不是机器人自己的消息，则累计文本长度
             if not self.blocked and not msg_dict["self"]:
                 # 只统计消息内容的长度，不包括时间戳和昵称
@@ -661,7 +664,6 @@ class GroupSession:
             else:
                 self.group_users = cached_users
         return self.group_users
-
 
     async def process_timer(self) -> None:
         dt = datetime.now()
