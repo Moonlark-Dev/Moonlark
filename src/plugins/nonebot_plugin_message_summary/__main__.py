@@ -37,7 +37,7 @@ recorder = on_message(priority=3, block=False)
 
 
 def get_config() -> FileManager:
-    return open_file("config.json", FileType.CONFIG, [])
+    return open_file("disabled_groups.json", FileType.CONFIG, [])
 
 
 @summary.assign("style")
@@ -73,7 +73,7 @@ async def handle_main(
 ) -> None:
     style = style_type
     async with get_config() as conf:
-        if group_id not in conf.data:
+        if group_id in conf.data:
             await lang.finish("disabled", user_id)
     result = (
         await session.scalars(
@@ -128,7 +128,7 @@ async def clean_recorded_message(session: async_scoped_session) -> None:
 @recorder.handle()
 async def _(event: GroupMessageEvent, session: async_scoped_session, group_id: str = get_group_id()) -> None:
     async with get_config() as conf:
-        if group_id not in conf.data:
+        if group_id in conf.data:
             await recorder.finish()
     await clean_recorded_message(session)
     session.add(GroupMessage(message=event.raw_message, sender_nickname=event.sender.nickname, group_id=group_id))
@@ -141,7 +141,7 @@ async def _(
     event: Event, session: async_scoped_session, group_id: str = get_group_id(), user_id: str = get_user_id()
 ) -> None:
     async with get_config() as conf:
-        if group_id not in conf.data:
+        if group_id in conf.data:
             await recorder.finish()
     await clean_recorded_message(session)
     session.add(
@@ -157,16 +157,13 @@ async def _(bot: Bot, user_id: str = get_user_id(), group_id: str = get_group_id
     if isinstance(bot, Bot_QQ):
         await lang.finish("switch.unsupported", user_id)
     async with get_config() as conf:
-        if group_id not in conf.data:
-            conf.data.append(group_id)
+        if group_id in conf.data:
+            conf.data.remove(group_id)
     await lang.finish("switch.enable", user_id)
 
 
 @summary.assign("disable")
 async def _(user_id: str = get_user_id(), group_id: str = get_group_id()) -> None:
-    async with get_config() as config:
-        if group_id in config.data:
-            config.data(config.data(group_id))
     async with get_config() as conf:
         if group_id not in conf.data:
             conf.data.append(group_id)
