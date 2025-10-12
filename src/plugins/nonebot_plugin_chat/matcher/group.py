@@ -674,7 +674,7 @@ class GroupSession:
         time_to_last_message = (dt - self.cached_messages[-1]["send_time"]).total_seconds()
         # 如果群聊冷却超过3分钟，根据累计文本长度判断是否主动发言
         if time_to_last_message > 180 and not self.cached_messages[-1]["self"]:
-            probability = calculate_trigger_probability(self.accumulated_text_length+50)
+            probability = calculate_trigger_probability(self.accumulated_text_length + 50)
             if random.random() <= probability:
                 await self.processor.generate_reply(force_reply=True)
 
