@@ -260,9 +260,26 @@ async def handle_ghot_history_command(
 
         current_time += interval
 
-    # Create the chart
+    # Create the chart with smooth curve
     plt.figure(figsize=(12, 6))
-    plt.plot(time_points, heat_scores, marker="o", linestyle="-", linewidth=2, markersize=4)
+
+    # Convert datetime to numeric for interpolation
+    time_points_num = mdates.date2num(time_points)
+
+    # Create more points for smooth curve
+    x_smooth = np.linspace(time_points_num.min(), time_points_num.max(), 500)
+
+    # Use cubic spline interpolation for smoother curves
+    from scipy.interpolate import interp1d
+
+    f = interp1d(time_points_num, heat_scores, kind="cubic")
+    y_smooth = f(x_smooth)
+
+    # Plot smooth curve
+    plt.plot(x_smooth, y_smooth, linestyle="-", linewidth=2, color="blue")
+
+    # Plot original points
+    plt.plot(time_points, heat_scores, marker="o", linestyle="", markersize=4, color="blue")
     plt.title(await lang.text("history.title", user_id))
     plt.xlabel(await lang.text("history.xlabel", user_id))
     plt.ylabel(await lang.text("history.ylabel", user_id))
