@@ -15,7 +15,7 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
-from nonebot import on_command
+from nonebot_plugin_alconna import Alconna, Args, on_alconna
 from nonebot_plugin_larklang.__main__ import LangHelper
 from nonebot_plugin_larkutils.user import get_user_id
 from nonebot_plugin_openai.utils.chat import fetch_message
@@ -23,16 +23,22 @@ from nonebot_plugin_openai.utils.message import generate_message
 from nonebot.adapters.qq import Bot as BotQQ
 from nonebot.adapters import Bot as BaseBot
 
-cmd = on_command("wtfis")
 lang = LangHelper()
+wtfis = on_alconna(Alconna("wtfis", Args["topic", str, ""]), use_cmd_start=True)
 
 
-@cmd.handle()
-async def _(bot: BaseBot, user_id: str = get_user_id()) -> None:
+@wtfis.assign("$main")
+async def _(bot: BaseBot, topic: str, user_id: str = get_user_id()) -> None:
     if isinstance(bot, BotQQ):
         await lang.send("llm_tip", user_id)
-    await cmd.finish(
+        topic = ""
+    await wtfis.finish(
         await fetch_message(
-            [generate_message(await lang.text("prompt", user_id), "user")],
+            (
+                [generate_message(await lang.text("prompt", user_id), "system"), generate_message(topic, "user")]
+                if topic
+                else [generate_message(await lang.text("prompt", user_id), "user")]
+            ),
+            identify="wtfis",
         )
     )
