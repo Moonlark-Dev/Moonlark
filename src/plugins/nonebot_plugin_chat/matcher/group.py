@@ -15,6 +15,7 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
+import math
 import copy
 import json
 import re
@@ -93,7 +94,6 @@ def calculate_trigger_probability(accumulated_length: int) -> float:
 
     # 使用修改的 sigmoid 函数: P(x) = 0.95 / (1 + e^(-(x-100)/25))
     # 中心点在100字，斜率适中
-    import math
 
     probability = 0.95 / (1 + math.exp(-(accumulated_length - 100) / 25))
 
@@ -175,8 +175,6 @@ class MessageProcessor:
         if (mentioned or not self.session.message_queue) and not self.blocked:
             await self.generate_reply(force_reply=mentioned)
             self.cold_until = datetime.now() + timedelta(seconds=5)
-            # 触发回复后重置累计长度
-            # self.session.accumulated_text_length = 0
 
     def clean_special_message(self) -> None:
         while True:
@@ -467,8 +465,11 @@ class MessageProcessor:
 
             # 如果不是blocked用户且不是机器人自己的消息，则累计文本长度
             if not self.blocked and not msg_dict["self"]:
-                # 只统计消息内容的长度，不包括时间戳和昵称
-                self.session.accumulated_text_length += len(msg_dict["content"])
+                content = msg_dict.get("content", "")
+                if isinstance(content, str) and content:
+                    cleaned = re.sub(r"\[.*?\]", "", content)
+                    cleaned = re.sub(r"\s+", " ", cleaned).strip()
+                    self.session.accumulated_text_length += len(cleaned)
                 logger.debug(f"Accumulated text length: {self.session.accumulated_text_length}")
 
     def get_message_content_list(self) -> list[str]:
