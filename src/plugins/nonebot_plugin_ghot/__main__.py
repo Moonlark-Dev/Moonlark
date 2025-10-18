@@ -239,7 +239,7 @@ async def handle_ghot_history_command(
     # Use 1-minute sliding window, calculating 15-minute heat scores
     interval = timedelta(minutes=1)
     window_size = 900  # 15 minutes in seconds
-    
+
     # Start from earliest_time + 15 minutes to ensure we have enough data
     current_time = earliest_time + timedelta(seconds=window_size)
     time_points = []
@@ -248,9 +248,7 @@ async def handle_ghot_history_command(
     # Calculate heat score for each 1-minute point using 15-minute sliding window
     while current_time <= latest_time:
         # Calculate heat score using 15-minute window ending at current_time
-        score = await calculate_heat_score(
-            timestamps, current_time, window_size, config.ghot_max_message_rate
-        )
+        score = await calculate_heat_score(timestamps, current_time, window_size, config.ghot_max_message_rate)
         heat_scores.append(score)
         time_points.append(current_time)
 
