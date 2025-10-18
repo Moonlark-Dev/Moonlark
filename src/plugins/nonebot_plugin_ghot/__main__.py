@@ -236,33 +236,27 @@ async def handle_ghot_history_command(
     earliest_time = min(timestamps)
     latest_time = max(timestamps)
 
-    # Create 10-minute intervals
-    interval = timedelta(minutes=10)
-    current_time = earliest_time + interval / 2
+    # Use 1-minute sliding window, calculating 15-minute heat scores
+    interval = timedelta(minutes=1)
+    window_size = 900  # 15 minutes in seconds
+
+    # Start from earliest_time + 15 minutes to ensure we have enough data
+    current_time = earliest_time + timedelta(seconds=window_size)
     time_points = []
     heat_scores = []
 
-    # Calculate heat score for each 10-minute interval
+    # Calculate heat score for each 1-minute point using 15-minute sliding window
     while current_time <= latest_time:
-        # For history, we'll use a 15-minute window (same as the main command)
-        window_end = current_time + interval / 2
-        window_start = current_time - interval / 2
-
-        # Filter messages within the window
-        window_messages = [t for t in timestamps if window_start <= t <= window_end]
-
-        # Calculate heat score using the same algorithm as the main function
-        score = await calculate_heat_score(
-            window_messages, current_time, round(interval.total_seconds()), config.ghot_max_message_rate
-        )
+        # Calculate heat score using 15-minute window ending at current_time
+        score = await calculate_heat_score(timestamps, current_time, window_size, config.ghot_max_message_rate)
         heat_scores.append(score)
-        time_points.append(current_time + interval / 2)
+        time_points.append(current_time)
 
         current_time += interval
 
     # Create the chart
     plt.figure(figsize=(12, 6))
-    plt.plot(time_points, heat_scores, marker="o", linestyle="-", linewidth=2, markersize=4)
+    plt.plot(time_points, heat_scores, linestyle="-", linewidth=2)
     plt.title(await lang.text("history.title", user_id))
     plt.xlabel(await lang.text("history.xlabel", user_id))
     plt.ylabel(await lang.text("history.ylabel", user_id))
