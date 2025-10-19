@@ -374,7 +374,7 @@ class MessageProcessor:
             ],
             identify="Chat",
             pre_function_call=self.send_function_call_feedback,
-            timeout_per_request=15,
+            timeout_per_request=60,
             timeout_response=Choice(
                 finish_reason="stop", message=ChatCompletionMessage(role="assistant", content=".skip"), index=0
             ),
