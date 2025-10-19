@@ -17,3 +17,4 @@ require("nonebot_plugin_orm")
 require("nonebot_plugin_alconna")
 
 from .function import get_group_hot_score
+from . import __main__
