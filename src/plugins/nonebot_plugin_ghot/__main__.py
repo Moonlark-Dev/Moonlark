@@ -1,5 +1,3 @@
-
-
 from nonebot_plugin_alconna import Alconna, Arparma, Option, on_alconna, Subcommand, UniMessage
 
 from nonebot_plugin_alconna import Alconna, on_alconna
@@ -13,19 +11,12 @@ from .utils.score import get_group_hot_score
 from .lang import lang
 
 
-
 ghot_cmd = on_alconna(
     Alconna(
         "ghot",
-        Subcommand(
-            "history",
-            Option("-l|--line")
-        ),
+        Subcommand("history", Option("-l|--line")),
     )
 )
-
-
-
 
 
 @ghot_cmd.assign("$main")
@@ -70,10 +61,9 @@ async def _(
     """
     Handle /ghot history command to show group heat score history chart.
     """
-    if 'line' in arparam.subcommands['history'].options:
+    if "line" in arparam.subcommands["history"].options:
         raw = await render_line_cheat(session, user_id, group_id)
     else:
         raw = await render_heat_cheat(session, user_id, group_id)
     # Send the chart
     await ghot_cmd.finish(UniMessage().image(raw=raw))
-

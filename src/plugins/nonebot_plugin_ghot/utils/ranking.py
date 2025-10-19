@@ -1,10 +1,10 @@
-
 from nonebot_plugin_orm import async_scoped_session
 from datetime import datetime, timedelta
 from sqlalchemy import select
 from nonebot_plugin_message_summary.models import GroupMessage
 from .score import calculate_heat_score
 from ..config import config
+
 
 async def get_all_groups_scores(session: async_scoped_session) -> dict:
     """

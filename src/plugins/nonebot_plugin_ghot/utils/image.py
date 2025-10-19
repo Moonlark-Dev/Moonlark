@@ -11,6 +11,7 @@ from .score import calculate_heat_score
 from ..lang import lang
 from ..config import config
 
+
 async def render_line_cheat(session: async_scoped_session, user_id: str, group_id: str) -> bytes:
     result = await session.scalars(select(GroupMessage).where(GroupMessage.group_id == group_id))
     messages = result.all()
@@ -73,13 +74,16 @@ async def render_line_cheat(session: async_scoped_session, user_id: str, group_i
     plt.close()
     return buf.getvalue()
 
+
 from PIL import Image, ImageDraw, ImageFont
 from nonebot.log import logger
+
 
 def get_next_tens(n: int) -> int:
     if n % 10 == 0:
         return n
     return ((n // 10) + 1) * 10
+
 
 async def render_heat_cheat(session: async_scoped_session, user_id: str, group_id: str) -> bytes:
     group_id = "qq_701257458"
@@ -96,12 +100,14 @@ async def render_heat_cheat(session: async_scoped_session, user_id: str, group_i
         end_time = time_cursor + timedelta(minutes=5)
         start_time = max(start_time, time_interval[0])
         end_time = min(end_time, time_interval[1])
-        window_message_timestamps = [message.timestamp for message in messages if start_time <= message.timestamp <= end_time]
-        heat_scores.append(await calculate_heat_score(
-            window_message_timestamps,
-            time_cursor,
-            round((end_time - start_time).total_seconds())
-        ))
+        window_message_timestamps = [
+            message.timestamp for message in messages if start_time <= message.timestamp <= end_time
+        ]
+        heat_scores.append(
+            await calculate_heat_score(
+                window_message_timestamps, time_cursor, round((end_time - start_time).total_seconds())
+            )
+        )
         time_cursor += timedelta(minutes=1)
     origin_max_score = max(heat_scores)
     max_score = get_next_tens(origin_max_score)
@@ -138,10 +144,18 @@ async def render_heat_cheat(session: async_scoped_session, user_id: str, group_i
     # Draw statistics
     stats_y = 90
     draw.text(
-        (20, stats_y), await lang.text("heat_c.interval", user_id, f"{(time_interval[1] - time_interval[0]).total_seconds() / 3600:.1f}"), fill=text_color, font=text_font
+        (20, stats_y),
+        await lang.text(
+            "heat_c.interval", user_id, f"{(time_interval[1] - time_interval[0]).total_seconds() / 3600:.1f}"
+        ),
+        fill=text_color,
+        font=text_font,
     )
     draw.text(
-        (20, stats_y + 25), await lang.text("heat_c.max", user_id, origin_max_score, max_score), fill=text_color, font=text_font
+        (20, stats_y + 25),
+        await lang.text("heat_c.max", user_id, origin_max_score, max_score),
+        fill=text_color,
+        font=text_font,
     )
 
     # Draw timeline
@@ -150,13 +164,16 @@ async def render_heat_cheat(session: async_scoped_session, user_id: str, group_i
     timeline_width = image_width - 40
     timeline_start_x = 20
     timeline_start_y = timeline_y
-    
+
     timeline_end_y = timeline_y + timeline_height
     time_cursor = time_interval[0]
     total_interval_seconds = (time_interval[1] - time_interval[0]).total_seconds()
     width_per_minute = timeline_width / (total_interval_seconds / 60)
     for record in heat_scores:
-        start_x = timeline_start_x + (time_cursor - time_interval[0]).total_seconds() / total_interval_seconds * timeline_width
+        start_x = (
+            timeline_start_x
+            + (time_cursor - time_interval[0]).total_seconds() / total_interval_seconds * timeline_width
+        )
         block_color_hsv = (44 / 360, record / max_score, 1)
         block_color = tuple(int(x * 255) for x in colorsys.hsv_to_rgb(*block_color_hsv))
         draw.rectangle([start_x, timeline_start_y, start_x + width_per_minute, timeline_end_y], fill=block_color)
@@ -164,7 +181,7 @@ async def render_heat_cheat(session: async_scoped_session, user_id: str, group_i
 
     # Draw time labels below the timeline
     time_labels_y = timeline_end_y + 10  # Position below the timeline
-    
+
     delta_t = timedelta(seconds=total_interval_seconds / 9)
     time_cursor = time_interval[0]
     time_labels = [(time_cursor + delta_t * i).strftime("%H:%M") for i in range(10)]
@@ -185,6 +202,3 @@ async def render_heat_cheat(session: async_scoped_session, user_id: str, group_i
     image.save(img_bytes, format="PNG")
     img_bytes.seek(0)
     return img_bytes.getvalue()
-    
-
-    

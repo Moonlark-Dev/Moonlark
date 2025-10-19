@@ -42,6 +42,7 @@ async def calculate_heat_score(
 
     return score
 
+
 async def get_group_hot_score(group_id: str, session: async_scoped_session) -> tuple[int, int, int]:
     """
     Get group heat scores for 1, 5, and 15 minute windows.
