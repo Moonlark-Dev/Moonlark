@@ -5,9 +5,13 @@ help:
   description: 群发言热度
   details: 计算群聊消息的热度分数，并进行排名。使用此功能需要先使用 {__prefix__}summary -e 启用群历史消息总结功能，否则群热度分数恒为 0。
   usage1: ghot (当前群聊热度分数)
-  usage2: ghot history (近三天分数历史)
+  usage2: ghot history [-l] (近三天分数历史)
 history:
   title: 群热度分数历史
   xlabel: 时间
   ylabel: 热度
-
+heat_c:
+  title: 群历史热度统计
+  gid: 'GID: {}'
+  interval: '统计区间: 最近 {} 小时'
+  max: '图中最大值: {} ({})'
