@@ -240,7 +240,7 @@ class MoonlarkRecovery:
                 
         except ValueError as e:
             logger.error(f"解析数据库连接信息失败: {traceback.format_exc()}")
-        
+        logger.info("向 Nonebot2 发出启动指令 ...")
         self.nonebot_task = asyncio.create_task(run_sync(nb_cli_run)())
 
     async def init_db(self) -> None:
