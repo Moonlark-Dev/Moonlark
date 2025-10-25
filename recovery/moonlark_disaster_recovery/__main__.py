@@ -294,7 +294,6 @@ class MoonlarkRecovery:
                 
             # 恢复数据库
             # 使用环境变量传递密码，避免特殊字符问题
-            import os
             os.environ["MYSQL_PWD"] = local_password
             restore_command = [
                 "mysql",
@@ -340,7 +339,6 @@ class MoonlarkRecovery:
             
             # 配置并启动复制
             # 使用环境变量传递密码，避免特殊字符问题
-            import os
             os.environ["MYSQL_PWD"] = local_password
             configure_replication_command = [
                 "mysql",
