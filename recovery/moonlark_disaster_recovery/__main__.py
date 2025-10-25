@@ -2,10 +2,13 @@ import asyncio
 from contextlib import asynccontextmanager
 from typing import Literal, Optional
 from dotenv import find_dotenv, load_dotenv
+import os
+import os.path
 import httpx
 import os
 import re
 import subprocess
+import traceback
 import uvicorn
 import datetime
 from .config import Config
@@ -107,7 +110,7 @@ class MoonlarkRecovery:
             except ValueError as e:
                 raise HTTPException(status_code=500, detail=str(e))
             except Exception as e:
-                raise HTTPException(status_code=500, detail=f"执行备份时出错: {str(e)}")
+                raise HTTPException(status_code=500, detail=f"执行备份时出错: {traceback.format_exc()}")
         else:
             raise HTTPException(status_code=403, detail="只有主节点可以执行数据库备份")
 
@@ -151,7 +154,7 @@ class MoonlarkRecovery:
             
             return {"status": "success", "message": "数据库更新已成功保存"}
         except Exception as e:
-            raise HTTPException(status_code=500, detail=f"处理数据库更新时出错: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"处理数据库更新时出错: {traceback.format_exc()}")
 
     def set_state(self, state: Literal["READY", "RUNNING", "STARTING", "WAITING_DISPATCH"]) -> None:
         self.state = state
@@ -216,7 +219,7 @@ class MoonlarkRecovery:
                 else:
                     logger.info("成功停止数据库复制并设置为可写")
             except Exception as e:
-                logger.error(f"停止数据库复制时出错: {str(e)}")
+                logger.error(f"停止数据库复制时出错: {traceback.format_exc()}")
             
             # 在本地备份文件夹运行 git pull
             try:
@@ -233,10 +236,10 @@ class MoonlarkRecovery:
                 else:
                     logger.info("成功从远程仓库拉取最新备份")
             except Exception as e:
-                logger.error(f"执行 git pull 时出错: {str(e)}")
+                logger.error(f"执行 git pull 时出错: {traceback.format_exc()}")
                 
         except ValueError as e:
-            logger.error(f"解析数据库连接信息失败: {str(e)}")
+            logger.error(f"解析数据库连接信息失败: {traceback.format_exc()}")
         
         self.nonebot_task = asyncio.create_task(run_sync(nb_cli_run)())
 
@@ -255,7 +258,7 @@ class MoonlarkRecovery:
         try:
             local_username, local_password, local_host, local_port, local_database = self.parse_db_url(self.config.sqlalchemy_database_url)
         except ValueError as e:
-            raise Exception(f"解析数据库连接信息失败: {str(e)}")
+            raise Exception(f"解析数据库连接信息失败: {traceback.format_exc()}")
         
         try:
             # 从上游获取最新的数据库备份
@@ -360,7 +363,7 @@ class MoonlarkRecovery:
             logger.info("成功配置并启动数据库复制")
             
         except Exception as e:
-            raise Exception(f"初始化数据库时出错: {str(e)}")
+            raise Exception(f"初始化数据库时出错: {traceback.format_exc()}")
 
     async def loop(self) -> None:
         if await self.is_master():
@@ -378,7 +381,7 @@ class MoonlarkRecovery:
                 await self.init_db()
                 logger.info("数据库初始化成功")
             except Exception as e:
-                logger.error(f"数据库初始化失败: {str(e)}")
+                logger.error(f"数据库初始化失败: {traceback.format_exc()}")
                 # 初始化失败，等待重试
                 await asyncio.sleep(10)
                 return
@@ -387,7 +390,7 @@ class MoonlarkRecovery:
         while True:
             if self.state == "READY" and await self.is_master(): 
                 await self.launch_moonlark()
-            elif self.state == "RUNNING" and not self.is_master():
+            elif self.state == "RUNNING" and not await self.is_master():
                 if self.nonebot_task:
                     self.nonebot_task.cancel()
                 
@@ -456,7 +459,7 @@ class MoonlarkRecovery:
                         else:
                             logger.error(f"向主节点发送数据库更新失败: {response.status_code} - {response.text}")
             except Exception as e:
-                logger.error(f"向主节点发送数据库更新时出错: {str(e)}")
+                logger.error(f"向主节点发送数据库更新时出错: {traceback.format_exc()}")
 
     async def commit_and_push_backup(self):
         """在本地备份文件夹执行 git commit 和 git push"""
@@ -500,7 +503,7 @@ class MoonlarkRecovery:
             else:
                 logger.info("成功提交并推送本地备份到远程仓库")
         except Exception as e:
-            logger.error(f"执行 git 操作时出错: {str(e)}")
+            logger.error(f"执行 git 操作时出错: {traceback.format_exc()}")
     
     async def get_upstream_servers(self) -> list[str]:
         return [u for u in self.config.recovery_upstream_servers if await test_connecting(u)]
