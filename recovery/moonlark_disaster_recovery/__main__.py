@@ -389,6 +389,7 @@ class MoonlarkRecovery:
             if self.state == "READY" and await self.is_master(): 
                 await self.launch_moonlark()
             elif self.state == "RUNNING" and not await self.is_master():
+                logger.info("作为从节点，等待主节点调度")
                 if self.nonebot_task:
                     self.nonebot_task.cancel()
                 
