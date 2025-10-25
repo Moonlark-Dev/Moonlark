@@ -1,0 +1,19 @@
+[project]
+name = "moonlark-disaster-recovery"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "XiaoDeng3386",email = "1744793737@qq.com"}
+]
+license = {text = "AGPL-3"}
+readme = "README.md"
+requires-python = ">=3.11"
+
+[tool.poetry.dependencies]
+dotenv = "^0.9.9"
+pydantic = "^2.12.3"
+nb-cli = ">=1.4.2, <2.0.0"
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"

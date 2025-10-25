@@ -109,6 +109,9 @@ nonebot-plugin-sentry = ">=2.0.0, <3.0.0"
 
 moonlark-custom-plugins = {path = "./src", develop = true}
 nonebot-plugin-bilichat = {git = "https://github.com/Moonlark-Dev/nonebot-plugin-bilichat.git"}
+moonlark-disaster-recovery = {path = "recovery", develop = true}
+
+
 
 
 
@@ -121,6 +124,9 @@ pre-commit = ">=4.1.0, <5.0.0"
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "session"
+
+
+
 
 
 
