@@ -70,12 +70,14 @@ class MoonlarkRecovery:
                 username, password, host, port, database = self.parse_db_url(self.config.sqlalchemy_database_url)
                 
                 # 执行 mysqldump 命令并获取输出
+                # 使用环境变量传递密码，避免特殊字符问题
+                import os
+                os.environ["MYSQL_PWD"] = password
                 command = [
                     "mysqldump",
                     f"-h{host}",
                     f"-P{port}",
                     f"-u{username}",
-                    f"-p{password}",
                     "--single-transaction",
                     "--routines",
                     "--triggers",
@@ -163,23 +165,50 @@ class MoonlarkRecovery:
             # 从 sqlalchemy_database_url 中解析数据库连接信息
             username, password, host, port, database = self.parse_db_url(self.config.sqlalchemy_database_url)
             
-            # 停止数据库复制并设置为可读
+            # 检查是否需要停止数据库复制并设置为可读
             try:
-                # 停止复制
-                stop_replication_command = [
+                # 检查是否是从服务器（需要停止复制）
+                is_slave = False
+                # 使用环境变量传递密码，避免特殊字符问题
+                import os
+                os.environ["MYSQL_PWD"] = password
+                check_slave_command = [
                     "mysql",
                     f"-h{host}",
                     f"-P{port}",
                     f"-u{username}",
-                    f"-p{password}",
-                    "-e", "STOP SLAVE; RESET SLAVE ALL; SET GLOBAL read_only = OFF;"
+                    "-e", "SHOW SLAVE STATUS\G"
                 ]
-                
+
                 process = await asyncio.create_subprocess_exec(
-                    *stop_replication_command,
+                    *check_slave_command,
                     stdout=asyncio.subprocess.PIPE,
                     stderr=asyncio.subprocess.PIPE
                 )
+                stdout, stderr = await process.communicate()
+
+                # 如果命令成功执行且输出不为空，说明存在从服务器配置
+                if process.returncode == 0 and stdout.decode().strip():
+                    is_slave = True
+                    logger.info("检测到数据库配置为从服务器，将停止复制")
+
+                # 只有在是从服务器时才执行停止复制命令
+                if is_slave:
+                    # 停止复制
+                    # 环境变量已经在上面设置，这里直接使用
+                    stop_replication_command = [
+                        "mysql",
+                        f"-h{host}",
+                        f"-P{port}",
+                        f"-u{username}",
+                        "-e", "STOP SLAVE; RESET SLAVE ALL; SET GLOBAL read_only = OFF;"
+                    ]
+                
+                    process = await asyncio.create_subprocess_exec(
+                        *stop_replication_command,
+                        stdout=asyncio.subprocess.PIPE,
+                        stderr=asyncio.subprocess.PIPE
+                    )
                 stdout, stderr = await process.communicate()
                 
                 if process.returncode != 0:
@@ -261,12 +290,14 @@ class MoonlarkRecovery:
                 logger.info(f"已获取复制用户信息: {repl_user}")
                 
             # 恢复数据库
+            # 使用环境变量传递密码，避免特殊字符问题
+            import os
+            os.environ["MYSQL_PWD"] = local_password
             restore_command = [
                 "mysql",
                 f"-h{local_host}",
                 f"-P{local_port}",
                 f"-u{local_username}",
-                f"-p{local_password}",
                 local_database
             ]
             
@@ -305,12 +336,14 @@ class MoonlarkRecovery:
             master_port = master_port or "3306"
             
             # 配置并启动复制
+            # 使用环境变量传递密码，避免特殊字符问题
+            import os
+            os.environ["MYSQL_PWD"] = local_password
             configure_replication_command = [
                 "mysql",
                 f"-h{local_host}",
                 f"-P{local_port}",
                 f"-u{local_username}",
-                f"-p{local_password}",
                 "-e", f"CHANGE MASTER TO MASTER_HOST='{master_host}', MASTER_PORT={master_port}, MASTER_USER='{repl_user}', MASTER_PASSWORD='{repl_password}', MASTER_AUTO_POSITION=1; START SLAVE; SET GLOBAL read_only = ON;"
             ]
             
@@ -386,12 +419,14 @@ class MoonlarkRecovery:
                 username, password, host, port, database = self.parse_db_url(self.config.sqlalchemy_database_url)
                 
                 # 执行 mysqldump 命令获取数据库备份
+                # 使用环境变量传递密码，避免特殊字符问题
+                import os
+                os.environ["MYSQL_PWD"] = password
                 command = [
                     "mysqldump",
                     f"-h{host}",
                     f"-P{port}",
                     f"-u{username}",
-                    f"-p{password}",
                     "--single-transaction",
                     "--routines",
                     "--triggers",
