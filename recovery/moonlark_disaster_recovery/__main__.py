@@ -52,7 +52,7 @@ class MoonlarkRecovery:
         Raises:
             ValueError: 如果URL格式不正确
         """
-        url_pattern = r"mysql.+://([^:]+):([^@]+)@([^:/]+)(?::(\d+))?/([^/?]+)"
+        url_pattern = r"mysql\+aiomysql://([^:]+):([^@]+)@([^:/]+)(?::(\d+))?/([^/?]+)"
         match = re.match(url_pattern, url)
         
         if not match:
