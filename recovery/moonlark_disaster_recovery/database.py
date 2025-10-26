@@ -255,13 +255,14 @@ async def init_db(config: Config) -> None:
         master_port =  "3306"
         
         # 配置并启动复制
-        # 使用环境变量传递密码，避免特殊字符问题
-        os.environ["MYSQL_PWD"] = local_password
+        # 使用复制用户信息配置复制
+        os.environ["MYSQL_PWD"] = repl_password
         configure_replication_command = [
             "mysql",
             f"-h{local_host}",
             f"-P{local_port}",
-            f"-u{local_username}",
+            f"-u{repl_user}",
+            "--skip-ssl",
             "-e", f"CHANGE MASTER TO MASTER_HOST='{master_host}', MASTER_PORT={master_port}, MASTER_USER='{repl_user}', MASTER_PASSWORD='{repl_password}', MASTER_SSL=0, MASTER_SSL_VERIFY_SERVER_CERT=0; START SLAVE; SET GLOBAL read_only = ON;"
         ]
         
