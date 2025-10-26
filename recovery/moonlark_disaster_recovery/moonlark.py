@@ -58,7 +58,7 @@ async def launch_moonlark(config, set_state_func):
                     f"-h{host}",
                     f"-P{port}",
                     f"-u{username}",
-                    "-e", "STOP SLAVE; RESET SLAVE ALL; SET GLOBAL read_only = OFF;"
+                    "-e", "STOP SLAVE; RESET SLAVE ALL;"
                 ]
             
                 process = await asyncio.create_subprocess_exec(

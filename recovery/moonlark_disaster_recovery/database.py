@@ -262,7 +262,7 @@ async def init_db(config: Config) -> None:
             f"-u{local_username}",
             "--skip-ssl",
             local_database,
-            "-e", f"STOP SLAVE; RESET SLAVE ALL; CHANGE MASTER TO MASTER_HOST='{master_host}', MASTER_PORT={master_port}, MASTER_USER='{repl_user}', MASTER_PASSWORD='{repl_password}', MASTER_SSL=0, MASTER_SSL_VERIFY_SERVER_CERT=0, GET_MASTER_PUBLIC_KEY=1; START SLAVE; SET GLOBAL read_only = ON;"
+            "-e", f"STOP SLAVE; RESET SLAVE ALL; CHANGE MASTER TO MASTER_HOST='{master_host}', MASTER_PORT={master_port}, MASTER_USER='{repl_user}', MASTER_PASSWORD='{repl_password}', MASTER_SSL=0, MASTER_SSL_VERIFY_SERVER_CERT=0, GET_MASTER_PUBLIC_KEY=1; START SLAVE;"
         ]
         
         process = await asyncio.create_subprocess_exec(
