@@ -319,6 +319,7 @@ class MoonlarkRecovery:
                     stderr=asyncio.subprocess.PIPE
                 )
                 stdout, stderr = await process.communicate(input=f"source {backup_path.as_posix()}".encode())
+            backup_path.unlink()
                 
             if process.returncode != 0:
                 raise Exception(f"数据库恢复失败: {stderr.decode()}")
