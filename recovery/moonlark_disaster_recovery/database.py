@@ -1,4 +1,5 @@
 import asyncio
+from fastapi.responses import PlainTextResponse
 import httpx
 import os
 import re
@@ -34,7 +35,7 @@ def parse_db_url(url: str) -> Tuple[str, str, str, str, str]:
     return username, password, host, port, database
 
 
-async def get_mysql_dump(config: Config) -> str:
+async def get_mysql_dump(config: Config) -> PlainTextResponse:
     """获取MySQL数据库的备份
     
     Args:
@@ -80,12 +81,12 @@ async def get_mysql_dump(config: Config) -> str:
         sql_content = stdout.decode('utf-8')
         
         # 同时保存到本地备份文件
-        backup_path = Path(config.recovery_local_backup_path) / f"{database}_dump.sql"
-        os.makedirs(Path(backup_path).parent, exist_ok=True)
-        with open(backup_path, "w", encoding='utf-8') as f:
-            f.write(sql_content)
+        # backup_path = Path(config.recovery_local_backup_path) / f"{database}_dump.sql"
+        # os.makedirs(Path(backup_path).parent, exist_ok=True)
+        # with open(backup_path, "w", encoding='utf-8') as f:
+        #     f.write(sql_content)
         
-        return sql_content
+        return PlainTextResponse(contnet=sql_content)
     except ValueError as e:
         raise HTTPException(status_code=500, detail=str(e))
     except Exception as e:

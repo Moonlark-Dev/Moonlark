@@ -33,7 +33,7 @@ class MoonlarkRecovery:
         self.app.get("/mysql/user")(self.get_mysql_user)
         self.app.post("/mysql/update")(self.update_mysql_backup)
 
-    async def get_mysql_dump(self) -> str:
+    async def get_mysql_dump(self) -> PlainTextResponse:
         return await get_mysql_dump(self.config)
 
     async def get_mysql_user(self) -> dict[str, str,] | None:
