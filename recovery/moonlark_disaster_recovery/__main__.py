@@ -1,5 +1,6 @@
 import asyncio
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Literal, Optional
 from dotenv import find_dotenv, load_dotenv
 import os
@@ -276,7 +277,7 @@ class MoonlarkRecovery:
                     raise Exception(f"从上游获取数据库备份失败: {response.status_code}")
                     
                 # 保存备份文件
-                backup_path = os.path.join(self.config.recovery_local_backup_path, f"{local_database}_dump.sql")
+                backup_path = Path("backup.sql")
                 os.makedirs(os.path.dirname(backup_path), exist_ok=True)
                 with open(backup_path, "wb") as f:
                     f.write(response.content)
@@ -313,11 +314,11 @@ class MoonlarkRecovery:
             with open(backup_path, "r") as f:
                 process = await asyncio.create_subprocess_exec(
                     *restore_command,
-                    stdin=f,
+                    stdin=asyncio.subprocess.PIPE,
                     stdout=asyncio.subprocess.PIPE,
                     stderr=asyncio.subprocess.PIPE
                 )
-                stdout, stderr = await process.communicate()
+                stdout, stderr = await process.communicate(input=f"source {backup_path.as_posix()}".encode())
                 
             if process.returncode != 0:
                 raise Exception(f"数据库恢复失败: {stderr.decode()}")
