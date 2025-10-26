@@ -285,6 +285,7 @@ async def send_db_update_to_master(config: Config, get_master_func) -> None:
         get_master_func: 获取主节点地址的函数
     """
     master = await get_master_func()
+    logger.info("开始发送数据库更新到主节点 ...")
     if master:
         try:
             # 从 sqlalchemy_database_url 中解析数据库连接信息
