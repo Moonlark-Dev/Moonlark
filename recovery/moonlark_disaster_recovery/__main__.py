@@ -29,9 +29,18 @@ class MoonlarkRecovery:
         self.waiting_for_dispatch = False  # 标记是否正在等待调度
         self.waiting_dispatch_deadline = 0  # 等待调度的截止时间
         self.app.get("/status")(self.get_status)
-        self.app.get("/mysql/dump")(get_mysql_dump)
-        self.app.get("/mysql/user")(get_mysql_user)
-        self.app.post("/mysql/update")(update_mysql_backup)
+        self.app.get("/mysql/dump")(self.get_mysql_dump)
+        self.app.get("/mysql/user")(self.get_mysql_user)
+        self.app.post("/mysql/update")(self.update_mysql_backup)
+
+    async def get_mysql_dump(self) -> str:
+        return await get_mysql_dump(self.config)
+
+    async def get_mysql_user(self) -> dict[str, str,] | None:
+        return await get_mysql_user(self.config)
+
+    async def update_mysql_backup(self, dump: str) -> dict:
+        return await update_mysql_backup(self.config, dump, self.waiting_for_dispatch, self.waiting_dispatch_deadline)
     
 
 
