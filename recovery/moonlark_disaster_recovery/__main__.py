@@ -20,8 +20,8 @@ from fastapi import FastAPI, HTTPException
 
 async def test_connecting(url: str) -> bool:
     try:
-        async with httpx.AsyncClient() as client:
-            resp = await client.get(url)
+        async with httpx.AsyncClient(base_url=url) as client:
+            resp = await client.get("/status")
             return resp.status_code == 200
     except Exception:
         return False
