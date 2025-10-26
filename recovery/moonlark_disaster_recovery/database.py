@@ -252,7 +252,7 @@ async def init_db(config: Config) -> None:
             raise Exception(f"无法解析主服务器URL: {master_server}")
             
         master_host, master_port = master_match.groups()
-        master_port = master_port or "3306"
+        master_port =  "3306"
         
         # 配置并启动复制
         # 使用环境变量传递密码，避免特殊字符问题
