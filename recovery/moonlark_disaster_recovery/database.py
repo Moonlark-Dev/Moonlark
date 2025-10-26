@@ -315,10 +315,11 @@ async def send_db_update_to_master(config: Config, get_master_func) -> None:
             else:
                 # 发送备份到主节点
                 update_url = f"{master}/mysql/update"
-                async with httpx.AsyncClient() as client:
+                async with httpx.AsyncClient(timeout=httpx.Timeout(60.0, connect=10.0)) as client:
                     response = await client.post(
                         update_url,
-                        files={"dump": ("dump.sql", stdout.decode('utf-8'), "text/sql")}
+                        files={"dump": ("dump.sql", stdout.decode('utf-8'), "text/sql")},
+                        timeout=httpx.Timeout(60.0, read=30.0)
                     )
                     
                     if response.status_code == 200:
