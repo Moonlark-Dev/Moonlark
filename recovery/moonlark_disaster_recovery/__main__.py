@@ -278,7 +278,6 @@ class MoonlarkRecovery:
                     
                 # 保存备份文件
                 backup_path = Path("backup.sql")
-                os.makedirs(os.path.dirname(backup_path), exist_ok=True)
                 with open(backup_path, "wb") as f:
                     f.write(response.content)
                     
