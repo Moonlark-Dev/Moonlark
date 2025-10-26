@@ -4,7 +4,6 @@ from pathlib import Path
 from typing import Literal, Optional
 from dotenv import find_dotenv, load_dotenv
 import os
-import os.path
 import httpx
 import os
 import re
@@ -102,8 +101,8 @@ class MoonlarkRecovery:
                 sql_content = stdout.decode('utf-8')
                 
                 # 同时保存到本地备份文件
-                backup_path = os.path.join(self.config.recovery_local_backup_path, f"{database}_dump.sql")
-                os.makedirs(os.path.dirname(backup_path), exist_ok=True)
+                backup_path = Path(self.config.recovery_local_backup_path) / f"{database}_dump.sql"
+                os.makedirs(Path(backup_path).parent, exist_ok=True)
                 with open(backup_path, "w", encoding='utf-8') as f:
                     f.write(sql_content)
                 
@@ -146,8 +145,8 @@ class MoonlarkRecovery:
             username, password, host, port, database = self.parse_db_url(self.config.sqlalchemy_database_url)
             
             # 保存备份到本地
-            backup_path = os.path.join(self.config.recovery_local_backup_path, f"{database}_dump.sql")
-            os.makedirs(os.path.dirname(backup_path), exist_ok=True)
+            backup_path = Path(self.config.recovery_local_backup_path) / f"{database}_dump.sql"
+            os.makedirs(Path(backup_path).parent, exist_ok=True)
             with open(backup_path, "w", encoding='utf-8') as f:
                 f.write(dump)
                 
@@ -223,8 +222,8 @@ class MoonlarkRecovery:
             
             # 在本地备份文件夹运行 git pull
             try:
-                original_cwd = os.getcwd()  # 保存当前工作目录
-                os.chdir(self.config.recovery_local_backup_path)
+                original_cwd = Path.cwd()  # 保存当前工作目录
+                os.chdir(Path(self.config.recovery_local_backup_path))
                 process = await asyncio.create_subprocess_exec(
                     "git", "pull",
                     stdout=asyncio.subprocess.PIPE,
@@ -241,7 +240,7 @@ class MoonlarkRecovery:
             finally:
                 # 确保恢复原来的工作目录
                 try:
-                    os.chdir(original_cwd)
+                    os.chdir(Path(original_cwd))
                 except:
                     pass
                 
@@ -427,7 +426,6 @@ class MoonlarkRecovery:
             try:
                 # 从 sqlalchemy_database_url 中解析数据库连接信息
                 username, password, host, port, database = self.parse_db_url(self.config.sqlalchemy_database_url)
-                
                 # 执行 mysqldump 命令获取数据库备份
                 # 使用环境变量传递密码，避免特殊字符问题
                 import os
@@ -471,7 +469,7 @@ class MoonlarkRecovery:
     async def commit_and_push_backup(self):
         """在本地备份文件夹执行 git commit 和 git push"""
         try:
-            os.chdir(self.config.recovery_local_backup_path)
+            os.chdir(Path(self.config.recovery_local_backup_path))
             # 添加所有更改
             process = await asyncio.create_subprocess_exec(
                 "git", "add", ".",
