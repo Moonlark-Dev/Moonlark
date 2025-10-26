@@ -254,8 +254,6 @@ async def init_db(config: Config) -> None:
         master_host, master_port = master_match.groups()
         master_port =  "3306"
         
-        # 配置并启动复制
-        # 使用本地数据库用户配置复制，但指定复制用户为moonlark_repl
         os.environ["MYSQL_PWD"] = local_password
         configure_replication_command = [
             "mysql",
@@ -263,6 +261,7 @@ async def init_db(config: Config) -> None:
             f"-P{local_port}",
             f"-u{local_username}",
             "--skip-ssl",
+            local_database,
             "-e", f"STOP SLAVE; RESET SLAVE ALL; CHANGE MASTER TO MASTER_HOST='{master_host}', MASTER_PORT={master_port}, MASTER_USER='{repl_user}', MASTER_PASSWORD='{repl_password}', MASTER_SSL=0, MASTER_SSL_VERIFY_SERVER_CERT=0, GET_MASTER_PUBLIC_KEY=1; START SLAVE; SET GLOBAL read_only = ON;"
         ]
         
