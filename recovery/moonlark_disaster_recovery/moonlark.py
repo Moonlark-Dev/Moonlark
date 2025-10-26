@@ -80,6 +80,12 @@ async def launch_moonlark(config, set_state_func):
             original_cwd = Path.cwd()  # 保存当前工作目录
             os.chdir(Path(config.recovery_local_backup_path))
             process = await asyncio.create_subprocess_exec(
+                "git", "add", "-A", 
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            stdout, stderr = await process.communicate()
+            process = await asyncio.create_subprocess_exec(
                 "git", "pull",
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE
