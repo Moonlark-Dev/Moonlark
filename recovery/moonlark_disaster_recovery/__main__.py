@@ -12,7 +12,7 @@ import uvicorn
 import datetime
 from .config import Config
 from nb_cli.cli.commands import run as nb_cli_run
-from .database import get_mysql_dump, get_mysql_user, update_mysql_backup, init_db, send_db_update_to_master, parse_db_url
+from .database import get_mysql_dump, get_mysql_user, update_mysql_backup, init_db, send_db_update_to_master, parse_db_url, receive_db_chunk, get_received_chunks_status, complete_db_update
 from .git_ops import commit_and_push_backup
 from .moonlark import launch_moonlark
 from .utils import test_connecting
@@ -33,6 +33,9 @@ class MoonlarkRecovery:
         self.app.get("/mysql/dump")(self.get_mysql_dump)
         self.app.get("/mysql/user")(self.get_mysql_user)
         self.app.post("/mysql/update")(self.update_mysql_backup)
+        self.app.post("/mysql/update_chunk")(self.update_mysql_chunk)
+        self.app.get("/mysql/chunk_status")(self.get_chunk_status)
+        self.app.post("/mysql/update_complete")(self.complete_mysql_update)
 
     async def get_mysql_dump(self) -> PlainTextResponse:
         return await get_mysql_dump(self.config)
@@ -42,6 +45,15 @@ class MoonlarkRecovery:
 
     async def update_mysql_backup(self, dump: bytes = File()) -> dict:
         return await update_mysql_backup(self.config, dump.decode(), self.waiting_for_dispatch, self.waiting_dispatch_deadline)
+    
+    async def update_mysql_chunk(self, chunk_data: dict) -> dict:
+        return await receive_db_chunk(self.config, chunk_data, self.waiting_for_dispatch, self.waiting_dispatch_deadline)
+    
+    async def get_chunk_status(self) -> dict:
+        return await get_received_chunks_status()
+    
+    async def complete_mysql_update(self, total_chunks: int) -> dict:
+        return await complete_db_update(self.config, total_chunks, self.waiting_for_dispatch, self.waiting_dispatch_deadline)
     
 
 
