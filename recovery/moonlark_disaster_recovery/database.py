@@ -63,8 +63,6 @@ async def get_mysql_dump(config: Config) -> str:
             f"-P{port}",
             f"-u{username}",
             "--single-transaction",
-            "--routines",
-            "--triggers",
             database
         ]
         
