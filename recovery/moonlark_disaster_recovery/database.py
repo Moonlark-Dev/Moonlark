@@ -316,17 +316,43 @@ async def send_db_update_to_master(config: Config, get_master_func) -> None:
             else:
                 # 发送备份到主节点
                 update_url = f"{master}/mysql/update"
-                async with httpx.AsyncClient(timeout=httpx.Timeout(60.0, connect=10.0)) as client:
-                    response = await client.post(
-                        update_url,
-                        files={"dump": ("dump.sql", stdout.decode('utf-8'), "text/sql")},
-                        timeout=httpx.Timeout(60.0, read=30.0)
-                    )
-                    
-                    if response.status_code == 200:
-                        logger.info("成功向主节点发送数据库更新")
+                
+                # 创建具有适当超时设置的HTTP客户端
+                timeout = httpx.Timeout(60.0, connect=10.0, read=30.0, write=30.0)
+                async with httpx.AsyncClient(timeout=timeout) as client:
+                    # 实现重试机制以提高可靠性
+                    max_retries = 3
+                    for attempt in range(max_retries):
+                        try:
+                            response = await client.post(
+                                update_url,
+                                files={"dump": ("dump.sql", stdout.decode('utf-8'), "text/sql")}
+                            )
+                            
+                            if response.status_code == 200:
+                                logger.info("成功向主节点发送数据库更新")
+                                break  # 成功则退出重试循环
+                            else:
+                                logger.error(f"向主节点发送数据库更新失败: {response.status_code} - {response.text}")
+                                if attempt < max_retries - 1:
+                                    logger.info(f"将在5秒后进行第{attempt + 2}次重试...")
+                                    await asyncio.sleep(5)
+                        except httpx.ReadError as e:
+                            logger.error(f"网络读取错误 (尝试 {attempt + 1}/{max_retries}): {str(e)}")
+                            if attempt < max_retries - 1:
+                                logger.info(f"将在5秒后进行第{attempt + 2}次重试...")
+                                await asyncio.sleep(5)
+                        except httpx.ConnectError as e:
+                            logger.error(f"连接错误 (尝试 {attempt + 1}/{max_retries}): {str(e)}")
+                            if attempt < max_retries - 1:
+                                logger.info(f"将在5秒后进行第{attempt + 2}次重试...")
+                                await asyncio.sleep(5)
+                        except Exception as e:
+                            logger.error(f"发送数据库更新时发生未预期的错误: {traceback.format_exc()}")
+                            break  # 对于未知错误，不进行重试
+                        
                     else:
-                        logger.error(f"向主节点发送数据库更新失败: {response.status_code} - {response.text}")
+                        logger.error(f"经过{max_retries}次尝试后仍无法向主节点发送数据库更新")
         except Exception as e:
             logger.error(f"向主节点发送数据库更新时出错: {traceback.format_exc()}")
 
