@@ -142,12 +142,16 @@ async def update_mysql_backup(config: Config, dump: str, waiting_for_dispatch: b
         username, password, host, port, database = parse_db_url(config.sqlalchemy_database_url)
         
         # 保存备份到本地
-        backup_path = Path(config.recovery_local_backup_path) / f"{database}_dump.sql"
-        os.makedirs(Path(backup_path).parent, exist_ok=True)
+        backup_path = Path("dump.sql")
         with open(backup_path, "w", encoding='utf-8') as f:
             f.write(dump)
             
         logger.info(f"已接收并保存数据库更新: {backup_path}")
+
+        try:
+            local_username, local_password, local_host, local_port, local_database = parse_db_url(config.sqlalchemy_database_url)
+        except ValueError as e:
+            raise Exception(f"解析数据库连接信息失败: {traceback.format_exc()}")
         
         return {"status": "success", "message": "数据库更新已成功保存"}
     except Exception as e:
@@ -177,6 +181,7 @@ async def init_db(config: Config) -> None:
     except ValueError as e:
         raise Exception(f"解析数据库连接信息失败: {traceback.format_exc()}")
     
+    os.environ["MYSQL_PWD"] = local_password
     try:
         # 从上游获取最新的数据库备份
         backup_url = f"{master_server}/mysql/dump"
@@ -184,14 +189,26 @@ async def init_db(config: Config) -> None:
             response = await client.get(backup_url)
             if response.status_code != 200:
                 raise Exception(f"从上游获取数据库备份失败: {response.status_code}")
-                
-            # 保存备份文件
-            backup_path = Path("backup.sql")
-            with open(backup_path, "wb") as f:
-                f.write(response.content)
-                
-            logger.info(f"已从上游获取数据库备份: {backup_path}")
-            
+            buf = response.content
+            logger.info(f"已从上游获取数据库备份 ({len(buf)} bytes)")
+        
+
+        restore_command = [
+            "mysql",
+            f"-h{local_host}",
+            f"-P{local_port}",
+            f"-u{local_username}",
+            local_database
+        ]
+        
+        process = await asyncio.create_subprocess_exec(
+            *restore_command,
+            stdin=asyncio.subprocess.PIPE,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        stdout, stderr = await process.communicate(input=buf)
+
         # 从上游获取复制用户信息
         user_url = f"{master_server}/mysql/user"
         async with httpx.AsyncClient() as client:
@@ -207,27 +224,7 @@ async def init_db(config: Config) -> None:
                 raise Exception("上游返回的复制用户信息不完整")
                 
             logger.info(f"已获取复制用户信息: {repl_user}")
-            
-        # 恢复数据库
-        # 使用环境变量传递密码，避免特殊字符问题
-        os.environ["MYSQL_PWD"] = local_password
-        restore_command = [
-            "mysql",
-            f"-h{local_host}",
-            f"-P{local_port}",
-            f"-u{local_username}",
-            local_database
-        ]
         
-        with open(backup_path, "r") as f:
-            process = await asyncio.create_subprocess_exec(
-                *restore_command,
-                stdin=f,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
-            )
-            stdout, stderr = await process.communicate()
-        backup_path.unlink()
             
         if process.returncode != 0:
             raise Exception(f"数据库恢复失败: {stderr.decode()}")
@@ -254,7 +251,6 @@ async def init_db(config: Config) -> None:
         master_host, master_port = master_match.groups()
         master_port =  "3306"
         
-        os.environ["MYSQL_PWD"] = local_password
         configure_replication_command = [
             "mysql",
             f"-h{local_host}",

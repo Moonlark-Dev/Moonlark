@@ -19,7 +19,7 @@ from .utils import test_connecting
 
 from nb_cli.cli import run_sync
 from nonebot.log import logger
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, File, HTTPException
 
 class MoonlarkRecovery:
     def __init__(self, config: Config) -> None:
@@ -40,8 +40,8 @@ class MoonlarkRecovery:
     async def get_mysql_user(self) -> dict[str, str,] | None:
         return await get_mysql_user(self.config)
 
-    async def update_mysql_backup(self, dump: str) -> dict:
-        return await update_mysql_backup(self.config, dump, self.waiting_for_dispatch, self.waiting_dispatch_deadline)
+    async def update_mysql_backup(self, dump: bytes = File()) -> dict:
+        return await update_mysql_backup(self.config, dump.decode(), self.waiting_for_dispatch, self.waiting_dispatch_deadline)
     
 
 
