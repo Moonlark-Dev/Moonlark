@@ -65,17 +65,44 @@ class MoonlarkRecovery:
 
 
 
+    async def wait_for_slave_updates(self) -> None:
+        """等待从节点上传数据完成或超时"""
+        self.waiting_for_dispatch = True
+        start_time = asyncio.get_event_loop().time()
+        initial_deadline = start_time + 20  # 初始20秒等待
+        max_deadline = start_time + 5 * 60  # 最长5分钟
+        
+        logger.info("作为主节点，等待20秒以便其他节点上报数据库初始化数据")
+        
+        while asyncio.get_event_loop().time() < max_deadline:
+            # 检查是否在初始20秒内
+            current_time = asyncio.get_event_loop().time()
+            if current_time < initial_deadline:
+                # 在初始20秒内，直接等待剩余时间
+                remaining_time = initial_deadline - current_time
+                await asyncio.sleep(min(remaining_time, 1.0))  # 每秒检查一次
+            else:
+                # 超过初始20秒，检查是否有上传活动
+                chunk_status = await get_received_chunks_status()
+                received_chunks = chunk_status.get("received_chunks", [])
+                total_chunks = chunk_status.get("total_chunks", 0)
+                
+                # 如果没有接收到任何块，或者已经接收完所有块，则退出等待
+                if len(received_chunks) == 0 or len(received_chunks) >= total_chunks:
+                    break
+                
+                # 如果还有块在传输中，继续等待
+                logger.info(f"检测到从节点正在上传数据: {len(received_chunks)}/{total_chunks} 块已接收")
+                await asyncio.sleep(1.0)  # 每秒检查一次
+        
+        self.waiting_for_dispatch = False
+        logger.info("等待从节点上传数据完成或超时，准备启动服务")
+
     async def loop(self) -> None:
         if await self.is_master():
-            self.waiting_for_dispatch = True
-            self.waiting_dispatch_deadline = asyncio.get_event_loop().time() + 20
             self.set_state("WAITING_DISPATCH")
-            logger.info("作为主节点，等待20秒以便其他节点上报数据库初始化数据")
-            
-            # 等待20秒
-            await asyncio.sleep(20)
-            self.waiting_for_dispatch = False
-            logger.info("等待调度时间结束，准备启动服务")
+            await self.wait_for_slave_updates()
+            self.set_state("READY")
         if not await self.is_master():
             try:
                 await init_db(self.config)
