@@ -86,7 +86,7 @@ async def get_mysql_dump(config: Config) -> PlainTextResponse:
         # with open(backup_path, "w", encoding='utf-8') as f:
         #     f.write(sql_content)
         
-        return PlainTextResponse(contnet=sql_content)
+        return PlainTextResponse(sql_content)
     except ValueError as e:
         raise HTTPException(status_code=500, detail=str(e))
     except Exception as e:
