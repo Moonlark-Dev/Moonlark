@@ -759,14 +759,14 @@ rich = "*"
 
 [[package]]
 name = "cookit"
-version = "0.13.2"
+version = "0.13.3"
 description = "A toolkit for self use."
 optional = false
 python-versions = "<4.0,>=3.10"
 groups = ["main"]
 files = [
-    {file = "cookit-0.13.2-py3-none-any.whl", hash = "sha256:4d6a3871e2e4743b9c3ea1834ac7c48380b2f5f10ce86c9ff0d2bfbf727ad895"},
-    {file = "cookit-0.13.2.tar.gz", hash = "sha256:eaea5c9ee3aa69e819ae48c508f075e07124d7449abdc08d081e25e7b96a83b9"},
+    {file = "cookit-0.13.3-py3-none-any.whl", hash = "sha256:5c30042c2dc2dcac7db5a9faa711a7f7200260a400ea20652327b0d99446d61c"},
+    {file = "cookit-0.13.3.tar.gz", hash = "sha256:5e34bbd24f9ec5cdb89f68bdcbba0f871742e119ce44ee49605363d02b806b3b"},
 ]
 
 [package.dependencies]
@@ -2858,19 +2858,19 @@ resolved_reference = "b9f843fe913e5a1c8f858a43402993f286604969"
 
 [[package]]
 name = "nonebot-plugin-picstatus"
-version = "2.2.1.post2"
+version = "2.2.2"
 description = "A NoneBot2 plugin generates a picture which shows the status of current device"
 optional = false
 python-versions = "<4.0,>=3.10"
 groups = ["main"]
 files = [
-    {file = "nonebot_plugin_picstatus-2.2.1.post2-py3-none-any.whl", hash = "sha256:b231ed1f595aa8f36cf719d47e0e798e02c60bf9c309456d0e51be8774e0efc8"},
-    {file = "nonebot_plugin_picstatus-2.2.1.post2.tar.gz", hash = "sha256:add061a5556a74f1a4efd31f10cb827b23420a73a0540cf3fc9658c5e8b12da5"},
+    {file = "nonebot_plugin_picstatus-2.2.2-py3-none-any.whl", hash = "sha256:19dbaa6e1e0b3e0b781074b6c081c20ee24ab5b158b82139bcc695cb13a710d3"},
+    {file = "nonebot_plugin_picstatus-2.2.2.tar.gz", hash = "sha256:1f41d16ef959dcc3772e41a2f007e395f8be1c31bc73cc4bd4f5f6faac176f54"},
 ]
 
 [package.dependencies]
 anyio = ">=4.10.0"
-cookit = {version = ">=0.13.2", extras = ["jinja", "loguru", "nonebot-localstore", "playwright", "pydantic"]}
+cookit = {version = ">=0.13.3", extras = ["jinja", "loguru", "nonebot-localstore", "playwright", "pydantic"]}
 httpx = ">=0.28.1"
 jinja2 = ">=3.1.6"
 nonebot-plugin-alconna = ">=0.59.4"
