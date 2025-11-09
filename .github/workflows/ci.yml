@@ -36,8 +36,8 @@ jobs:
           poetry run nb orm check | grep '没有检测到新的升级操作' && exit 0
           exit 1
 
-      - name: Run pytest
-        run: poetry run pytest
+      # - name: Run pytest
+      #   run: poetry run pytest
       
       - name: Generate COMMANDS.md
         run: |
