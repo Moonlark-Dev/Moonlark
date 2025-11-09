@@ -340,7 +340,7 @@ Moonlark 投票
 
 ### 用法
 - `/ghot (当前群聊热度分数)`
-- `/ghot history (近三天分数历史)`
+- `/ghot history [-l] (最近的天分数历史)`
 ## `online-timer`: 在线时间段
 
 查询 Moonlark 记录的群友在线时间段
