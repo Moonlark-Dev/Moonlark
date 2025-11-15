@@ -55,7 +55,7 @@ class NoteManager:
             context_id=self.context_id,
             content=content,
             keywords=keywords,
-            created_time=current_time,
+            created_time=current_time.timestamp(),
             expire_time=expire_time,
             hash_value=hash(f"{self.context_id}:{content}:{keywords}:{current_time}"),
         )

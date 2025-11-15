@@ -169,7 +169,7 @@ class MessageProcessor:
         await self.process_messages(msg_dict)
         self.session.cached_messages.append(msg_dict)
         self.interrupter.record_message()
-        if await self.interrupter.should_interrupt(text, user_id):
+        if (not mentioned) and await self.interrupter.should_interrupt(text, user_id):
             # 如果需要阻断，直接返回
             return
         if (mentioned or not self.session.message_queue) and not self.blocked:
@@ -231,6 +231,9 @@ class MessageProcessor:
             await self.generate_reply()
             self.blocked = True  # 再次收到消息后才会解锁
 
+    async def leave_for_a_while(self) -> None:
+        await self.session.mute()
+
     async def generate_reply(self, force_reply: bool = False) -> None:
         # 如果在冷却期或消息为空，直接返回
         if self.cold_until > datetime.now():
@@ -257,6 +260,27 @@ class MessageProcessor:
             self.openai_messages,
             False,
             functions=[
+                AsyncFunction(
+                    func=self.send_message,
+                    description="作为 Moonlark 发送一条消息到群聊中。",
+                    parameters={
+                        "message_content": FunctionParameter(
+                            type="string",
+                            description="要发送的消息内容，可以使用 @群友的昵称 来提及某位群友。",
+                            required=True,
+                        ),
+                        "reply_message_id": FunctionParameter(
+                            type="string",
+                            description="要回复的消息的**消息 ID**，不指定则不会对有关消息进行引用。",
+                            required=False,
+                        ),
+                    },
+                ),
+                AsyncFunction(
+                    func=self.leave_for_a_while,
+                    description=("离开当前群聊 15 分钟。\n" "**何时必须调用**: Moonlark 被要求停止发言。"),
+                    parameters={},
+                ),
                 AsyncFunction(
                     func=get_fetcher(self.session.bot),
                     description=(
@@ -366,7 +390,12 @@ class MessageProcessor:
                         ),
                         "keywords": FunctionParameter(
                             type="string",
-                            description="笔记的关键词，用于搜索。如果未指定，则默认为空。",
+                            description=(
+                                "笔记的关键词，每条笔记只能有 **一个** 关键词，用于索引。\n"
+                                "若在笔记过期前，消息列表中出现被指定的关键词，被添加的笔记会出现在“附加信息”中。\n"
+                                "关键词可以匹配消息的内容、图片的描述或发送者的昵称。\n"
+                                "若不指定关键词，笔记会一直展示在“附加信息”中。"
+                            ),
                             required=False,
                         ),
                     },
@@ -376,31 +405,14 @@ class MessageProcessor:
             pre_function_call=self.send_function_call_feedback,
             timeout_per_request=60,
             timeout_response=Choice(
-                finish_reason="stop", message=ChatCompletionMessage(role="assistant", content=".skip"), index=0
+                finish_reason="stop", message=ChatCompletionMessage(role="assistant", content=""), index=0
             ),
         )
-        reply_texts = []
         async for message in fetcher.fetch_message_stream():
-            self.message_count += 1
-            await self.send_reply_text(message)
-            reply_texts.append(message)
+            logger.info(message)
         self.openai_messages = fetcher.get_messages()
         if datetime.now() < self.interrupter.sleep_end_time:
             self.interrupter.sleep_end_time = datetime.min
-        if m := re.search(r"{((?!REPLY:\d+).*)}", "\n\n".join(reply_texts)):
-            incorrect_text = m[0]
-            self.append_user_message(
-                f"[{datetime.now().strftime('%H:%M:%S')}]: "
-                "检测到无法被解析的被大括号包括的内容，请检查是否使用了错误的格式，如果这是一个预期的结果，请忽略此警告。"
-                f"(出现警告的内容为: {incorrect_text}，它在发送时将不会被解析)"
-            )
-
-    def get_reply_message_id(self, text: str) -> tuple[str, Optional[str]]:
-        reply_message_id = None
-        if m := re.search(r"\{REPLY:\d+}", text):
-            reply_message_id = m[0][7:-1]
-            text = text.replace(m[0], "")
-        return text, reply_message_id
 
     async def send_function_call_feedback(
         self, call_id: str, name: str, param: dict[str, Any]
@@ -420,23 +432,11 @@ class MessageProcessor:
                 ).send(target=self.session.target, bot=self.session.bot)
         return call_id, name, param
 
-    async def send_text(self, reply_text: str) -> None:
-        reply_text, reply_message_id = self.get_reply_message_id(reply_text)
-        await parse_reply(await self.session.format_message(reply_text), reply_message_id).send(
-            target=self.session.target, bot=self.session.bot
-        )
-
-    async def send_reply_text(self, reply_text: str) -> None:
-        for msg in splitter.split_message(reply_text):
-            for line in msg.splitlines():
-                if ".skip" in line:
-                    return
-                elif ".leave" in line:
-                    await self.session.mute()
-                    return
-            if msg:
-                await self.send_text(msg)
-        # 发送回复后重置累计长度
+    async def send_message(self, message_content: str, reply_message_id: str | None = None) -> None:
+        message = await self.session.format_message(message_content)
+        if reply_message_id:
+            message = message.reply(reply_message_id)
+        await message.send(target=self.session.target, bot=self.session.bot)
         self.session.accumulated_text_length = 0
 
     def append_user_message(self, msg_str: str) -> None:
