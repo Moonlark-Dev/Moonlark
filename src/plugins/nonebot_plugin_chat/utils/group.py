@@ -15,21 +15,18 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
-from typing import Optional, cast
-from nonebot import on_message
 from nonebot.adapters import Bot
 from nonebot.adapters import Event
 from nonebot.typing import T_State
 from nonebot_plugin_userinfo import get_user_info
 from nonebot_plugin_alconna import Image, UniMessage, Text, At, Reply, Reference
-from nonebot_plugin_orm import async_scoped_session
+from nonebot_plugin_orm import get_session
 from nonebot_plugin_larkuser import get_user
 from nonebot_plugin_larkutils import get_group_id, get_user_id
 from nonebot.adapters import Message
 
 from nonebot.adapters.onebot.v11 import Bot as OneBotV11Bot
 
-# from nonebot.adapters.onebot.v11 import MessageSegment as OneBotV11MessageSegment
 
 from ..models import ChatGroup
 from .image import get_image_summary
@@ -40,11 +37,12 @@ async def group_message(event: Event) -> bool:
 
 
 async def enabled_group(
-    event: Event, session: async_scoped_session, group_id: str = get_group_id(), user_id: str = get_user_id()
+    event: Event, group_id: str = get_group_id(), user_id: str = get_user_id()
 ) -> bool:
-    return bool(
-        (await group_message(event)) and (g := await session.get(ChatGroup, {"group_id": group_id})) and g.enabled
-    )
+    async with get_session() as session:
+        return bool(
+            (await group_message(event)) and (g := await session.get(ChatGroup, {"group_id": group_id})) and g.enabled
+        )
 
 
 async def parse_message_to_string(message: UniMessage, event: Event, bot: Bot, state: T_State) -> str:
