@@ -36,9 +36,7 @@ async def group_message(event: Event) -> bool:
     return event.get_user_id() != event.get_session_id()
 
 
-async def enabled_group(
-    event: Event, group_id: str = get_group_id(), user_id: str = get_user_id()
-) -> bool:
+async def enabled_group(event: Event, group_id: str = get_group_id(), user_id: str = get_user_id()) -> bool:
     async with get_session() as session:
         return bool(
             (await group_message(event)) and (g := await session.get(ChatGroup, {"group_id": group_id})) and g.enabled
