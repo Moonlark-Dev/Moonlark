@@ -8,7 +8,7 @@
 ![GitHub repo size](https://img.shields.io/github/repo-size/Moonlark-Dev/Moonlark)
 [![pre-commit.ci status](https://results.pre-commit.ci/badge/github/Moonlark-Dev/Moonlark/main.svg)](https://results.pre-commit.ci/latest/github/Moonlark-Dev/Moonlark/main)
 
-[Moonlark Wiki](https://moonlark-wiki.itcdt.top/) ·
+[Wiki (维护中)](https://moonlark-wiki.itcdt.top/) ·
 [Crowdin](https://crowdin.com/project/moonlark) ·
 [English](README_eng.md) ·
 [繁體](README_zho.md)
