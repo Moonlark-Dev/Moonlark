@@ -267,22 +267,19 @@ class MessageProcessor:
                         "message_content": FunctionParameter(
                             type="string",
                             description="要发送的消息内容，可以使用 @群友的昵称 来提及某位群友。",
-                            required=True
+                            required=True,
                         ),
                         "reply_message_id": FunctionParameter(
                             type="string",
                             description="要回复的消息的**消息 ID**，不指定则不会对有关消息进行引用。",
-                            required=False
-                        )
-                    }
+                            required=False,
+                        ),
+                    },
                 ),
                 AsyncFunction(
                     func=self.leave_for_a_while,
-                    description=(
-                        "离开当前群聊 15 分钟。\n"
-                        "**何时必须调用**: Moonlark 被要求停止发言。"
-                    ),
-                    parameters={}
+                    description=("离开当前群聊 15 分钟。\n" "**何时必须调用**: Moonlark 被要求停止发言。"),
+                    parameters={},
                 ),
                 AsyncFunction(
                     func=get_fetcher(self.session.bot),
@@ -416,8 +413,6 @@ class MessageProcessor:
         self.openai_messages = fetcher.get_messages()
         if datetime.now() < self.interrupter.sleep_end_time:
             self.interrupter.sleep_end_time = datetime.min
-        
-
 
     async def send_function_call_feedback(
         self, call_id: str, name: str, param: dict[str, Any]
@@ -441,11 +436,8 @@ class MessageProcessor:
         message = await self.session.format_message(message_content)
         if reply_message_id:
             message = message.reply(reply_message_id)
-        await message.send(
-            target=self.session.target, bot=self.session.bot
-        )
+        await message.send(target=self.session.target, bot=self.session.bot)
         self.session.accumulated_text_length = 0
-        
 
     def append_user_message(self, msg_str: str) -> None:
         if len(self.openai_messages) <= 0:
