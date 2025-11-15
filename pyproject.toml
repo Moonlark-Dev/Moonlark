@@ -22,7 +22,6 @@ plugins = [
     "nonebot_plugin_waiter",
     "nonebot_plugin_bilichat",
     "nonebot_plugin_picmcstat",
-    "nonebot_plugin_fakepic",
 
     # Custom plugins
     "nonebot_plugin_access",
