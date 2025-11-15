@@ -121,7 +121,6 @@ def get_role(message: OpenAIMessage) -> str:
     return role
 
 
-
 class MessageProcessor:
 
     def __init__(self, session: "GroupSession"):
