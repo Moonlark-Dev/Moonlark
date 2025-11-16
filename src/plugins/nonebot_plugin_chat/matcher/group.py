@@ -471,9 +471,9 @@ class MessageProcessor:
         for msg in self.openai_messages:
             if isinstance(msg, dict):
                 if "content" in msg and msg["role"] == "user":
-                    l.append(msg["content"])
+                    l.append(str(msg["content"]))
             elif hasattr(msg, "content"):
-                l.append(msg.content)
+                l.append(str(msg.content))
         return l
 
     async def generate_system_prompt(self) -> OpenAIMessage:
