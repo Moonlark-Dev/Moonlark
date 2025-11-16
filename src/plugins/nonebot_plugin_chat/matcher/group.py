@@ -121,12 +121,6 @@ def get_role(message: OpenAIMessage) -> str:
     return role
 
 
-def parse_reply(message: UniMessage, reply_message_id: Optional[str] = None) -> UniMessage:
-    if reply_message_id:
-        return message.reply(reply_message_id)
-    return message
-
-
 class MessageProcessor:
 
     def __init__(self, session: "GroupSession"):
@@ -409,7 +403,7 @@ class MessageProcessor:
             ),
         )
         async for message in fetcher.fetch_message_stream():
-            logger.info(message)
+            logger.info(f"Moonlark 说: {message}")
         self.openai_messages = fetcher.get_messages()
         if datetime.now() < self.interrupter.sleep_end_time:
             self.interrupter.sleep_end_time = datetime.min
