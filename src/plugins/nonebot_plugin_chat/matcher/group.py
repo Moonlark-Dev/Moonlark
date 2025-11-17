@@ -256,16 +256,16 @@ class MessageProcessor:
             functions=[
                 AsyncFunction(
                     func=self.send_message,
-                    description="作为 Moonlark 发送一条消息到群聊中。",
+                    description="作为 Moonlark 发送一条消息到群聊中。参数中所有的内容都会被格式化为一条消息发送，如果需要发送多条消息需要多次调用而不是简单的换行。",
                     parameters={
                         "message_content": FunctionParameter(
                             type="string",
-                            description="要发送的消息内容，可以使用 @群友的昵称 来提及某位群友。",
+                            description="要发送的消息内容，可以使用 @群友的昵称 来提及某位群友。需要提到某位群友时最好使用提及格式而不是直接的复述群友的昵称。",
                             required=True,
                         ),
                         "reply_message_id": FunctionParameter(
                             type="string",
-                            description="要回复的消息的**消息 ID**，不指定则不会对有关消息进行引用。",
+                            description="要回复的消息的**消息 ID**，不指定则不会对有关消息进行引用。当你对一条特定的消息进行回复时需要通过指定本参数引用消息。",
                             required=False,
                         ),
                     },
