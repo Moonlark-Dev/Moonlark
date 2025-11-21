@@ -120,6 +120,7 @@ def get_role(message: OpenAIMessage) -> str:
         role = message.role
     return role
 
+
 class MessageQueue:
 
     def __init__(self, processor: "MessageProcessor", max_message_count: int = 10) -> None:
@@ -127,16 +128,23 @@ class MessageQueue:
         self.max_message_count = max_message_count
         self.messages: list[OpenAIMessage] = []
         self.fetcher_lock = asyncio.Lock()
-    
+
     def merge_user_messages(self) -> list[OpenAIMessage]:
         messages = []
         for message in self.messages:
-            if isinstance(message, dict) and message["role"] == "user" and len(messages) >= 1 and messages[-1]["role"] == "user" and isinstance(message["content"], str) and isinstance(messages[-1]["content"], str):
+            if (
+                isinstance(message, dict)
+                and message["role"] == "user"
+                and len(messages) >= 1
+                and messages[-1]["role"] == "user"
+                and isinstance(message["content"], str)
+                and isinstance(messages[-1]["content"], str)
+            ):
                 messages[-1]["content"] += "\n" + message["content"]
             else:
                 messages.append(message)
         return messages
-    
+
     def clean_special_message(self) -> None:
         while True:
             role = get_role(self.messages[0])
@@ -146,7 +154,7 @@ class MessageQueue:
 
     async def get_messages(self) -> list[OpenAIMessage]:
         self.clean_special_message()
-        self.messages = self.messages[- self.max_message_count :]
+        self.messages = self.messages[-self.max_message_count :]
         messages = self.merge_user_messages()
         messages.insert(0, await self.processor.generate_system_prompt())
         return messages
@@ -161,7 +169,7 @@ class MessageQueue:
             False,
             functions=self.processor.functions,
             identify="Chat",
-            pre_function_call=self.processor.send_function_call_feedback
+            pre_function_call=self.processor.send_function_call_feedback,
         )
         self.messages.clear()
         async for message in fetcher.fetch_message_stream():
@@ -176,8 +184,6 @@ class MessageQueue:
         return get_role(self.messages[-1]) == "user"
 
 
-
-
 class MessageProcessor:
 
     def __init__(self, session: "GroupSession"):
@@ -188,7 +194,7 @@ class MessageProcessor:
         self.interrupter = Interrupter(session)
         self.cold_until = datetime.now()
         self.blocked = False
-        self.functions = functions=[
+        self.functions = functions = [
             AsyncFunction(
                 func=self.send_message,
                 description="作为 Moonlark 发送一条消息到群聊中。",
@@ -366,8 +372,6 @@ class MessageProcessor:
             asyncio.create_task(self.generate_reply(force_reply=mentioned))
             self.cold_until = datetime.now() + timedelta(seconds=5)
 
-
-
     async def handle_group_cold(self, time_d: timedelta) -> None:
         min_str = time_d.total_seconds() // 60
         if len(self.openai_messages.messages) > 0:
@@ -445,7 +449,6 @@ class MessageProcessor:
                     cleaned = re.sub(r"\s+", " ", cleaned).strip()
                     self.session.accumulated_text_length += len(cleaned)
                 logger.debug(f"Accumulated text length: {self.session.accumulated_text_length}")
-                
 
     def get_message_content_list(self) -> list[str]:
         l = []
