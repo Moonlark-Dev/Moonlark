@@ -166,7 +166,7 @@ class MessageQueue:
 
     async def _fetch_reply(self) -> None:
         fetcher = MessageFetcher(
-            self.merge_user_messages(),
+            await self.get_messages(),
             False,
             functions=self.processor.functions,
             identify="Chat",
@@ -741,6 +741,7 @@ async def _(
                 await lang.send("command.not_inited", user_id)
             else:
                 await lang.send("command.disabled", user_id)
+        
         case "mute":
             if group_id in groups:
                 await lang.send("command.mute", user_id)
