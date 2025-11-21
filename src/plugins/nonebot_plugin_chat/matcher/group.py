@@ -166,7 +166,7 @@ class MessageQueue:
 
     async def _fetch_reply(self) -> None:
         fetcher = MessageFetcher(
-            self.merge_user_messages(),
+            await self.get_messages(),
             False,
             functions=self.processor.functions,
             identify="Chat",
@@ -371,7 +371,6 @@ class MessageProcessor:
             return
         if (mentioned or not self.session.message_queue) and not self.blocked:
             asyncio.create_task(self.generate_reply(force_reply=mentioned))
-            self.cold_until = datetime.now() + timedelta(seconds=5)
 
     async def handle_group_cold(self, time_d: timedelta) -> None:
         min_str = time_d.total_seconds() // 60
@@ -392,6 +391,7 @@ class MessageProcessor:
             return
         if len(self.openai_messages.messages) <= 0 or not self.openai_messages.is_last_message_from_user():
             return
+        self.cold_until = datetime.now() + timedelta(seconds=5)
 
         # 检查是否应该触发回复
         if not force_reply:
@@ -740,6 +740,7 @@ async def _(
                 await lang.send("command.not_inited", user_id)
             else:
                 await lang.send("command.disabled", user_id)
+        
         case "mute":
             if group_id in groups:
                 await lang.send("command.mute", user_id)
