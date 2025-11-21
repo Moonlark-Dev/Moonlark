@@ -371,7 +371,6 @@ class MessageProcessor:
             return
         if (mentioned or not self.session.message_queue) and not self.blocked:
             asyncio.create_task(self.generate_reply(force_reply=mentioned))
-            
 
     async def handle_group_cold(self, time_d: timedelta) -> None:
         min_str = time_d.total_seconds() // 60
