@@ -121,17 +121,221 @@ def get_role(message: OpenAIMessage) -> str:
     return role
 
 
+class MessageQueue:
+
+    def __init__(self, processor: "MessageProcessor", max_message_count: int = 10) -> None:
+        self.processor = processor
+        self.max_message_count = max_message_count
+        self.messages: list[OpenAIMessage] = []
+        self.fetcher_lock = asyncio.Lock()
+
+    def merge_user_messages(self) -> list[OpenAIMessage]:
+        messages = []
+        for message in self.messages:
+            if (
+                isinstance(message, dict)
+                and message["role"] == "user"
+                and len(messages) >= 1
+                and messages[-1]["role"] == "user"
+                and isinstance(message["content"], str)
+                and isinstance(messages[-1]["content"], str)
+            ):
+                messages[-1]["content"] += "\n" + message["content"]
+            else:
+                messages.append(message)
+        return messages
+
+    def clean_special_message(self) -> None:
+        while True:
+            role = get_role(self.messages[0])
+            if role in ["user", "assistant"]:
+                break
+            self.messages.pop(0)
+
+    async def get_messages(self) -> list[OpenAIMessage]:
+        self.clean_special_message()
+        self.messages = self.messages[-self.max_message_count :]
+        messages = self.merge_user_messages()
+        messages.insert(0, await self.processor.generate_system_prompt())
+        return messages
+
+    async def fetch_reply(self) -> None:
+        async with self.fetcher_lock:
+            await self._fetch_reply()
+
+    async def _fetch_reply(self) -> None:
+        fetcher = MessageFetcher(
+            self.merge_user_messages(),
+            False,
+            functions=self.processor.functions,
+            identify="Chat",
+            pre_function_call=self.processor.send_function_call_feedback,
+        )
+        self.messages.clear()
+        async for message in fetcher.fetch_message_stream():
+            logger.info(f"Moonlark 说: {message}")
+            fetcher.session.messages.extend(self.messages)
+        self.messages = fetcher.get_messages()
+
+    def append_user_message(self, message: str) -> None:
+        self.messages.append(generate_message(message, "user"))
+
+    def is_last_message_from_user(self) -> bool:
+        return get_role(self.messages[-1]) == "user"
+
+
 class MessageProcessor:
 
     def __init__(self, session: "GroupSession"):
-        self.openai_messages: Messages = []
+        self.openai_messages = MessageQueue(self)
         self.session = session
-        self.message_count = 0
         self.cached_activated_memories: list[tuple[str, str]] = []
         self.enabled = True
         self.interrupter = Interrupter(session)
         self.cold_until = datetime.now()
         self.blocked = False
+        self.functions = functions = [
+            AsyncFunction(
+                func=self.send_message,
+                description="作为 Moonlark 发送一条消息到群聊中。",
+                parameters={
+                    "message_content": FunctionParameter(
+                        type="string",
+                        description="要发送的消息内容，可以使用 @群友的昵称 来提及某位群友。",
+                        required=True,
+                    ),
+                    "reply_message_id": FunctionParameter(
+                        type="string",
+                        description="要回复的消息的**消息 ID**，不指定则不会对有关消息进行引用。",
+                        required=False,
+                    ),
+                },
+            ),
+            AsyncFunction(
+                func=self.leave_for_a_while,
+                description=("离开当前群聊 15 分钟。\n" "**何时必须调用**: Moonlark 被要求停止发言。"),
+                parameters={},
+            ),
+            AsyncFunction(
+                func=get_fetcher(self.session.bot),
+                description=(
+                    "获取合并转发消息的内容。\n"
+                    "**何时必须调用**: 当聊天记录中出现形如 `[合并转发:...]` 的消息时。\n"
+                    "**判断标准**: 只要看到 `[合并转发: {ID}]` 格式的文本，就**必须**调用此工具来获取其内部的具体消息。这是理解对话上下文的关键步骤。\n"
+                    "**禁止行为**: 除非该工具报错，绝对禁止忽略合并转发消息或回复“咱看不到合并转发的内容喵”。"
+                ),
+                parameters={
+                    "forward_id": FunctionParameter(
+                        type="string",
+                        description="转发消息的 ID，是“[合并转发: {一段数字ID}]”中间的“{一段数字}”，例如“[合并转发: 1234567890]”中的“1234567890”",
+                        required=True,
+                    ),
+                },
+            ),
+            AsyncFunction(
+                func=browse_webpage,
+                description=(
+                    "使用浏览器访问指定 URL 并获取网页内容的 Markdown 格式文本。\n"
+                    "**何时必须调用**:\n"
+                    "1. 当用户直接提供一个 URL，或者要求你**总结、分析、提取特定网页的内容**时。\n"
+                    "2. 当你使用 web_search 获取到了一些结果，需要详细查看某个网页获取更多的信息时。\n"
+                    "**判断标准**: 只要输入中包含 `http://` 或 `https://`，并且用户的意图与该链接内容相关，就**必须**调用此工具。"
+                ),
+                parameters={
+                    "url": FunctionParameter(type="string", description="要访问的网页的 URL 地址", required=True)
+                },
+            ),
+            AsyncFunction(
+                func=web_search,
+                description=(
+                    "调用搜索引擎，从网络中搜索信息。\n"
+                    "**何时必须调用**: 当被问及任何关于**时事新闻、近期事件、特定人物、产品、公司、地点、定义、统计数据**或任何你的知识库可能未覆盖的现代事实性信息时。\n"
+                    "**判断标准**: 只要问题涉及“是什么”、“谁是”、“在哪里”、“最新的”、“...怎么样”等客观事实查询，就**必须**使用网络搜索。\n"
+                    "例如，当你阅读到了一个你不了解或无法确定的概念时，应优先使用此工具搜索而不是给出类似“XX是什么喵？”的回应"
+                ),
+                parameters={
+                    "keyword": FunctionParameter(
+                        type="string",
+                        description="搜索关键词。请使用简洁的关键词而非完整句子。将用户问题转换为2-5个相关的关键词，用空格分隔。例如：'人工智能 发展 趋势' 而不是 '人工智能的发展趋势是什么'",
+                        required=True,
+                    )
+                },
+            ),
+            AsyncFunction(
+                func=describe_image,
+                description=(
+                    "获取一张网络图片的内容描述。\n"
+                    "**何时必须调用**: \n"
+                    "1. 在 `browse_webpage` 工具中看到了一张图片时，实际上该工具获取到的图片会以 `![](图片URL)` 的形式展示）。\n"
+                    "2. 用户发送了一个 **图片 URL**（如以 `.jpg`, `.png`, `.webp` 等结尾） 时。\n"
+                    "消息中的 [图片: {描述}] 中的 {描述} 是用户发送的图片已经经过该工具处理结果，即用户发送的图片的描述， **它不是一个 URL，不能被填入这个工具！！！**"
+                    "如果向这个工具传入的 URL 不对应一张图片的话，这个工具不会返回有效的内容。"
+                ),
+                parameters={
+                    "image_url": FunctionParameter(
+                        type="string",
+                        description=(
+                            "需要解释的图片的 URL 地址。\n"
+                            "注意，该参数一定是一个完整的 URL 地址， **消息中的 [图片: {描述}] 中的 {描述} 部分不能被填入！**"
+                        ),
+                        required=True,
+                    )
+                },
+            ),
+            AsyncFunction(
+                func=request_wolfram_alpha,
+                description=(
+                    "调用 Wolfram|Alpha 进行计算。\n"
+                    "**何时必须调用**: 当用户提出任何**数学计算（微积分、代数、方程求解等）、数据分析、单位换算、科学问题（物理、化学）、日期与时间计算**等需要精确计算和结构化数据的问题时。\n"
+                    "**判断标准**: 如果问题看起来像一个数学题、物理公式或需要精确数据的查询，优先选择 Wolfram|Alpha 而不是网络搜索。例如：“2x^2+5x-3=0 的解是什么？”或“今天的日落时间是几点？”。\n"
+                    "**禁止行为**: 不要尝试自己进行复杂的数学计算，这容易出错。"
+                ),
+                parameters={
+                    "question": FunctionParameter(
+                        type="string",
+                        description=(
+                            "输入 Wolfram|Alpha 的内容，形式可以是数学表达式、Wolfram Language、LaTeX 或自然语言。\n"
+                            "使用自然语言提问时，使用英文以保证 Wolfram|Alpha 可以理解问题。"
+                        ),
+                        required=True,
+                    )
+                },
+            ),
+            AsyncFunction(
+                func=get_note_poster(self.session.group_id),
+                description=(
+                    "添加一段笔记到你的笔记本中。\n"
+                    "**何时需要调用**: 当你认为某些信息对你理解群友或未来的互动非常重要时，可以自主选择使用它来记下。\n"
+                    "**建议的使用场景 (完全由你判断！)**:\n"
+                    "- 记下某位群友的**重要个人信息**，比如他们的生日、重要的纪念日、或提到的个人喜好（例如最喜欢的游戏、食物等），这样你可以在未来的对话中恰当地提及，显得更加体贴。\n"
+                    "- 记录群聊中达成的**重要共识或约定**，例如大家约定好下次一起玩游戏的时间。\n"
+                    "- 保存一些对你有用的**事实性知识**，特别是通过工具查询到的、并可能在未来对话中再次被提及的内容。\n"
+                    " **使用提示**: 把你需要记住的核心信息整理成简洁的句子放进 `text` 参数里，这个工具的目的是帮助你更好地维系和群友的关系。"
+                ),
+                parameters={
+                    "text": FunctionParameter(
+                        type="string",
+                        description="要添加的笔记内容。",
+                        required=True,
+                    ),
+                    "expire_days": FunctionParameter(
+                        type="integer",
+                        description="笔记的过期天数。如果未指定，则默认为 7 天。",
+                        required=False,
+                    ),
+                    "keywords": FunctionParameter(
+                        type="string",
+                        description=(
+                            "笔记的关键词，每条笔记只能有 **一个** 关键词，用于索引。\n"
+                            "若在笔记过期前，消息列表中出现被指定的关键词，被添加的笔记会出现在“附加信息”中。\n"
+                            "关键词可以匹配消息的内容、图片的描述或发送者的昵称。\n"
+                            "若不指定关键词，笔记会一直展示在“附加信息”中。"
+                        ),
+                        required=False,
+                    ),
+                },
+            ),
+        ]
         asyncio.create_task(self.loop())
 
     async def loop(self) -> None:
@@ -141,8 +345,6 @@ class MessageProcessor:
             except Exception as e:
                 logger.exception(e)
                 await asyncio.sleep(10)
-            for _ in range(self.message_count - 10):
-                await self.pop_first_message()
 
     async def get_message(self) -> None:
         if not self.session.message_queue:
@@ -167,62 +369,17 @@ class MessageProcessor:
             # 如果需要阻断，直接返回
             return
         if (mentioned or not self.session.message_queue) and not self.blocked:
-            await self.generate_reply(force_reply=mentioned)
+            asyncio.create_task(self.generate_reply(force_reply=mentioned))
             self.cold_until = datetime.now() + timedelta(seconds=5)
-
-    def clean_special_message(self) -> None:
-        while True:
-            role = get_role(self.openai_messages[0])
-            if role in ["user", "assistant"]:
-                break
-            self.openai_messages.pop(0)
-
-    async def pop_first_message(self) -> None:
-        self.clean_special_message()
-        if len(self.openai_messages) == 0:
-            return
-        first_msg = self.openai_messages[0]
-        role = get_role(first_msg)
-        if role == "assistant":
-            self.openai_messages.pop(0)
-        elif role == "user" and isinstance(first_msg, dict) and isinstance(content := first_msg.get("content"), str):
-            if next_message_pos := content.find("\n[") + 1:
-                first_msg["content"] = content[next_message_pos:]
-            else:
-                self.openai_messages.pop(0)
-        self.message_count -= 1
-
-    async def update_system_message(self) -> None:
-        if (
-            len(self.openai_messages) >= 1
-            and isinstance(self.openai_messages[0], dict)
-            and self.openai_messages[0]["role"] == "system"
-        ):
-            self.openai_messages[0] = await self.generate_system_prompt()
-        else:
-            self.openai_messages.insert(0, await self.generate_system_prompt())
 
     async def handle_group_cold(self, time_d: timedelta) -> None:
         min_str = time_d.total_seconds() // 60
-        if len(self.openai_messages) > 0:
+        if len(self.openai_messages.messages) > 0:
             return
-        delta_content = f"\n[{datetime.now().strftime('%H:%M:%S')}]: 当前群聊已经冷群了 {min_str} 分钟。"
-        latest_message = self.openai_messages[-1]
-        if isinstance(latest_message, dict):
-            if get_role(latest_message) == "user":
-                if (content := latest_message.get("content")) and isinstance(content, str):
-                    latest_message["content"] = content + delta_content
-                else:
-                    latest_message["content"] = delta_content
-            else:
-                return
-
-        elif latest_message.role == "assistant":
-            self.openai_messages.append(generate_message(content=delta_content, role="user"))
-        else:
-            return
+        delta_content = f"[{datetime.now().strftime('%H:%M:%S')}]: 当前群聊已经冷群了 {min_str} 分钟。"
+        self.openai_messages.append_user_message(delta_content)
         if not self.blocked:
-            await self.generate_reply()
+            asyncio.create_task(self.generate_reply())
             self.blocked = True  # 再次收到消息后才会解锁
 
     async def leave_for_a_while(self) -> None:
@@ -232,10 +389,7 @@ class MessageProcessor:
         # 如果在冷却期或消息为空，直接返回
         if self.cold_until > datetime.now():
             return
-        if len(self.openai_messages) <= 0 or (
-            (not isinstance(self.openai_messages[-1], dict))
-            and self.openai_messages[-1].role in ["system", "assistant"]
-        ):
+        if len(self.openai_messages.messages) <= 0 or not self.openai_messages.is_last_message_from_user():
             return
 
         # 检查是否应该触发回复
@@ -249,162 +403,7 @@ class MessageProcessor:
 
         # 记录一次机器人响应
         self.interrupter.record_response()
-        await self.update_system_message()
-        fetcher = MessageFetcher(
-            self.openai_messages,
-            False,
-            functions=[
-                AsyncFunction(
-                    func=self.send_message,
-                    description="作为 Moonlark 发送一条消息到群聊中。参数中所有的内容都会被格式化为一条消息发送，如果需要发送多条消息需要多次调用而不是简单的换行。",
-                    parameters={
-                        "message_content": FunctionParameter(
-                            type="string",
-                            description="要发送的消息内容，可以使用 @群友的昵称 来提及某位群友。需要提到某位群友时最好使用提及格式而不是直接的复述群友的昵称。",
-                            required=True,
-                        ),
-                        "reply_message_id": FunctionParameter(
-                            type="string",
-                            description="要回复的消息的**消息 ID**，不指定则不会对有关消息进行引用。当你对一条特定的消息进行回复时需要通过指定本参数引用消息。",
-                            required=False,
-                        ),
-                    },
-                ),
-                AsyncFunction(
-                    func=self.leave_for_a_while,
-                    description=("离开当前群聊 15 分钟。\n" "**何时必须调用**: Moonlark 被要求停止发言。"),
-                    parameters={},
-                ),
-                AsyncFunction(
-                    func=get_fetcher(self.session.bot),
-                    description=(
-                        "获取合并转发消息的内容。\n"
-                        "**何时必须调用**: 当聊天记录中出现形如 `[合并转发:...]` 的消息时。\n"
-                        "**判断标准**: 只要看到 `[合并转发: {ID}]` 格式的文本，就**必须**调用此工具来获取其内部的具体消息。这是理解对话上下文的关键步骤。\n"
-                        "**禁止行为**: 除非该工具报错，绝对禁止忽略合并转发消息或回复“咱看不到合并转发的内容喵”。"
-                    ),
-                    parameters={
-                        "forward_id": FunctionParameter(
-                            type="string",
-                            description="转发消息的 ID，是“[合并转发: {一段数字ID}]”中间的“{一段数字}”，例如“[合并转发: 1234567890]”中的“1234567890”",
-                            required=True,
-                        ),
-                    },
-                ),
-                AsyncFunction(
-                    func=browse_webpage,
-                    description=(
-                        "使用浏览器访问指定 URL 并获取网页内容的 Markdown 格式文本。\n"
-                        "**何时必须调用**:\n"
-                        "1. 当用户直接提供一个 URL，或者要求你**总结、分析、提取特定网页的内容**时。\n"
-                        "2. 当你使用 web_search 获取到了一些结果，需要详细查看某个网页获取更多的信息时。\n"
-                        "**判断标准**: 只要输入中包含 `http://` 或 `https://`，并且用户的意图与该链接内容相关，就**必须**调用此工具。"
-                    ),
-                    parameters={
-                        "url": FunctionParameter(type="string", description="要访问的网页的 URL 地址", required=True)
-                    },
-                ),
-                AsyncFunction(
-                    func=web_search,
-                    description=(
-                        "调用搜索引擎，从网络中搜索信息。\n"
-                        "**何时必须调用**: 当被问及任何关于**时事新闻、近期事件、特定人物、产品、公司、地点、定义、统计数据**或任何你的知识库可能未覆盖的现代事实性信息时。\n"
-                        "**判断标准**: 只要问题涉及“是什么”、“谁是”、“在哪里”、“最新的”、“...怎么样”等客观事实查询，就**必须**使用网络搜索。\n"
-                        "例如，当你阅读到了一个你不了解或无法确定的概念时，应优先使用此工具搜索而不是给出类似“XX是什么喵？”的回应"
-                    ),
-                    parameters={
-                        "keyword": FunctionParameter(
-                            type="string",
-                            description="搜索关键词。请使用简洁的关键词而非完整句子。将用户问题转换为2-5个相关的关键词，用空格分隔。例如：'人工智能 发展 趋势' 而不是 '人工智能的发展趋势是什么'",
-                            required=True,
-                        )
-                    },
-                ),
-                AsyncFunction(
-                    func=describe_image,
-                    description=(
-                        "获取一张网络图片的内容描述。\n"
-                        "**何时必须调用**: \n"
-                        "1. 在 `browse_webpage` 工具中看到了一张图片时，实际上该工具获取到的图片会以 `![](图片URL)` 的形式展示）。\n"
-                        "2. 用户发送了一个 **图片 URL**（如以 `.jpg`, `.png`, `.webp` 等结尾） 时。\n"
-                        "消息中的 [图片: {描述}] 中的 {描述} 是用户发送的图片已经经过该工具处理结果，即用户发送的图片的描述， **它不是一个 URL，不能被填入这个工具！！！**"
-                        "如果向这个工具传入的 URL 不对应一张图片的话，这个工具不会返回有效的内容。"
-                    ),
-                    parameters={
-                        "image_url": FunctionParameter(
-                            type="string",
-                            description=(
-                                "需要解释的图片的 URL 地址。\n"
-                                "注意，该参数一定是一个完整的 URL 地址， **消息中的 [图片: {描述}] 中的 {描述} 部分不能被填入！**"
-                            ),
-                            required=True,
-                        )
-                    },
-                ),
-                AsyncFunction(
-                    func=request_wolfram_alpha,
-                    description=(
-                        "调用 Wolfram|Alpha 进行计算。\n"
-                        "**何时必须调用**: 当用户提出任何**数学计算（微积分、代数、方程求解等）、数据分析、单位换算、科学问题（物理、化学）、日期与时间计算**等需要精确计算和结构化数据的问题时。\n"
-                        "**判断标准**: 如果问题看起来像一个数学题、物理公式或需要精确数据的查询，优先选择 Wolfram|Alpha 而不是网络搜索。例如：“2x^2+5x-3=0 的解是什么？”或“今天的日落时间是几点？”。\n"
-                        "**禁止行为**: 不要尝试自己进行复杂的数学计算，这容易出错。"
-                    ),
-                    parameters={
-                        "question": FunctionParameter(
-                            type="string",
-                            description=(
-                                "输入 Wolfram|Alpha 的内容，形式可以是数学表达式、Wolfram Language、LaTeX 或自然语言。\n"
-                                "使用自然语言提问时，使用英文以保证 Wolfram|Alpha 可以理解问题。"
-                            ),
-                            required=True,
-                        )
-                    },
-                ),
-                AsyncFunction(
-                    func=get_note_poster(self.session.group_id),
-                    description=(
-                        "添加一段笔记到你的笔记本中。\n"
-                        "**何时需要调用**: 当你认为某些信息对你理解群友或未来的互动非常重要时，可以自主选择使用它来记下。\n"
-                        "**建议的使用场景 (完全由你判断！)**:\n"
-                        "- 记下某位群友的**重要个人信息**，比如他们的生日、重要的纪念日、或提到的个人喜好（例如最喜欢的游戏、食物等），这样你可以在未来的对话中恰当地提及，显得更加体贴。\n"
-                        "- 记录群聊中达成的**重要共识或约定**，例如大家约定好下次一起玩游戏的时间。\n"
-                        "- 保存一些对你有用的**事实性知识**，特别是通过工具查询到的、并可能在未来对话中再次被提及的内容。\n"
-                        " **使用提示**: 把你需要记住的核心信息整理成简洁的句子放进 `text` 参数里，这个工具的目的是帮助你更好地维系和群友的关系。"
-                    ),
-                    parameters={
-                        "text": FunctionParameter(
-                            type="string",
-                            description="要添加的笔记内容。",
-                            required=True,
-                        ),
-                        "expire_days": FunctionParameter(
-                            type="integer",
-                            description="笔记的过期天数。如果未指定，则默认为 7 天。",
-                            required=False,
-                        ),
-                        "keywords": FunctionParameter(
-                            type="string",
-                            description=(
-                                "笔记的关键词，每条笔记只能有 **一个** 关键词，用于索引。\n"
-                                "若在笔记过期前，消息列表中出现被指定的关键词，被添加的笔记会出现在“附加信息”中。\n"
-                                "关键词可以匹配消息的内容、图片的描述或发送者的昵称。\n"
-                                "若不指定关键词，笔记会一直展示在“附加信息”中。"
-                            ),
-                            required=False,
-                        ),
-                    },
-                ),
-            ],
-            identify="Chat",
-            pre_function_call=self.send_function_call_feedback,
-            timeout_per_request=60,
-            timeout_response=Choice(
-                finish_reason="stop", message=ChatCompletionMessage(role="assistant", content=""), index=0
-            ),
-        )
-        async for message in fetcher.fetch_message_stream():
-            logger.info(f"Moonlark 说: {message}")
-        self.openai_messages = fetcher.get_messages()
+        await self.openai_messages.fetch_reply()
         if datetime.now() < self.interrupter.sleep_end_time:
             self.interrupter.sleep_end_time = datetime.min
 
@@ -434,30 +433,15 @@ class MessageProcessor:
         self.session.accumulated_text_length = 0
 
     def append_user_message(self, msg_str: str) -> None:
-        if len(self.openai_messages) <= 0:
-            self.openai_messages.append(generate_message(msg_str, "user"))
-        else:
-            last_message = self.openai_messages[-1]
-            if isinstance(last_message, dict) and last_message.get("role") == "user":
-                if content := last_message.get("content"):
-                    if isinstance(content, str):
-                        last_message["content"] = content + msg_str
-                else:
-                    last_message["content"] = msg_str
-            else:
-                self.openai_messages.append(generate_message(msg_str, "user"))
-        self.message_count += 1
+        self.openai_messages.append_user_message(msg_str)
 
     async def process_messages(self, msg_dict: CachedMessage) -> None:
-        msg_str = generate_message_string(msg_dict)
-        self.append_user_message(msg_str)
-        logger.debug(self.openai_messages)
         async with get_session() as session:
             r = await session.get(ChatGroup, {"group_id": self.session.group_id})
             self.blocked = r and msg_dict["user_id"] in json.loads(r.blocked_user)
-            logger.debug(f"{self.blocked}")
-
-            # 如果不是blocked用户且不是机器人自己的消息，则累计文本长度
+            if not self.blocked:
+                msg_str = generate_message_string(msg_dict)
+                self.append_user_message(msg_str)
             if not self.blocked and not msg_dict["self"]:
                 content = msg_dict.get("content", "")
                 if isinstance(content, str) and content:
@@ -468,7 +452,7 @@ class MessageProcessor:
 
     def get_message_content_list(self) -> list[str]:
         l = []
-        for msg in self.openai_messages:
+        for msg in self.openai_messages.messages:
             if isinstance(msg, dict):
                 if "content" in msg and msg["role"] == "user":
                     l.append(str(msg["content"]))
