@@ -136,6 +136,7 @@ class MessageQueue:
                 isinstance(message, dict)
                 and message["role"] == "user"
                 and len(messages) >= 1
+                and isinstance(messages[-1], dict)
                 and messages[-1]["role"] == "user"
                 and isinstance(message["content"], str)
                 and isinstance(messages[-1]["content"], str)
