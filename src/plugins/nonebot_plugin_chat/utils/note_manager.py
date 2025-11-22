@@ -193,9 +193,7 @@ class NoteManager:
 
         return deleted_count
 
-    async def filter_note(
-        self, chat_history: str, include_expired: bool = False
-    ) -> List[Note]:
+    async def filter_note(self, chat_history: str, include_expired: bool = False) -> List[Note]:
         """
         Get notes that match any of the provided keywords
 

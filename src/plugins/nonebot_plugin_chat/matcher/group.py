@@ -536,7 +536,6 @@ class GroupSession:
         message_id = get_message_id(event)
         self.message_queue.append((message, event, state, user_id, nickname, datetime.now(), mentioned, message_id))
         self.update_counters(user_id)
-    
 
     async def format_message(self, origin_message: str) -> UniMessage:
         message = re.sub(r"\[\d\d:\d\d:\d\d]\[Moonlark]\(\d+\): ?", "", origin_message)
