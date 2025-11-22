@@ -48,7 +48,8 @@ class MessageParser:
             forward = await self.bot.get_forward_msg(id=ref_id)
         except ActionFailed as e:
             return f"[合并转发({ref_id}): 获取信息失败: {e}]"
-        
+        return f"[合并转发({ref_id}): 获取信息失败]"
+
 
     async def parse_mention(self, segment: At) -> str:
         user = await get_user(segment.target)
