@@ -22,7 +22,6 @@ from nonebot_plugin_alconna import UniMessage
 from nonebot_plugin_orm import get_session
 from nonebot_plugin_larkutils import get_group_id, get_user_id
 
-from nonebot.adapters.onebot.v11 import Bot as OneBotV11Bot
 
 from ..models import ChatGroup
 
