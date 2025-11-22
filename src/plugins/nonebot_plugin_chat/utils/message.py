@@ -13,6 +13,7 @@ from nonebot.adapters import Message
 
 from nonebot.adapters.onebot.v11 import Bot as OneBotV11Bot
 from nonebot.adapters.onebot.v11 import Message as OneBotV11Message
+from nonebot.adapters.onebot.v11 import MessageSegment as OneBotV11Segment
 
 
 
@@ -62,8 +63,10 @@ class MessageParser:
         ) for msg in forward["messages"]]
         return "\n".join(message_list)
 
-    async def get_parsed_message(self, node_message: dict) -> str:
-        ob11_message = OneBotV11Message(node_message)
+    async def get_parsed_message(self, node_message: list[dict]) -> str:
+        ob11_message = OneBotV11Message()
+        for segment in node_message:
+            ob11_message.append(OneBotV11Segment(**segment))
         uni_message = UniMessage.of(message=ob11_message, bot=self.bot)
         return await parse_message_to_string(uni_message, self.event, self.bot, self.state)
 
