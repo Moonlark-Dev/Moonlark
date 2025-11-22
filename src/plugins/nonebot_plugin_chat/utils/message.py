@@ -1,4 +1,3 @@
-
 from nonebot.adapters import Bot
 from nonebot.adapters import Event
 from nonebot.typing import T_State
@@ -23,7 +22,7 @@ class MessageParser:
         self.event = event
         self.bot = bot
         self.state = state
-    
+
     async def parse(self) -> str:
         return "".join([await self.parse_segment(segment) for segment in self.message])
 
@@ -40,7 +39,7 @@ class MessageParser:
             return f"[合并转发({segment.id}): ]"
         else:
             return f"[特殊消息: {segment.dump()}]"
-    
+
     async def parse_forawrd_message(self, ref_id: str) -> str:
         if not isinstance(self.bot, OneBotV11Bot):
             return f"[合并转发({ref_id}): 获取信息失败]"
@@ -48,7 +47,6 @@ class MessageParser:
             forward = await self.bot.get_forward_msg(id=ref_id)
         except ActionFailed as e:
             return f"[合并转发({ref_id}): 获取信息失败: {e}]"
-        
 
     async def parse_mention(self, segment: At) -> str:
         user = await get_user(segment.target)
@@ -65,9 +63,6 @@ class MessageParser:
             return f"[回复: {await parse_message_to_string(UniMessage.generate_without_reply(message=segment.msg), self.event, self.bot, self.state)}]"
         else:
             return f"[回复: {segment.msg}]"
-
-
-
 
 
 async def parse_message_to_string(message: UniMessage, event: Event, bot: Bot, state: T_State) -> str:
