@@ -193,9 +193,7 @@ class NoteManager:
 
         return deleted_count
 
-    async def filter_note(
-        self, chat_history: str, memory_topics: list[str], include_expired: bool = False
-    ) -> List[Note]:
+    async def filter_note(self, chat_history: str, include_expired: bool = False) -> List[Note]:
         """
         Get notes that match any of the provided keywords
 
@@ -213,7 +211,7 @@ class NoteManager:
                 continue
             keywords = note.keywords.split(" ")
             for keyword in keywords:
-                if keyword in chat_history or keyword in memory_topics:
+                if keyword in chat_history:
                     notes.append(note)
                     break
         return notes
