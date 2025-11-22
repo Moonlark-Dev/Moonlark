@@ -667,7 +667,7 @@ async def _(
                 await lang.send("command.not_inited", user_id)
             else:
                 await lang.send("command.disabled", user_id)
-        
+
         case "mute":
             if group_id in groups:
                 await lang.send("command.mute", user_id)
