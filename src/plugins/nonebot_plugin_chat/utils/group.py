@@ -65,18 +65,7 @@ async def parse_message_to_string(message: UniMessage, event: Event, bot: Bot, s
             else:
                 str_msg += f"[回复: {segment.msg}]"
         elif isinstance(segment, Reference) and isinstance(bot, OneBotV11Bot) and segment.id is not None:
-            str_msg += f"[合并转发: {segment.id}]"
+            str_msg += f"[合并转发({segment.id}): ]"
         else:
             str_msg += f"[特殊消息: {segment.dump()}]"
     return str_msg
-
-
-# from nonebot.adapters.onebot.v11 import GroupMessageEvent, Bot
-# from nonebot.matcher import Matcher
-
-# @on_message().handle()
-# async def _(matcher: Matcher, event: GroupMessageEvent, bot: Bot, state: T_State):
-#     if event.group_id == 598443695:
-#         message = UniMessage.of(event.get_message())
-#         await message.attach_reply()
-#         await matcher.finish(await parse_message_to_string(message, event, bot, state))
