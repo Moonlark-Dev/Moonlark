@@ -52,7 +52,6 @@ from ..utils.tools import (
     web_search,
     describe_image,
     request_wolfram_alpha,
-    get_fetcher,
     get_note_poster,
 )
 
