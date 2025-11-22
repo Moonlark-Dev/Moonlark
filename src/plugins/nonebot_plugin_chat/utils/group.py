@@ -36,7 +36,9 @@ async def enabled_group(event: Event, group_id: str = get_group_id(), user_id: s
             (await group_message(event)) and (g := await session.get(ChatGroup, {"group_id": group_id})) and g.enabled
         )
 
+
 from .message import parse_message_to_string as _parse_message_to_string
+
 
 async def parse_message_to_string(message: UniMessage, event: Event, bot: Bot, state: T_State) -> str:
     return await _parse_message_to_string(message, event, bot, state)
