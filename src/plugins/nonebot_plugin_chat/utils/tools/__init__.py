@@ -20,4 +20,3 @@ from .search import web_search
 from .wolfram_alpha import request_wolfram_alpha
 from .describe_image import describe_image
 from .note import get_note_poster
-from .fetch_forward_message import get_fetcher

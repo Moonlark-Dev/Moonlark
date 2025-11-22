@@ -18,18 +18,12 @@
 from nonebot.adapters import Bot
 from nonebot.adapters import Event
 from nonebot.typing import T_State
-from nonebot_plugin_userinfo import get_user_info
-from nonebot_plugin_alconna import Image, UniMessage, Text, At, Reply, Reference
+from nonebot_plugin_alconna import UniMessage
 from nonebot_plugin_orm import get_session
-from nonebot_plugin_larkuser import get_user
 from nonebot_plugin_larkutils import get_group_id, get_user_id
-from nonebot.adapters import Message
-
-from nonebot.adapters.onebot.v11 import Bot as OneBotV11Bot
 
 
 from ..models import ChatGroup
-from .image import get_image_summary
 
 
 async def group_message(event: Event) -> bool:
@@ -43,29 +37,8 @@ async def enabled_group(event: Event, group_id: str = get_group_id(), user_id: s
         )
 
 
+from .message import parse_message_to_string as _parse_message_to_string
+
+
 async def parse_message_to_string(message: UniMessage, event: Event, bot: Bot, state: T_State) -> str:
-    str_msg = ""
-    for segment in message:
-        if isinstance(segment, Text):
-            str_msg += segment.text
-        elif isinstance(segment, At):
-            user = await get_user(segment.target)
-            if (not user.has_nickname()) and (user_info := await get_user_info(bot, event, segment.target)):
-                nickname = user_info.user_displayname or user_info.user_name
-            else:
-                nickname = user.get_nickname()
-            str_msg += f"@{nickname}"
-        elif isinstance(segment, Image):
-            str_msg += f"[图片: {await get_image_summary(segment, event, bot, state)}]"
-        elif isinstance(segment, Reply) and segment.msg is not None:
-            if isinstance(segment.msg, UniMessage):
-                str_msg += f"[回复: {await parse_message_to_string(segment.msg, event, bot, state)}]"
-            elif isinstance(segment.msg, Message):
-                str_msg += f"[回复: {await parse_message_to_string(UniMessage.generate_without_reply(message=segment.msg), event, bot, state)}]"
-            else:
-                str_msg += f"[回复: {segment.msg}]"
-        elif isinstance(segment, Reference) and isinstance(bot, OneBotV11Bot) and segment.id is not None:
-            str_msg += f"[合并转发({segment.id}): ]"
-        else:
-            str_msg += f"[特殊消息: {segment.dump()}]"
-    return str_msg
+    return await _parse_message_to_string(message, event, bot, state)

@@ -1,3 +1,4 @@
+from datetime import datetime
 from nonebot.adapters import Bot
 from nonebot.adapters import Event
 from nonebot.typing import T_State
@@ -10,6 +11,7 @@ from nonebot.exception import ActionFailed
 from nonebot.adapters import Message
 
 from nonebot.adapters.onebot.v11 import Bot as OneBotV11Bot
+from nonebot.adapters.onebot.v11 import Message as OneBotV11Message
 
 
 from .image import get_image_summary
@@ -17,7 +19,7 @@ from .image import get_image_summary
 
 class MessageParser:
 
-    def __init__(self, message: UniMessage, event: Event, bot: Bot, state: T_State) -> str:
+    def __init__(self, message: UniMessage, event: Event, bot: Bot, state: T_State) -> None:
         self.message = message
         self.event = event
         self.bot = bot
@@ -36,17 +38,35 @@ class MessageParser:
         elif isinstance(segment, Reply) and segment.msg is not None:
             return await self.parse_reply(segment)
         elif isinstance(segment, Reference) and isinstance(self.bot, OneBotV11Bot) and segment.id is not None:
-            return f"[合并转发({segment.id}): ]"
+            return await self.parse_forawrd_message(segment.id)
         else:
             return f"[特殊消息: {segment.dump()}]"
 
     async def parse_forawrd_message(self, ref_id: str) -> str:
         if not isinstance(self.bot, OneBotV11Bot):
-            return f"[合并转发({ref_id}): 获取信息失败]"
+            return f"[合并转发: 获取信息失败（不受支持）]"
         try:
-            forward = await self.bot.get_forward_msg(id=ref_id)
+            message_list_str = await self.get_forawrd_message_list(ref_id)
         except ActionFailed as e:
-            return f"[合并转发({ref_id}): 获取信息失败: {e}]"
+            return f"[合并转发: 获取信息失败（{e}）]"
+        return f"[合并转发: {message_list_str}]"
+
+    async def get_forawrd_message_list(self, ref_id: str) -> str:
+        forward = await self.bot.get_forward_msg(id=ref_id)
+        message_list = [
+            (
+                f"[{datetime.fromtimestamp(msg['time']).strftime('%H:%M:%S')}]"
+                f"[{msg['sender']['card'] or msg['sender']['nickname']}]: "
+                f"{await self.get_parsed_message(msg['message'])}"
+            )
+            for msg in forward["messages"]
+        ]
+        return "\n".join(message_list)
+
+    async def get_parsed_message(self, node_message: dict) -> str:
+        ob11_message = OneBotV11Message(node_message)
+        uni_message = UniMessage.of(message=ob11_message, bot=self.bot)
+        return await parse_message_to_string(uni_message, self.event, self.bot, self.state)
 
     async def parse_mention(self, segment: At) -> str:
         user = await get_user(segment.target)

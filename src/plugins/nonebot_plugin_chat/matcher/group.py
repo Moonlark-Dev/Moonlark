@@ -52,7 +52,6 @@ from ..utils.tools import (
     web_search,
     describe_image,
     request_wolfram_alpha,
-    get_fetcher,
     get_note_poster,
 )
 
@@ -210,22 +209,6 @@ class MessageProcessor:
                 func=self.leave_for_a_while,
                 description=("离开当前群聊 15 分钟。\n" "**何时必须调用**: Moonlark 被要求停止发言。"),
                 parameters={},
-            ),
-            AsyncFunction(
-                func=get_fetcher(self.session.bot),
-                description=(
-                    "获取合并转发消息的内容。\n"
-                    "**何时必须调用**: 当聊天记录中出现形如 `[合并转发:...]` 的消息时。\n"
-                    "**判断标准**: 只要看到 `[合并转发: {ID}]` 格式的文本，就**必须**调用此工具来获取其内部的具体消息。这是理解对话上下文的关键步骤。\n"
-                    "**禁止行为**: 除非该工具报错，绝对禁止忽略合并转发消息或回复“咱看不到合并转发的内容喵”。"
-                ),
-                parameters={
-                    "forward_id": FunctionParameter(
-                        type="string",
-                        description="转发消息的 ID，是“[合并转发: {一段数字ID}]”中间的“{一段数字}”，例如“[合并转发: 1234567890]”中的“1234567890”",
-                        required=True,
-                    ),
-                },
             ),
             AsyncFunction(
                 func=browse_webpage,
