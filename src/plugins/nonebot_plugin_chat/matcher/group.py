@@ -16,13 +16,10 @@
 # ##############################################################################
 
 import math
-import copy
 import json
 import re
 from nonebot_plugin_alconna import get_message_id
 import random
-from openai.types.chat import ChatCompletionMessage
-from openai.types.chat.chat_completion import Choice
 import asyncio
 from datetime import datetime, timedelta
 from nonebot.adapters.qq import Bot as BotQQ
@@ -41,16 +38,14 @@ from nonebot_plugin_larkutils import get_user_id, get_group_id
 from nonebot_plugin_orm import async_scoped_session, get_session
 from nonebot.log import logger
 from nonebot_plugin_openai import generate_message
-from nonebot_plugin_openai.types import Messages, Message as OpenAIMessage, AsyncFunction, FunctionParameter
+from nonebot_plugin_openai.types import Message as OpenAIMessage, AsyncFunction, FunctionParameter
 from nonebot_plugin_openai.utils.chat import MessageFetcher
 from nonebot.matcher import Matcher
 
-from ..utils.memory_activator import activate_memories_from_text
 from ..lang import lang
 from ..utils.note_manager import get_context_notes
-from ..utils.memory_graph import cleanup_old_memories
 from ..models import ChatGroup
-from ..utils import enabled_group, parse_message_to_string, splitter
+from ..utils import enabled_group, parse_message_to_string
 from ..utils.interrupter import Interrupter
 from ..utils.tools import (
     browse_webpage,
@@ -190,7 +185,6 @@ class MessageProcessor:
     def __init__(self, session: "GroupSession"):
         self.openai_messages = MessageQueue(self)
         self.session = session
-        self.cached_activated_memories: list[tuple[str, str]] = []
         self.enabled = True
         self.interrupter = Interrupter(session)
         self.cold_until = datetime.now()
@@ -462,29 +456,11 @@ class MessageProcessor:
         return l
 
     async def generate_system_prompt(self) -> OpenAIMessage:
-
-        # # 获取最近几条缓存消息作为上下文
-        # recent_messages = self.session.cached_messages[-5:] if self.session.cached_messages else []
-        # recent_context = " ".join([msg["content"] for msg in recent_messages])
-
-        # # 激活相关记忆
         chat_history = "\n".join(self.get_message_content_list())
-        # activated_memories = await activate_memories_from_text(
-        #     context_id=self.session.group_id, target_message=recent_context, max_memories=5, chat_history=chat_history
-        # )
-        activated_memories = self.cached_activated_memories
-
         # 获取相关笔记
         note_manager = await get_context_notes(self.session.group_id)
-        notes = await note_manager.filter_note(chat_history, [m[0] for m in activated_memories])
-
-        # 构建记忆文本
+        notes = await note_manager.filter_note(chat_history)
         memory_text_parts = []
-
-        if activated_memories:
-            for concept, memory_content in activated_memories:
-                memory_text_parts.append(f"- {concept}: {memory_content}")
-
         # 添加笔记到记忆文本
         if notes:
             for note in notes:
@@ -515,7 +491,6 @@ class GroupSession:
         self.accumulated_text_length = 0  # 累计文本长度
         self.last_reward_participation: Optional[datetime] = None
         self.mute_until: Optional[datetime] = None
-        self.memory_lock = asyncio.Lock()
         self.message_counter: dict[datetime, int] = {}
         self.group_users: dict[str, str] = {}
         self.user_counter: dict[datetime, set[str]] = {}
@@ -523,7 +498,6 @@ class GroupSession:
 
     async def mute(self) -> None:
         self.mute_until = datetime.now() + timedelta(minutes=15)
-        asyncio.create_task(self.update_memory())
 
     def update_counters(self, user_id: str) -> None:
         dt = datetime.now().replace(second=0, microsecond=0)
@@ -562,52 +536,7 @@ class GroupSession:
         message_id = get_message_id(event)
         self.message_queue.append((message, event, state, user_id, nickname, datetime.now(), mentioned, message_id))
         self.update_counters(user_id)
-        if len(self.cached_messages) % 10 == 0 and len(self.cached_messages) > 0:
-            asyncio.create_task(self.update_topic())
-        if len(self.cached_messages) >= 20:
-            asyncio.create_task(self.update_memory())
-
-    async def update_topic(self) -> None:
-        # # 激活相关记忆
-        recent_context = self.cached_messages[-1]["content"]
-        chat_history = "\n".join(self.processor.get_message_content_list())
-        activated_memories = await activate_memories_from_text(
-            context_id=self.group_id, target_message=recent_context, max_memories=5, chat_history=chat_history
-        )
-        self.processor.cached_activated_memories = activated_memories
-
-    async def update_memory(self) -> None:
-        if self.memory_lock.locked() or not self.cached_messages:
-            return
-        async with self.memory_lock:
-            try:
-                await self.generate_memory()
-            except Exception as e:
-                logger.exception(e)
-
-    async def generate_memory(self) -> None:
-        from ..utils.memory_graph import MemoryGraph
-
-        messages = ""
-        cached_messages = copy.deepcopy(self.cached_messages)
-        for message in cached_messages:
-            if message["self"]:
-                messages += f'[{message["send_time"].strftime("%H:%M")}][Moonlark]: {message["content"]}\n'
-            else:
-                messages += f"[{message['send_time'].strftime('%H:%M')}][{message['nickname']}]: {message['content']}\n"
-
-        # 使用新的记忆图系统
-        memory_graph = MemoryGraph(self.group_id)
-        await memory_graph.load_from_db()
-
-        # 从消息历史构建记忆
-        await memory_graph.build_memory_from_text(messages, compress_rate=0.15)
-
-        # 保存记忆图到数据库
-        await memory_graph.save_to_db()
-
-        self.last_reward_participation = None
-        self.cached_messages.clear()
+    
 
     async def format_message(self, origin_message: str) -> UniMessage:
         message = re.sub(r"\[\d\d:\d\d:\d\d]\[Moonlark]\(\d+\): ?", "", origin_message)
@@ -697,7 +626,6 @@ async def group_disable(group_id: str) -> None:
     if group_id in groups:
         group = groups.pop(group_id)
         group.processor.enabled = False
-        await group.update_memory()
 
 
 @on_command("chat").handle()
@@ -757,22 +685,6 @@ async def _(
                 await lang.send("command.not_inited", user_id)
             else:
                 await lang.send("command.disabled", user_id)
-        case "reset-memory":
-            if g is not None:
-                # 清理图形记忆
-
-                await cleanup_old_memories(group_id, forget_ratio=1.0)  # 清除所有记忆
-                await lang.send("command.done", user_id)
-            else:
-                await lang.send("command.disabled", user_id)
-        case "cleanup-memory":
-            if g is not None:
-
-                forgotten_count = await cleanup_old_memories(group_id, forget_ratio=0.3)
-                await lang.send("command.memory.clean", user_id, forgotten_count)
-            else:
-                await lang.send("command.disabled", user_id)
-
         case _:
             await lang.finish("command.no_argv", user_id)
     await session.merge(g)
