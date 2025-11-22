@@ -26,7 +26,7 @@ class MessageParser:
         self.event = event
         self.bot = bot
         self.state = state
-    
+
     async def parse(self) -> str:
         return "".join([await self.parse_segment(segment) for segment in self.message])
 
@@ -43,7 +43,7 @@ class MessageParser:
             return await self.parse_forawrd_message(segment.id)
         else:
             return f"[特殊消息: {segment.dump()}]"
-    
+
     async def parse_forawrd_message(self, ref_id: str) -> str:
         if not isinstance(self.bot, OneBotV11Bot):
             return f"[合并转发: 获取信息失败（不受支持）]"

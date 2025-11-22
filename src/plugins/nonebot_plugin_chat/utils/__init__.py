@@ -17,4 +17,3 @@
 
 from .group import enabled_group, parse_message_to_string
 from .private import get_history, generate_history, generate_memory
-
