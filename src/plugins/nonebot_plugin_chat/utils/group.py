@@ -16,6 +16,9 @@
 # ##############################################################################
 
 import re
+import traceback
+
+from nonebot import logger
 from .tools.browser import browser_tool, generate_page_info
 from nonebot.adapters import Bot
 from nonebot.adapters import Event
@@ -59,15 +62,20 @@ class LinkParser:
     async def parse(self) -> str:
         for link_match in self.get_links()[::-1]:
             link = link_match.group()
-            description = await self.get_description(link)
-            self.message = f"{self.message[:link_match.start()]}{link}({description}){self.message[link_match.end():]}"
+            try:
+                description = await self.get_description(link)
+                self.message = (
+                    f"{self.message[:link_match.start()]}{link}({description}){self.message[link_match.end():]}"
+                )
+            except BrowserErrorOccurred:
+                logger.warning(traceback.format_exc())
         return self.message
 
     @staticmethod
     async def get_description(link: str) -> str:
         page_markdown = await browser_tool.browse(link)
-        if page_markdown["success"]:
-            raise BrowserErrorOccurred(f"解析失败: {page_markdown['error']}")
+        if not page_markdown["success"]:
+            raise BrowserErrorOccurred(f"解析失败: {page_markdown}")
         return await fetch_message(
             [
                 generate_message(
