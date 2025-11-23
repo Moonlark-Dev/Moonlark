@@ -162,7 +162,7 @@ class MessageQueue:
         messages = await self.get_messages()
         self.messages.clear()
         fetcher = MessageFetcher(
-            messages
+            messages,
             False,
             functions=self.processor.functions,
             identify="Chat",
