@@ -245,13 +245,8 @@ class AsyncBrowserTool:
 
 browser_tool = AsyncBrowserTool()
 
-
-async def browse_webpage(url: str) -> str:
-    logger.info(f"Moonlark 正在访问: {url}")
-    result = await browser_tool.browse(url)
-    if result["success"]:
-        return f"""页面信息:
-- URL: {result['url']}
+def generate_page_info(result: BrowseResult) -> str:
+    return f"""- URL: {result['url']}
 - 请求状态: {result['metadata']['status_code']}
 - 页面简介: {result['metadata']['description']}
 - 关键词: {result['metadata']['keywords']}
@@ -260,6 +255,13 @@ async def browse_webpage(url: str) -> str:
 # {result['title']}
 
 {result['content']}"""
+
+
+async def browse_webpage(url: str) -> str:
+    logger.info(f"Moonlark 正在访问: {url}")
+    result = await browser_tool.browse(url)
+    if result["success"]:
+        return f"页面信息:\n{generate_page_info(result)}"
     else:
         return f"""# 访问失败
 {result['error']}"""
