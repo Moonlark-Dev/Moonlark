@@ -74,7 +74,7 @@ class LinkParser:
     @staticmethod
     async def get_description(link: str) -> str:
         page_markdown = await browser_tool.browse(link)
-        if page_markdown["success"]:
+        if not page_markdown["success"]:
             raise BrowserErrorOccurred(f"解析失败: {page_markdown}")
         return await fetch_message(
             [
