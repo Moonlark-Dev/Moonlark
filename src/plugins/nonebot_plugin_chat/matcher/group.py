@@ -298,7 +298,7 @@ class MessageProcessor:
                     ),
                     "expire_days": FunctionParameter(
                         type="integer",
-                        description="笔记的过期天数。如果未指定，则默认为 7 天。",
+                        description="笔记的过期天数。如果一条笔记有一定时效性（例如它在某个日期前才有用），一定要指定本参数，默认为十年。",
                         required=False,
                     ),
                     "keywords": FunctionParameter(
