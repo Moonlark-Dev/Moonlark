@@ -64,7 +64,9 @@ class LinkParser:
             link = link_match.group()
             try:
                 description = await self.get_description(link)
-                self.message = f"{self.message[:link_match.start()]}{link}({description}){self.message[link_match.end():]}"
+                self.message = (
+                    f"{self.message[:link_match.start()]}{link}({description}){self.message[link_match.end():]}"
+                )
             except BrowserErrorOccurred:
                 logger.warning(traceback.format_exc())
         return self.message
