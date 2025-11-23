@@ -16,6 +16,9 @@
 # ##############################################################################
 
 import re
+import traceback
+
+from nonebot import logger
 from .tools.browser import browser_tool, generate_page_info
 from nonebot.adapters import Bot
 from nonebot.adapters import Event
@@ -63,7 +66,7 @@ class LinkParser:
                 description = await self.get_description(link)
                 self.message = f"{self.message[:link_match.start()]}{link}({description}){self.message[link_match.end():]}"
             except BrowserErrorOccurred:
-                pass
+                logger.warning(traceback.format_exc())
         return self.message
 
     @staticmethod
