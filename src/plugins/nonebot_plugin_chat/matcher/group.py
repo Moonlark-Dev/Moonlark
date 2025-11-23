@@ -168,7 +168,7 @@ class MessageQueue:
             identify="Chat",
             pre_function_call=self.processor.send_function_call_feedback,
         )
-        
+
         async for message in fetcher.fetch_message_stream():
             logger.info(f"Moonlark 说: {message}")
             fetcher.session.messages.extend(self.messages)
