@@ -40,12 +40,12 @@ def get_note_poster(context_id: str) -> Callable[[str, Optional[int], Optional[s
         note_manager = await get_context_notes(context_id)
 
         # Create the note
-        note = await note_manager.create_note(content=text, keywords=keywords or "", expire_days=expire_days or 7)
+        note = await note_manager.create_note(content=text, keywords=keywords or "", expire_days=expire_days or 3650)
 
         # Return a confirmation message
         created_time = datetime.fromtimestamp(note.created_time).strftime("%Y-%m-%d %H:%M:%S")
         if note.expire_time:
-            expire_time = datetime.fromtimestamp(note.expire_time).strftime("%Y-%m-%d %H:%M:%S")
+            expire_time = note.expire_time.strftime("%Y-%m-%d %H:%M:%S")
             return f"Note created successfully at {created_time}, will expire at {expire_time}."
         else:
             return f"Note created successfully at {created_time} with no expiration."
