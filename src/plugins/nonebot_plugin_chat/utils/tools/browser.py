@@ -245,6 +245,7 @@ class AsyncBrowserTool:
 
 browser_tool = AsyncBrowserTool()
 
+
 def generate_page_info(result: BrowseResult) -> str:
     return f"""- URL: {result['url']}
 - 请求状态: {result['metadata']['status_code']}

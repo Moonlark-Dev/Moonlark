@@ -40,6 +40,7 @@ async def enabled_group(event: Event, group_id: str = get_group_id(), user_id: s
             (await group_message(event)) and (g := await session.get(ChatGroup, {"group_id": group_id})) and g.enabled
         )
 
+
 class BrowserErrorOccurred(Exception):
     pass
 
@@ -47,12 +48,14 @@ class BrowserErrorOccurred(Exception):
 class LinkParser:
     def __init__(self, message: str) -> None:
         self.message = message
-        self.pattern = re.compile(r"((https?|ftp):\/\/)?(([\w\-]+\.)+[a-zA-Z]{2,}|localhost|(\d{1,3}\.){3}\d{1,3})(:\d{2,5})?(\/[^\s]*)?")
+        self.pattern = re.compile(
+            r"((https?|ftp):\/\/)?(([\w\-]+\.)+[a-zA-Z]{2,}|localhost|(\d{1,3}\.){3}\d{1,3})(:\d{2,5})?(\/[^\s]*)?"
+        )
         self.links = self.get_links()
-    
+
     def get_links(self) -> list[re.Match[str]]:
         return [i for i in self.pattern.finditer(self.message)]
-    
+
     async def parse(self) -> str:
         for link_match in self.get_links()[::-1]:
             link = link_match.group()
@@ -65,17 +68,20 @@ class LinkParser:
         page_markdown = await browser_tool.browse(link)
         if page_markdown["success"]:
             raise BrowserErrorOccurred(f"解析失败: {page_markdown['error']}")
-        return await fetch_message([
-            generate_message((
-                "接下来我会向你发送一个网页的内容，你需要为这个网页生成一条简介。\n"
-                "简介只能包含一行，不能包含 Markdown 格式。\n"
-                "你的回复中不能出现除了该页面的简介以外的任何内容。"
-            ), "system"),
-            generate_message(generate_page_info(page_markdown), "user")
-        ], identify="Link Parse")
-
-
-
+        return await fetch_message(
+            [
+                generate_message(
+                    (
+                        "接下来我会向你发送一个网页的内容，你需要为这个网页生成一条简介。\n"
+                        "简介只能包含一行，不能包含 Markdown 格式。\n"
+                        "你的回复中不能出现除了该页面的简介以外的任何内容。"
+                    ),
+                    "system",
+                ),
+                generate_message(generate_page_info(page_markdown), "user"),
+            ],
+            identify="Link Parse",
+        )
 
 
 async def parse_message_to_string(message: UniMessage, event: Event, bot: Bot, state: T_State) -> str:
