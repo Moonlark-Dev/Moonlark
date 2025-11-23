@@ -159,14 +159,16 @@ class MessageQueue:
             await self._fetch_reply()
 
     async def _fetch_reply(self) -> None:
+        messages = await self.get_messages()
+        self.messages.clear()
         fetcher = MessageFetcher(
-            await self.get_messages(),
+            messages,
             False,
             functions=self.processor.functions,
             identify="Chat",
             pre_function_call=self.processor.send_function_call_feedback,
         )
-        self.messages.clear()
+
         async for message in fetcher.fetch_message_stream():
             logger.info(f"Moonlark 说: {message}")
             fetcher.session.messages.extend(self.messages)
