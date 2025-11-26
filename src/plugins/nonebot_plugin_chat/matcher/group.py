@@ -15,6 +15,7 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
+import copy
 import math
 import json
 import re
@@ -123,23 +124,6 @@ class MessageQueue:
         self.messages: list[OpenAIMessage] = []
         self.fetcher_lock = asyncio.Lock()
 
-    def merge_user_messages(self) -> list[OpenAIMessage]:
-        messages = []
-        for message in self.messages:
-            if (
-                isinstance(message, dict)
-                and message["role"] == "user"
-                and len(messages) >= 1
-                and isinstance(messages[-1], dict)
-                and messages[-1]["role"] == "user"
-                and isinstance(message["content"], str)
-                and isinstance(messages[-1]["content"], str)
-            ):
-                messages[-1]["content"] += "\n" + message["content"]
-            else:
-                messages.append(message)
-        return messages
-
     def clean_special_message(self) -> None:
         while True:
             role = get_role(self.messages[0])
@@ -150,11 +134,13 @@ class MessageQueue:
     async def get_messages(self) -> list[OpenAIMessage]:
         self.clean_special_message()
         self.messages = self.messages[-self.max_message_count :]
-        messages = self.merge_user_messages()
+        messages = copy.deepcopy(self.messages)
         messages.insert(0, await self.processor.generate_system_prompt())
         return messages
 
     async def fetch_reply(self) -> None:
+        if self.fetcher_lock.locked():
+            return
         async with self.fetcher_lock:
             await self._fetch_reply()
 
@@ -172,6 +158,7 @@ class MessageQueue:
         async for message in fetcher.fetch_message_stream():
             logger.info(f"Moonlark 说: {message}")
             fetcher.session.messages.extend(self.messages)
+            self.messages = []
         self.messages = fetcher.get_messages()
 
     def append_user_message(self, message: str) -> None:
