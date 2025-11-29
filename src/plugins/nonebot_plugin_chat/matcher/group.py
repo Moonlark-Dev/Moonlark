@@ -625,12 +625,12 @@ class CommandHandler:
         self.session = session
         self.group_id = group_id
         self.user_id = user_id
-        self.argv = message.extract_plain_text().split(" ")s
+        self.argv = message.extract_plain_text().split(" ")
         self.group_config = ChatGroup(group_id=self.group_id, enabled=False)
 
     async def setup(self) -> "CommandHandler":
         if isinstance(self.bot, BotQQ):
-            await lang.finish("command.not_available", user_id)
+            await lang.finish("command.not_available", self.user_id)
         self.group_config = (await self.session.get(ChatGroup, {"group_id": self.group_id})) or ChatGroup(group_id=self.group_id, enabled=False)
         return self
     
