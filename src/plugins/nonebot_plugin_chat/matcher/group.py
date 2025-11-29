@@ -177,6 +177,7 @@ class MessageProcessor:
         self.interrupter = Interrupter(session)
         self.cold_until = datetime.now()
         self.blocked = False
+
         self.functions = functions = [
             AsyncFunction(
                 func=self.send_message,
@@ -374,22 +375,25 @@ class MessageProcessor:
         if datetime.now() < self.interrupter.sleep_end_time:
             self.interrupter.sleep_end_time = datetime.min
 
+    async def append_tool_call_history(self, call_string: str) -> None:
+        self.session.tool_calls_history.append(
+            await lang.text("tools.template", self.session.user_id, datetime.now().strftime("%H:%M"), call_string)
+        )
+        self.session.tool_calls_history = self.session.tool_calls_history[-5:]
+
     async def send_function_call_feedback(
         self, call_id: str, name: str, param: dict[str, Any]
     ) -> tuple[str, str, dict[str, Any]]:
         match name:
             case "browse_webpage":
-                await UniMessage().text(
-                    text=await lang.text("tools.browse", self.session.user_id, param.get("url"))
-                ).send(target=self.session.target, bot=self.session.bot)
+                text = await lang.text("tools.browse", self.session.user_id, param.get("url"))
             case "request_wolfram_alpha":
-                await UniMessage().text(
-                    text=await lang.text("tools.wolfram", self.session.user_id, param.get("question"))
-                ).send(target=self.session.target, bot=self.session.bot)
+                text = await lang.text("tools.wolfram", self.session.user_id, param.get("question"))
             case "web_search":
-                await UniMessage().text(
-                    text=await lang.text("tools.search", self.session.user_id, param.get("keyword"))
-                ).send(target=self.session.target, bot=self.session.bot)
+                text = await lang.text("tools.search", self.session.user_id, param.get("keyword"))
+            case _:
+                return call_id, name, param
+        await self.append_tool_call_history(text)
         return call_id, name, param
 
     async def send_message(self, message_content: str, reply_message_id: str | None = None) -> None:
@@ -458,6 +462,7 @@ class GroupSession:
         self.target = target
         self.bot = bot
         self.user_id = f"mlsid::--lang={lang_name}"
+        self.tool_calls_history = []
         self.message_queue: list[tuple[UniMessage, Event, T_State, str, str, datetime, bool, str]] = []
         self.cached_messages: list[CachedMessage] = []
         self.accumulated_text_length = 0  # 累计文本长度
@@ -599,6 +604,99 @@ async def group_disable(group_id: str) -> None:
         group.processor.enabled = False
 
 
+class CommandHandler:
+
+    def __init__(
+        self, mathcer: Matcher, bot: Bot, session: async_scoped_session, message: Message, group_id: str, user_id: str
+    ):
+        self.matcher = mathcer
+        self.bot = bot
+        self.session = session
+        self.group_id = group_id
+        self.user_id = user_id
+        self.argv = message.extract_plain_text().split(" ")
+        self.group_config = ChatGroup(group_id=self.group_id, enabled=False)
+
+    async def setup(self) -> "CommandHandler":
+        if isinstance(self.bot, BotQQ):
+            await lang.finish("command.not_available", self.user_id)
+        self.group_config = (await self.session.get(ChatGroup, {"group_id": self.group_id})) or ChatGroup(
+            group_id=self.group_id, enabled=False
+        )
+        return self
+
+    def is_group_enabled(self) -> bool:
+        return self.group_config.enabled
+
+    async def handle_switch(self) -> None:
+        if self.is_group_enabled():
+            await self.handle_off()
+        else:
+            await self.handle_on()
+
+    async def merge_group_config(self) -> None:
+        await self.session.merge(self.group_config)
+        await self.session.commit()
+
+    async def handle_off(self) -> None:
+        self.group_config.enabled = False
+        await self.merge_group_config()
+        await group_disable(self.group_id)
+        await lang.finish("command.switch.disabled", self.user_id)
+
+    async def handle_on(self) -> None:
+        self.group_config.enabled = True
+        await self.merge_group_config()
+        await lang.finish("command.switch.enabled", self.user_id)
+
+    async def handle_desire(self) -> None:
+        session = await self.get_group_session()
+        length = session.accumulated_text_length
+        probability = calculate_trigger_probability(length)
+        await lang.send("command.desire.get", self.user_id, length, round(probability, 2))
+
+    async def handle_mute(self) -> None:
+        session = await self.get_group_session()
+        await session.mute()
+        await lang.finish("command.mute", self.user_id)
+
+    async def handle_unmute(self) -> None:
+        session = await self.get_group_session()
+        session.mute_until = None
+        await lang.finish("command.unmute", self.user_id)
+
+    async def handle_calls(self) -> None:
+        session = await self.get_group_session()
+        await self.matcher.finish("\n".join(session.tool_calls_history))
+
+    async def handle(self) -> None:
+        match self.argv[0]:
+            case "switch":
+                await self.handle_switch()
+            case "desire":
+                await self.handle_desire()
+            case "mute":
+                await self.handle_mute()
+            case "unmute":
+                await self.handle_unmute()
+            case "calls":
+                await self.handle_calls()
+            case "on":
+                await self.handle_on()
+            case "off":
+                await self.handle_off()
+            case _:
+                await lang.finish("command.no_argv", self.user_id)
+
+    async def get_group_session(self) -> GroupSession:
+        if self.group_id in groups:
+            return groups[self.group_id]
+        elif self.is_group_enabled():
+            await lang.finish("command.not_inited", self.user_id)
+        else:
+            await lang.finish("command.disabled", self.user_id)
+
+
 @on_command("chat").handle()
 async def _(
     matcher: Matcher,
@@ -608,59 +706,9 @@ async def _(
     group_id: str = get_group_id(),
     user_id: str = get_user_id(),
 ) -> None:
-    if isinstance(bot, BotQQ):
-        await lang.finish("command.not_available", user_id)
-    argv = message.extract_plain_text().split(" ")
-    g = await session.get(ChatGroup, {"group_id": group_id})
-    if len(argv) == 0:
-        await lang.finish("command.no_argv", user_id)
-    match argv[0]:
-        case "switch":
-            if g is None or not g.enabled:
-                g = ChatGroup(group_id=group_id, enabled=True)
-                await lang.send("command.switch.enabled", user_id)
-            else:
-                g.enabled = False
-                await group_disable(group_id)
-                await lang.send("command.switch.disabled", user_id)
-        case "off":
-            g = ChatGroup(group_id=group_id, enabled=False)
-            await group_disable(group_id)
-            await lang.send("command.switch.disabled", user_id)
-        case "on":
-            g = ChatGroup(group_id=group_id, enabled=True)
-            await lang.send("command.switch.enabled", user_id)
-        case "desire":
-            if group_id in groups:
-                length = groups[group_id].accumulated_text_length
-                probability = calculate_trigger_probability(length)
-                await lang.send("command.desire.get", user_id, length, round(probability, 2))
-            elif g and g.enabled:
-                await lang.send("command.not_inited", user_id)
-            else:
-                await lang.send("command.disabled", user_id)
-
-        case "mute":
-            if group_id in groups:
-                await lang.send("command.mute", user_id)
-                await groups[group_id].mute()
-            elif g and g.enabled:
-                await lang.send("command.not_inited", user_id)
-            else:
-                await lang.send("command.disabled", user_id)
-        case "unmute":
-            if group_id in groups:
-                groups[group_id].mute_until = None
-                await lang.send("command.unmute", user_id)
-            elif g and g.enabled:
-                await lang.send("command.not_inited", user_id)
-            else:
-                await lang.send("command.disabled", user_id)
-        case _:
-            await lang.finish("command.no_argv", user_id)
-    await session.merge(g)
-    await session.commit()
-    await matcher.finish()
+    handler = CommandHandler(matcher, bot, session, message, group_id, user_id)
+    await handler.setup()
+    await handler.handle()
 
 
 @scheduler.scheduled_job("cron", minute="*", id="trigger_group")
