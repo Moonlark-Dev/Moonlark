@@ -613,10 +613,6 @@ async def group_disable(group_id: str) -> None:
         group = groups.pop(group_id)
         group.processor.enabled = False
 
-
-        
-
-
 class CommandHandler:
 
     def __init__(self, mathcer: Matcher, bot: Bot, session: async_scoped_session, message: Message, group_id: str, user_id: str):
