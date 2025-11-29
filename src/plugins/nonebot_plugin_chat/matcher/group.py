@@ -123,7 +123,6 @@ class MessageQueue:
         self.max_message_count = max_message_count
         self.messages: list[OpenAIMessage] = []
         self.fetcher_lock = asyncio.Lock()
-        
 
     def clean_special_message(self) -> None:
         while True:
@@ -178,7 +177,7 @@ class MessageProcessor:
         self.interrupter = Interrupter(session)
         self.cold_until = datetime.now()
         self.blocked = False
-        
+
         self.functions = functions = [
             AsyncFunction(
                 func=self.send_message,
@@ -377,7 +376,9 @@ class MessageProcessor:
             self.interrupter.sleep_end_time = datetime.min
 
     async def append_tool_call_history(self, call_string: str) -> None:
-        self.session.tool_calls_history.append(await lang.text("tools.template", self.session.user_id, datetime.now().strftime("%H:%M"), call_string))
+        self.session.tool_calls_history.append(
+            await lang.text("tools.template", self.session.user_id, datetime.now().strftime("%H:%M"), call_string)
+        )
         self.session.tool_calls_history = self.session.tool_calls_history[-5:]
 
     async def send_function_call_feedback(
@@ -388,7 +389,7 @@ class MessageProcessor:
                 text = await lang.text("tools.browse", self.session.user_id, param.get("url"))
             case "request_wolfram_alpha":
                 text = await lang.text("tools.wolfram", self.session.user_id, param.get("question"))
-            case "web_search":                
+            case "web_search":
                 text = await lang.text("tools.search", self.session.user_id, param.get("keyword"))
             case _:
                 return call_id, name, param
@@ -602,9 +603,12 @@ async def group_disable(group_id: str) -> None:
         group = groups.pop(group_id)
         group.processor.enabled = False
 
+
 class CommandHandler:
 
-    def __init__(self, mathcer: Matcher, bot: Bot, session: async_scoped_session, message: Message, group_id: str, user_id: str):
+    def __init__(
+        self, mathcer: Matcher, bot: Bot, session: async_scoped_session, message: Message, group_id: str, user_id: str
+    ):
         self.matcher = mathcer
         self.bot = bot
         self.session = session
@@ -616,12 +620,14 @@ class CommandHandler:
     async def setup(self) -> "CommandHandler":
         if isinstance(self.bot, BotQQ):
             await lang.finish("command.not_available", self.user_id)
-        self.group_config = (await self.session.get(ChatGroup, {"group_id": self.group_id})) or ChatGroup(group_id=self.group_id, enabled=False)
+        self.group_config = (await self.session.get(ChatGroup, {"group_id": self.group_id})) or ChatGroup(
+            group_id=self.group_id, enabled=False
+        )
         return self
-    
+
     def is_group_enabled(self) -> bool:
         return self.group_config.enabled
-    
+
     async def handle_switch(self) -> None:
         if self.is_group_enabled():
             await self.handle_off()
@@ -637,7 +643,7 @@ class CommandHandler:
         await self.merge_group_config()
         await group_disable(self.group_id)
         await lang.finish("command.switch.disabled", self.user_id)
-    
+
     async def handle_on(self) -> None:
         self.group_config.enabled = True
         await self.merge_group_config()
@@ -681,7 +687,7 @@ class CommandHandler:
                 await self.handle_off()
             case _:
                 await lang.finish("command.no_argv", self.user_id)
-    
+
     async def get_group_session(self) -> GroupSession:
         if self.group_id in groups:
             return groups[self.group_id]
@@ -689,8 +695,6 @@ class CommandHandler:
             await lang.finish("command.not_inited", self.user_id)
         else:
             await lang.finish("command.disabled", self.user_id)
-
-
 
 
 @on_command("chat").handle()
