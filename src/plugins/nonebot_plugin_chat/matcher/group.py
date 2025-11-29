@@ -122,6 +122,7 @@ class MessageQueue:
         self.max_message_count = max_message_count
         self.messages: list[OpenAIMessage] = []
         self.fetcher_lock = asyncio.Lock()
+        
 
     def merge_user_messages(self) -> list[OpenAIMessage]:
         messages = []
@@ -188,6 +189,7 @@ class MessageProcessor:
         self.interrupter = Interrupter(session)
         self.cold_until = datetime.now()
         self.blocked = False
+        
         self.functions = functions = [
             AsyncFunction(
                 func=self.send_message,
@@ -385,22 +387,23 @@ class MessageProcessor:
         if datetime.now() < self.interrupter.sleep_end_time:
             self.interrupter.sleep_end_time = datetime.min
 
+    async def append_tool_call_history(self, call_string: str) -> None:
+        self.session.tool_calls_history.append(await lang.text("tools.template", self.session.user_id, datetime.now().strftime("%H:%M"), call_string))
+        self.session.tool_calls_history = self.session.tool_calls_history[-5:]
+
     async def send_function_call_feedback(
         self, call_id: str, name: str, param: dict[str, Any]
     ) -> tuple[str, str, dict[str, Any]]:
         match name:
             case "browse_webpage":
-                await UniMessage().text(
-                    text=await lang.text("tools.browse", self.session.user_id, param.get("url"))
-                ).send(target=self.session.target, bot=self.session.bot)
+                text = await lang.text("tools.browse", self.session.user_id, param.get("url"))
             case "request_wolfram_alpha":
-                await UniMessage().text(
-                    text=await lang.text("tools.wolfram", self.session.user_id, param.get("question"))
-                ).send(target=self.session.target, bot=self.session.bot)
-            case "web_search":
-                await UniMessage().text(
-                    text=await lang.text("tools.search", self.session.user_id, param.get("keyword"))
-                ).send(target=self.session.target, bot=self.session.bot)
+                text = await lang.text("tools.wolfram", self.session.user_id, param.get("question"))
+            case "web_search":                
+                text = await lang.text("tools.search", self.session.user_id, param.get("keyword"))
+            case _:
+                return call_id, name, param
+        await self.append_tool_call_history(text)
         return call_id, name, param
 
     async def send_message(self, message_content: str, reply_message_id: str | None = None) -> None:
@@ -469,6 +472,7 @@ class GroupSession:
         self.target = target
         self.bot = bot
         self.user_id = f"mlsid::--lang={lang_name}"
+        self.tool_calls_history = []
         self.message_queue: list[tuple[UniMessage, Event, T_State, str, str, datetime, bool, str]] = []
         self.cached_messages: list[CachedMessage] = []
         self.accumulated_text_length = 0  # 累计文本长度
@@ -667,6 +671,12 @@ async def _(
                 await lang.send("command.not_inited", user_id)
             else:
                 await lang.send("command.disabled", user_id)
+        case "calls":
+            if group_id in groups:
+                await matcher.send("\n".join(groups[group_id].tool_calls_history))
+            elif g and g.enabled:
+                await lang.send("command.not_inited", user_id)
+            
         case _:
             await lang.finish("command.no_argv", user_id)
     await session.merge(g)

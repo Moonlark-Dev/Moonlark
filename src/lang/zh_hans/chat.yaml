@@ -294,6 +294,7 @@ help:
   usage8: chat note view <id> (查看指定笔记)
   usage9: chat note delete <id> (删除指定笔记)
 tools:
-  search: '(搜索了: {})'
-  browse: '(访问了: {})'
-  wolfram: '(计算了: {})'
+  template: '[{}]: {}'
+  search: '搜索了: {}'
+  browse: '访问了: {}'
+  wolfram: '计算了: {}'
