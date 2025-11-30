@@ -341,6 +341,12 @@ Moonlark 投票
 ### 用法
 - `/ghot (当前群聊热度分数)`
 - `/ghot history [-l] (最近的天分数历史)`
+## `neko-finder`: 找猫娘
+
+根据进 2 天的消息对群友的“猫娘指数”进行打分。
+
+### 用法
+- `/neko-finder`
 ## `online-timer`: 在线时间段
 
 查询 Moonlark 记录的群友在线时间段
