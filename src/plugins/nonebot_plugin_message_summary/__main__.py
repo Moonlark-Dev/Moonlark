@@ -124,22 +124,23 @@ async def fetch_default_summary(user_id: str, messages: str) -> str:
 
 async def get_catgirl_score(message_list: str) -> list[CatGirlScore]:
     """获取由聊天记录总结出来的猫娘分数
-    
+
     Args:
         message_list: 聊天记录字符串
-        
+
     Returns:
         list[CatGirlScore]: 猫娘分数列表，每个元素包含 rank、username、score 字段
     """
-    return json.loads(await fetch_message(
-        [
-            generate_message(await lang.text("neko.prompt", message_list), "system"),
-            generate_message(message_list, "user")
-        ],
-        identify="Message Summary (Neko)"
-    ))
+    return json.loads(
+        await fetch_message(
+            [
+                generate_message(await lang.text("neko.prompt", message_list), "system"),
+                generate_message(message_list, "user"),
+            ],
+            identify="Message Summary (Neko)",
+        )
+    )
 
-    
 
 async def clean_recorded_message(session: async_scoped_session) -> None:
     end_time = datetime.now() - timedelta(days=2)
@@ -289,19 +290,15 @@ async def handle_neko_finder(
     """处理 .neko-finder 指令"""
     # 获取广播风格的消息列表
     result = (
-        await session.scalars(
-            select(GroupMessage)
-            .where(GroupMessage.group_id == group_id)
-            .order_by(GroupMessage.id_)
-        )
+        await session.scalars(select(GroupMessage).where(GroupMessage.group_id == group_id).order_by(GroupMessage.id_))
     ).all()
     messages = generate_message_string(list(result), "broadcast")
-    
+
     # 调用 get_catgirl_score 函数分析消息数据
     catgirl_scores = await get_catgirl_score(messages)
-    
+
     # 使用matplotlib生成横向柱状图
     image_bytes = await render_horizontal_bar_chart(catgirl_scores, user_id)
-    
+
     # 发送图片
     await neko_finder.finish(UniMessage().image(raw=image_bytes))
