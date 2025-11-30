@@ -300,6 +300,8 @@ class MessageProcessor:
         text = await parse_message_to_string(message, event, self.session.bot, state)
         if not text:
             return
+        if "@Moonlark" not in text and mentioned:
+            text = f"@Moonlark {text}"
         msg_dict: CachedMessage = {
             "content": text,
             "nickname": nickname,
