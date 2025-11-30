@@ -249,11 +249,11 @@ neko:
 
     ## Output Format (JSON Structure)
     [
-      {
+      {{
         "rank": 1,
         "username": "用户昵称",
         "score": 95
-      },
+      }},
       ...
     ]
 
