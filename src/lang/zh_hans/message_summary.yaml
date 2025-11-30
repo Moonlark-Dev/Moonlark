@@ -205,6 +205,14 @@ help:
   usage3: summary -s topic (话题梳理)
   usage4: summary -e|-d (功能开关)
   usage5: summary --everyday-summary <on/off> (每日总结开关)
+help_neko:
+  description: 找猫娘
+  details: 根据进 2 天的消息对群友的“猫娘指数”进行打分。
+  usage1: neko-finder
 everyday_summary:
   enable: 每日群消息总结推送已启用（推送时间：6:00）
   disable: 每日群消息总结推送已禁用。
+neko:
+  no_data: 暂无数据
+  x_label: '猫娘分数'
+  title: 猫娘分数排行榜

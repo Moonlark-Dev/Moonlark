@@ -2,6 +2,7 @@ from datetime import datetime
 from nonebot_plugin_orm import Model
 from sqlalchemy.orm import mapped_column, Mapped
 from sqlalchemy import String, Text
+from typing import TypedDict
 
 
 class GroupMessage(Model):
@@ -10,3 +11,9 @@ class GroupMessage(Model):
     sender_nickname: Mapped[str] = mapped_column(String(128))
     group_id: Mapped[str] = mapped_column(String(128))
     timestamp: Mapped[datetime] = mapped_column(default=datetime.now)
+
+
+class CatGirlScore(TypedDict):
+    rank: int
+    username: str
+    score: int

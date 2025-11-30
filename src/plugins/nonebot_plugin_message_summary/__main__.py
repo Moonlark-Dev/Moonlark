@@ -1,3 +1,4 @@
+import json
 from nonebot_plugin_htmlrender import md_to_pic
 
 from nonebot_plugin_broadcast import get_available_groups
@@ -6,23 +7,24 @@ from sqlalchemy import select
 from nonebot.adapters import Event, Bot
 from nonebot.adapters.qq import Bot as Bot_QQ
 from nonebot.adapters.onebot.v11 import GroupMessageEvent
-from nonebot import on_command, on_message, logger
+from nonebot import on_message, logger
 
 from datetime import datetime, timedelta, timezone
 from nonebot_plugin_orm import async_scoped_session, get_session
 from nonebot_plugin_alconna import on_alconna, Alconna, Subcommand, Args, UniMessage
-from typing import Literal
-
+from typing import Literal, Sequence
+from .lang import lang
 from nonebot_plugin_larkutils.file import FileManager
 from nonebot_plugin_openai import fetch_message, generate_message
 from nonebot_plugin_larkutils import get_user_id, get_group_id, open_file, FileType
-from nonebot_plugin_larklang import LangHelper
+
 from nonebot_plugin_apscheduler import scheduler
-from nonebot import get_bots
+from nonebot_plugin_render.render import render_template
 
-from .models import GroupMessage
+from .models import GroupMessage, CatGirlScore
+from .chart import render_horizontal_bar_chart
 
-lang = LangHelper()
+
 summary = on_alconna(
     Alconna(
         "summary",
@@ -34,6 +36,7 @@ summary = on_alconna(
     )
 )
 recorder = on_message(priority=3, block=False)
+neko_finder = on_alconna(Alconna("neko-finder"))
 
 
 def get_config() -> FileManager:
@@ -51,9 +54,9 @@ async def _(
     await handle_main(limit, session, style_type, user_id, group_id)
 
 
-def generate_message_string(result: list[GroupMessage], style: str) -> str:
+def generate_message_string(result: list[GroupMessage] | Sequence[GroupMessage], style: str) -> str:
     messages = ""
-    for message in result[::-1]:
+    for message in list(result)[::-1]:
         if style in ["broadcast", "bc"]:
             # Format timestamp to include both date and time for broadcast style
             timestamp_str = message.timestamp.strftime("%Y-%m-%d %H:%M:%S")
@@ -118,6 +121,25 @@ async def fetch_default_summary(user_id: str, messages: str) -> str:
     )
     return summary_string
 
+
+async def get_catgirl_score(message_list: str) -> list[CatGirlScore]:
+    """获取由聊天记录总结出来的猫娘分数
+    
+    Args:
+        message_list: 聊天记录字符串
+        
+    Returns:
+        list[CatGirlScore]: 猫娘分数列表，每个元素包含 rank、username、score 字段
+    """
+    return json.loads(await fetch_message(
+        [
+            generate_message(await lang.text("neko.prompt", message_list), "system"),
+            generate_message(message_list, "user")
+        ],
+        identify="Message Summary (Neko)"
+    ))
+
+    
 
 async def clean_recorded_message(session: async_scoped_session) -> None:
     end_time = datetime.now() - timedelta(days=2)
@@ -256,3 +278,30 @@ async def send_daily_message_summary() -> None:
             await send_daily_summary_to_group(group_id)
         except Exception as e:
             logger.exception(e)
+
+
+@neko_finder.handle()
+async def handle_neko_finder(
+    session: async_scoped_session,
+    user_id: str = get_user_id(),
+    group_id: str = get_group_id(),
+) -> None:
+    """处理 .neko-finder 指令"""
+    # 获取广播风格的消息列表
+    result = (
+        await session.scalars(
+            select(GroupMessage)
+            .where(GroupMessage.group_id == group_id)
+            .order_by(GroupMessage.id_)
+        )
+    ).all()
+    messages = generate_message_string(list(result), "broadcast")
+    
+    # 调用 get_catgirl_score 函数分析消息数据
+    catgirl_scores = await get_catgirl_score(messages)
+    
+    # 使用matplotlib生成横向柱状图
+    image_bytes = await render_horizontal_bar_chart(catgirl_scores, user_id)
+    
+    # 发送图片
+    await neko_finder.finish(UniMessage().image(raw=image_bytes))
