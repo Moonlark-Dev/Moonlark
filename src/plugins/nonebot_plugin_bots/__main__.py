@@ -83,6 +83,8 @@ async def process_to_me_message(event: Event, bot: Bot, session_id: str) -> None
             user_id = str(segment.get("user_id"))
             if user_id in config.bots_list.keys() and session_id in sessions and sessions[session_id] != user_id:
                 segment.user_id = bot.self_id
+                if hasattr(event, "to_me"):
+                    event.to_me = True
                 assign_session(session_id, bot.self_id)
 
 

@@ -312,6 +312,7 @@ class MessageProcessor:
         }
         await self.process_messages(msg_dict)
         self.session.cached_messages.append(msg_dict)
+        self.session.clean_cached_message()
         self.interrupter.record_message()
         if (not mentioned) and await self.interrupter.should_interrupt(text, user_id):
             # 如果需要阻断，直接返回
@@ -430,6 +431,7 @@ class MessageProcessor:
                 self.session.user_id,
                 final_memory_text,
                 datetime.now().isoformat(),
+                self.session.group_name,
             ),
             "system",
         )
@@ -451,10 +453,19 @@ class GroupSession:
         self.message_counter: dict[datetime, int] = {}
         self.group_users: dict[str, str] = {}
         self.user_counter: dict[datetime, set[str]] = {}
+        self.group_name = "未命名群聊"
         self.processor = MessageProcessor(self)
+
+    def clean_cached_message(self) -> None:
+        if len(self.cached_messages) > 50:
+            self.cached_messages = self.cached_messages[-50:]
 
     async def mute(self) -> None:
         self.mute_until = datetime.now() + timedelta(minutes=15)
+
+    async def setup_group_name(self) -> None:
+        if isinstance(self.bot, OB11Bot):
+            self.group_name = (await self.bot.get_group_info(group_id=int(self.group_id)))["group_name"]
 
     def update_counters(self, user_id: str) -> None:
         dt = datetime.now().replace(second=0, microsecond=0)
