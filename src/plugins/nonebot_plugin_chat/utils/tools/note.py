@@ -18,14 +18,13 @@
 import json
 from ...lang import lang
 from nonebot_plugin_openai import generate_message, fetch_message
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Awaitable, Callable, Literal, Optional, TypedDict
 
 from ...utils.note_manager import get_context_notes
 
 if TYPE_CHECKING:
     from ...matcher.group import GroupSession
-
 
 
 class AvailableNote(TypedDict):
@@ -35,40 +34,46 @@ class AvailableNote(TypedDict):
     keywords: Optional[str]
     comment: str
 
+
 class InvalidNote(TypedDict):
     create: Literal[False]
     comment: str
+
 
 NoteCheckResult = AvailableNote | InvalidNote
 
 
 def get_note_poster(session: "GroupSession") -> Callable[[str, Optional[int], Optional[str]], Awaitable[str]]:
     context_id = session.group_id
+
     async def push_note(text: str, expire_days: Optional[int] = None, keywords: Optional[str] = None) -> str:
         # Get the note manager for this context
         note_manager = await get_context_notes(context_id)
 
         try:
-            note_check_result: NoteCheckResult = json.loads(await fetch_message(
-                [
-                    generate_message(await lang.text("note.system", session.user_id, datetime.now().isoformat()), "system"),
-                    generate_message(
-                        await lang.text(
-                            "note.message",
-                            session.user_id,
-                            await session.get_cached_messages_string()
+            note_check_result: NoteCheckResult = json.loads(
+                await fetch_message(
+                    [
+                        generate_message(
+                            await lang.text("note.system", session.user_id, datetime.now().isoformat()), "system"
                         ),
-                        "user"
-                    )
-                ]
-            ))
+                        generate_message(
+                            await lang.text(
+                                "note.message",
+                                session.user_id,
+                                await session.get_cached_messages_string(),
+                                keywords or "",
+                                text,
+                                (datetime.now() + timedelta(days=expire_days or 3650)).isoformat(),
+                            ),
+                            "user",
+                        ),
+                    ]
+                )
+            )
         except json.JSONDecodeError:
             note_check_result = AvailableNote(
-                create=True,
-                keywords=keywords,
-                expire_days=expire_days or 3650,
-                text=text,
-                comment=""
+                create=True, keywords=keywords, expire_days=expire_days or 3650, text=text, comment=""
             )
         if note_check_result["create"] == False:
             return await lang.text("note.not_create", session.user_id, note_check_result["comment"])

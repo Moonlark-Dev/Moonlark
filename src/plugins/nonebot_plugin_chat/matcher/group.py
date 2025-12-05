@@ -378,7 +378,6 @@ class MessageProcessor:
                 return call_id, name, param
         await self.append_tool_call_history(text)
         return call_id, name, param
-    
 
     async def send_message(self, message_content: str, reply_message_id: str | None = None) -> None:
         message = await self.session.format_message(message_content)
@@ -560,7 +559,6 @@ class GroupSession:
                 await self.processor.handle_group_cold(timedelta(seconds=time_to_last_message))
             
 
-    
     async def get_cached_messages_string(self) -> str:
         messages = []
         for message in self.cached_messages:
