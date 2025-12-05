@@ -436,9 +436,12 @@ class MessageProcessor:
             ),
             "system",
         )
-    
+
     async def handle_recall(self, message_id: str, message_content: str) -> None:
-        self.openai_messages.append_user_message(f"[{datetime.now().strftime('%H:%M:%S')}]: 消息 {message_id} ({message_content}) 被撤回。")
+        self.openai_messages.append_user_message(
+            f"[{datetime.now().strftime('%H:%M:%S')}]: 消息 {message_id} ({message_content}) 被撤回。"
+        )
+
 
 class GroupSession:
 
@@ -557,7 +560,6 @@ class GroupSession:
             probability = calculate_trigger_probability(self.accumulated_text_length + 50)
             if random.random() <= probability:
                 await self.processor.handle_group_cold(timedelta(seconds=time_to_last_message))
-            
 
     async def get_cached_messages_string(self) -> str:
         messages = []
@@ -566,7 +568,7 @@ class GroupSession:
                 f"[{message['send_time'].strftime('%H:%M:%S')}][{message['nickname']}]: {message['content']}"
             )
         return "\n".join(messages)
-    
+
     async def handle_recall(self, message_id: str) -> None:
         for message in self.cached_messages:
             if message["message_id"] == message_id:
@@ -576,8 +578,6 @@ class GroupSession:
             message_content = "消息内容获取失败"
 
         await self.processor.handle_recall(message_id, message_content)
-                
-                
 
 
 from ..config import config
@@ -751,4 +751,3 @@ async def _(matcher: Matcher, event: GroupRecallNoticeEvent, bot: OB11Bot) -> No
         return
     session = groups[group_id]
     await session.handle_recall(message_id)
-    
