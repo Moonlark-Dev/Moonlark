@@ -424,7 +424,6 @@ class MessageProcessor:
                 memory_text_parts.append(f"- {note.content}")
 
         final_memory_text = "\n".join(memory_text_parts) if memory_text_parts else "暂无"
-
         return generate_message(
             await lang.text(
                 "prompt_group.default",
@@ -455,10 +454,12 @@ class GroupSession:
         self.user_counter: dict[datetime, set[str]] = {}
         self.group_name = "未命名群聊"
         self.processor = MessageProcessor(self)
+        asyncio.create_task(self.setup_group_name())
 
     def clean_cached_message(self) -> None:
         if len(self.cached_messages) > 50:
             self.cached_messages = self.cached_messages[-50:]
+            asyncio.create_task(self.setup_group_name())
 
     async def mute(self) -> None:
         self.mute_until = datetime.now() + timedelta(minutes=15)
