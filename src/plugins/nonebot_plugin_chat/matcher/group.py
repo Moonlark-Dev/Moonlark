@@ -248,7 +248,7 @@ class MessageProcessor:
                 },
             ),
             AsyncFunction(
-                func=get_note_poster(self.session.group_id),
+                func=get_note_poster(self.session),
                 description=(
                     "添加一段笔记到你的笔记本中。\n"
                     "**何时需要调用**: 当你认为某些信息对你理解群友或未来的互动非常重要时，可以自主选择使用它来记下。\n"
@@ -376,6 +376,7 @@ class MessageProcessor:
                 return call_id, name, param
         await self.append_tool_call_history(text)
         return call_id, name, param
+    
 
     async def send_message(self, message_content: str, reply_message_id: str | None = None) -> None:
         message = await self.session.format_message(message_content)
@@ -554,6 +555,16 @@ class GroupSession:
             probability = calculate_trigger_probability(self.accumulated_text_length + 50)
             if random.random() <= probability:
                 await self.processor.generate_reply(force_reply=True)
+
+    
+    async def get_cached_messages_string(self) -> str:
+        messages = []
+        for message in self.cached_messages:
+            messages.append(
+                f"[{message['send_time'].strftime('%H:%M:%S')}][{message['nickname']}]: {message['content']}"
+            )
+        return "\n".join(messages)
+                
 
 
 from ..config import config
