@@ -39,6 +39,8 @@ from nonebot_plugin_larkutils import get_user_id, get_group_id
 from nonebot_plugin_orm import async_scoped_session, get_session
 from nonebot.log import logger
 from nonebot_plugin_openai import generate_message
+from nonebot.adapters.onebot.v11 import GroupRecallNoticeEvent
+from nonebot import on_type
 from nonebot_plugin_openai.types import Message as OpenAIMessage, AsyncFunction, FunctionParameter
 from nonebot_plugin_openai.utils.chat import MessageFetcher
 from nonebot.matcher import Matcher
@@ -435,6 +437,11 @@ class MessageProcessor:
             "system",
         )
 
+    async def handle_recall(self, message_id: str, message_content: str) -> None:
+        self.openai_messages.append_user_message(
+            f"[{datetime.now().strftime('%H:%M:%S')}]: 消息 {message_id} ({message_content}) 被撤回。"
+        )
+
 
 class GroupSession:
 
@@ -549,10 +556,10 @@ class GroupSession:
             return
         time_to_last_message = (dt - self.cached_messages[-1]["send_time"]).total_seconds()
         # 如果群聊冷却超过3分钟，根据累计文本长度判断是否主动发言
-        if time_to_last_message > 180 and not self.cached_messages[-1]["self"]:
+        if 90 < time_to_last_message < 300 and not self.cached_messages[-1]["self"]:
             probability = calculate_trigger_probability(self.accumulated_text_length + 50)
             if random.random() <= probability:
-                await self.processor.generate_reply(force_reply=True)
+                await self.processor.handle_group_cold(timedelta(seconds=time_to_last_message))
 
     async def get_cached_messages_string(self) -> str:
         messages = []
@@ -561,6 +568,16 @@ class GroupSession:
                 f"[{message['send_time'].strftime('%H:%M:%S')}][{message['nickname']}]: {message['content']}"
             )
         return "\n".join(messages)
+
+    async def handle_recall(self, message_id: str) -> None:
+        for message in self.cached_messages:
+            if message["message_id"] == message_id:
+                message_content = message["content"]
+                break
+        else:
+            message_content = "消息内容获取失败"
+
+        await self.processor.handle_recall(message_id, message_content)
 
 
 from ..config import config
@@ -724,3 +741,13 @@ async def _() -> None:
     deleted_count = await cleanup_expired_notes()
     if deleted_count > 0:
         logger.info(f"Cleaned up {deleted_count} expired notes")
+
+
+@on_type(GroupRecallNoticeEvent, rule=enabled_group).handle()
+async def _(matcher: Matcher, event: GroupRecallNoticeEvent, bot: OB11Bot) -> None:
+    group_id = str(event.group_id)
+    message_id = str(event.message_id)
+    if group_id not in groups:
+        return
+    session = groups[group_id]
+    await session.handle_recall(message_id)
