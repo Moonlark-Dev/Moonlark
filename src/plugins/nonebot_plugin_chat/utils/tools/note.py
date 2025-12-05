@@ -18,7 +18,7 @@
 import json
 from ...lang import lang
 from nonebot_plugin_openai import generate_message, fetch_message
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Awaitable, Callable, Literal, Optional, TypedDict
 
 from ...utils.note_manager import get_context_notes
@@ -56,7 +56,10 @@ def get_note_poster(session: "GroupSession") -> Callable[[str, Optional[int], Op
                         await lang.text(
                             "note.message",
                             session.user_id,
-                            await session.get_cached_messages_string()
+                            await session.get_cached_messages_string(),
+                            keywords or "",
+                            text,
+                            (datetime.now() + timedelta(days=expire_days or 3650)).isoformat()
                         ),
                         "user"
                     )
