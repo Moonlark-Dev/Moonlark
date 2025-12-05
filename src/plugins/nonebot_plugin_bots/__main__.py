@@ -76,7 +76,6 @@ def assign_session(session_id: str, bot_id: str) -> None:
     logger.info(f"已将会话 {session_id} 分配给 {bot_id}")
 
 
-
 async def process_to_me_message(event: Event, bot: Bot, session_id: str) -> None:
     message = event.get_message()
     for segment in message:

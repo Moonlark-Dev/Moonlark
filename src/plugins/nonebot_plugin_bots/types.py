@@ -33,6 +33,3 @@ class OfflineBotStatus(TypedDict):
 
 
 BotStatus = OfflineBotStatus | OnlineBotStatus
-
-
-
