@@ -248,7 +248,7 @@ class MessageProcessor:
                 },
             ),
             AsyncFunction(
-                func=get_note_poster(self.session.group_id),
+                func=get_note_poster(self.session),
                 description=(
                     "添加一段笔记到你的笔记本中。\n"
                     "**何时需要调用**: 当你认为某些信息对你理解群友或未来的互动非常重要时，可以自主选择使用它来记下。\n"
@@ -376,6 +376,7 @@ class MessageProcessor:
                 return call_id, name, param
         await self.append_tool_call_history(text)
         return call_id, name, param
+    
 
     async def send_message(self, message_content: str, reply_message_id: str | None = None) -> None:
         message = await self.session.format_message(message_content)
@@ -424,7 +425,6 @@ class MessageProcessor:
                 memory_text_parts.append(f"- {note.content}")
 
         final_memory_text = "\n".join(memory_text_parts) if memory_text_parts else "暂无"
-
         return generate_message(
             await lang.text(
                 "prompt_group.default",
@@ -455,6 +455,7 @@ class GroupSession:
         self.user_counter: dict[datetime, set[str]] = {}
         self.group_name = "未命名群聊"
         self.processor = MessageProcessor(self)
+        asyncio.create_task(self.setup_group_name())
 
     def clean_cached_message(self) -> None:
         if len(self.cached_messages) > 50:
@@ -465,7 +466,7 @@ class GroupSession:
 
     async def setup_group_name(self) -> None:
         if isinstance(self.bot, OB11Bot):
-            self.group_name = (await self.bot.get_group_info(group_id=int(self.group_id)))["group_name"]
+            self.group_name = (await self.bot.get_group_info(group_id=int(self.group_id.split("_")[1])))["group_name"]
 
     def update_counters(self, user_id: str) -> None:
         dt = datetime.now().replace(second=0, microsecond=0)
@@ -553,6 +554,16 @@ class GroupSession:
             probability = calculate_trigger_probability(self.accumulated_text_length + 50)
             if random.random() <= probability:
                 await self.processor.generate_reply(force_reply=True)
+
+    
+    async def get_cached_messages_string(self) -> str:
+        messages = []
+        for message in self.cached_messages:
+            messages.append(
+                f"[{message['send_time'].strftime('%H:%M:%S')}][{message['nickname']}]: {message['content']}"
+            )
+        return "\n".join(messages)
+                
 
 
 from ..config import config

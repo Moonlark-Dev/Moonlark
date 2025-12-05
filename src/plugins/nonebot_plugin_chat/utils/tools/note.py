@@ -15,39 +15,73 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
-import time
+import json
+from ...lang import lang
+from nonebot_plugin_openai import generate_message, fetch_message
 from datetime import datetime, timedelta
-from typing import Awaitable, Callable, Optional
+from typing import TYPE_CHECKING, Awaitable, Callable, Literal, Optional, TypedDict
 
 from ...utils.note_manager import get_context_notes
 
+if TYPE_CHECKING:
+    from ...matcher.group import GroupSession
 
-def get_note_poster(context_id: str) -> Callable[[str, Optional[int], Optional[str]], Awaitable[str]]:
+
+
+class AvailableNote(TypedDict):
+    create: Literal[True]
+    text: str
+    expire_days: int
+    keywords: Optional[str]
+    comment: str
+
+class InvalidNote(TypedDict):
+    create: Literal[False]
+    comment: str
+
+NoteCheckResult = AvailableNote | InvalidNote
+
+
+def get_note_poster(session: "GroupSession") -> Callable[[str, Optional[int], Optional[str]], Awaitable[str]]:
+    context_id = session.group_id
     async def push_note(text: str, expire_days: Optional[int] = None, keywords: Optional[str] = None) -> str:
-        """
-        Push a new note to the note system.
-
-        Args:
-            text: The content of the note
-            context_id: The context ID (user_id for private, group_id for groups)
-            expire_days: Number of days until the note expires (default: 7 days, -1 for no expiration)
-            keywords: Comma-separated keywords for the note
-
-        Returns:
-            A confirmation message
-        """
         # Get the note manager for this context
         note_manager = await get_context_notes(context_id)
+
+        try:
+            note_check_result: NoteCheckResult = json.loads(await fetch_message(
+                [
+                    generate_message(await lang.text("note.system", session.user_id, datetime.now().isoformat()), "system"),
+                    generate_message(
+                        await lang.text(
+                            "note.message",
+                            session.user_id,
+                            await session.get_cached_messages_string(),
+                            keywords or "",
+                            text,
+                            (datetime.now() + timedelta(days=expire_days or 3650)).isoformat()
+                        ),
+                        "user"
+                    )
+                ]
+            ))
+        except json.JSONDecodeError:
+            note_check_result = AvailableNote(
+                create=True,
+                keywords=keywords,
+                expire_days=expire_days or 3650,
+                text=text,
+                comment=""
+            )
+        if note_check_result["create"] == False:
+            return await lang.text("note.not_create", session.user_id, note_check_result["comment"])
+        text = note_check_result["text"]
+        keywords = note_check_result["keywords"]
+        expire_days = note_check_result["expire_days"]
 
         # Create the note
         note = await note_manager.create_note(content=text, keywords=keywords or "", expire_days=expire_days or 3650)
 
-        # Return a confirmation message
-        created_time = datetime.fromtimestamp(note.created_time).strftime("%Y-%m-%d %H:%M:%S")
-        if note.expire_time:
-            expire_time = note.expire_time.strftime("%Y-%m-%d %H:%M:%S")
-            return f"Note created successfully at {created_time}, will expire at {expire_time}."
-        else:
-            return f"Note created successfully at {created_time} with no expiration."
+        return await lang.text("note.create", session.user_id)
 
     return push_note
