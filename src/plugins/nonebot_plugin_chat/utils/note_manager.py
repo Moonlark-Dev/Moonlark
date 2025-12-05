@@ -30,8 +30,6 @@ class NoteManager:
     def __init__(self, context_id: str):
         self.context_id = context_id  # user_id for private, group_id for groups
 
-
-
     async def create_note(self, content: str, keywords: str = "", expire_days: Optional[int] = None) -> Note:
         """
         Create a new note

@@ -376,7 +376,6 @@ class MessageProcessor:
                 return call_id, name, param
         await self.append_tool_call_history(text)
         return call_id, name, param
-    
 
     async def send_message(self, message_content: str, reply_message_id: str | None = None) -> None:
         message = await self.session.format_message(message_content)
@@ -555,7 +554,6 @@ class GroupSession:
             if random.random() <= probability:
                 await self.processor.generate_reply(force_reply=True)
 
-    
     async def get_cached_messages_string(self) -> str:
         messages = []
         for message in self.cached_messages:
@@ -563,7 +561,6 @@ class GroupSession:
                 f"[{message['send_time'].strftime('%H:%M:%S')}][{message['nickname']}]: {message['content']}"
             )
         return "\n".join(messages)
-                
 
 
 from ..config import config
