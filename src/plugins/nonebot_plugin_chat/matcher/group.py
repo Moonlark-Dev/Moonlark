@@ -460,14 +460,13 @@ class GroupSession:
     def clean_cached_message(self) -> None:
         if len(self.cached_messages) > 50:
             self.cached_messages = self.cached_messages[-50:]
-            asyncio.create_task(self.setup_group_name())
 
     async def mute(self) -> None:
         self.mute_until = datetime.now() + timedelta(minutes=15)
 
     async def setup_group_name(self) -> None:
         if isinstance(self.bot, OB11Bot):
-            self.group_name = (await self.bot.get_group_info(group_id=int(self.group_id)))["group_name"]
+            self.group_name = (await self.bot.get_group_info(group_id=int(self.group_id.split("_")[1])))["group_name"]
 
     def update_counters(self, user_id: str) -> None:
         dt = datetime.now().replace(second=0, microsecond=0)
