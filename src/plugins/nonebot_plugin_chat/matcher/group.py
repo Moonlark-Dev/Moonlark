@@ -743,8 +743,8 @@ async def _() -> None:
         logger.info(f"Cleaned up {deleted_count} expired notes")
 
 
-@on_type(GroupRecallNoticeEvent, rule=enabled_group).handle()
-async def _(matcher: Matcher, event: GroupRecallNoticeEvent, bot: OB11Bot) -> None:
+@on_type(GroupRecallNoticeEvent).handle()
+async def _(matcher: Matcher, event: GroupRecallNoticeEvent) -> None:
     group_id = str(event.group_id)
     message_id = str(event.message_id)
     if group_id not in groups:
