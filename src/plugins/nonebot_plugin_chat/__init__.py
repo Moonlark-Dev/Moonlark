@@ -19,6 +19,7 @@ require("nonebot_plugin_larkuser")
 require("nonebot_plugin_userinfo")
 require("nonebot_plugin_openai")
 require("nonebot_plugin_wolfram_alpha")
+require("nonebot_plugin_ghot")
 require("nonebot_plugin_alconna")
 
 from . import matcher

@@ -345,7 +345,7 @@ class MessageProcessor:
 
         # 检查是否应该触发回复
         if not force_reply:
-            probability = calculate_trigger_probability(self.session.accumulated_text_length)
+            probability = calculate_trigger_probability(self.session.accumulated_text_length) * self.session.ghot_coefficient
             logger.debug(
                 f"Accumulated length: {self.session.accumulated_text_length}, Trigger probability: {probability:.2%}"
             )
@@ -442,6 +442,8 @@ class MessageProcessor:
             f"[{datetime.now().strftime('%H:%M:%S')}]: 消息 {message_id} ({message_content}) 被撤回。"
         )
 
+from nonebot_plugin_ghot.function import get_group_hot_score
+
 
 class GroupSession:
 
@@ -453,6 +455,7 @@ class GroupSession:
         self.tool_calls_history = []
         self.message_queue: list[tuple[UniMessage, Event, T_State, str, str, datetime, bool, str]] = []
         self.cached_messages: list[CachedMessage] = []
+        self.ghot_coefficient = 1
         self.accumulated_text_length = 0  # 累计文本长度
         self.last_reward_participation: Optional[datetime] = None
         self.mute_until: Optional[datetime] = None
@@ -462,6 +465,10 @@ class GroupSession:
         self.group_name = "未命名群聊"
         self.processor = MessageProcessor(self)
         asyncio.create_task(self.setup_group_name())
+        asyncio.create_task(self.calculate_ghot_coeefficient())
+
+    async def calculate_ghot_coeefficient(self) -> None:
+        self.ghot_coefficient = max(12 - (await get_group_hot_score(self.group_id))[2], 1)
 
     def clean_cached_message(self) -> None:
         if len(self.cached_messages) > 50:
@@ -557,7 +564,7 @@ class GroupSession:
         time_to_last_message = (dt - self.cached_messages[-1]["send_time"]).total_seconds()
         # 如果群聊冷却超过3分钟，根据累计文本长度判断是否主动发言
         if 90 < time_to_last_message < 300 and not self.cached_messages[-1]["self"]:
-            probability = calculate_trigger_probability(self.accumulated_text_length + 50)
+            probability = calculate_trigger_probability(self.accumulated_text_length + 50) * self.ghot_coefficient
             if random.random() <= probability:
                 await self.processor.handle_group_cold(timedelta(seconds=time_to_last_message))
 
@@ -669,7 +676,7 @@ class CommandHandler:
         session = await self.get_group_session()
         length = session.accumulated_text_length
         probability = calculate_trigger_probability(length)
-        await lang.send("command.desire.get", self.user_id, length, round(probability, 2))
+        await lang.send("command.desire.get", self.user_id, length, round(probability, 2), session.ghot_coefficient)
 
     async def handle_mute(self) -> None:
         session = await self.get_group_session()
