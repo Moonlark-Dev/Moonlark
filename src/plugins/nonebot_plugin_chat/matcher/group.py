@@ -345,7 +345,9 @@ class MessageProcessor:
 
         # 检查是否应该触发回复
         if not force_reply:
-            probability = calculate_trigger_probability(self.session.accumulated_text_length) * self.session.ghot_coefficient
+            probability = (
+                calculate_trigger_probability(self.session.accumulated_text_length) * self.session.ghot_coefficient
+            )
             logger.debug(
                 f"Accumulated length: {self.session.accumulated_text_length}, Trigger probability: {probability:.2%}"
             )
@@ -441,6 +443,7 @@ class MessageProcessor:
         self.openai_messages.append_user_message(
             f"[{datetime.now().strftime('%H:%M:%S')}]: 消息 {message_id} ({message_content}) 被撤回。"
         )
+
 
 from nonebot_plugin_ghot.function import get_group_hot_score
 
