@@ -16,6 +16,7 @@
 # ##############################################################################
 
 import json
+import re
 from ...lang import lang
 from nonebot_plugin_openai import generate_message, fetch_message
 from datetime import datetime, timedelta
@@ -42,6 +43,10 @@ class InvalidNote(TypedDict):
 
 NoteCheckResult = AvailableNote | InvalidNote
 
+def decode_check_result(data: str) -> NoteCheckResult:
+    return json.loads(re.sub(r"`{1,3}([a-zA-Z0-9]+)?", data, ""))
+    
+
 
 def get_note_poster(session: "GroupSession") -> Callable[[str, Optional[int], Optional[str]], Awaitable[str]]:
     context_id = session.group_id
@@ -51,7 +56,7 @@ def get_note_poster(session: "GroupSession") -> Callable[[str, Optional[int], Op
         note_manager = await get_context_notes(context_id)
 
         try:
-            note_check_result: NoteCheckResult = json.loads(
+            note_check_result: NoteCheckResult = decode_check_result(
                 await fetch_message(
                     [
                         generate_message(
