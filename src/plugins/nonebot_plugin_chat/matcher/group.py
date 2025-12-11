@@ -314,7 +314,7 @@ class MessageProcessor:
         }
         await self.process_messages(msg_dict)
         self.session.cached_messages.append(msg_dict)
-        self.session.clean_cached_message()
+        await self.session.on_cache_posted()
         self.interrupter.record_message()
         if (not mentioned) and await self.interrupter.should_interrupt(text, user_id):
             # 如果需要阻断，直接返回
@@ -458,6 +458,7 @@ class GroupSession:
         self.tool_calls_history = []
         self.message_queue: list[tuple[UniMessage, Event, T_State, str, str, datetime, bool, str]] = []
         self.cached_messages: list[CachedMessage] = []
+        self.message_cache_counter = 0
         self.ghot_coefficient = 1
         self.accumulated_text_length = 0  # 累计文本长度
         self.last_reward_participation: Optional[datetime] = None
@@ -476,6 +477,15 @@ class GroupSession:
     def clean_cached_message(self) -> None:
         if len(self.cached_messages) > 50:
             self.cached_messages = self.cached_messages[-50:]
+
+    async def on_cache_posted(self) -> None:
+        self.message_cache_counter += 1
+        self.clean_cached_message()
+        if self.message_cache_counter % 20 == 0:
+            await self.calculate_ghot_coeefficient()
+        if self.message_cache_counter % 50 == 0:
+            await self.setup_group_name()
+        
 
     async def mute(self) -> None:
         self.mute_until = datetime.now() + timedelta(minutes=15)
