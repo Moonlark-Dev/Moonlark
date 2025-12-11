@@ -472,7 +472,7 @@ class GroupSession:
         asyncio.create_task(self.calculate_ghot_coeefficient())
 
     async def calculate_ghot_coeefficient(self) -> None:
-        self.ghot_coefficient = max(12 - (await get_group_hot_score(self.group_id))[2], 1)
+        self.ghot_coefficient = max(15 - (await get_group_hot_score(self.group_id))[2], 1)
 
     def clean_cached_message(self) -> None:
         if len(self.cached_messages) > 50:
