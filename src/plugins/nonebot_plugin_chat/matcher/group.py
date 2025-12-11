@@ -26,7 +26,7 @@ from datetime import datetime, timedelta
 from nonebot.adapters.qq import Bot as BotQQ
 from nonebot.params import CommandArg
 from nonebot.typing import T_State
-from typing import TypedDict, Optional, Any
+from typing import Literal, TypedDict, Optional, Any
 from nonebot_plugin_apscheduler import scheduler
 from nonebot_plugin_alconna import UniMessage, Target, get_target
 from nonebot_plugin_userinfo import EventUserInfo, UserInfo
@@ -41,7 +41,7 @@ from nonebot.log import logger
 from nonebot_plugin_openai import generate_message
 from nonebot.adapters.onebot.v11 import GroupRecallNoticeEvent
 from nonebot import on_type
-from nonebot_plugin_openai.types import Message as OpenAIMessage, AsyncFunction, FunctionParameter
+from nonebot_plugin_openai.types import FunctionParameterWithEnum, Message as OpenAIMessage, AsyncFunction, FunctionParameter
 from nonebot_plugin_openai.utils.chat import MessageFetcher
 from nonebot.matcher import Matcher
 
@@ -456,7 +456,7 @@ class GroupSession:
         self.tool_calls_history = []
         self.message_queue: list[tuple[UniMessage, Event, T_State, str, str, datetime, bool, str]] = []
         self.cached_messages: list[CachedMessage] = []
-        
+        self.interest_coefficient = 1
         self.message_cache_counter = 0
         self.ghot_coefficient = 1
         self.accumulated_text_length = 0  # 累计文本长度
@@ -469,6 +469,13 @@ class GroupSession:
         self.processor = MessageProcessor(self)
         asyncio.create_task(self.setup_group_name())
         asyncio.create_task(self.calculate_ghot_coeefficient())
+
+    async def set_interest_coefficient(self, mode: Literal["low", "medium", "high"]) -> None:
+        self.interest_coefficient = {
+            "low": 0.5,
+            "medium": 1,
+            "high": 1.2,
+        }[mode]
 
     def get_probability(self, length_adjustment: int = 0, apply_ghot_coeefficient: bool = True) -> float:
         """
