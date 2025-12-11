@@ -43,9 +43,9 @@ class InvalidNote(TypedDict):
 
 NoteCheckResult = AvailableNote | InvalidNote
 
+
 def decode_check_result(data: str) -> NoteCheckResult:
     return json.loads(re.sub(r"`{1,3}([a-zA-Z0-9]+)?", data, ""))
-    
 
 
 def get_note_poster(session: "GroupSession") -> Callable[[str, Optional[int], Optional[str]], Awaitable[str]]:

@@ -41,7 +41,12 @@ from nonebot.log import logger
 from nonebot_plugin_openai import generate_message
 from nonebot.adapters.onebot.v11 import GroupRecallNoticeEvent
 from nonebot import on_type
-from nonebot_plugin_openai.types import FunctionParameterWithEnum, Message as OpenAIMessage, AsyncFunction, FunctionParameter
+from nonebot_plugin_openai.types import (
+    FunctionParameterWithEnum,
+    Message as OpenAIMessage,
+    AsyncFunction,
+    FunctionParameter,
+)
 from nonebot_plugin_openai.utils.chat import MessageFetcher
 from nonebot.matcher import Matcher
 
@@ -516,7 +521,6 @@ class GroupSession:
             await self.calculate_ghot_coeefficient()
         if self.message_cache_counter % 50 == 0:
             await self.setup_group_name()
-        
 
     async def mute(self) -> None:
         self.mute_until = datetime.now() + timedelta(minutes=15)
