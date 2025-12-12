@@ -329,7 +329,7 @@ class MessageProcessor:
 
     async def handle_group_cold(self, time_d: timedelta) -> None:
         min_str = time_d.total_seconds() // 60
-        if len(self.openai_messages.messages) > 0:
+        if not len(self.openai_messages.messages):
             return
         delta_content = f"[{datetime.now().strftime('%H:%M:%S')}]: 当前群聊已经冷群了 {min_str} 分钟。"
         self.openai_messages.append_user_message(delta_content)
@@ -468,6 +468,7 @@ class GroupSession:
         self.last_reward_participation: Optional[datetime] = None
         self.mute_until: Optional[datetime] = None
         self.group_users: dict[str, str] = {}
+        self.setup_time = datetime.now()
         self.user_counter: dict[datetime, set[str]] = {}
         self.group_name = "未命名群聊"
         self.processor = MessageProcessor(self)
@@ -516,8 +517,6 @@ class GroupSession:
     async def on_cache_posted(self) -> None:
         self.message_cache_counter += 1
         self.clean_cached_message()
-        if self.message_cache_counter % 20 == 0:
-            await self.calculate_ghot_coeefficient()
         if self.message_cache_counter % 50 == 0:
             await self.setup_group_name()
 
@@ -577,10 +576,12 @@ class GroupSession:
             self.mute_until = None
         if self.processor.blocked or not self.cached_messages:
             return
+        if (dt - self.setup_time).total_seconds() // 60 % 10 == 0:
+            await self.calculate_ghot_coeefficient()
         time_to_last_message = (dt - self.cached_messages[-1]["send_time"]).total_seconds()
         # 如果群聊冷却超过3分钟，根据累计文本长度判断是否主动发言
         if 90 < time_to_last_message < 300 and not self.cached_messages[-1]["self"]:
-            probability = self.get_probability(length_adjustment=50)
+            probability = self.get_probability()
             if random.random() <= probability:
                 await self.processor.handle_group_cold(timedelta(seconds=time_to_last_message))
 
