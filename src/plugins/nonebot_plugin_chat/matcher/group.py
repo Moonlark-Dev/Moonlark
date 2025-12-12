@@ -288,6 +288,27 @@ class MessageProcessor:
                     ),
                 },
             ),
+            AsyncFunction(
+                func=self.session.set_timer,
+                description=(
+                    "设置一个定时器，在指定时间后触发。\n"
+                    "**何时必须调用**: 当需要在未来的某个时间点执行某个操作时。\n"
+                    "**判断标准**: 当需要延迟执行某些操作或提醒时使用。\n"
+                    "例如：群友要求你在 X 分钟后提醒他做某事；群友正在做某事，你想要几分钟后关心一下他的完成进度。\n"
+                ),
+                parameters={
+                    "delay": FunctionParameter(
+                        type="integer",
+                        description="延迟时间，以分钟为单位，计时器将在此时间后触发。",
+                        required=True,
+                    ),
+                    "description": FunctionParameter(
+                        type="string",
+                        description="定时器描述，用于描述定时器的用途。",
+                        required=True,
+                    ),
+                },
+            ),
         ]
         asyncio.create_task(self.loop())
 
@@ -326,6 +347,12 @@ class MessageProcessor:
             return
         if (mentioned or not self.session.message_queue) and not self.blocked:
             asyncio.create_task(self.generate_reply(force_reply=mentioned))
+
+    async def handle_timer(self, description: str) -> None:
+        content = f"[{datetime.now().strftime('%H:%M:%S')}]: 计时器 {description} 已触发。"
+        self.openai_messages.append_user_message(content)
+        await self.generate_reply(force_reply=True)
+
 
     async def handle_group_cold(self, time_d: timedelta) -> None:
         min_str = time_d.total_seconds() // 60
@@ -471,6 +498,7 @@ class GroupSession:
         self.setup_time = datetime.now()
         self.user_counter: dict[datetime, set[str]] = {}
         self.group_name = "未命名群聊"
+        self.llm_timers = []  # 定时器列表
         self.processor = MessageProcessor(self)
         asyncio.create_task(self.setup_group_name())
         asyncio.create_task(self.calculate_ghot_coeefficient())
@@ -574,6 +602,16 @@ class GroupSession:
         dt = datetime.now()
         if self.mute_until and dt > self.mute_until:
             self.mute_until = None
+        
+        triggered_timers = []
+        for timer in self.llm_timers:
+            if dt >= timer["trigger_time"]:
+                description = timer["description"]
+                await self.processor.handle_timer(description)
+                triggered_timers.append(timer)
+        for timer in triggered_timers:
+            self.llm_timers.remove(timer)
+
         if self.processor.blocked or not self.cached_messages:
             return
         if (dt - self.setup_time).total_seconds() // 60 % 10 == 0:
@@ -584,6 +622,7 @@ class GroupSession:
             probability = self.get_probability()
             if random.random() <= probability:
                 await self.processor.handle_group_cold(timedelta(seconds=time_to_last_message))
+    
 
     async def get_cached_messages_string(self) -> str:
         messages = []
@@ -602,6 +641,31 @@ class GroupSession:
             message_content = "消息内容获取失败"
 
         await self.processor.handle_recall(message_id, message_content)
+
+    async def set_timer(self, delay: int, description: str = ""):
+        """
+        设置定时器
+        
+        Args:
+            delay: 延迟时间（分钟）
+            description: 定时器描述
+        """
+        # 获取当前时间
+        now = datetime.now()
+        # 计算触发时间（将分钟转换为秒）
+        trigger_time = now + timedelta(minutes=delay)
+        
+        # 生成定时器ID
+        timer_id = f"{self.group_id}_{now.timestamp()}"
+        
+        # 存储定时器信息
+        self.llm_timers.append({
+            "id": timer_id,
+            "trigger_time": trigger_time,
+            "description": description
+        })
+        
+        return f"定时器已设置，将在 {delay} 分钟后触发"
 
 
 from ..config import config
