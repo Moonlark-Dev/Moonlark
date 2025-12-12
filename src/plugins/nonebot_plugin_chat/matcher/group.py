@@ -353,7 +353,6 @@ class MessageProcessor:
         self.openai_messages.append_user_message(content)
         await self.generate_reply(force_reply=True)
 
-
     async def handle_group_cold(self, time_d: timedelta) -> None:
         min_str = time_d.total_seconds() // 60
         if not len(self.openai_messages.messages):
@@ -555,7 +554,6 @@ class GroupSession:
         if isinstance(self.bot, OB11Bot):
             self.group_name = (await self.bot.get_group_info(group_id=int(self.group_id.split("_")[1])))["group_name"]
 
-
     async def handle_message(
         self, message: UniMessage, user_id: str, event: Event, state: T_State, nickname: str, mentioned: bool = False
     ) -> None:
@@ -602,7 +600,7 @@ class GroupSession:
         dt = datetime.now()
         if self.mute_until and dt > self.mute_until:
             self.mute_until = None
-        
+
         triggered_timers = []
         for timer in self.llm_timers:
             if dt >= timer["trigger_time"]:
@@ -622,7 +620,6 @@ class GroupSession:
             probability = self.get_probability()
             if random.random() <= probability:
                 await self.processor.handle_group_cold(timedelta(seconds=time_to_last_message))
-    
 
     async def get_cached_messages_string(self) -> str:
         messages = []
@@ -645,7 +642,7 @@ class GroupSession:
     async def set_timer(self, delay: int, description: str = ""):
         """
         设置定时器
-        
+
         Args:
             delay: 延迟时间（分钟）
             description: 定时器描述
@@ -654,17 +651,13 @@ class GroupSession:
         now = datetime.now()
         # 计算触发时间（将分钟转换为秒）
         trigger_time = now + timedelta(minutes=delay)
-        
+
         # 生成定时器ID
         timer_id = f"{self.group_id}_{now.timestamp()}"
-        
+
         # 存储定时器信息
-        self.llm_timers.append({
-            "id": timer_id,
-            "trigger_time": trigger_time,
-            "description": description
-        })
-        
+        self.llm_timers.append({"id": timer_id, "trigger_time": trigger_time, "description": description})
+
         return f"定时器已设置，将在 {delay} 分钟后触发"
 
 

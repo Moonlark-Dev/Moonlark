@@ -147,11 +147,15 @@ async def clean_recorded_message(session: async_scoped_session) -> None:
     for item in await session.scalars(select(GroupMessage).where(GroupMessage.timestamp < end_time)):
         await session.delete(item)
 
+
 from nonebot.typing import T_State
 from nonebot_plugin_chat.models import ChatGroup
 
+
 @recorder.handle()
-async def _(event: GroupMessageEvent, session: async_scoped_session, bot: Bot, state: T_State, group_id: str = get_group_id()) -> None:
+async def _(
+    event: GroupMessageEvent, session: async_scoped_session, bot: Bot, state: T_State, group_id: str = get_group_id()
+) -> None:
     async with get_config() as conf:
         if group_id in conf.data:
             await recorder.finish()
