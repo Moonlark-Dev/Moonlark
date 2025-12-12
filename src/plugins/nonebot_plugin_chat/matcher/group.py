@@ -467,7 +467,6 @@ class GroupSession:
         self.accumulated_text_length = 0  # 累计文本长度
         self.last_reward_participation: Optional[datetime] = None
         self.mute_until: Optional[datetime] = None
-        self.message_counter: dict[datetime, int] = {}
         self.group_users: dict[str, str] = {}
         self.user_counter: dict[datetime, set[str]] = {}
         self.group_name = "未命名群聊"
@@ -529,43 +528,12 @@ class GroupSession:
         if isinstance(self.bot, OB11Bot):
             self.group_name = (await self.bot.get_group_info(group_id=int(self.group_id.split("_")[1])))["group_name"]
 
-    def update_counters(self, user_id: str) -> None:
-        dt = datetime.now().replace(second=0, microsecond=0)
-        if dt in self.user_counter:
-            self.user_counter[dt].add(user_id)
-        else:
-            self.user_counter[dt] = {user_id}
-        self.message_counter[dt] = self.message_counter.get(dt, 0) + 1
-
-    def get_counters(self) -> tuple[int, int]:
-        msg_count_removable_keys = []
-        dt = datetime.now()
-        message_count = 0
-        for key, value in self.message_counter.items():
-            if (dt - key) > timedelta(minutes=10):
-                msg_count_removable_keys.append(key)
-            else:
-                message_count += value
-        user_count_removable_keys = []
-        user_count = 0
-        for key, value in self.user_counter.items():
-            if (dt - key) > timedelta(minutes=10):
-                user_count_removable_keys.append(key)
-            else:
-                user_count += len(value)
-        # remove removable keys
-        for key in msg_count_removable_keys:
-            self.message_counter.pop(key)
-        for key in user_count_removable_keys:
-            self.user_counter.pop(key)
-        return message_count, user_count
 
     async def handle_message(
         self, message: UniMessage, user_id: str, event: Event, state: T_State, nickname: str, mentioned: bool = False
     ) -> None:
         message_id = get_message_id(event)
         self.message_queue.append((message, event, state, user_id, nickname, datetime.now(), mentioned, message_id))
-        self.update_counters(user_id)
 
     async def format_message(self, origin_message: str) -> UniMessage:
         message = re.sub(r"\[\d\d:\d\d:\d\d]\[Moonlark]\(\d+\): ?", "", origin_message)
