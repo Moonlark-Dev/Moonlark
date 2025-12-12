@@ -18,5 +18,7 @@ require("nonebot_plugin_orm")
 require("nonebot_plugin_localstore")
 require("nonebot_plugin_alconna")
 require("nonebot_plugin_apscheduler")
+require("nonebot_plugin_chat")
+
 
 from . import __main__

@@ -18,8 +18,8 @@ from nonebot_plugin_larkutils.file import FileManager
 from nonebot_plugin_openai import fetch_message, generate_message
 from nonebot_plugin_larkutils import get_user_id, get_group_id, open_file, FileType
 
+from nonebot_plugin_chat.utils.group import parse_message_to_string
 from nonebot_plugin_apscheduler import scheduler
-from nonebot_plugin_render.render import render_template
 
 from .models import GroupMessage, CatGirlScore
 from .chart import render_horizontal_bar_chart
@@ -148,13 +148,25 @@ async def clean_recorded_message(session: async_scoped_session) -> None:
         await session.delete(item)
 
 
+from nonebot.typing import T_State
+from nonebot_plugin_chat.models import ChatGroup
+
+
 @recorder.handle()
-async def _(event: GroupMessageEvent, session: async_scoped_session, group_id: str = get_group_id()) -> None:
+async def _(
+    event: GroupMessageEvent, session: async_scoped_session, bot: Bot, state: T_State, group_id: str = get_group_id()
+) -> None:
     async with get_config() as conf:
         if group_id in conf.data:
             await recorder.finish()
     await clean_recorded_message(session)
-    session.add(GroupMessage(message=event.raw_message, sender_nickname=event.sender.nickname, group_id=group_id))
+    if (g := await session.get(ChatGroup, {"group_id": group_id})) and g.enabled:
+        uni_msg = UniMessage.of(event.message, bot)
+        await uni_msg.attach_reply(event, bot)
+        msg = await parse_message_to_string(uni_msg, event, bot, state)
+    else:
+        msg = event.raw_message
+    session.add(GroupMessage(message=msg, sender_nickname=event.sender.nickname, group_id=group_id))
     await session.commit()
     await recorder.finish()
 

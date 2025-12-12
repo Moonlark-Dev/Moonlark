@@ -288,6 +288,27 @@ class MessageProcessor:
                     ),
                 },
             ),
+            AsyncFunction(
+                func=self.session.set_timer,
+                description=(
+                    "设置一个定时器，在指定时间后触发。\n"
+                    "**何时必须调用**: 当需要在未来的某个时间点执行某个操作时。\n"
+                    "**判断标准**: 当需要延迟执行某些操作或提醒时使用。\n"
+                    "例如：群友要求你在 X 分钟后提醒他做某事；群友正在做某事，你想要几分钟后关心一下他的完成进度。\n"
+                ),
+                parameters={
+                    "delay": FunctionParameter(
+                        type="integer",
+                        description="延迟时间，以分钟为单位，计时器将在此时间后触发。",
+                        required=True,
+                    ),
+                    "description": FunctionParameter(
+                        type="string",
+                        description="定时器描述，用于描述定时器的用途。",
+                        required=True,
+                    ),
+                },
+            ),
         ]
         asyncio.create_task(self.loop())
 
@@ -327,9 +348,14 @@ class MessageProcessor:
         if (mentioned or not self.session.message_queue) and not self.blocked:
             asyncio.create_task(self.generate_reply(force_reply=mentioned))
 
+    async def handle_timer(self, description: str) -> None:
+        content = f"[{datetime.now().strftime('%H:%M:%S')}]: 计时器 {description} 已触发。"
+        self.openai_messages.append_user_message(content)
+        await self.generate_reply(force_reply=True)
+
     async def handle_group_cold(self, time_d: timedelta) -> None:
         min_str = time_d.total_seconds() // 60
-        if len(self.openai_messages.messages) > 0:
+        if not len(self.openai_messages.messages):
             return
         delta_content = f"[{datetime.now().strftime('%H:%M:%S')}]: 当前群聊已经冷群了 {min_str} 分钟。"
         self.openai_messages.append_user_message(delta_content)
@@ -467,10 +493,11 @@ class GroupSession:
         self.accumulated_text_length = 0  # 累计文本长度
         self.last_reward_participation: Optional[datetime] = None
         self.mute_until: Optional[datetime] = None
-        self.message_counter: dict[datetime, int] = {}
         self.group_users: dict[str, str] = {}
+        self.setup_time = datetime.now()
         self.user_counter: dict[datetime, set[str]] = {}
         self.group_name = "未命名群聊"
+        self.llm_timers = []  # 定时器列表
         self.processor = MessageProcessor(self)
         asyncio.create_task(self.setup_group_name())
         asyncio.create_task(self.calculate_ghot_coeefficient())
@@ -517,8 +544,6 @@ class GroupSession:
     async def on_cache_posted(self) -> None:
         self.message_cache_counter += 1
         self.clean_cached_message()
-        if self.message_cache_counter % 20 == 0:
-            await self.calculate_ghot_coeefficient()
         if self.message_cache_counter % 50 == 0:
             await self.setup_group_name()
 
@@ -529,43 +554,11 @@ class GroupSession:
         if isinstance(self.bot, OB11Bot):
             self.group_name = (await self.bot.get_group_info(group_id=int(self.group_id.split("_")[1])))["group_name"]
 
-    def update_counters(self, user_id: str) -> None:
-        dt = datetime.now().replace(second=0, microsecond=0)
-        if dt in self.user_counter:
-            self.user_counter[dt].add(user_id)
-        else:
-            self.user_counter[dt] = {user_id}
-        self.message_counter[dt] = self.message_counter.get(dt, 0) + 1
-
-    def get_counters(self) -> tuple[int, int]:
-        msg_count_removable_keys = []
-        dt = datetime.now()
-        message_count = 0
-        for key, value in self.message_counter.items():
-            if (dt - key) > timedelta(minutes=10):
-                msg_count_removable_keys.append(key)
-            else:
-                message_count += value
-        user_count_removable_keys = []
-        user_count = 0
-        for key, value in self.user_counter.items():
-            if (dt - key) > timedelta(minutes=10):
-                user_count_removable_keys.append(key)
-            else:
-                user_count += len(value)
-        # remove removable keys
-        for key in msg_count_removable_keys:
-            self.message_counter.pop(key)
-        for key in user_count_removable_keys:
-            self.user_counter.pop(key)
-        return message_count, user_count
-
     async def handle_message(
         self, message: UniMessage, user_id: str, event: Event, state: T_State, nickname: str, mentioned: bool = False
     ) -> None:
         message_id = get_message_id(event)
         self.message_queue.append((message, event, state, user_id, nickname, datetime.now(), mentioned, message_id))
-        self.update_counters(user_id)
 
     async def format_message(self, origin_message: str) -> UniMessage:
         message = re.sub(r"\[\d\d:\d\d:\d\d]\[Moonlark]\(\d+\): ?", "", origin_message)
@@ -607,12 +600,24 @@ class GroupSession:
         dt = datetime.now()
         if self.mute_until and dt > self.mute_until:
             self.mute_until = None
+
+        triggered_timers = []
+        for timer in self.llm_timers:
+            if dt >= timer["trigger_time"]:
+                description = timer["description"]
+                await self.processor.handle_timer(description)
+                triggered_timers.append(timer)
+        for timer in triggered_timers:
+            self.llm_timers.remove(timer)
+
         if self.processor.blocked or not self.cached_messages:
             return
+        if (dt - self.setup_time).total_seconds() // 60 % 10 == 0:
+            await self.calculate_ghot_coeefficient()
         time_to_last_message = (dt - self.cached_messages[-1]["send_time"]).total_seconds()
         # 如果群聊冷却超过3分钟，根据累计文本长度判断是否主动发言
         if 90 < time_to_last_message < 300 and not self.cached_messages[-1]["self"]:
-            probability = self.get_probability(length_adjustment=50)
+            probability = self.get_probability()
             if random.random() <= probability:
                 await self.processor.handle_group_cold(timedelta(seconds=time_to_last_message))
 
@@ -633,6 +638,27 @@ class GroupSession:
             message_content = "消息内容获取失败"
 
         await self.processor.handle_recall(message_id, message_content)
+
+    async def set_timer(self, delay: int, description: str = ""):
+        """
+        设置定时器
+
+        Args:
+            delay: 延迟时间（分钟）
+            description: 定时器描述
+        """
+        # 获取当前时间
+        now = datetime.now()
+        # 计算触发时间（将分钟转换为秒）
+        trigger_time = now + timedelta(minutes=delay)
+
+        # 生成定时器ID
+        timer_id = f"{self.group_id}_{now.timestamp()}"
+
+        # 存储定时器信息
+        self.llm_timers.append({"id": timer_id, "trigger_time": trigger_time, "description": description})
+
+        return f"定时器已设置，将在 {delay} 分钟后触发"
 
 
 from ..config import config
