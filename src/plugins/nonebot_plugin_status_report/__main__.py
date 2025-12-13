@@ -131,16 +131,16 @@ async def _(matcher: Matcher, state: T_State, event: Event) -> None:
 def parse_traceback_lines(exc_lines: list[str]) -> list[dict[str, str]]:
     result = []
     for line in exc_lines:
-        line = line.rstrip('\n')
+        line = line.rstrip("\n")
         if not line:
             continue
         if line.startswith('  File "'):
             result.append({"type": "file", "content": line})
-        elif line.startswith('    '):
+        elif line.startswith("    "):
             result.append({"type": "code", "content": line})
-        elif line.startswith('Traceback') or line.startswith('During handling'):
+        elif line.startswith("Traceback") or line.startswith("During handling"):
             result.append({"type": "header", "content": line})
-        elif ': ' in line and not line.startswith(' '):
+        elif ": " in line and not line.startswith(" "):
             result.append({"type": "error", "content": line})
         else:
             result.append({"type": "normal", "content": line})
@@ -161,13 +161,9 @@ async def _(exception: Optional[Exception], state: T_State, event: Event) -> Non
     exc_lines = traceback.format_exception(exception)
     error_type, final_message = extract_error_info(exception)
     traceback_lines = parse_traceback_lines(exc_lines)
-    
-    keys = await generate_render_keys(
-        lang, user_id, 
-        ["title", "tip_label", "tip_content", "render_title"],
-        "error."
-    )
-    
+
+    keys = await generate_render_keys(lang, user_id, ["title", "tip_label", "tip_content", "render_title"], "error.")
+
     image = await render_template(
         "error.html.jinja",
         keys["render_title"],
