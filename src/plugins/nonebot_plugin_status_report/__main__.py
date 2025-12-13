@@ -29,10 +29,11 @@ from nonebot.typing import T_State
 from nonebot_plugin_alconna import UniMessage
 from nonebot_plugin_alconna.matcher import AlconnaMatcher
 from nonebot_plugin_bots.__main__ import bots_status
-from nonebot_plugin_htmlrender import md_to_pic
 from nonebot_plugin_larklang.__main__ import LangHelper
 from nonebot_plugin_larkutils import get_main_account
 from nonebot_plugin_localstore import get_data_dir
+from nonebot_plugin_render import render_template
+from nonebot_plugin_render.render import generate_render_keys
 from nonebot.adapters import Event, Bot
 from nonebot.matcher import Matcher, matchers
 from fastapi import Request, status
@@ -127,15 +128,58 @@ async def _(matcher: Matcher, state: T_State, event: Event) -> None:
     matcher.simple_run = state["original_simple_run_method"]
 
 
+def parse_traceback_lines(exc_lines: list[str]) -> list[dict[str, str]]:
+    result = []
+    for line in exc_lines:
+        line = line.rstrip('\n')
+        if not line:
+            continue
+        if line.startswith('  File "'):
+            result.append({"type": "file", "content": line})
+        elif line.startswith('    '):
+            result.append({"type": "code", "content": line})
+        elif line.startswith('Traceback') or line.startswith('During handling'):
+            result.append({"type": "header", "content": line})
+        elif ': ' in line and not line.startswith(' '):
+            result.append({"type": "error", "content": line})
+        else:
+            result.append({"type": "normal", "content": line})
+    return result
+
+
+def extract_error_info(exception: Exception) -> tuple[str, str]:
+    error_type = type(exception).__name__
+    error_message = str(exception)
+    return error_type, error_message
+
+
 @run_postprocessor
 async def _(exception: Optional[Exception], state: T_State, event: Event) -> None:
     if exception is None or "status_report_command_name" not in state:
         return
     user_id = await get_main_account(event.get_user_id())
-    exc = traceback.format_exception(exception)
-    await UniMessage().image(
-        raw=await md_to_pic(await lang.text("error", user_id, "\n>\n".join([f"> `{e[:-1]}`" for e in exc])))
-    ).send()
+    exc_lines = traceback.format_exception(exception)
+    error_type, final_message = extract_error_info(exception)
+    traceback_lines = parse_traceback_lines(exc_lines)
+    
+    keys = await generate_render_keys(
+        lang, user_id, 
+        ["title", "tip_label", "tip_content", "render_title"],
+        "error."
+    )
+    
+    image = await render_template(
+        "error.html.jinja",
+        keys["render_title"],
+        user_id,
+        {
+            "error_type": error_type,
+            "final_message": final_message,
+            "traceback_lines": traceback_lines,
+        },
+        keys=keys,
+    )
+    await UniMessage().image(raw=image).send()
 
 
 @run_postprocessor

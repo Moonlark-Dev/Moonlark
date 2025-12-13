@@ -1,4 +1,5 @@
-error: |
-  **Moonlark 在处理请求时出现了意外的错误**
-
-  {}
+error:
+  title: "處理請求時發生了意外錯誤"
+  tip_label: "提示："
+  tip_content: "如果此問題持續出現，請聯繫開發者並提供上述錯誤訊息。"
+  render_title: "Moonlark 錯誤報告"
