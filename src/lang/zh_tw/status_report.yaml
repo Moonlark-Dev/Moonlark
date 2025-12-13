@@ -1,5 +1,5 @@
 error:
-  title: "處理請求時發生了意外錯誤"
+  title: "处理请求时发生了意外错误"
   tip_label: "提示："
-  tip_content: "如果此問題持續出現，請聯繫開發者並提供上述錯誤訊息。"
-  render_title: "Moonlark 錯誤報告"
+  tip_content: "如果此问题持续出现，请联系开发者并提供上述错误信息。"
+  render_title: "Moonlark 错误报告"
