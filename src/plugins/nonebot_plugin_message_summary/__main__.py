@@ -335,11 +335,11 @@ async def analyze_debate(messages: str) -> DebateAnalysis | None:
         ],
         identify="Message Summary (Debate)",
     )
-    
+
     # 检查是否检测到冲突
     if "NO_CONFLICT_DETECTED" in result:
         return None
-    
+
     # 清理 JSON 字符串
     result = result.strip()
     if result.startswith("```json"):
@@ -347,7 +347,7 @@ async def analyze_debate(messages: str) -> DebateAnalysis | None:
     if result.endswith("```"):
         result = result[:-3]
     result = result.strip()
-    
+
     return json.loads(result)
 
 
@@ -362,7 +362,7 @@ async def handle_debate(
     async with get_config() as conf:
         if group_id in conf.data:
             await lang.finish("disabled", user_id)
-    
+
     # 获取消息记录
     result = (
         await session.scalars(
@@ -374,20 +374,18 @@ async def handle_debate(
         )
     ).all()
     messages = generate_message_string(result, "broadcast")
-    
+
     # 分析辩论内容
     debate_data = await analyze_debate(messages)
-    
+
     if debate_data is None:
         await lang.finish("debate.no_conflict", user_id)
-    
+
     # 生成渲染所需的文本键
     keys = await generate_render_keys(
-        lang, user_id,
-        ["standpoint", "arguments", "implicit", "fallacies", "analysis_title", "render_title"],
-        "debate."
+        lang, user_id, ["standpoint", "arguments", "implicit", "fallacies", "analysis_title", "render_title"], "debate."
     )
-    
+
     # 渲染辩论分析报告（使用更宽的视口以适应双列布局）
     image = await render_template(
         "debate.html.jinja",
@@ -397,5 +395,5 @@ async def handle_debate(
         keys=keys,
         viewport={"width": 1600, "height": 900},
     )
-    
+
     await debate_helper.finish(UniMessage().image(raw=image))
