@@ -189,6 +189,12 @@ Moonlark 本地化设置
 
 ### 用法
 - `/calc <问题> (询问 WolframAlpha)`
+## `debate-helper`: 辩论助手
+
+分析群聊中的争议或辩论，提供客观的双方观点摘要。
+
+### 用法
+- `/debate [读取长度]`
 ## `github`: GitHub 链接解析
 
 预览 GitHub 链接内容
