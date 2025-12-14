@@ -3,6 +3,8 @@ from nonebot_plugin_htmlrender import md_to_pic
 
 from nonebot_plugin_broadcast import get_available_groups
 from nonebot_plugin_larkuser import get_user
+from nonebot_plugin_render import render_template
+from nonebot_plugin_render.render import generate_render_keys
 from sqlalchemy import select
 from nonebot.adapters import Event, Bot
 from nonebot.adapters.qq import Bot as Bot_QQ
@@ -21,7 +23,7 @@ from nonebot_plugin_larkutils import get_user_id, get_group_id, open_file, FileT
 from nonebot_plugin_chat.utils.group import parse_message_to_string
 from nonebot_plugin_apscheduler import scheduler
 
-from .models import GroupMessage, CatGirlScore
+from .models import GroupMessage, CatGirlScore, DebateAnalysis
 from .chart import render_horizontal_bar_chart
 
 
@@ -37,6 +39,7 @@ summary = on_alconna(
 )
 recorder = on_message(priority=3, block=False)
 neko_finder = on_alconna(Alconna("neko-finder"))
+debate_helper = on_alconna(Alconna("debate-helper", Args["limit", int, 200]))
 
 
 def get_config() -> FileManager:
@@ -314,3 +317,85 @@ async def handle_neko_finder(
 
     # 发送图片
     await neko_finder.finish(UniMessage().image(raw=image_bytes))
+
+
+async def analyze_debate(messages: str) -> DebateAnalysis | None:
+    """分析聊天记录中的辩论内容
+
+    Args:
+        messages: 聊天记录字符串
+
+    Returns:
+        DebateAnalysis | None: 辩论分析结果，如果无争议则返回 None
+    """
+    result = await fetch_message(
+        [
+            generate_message(await lang.text("debate.prompt", ""), "system"),
+            generate_message(messages, "user"),
+        ],
+        identify="Message Summary (Debate)",
+    )
+    
+    # 检查是否检测到冲突
+    if "NO_CONFLICT_DETECTED" in result:
+        return None
+    
+    # 清理 JSON 字符串
+    result = result.strip()
+    if result.startswith("```json"):
+        result = result[7:]
+    if result.endswith("```"):
+        result = result[:-3]
+    result = result.strip()
+    
+    return json.loads(result)
+
+
+@debate_helper.handle()
+async def handle_debate(
+    limit: int,
+    session: async_scoped_session,
+    user_id: str = get_user_id(),
+    group_id: str = get_group_id(),
+) -> None:
+    """处理 .debate 指令"""
+    async with get_config() as conf:
+        if group_id in conf.data:
+            await lang.finish("disabled", user_id)
+    
+    # 获取消息记录
+    result = (
+        await session.scalars(
+            select(GroupMessage)
+            .where(GroupMessage.group_id == group_id)
+            .order_by(GroupMessage.id_.desc())
+            .limit(limit)
+            .order_by(GroupMessage.id_)
+        )
+    ).all()
+    messages = generate_message_string(result, "broadcast")
+    
+    # 分析辩论内容
+    debate_data = await analyze_debate(messages)
+    
+    if debate_data is None:
+        await lang.finish("debate.no_conflict", user_id)
+    
+    # 生成渲染所需的文本键
+    keys = await generate_render_keys(
+        lang, user_id,
+        ["standpoint", "arguments", "implicit", "fallacies", "analysis_title", "render_title"],
+        "debate."
+    )
+    
+    # 渲染辩论分析报告（使用更宽的视口以适应双列布局）
+    image = await render_template(
+        "debate.html.jinja",
+        keys["render_title"],
+        user_id,
+        {"data": debate_data},
+        keys=keys,
+        viewport={"width": 1600, "height": 900},
+    )
+    
+    await debate_helper.finish(UniMessage().image(raw=image))

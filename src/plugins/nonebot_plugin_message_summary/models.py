@@ -17,3 +17,22 @@ class CatGirlScore(TypedDict):
     rank: int
     username: str
     score: int
+
+
+class DebateParty(TypedDict):
+    name: str
+    standpoint: str
+    arguments: list[str]
+    implicit: str
+    fallacies: str
+
+
+class DebateAnalysisResult(TypedDict):
+    conclusion: str
+
+
+class DebateAnalysis(TypedDict):
+    topic: str
+    conflict_type: str
+    parties: list[DebateParty]
+    analysis: DebateAnalysisResult

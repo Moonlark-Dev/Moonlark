@@ -75,6 +75,7 @@ async def render_template(
     keys: dict[str, str] = {},
     cache: bool = False,
     resize: bool = False,
+    viewport: dict | None = None,
 ) -> bytes:
     if user_id.startswith("mlsid::") and parse_special_user_id(user_id).get("ignore-cache", "n") == "y":
         cache = False
@@ -90,7 +91,7 @@ async def render_template(
     image = await html_to_pic(
         await render_template_to_text(name, title, footer, templates, base),
         template_path=Path(getcwd()).joinpath(f"src/templates").as_uri(),
-        viewport=config.render_viewport,
+        viewport=viewport or config.render_viewport,
     )
     if resize:
         return resize_png_to_75_percent(image)

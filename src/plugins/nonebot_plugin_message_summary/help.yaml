@@ -2,3 +2,4 @@ plugin: 'message_summary'
 commands:
   summary: help;5;tools
   neko-finder: help_neko;1;community
+  debate-helper: help_debate;1;tools
