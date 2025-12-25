@@ -500,7 +500,7 @@ class GroupSession:
         self.llm_timers = []  # 定时器列表
         self.processor = MessageProcessor(self)
         asyncio.create_task(self.setup_group_name())
-        asyncio.create_task(self.calculate_ghot_coeefficient())
+        asyncio.create_task(self.calculate_ghot_coefficient())
 
     async def set_interest_coefficient(self, mode: Literal["low", "medium", "high"]) -> None:
         self.interest_coefficient = {
@@ -534,8 +534,15 @@ class GroupSession:
         # 确保概率在 0.0-1.0 之间
         return max(0.0, min(1.0, final_probability))
 
-    async def calculate_ghot_coeefficient(self) -> None:
-        self.ghot_coefficient = round(max((15 - (await get_group_hot_score(self.group_id))[2]) * 0.8, 1))
+    async def calculate_ghot_coefficient(self) -> None:
+        self.ghot_coefficient = round(max((12 - (await get_group_hot_score(self.group_id))[2]) * 0.8, 1))
+        cached_users = set()
+        for message in self.cached_messages[:-5]:
+            if not message["self"]:
+                cached_users.add(message["user_id"])
+        if len(cached_users) <= 1:
+            self.ghot_coefficient *= 0.75
+
 
     def clean_cached_message(self) -> None:
         if len(self.cached_messages) > 50:
@@ -546,6 +553,8 @@ class GroupSession:
         self.clean_cached_message()
         if self.message_cache_counter % 50 == 0:
             await self.setup_group_name()
+        elif self.message_cache_counter % 10 == 0:
+            await self.calculate_ghot_coefficient()
 
     async def mute(self) -> None:
         self.mute_until = datetime.now() + timedelta(minutes=15)
@@ -613,7 +622,7 @@ class GroupSession:
         if self.processor.blocked or not self.cached_messages:
             return
         if (dt - self.setup_time).total_seconds() // 60 % 10 == 0:
-            await self.calculate_ghot_coeefficient()
+            await self.calculate_ghot_coefficient()
         time_to_last_message = (dt - self.cached_messages[-1]["send_time"]).total_seconds()
         # 如果群聊冷却超过3分钟，根据累计文本长度判断是否主动发言
         if 90 < time_to_last_message < 300 and not self.cached_messages[-1]["self"]:
