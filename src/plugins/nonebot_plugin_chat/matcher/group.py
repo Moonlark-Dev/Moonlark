@@ -32,9 +32,10 @@ from nonebot_plugin_alconna import UniMessage, Target, get_target
 from nonebot_plugin_userinfo import EventUserInfo, UserInfo
 
 from nonebot_plugin_larkuser import get_user
-from nonebot import on_message, on_command
+from nonebot import on_message, on_command, on_notice
 from nonebot.adapters.onebot.v11 import Bot as OB11Bot
 from nonebot.adapters import Event, Bot, Message
+from nonebot.adapters.onebot.v11.event import PokeNotifyEvent
 from nonebot_plugin_larkutils import get_user_id, get_group_id
 from nonebot_plugin_orm import async_scoped_session, get_session
 from nonebot.log import logger
@@ -472,6 +473,18 @@ class MessageProcessor:
         self.openai_messages.append_user_message(
             f"[{datetime.now().strftime('%H:%M:%S')}]: 消息 {message_id} ({message_content}) 被撤回。"
         )
+    
+    async def handle_poke(self, operator_name: str, target_name: str, to_me: bool) -> None:
+        if to_me:
+            self.openai_messages.append_user_message(
+                f"[{datetime.now().strftime('%H:%M:%S')}]: {operator_name} 戳了戳你。"
+            )
+            if not self.blocked:
+                await self.generate_reply(True)
+        else:
+            self.openai_messages.append_user_message(
+                f"[{datetime.now().strftime('%H:%M:%S')}]: {operator_name} 戳了戳 {target_name}。"
+            )
 
 
 from nonebot_plugin_ghot.function import get_group_hot_score
@@ -637,6 +650,17 @@ class GroupSession:
                 f"[{message['send_time'].strftime('%H:%M:%S')}][{message['nickname']}]: {message['content']}"
             )
         return "\n".join(messages)
+    
+    async def handle_poke(self, event: PokeNotifyEvent, nickname: str) -> None:
+        user = await get_user(str(event.target_id))
+        if event.group_id and (isinstance(self.bot, OB11Bot) or not user.has_nickname()):
+            info = await self.bot.get_group_member_info(group_id=event.group_id, user_id=event.target_id)
+            target_nickname = info["card"] or info["nickname"]
+        else:
+            target_nickname = user.get_nickname()
+        await self.processor.handle_poke(nickname, target_nickname, event.is_tome())
+
+            
 
     async def handle_recall(self, message_id: str) -> None:
         for message in self.cached_messages:
@@ -833,11 +857,27 @@ async def _() -> None:
         logger.info(f"Cleaned up {deleted_count} expired notes")
 
 
-@on_type(GroupRecallNoticeEvent).handle()
-async def _(matcher: Matcher, event: GroupRecallNoticeEvent) -> None:
+@on_notice(rule=enabled_group).handle()
+async def _(event: GroupRecallNoticeEvent) -> None:
     group_id = str(event.group_id)
     message_id = str(event.message_id)
     if group_id not in groups:
         return
     session = groups[group_id]
     await session.handle_recall(message_id)
+
+
+@on_notice(rule=enabled_group).handle()
+async def _(event: PokeNotifyEvent, user_info: UserInfo = EventUserInfo(), user_id: str = get_user_id()) -> None:
+    group_id = str(event.group_id)
+    if group_id not in groups:
+        return
+    session = groups[group_id]
+    user = await get_user(user_id)
+    if user.has_nickname():
+        nickname = user.get_nickname()
+    else:
+        nickname = user_info.user_displayname or user_info.user_name
+    await session.handle_poke(event, nickname)
+
+
