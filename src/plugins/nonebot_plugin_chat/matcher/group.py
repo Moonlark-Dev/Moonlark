@@ -858,8 +858,7 @@ async def _() -> None:
 
 
 @on_notice().handle()
-async def _(event: GroupRecallNoticeEvent) -> None:
-    group_id = str(event.group_id)
+async def _(event: GroupRecallNoticeEvent, group_id: str = get_group_id()) -> None:
     message_id = str(event.message_id)
     if group_id not in groups:
         return
@@ -868,11 +867,10 @@ async def _(event: GroupRecallNoticeEvent) -> None:
 
 
 @on_notice().handle()
-async def _(event: PokeNotifyEvent, user_info: UserInfo = EventUserInfo(), user_id: str = get_user_id()) -> None:
-    group_id = str(event.group_id)
-    if group_id not in groups:
+async def _(event: PokeNotifyEvent, moonlark_group_id: str = get_group_id(), user_info: UserInfo = EventUserInfo(), user_id: str = get_user_id()) -> None:
+    if moonlark_group_id not in groups:
         return
-    session = groups[group_id]
+    session = groups[moonlark_group_id]
     user = await get_user(user_id)
     if user.has_nickname():
         nickname = user.get_nickname()
