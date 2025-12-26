@@ -857,7 +857,7 @@ async def _() -> None:
         logger.info(f"Cleaned up {deleted_count} expired notes")
 
 
-@on_notice(rule=enabled_group).handle()
+@on_notice().handle()
 async def _(event: GroupRecallNoticeEvent) -> None:
     group_id = str(event.group_id)
     message_id = str(event.message_id)
@@ -867,7 +867,7 @@ async def _(event: GroupRecallNoticeEvent) -> None:
     await session.handle_recall(message_id)
 
 
-@on_notice(rule=enabled_group).handle()
+@on_notice().handle()
 async def _(event: PokeNotifyEvent, user_info: UserInfo = EventUserInfo(), user_id: str = get_user_id()) -> None:
     group_id = str(event.group_id)
     if group_id not in groups:
