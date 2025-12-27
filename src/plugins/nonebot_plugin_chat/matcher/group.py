@@ -41,9 +41,8 @@ from nonebot_plugin_orm import async_scoped_session, get_session
 from nonebot.log import logger
 from nonebot_plugin_openai import generate_message
 from nonebot.adapters.onebot.v11 import GroupRecallNoticeEvent
-from nonebot import on_type
+
 from nonebot_plugin_openai.types import (
-    FunctionParameterWithEnum,
     Message as OpenAIMessage,
     AsyncFunction,
     FunctionParameter,
