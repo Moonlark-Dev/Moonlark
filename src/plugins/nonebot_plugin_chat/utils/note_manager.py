@@ -67,7 +67,7 @@ class NoteManager:
 
         return note
 
-    async def get_notes(self, include_expired: bool = False) -> List[Note]:
+    async def get_notes(self, include_expired: bool = False, except_current_context: bool = False) -> List[Note]:
         """
         Get all notes for this context
 
@@ -78,8 +78,11 @@ class NoteManager:
             List of Note objects
         """
         async with get_session() as session:
-            query = select(Note).where(Note.context_id == self.context_id)
-
+            if except_current_context:
+                query = select(Note).where(Note.context_id != self.context_id)
+            else:
+                query = select(Note).where(Note.context_id == self.context_id)
+            
             # Filter out expired notes unless explicitly requested
             if not include_expired:
                 current_time = datetime.now()
@@ -189,17 +192,7 @@ class NoteManager:
 
         return deleted_count
 
-    async def filter_note(self, chat_history: str, include_expired: bool = False) -> List[Note]:
-        """
-        Get notes that match any of the provided keywords
-
-        Args:
-            keywords: List of keywords to search for
-            include_expired: Whether to include expired notes
-
-        Returns:
-            List of Note objects that match the keywords
-        """
+    async def filter_note(self, chat_history: str, include_expired: bool = False) -> tuple[List[Note], list[Note]]:
         notes = []
         for note in await self.get_notes(include_expired):
             if not note.keywords:
@@ -210,7 +203,16 @@ class NoteManager:
                 if keyword in chat_history:
                     notes.append(note)
                     break
-        return notes
+        notes_from_other_groups = []
+        for note in await self.get_notes(include_expired, except_current_context=True):
+            if not note.keywords:
+                continue
+            keywords = note.keywords.split(" ")
+            for keyword in keywords:
+                if keyword in chat_history:
+                    notes_from_other_groups.append(note)
+                    break
+        return notes, notes_from_other_groups
 
 
 # Helper function to get notes for a context
