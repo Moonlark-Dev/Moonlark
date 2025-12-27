@@ -33,7 +33,7 @@ def upgrade(name: str = "") -> None:
     # 清空nonebot_plugin_chat_note表
     # 根据数据库类型选择不同的清空表命令
     bind = op.get_bind()
-    if bind.dialect.name == 'mysql':
+    if bind.dialect.name == "mysql":
         op.execute("TRUNCATE TABLE nonebot_plugin_chat_note")
     else:  # SQLite和其他数据库使用DELETE FROM
         op.execute("DELETE FROM nonebot_plugin_chat_note")
