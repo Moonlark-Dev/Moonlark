@@ -7,6 +7,7 @@ class Config(BaseModel):
 
     command_start: list[str] = ["/"]
     metaso_api_key: str = ""
+    napcat_bot_ids: list[str] = []
 
 
 config = get_plugin_config(Config)

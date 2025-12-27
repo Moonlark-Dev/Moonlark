@@ -310,6 +310,20 @@ class MessageProcessor:
                 },
             ),
         ]
+        if self.session.can_send_poke():
+            self.functions.append(
+                AsyncFunction(
+                    func=self.poke,
+                    description="向指定群友发送戳一戳。",
+                    parameters={
+                        "target_name": FunctionParameter(
+                            type="string",
+                            description="目标的昵称。",
+                            required=True,
+                        ),
+                    },
+                )
+            )
         asyncio.create_task(self.loop())
 
     async def loop(self) -> None:
@@ -319,6 +333,14 @@ class MessageProcessor:
             except Exception as e:
                 logger.exception(e)
                 await asyncio.sleep(10)
+
+    async def poke(self, target_name: str) -> str:
+        target_id = (await self.session.get_users()).get(target_name)
+        if target_id:
+            await self.session.send_poke(target_id)
+            return f"你戳了戳 {target_name}。"
+        else:
+            return "未找到该用户"
 
     async def get_message(self) -> None:
         if not self.session.message_queue:
@@ -493,6 +515,7 @@ class GroupSession:
 
     def __init__(self, group_id: str, bot: Bot, target: Target, lang_name: str = "zh_hans") -> None:
         self.group_id = group_id
+        self.adapter_group_id = target.id
         self.target = target
         self.bot = bot
         self.user_id = f"mlsid::--lang={lang_name}"
@@ -513,6 +536,12 @@ class GroupSession:
         self.processor = MessageProcessor(self)
         asyncio.create_task(self.setup_group_name())
         asyncio.create_task(self.calculate_ghot_coefficient())
+
+    async def send_poke(self, target_id: str) -> None:
+        await self.bot.call_api("group_poke", group_id=int(self.group_id), user_id=int(target_id))
+
+    def can_send_poke(self) -> bool:
+        return self.bot.self_id in config.napcat_bot_ids
 
     async def set_interest_coefficient(self, mode: Literal["low", "medium", "high"]) -> None:
         self.interest_coefficient = {
@@ -572,7 +601,7 @@ class GroupSession:
 
     async def setup_group_name(self) -> None:
         if isinstance(self.bot, OB11Bot):
-            self.group_name = (await self.bot.get_group_info(group_id=int(self.group_id.split("_")[1])))["group_name"]
+            self.group_name = (await self.bot.get_group_info(group_id=int(self.adapter_group_id)))["group_name"]
 
     async def handle_message(
         self, message: UniMessage, user_id: str, event: Event, state: T_State, nickname: str, mentioned: bool = False
@@ -610,7 +639,7 @@ class GroupSession:
         if any([u not in self.group_users for u in cached_users.keys()]):
             if isinstance(self.bot, OB11Bot):
                 self.group_users.clear()
-                for user in await self.bot.get_group_member_list(group_id=int(self.group_id.split("_")[1])):
+                for user in await self.bot.get_group_member_list(group_id=int(self.adapter_group_id)):
                     self.group_users[user["nickname"]] = str(user["user_id"])
             else:
                 self.group_users = cached_users
@@ -653,7 +682,7 @@ class GroupSession:
         user = await get_user(str(event.target_id))
         if event.group_id and (isinstance(self.bot, OB11Bot) or not user.has_nickname()):
             info = await self.bot.get_group_member_info(group_id=event.group_id, user_id=event.target_id)
-            target_nickname = info["card"] or info["nickname"]
+            target_nickname = info["nickname"]
         else:
             target_nickname = user.get_nickname()
         await self.processor.handle_poke(nickname, target_nickname, event.is_tome())
@@ -694,6 +723,9 @@ from ..config import config
 
 groups: dict[str, GroupSession] = {}
 matcher = on_message(priority=50, rule=enabled_group, block=False)
+
+
+from nonebot.adapters.onebot.v11 import GroupMessageEvent
 
 
 @matcher.handle()
