@@ -314,11 +314,11 @@ class MessageProcessor:
             self.functions.append(
                 AsyncFunction(
                     func=self.poke,
-                    description="向指定群友发送戳一戳。",
+                    description="向指定群友发送一个戳一戳互动。",
                     parameters={
                         "target_name": FunctionParameter(
                             type="string",
-                            description="目标的昵称。",
+                            description="被戳的群友的昵称。",
                             required=True,
                         ),
                     },
