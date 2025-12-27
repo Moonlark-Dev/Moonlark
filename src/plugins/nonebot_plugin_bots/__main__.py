@@ -87,7 +87,9 @@ async def process_to_me_message(event: Event, bot: Bot, session_id: str) -> None
                     event.to_me = True
                 assign_session(session_id, bot.self_id)
 
+
 from nonebot.adapters.onebot.v11.event import PokeNotifyEvent
+
 
 async def process_to_me_event(event: Event, bot: Bot, session_id: str) -> None:
     if isinstance(event, PokeNotifyEvent):
@@ -97,8 +99,6 @@ async def process_to_me_event(event: Event, bot: Bot, session_id: str) -> None:
     if target_id in config.bots_list.keys() and session_id in sessions and sessions[session_id] != target_id:
         assign_session(session_id, bot.self_id)
         event.is_tome = lambda cls: True
-
-
 
 
 @event_preprocessor
