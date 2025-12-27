@@ -24,13 +24,12 @@ class ChatGroup(Model):
     enabled: Mapped[bool]
 
 
-
 class Note(Model):
     """Note model for storing user-generated notes with optional expiration and keywords"""
 
     id: Mapped[int] = mapped_column(Integer(), primary_key=True, autoincrement=True)
     context_id: Mapped[str] = mapped_column(String(128), index=True)  # user_id for private, group_id for groups
     content: Mapped[str] = mapped_column(Text())
-    keywords: Mapped[str] = mapped_column(String(length=256), default="") 
+    keywords: Mapped[str] = mapped_column(String(length=256), default="")
     created_time: Mapped[float] = mapped_column(Float())
     expire_time: Mapped[Optional[datetime]] = mapped_column(nullable=True)  # Optional expiration time
