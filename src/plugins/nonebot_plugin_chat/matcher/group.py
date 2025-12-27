@@ -473,7 +473,7 @@ class MessageProcessor:
         self.openai_messages.append_user_message(
             f"[{datetime.now().strftime('%H:%M:%S')}]: 消息 {message_id} ({message_content}) 被撤回。"
         )
-    
+
     async def handle_poke(self, operator_name: str, target_name: str, to_me: bool) -> None:
         if to_me:
             self.openai_messages.append_user_message(
@@ -556,7 +556,6 @@ class GroupSession:
                 cached_users.add(message["user_id"])
         if len(cached_users) <= 1:
             self.ghot_coefficient *= 0.75
-
 
     def clean_cached_message(self) -> None:
         if len(self.cached_messages) > 50:
@@ -651,7 +650,7 @@ class GroupSession:
                 f"[{message['send_time'].strftime('%H:%M:%S')}][{message['nickname']}]: {message['content']}"
             )
         return "\n".join(messages)
-    
+
     async def handle_poke(self, event: PokeNotifyEvent, nickname: str) -> None:
         user = await get_user(str(event.target_id))
         if event.group_id and (isinstance(self.bot, OB11Bot) or not user.has_nickname()):
@@ -660,8 +659,6 @@ class GroupSession:
         else:
             target_nickname = user.get_nickname()
         await self.processor.handle_poke(nickname, target_nickname, event.is_tome())
-
-            
 
     async def handle_recall(self, message_id: str) -> None:
         for message in self.cached_messages:
@@ -868,7 +865,12 @@ async def _(event: GroupRecallNoticeEvent, group_id: str = get_group_id()) -> No
 
 
 @on_notice().handle()
-async def _(event: PokeNotifyEvent, moonlark_group_id: str = get_group_id(), user_info: UserInfo = EventUserInfo(), user_id: str = get_user_id()) -> None:
+async def _(
+    event: PokeNotifyEvent,
+    moonlark_group_id: str = get_group_id(),
+    user_info: UserInfo = EventUserInfo(),
+    user_id: str = get_user_id(),
+) -> None:
     if moonlark_group_id not in groups:
         return
     session = groups[moonlark_group_id]
@@ -878,5 +880,3 @@ async def _(event: PokeNotifyEvent, moonlark_group_id: str = get_group_id(), use
     else:
         nickname = user_info.user_displayname or user_info.user_name
     await session.handle_poke(event, nickname)
-
-
