@@ -82,7 +82,7 @@ class NoteManager:
                 query = select(Note).where(Note.context_id != self.context_id)
             else:
                 query = select(Note).where(Note.context_id == self.context_id)
-            
+
             # Filter out expired notes unless explicitly requested
             if not include_expired:
                 current_time = datetime.now()
