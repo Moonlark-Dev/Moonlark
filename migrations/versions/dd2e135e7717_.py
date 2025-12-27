@@ -31,7 +31,12 @@ def upgrade(name: str = "") -> None:
         batch_op.drop_column("hash_value")
 
     # 清空nonebot_plugin_chat_note表
-    op.execute("TRUNCATE TABLE nonebot_plugin_chat_note")
+    # 根据数据库类型选择不同的清空表命令
+    bind = op.get_bind()
+    if bind.dialect.name == 'mysql':
+        op.execute("TRUNCATE TABLE nonebot_plugin_chat_note")
+    else:  # SQLite和其他数据库使用DELETE FROM
+        op.execute("DELETE FROM nonebot_plugin_chat_note")
 
     # ### end Alembic commands ###
 
