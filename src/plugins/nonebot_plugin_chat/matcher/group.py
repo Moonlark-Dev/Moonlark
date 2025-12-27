@@ -727,6 +727,7 @@ matcher = on_message(priority=50, rule=enabled_group, block=False)
 
 from nonebot.adapters.onebot.v11 import GroupMessageEvent
 
+
 @matcher.handle()
 async def _(
     event: Event,
