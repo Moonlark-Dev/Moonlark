@@ -450,7 +450,6 @@ class MessageProcessor:
         # 获取相关笔记
         note_manager = await get_context_notes(self.session.group_id)
         notes, notes_from_other_group = await note_manager.filter_note(chat_history)
-        
 
         return generate_message(
             await lang.text(
@@ -459,7 +458,11 @@ class MessageProcessor:
                 "\n".join([f"- {note.content}" for note in notes]) if notes else "暂无",
                 datetime.now().isoformat(),
                 self.session.group_name,
-                "\n".join([f"- {note.content}" for note in notes_from_other_group]) if notes_from_other_group else "暂无",
+                (
+                    "\n".join([f"- {note.content}" for note in notes_from_other_group])
+                    if notes_from_other_group
+                    else "暂无"
+                ),
             ),
             "system",
         )
