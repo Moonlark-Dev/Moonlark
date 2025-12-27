@@ -87,6 +87,7 @@ def assign_session(session_id: str, bot_id: str) -> None:
 #                     event.to_me = True
 #                 assign_session(session_id, bot.self_id)
 
+
 from nonebot.adapters.onebot.v11.event import PokeNotifyEvent
 
 # async def process_to_me_event(event: Event, bot: Bot, session_id: str) -> None:
