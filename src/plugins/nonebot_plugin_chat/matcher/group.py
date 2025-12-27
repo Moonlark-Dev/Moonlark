@@ -41,9 +41,8 @@ from nonebot_plugin_orm import async_scoped_session, get_session
 from nonebot.log import logger
 from nonebot_plugin_openai import generate_message
 from nonebot.adapters.onebot.v11 import GroupRecallNoticeEvent
-from nonebot import on_type
+
 from nonebot_plugin_openai.types import (
-    FunctionParameterWithEnum,
     Message as OpenAIMessage,
     AsyncFunction,
     FunctionParameter,
@@ -450,21 +449,20 @@ class MessageProcessor:
         chat_history = "\n".join(self.get_message_content_list())
         # 获取相关笔记
         note_manager = await get_context_notes(self.session.group_id)
-        notes = await note_manager.filter_note(chat_history)
-        memory_text_parts = []
-        # 添加笔记到记忆文本
-        if notes:
-            for note in notes:
-                memory_text_parts.append(f"- {note.content}")
+        notes, notes_from_other_group = await note_manager.filter_note(chat_history)
 
-        final_memory_text = "\n".join(memory_text_parts) if memory_text_parts else "暂无"
         return generate_message(
             await lang.text(
                 "prompt_group.default",
                 self.session.user_id,
-                final_memory_text,
+                "\n".join([f"- {note.content}" for note in notes]) if notes else "暂无",
                 datetime.now().isoformat(),
                 self.session.group_name,
+                (
+                    "\n".join([f"- {note.content}" for note in notes_from_other_group])
+                    if notes_from_other_group
+                    else "暂无"
+                ),
             ),
             "system",
         )
