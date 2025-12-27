@@ -56,7 +56,7 @@ class NoteManager:
             content=content,
             keywords=keywords,
             created_time=current_time.timestamp(),
-            expire_time=expire_time
+            expire_time=expire_time,
         )
 
         # Save to database
@@ -138,7 +138,6 @@ class NoteManager:
                     note.expire_time = None
                 else:
                     note.expire_time = current_time + timedelta(days=expire_days)
-
 
             await session.commit()
             return True
