@@ -10,7 +10,7 @@ from nonebot.exception import IgnoredException, ActionFailed
 from nonebot import get_bot
 from nonebot import get_app
 from fastapi import FastAPI, Request
-from typing import cast
+from typing import Optional, cast
 
 from nonebot_plugin_larkutils import get_group_id
 from .config import config
@@ -76,29 +76,72 @@ def assign_session(session_id: str, bot_id: str) -> None:
     logger.info(f"已将会话 {session_id} 分配给 {bot_id}")
 
 
-async def process_to_me_message(event: Event, bot: Bot, session_id: str) -> None:
-    message = event.get_message()
-    for segment in message:
-        if segment.type == "at":
-            user_id = str(segment.get("user_id"))
-            if user_id in config.bots_list.keys() and session_id in sessions and sessions[session_id] != user_id:
-                segment.user_id = bot.self_id
-                if hasattr(event, "to_me"):
-                    event.to_me = True
-                assign_session(session_id, bot.self_id)
+# async def process_to_me_message(event: Event, bot: Bot, session_id: str) -> None:
+#     message = event.get_message()
+#     for segment in message:
+#         if segment.type == "at":
+#             user_id = str(segment.get("user_id"))
+#             if user_id in config.bots_list.keys() and session_id in sessions and sessions[session_id] != user_id:
+#                 segment.user_id = bot.self_id
+#                 if hasattr(event, "to_me"):
+#                     event.to_me = True
+#                 assign_session(session_id, bot.self_id)
 
 
 from nonebot.adapters.onebot.v11.event import PokeNotifyEvent
 
+# async def process_to_me_event(event: Event, bot: Bot, session_id: str) -> None:
+#     if isinstance(event, PokeNotifyEvent):
+#         target_id = str(event.target_id)
+#     else:
+#         return
+#     if target_id in config.bots_list.keys() and session_id in sessions and sessions[session_id] != target_id:
+#         assign_session(session_id, bot.self_id)
+#         event.is_tome = lambda cls: True
 
-async def process_to_me_event(event: Event, bot: Bot, session_id: str) -> None:
-    if isinstance(event, PokeNotifyEvent):
+from nonebot.adapters import Message
+
+
+class ToMeProcessor:
+
+    def __init__(self, bot: Bot, event: Event, session_id: str) -> None:
+        self.bot = bot
+        self.event = event
+        self.session_id = session_id
+        self.to_me = False
+
+    def process_to_me_event(self) -> None:
+        if self.event.is_tome():
+            assign_session(self.session_id, self.bot.self_id)
+            return
+        if (msg := self.get_event_message()) is not None:
+            self.process_message_event(msg)
+        elif isinstance(self.event, PokeNotifyEvent):
+            self.process_poke()
+        if self.to_me:
+            assign_session(self.session_id, self.bot.self_id)
+            self.event.is_tome = lambda _: True  # type: ignore
+
+    def get_event_message(self) -> Optional[Message]:
+        try:
+            return self.event.get_message()
+        except ValueError:
+            return None
+
+    def process_message_event(self, message: Message) -> None:
+        for segment in message:
+            if segment.type == "at":
+                user_id = str(segment.get("user_id"))
+                if user_id in config.bots_list.keys():
+                    self.to_me = True
+                    segment["user_id"] = self.bot.self_id
+
+    def process_poke(self) -> None:
+        event = cast(PokeNotifyEvent, self.event)
         target_id = str(event.target_id)
-    else:
-        return
-    if target_id in config.bots_list.keys() and session_id in sessions and sessions[session_id] != target_id:
-        assign_session(session_id, bot.self_id)
-        event.is_tome = lambda cls: True
+        if target_id in config.bots_list.keys():
+            event.target_id = int(self.bot.self_id)
+            self.to_me = True
 
 
 @event_preprocessor
@@ -109,10 +152,7 @@ async def _(bot: Bot, event: Event, session_id: str = get_group_id()) -> None:
         return
     if user_id in get_bots().keys():
         raise IgnoredException("忽略自身消息")
-    try:
-        await process_to_me_message(event, bot, session_id)
-    except ValueError:
-        pass
+    ToMeProcessor(bot, event, session_id).process_to_me_event()
     if session_id in sessions and sessions[session_id][0] != bot.self_id:
         raise IgnoredException(f"此群组已分配给帐号 {session_id}")
     assign_session(session_id, bot.self_id)
