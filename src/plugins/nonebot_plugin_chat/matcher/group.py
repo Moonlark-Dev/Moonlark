@@ -538,7 +538,7 @@ class GroupSession:
         asyncio.create_task(self.calculate_ghot_coefficient())
 
     async def send_poke(self, target_id: str) -> None:
-        await self.bot.call_api("group_poke", group_id=int(self.group_id), user_id=int(target_id))
+        await self.bot.call_api("group_poke", group_id=int(self.adapter_group_id), user_id=int(target_id))
 
     def can_send_poke(self) -> bool:
         return self.bot.self_id in config.napcat_bot_ids
@@ -725,7 +725,6 @@ groups: dict[str, GroupSession] = {}
 matcher = on_message(priority=50, rule=enabled_group, block=False)
 
 
-from nonebot.adapters.onebot.v11 import GroupMessageEvent
 
 
 @matcher.handle()
