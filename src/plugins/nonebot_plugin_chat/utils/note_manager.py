@@ -56,8 +56,7 @@ class NoteManager:
             content=content,
             keywords=keywords,
             created_time=current_time.timestamp(),
-            expire_time=expire_time,
-            hash_value=hash(f"{self.context_id}:{content}:{keywords}:{current_time}"),
+            expire_time=expire_time
         )
 
         # Save to database
@@ -140,8 +139,6 @@ class NoteManager:
                 else:
                     note.expire_time = current_time + timedelta(days=expire_days)
 
-            # Update hash and last modified time
-            note.hash_value = hash(f"{note.context_id}:{note.content}:{note.keywords}:{note.created_time}")
 
             await session.commit()
             return True
