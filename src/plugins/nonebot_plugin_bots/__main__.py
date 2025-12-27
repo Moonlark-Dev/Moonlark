@@ -100,6 +100,7 @@ from nonebot.adapters.onebot.v11.event import PokeNotifyEvent
 
 from nonebot.adapters import Message
 
+
 class ToMeProcessor:
 
     def __init__(self, bot: Bot, event: Event, session_id: str) -> None:
@@ -111,15 +112,14 @@ class ToMeProcessor:
     def process_to_me_event(self) -> None:
         if self.event.is_tome():
             assign_session(self.session_id, self.bot.self_id)
-            return  
+            return
         if (msg := self.get_event_message()) is not None:
             self.process_message_event(msg)
         elif isinstance(self.event, PokeNotifyEvent):
             self.process_poke()
         if self.to_me:
             assign_session(self.session_id, self.bot.self_id)
-            self.event.is_tome = lambda _: True # type: ignore
-        
+            self.event.is_tome = lambda _: True  # type: ignore
 
     def get_event_message(self) -> Optional[Message]:
         try:
@@ -134,7 +134,7 @@ class ToMeProcessor:
                 if user_id in config.bots_list.keys():
                     self.to_me = True
                     segment["user_id"] = self.bot.self_id
-    
+
     def process_poke(self) -> None:
         event = cast(PokeNotifyEvent, self.event)
         target_id = str(event.target_id)
