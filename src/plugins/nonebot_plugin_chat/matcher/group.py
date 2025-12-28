@@ -725,8 +725,6 @@ groups: dict[str, GroupSession] = {}
 matcher = on_message(priority=50, rule=enabled_group, block=False)
 
 
-
-
 @matcher.handle()
 async def _(
     event: Event,
