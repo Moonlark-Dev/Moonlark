@@ -177,7 +177,7 @@ class MessageQueue:
 class MessageProcessor:
 
     def __init__(self, session: "GroupSession"):
-        self.openai_messages = MessageQueue(self)
+        self.openai_messages = MessageQueue(self, 50)
         self.session = session
         self.enabled = True
         self.interrupter = Interrupter(session)
