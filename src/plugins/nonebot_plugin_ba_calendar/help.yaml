@@ -1,3 +1,4 @@
 plugin: ba_calendar
 commands:
   bac: help;2;tools
+  bac-remind: help_remind;2;tools

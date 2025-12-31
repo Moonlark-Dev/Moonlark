@@ -17,46 +17,42 @@
 from datetime import datetime
 from typing import Literal
 
-import httpx
-from nonebot_plugin_alconna import UniMessage, Alconna, on_alconna, Args
-from nonebot import on_command
+from nonebot_plugin_alconna import UniMessage, Alconna, on_alconna, Args, Subcommand
+from nonebot.adapters.onebot.v11 import GroupMessageEvent
 from nonebot_plugin_larklang import LangHelper
 from nonebot_plugin_larkutils import get_user_id
 from nonebot_plugin_render import render_template, generate_render_keys
+from nonebot_plugin_orm import async_scoped_session
+
+from .models import BacReminderSubscription
+from .utils import get_card_pool_data, get_activities, get_total_assault_data, SERVER_NAME_KEY
 
 matcher = on_alconna(Alconna("ba-calendar", Args["server", Literal["in", "jp", "cn"], "cn"]), aliases={"bac"})
+remind_matcher = on_alconna(
+    Alconna(
+        "bac-remind",
+        Subcommand("on"),
+        Subcommand("off"),
+        Subcommand("server", Args["server_name", Literal["cn", "in", "jp"]]),
+    ),
+    block=True,
+)
 lang = LangHelper()
-
-
-async def get_card_pool_data(server_id: int) -> dict:
-    async with httpx.AsyncClient() as client:
-        req = await client.get(
-            f"https://www.gamekee.com/v1/cardPool/query-list?order_by=-1&card_tag_id=&keyword=&kind_id=6&status=0&serverId={server_id}",
-            headers={"game-alias": "ba"},
-        )
-    return req.json()
-
-
-async def get_activities(server_id: int) -> dict:
-    async with httpx.AsyncClient() as client:
-        req = await client.get(
-            f"https://www.gamekee.com/v1/activity/page-list?importance=0&sort=-1&keyword=&limit=999&page_no=1&serverId={server_id}&status=0",
-            headers={"game-alias": "ba"},
-        )
-    return req.json()
 
 
 @matcher.handle()
 async def _(server: Literal["in", "jp", "cn"], user_id: str = get_user_id()) -> None:
     server_id = {"in": 17, "jp": 15, "cn": 16}[server]
+    total_assault_data = await get_total_assault_data(server_id)
     await UniMessage().image(
         raw=await render_template(
             "ba_calendar.html.jinja",
             await lang.text("title", user_id),
             user_id,
             {
+                "total_assault": total_assault_data,
                 "card_pool": (await get_card_pool_data(server_id))["data"][::-1],
-                "activities": (await get_activities(server_id))["data"][::-1],
+                "activities": await get_activities(server_id, [i["id"] for i in total_assault_data]),
                 "current_time": datetime.now().timestamp(),
                 "server_id": server_id,
                 "len": len,
@@ -82,9 +78,94 @@ async def _(server: Literal["in", "jp", "cn"], user_id: str = get_user_id()) -> 
                         "server_in",
                         "up_after",
                         "up_remain",
+                        "total_assault",
+                        "total_assault_ongoing",
+                        "total_assault_soon",
                     ]
                 ],
             ),
         )
     ).send()
     await matcher.finish()
+
+
+@remind_matcher.assign("$main")
+async def show_remind_status(
+    event: GroupMessageEvent, session: async_scoped_session, user_id: str = get_user_id()
+) -> None:
+    """显示当前群的提醒状态"""
+    if not isinstance(event, GroupMessageEvent):
+        await lang.finish("reminder.command.group_only", user_id)
+
+    group_id = str(event.group_id)
+    subscription = await session.get(BacReminderSubscription, {"group_id": group_id})
+
+    if subscription and subscription.enabled:
+        status = await lang.text("reminder.command.enabled", user_id)
+    else:
+        status = await lang.text("reminder.command.disabled", user_id)
+
+    server = subscription.server if subscription else "cn"
+    server_text = await lang.text(f"reminder.{SERVER_NAME_KEY[server]}", user_id)
+
+    await lang.finish("reminder.command.status", user_id, status, server_text)
+
+
+@remind_matcher.assign("on")
+async def enable_remind(event: GroupMessageEvent, session: async_scoped_session, user_id: str = get_user_id()) -> None:
+    """开启提醒"""
+    if not isinstance(event, GroupMessageEvent):
+        await lang.finish("reminder.command.group_only", user_id)
+
+    group_id = str(event.group_id)
+    subscription = await session.get(BacReminderSubscription, {"group_id": group_id})
+
+    if subscription:
+        subscription.enabled = True
+    else:
+        subscription = BacReminderSubscription(group_id=group_id, enabled=True, server="cn")
+        session.add(subscription)
+
+    await session.commit()
+    await lang.finish("reminder.command.on_success", user_id)
+
+
+@remind_matcher.assign("off")
+async def disable_remind(event: GroupMessageEvent, session: async_scoped_session, user_id: str = get_user_id()) -> None:
+    """关闭提醒"""
+    if not isinstance(event, GroupMessageEvent):
+        await lang.finish("reminder.command.group_only", user_id)
+
+    group_id = str(event.group_id)
+    subscription = await session.get(BacReminderSubscription, {"group_id": group_id})
+
+    if subscription:
+        subscription.enabled = False
+        await session.commit()
+
+    await lang.finish("reminder.command.off_success", user_id)
+
+
+@remind_matcher.assign("server")
+async def set_server(
+    event: GroupMessageEvent,
+    server_name: Literal["cn", "in", "jp"],
+    session: async_scoped_session,
+    user_id: str = get_user_id(),
+) -> None:
+    """设置服务器"""
+    if not isinstance(event, GroupMessageEvent):
+        await lang.finish("reminder.command.group_only", user_id)
+
+    group_id = str(event.group_id)
+    subscription = await session.get(BacReminderSubscription, {"group_id": group_id})
+
+    if subscription:
+        subscription.server = server_name
+    else:
+        subscription = BacReminderSubscription(group_id=group_id, enabled=True, server=server_name)
+        session.add(subscription)
+
+    await session.commit()
+    server_text = await lang.text(f"reminder.{SERVER_NAME_KEY[server_name]}", user_id)
+    await lang.finish("reminder.command.server_success", user_id, server_text)
