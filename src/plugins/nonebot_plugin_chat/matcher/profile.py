@@ -35,10 +35,7 @@ from ..models import UserProfile
 
 class ProfileReviewResult(TypedDict):
     is_safe: bool
-    confidence_score: float
-    injection_type: str | None
-    reasoning: str
-
+    reason: str
 
 def decode_profile_review_result(data: str) -> ProfileReviewResult:
     """解析 AI 审核返回的 JSON 结果，去除可能的 markdown 代码块标记"""
@@ -70,8 +67,7 @@ async def handle_profile_set(
         await lang.finish("profile.review_failed", user_id, review_result["message"])
 
     # AI 审核：检测提示词注入
-    review_prompt = await lang.text("profile.review_prompt", user_id)
-    review_prompt_with_input = review_prompt.replace("{user_input}", profile_text)
+    review_prompt_with_input = await lang.text("profile.review_prompt", user_id, profile_text)
 
     try:
         ai_response = await fetch_message(
@@ -82,19 +78,16 @@ async def handle_profile_set(
         ai_review_result: ProfileReviewResult = decode_profile_review_result(ai_response)
 
         if not ai_review_result.get("is_safe", True):
-            reasoning = ai_review_result.get("reasoning", "")
-            injection_type = ai_review_result.get("injection_type", "")
+            reason = ai_review_result.get("reason", "")
             await lang.finish(
                 "profile.ai_review_failed",
                 user_id,
-                injection_type or "unknown",
-                reasoning,
+                reason
             )
     except json.JSONDecodeError as e:
         await lang.finish(
             "profile.ai_review_failed",
             user_id,
-            "unknown",
             str(e),
         )
 
