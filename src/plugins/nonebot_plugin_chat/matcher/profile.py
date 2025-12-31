@@ -15,14 +15,34 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
+import json
+import re
+from typing import TypedDict
+
 from nonebot_plugin_alconna import Alconna, Args, Subcommand, on_alconna, MultiVar
 from nonebot_plugin_orm import async_scoped_session
+from nonebot_plugin_openai import generate_message, fetch_message
 
 from nonebot_plugin_larkuser import patch_matcher
 from nonebot_plugin_larkutils import get_user_id, review_text
 
 from ..lang import lang
 from ..models import UserProfile
+
+
+
+
+
+class ProfileReviewResult(TypedDict):
+    is_safe: bool
+    confidence_score: float
+    injection_type: str | None
+    reasoning: str
+
+
+def decode_profile_review_result(data: str) -> ProfileReviewResult:
+    """解析 AI 审核返回的 JSON 结果，去除可能的 markdown 代码块标记"""
+    return json.loads(re.sub(r"`{1,3}([a-zA-Z0-9]+)?", "", data))
 
 
 alc = Alconna(
@@ -48,6 +68,35 @@ async def handle_profile_set(
     review_result = await review_text(profile_text)
     if not review_result["compliance"]:
         await lang.finish("profile.review_failed", user_id, review_result["message"])
+
+    # AI 审核：检测提示词注入
+    review_prompt = await lang.text("profile.review_prompt", user_id)
+    review_prompt_with_input = review_prompt.replace("{user_input}", profile_text)
+
+    try:
+        ai_response = await fetch_message(
+            [
+                generate_message(review_prompt_with_input, "user"),
+            ]
+        )
+        ai_review_result: ProfileReviewResult = decode_profile_review_result(ai_response)
+
+        if not ai_review_result.get("is_safe", True):
+            reasoning = ai_review_result.get("reasoning", "")
+            injection_type = ai_review_result.get("injection_type", "")
+            await lang.finish(
+                "profile.ai_review_failed",
+                user_id,
+                injection_type or "unknown",
+                reasoning,
+            )
+    except json.JSONDecodeError as e:
+        await lang.finish(
+            "profile.ai_review_failed",
+            user_id,
+            "unknown",
+            str(e),
+        )
 
     # 保存或更新 profile
     existing_profile = await session.get(UserProfile, {"user_id": user_id})
