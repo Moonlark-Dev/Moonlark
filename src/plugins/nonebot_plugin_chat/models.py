@@ -35,6 +35,11 @@ class Note(Model):
     expire_time: Mapped[Optional[datetime]] = mapped_column(nullable=True)  # Optional expiration time
 
 
+class UserProfile(Model):
+    """User profile model for storing user-defined profiles that appear in chat context"""
+
+    user_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    profile_content: Mapped[str] = mapped_column(Text())
 class Sticker(Model):
     """Sticker model for storing saved stickers/memes"""
 

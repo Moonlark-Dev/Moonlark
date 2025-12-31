@@ -49,10 +49,11 @@ from nonebot_plugin_openai.types import (
 )
 from nonebot_plugin_openai.utils.chat import MessageFetcher
 from nonebot.matcher import Matcher
+from sqlalchemy import select
 
 from ..lang import lang
 from ..utils.note_manager import get_context_notes
-from ..models import ChatGroup
+from ..models import ChatGroup, UserProfile
 from ..utils import enabled_group, parse_message_to_string
 from ..utils.interrupter import Interrupter
 from ..utils.tools import (
@@ -471,11 +472,30 @@ class MessageProcessor:
                 l.append(str(msg.content))
         return l
 
+    async def _get_user_profiles(self, chat_history: str) -> dict[str, str]:
+        """根据昵称获取用户的 profile 信息"""
+        profiles = {}
+        async with get_session() as session:
+            for user_id in await session.scalars(select(UserProfile.user_id)):
+                nickname = (await get_user(user_id)).get_nickname()
+                if nickname in chat_history:
+                    profiles[nickname] = (await session.get_one(UserProfile, {"user_id": user_id})).profile_content
+        return profiles
+
     async def generate_system_prompt(self) -> OpenAIMessage:
         chat_history = "\n".join(self.get_message_content_list())
         # 获取相关笔记
         note_manager = await get_context_notes(self.session.group_id)
         notes, notes_from_other_group = await note_manager.filter_note(chat_history)
+
+        # 获取用户 profile 信息
+        user_profiles = await self._get_user_profiles(chat_history)
+
+        # 格式化 profile 信息
+        if user_profiles:
+            profiles_text = "\n".join([f"- {nickname}: {profile}" for nickname, profile in user_profiles.items()])
+        else:
+            profiles_text = "暂无"
 
         return generate_message(
             await lang.text(
@@ -489,6 +509,7 @@ class MessageProcessor:
                     if notes_from_other_group
                     else "暂无"
                 ),
+                profiles_text,
             ),
             "system",
         )
