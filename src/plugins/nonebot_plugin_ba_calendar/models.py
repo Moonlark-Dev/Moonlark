@@ -22,6 +22,7 @@ from sqlalchemy import String, Boolean, BigInteger
 
 class BacReminderSubscription(Model):
     """群聊提醒订阅设置"""
+
     group_id: Mapped[str] = mapped_column(String(128), primary_key=True)
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     server: Mapped[str] = mapped_column(String(2), default="cn")  # cn, in, jp
@@ -29,6 +30,7 @@ class BacReminderSubscription(Model):
 
 class BacReminderSent(Model):
     """已发送的提醒记录，防止重复发送"""
+
     id: Mapped[int] = mapped_column(autoincrement=True, primary_key=True)
     activity_id: Mapped[int] = mapped_column(BigInteger)
     reminder_type: Mapped[str] = mapped_column(String(16))  # start, end

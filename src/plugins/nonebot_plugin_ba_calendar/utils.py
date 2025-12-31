@@ -29,10 +29,7 @@ SERVER_NAME_KEY = {"cn": "server_cn", "in": "server_in", "jp": "server_jp"}
 async def get_image(uri: str) -> str:
     """获取图片的 base64 编码"""
     async with httpx.AsyncClient() as client:
-        req = await client.get(
-            f"https:{uri}",
-            headers={"Referer": "https://www.gamekee.com/"}
-        )
+        req = await client.get(f"https:{uri}", headers={"Referer": "https://www.gamekee.com/"})
     return f"data:image/png;base64,{base64.b64encode(req.content).decode()}"
 
 
@@ -69,7 +66,7 @@ async def get_activities(server_id: int, expected_ids: list[int] | None = None) 
 
 async def get_total_assault_data(server_id: int, fetch_images: bool = True) -> list[dict[str, Any]]:
     """获取总力战数据
-    
+
     Args:
         server_id: 服务器 ID
         fetch_images: 是否获取图片，默认 True
