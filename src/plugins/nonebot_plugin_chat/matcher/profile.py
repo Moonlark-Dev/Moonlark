@@ -30,12 +30,10 @@ from ..lang import lang
 from ..models import UserProfile
 
 
-
-
-
 class ProfileReviewResult(TypedDict):
     is_safe: bool
     reason: str
+
 
 def decode_profile_review_result(data: str) -> ProfileReviewResult:
     """解析 AI 审核返回的 JSON 结果，去除可能的 markdown 代码块标记"""
@@ -79,11 +77,7 @@ async def handle_profile_set(
 
         if not ai_review_result.get("is_safe", True):
             reason = ai_review_result.get("reason", "")
-            await lang.finish(
-                "profile.ai_review_failed",
-                user_id,
-                reason
-            )
+            await lang.finish("profile.ai_review_failed", user_id, reason)
     except json.JSONDecodeError as e:
         await lang.finish(
             "profile.ai_review_failed",
