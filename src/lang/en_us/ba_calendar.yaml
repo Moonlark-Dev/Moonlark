@@ -9,9 +9,9 @@ template:
   a_remain: Remaining
   coming_activity: Coming Soon
   a_coming_remain: Starts in
-  server_cn: Server: CN
-  server_in: Server: Global
-  server_jp: Server: JP
+  server_cn: 'Server: CN'
+  server_in: 'Server: Global'
+  server_jp: 'Server: JP'
   up_after: UP in
   up_remain: UP remaining
   total_assault: Total Assault / Grand Assault
