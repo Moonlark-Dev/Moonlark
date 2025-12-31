@@ -61,6 +61,7 @@ from ..utils.tools import (
     web_search,
     request_wolfram_alpha,
     get_note_poster,
+    get_sticker_tools,
 )
 
 
@@ -311,6 +312,9 @@ class MessageProcessor:
                 },
             ),
         ]
+        # Add sticker tools
+        self.functions.extend(get_sticker_tools(self.session))
+        
         if self.session.can_send_poke():
             self.functions.append(
                 AsyncFunction(

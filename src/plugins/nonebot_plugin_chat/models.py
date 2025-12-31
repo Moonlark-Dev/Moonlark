@@ -3,7 +3,7 @@ from typing import Optional
 
 from nonebot_plugin_orm import Model
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy import BigInteger, String, Text, Float, Integer
+from sqlalchemy import LargeBinary, String, Text, Float, Integer
 
 
 class SessionMessage(Model):
@@ -40,3 +40,11 @@ class UserProfile(Model):
 
     user_id: Mapped[str] = mapped_column(String(128), primary_key=True)
     profile_content: Mapped[str] = mapped_column(Text())
+class Sticker(Model):
+    """Sticker model for storing saved stickers/memes"""
+
+    id: Mapped[int] = mapped_column(Integer(), primary_key=True, autoincrement=True)
+    description: Mapped[str] = mapped_column(Text())  # VLM 生成的视觉描述
+    raw: Mapped[bytes] = mapped_column(LargeBinary())  # 二进制图片数据
+    group_id: Mapped[Optional[str]] = mapped_column(String(128), nullable=True, index=True)  # 来源群聊
+    created_time: Mapped[float] = mapped_column(Float())  # 创建时间戳
