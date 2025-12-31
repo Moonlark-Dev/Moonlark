@@ -70,7 +70,10 @@ async def get_activities(server_id: int, expected_ids: list[int] = []) -> list[d
 
 async def get_total_assault_data(server_id: int) -> list[dict[str, Any]]:
     async with httpx.AsyncClient() as client:
-        req = await client.get(f"https://www.gamekee.com/v1/activity/page-list?importance=0&sort=-1&keyword&limit=999&page_no=1&serverId=16&status=0&activity_kind_id={server_id}")
+        req = await client.get(
+            f"https://www.gamekee.com/v1/activity/page-list?importance=0&sort=-1&keyword&limit=999&page_no=1&serverId={server_id}&status=0&activity_kind_id=15",
+            headers={"game-alias": "ba"},
+        )
     data = req.json()
     result = []
     timestamp = datetime.now().timestamp()
