@@ -19,7 +19,7 @@ template:
   total_assault_soon: Coming soon, starts in
 
 help:
-  details: Query current and upcoming gacha pools and events for Blue Archive. Supports CN (default), Global (param: in), and JP (param: jp) servers.
+  details: 'Query current and upcoming gacha pools and events for Blue Archive. Supports CN (default), Global (param: in), and JP (param: jp) servers.'
   description: Blue Archive Event Calendar
   usage1: bac (CN server calendar)
   usage2: bac in|jp (Global/JP server calendar)
