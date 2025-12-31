@@ -163,6 +163,9 @@ prompt_group:
     来自其他群聊的笔记：
     {3}
 
+    部分群友的介绍：
+    {4}
+
 
   image_describe_system: |
     # Role
@@ -332,6 +335,17 @@ help:
   usage7: chat note list (列出所有笔记)
   usage8: chat note view <id> (查看指定笔记)
   usage9: chat note delete <id> (删除指定笔记)
+  usage10: chat profile (查看自己的 profile)
+  usage11: chat profile set <内容> (设置自己的 profile)
+
+profile:
+  set_success: Profile 设置成功！
+  review_failed: Profile 内容审核未通过：{}
+  current: |
+    你的 Profile:
+    {}
+  empty: 你还没有设置 Profile。
+  empty_input: 请提供要设置的 Profile 内容。
 tools:
   template: '[{}]: {}'
   search: '搜索了: {}'
