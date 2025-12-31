@@ -27,9 +27,7 @@ from ..models import Sticker
 class StickerManager:
     """Sticker management system for saving, searching and retrieving stickers"""
 
-    async def save_sticker(
-        self, description: str, raw: bytes, group_id: Optional[str] = None
-    ) -> Sticker:
+    async def save_sticker(self, description: str, raw: bytes, group_id: Optional[str] = None) -> Sticker:
         """
         Save a sticker to the database
 
@@ -73,17 +71,17 @@ class StickerManager:
             # Use LIKE for fuzzy matching on description
             # Split query into keywords for better matching
             keywords = query.split()
-            
+
             # Build query - search globally across all stickers
             stmt = select(Sticker)
-            
+
             # Apply keyword filters using LIKE
             for keyword in keywords:
                 stmt = stmt.where(Sticker.description.contains(keyword))
-            
+
             # Order by created_time descending (newest first) and limit results
             stmt = stmt.order_by(Sticker.created_time.desc()).limit(limit)
-            
+
             result = await session.scalars(stmt)
             return list(result.all())
 
@@ -100,23 +98,18 @@ class StickerManager:
             List of matching Sticker objects
         """
         from sqlalchemy import or_
-        
+
         async with get_session() as session:
             keywords = query.split()
-            
+
             if not keywords:
                 return []
-            
+
             # Build OR conditions for each keyword
             conditions = [Sticker.description.contains(keyword) for keyword in keywords]
-            
-            stmt = (
-                select(Sticker)
-                .where(or_(*conditions))
-                .order_by(Sticker.created_time.desc())
-                .limit(limit)
-            )
-            
+
+            stmt = select(Sticker).where(or_(*conditions)).order_by(Sticker.created_time.desc()).limit(limit)
+
             result = await session.scalars(stmt)
             return list(result.all())
 
@@ -163,11 +156,7 @@ class StickerManager:
             List of Sticker objects
         """
         async with get_session() as session:
-            stmt = (
-                select(Sticker)
-                .order_by(Sticker.created_time.desc())
-                .limit(limit)
-            )
+            stmt = select(Sticker).order_by(Sticker.created_time.desc()).limit(limit)
             result = await session.scalars(stmt)
             return list(result.all())
 

@@ -36,6 +36,7 @@ from .cache import AsyncCache
 
 class ImageCacheData(TypedDict):
     """图片缓存数据结构"""
+
     description: str  # VLM 生成的描述
     image_id: str  # 临时图片 ID
     raw: bytes  # 二进制图片数据
@@ -59,26 +60,26 @@ async def _() -> None:
 async def request_describe_image(image: bytes, user_id: str) -> tuple[str, str]:
     """
     获取图片描述并分配临时 ID
-    
+
     Args:
         image: 图片二进制数据
         user_id: 用户 ID
-        
+
     Returns:
         tuple[str, str]: (描述, 临时图片ID)
     """
     global image_id_counter
-    
+
     img_hash = hashlib.sha256(image).hexdigest()
-    
+
     # 检查是否已缓存
     if (cache := await image_cache.get(img_hash)) is not None:
         return cache["description"], cache["image_id"]
-    
+
     # 生成新的图片 ID
     image_id_counter += 1
     image_id = f"img_{image_id_counter}"
-    
+
     # 调用 VLM 获取描述
     image_base64 = base64.b64encode(image).decode("utf-8")
     messages = [
@@ -100,7 +101,7 @@ async def request_describe_image(image: bytes, user_id: str) -> tuple[str, str]:
     except Exception as e:
         logger.warning(traceback.format_exc())
         summary = f"暂无信息 ({e})"
-    
+
     # 缓存数据
     cache_data: ImageCacheData = {
         "description": summary,
@@ -109,20 +110,20 @@ async def request_describe_image(image: bytes, user_id: str) -> tuple[str, str]:
     }
     await image_cache.set(img_hash, cache_data)
     await image_id_cache.set(image_id, cache_data)
-    
+
     return summary, image_id
 
 
 async def get_image_summary(segment: Image, event: Event, bot: Bot, state: T_State) -> tuple[str, str]:
     """
     获取图片摘要和临时 ID
-    
+
     Args:
         segment: 图片消息段
         event: 事件对象
         bot: Bot 对象
         state: 状态字典
-        
+
     Returns:
         tuple[str, str]: (描述, 临时图片ID)，如果获取失败返回 ("暂无信息", "")
     """
@@ -134,10 +135,10 @@ async def get_image_summary(segment: Image, event: Event, bot: Bot, state: T_Sta
 async def get_image_by_id(image_id: str) -> Optional[ImageCacheData]:
     """
     通过临时 ID 获取图片缓存数据
-    
+
     Args:
         image_id: 临时图片 ID
-        
+
     Returns:
         ImageCacheData 或 None（如果未找到或已过期）
     """
