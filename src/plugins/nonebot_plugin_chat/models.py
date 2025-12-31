@@ -3,7 +3,7 @@ from typing import Optional
 
 from nonebot_plugin_orm import Model
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy import BigInteger, String, Text, Float, Integer
+from sqlalchemy import LargeBinary, String, Text, Float, Integer
 
 
 class SessionMessage(Model):
@@ -33,3 +33,19 @@ class Note(Model):
     keywords: Mapped[str] = mapped_column(String(length=256), default="")
     created_time: Mapped[float] = mapped_column(Float())
     expire_time: Mapped[Optional[datetime]] = mapped_column(nullable=True)  # Optional expiration time
+
+
+class UserProfile(Model):
+    """User profile model for storing user-defined profiles that appear in chat context"""
+
+    user_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    profile_content: Mapped[str] = mapped_column(Text())
+class Sticker(Model):
+    """Sticker model for storing saved stickers/memes"""
+
+    id: Mapped[int] = mapped_column(Integer(), primary_key=True, autoincrement=True)
+    description: Mapped[str] = mapped_column(Text())  # VLM 生成的视觉描述
+    # 使用 length=16777215 使 MySQL 使用 MEDIUMBLOB (16MB)，足够存储大多数表情包
+    raw: Mapped[bytes] = mapped_column(LargeBinary(length=16777215))  # 二进制图片数据
+    group_id: Mapped[Optional[str]] = mapped_column(String(128), nullable=True, index=True)  # 来源群聊
+    created_time: Mapped[float] = mapped_column(Float())  # 创建时间戳

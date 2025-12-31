@@ -35,7 +35,11 @@ class MessageParser:
         elif isinstance(segment, At):
             return await self.parse_mention(segment)
         elif isinstance(segment, Image):
-            return f"[图片: {await get_image_summary(segment, self.event, self.bot, self.state)}]"
+            description, image_id = await get_image_summary(segment, self.event, self.bot, self.state)
+            if image_id:
+                return f"[图片({image_id}): {description}]"
+            else:
+                return f"[图片: {description}]"
         elif isinstance(segment, Reply) and segment.msg is not None:
             return await self.parse_reply(segment)
         elif isinstance(segment, Reference) and isinstance(self.bot, OneBotV11Bot) and segment.id is not None:
