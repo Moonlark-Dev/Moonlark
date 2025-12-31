@@ -20,3 +20,4 @@ from .search import web_search
 from .wolfram_alpha import request_wolfram_alpha
 
 from .note import get_note_poster
+from .sticker import get_sticker_tools
