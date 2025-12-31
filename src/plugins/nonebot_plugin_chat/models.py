@@ -4,6 +4,7 @@ from typing import Optional
 from nonebot_plugin_orm import Model
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy import LargeBinary, String, Text, Float, Integer
+from sqlalchemy.dialects.mysql import MEDIUMBLOB
 
 
 class SessionMessage(Model):
@@ -45,7 +46,7 @@ class Sticker(Model):
 
     id: Mapped[int] = mapped_column(Integer(), primary_key=True, autoincrement=True)
     description: Mapped[str] = mapped_column(Text())  # VLM 生成的视觉描述
-    # 使用 length=16777215 使 MySQL 使用 MEDIUMBLOB (16MB)，足够存储大多数表情包
-    raw: Mapped[bytes] = mapped_column(LargeBinary(length=16777215))  # 二进制图片数据
+    # MySQL 使用 MEDIUMBLOB (16MB)，SQLite 使用 LargeBinary（无大小限制）
+    raw: Mapped[bytes] = mapped_column(MEDIUMBLOB())  # 二进制图片数据
     group_id: Mapped[Optional[str]] = mapped_column(String(128), nullable=True, index=True)  # 来源群聊
     created_time: Mapped[float] = mapped_column(Float())  # 创建时间戳
