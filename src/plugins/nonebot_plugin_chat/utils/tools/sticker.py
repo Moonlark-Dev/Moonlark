@@ -30,20 +30,20 @@ if TYPE_CHECKING:
 async def save_sticker_func(session: "GroupSession", image_id: str) -> str:
     """
     Save an image as a sticker
-    
+
     Args:
         session: The group session
         image_id: Temporary image ID from the message context
-        
+
     Returns:
         Success or error message
     """
     # Get image data from cache
     image_data = await get_image_by_id(image_id)
-    
+
     if image_data is None:
         return await lang.text("sticker.not_found", session.user_id)
-    
+
     # Get sticker manager and save
     manager = await get_sticker_manager()
     sticker = await manager.save_sticker(
@@ -51,33 +51,33 @@ async def save_sticker_func(session: "GroupSession", image_id: str) -> str:
         raw=image_data["raw"],
         group_id=session.group_id,
     )
-    
+
     return await lang.text("sticker.saved", session.user_id, sticker.id)
 
 
 async def search_sticker_func(session: "GroupSession", query: str) -> str:
     """
     Search for stickers by description
-    
+
     Args:
         session: The group session
         query: Search query string
-        
+
     Returns:
         Formatted list of matching stickers or empty message
     """
     manager = await get_sticker_manager()
-    
+
     # First try AND matching (all keywords must match)
     stickers = await manager.search_sticker(query, limit=5)
-    
+
     # If no results, try OR matching (any keyword matches)
     if not stickers:
         stickers = await manager.search_sticker_any(query, limit=5)
-    
+
     if not stickers:
         return await lang.text("sticker.search_empty", session.user_id)
-    
+
     # Format results
     results = []
     for sticker in stickers:
@@ -86,27 +86,27 @@ async def search_sticker_func(session: "GroupSession", query: str) -> str:
         if len(desc) > 50:
             desc = desc[:47] + "..."
         results.append(f"- {sticker.id}: {desc}")
-    
+
     return await lang.text("sticker.search_result", session.user_id, "\n".join(results))
 
 
 async def send_sticker_func(session: "GroupSession", sticker_id: int) -> str:
     """
     Send a sticker to the group
-    
+
     Args:
         session: The group session
         sticker_id: Database ID of the sticker to send
-        
+
     Returns:
         Success or error message
     """
     manager = await get_sticker_manager()
     sticker = await manager.get_sticker(sticker_id)
-    
+
     if sticker is None:
         return await lang.text("sticker.id_not_found", session.user_id, sticker_id)
-    
+
     try:
         # Create and send the image message
         message = UniMessage.image(raw=sticker.raw)
@@ -119,24 +119,24 @@ async def send_sticker_func(session: "GroupSession", sticker_id: int) -> str:
 def get_sticker_tools(session: "GroupSession") -> List:
     """
     Get sticker-related tool functions for the LLM
-    
+
     Args:
         session: The group session
-        
+
     Returns:
         List of AsyncFunction objects for sticker tools
     """
     from nonebot_plugin_openai.types import AsyncFunction, FunctionParameter
-    
+
     async def save_sticker(image_id: str) -> str:
         return await save_sticker_func(session, image_id)
-    
+
     async def search_sticker(query: str) -> str:
         return await search_sticker_func(session, query)
-    
+
     async def send_sticker(sticker_id: int) -> str:
         return await send_sticker_func(session, sticker_id)
-    
+
     return [
         AsyncFunction(
             func=save_sticker,

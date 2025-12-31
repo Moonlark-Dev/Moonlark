@@ -1,53 +1,52 @@
-title: Blue Archive Event Calendar
+title: 蔚蓝档案活动日历
 template:
-  pool_title: Gacha Pool
-  coming_pool: Coming Soon
-  current_up: Current UP
-  activity_title: Events
-  ongoing: Ongoing
-  day: days
-  a_remain: Remaining
-  coming_activity: Coming Soon
-  a_coming_remain: Starts in
-  server_cn: 'Server: CN'
-  server_in: 'Server: Global'
-  server_jp: 'Server: JP'
-  up_after: UP in
-  up_remain: UP remaining
-  total_assault: Total Assault / Grand Assault
-  total_assault_ongoing: Ongoing, remaining
-  total_assault_soon: Coming soon, starts in
-
+  pool_title: 卡池
+  coming_pool: 即将开放
+  current_up: 当前 UP
+  activity_title: 活动
+  ongoing: 正在进行
+  day: 天
+  a_remain: 剩余
+  coming_activity: 即将开始
+  a_coming_remain: 距离开始
+  server_cn: 选中区服：国服
+  server_in: 选中区服：国际服
+  server_jp: 选中区服：日服
+  up_after: 距离 UP
+  up_remain: 剩余 UP
+  total_assault: 总力战/大决战
+  total_assault_ongoing: 正在进行，剩余
+  total_assault_soon: 即将开始，距离
 help:
-  details: 'Query current and upcoming gacha pools and events for Blue Archive. Supports CN (default), Global (param: in), and JP (param: jp) servers.'
-  description: Blue Archive Event Calendar
-  usage1: bac (CN server calendar)
-  usage2: bac in|jp (Global/JP server calendar)
+  details: 查询蔚蓝档案现在和将来的卡池、活动信息，支持国服（默认）、国际服（参数：in）、日服（参数：jp）。
+  description: 蔚蓝档案活动日历
+  usage1: bac (国服活动日历)
+  usage2: bac in|jp (国际/日服活动日历)
 help_remind:
-  details: Manage Total Assault reminder feature. When enabled, reminders will be sent 1 hour before the event starts and ends. Only supports OneBot V11 protocol.
-  description: Total Assault Reminder Management
-  usage1: bac-remind (view current status)
-  usage2: bac-remind on/off (enable/disable reminder)
-  usage3: bac-remind server cn|in|jp (set server)
+  details: 管理总力战/大决战提醒功能，开启后会在活动开始前1小时和结束前1小时发送提醒。仅支持 OneBot V11 协议。
+  description: 总力战提醒管理
+  usage1: bac-remind (查看当前状态)
+  usage2: bac-remind on/off (开启/关闭提醒)
+  usage3: bac-remind server cn|in|jp (设置服务器)
 reminder:
   message: |
-    🔔 Blue Archive Total Assault Reminder
-    
-    📌 Event: {0}
-    ⏰ Status: {1}
-    🌐 Server: {2}
-  status_start: Starts in 1 hour
-  status_end: Ends in 1 hour
-  server_cn: CN Server
-  server_in: Global Server
-  server_jp: JP Server
+    🔔 蔚蓝档案总力战提醒
+
+    📌 {0}
+    ⏰ 状态: {1}
+    🌐 服务器: {2}
+  status_start: 将在 1 小时后开始
+  status_end: 将在 1 小时后结束
+  server_cn: 国服
+  server_in: 国际服
+  server_jp: 日服
   command:
     status: |
-      Total Assault reminder status: {0}
-      Subscribed server: {1}
-    enabled: ✅ Enabled
-    disabled: ❌ Disabled
-    on_success: ✅ Total Assault reminder enabled
-    off_success: ❌ Total Assault reminder disabled
-    server_success: ✅ Subscribed server set to {0}
-    group_only: ⚠️ This command can only be used in group chats
+      当前群的总力战提醒状态：{0}
+      订阅服务器：{1}
+    enabled: '✅ 已开启'
+    disabled: '❌ 已关闭'
+    on_success: '✅ 已开启总力战提醒'
+    off_success: '❌ 已关闭总力战提醒'
+    server_success: '✅ 已将订阅服务器设置为 {0}'
+    group_only: '⚠️ 此命令只能在群聊中使用'

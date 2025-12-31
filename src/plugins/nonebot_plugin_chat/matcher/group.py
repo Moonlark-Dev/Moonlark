@@ -314,7 +314,7 @@ class MessageProcessor:
         ]
         # Add sticker tools
         self.functions.extend(get_sticker_tools(self.session))
-        
+
         if self.session.can_send_poke():
             self.functions.append(
                 AsyncFunction(

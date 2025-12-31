@@ -5,6 +5,7 @@
 创建时间: 2025-12-31 21:36:04.443090
 
 """
+
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -13,8 +14,8 @@ from alembic import op
 import sqlalchemy as sa
 
 
-revision: str = 'f92937307e7a'
-down_revision: str | Sequence[str] | None = 'ae4bd9cc1635'
+revision: str = "f92937307e7a"
+down_revision: str | Sequence[str] | None = "ae4bd9cc1635"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
