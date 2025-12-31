@@ -27,15 +27,13 @@ def upgrade(name: str = "") -> None:
     # 获取当前数据库方言
     bind = op.get_bind()
     dialect = bind.dialect.name
-    
-    if dialect == 'mysql':
+
+    if dialect == "mysql":
         # MySQL: 将 raw 列从 BLOB (64KB) 改为 MEDIUMBLOB (16MB)
         from sqlalchemy.dialects.mysql import MEDIUMBLOB
-        with op.batch_alter_table('nonebot_plugin_chat_sticker', schema=None) as batch_op:
-            batch_op.alter_column('raw',
-                                  existing_type=sa.LargeBinary(),
-                                  type_=MEDIUMBLOB(),
-                                  existing_nullable=False)
+
+        with op.batch_alter_table("nonebot_plugin_chat_sticker", schema=None) as batch_op:
+            batch_op.alter_column("raw", existing_type=sa.LargeBinary(), type_=MEDIUMBLOB(), existing_nullable=False)
     # SQLite: 不需要操作，BLOB 没有大小限制
     # ### end Alembic commands ###
 
@@ -47,14 +45,12 @@ def downgrade(name: str = "") -> None:
     # 获取当前数据库方言
     bind = op.get_bind()
     dialect = bind.dialect.name
-    
-    if dialect == 'mysql':
+
+    if dialect == "mysql":
         # MySQL: 回滚为 BLOB
         from sqlalchemy.dialects.mysql import MEDIUMBLOB
-        with op.batch_alter_table('nonebot_plugin_chat_sticker', schema=None) as batch_op:
-            batch_op.alter_column('raw',
-                                  existing_type=MEDIUMBLOB(),
-                                  type_=sa.LargeBinary(),
-                                  existing_nullable=False)
+
+        with op.batch_alter_table("nonebot_plugin_chat_sticker", schema=None) as batch_op:
+            batch_op.alter_column("raw", existing_type=MEDIUMBLOB(), type_=sa.LargeBinary(), existing_nullable=False)
     # SQLite: 不需要操作
     # ### end Alembic commands ###
