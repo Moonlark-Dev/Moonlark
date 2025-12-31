@@ -468,7 +468,6 @@ class MessageProcessor:
                 l.append(str(msg.content))
         return l
 
-
     async def _get_user_profiles(self, chat_history: str) -> dict[str, str]:
         """根据昵称获取用户的 profile 信息"""
         profiles = {}
@@ -487,7 +486,7 @@ class MessageProcessor:
 
         # 获取用户 profile 信息
         user_profiles = await self._get_user_profiles(chat_history)
-        
+
         # 格式化 profile 信息
         if user_profiles:
             profiles_text = "\n".join([f"- {nickname}: {profile}" for nickname, profile in user_profiles.items()])

@@ -40,22 +40,22 @@ async def handle_profile_set(
     user_id: str = get_user_id(),
 ) -> None:
     profile_text = " ".join(content)
-    
+
     if not profile_text.strip():
         await lang.finish("profile.empty_input", user_id)
-    
+
     # 审核纯文本内容
     review_result = await review_text(profile_text)
     if not review_result["compliance"]:
         await lang.finish("profile.review_failed", user_id, review_result["message"])
-    
+
     # 保存或更新 profile
     existing_profile = await session.get(UserProfile, {"user_id": user_id})
     if existing_profile:
         existing_profile.profile_content = profile_text
     else:
         session.add(UserProfile(user_id=user_id, profile_content=profile_text))
-    
+
     await session.commit()
     await lang.finish("profile.set_success", user_id)
 
@@ -66,7 +66,7 @@ async def handle_profile_view(
     user_id: str = get_user_id(),
 ) -> None:
     profile = await session.get(UserProfile, {"user_id": user_id})
-    
+
     if profile and profile.profile_content:
         await lang.finish("profile.current", user_id, profile.profile_content)
     else:
