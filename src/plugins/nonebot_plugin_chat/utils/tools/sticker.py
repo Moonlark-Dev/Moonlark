@@ -83,8 +83,6 @@ async def search_sticker_func(session: "GroupSession", query: str) -> str:
     for sticker in stickers:
         # Truncate description if too long
         desc = sticker.description
-        if len(desc) > 50:
-            desc = desc[:47] + "..."
         results.append(f"- {sticker.id}: {desc}")
 
     return await lang.text("sticker.search_result", session.user_id, "\n".join(results))
