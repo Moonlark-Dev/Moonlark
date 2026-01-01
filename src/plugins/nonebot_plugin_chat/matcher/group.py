@@ -60,6 +60,7 @@ from ..utils.tools import (
     browse_webpage,
     web_search,
     request_wolfram_alpha,
+    search_abbreviation,
     get_note_poster,
     get_sticker_tools,
 )
@@ -252,6 +253,21 @@ class MessageProcessor:
                             "输入 Wolfram|Alpha 的内容，形式可以是数学表达式、Wolfram Language、LaTeX 或自然语言。\n"
                             "使用自然语言提问时，使用英文以保证 Wolfram|Alpha 可以理解问题。"
                         ),
+                        required=True,
+                    )
+                },
+            ),
+            AsyncFunction(
+                func=search_abbreviation,
+                description=(
+                    "查询英文字母缩写的含义（能不能好好说话）。\n"
+                    "**何时调用**: 当遇到不理解的英文字母缩写（如 yyds、xswl、nsdd 等网络用语缩写）时使用。\n"
+                    "**判断标准**: 当消息中出现看起来像是拼音首字母缩写的字母组合，且不确定其含义时使用。"
+                ),
+                parameters={
+                    "text": FunctionParameter(
+                        type="string",
+                        description="要查询的英文字母缩写，如 'yyds'、'xswl' 等。",
                         required=True,
                     )
                 },
