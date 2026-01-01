@@ -3,9 +3,32 @@ progress:
     现在是: {}
     =====================
     {} 年已过去 {}%
+    {}
     {} 月已过去 {}%
+    {}
     {} 日已过去 {}%
+    {}
+
+sub:
+  group_only: 此功能仅在群聊中可用
+  status: |
+    【年进度推送】
+    开启状态：{}
+    下次推送 (于 {}%)：
+    {}
+  status_on: ✅ 开启
+  status_off: ❌ 关闭
+  enabled: ✅ 已开启年进度推送
+  disabled: ❌ 已关闭年进度推送
+  push_message: |
+    【{} 年进度】
+    ================
+    {}  {}%
+
 help:
   description: 时间进度
-  details: 查看本年/月/日的进度
-  usage: time-progress
+  details: 查看本年/月/日的进度，支持年进度推送订阅
+  usage: |
+    time-progress - 查看时间进度
+    time-progress sub - 查看订阅状态
+    time-progress sub on/off - 开启/关闭年进度推送
