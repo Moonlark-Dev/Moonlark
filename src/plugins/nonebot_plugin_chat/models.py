@@ -6,6 +6,9 @@ from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy import LargeBinary, String, Text, Float, Integer
 from sqlalchemy.dialects.mysql import MEDIUMBLOB
 
+# 创建跨数据库兼容的二进制类型：MySQL 使用 MEDIUMBLOB (16MB)，其他数据库使用 LargeBinary
+CompatibleBlob = LargeBinary().with_variant(MEDIUMBLOB(), "mysql")
+
 
 class SessionMessage(Model):
     id_: Mapped[int] = mapped_column(autoincrement=True, primary_key=True)
@@ -49,6 +52,6 @@ class Sticker(Model):
     id: Mapped[int] = mapped_column(Integer(), primary_key=True, autoincrement=True)
     description: Mapped[str] = mapped_column(Text())  # VLM 生成的视觉描述
     # MySQL 使用 MEDIUMBLOB (16MB)，SQLite 使用 LargeBinary（无大小限制）
-    raw: Mapped[bytes] = mapped_column(MEDIUMBLOB())  # 二进制图片数据
+    raw: Mapped[bytes] = mapped_column(CompatibleBlob)  # 二进制图片数据
     group_id: Mapped[Optional[str]] = mapped_column(String(128), nullable=True, index=True)  # 来源群聊
     created_time: Mapped[float] = mapped_column(Float())  # 创建时间戳
