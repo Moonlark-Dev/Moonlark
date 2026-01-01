@@ -428,6 +428,7 @@ tools:
   search: '搜索了: {}'
   browse: '访问了: {}'
   wolfram: '计算了: {}'
+  abbreviation: '查询了缩写: {}'
 
 sticker:
   saved: '表情包已保存，ID: {}'
