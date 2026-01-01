@@ -8,7 +8,27 @@ progress:
     {}
     {} 日已過去 {}%
     {}
+
+sub:
+  group_only: 此功能僅在群聊中可用
+  status: |
+    【年進度推送】
+    開啟狀態：{}
+    下次推送 (於 {}%)：
+    {}
+  status_on: ✅ 開啟
+  status_off: ❌ 關閉
+  enabled: ✅ 已開啟年進度推送
+  disabled: ❌ 已關閉年進度推送
+  push_message: |
+    【{} 年進度】
+    ================
+    {}  {}%
+
 help:
   description: 時間進度
-  details: 查看本年/月/日的進度
-  usage: time-progress
+  details: 查看本年/月/日的進度，支援年進度推送訂閱
+  usage: |
+    time-progress - 查看時間進度
+    time-progress sub - 查看訂閱狀態
+    time-progress sub on/off - 開啟/關閉年進度推送
