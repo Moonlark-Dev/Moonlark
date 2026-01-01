@@ -293,10 +293,12 @@ Linux 手册 (ManPage) 查询
 - `/t <文本...> [-s|--sorce <源语言>] [-t|--target <目标语言>]`
 ## `time-progress`: 时间进度
 
-查看本年/月/日的进度
+查看本年/月/日的进度，支持年进度推送订阅
 
 ### 用法
-- `/time-progress`
+- `/time-progress - 查看时间进度
+time-progress sub - 查看订阅状态
+time-progress sub on/off - 开启/关闭年进度推送`
 ## `vote`: 投票
 
 Moonlark 投票
