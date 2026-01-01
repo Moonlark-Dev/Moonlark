@@ -3,6 +3,28 @@
 import datetime
 
 
+def generate_progress_bar(percentage: float, length: int = 15) -> str:
+    """生成纯文本进度条
+
+    Args:
+        percentage: 百分比 (0-100)
+        length: 进度条总长度（字符数）
+
+    Returns:
+        格式如 "    [▓▓▓▓▓▓▓░░░░░░░░]" 的字符串
+    """
+    filled_char = "▓"
+    empty_char = "░"
+
+    # 计算填充的长度
+    filled_length = int(percentage / 100 * length)
+    empty_length = length - filled_length
+
+    # 构建进度条
+    bar = filled_char * filled_length + empty_char * empty_length
+    return f"  [{bar}]"
+
+
 def calculate_percentage_of_year() -> float:
     current_datetime = datetime.datetime.now()
     start_of_year = datetime.datetime(current_datetime.year, 1, 1)
