@@ -64,7 +64,9 @@ async def send_to_group(group_id: str, message: UniMessage) -> bool:
         try:
             groups = await bot.get_group_list()
             if any(str(g["group_id"]) == group_id for g in groups):
-                await message.send(target=Target(group_id, self_id=bot.self_id, adapter=bot.adapter.get_name()), bot=bot)
+                await message.send(
+                    target=Target(group_id, self_id=bot.self_id, adapter=bot.adapter.get_name()), bot=bot
+                )
                 return True
         except Exception as e:
             logger.warning(f"向群 {group_id} 发送年进度消息失败: {e}")
