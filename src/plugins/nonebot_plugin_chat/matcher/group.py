@@ -63,6 +63,8 @@ from ..utils.tools import (
     search_abbreviation,
     get_note_poster,
     get_sticker_tools,
+    get_vm_tools,
+    is_vm_configured,
 )
 
 
@@ -331,6 +333,10 @@ class MessageProcessor:
         # Add sticker tools
         self.functions.extend(get_sticker_tools(self.session))
 
+        # Add VM tools if configured
+        if is_vm_configured():
+            self.functions.extend(get_vm_tools())
+
         if self.session.can_send_poke():
             self.functions.append(
                 AsyncFunction(
@@ -448,6 +454,16 @@ class MessageProcessor:
                 text = await lang.text("tools.wolfram", self.session.user_id, param.get("question"))
             case "web_search":
                 text = await lang.text("tools.search", self.session.user_id, param.get("keyword"))
+            case "vm_create_task":
+                text = await lang.text(
+                    "tools.vm.create", self.session.user_id, param.get("title"), param.get("command")
+                )
+            case "vm_get_task_state":
+                text = await lang.text("tools.vm.get_state", self.session.user_id, param.get("task_id"))
+            case "vm_send_input":
+                text = await lang.text("tools.vm.send_input", self.session.user_id, param.get("task_id"))
+            case "vm_stop_task":
+                text = await lang.text("tools.vm.stop", self.session.user_id, param.get("task_id"))
             case _:
                 return call_id, name, param
         await self.append_tool_call_history(text)

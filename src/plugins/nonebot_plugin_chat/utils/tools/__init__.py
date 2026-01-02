@@ -22,3 +22,4 @@ from .abbreviation import search_abbreviation
 
 from .note import get_note_poster
 from .sticker import get_sticker_tools
+from .vm import get_vm_tools, is_vm_available, is_vm_configured

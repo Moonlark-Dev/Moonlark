@@ -8,6 +8,9 @@ class Config(BaseModel):
     command_start: list[str] = ["/"]
     metaso_api_key: str = ""
     napcat_bot_ids: list[str] = []
+    # VM 远程执行服务配置
+    vm_api_url: str = ""  # VM 服务地址，如 http://localhost:8000
+    vm_api_token: str = ""  # VM API 鉴权 Token
 
 
 config = get_plugin_config(Config)
