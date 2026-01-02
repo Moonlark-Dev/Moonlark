@@ -20,6 +20,7 @@ from datetime import datetime
 from typing import Any
 
 import httpx
+from nonebot import logger
 
 # 服务器配置
 SERVER_ID_MAP = {"cn": 16, "in": 17, "jp": 15}
@@ -40,9 +41,13 @@ async def get_card_pool_data(server_id: int) -> dict:
             f"https://www.gamekee.com/v1/cardPool/query-list?order_by=-1&card_tag_id=&keyword=&kind_id=6&status=0&serverId={server_id}",
             headers={"game-alias": "ba"},
         )
+    logger.debug("卡池数据获取成功")
     data = req.json()
+    timestamp = datetime.now().timestamp()
     for i in range(len(data["data"])):
-        data["data"][i]["icon"] = await get_image(data["data"][i]["icon"])
+        if data["data"][i]["end_at"] >= timestamp:
+            data["data"][i]["icon"] = await get_image(data["data"][i]["icon"])
+    logger.debug("卡池图片获取成功")
     return data
 
 
@@ -57,7 +62,10 @@ async def get_activities(server_id: int, expected_ids: list[int] | None = None) 
         )
     data = req.json()
     result = []
+    timestamp = datetime.now().timestamp()
     for item in data["data"]:
+        if item["end_at"] < timestamp:
+            continue
         if item["id"] not in expected_ids:
             item["picture"] = await get_image(item["picture"])
             result.append(item)
@@ -76,6 +84,7 @@ async def get_total_assault_data(server_id: int, fetch_images: bool = True) -> l
             f"https://www.gamekee.com/v1/activity/page-list?importance=0&sort=-1&keyword&limit=999&page_no=1&serverId={server_id}&status=0&activity_kind_id=15",
             headers={"game-alias": "ba"},
         )
+    logger.debug("总力战数据获取成功")
     data = req.json()
     result = []
     timestamp = datetime.now().timestamp()
@@ -84,4 +93,5 @@ async def get_total_assault_data(server_id: int, fetch_images: bool = True) -> l
             if fetch_images:
                 item["picture"] = await get_image(item["picture"])
             result.append(item)
+    logger.debug("总力战图片获取成功")
     return result[::-1]
