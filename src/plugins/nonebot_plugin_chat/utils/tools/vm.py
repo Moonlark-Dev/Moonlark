@@ -409,7 +409,9 @@ def get_vm_tools() -> List:
             parameters={
                 "task_id": FunctionParameter(
                     type="string",
-                    description=("由 vm_create_task 返回的任务 ID。" "格式为 UUID，例如: '550e8400-e29b-41d4-a716-446655440000'"),
+                    description=(
+                        "由 vm_create_task 返回的任务 ID。" "格式为 UUID，例如: '550e8400-e29b-41d4-a716-446655440000'"
+                    ),
                     required=True,
                 ),
             },
