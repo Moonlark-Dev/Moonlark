@@ -25,6 +25,7 @@ import httpx
 from datetime import datetime
 from typing import List, Optional
 from dataclasses import dataclass
+from nonebot import get_driver
 from nonebot.log import logger
 from nonebot_plugin_apscheduler import scheduler
 
@@ -473,7 +474,7 @@ if is_vm_configured():
         """定时检查 VM 服务状态"""
         await _check_vm_status()
 
-    # 启动时立即检查一次
+    @get_driver().on_startup
     async def _initial_vm_check() -> None:
         """启动时的初始 VM 状态检查"""
         await _check_vm_status()
@@ -484,7 +485,3 @@ if is_vm_configured():
             )
         else:
             logger.warning(f"VM 服务不可用: {_vm_status_cache.error_message}")
-
-    import asyncio
-
-    asyncio.get_event_loop().call_soon(lambda: asyncio.create_task(_initial_vm_check()))
