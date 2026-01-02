@@ -17,6 +17,7 @@
 from datetime import datetime
 from typing import Literal
 
+from nonebot import logger
 from nonebot_plugin_alconna import UniMessage, Alconna, on_alconna, Args, Subcommand
 from nonebot.adapters.onebot.v11 import GroupMessageEvent
 from nonebot_plugin_larklang import LangHelper
@@ -44,20 +45,22 @@ lang = LangHelper()
 async def _(server: Literal["in", "jp", "cn"], user_id: str = get_user_id()) -> None:
     server_id = {"in": 17, "jp": 15, "cn": 16}[server]
     total_assault_data = await get_total_assault_data(server_id)
+    templates = {
+        "total_assault": total_assault_data,
+        "card_pool": (await get_card_pool_data(server_id))["data"][::-1],
+        "activities": await get_activities(server_id, [i["id"] for i in total_assault_data]),
+        "current_time": datetime.now().timestamp(),
+        "server_id": server_id,
+        "len": len,
+        "round": round,
+    }
+    logger.info("获取数据成功，正在渲染模版。")
     await UniMessage().image(
         raw=await render_template(
             "ba_calendar.html.jinja",
             await lang.text("title", user_id),
             user_id,
-            {
-                "total_assault": total_assault_data,
-                "card_pool": (await get_card_pool_data(server_id))["data"][::-1],
-                "activities": await get_activities(server_id, [i["id"] for i in total_assault_data]),
-                "current_time": datetime.now().timestamp(),
-                "server_id": server_id,
-                "len": len,
-                "round": round,
-            },
+            templates,
             await generate_render_keys(
                 lang,
                 user_id,

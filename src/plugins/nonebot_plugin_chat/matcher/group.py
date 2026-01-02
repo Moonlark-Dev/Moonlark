@@ -189,7 +189,7 @@ class MessageProcessor:
         self.cold_until = datetime.now()
         self.blocked = False
 
-        self.functions = functions = [
+        self.functions = [
             AsyncFunction(
                 func=self.send_message,
                 description="作为 Moonlark 发送一条消息到群聊中。",
