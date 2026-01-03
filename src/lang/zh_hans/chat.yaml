@@ -323,7 +323,7 @@ command:
       创建时间: {}
       
       {}
-    deleted: 笔记 #{} 已删除
+    deleted: '笔记 #{} 已删除'
     not_found: 找不到指定的笔记
     invalid_id: 无效的笔记ID
 
