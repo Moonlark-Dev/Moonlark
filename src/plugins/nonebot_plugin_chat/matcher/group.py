@@ -556,9 +556,9 @@ class MessageProcessor:
             self.openai_messages.append_user_message(
                 f"[{datetime.now().strftime('%H:%M:%S')}]: {operator_name} 戳了戳你。"
             )
-            if not self.blocked:
-                await self.generate_reply(True)
-                self.blocked = True
+            self.blocked = False
+            await self.generate_reply(True)
+            self.blocked = True
         else:
             self.openai_messages.append_user_message(
                 f"[{datetime.now().strftime('%H:%M:%S')}]: {operator_name} 戳了戳 {target_name}。"
