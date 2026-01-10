@@ -56,6 +56,7 @@ DEFAULT_AT_GREETINGS: AtGreetingsData = {
 
 from nonebot_plugin_chat.utils.group import enabled_group as is_chat_enabled
 
+
 @on_message(rule=to_me(), block=False, priority=90).handle()
 async def _(event: Event, user_id: str = get_user_id(), session_id: str = get_group_id()) -> None:
     if event.get_plaintext():
