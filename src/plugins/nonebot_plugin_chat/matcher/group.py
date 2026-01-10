@@ -129,11 +129,16 @@ def get_role(message: OpenAIMessage) -> str:
 
 class MessageQueue:
 
+    # 连续发送消息的警告阈值和停止阈值
+    CONSECUTIVE_WARNING_THRESHOLD = 5
+    CONSECUTIVE_STOP_THRESHOLD = 10
+
     def __init__(self, processor: "MessageProcessor", max_message_count: int = 10) -> None:
         self.processor = processor
         self.max_message_count = max_message_count
         self.messages: list[OpenAIMessage] = []
         self.fetcher_lock = asyncio.Lock()
+        self.consecutive_bot_messages = 0  # 连续发送消息计数器
 
     def clean_special_message(self) -> None:
         while True:
@@ -173,10 +178,31 @@ class MessageQueue:
         self.messages = fetcher.get_messages()
 
     def append_user_message(self, message: str) -> None:
+        self.consecutive_bot_messages = 0  # 收到用户消息时重置计数器
         self.messages.append(generate_message(message, "user"))
 
     def is_last_message_from_user(self) -> bool:
         return get_role(self.messages[-1]) == "user"
+
+    def increment_bot_message_count(self) -> None:
+        """增加 bot 发送消息计数"""
+        self.consecutive_bot_messages += 1
+
+    def should_warn_excessive_messages(self) -> bool:
+        """检查是否应该发出过多消息警告"""
+        return self.consecutive_bot_messages == self.CONSECUTIVE_WARNING_THRESHOLD
+
+    def should_stop_response(self) -> bool:
+        """检查是否应该停止响应（超过限制）"""
+        return self.consecutive_bot_messages >= self.CONSECUTIVE_STOP_THRESHOLD
+
+    def insert_warning_message(self) -> None:
+        """向消息队列中插入警告消息"""
+        warning = (
+            f"[系统警告]: 你已连续发送 {self.consecutive_bot_messages} 条消息，"
+            "请等待用户回复后再继续发言，避免刷屏。"
+        )
+        self.messages.append(generate_message(warning, "user"))
 
 
 class MessageProcessor:
@@ -477,12 +503,33 @@ class MessageProcessor:
         await self.append_tool_call_history(text)
         return call_id, name, param
 
-    async def send_message(self, message_content: str, reply_message_id: str | None = None) -> None:
+    async def send_message(self, message_content: str, reply_message_id: str | None = None) -> str:
+        # 增加连续发送消息计数
+        self.openai_messages.increment_bot_message_count()
+
+        # 检查是否超过停止阈值
+        if self.openai_messages.should_stop_response():
+            logger.warning(
+                f"Bot 连续发送消息超过 {self.openai_messages.CONSECUTIVE_STOP_THRESHOLD} 条，强制停止响应"
+            )
+            return (
+                f"[错误] 你已连续发送 {self.openai_messages.consecutive_bot_messages} 条消息，"
+                "超过系统限制，本次发送已被阻止。请等待用户回复后再继续发言。"
+            )
+
+        # 检查是否需要发出警告
+        if self.openai_messages.should_warn_excessive_messages():
+            logger.warning(
+                f"Bot 连续发送消息达到 {self.openai_messages.CONSECUTIVE_WARNING_THRESHOLD} 条，插入警告"
+            )
+            self.openai_messages.insert_warning_message()
+
         message = await self.session.format_message(message_content)
         if reply_message_id:
             message = message.reply(reply_message_id)
         await message.send(target=self.session.target, bot=self.session.bot)
         self.session.accumulated_text_length = 0
+        return "消息发送成功"
 
     def append_user_message(self, msg_str: str) -> None:
         self.openai_messages.append_user_message(msg_str)
