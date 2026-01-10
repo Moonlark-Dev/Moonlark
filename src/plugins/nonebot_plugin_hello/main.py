@@ -7,6 +7,7 @@ from nonebot_plugin_larkuser import get_user
 from nonebot_plugin_larkutils import get_user_id
 from nonebot.adapters.onebot.v11.event import PokeNotifyEvent
 from nonebot.adapters import Message, Event
+from nonebot_plugin_larkutils.group import get_group_id
 from nonebot_plugin_schedule.utils import complete_schedule
 
 lang = LangHelper()
@@ -53,10 +54,13 @@ DEFAULT_AT_GREETINGS: AtGreetingsData = {
     "night_count": 0,
 }
 
+from nonebot_plugin_chat.utils.group import enabled_group as is_chat_enabled
 
 @on_message(rule=to_me(), block=False, priority=90).handle()
-async def _(event: Event, user_id: str = get_user_id()) -> None:
+async def _(event: Event, user_id: str = get_user_id(), session_id: str = get_group_id()) -> None:
     if event.get_plaintext():
+        return
+    if is_chat_enabled(event, session_id):
         return
     await complete_schedule(user_id, "at")
     user = await get_user(user_id)
