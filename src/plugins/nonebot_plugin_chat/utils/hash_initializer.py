@@ -31,9 +31,7 @@ async def _check_and_update_sticker_hashes() -> None:
     async with get_session() as session:
         # 查询所有没有感知哈希的表情包
         stickers_without_hash = (
-            await session.scalars(
-                select(Sticker).where((Sticker.p_hash == None) | (Sticker.p_hash == ""))
-            )
+            await session.scalars(select(Sticker).where((Sticker.p_hash == None) | (Sticker.p_hash == "")))
         ).all()
 
         if not stickers_without_hash:
@@ -48,9 +46,7 @@ async def _check_and_update_sticker_hashes() -> None:
         for sticker in stickers_without_hash:
             try:
                 # 计算感知哈希
-                p_hash = await asyncio.get_running_loop().run_in_executor(
-                    None, calculate_perceptual_hash, sticker.raw
-                )
+                p_hash = await asyncio.get_running_loop().run_in_executor(None, calculate_perceptual_hash, sticker.raw)
 
                 if p_hash:
                     # 更新数据库

@@ -87,9 +87,7 @@ async def check_sticker_duplicate(
         元组 (是否重复, 重复的表情包对象或None, 相似度分数)
     """
     # 在线程池中计算感知哈希（避免阻塞事件循环）
-    posting_hash = await asyncio.get_running_loop().run_in_executor(
-        None, calculate_perceptual_hash, image_data
-    )
+    posting_hash = await asyncio.get_running_loop().run_in_executor(None, calculate_perceptual_hash, image_data)
 
     if not posting_hash:
         # 无法计算哈希，视为不重复
@@ -122,6 +120,4 @@ async def calculate_hash_async(image_data: bytes) -> str:
     Returns:
         感知哈希的十六进制字符串
     """
-    return await asyncio.get_running_loop().run_in_executor(
-        None, calculate_perceptual_hash, image_data
-    )
+    return await asyncio.get_running_loop().run_in_executor(None, calculate_perceptual_hash, image_data)

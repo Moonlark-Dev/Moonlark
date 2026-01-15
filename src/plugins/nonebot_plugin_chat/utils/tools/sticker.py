@@ -56,9 +56,7 @@ async def save_sticker_func(session: "GroupSession", image_id: str) -> str:
         )
         return await lang.text("sticker.saved", session.user_id, sticker.id)
     except DuplicateStickerError as e:
-        return await lang.text(
-            "sticker.duplicate", session.user_id, e.existing_sticker.id, e.similarity
-        )
+        return await lang.text("sticker.duplicate", session.user_id, e.existing_sticker.id, e.similarity)
 
 
 async def search_sticker_func(session: "GroupSession", query: str) -> str:
