@@ -509,9 +509,7 @@ class MessageProcessor:
 
         # 检查是否超过停止阈值
         if self.openai_messages.should_stop_response():
-            logger.warning(
-                f"Bot 连续发送消息超过 {self.openai_messages.CONSECUTIVE_STOP_THRESHOLD} 条，强制停止响应"
-            )
+            logger.warning(f"Bot 连续发送消息超过 {self.openai_messages.CONSECUTIVE_STOP_THRESHOLD} 条，强制停止响应")
             return (
                 f"[错误] 你已连续发送 {self.openai_messages.consecutive_bot_messages} 条消息，"
                 "超过系统限制，本次发送已被阻止。请等待用户回复后再继续发言。"
@@ -519,9 +517,7 @@ class MessageProcessor:
 
         # 检查是否需要发出警告
         if self.openai_messages.should_warn_excessive_messages():
-            logger.warning(
-                f"Bot 连续发送消息达到 {self.openai_messages.CONSECUTIVE_WARNING_THRESHOLD} 条，插入警告"
-            )
+            logger.warning(f"Bot 连续发送消息达到 {self.openai_messages.CONSECUTIVE_WARNING_THRESHOLD} 条，插入警告")
             self.openai_messages.insert_warning_message()
 
         message = await self.session.format_message(message_content)
