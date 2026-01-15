@@ -16,18 +16,30 @@
 # ##############################################################################
 
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Tuple, Union
 
 from nonebot_plugin_orm import get_session
 from sqlalchemy import select
 
 from ..models import Sticker
+from .sticker_similarity import calculate_hash_async, check_sticker_duplicate
+
+
+class DuplicateStickerError(Exception):
+    """表情包重复异常"""
+
+    def __init__(self, existing_sticker: Sticker, similarity: float):
+        self.existing_sticker = existing_sticker
+        self.similarity = similarity
+        super().__init__(f"发现重复的表情包 (ID: {existing_sticker.id}, 相似度: {similarity:.2%})")
 
 
 class StickerManager:
     """Sticker management system for saving, searching and retrieving stickers"""
 
-    async def save_sticker(self, description: str, raw: bytes, group_id: Optional[str] = None) -> Sticker:
+    async def save_sticker(
+        self, description: str, raw: bytes, group_id: Optional[str] = None, check_duplicate: bool = True
+    ) -> Sticker:
         """
         Save a sticker to the database
 
@@ -35,20 +47,34 @@ class StickerManager:
             description: VLM-generated description of the sticker
             raw: Binary image data
             group_id: Source group ID (optional, for tracking origin)
+            check_duplicate: Whether to check for duplicate stickers (default: True)
 
         Returns:
             The created Sticker object
+
+        Raises:
+            DuplicateStickerError: If a duplicate sticker is found
         """
         current_time = datetime.now()
 
-        sticker = Sticker(
-            description=description,
-            raw=raw,
-            group_id=group_id,
-            created_time=current_time.timestamp(),
-        )
-
         async with get_session() as session:
+            # 检查重复
+            if check_duplicate:
+                is_duplicate, existing_sticker, similarity = await check_sticker_duplicate(raw, session)
+                if is_duplicate and existing_sticker:
+                    raise DuplicateStickerError(existing_sticker, similarity)
+
+            # 计算感知哈希
+            p_hash = await calculate_hash_async(raw)
+
+            sticker = Sticker(
+                description=description,
+                raw=raw,
+                group_id=group_id,
+                created_time=current_time.timestamp(),
+                p_hash=p_hash if p_hash else None,
+            )
+
             session.add(sticker)
             await session.commit()
             await session.refresh(sticker)

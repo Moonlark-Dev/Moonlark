@@ -1,4 +1,4 @@
-from nonebot import require
+from nonebot import require, get_driver
 from nonebot.plugin import PluginMetadata
 
 from .config import Config
@@ -23,3 +23,13 @@ require("nonebot_plugin_ghot")
 require("nonebot_plugin_alconna")
 
 from . import matcher
+
+# 启动时初始化表情包感知哈希
+driver = get_driver()
+
+
+@driver.on_startup
+async def _init_sticker_hashes():
+    from .utils.hash_initializer import initialize_sticker_hashes
+
+    await initialize_sticker_hashes()
