@@ -55,3 +55,4 @@ class Sticker(Model):
     raw: Mapped[bytes] = mapped_column(CompatibleBlob)  # 二进制图片数据
     group_id: Mapped[Optional[str]] = mapped_column(String(128), nullable=True, index=True)  # 来源群聊
     created_time: Mapped[float] = mapped_column(Float())  # 创建时间戳
+    p_hash: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)  # 感知哈希，用于图片查重
