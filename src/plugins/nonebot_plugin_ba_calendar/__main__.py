@@ -44,6 +44,7 @@ lang = LangHelper()
 @matcher.handle()
 async def _(server: Literal["in", "jp", "cn"], user_id: str = get_user_id()) -> None:
     server_id = {"in": 17, "jp": 15, "cn": 16}[server]
+    await lang.send("loading", user_id)
     total_assault_data = await get_total_assault_data(server_id)
     templates = {
         "total_assault": total_assault_data,
