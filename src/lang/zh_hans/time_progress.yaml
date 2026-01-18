@@ -20,10 +20,7 @@ sub:
   status_off: ❌ 关闭
   enabled: ✅ 已开启年进度推送
   disabled: ❌ 已关闭年进度推送
-  push_message: |
-    【{} 年进度】
-    ================
-    {}  {}%
+  push_message: "【{} 年进度】\n================\n{}  {}%"
 
 help:
   description: 时间进度
