@@ -724,11 +724,10 @@ class GroupSession:
 
     async def on_cache_posted(self) -> None:
         self.message_cache_counter += 1
+        await self.calculate_ghot_coefficient()
         self.clean_cached_message()
         if self.message_cache_counter % 50 == 0:
             await self.setup_group_name()
-        elif self.message_cache_counter % 10 == 0:
-            await self.calculate_ghot_coefficient()
 
     async def mute(self) -> None:
         self.mute_until = datetime.now() + timedelta(minutes=15)
@@ -742,6 +741,7 @@ class GroupSession:
     ) -> None:
         message_id = get_message_id(event)
         self.message_queue.append((message, event, state, user_id, nickname, datetime.now(), mentioned, message_id))
+        # await self.calculate_ghot_coefficient()
 
     async def format_message(self, origin_message: str) -> UniMessage:
         message = re.sub(r"\[\d\d:\d\d:\d\d]\[Moonlark]\(\d+\): ?", "", origin_message)
@@ -795,8 +795,6 @@ class GroupSession:
 
         if self.processor.blocked or not self.cached_messages:
             return
-        if (dt - self.setup_time).total_seconds() // 60 % 10 == 0:
-            await self.calculate_ghot_coefficient()
         time_to_last_message = (dt - self.cached_messages[-1]["send_time"]).total_seconds()
         # 如果群聊冷却超过3分钟，根据累计文本长度判断是否主动发言
         if 90 < time_to_last_message < 300 and not self.cached_messages[-1]["self"]:
