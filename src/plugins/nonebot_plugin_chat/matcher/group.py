@@ -359,7 +359,7 @@ class MessageProcessor:
                 parameters={
                     "note_id": FunctionParameter(
                         type="integer",
-                        description='要删除的笔记的 ID，即笔记后面的 #数字。',
+                        description="要删除的笔记的 ID，即笔记后面的 #数字。",
                         required=True,
                     ),
                 },
