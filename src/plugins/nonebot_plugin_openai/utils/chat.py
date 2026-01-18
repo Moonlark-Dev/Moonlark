@@ -109,12 +109,12 @@ class LLMRequestSession:
                 response = self.timeout_response
         logger.debug(f"{response=}\n{self.messages=}\n{self.model=}\n{self.func_list=}\n{completion=}")
         self.messages.append(response.message)
-        if response.message.content:
-            yield response.message.content
         if response.message.tool_calls:
             for request in response.message.tool_calls:
                 await self.call_function(request.id, request.function.name, json.loads(request.function.arguments))
-        elif response.finish_reason in ["stop", "eos"]:
+        if response.message.content:
+            yield response.message.content
+        if response.finish_reason in ["stop", "eos"]:
             self.stop = True
 
     async def call_function(self, call_id: str, name: str, params: dict[str, Any]) -> None:
