@@ -580,15 +580,19 @@ class MessageProcessor:
         else:
             profiles_text = "暂无"
 
+        def format_note(note):
+            created_time = datetime.fromtimestamp(note.created_time).strftime("%y-%m-%d")
+            return f"- {note.content} (#{note.id}，创建于 {created_time})"
+
         return generate_message(
             await lang.text(
                 "prompt_group.default",
                 self.session.user_id,
-                "\n".join([f"- {note.content}" for note in notes]) if notes else "暂无",
+                "\n".join([format_note(note) for note in notes]) if notes else "暂无",
                 datetime.now().isoformat(),
                 self.session.group_name,
                 (
-                    "\n".join([f"- {note.content}" for note in notes_from_other_group])
+                    "\n".join([format_note(note) for note in notes_from_other_group])
                     if notes_from_other_group
                     else "暂无"
                 ),
