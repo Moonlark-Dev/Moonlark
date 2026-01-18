@@ -62,6 +62,7 @@ from ..utils.tools import (
     request_wolfram_alpha,
     search_abbreviation,
     get_note_poster,
+    get_note_remover,
     get_sticker_tools,
     get_vm_tools,
     is_vm_configured,
@@ -339,6 +340,27 @@ class MessageProcessor:
                             "若不指定关键词，笔记会一直展示在“附加信息”中。"
                         ),
                         required=False,
+                    ),
+                },
+            ),
+            AsyncFunction(
+                func=get_note_remover(self.session),
+                description="""删除一条你之前创建的笔记。
+
+何时需要调用: 当你认为某条笔记已经不再需要，或者笔记内容已经过时、错误时，可以使用此工具删除它。
+
+使用场景:
+- 笔记内容已经过时或不再相关
+- 笔记信息有误需要删除
+- 群友要求你忘记某些事情
+- 你发现之前记录的信息不准确
+
+使用提示: 在删除前，确保你真的不再需要这条笔记。删除操作是不可逆的。""",
+                parameters={
+                    "note_id": FunctionParameter(
+                        type="integer",
+                        description='要删除的笔记的 ID，即笔记后面的 #数字。',
+                        required=True,
                     ),
                 },
             ),
