@@ -6,13 +6,12 @@ import traceback
 from nonebot_plugin_larklang.__main__ import get_module_name
 import inspect
 import json
-from typing import Optional, Any, AsyncGenerator, Callable, TypeVar, Type, cast, overload
+from typing import Optional, Any, AsyncGenerator, Callable, TypeVar, cast
 from openai.types.chat import ChatCompletionMessage
 from nonebot import logger
 from openai.types.shared_params import FunctionDefinition
 from openai.types.chat import ChatCompletionToolMessageParam, ChatCompletionFunctionToolParam
 from nonebot_plugin_status_report import report_openai_history
-from pydantic import BaseModel
 
 from ..types import Messages, AsyncFunction
 
@@ -203,10 +202,6 @@ class MessageFetcher:
         return self.session.timeout_state
 
 
-T_Model = TypeVar("T_Model", bound=BaseModel)
-
-
-@overload
 async def fetch_message(
     messages: Messages,
     use_default_message: bool = False,
@@ -219,63 +214,8 @@ async def fetch_message(
     post_function_call: Optional[Callable[[T], Awaitable[T]]] = None,
     timeout_per_request: Optional[int] = None,
     timeout_response: Optional[Choice] = None,
-    response_format: None = None,
     **kwargs,
-) -> str: ...
-
-
-@overload
-async def fetch_message(
-    messages: Messages,
-    use_default_message: bool = False,
-    model: Optional[str] = None,
-    functions: Optional[list[AsyncFunction]] = None,
-    identify: Optional[str] = None,
-    pre_function_call: Optional[
-        Callable[[str, str, dict[str, Any]], Awaitable[tuple[str, str, dict[str, Any]]]]
-    ] = None,
-    post_function_call: Optional[Callable[[T], Awaitable[T]]] = None,
-    timeout_per_request: Optional[int] = None,
-    timeout_response: Optional[Choice] = None,
-    response_format: Type[T_Model] = ...,
-    **kwargs,
-) -> T_Model: ...
-
-
-async def fetch_message(
-    messages: Messages,
-    use_default_message: bool = False,
-    model: Optional[str] = None,
-    functions: Optional[list[AsyncFunction]] = None,
-    identify: Optional[str] = None,
-    pre_function_call: Optional[
-        Callable[[str, str, dict[str, Any]], Awaitable[tuple[str, str, dict[str, Any]]]]
-    ] = None,
-    post_function_call: Optional[Callable[[T], Awaitable[T]]] = None,
-    timeout_per_request: Optional[int] = None,
-    timeout_response: Optional[Choice] = None,
-    response_format: Optional[Type[T_Model]] = None,
-    **kwargs,
-) -> str | T_Model:
-    """
-    获取 LLM 响应消息。
-
-    Args:
-        messages: 消息列表
-        use_default_message: 是否使用默认系统消息
-        model: 使用的模型名称
-        functions: 可用的函数列表
-        identify: 请求标识符
-        pre_function_call: 函数调用前的钩子
-        post_function_call: 函数调用后的钩子
-        timeout_per_request: 每个请求的超时时间
-        timeout_response: 超时时的默认响应
-        response_format: Pydantic 模型类，用于结构化输出。如果提供，将使用结构化输出功能。
-        **kwargs: 传递给 API 的其他参数
-
-    Returns:
-        如果 response_format 为 None，返回字符串消息；否则返回解析后的 Pydantic 模型实例
-    """
+) -> str:
     if identify is None:
         stack = inspect.stack()[1]
         function_name = stack.function
@@ -285,31 +225,6 @@ async def fetch_message(
     if model is None:
         model = config.model_override.get(identify, config.openai_default_model)
 
-    # 如果指定了 response_format，使用结构化输出
-    if response_format is not None:
-        if use_default_message:
-            messages.insert(0, generate_message(config.openai_default_message, "system"))
-
-        completion = await client.beta.chat.completions.parse(
-            messages=cast(list, messages),
-            model=model,
-            response_format=response_format,
-            extra_headers={
-                "X-Title": (t := f"{config.identify_prefix} - {identify}"),
-                "HTTP-Referer": f"https://{hashlib.sha256(t.encode()).hexdigest()}.moonlark.itcdt.top",
-            },
-            **kwargs,
-        )
-
-        await report_openai_history(messages, identify, model)
-
-        parsed = completion.choices[0].message.parsed
-        if parsed is None:
-            raise ValueError("Failed to parse structured response")
-
-        return parsed
-
-    # 否则使用普通的消息获取
     fetcher = MessageFetcher(
         messages,
         use_default_message,
