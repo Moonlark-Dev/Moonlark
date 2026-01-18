@@ -259,7 +259,7 @@ async def fetch_message(
 ) -> str | T_Model:
     """
     获取 LLM 响应消息。
-    
+
     Args:
         messages: 消息列表
         use_default_message: 是否使用默认系统消息
@@ -272,7 +272,7 @@ async def fetch_message(
         timeout_response: 超时时的默认响应
         response_format: Pydantic 模型类，用于结构化输出。如果提供，将使用结构化输出功能。
         **kwargs: 传递给 API 的其他参数
-    
+
     Returns:
         如果 response_format 为 None，返回字符串消息；否则返回解析后的 Pydantic 模型实例
     """

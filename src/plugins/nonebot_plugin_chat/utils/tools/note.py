@@ -29,6 +29,7 @@ if TYPE_CHECKING:
 
 class AvailableNote(BaseModel):
     """表示一个有效的备忘录创建请求"""
+
     create: Literal[True] = Field(description="是否创建备忘录，此时为 True")
     text: str = Field(description="备忘录的内容")
     expire_days: int = Field(description="备忘录的过期天数")
@@ -38,12 +39,14 @@ class AvailableNote(BaseModel):
 
 class InvalidNote(BaseModel):
     """表示一个无效的备忘录创建请求"""
+
     create: Literal[False] = Field(description="是否创建备忘录，此时为 False")
     comment: str = Field(description="不创建备忘录的原因说明")
 
 
 class NoteCheckResult(BaseModel):
     """备忘录检查结果，包含一个有效或无效的备忘录"""
+
     result: Union[AvailableNote, InvalidNote] = Field(discriminator="create", description="备忘录检查结果")
 
 
@@ -57,9 +60,7 @@ def get_note_poster(session: "GroupSession") -> Callable[[str, Optional[int], Op
         # 使用结构化输出获取备忘录检查结果
         note_check_result = await fetch_message(
             [
-                generate_message(
-                    await lang.text("note.system", session.user_id, datetime.now().isoformat()), "system"
-                ),
+                generate_message(await lang.text("note.system", session.user_id, datetime.now().isoformat()), "system"),
                 generate_message(
                     await lang.text(
                         "note.message",
