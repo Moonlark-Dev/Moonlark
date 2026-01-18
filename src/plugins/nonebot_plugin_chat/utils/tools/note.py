@@ -91,3 +91,21 @@ def get_note_poster(session: "GroupSession") -> Callable[[str, Optional[int], Op
         return await lang.text("note.create", session.user_id)
 
     return push_note
+
+
+def get_note_remover(session: "GroupSession") -> Callable[[int], Awaitable[str]]:
+    context_id = session.group_id
+
+    async def remove_note(note_id: int) -> str:
+        # Get the note manager for this context
+        note_manager = await get_context_notes(context_id)
+
+        # Try to delete the note
+        success = await note_manager.delete_note(note_id)
+
+        if success:
+            return await lang.text("note.remove_success", session.user_id, note_id)
+        else:
+            return await lang.text("note.remove_not_found", session.user_id, note_id)
+
+    return remove_note
