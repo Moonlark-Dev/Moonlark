@@ -26,7 +26,6 @@ from nonebot_plugin_apscheduler import scheduler
 from .models import GroupMessage, CatGirlScore, DebateAnalysis
 from .chart import render_horizontal_bar_chart
 
-
 summary = on_alconna(
     Alconna(
         "summary",

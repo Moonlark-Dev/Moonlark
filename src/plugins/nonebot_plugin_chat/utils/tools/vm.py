@@ -32,7 +32,6 @@ from nonebot_plugin_apscheduler import scheduler
 from ...config import config
 from ...lang import lang
 
-
 # 输出截断长度限制
 OUTPUT_MAX_LENGTH = 4000
 

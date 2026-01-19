@@ -17,7 +17,6 @@
 from enum import Enum
 from typing import Any, TypedDict, Literal, TYPE_CHECKING, Optional
 
-
 if TYPE_CHECKING:
     from .base.monomer import Monomer
     from .base.equipment import Equipment

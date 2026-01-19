@@ -17,7 +17,6 @@ from datetime import datetime
 from nonebot_plugin_localstore import get_data_file
 from typing import List, Literal, TypedDict
 
-
 # Initialize language helper
 lang = LangHelper()
 data_file = get_data_file("nonebot_plugin_broadcast", "data.json")

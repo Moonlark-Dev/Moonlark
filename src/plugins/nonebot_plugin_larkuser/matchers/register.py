@@ -25,7 +25,6 @@ from nonebot_plugin_userinfo import EventUserInfo, UserInfo
 from ..utils.register import register_user
 from ..lang import lang
 
-
 register = on_command("register")
 
 

@@ -17,7 +17,6 @@ from nonebot_plugin_orm import get_session, AsyncSession
 from sqlalchemy import select
 import copy
 
-
 languages = {}
 config = get_plugin_config(Config)
 builtin_format = {"__prefix__": config.command_start[0]}
