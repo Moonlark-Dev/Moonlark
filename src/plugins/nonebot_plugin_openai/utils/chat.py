@@ -18,6 +18,7 @@ from ..types import Messages, AsyncFunction
 from ..config import config
 from .message import generate_message
 from .client import client
+from .model_config import get_model_for_identify
 
 
 def generate_function_list(func_index: dict[str, AsyncFunction]) -> list[ChatCompletionFunctionToolParam]:
@@ -157,6 +158,7 @@ class MessageFetcher:
         post_function_call: Optional[Callable[[T], Awaitable[T]]] = None,
         timeout_per_request: Optional[int] = None,
         timeout_response: Optional[Choice] = None,
+        _skip_model_init: bool = False,
         **kwargs,
     ) -> None:
         if identify is None:
@@ -166,8 +168,14 @@ class MessageFetcher:
             identify = f"{plugin_name}.{function_name}"
         logger.debug(f"{identify=}")
 
-        if model is None:
-            model = config.model_override.get(identify, config.openai_default_model)
+        # 注意：如果 model 是 None 且未使用 _skip_model_init，
+        # 将会抛出警告，因为应该使用 create() 方法来正确处理异步模型获取
+        if model is None and not _skip_model_init:
+            logger.warning(
+                f"MessageFetcher 初始化时 model 为 None，建议使用 MessageFetcher.create() 方法"
+            )
+            # 临时使用 .env 中的默认值，实际运行时应使用 create() 方法
+            model = config.openai_default_model
 
         if use_default_message:
             messages.insert(0, generate_message(config.openai_default_message, "system"))
@@ -178,13 +186,53 @@ class MessageFetcher:
         self.session = LLMRequestSession(
             messages,
             func_index,
-            model,
+            model,  # type: ignore
             kwargs,
             identify,
             pre_function_call,
             post_function_call,
             timeout_per_request,
             timeout_response,
+        )
+
+    @classmethod
+    async def create(
+        cls,
+        messages: Messages,
+        use_default_message: bool = False,
+        model: Optional[str] = None,
+        functions: Optional[list[AsyncFunction]] = None,
+        identify: Optional[str] = None,
+        pre_function_call: Optional[
+            Callable[[str, str, dict[str, Any]], Awaitable[tuple[str, str, dict[str, Any]]]]
+        ] = None,
+        post_function_call: Optional[Callable[[T], Awaitable[T]]] = None,
+        timeout_per_request: Optional[int] = None,
+        timeout_response: Optional[Choice] = None,
+        **kwargs,
+    ) -> "MessageFetcher":
+        """异步创建 MessageFetcher 实例，正确处理模型配置获取"""
+        if identify is None:
+            stack = inspect.stack()[1]
+            function_name = stack.function
+            plugin_name = get_module_name(inspect.getmodule(stack[0]))
+            identify = f"{plugin_name}.{function_name}"
+
+        if model is None:
+            model = await get_model_for_identify(identify)
+
+        return cls(
+            messages,
+            use_default_message,
+            model,
+            functions,
+            identify,
+            pre_function_call,
+            post_function_call,
+            timeout_per_request,
+            timeout_response,
+            _skip_model_init=True,
+            **kwargs,
         )
 
     async def fetch_last_message(self) -> str:
@@ -223,7 +271,7 @@ async def fetch_message(
         identify = f"{plugin_name}.{function_name}"
 
     if model is None:
-        model = config.model_override.get(identify, config.openai_default_model)
+        model = await get_model_for_identify(identify)
 
     fetcher = MessageFetcher(
         messages,
