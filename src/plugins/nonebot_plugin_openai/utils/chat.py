@@ -171,9 +171,7 @@ class MessageFetcher:
         # 注意：如果 model 是 None 且未使用 _skip_model_init，
         # 将会抛出警告，因为应该使用 create() 方法来正确处理异步模型获取
         if model is None and not _skip_model_init:
-            logger.warning(
-                f"MessageFetcher 初始化时 model 为 None，建议使用 MessageFetcher.create() 方法"
-            )
+            logger.warning(f"MessageFetcher 初始化时 model 为 None，建议使用 MessageFetcher.create() 方法")
             # 临时使用 .env 中的默认值，实际运行时应使用 create() 方法
             model = config.openai_default_model
 

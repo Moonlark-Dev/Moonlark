@@ -69,7 +69,7 @@ async def set_model_for_identify(identify: str, model: str) -> None:
 
 async def remove_model_for_identify(identify: str) -> bool:
     """删除指定应用的模型配置，使其使用默认模型
-    
+
     返回 True 表示成功删除，False 表示该应用没有特定配置
     """
     data = await load_config()

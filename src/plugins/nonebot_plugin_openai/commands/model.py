@@ -15,7 +15,6 @@ from ..utils.model_config import (
     set_model_for_identify,
 )
 
-
 model_cmd = on_alconna(
     Alconna(
         "/model",
@@ -74,9 +73,7 @@ async def show_model_info() -> None:
 
     # 构建特殊配置显示
     if model_override:
-        override_list = "\n".join(
-            f"  - {identify}: {model}" for identify, model in model_override.items()
-        )
+        override_list = "\n".join(f"  - {identify}: {model}" for identify, model in model_override.items())
     else:
         override_list = "  (无特殊配置)"
 
