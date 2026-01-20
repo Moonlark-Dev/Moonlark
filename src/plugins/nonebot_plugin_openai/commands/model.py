@@ -6,6 +6,7 @@
 from nonebot_plugin_alconna import Alconna, Args, on_alconna
 from nonebot_plugin_larkutils import get_user_id, is_user_superuser
 
+from ..lang import lang
 from ..utils.client import client
 from ..utils.model_config import (
     get_default_model,
@@ -14,6 +15,7 @@ from ..utils.model_config import (
     set_default_model,
     set_model_for_identify,
 )
+
 
 model_cmd = on_alconna(
     Alconna(
@@ -32,32 +34,32 @@ async def handle_model(
     user_id: str = get_user_id(),
 ) -> None:
     if not is_superuser:
-        await model_cmd.finish("权限不足：只有 superuser 可以使用此命令")
+        await lang.finish("model.no_permission", user_id)
 
     # 无参数：显示可用模型列表和当前配置
     if model_name is None:
-        await show_model_info()
+        await show_model_info(user_id)
         return
 
     # 只有模型名：更换默认模型
     if identify is None:
         await set_default_model(model_name)
-        await model_cmd.finish(f"✅ 已将默认模型设置为: {model_name}")
+        await lang.finish("model.set_default", user_id, model_name)
         return
 
     # 模型名 + 应用标识：修改特定应用的模型
     if model_name == ":default:":
         # 删除该应用的模型配置
         if await remove_model_for_identify(identify):
-            await model_cmd.finish(f"✅ 已删除应用 {identify} 的模型配置，将使用默认模型")
+            await lang.finish("model.remove_identify", user_id, identify)
         else:
-            await model_cmd.finish(f"⚠️ 应用 {identify} 没有特定的模型配置")
+            await lang.finish("model.no_identify_config", user_id, identify)
     else:
         await set_model_for_identify(identify, model_name)
-        await model_cmd.finish(f"✅ 已将应用 {identify} 的模型设置为: {model_name}")
+        await lang.finish("model.set_identify", user_id, identify, model_name)
 
 
-async def show_model_info() -> None:
+async def show_model_info(user_id: str) -> None:
     """显示可用模型列表和当前配置"""
     # 获取可用模型列表
     try:
@@ -65,7 +67,7 @@ async def show_model_info() -> None:
         available_models = [model.id for model in models_response.data]
         models_list = "\n".join(f"  - {model}" for model in sorted(available_models))
     except Exception as e:
-        models_list = f"  ⚠️ 获取模型列表失败: {e}"
+        models_list = await lang.text("model.models_list_failed", user_id, str(e))
 
     # 获取当前配置
     default_model = await get_default_model()
@@ -73,24 +75,16 @@ async def show_model_info() -> None:
 
     # 构建特殊配置显示
     if model_override:
-        override_list = "\n".join(f"  - {identify}: {model}" for identify, model in model_override.items())
+        override_list = "\n".join(
+            f"  - {identify}: {model}" for identify, model in model_override.items()
+        )
     else:
-        override_list = "  (无特殊配置)"
+        override_list = await lang.text("model.no_override", user_id)
 
-    message = f"""📋 模型配置信息
-
-🔹 默认模型: {default_model}
-
-🔹 应用特殊配置:
-{override_list}
-
-🔹 可用模型列表:
-{models_list}
-
-📝 使用方法:
-  /model - 显示此信息
-  /model <模型名> - 更换默认模型
-  /model <模型名> <应用标识> - 设置应用模型
-  /model :default: <应用标识> - 删除应用配置"""
-
-    await model_cmd.finish(message)
+    await lang.finish(
+        "model.info",
+        user_id,
+        default_model=default_model,
+        override_list=override_list,
+        models_list=models_list,
+    )
