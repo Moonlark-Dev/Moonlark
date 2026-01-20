@@ -28,7 +28,6 @@ from nonebot_plugin_larkuser.user.base import MoonlarkUser
 from ..session import get_user_data
 from ..config import config
 
-
 app = cast(FastAPI, get_app())
 bind_cache = {}
 

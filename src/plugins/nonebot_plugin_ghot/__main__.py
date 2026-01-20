@@ -10,7 +10,6 @@ from .utils.ranking import get_all_groups_scores, get_group_rankings
 from .utils.score import get_group_hot_score
 from .lang import lang
 
-
 ghot_cmd = on_alconna(
     Alconna(
         "ghot",

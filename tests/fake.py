@@ -2,7 +2,6 @@
 
 from typing import TYPE_CHECKING, Literal
 
-
 if TYPE_CHECKING:
     from nonebot.adapters.onebot.v11 import GroupMessageEvent
 

@@ -49,15 +49,13 @@ def _clean_markdown(markdown: str) -> str:
 async def _get_meta_content(page, name: str) -> Optional[str]:
     """获取meta标签内容"""
     try:
-        return await page.evaluate(
-            f"""
+        return await page.evaluate(f"""
             () => {{
                 const meta = document.querySelector('meta[name="{name}"]') || 
                             document.querySelector('meta[property="og:{name}"]');
                 return meta ? meta.content : null;
             }}
-        """
-        )
+        """)
     except Exception as e:
         logger.exception(e)
         return None
@@ -107,14 +105,12 @@ async def _extract_main_content(page) -> str:
 
     for selector in main_selectors:
         try:
-            content = await page.evaluate(
-                f"""
+            content = await page.evaluate(f"""
                 () => {{
                     const el = document.querySelector('{selector}');
                     return el ? el.innerHTML : null;
                 }}
-            """
-            )
+            """)
             if content:
                 return content
         except Exception as e:

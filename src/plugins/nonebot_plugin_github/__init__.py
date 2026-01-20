@@ -3,7 +3,6 @@ from nonebot import logger, require
 from nonebot.exception import FinishedException
 from nonebot.plugin import PluginMetadata
 
-
 __plugin_meta__ = PluginMetadata(
     name="nonebot_plugin_github",
     description="",
@@ -23,7 +22,6 @@ from nonebot_plugin_larklang import LangHelper
 from nonebot_plugin_render import render_template
 from nonebot_plugin_larkutils import get_user_id
 from . import data_source
-
 
 github_command = on_alconna(Alconna("github", Args["url", str]))
 github_keyword = on_keyword({"/"}, block=False, priority=5)

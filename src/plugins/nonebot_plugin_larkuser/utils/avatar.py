@@ -5,7 +5,6 @@ import aiofiles
 import zlib
 import base64
 
-
 cache_dir = get_cache_dir("nonebot_plugin_larkuser")
 
 

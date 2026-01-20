@@ -34,7 +34,6 @@ from ..characters import get_character_by_data
 from ..models import Character as CharacterData, PlayerTeam
 from ..lang import lang
 
-
 sandbox = on_alconna(Alconna("sandbox", Args["monster_level", int, 1], Args["monster_count", int, 1]))
 
 

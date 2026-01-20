@@ -13,7 +13,6 @@ from collections.abc import Sequence
 from alembic import op
 import sqlalchemy as sa
 
-
 revision: str = "898d6147c141"
 down_revision: str | Sequence[str] | None = "09737ac938df"
 branch_labels: str | Sequence[str] | None = None

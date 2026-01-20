@@ -37,7 +37,6 @@ from .sudoku import (
     conflict,
 )
 
-
 sudoku = on_alconna(
     Alconna(
         "sudoku",

@@ -1,7 +1,6 @@
 from nonebot import require
 from nonebot.plugin import PluginMetadata
 
-
 require("nonebot_plugin_larklang")
 require("nonebot_plugin_larkutils")
 require("nonebot_plugin_alconna")
