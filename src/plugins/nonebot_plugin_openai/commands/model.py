@@ -18,10 +18,9 @@ from ..utils.model_config import (
 
 model_cmd = on_alconna(
     Alconna(
-        "/model",
+        "model",
         Args["model_name?", str]["identify?", str],
-    ),
-    block=True,
+    )
 )
 
 
