@@ -4,7 +4,7 @@ help_model:
   usage1: model (查看模型配置信息)
   usage2: model <模型名> (更换默认模型)
   usage3: model <模型名> <应用标识> (设置应用专用模型)
-  usage4: 'model :default: <应用标识> (删除应用配置)'
+  usage4: 'model \:default\: <应用标识> (删除应用配置)'
 model:
   no_permission: "权限不足：只有 superuser 可以使用此命令"
   set_default: "✅ 已将默认模型设置为: {0}"
