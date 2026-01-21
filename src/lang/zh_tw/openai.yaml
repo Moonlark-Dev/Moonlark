@@ -4,7 +4,7 @@ help_model:
   usage1: model (查看模型配置資訊)
   usage2: model <模型名> (更換預設模型)
   usage3: model <模型名> <應用標識> (設定應用專用模型)
-  usage4: model :default: <應用標識> (刪除應用配置)
+  usage4: "model :default: <應用標識> (刪除應用配置)"
 
 model:
   no_permission: "權限不足：只有 superuser 可以使用此命令"

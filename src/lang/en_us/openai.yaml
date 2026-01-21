@@ -4,7 +4,7 @@ help_model:
   usage1: model (view model configuration)
   usage2: model <model_name> (change default model)
   usage3: model <model_name> <identify> (set model for specific app)
-  usage4: model :default: <identify> (remove app configuration)
+  usage4: "model :default: <identify> (remove app configuration)"
 
 model:
   no_permission: "Permission denied: only superusers can use this command"
