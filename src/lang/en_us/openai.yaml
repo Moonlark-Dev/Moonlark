@@ -1,24 +1,32 @@
+help_model:
+  description: Model Management
+  details: Manage OpenAI model configuration (superuser only)
+  usage1: model (view model configuration)
+  usage2: model <model_name> (change default model)
+  usage3: model <model_name> <identify> (set model for specific app)
+  usage4: model :default: <identify> (remove app configuration)
+
 model:
-  no_permission: "权限不足：只有 superuser 可以使用此命令"
-  set_default: "✅ 已将默认模型设置为: {0}"
-  set_identify: "✅ 已将应用 {0} 的模型设置为: {1}"
-  remove_identify: "✅ 已删除应用 {0} 的模型配置，将使用默认模型"
-  no_identify_config: "⚠️ 应用 {0} 没有特定的模型配置"
-  no_override: "(无特殊配置)"
-  models_list_failed: "⚠️ 获取模型列表失败: {0}"
+  no_permission: "Permission denied: only superusers can use this command"
+  set_default: "✅ Default model has been set to: {0}"
+  set_identify: "✅ Model for app {0} has been set to: {1}"
+  remove_identify: "✅ Model configuration for app {0} has been removed, will use default model"
+  no_identify_config: "⚠️ App {0} has no specific model configuration"
+  no_override: "(no special configuration)"
+  models_list_failed: "⚠️ Failed to fetch model list: {0}"
   info: |
-    📋 模型配置信息
+    📋 Model Configuration Info
 
-    🔹 默认模型: {default_model}
+    🔹 Default Model: {default_model}
 
-    🔹 应用特殊配置:
+    🔹 App-Specific Configuration:
     {override_list}
 
-    🔹 可用模型列表:
+    🔹 Available Models:
     {models_list}
 
-    📝 使用方法:
-      /model - 显示此信息
-      /model <模型名> - 更换默认模型
-      /model <模型名> <应用标识> - 设置应用模型
-      /model :default: <应用标识> - 删除应用配置
+    📝 Usage:
+      /model - Show this info
+      /model <model_name> - Change default model
+      /model <model_name> <identify> - Set model for specific app
+      /model :default: <identify> - Remove app configuration

@@ -1,0 +1,3 @@
+plugin: openai
+commands:
+  model: help_model;4;setting
