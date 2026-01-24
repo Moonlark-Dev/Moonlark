@@ -45,7 +45,6 @@ class Sticker(Model):
     created_time: Mapped[float] = mapped_column(Float())  # 创建时间戳
     p_hash: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)  # 感知哈希，用于图片查重
     # 表情包分类索引信息（LLM 生成）
-    is_meme: Mapped[Optional[bool]] = mapped_column(nullable=True)  # 是否为表情包
     meme_text: Mapped[Optional[str]] = mapped_column(Text(), nullable=True)  # 表情包中的文本
     emotion: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)  # 表情包表达的情绪
     labels: Mapped[Optional[str]] = mapped_column(Text(), nullable=True)  # 表情包标签（JSON 数组）

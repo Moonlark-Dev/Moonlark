@@ -212,17 +212,14 @@ class StickerManager:
             classification = await classify_meme(raw)
             
             # 准备分类数据
-            is_meme: Optional[bool] = None
             meme_text: Optional[str] = None
             emotion: Optional[str] = None
             labels_json: Optional[str] = None
             context_keywords_json: Optional[str] = None
             
             if classification is not None:
-                is_meme = classification["is_meme"]
-                
                 # 如果不是表情包，拒绝添加
-                if not is_meme:
+                if not classification["is_meme"]:
                     raise NotMemeError("该图片不是表情包，无法收藏")
                 
                 meme_text = classification["text"]
@@ -236,7 +233,6 @@ class StickerManager:
                 group_id=group_id,
                 created_time=current_time.timestamp(),
                 p_hash=p_hash if p_hash else None,
-                is_meme=is_meme,
                 meme_text=meme_text,
                 emotion=emotion,
                 labels=labels_json,
