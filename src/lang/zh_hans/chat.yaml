@@ -469,3 +469,4 @@ sticker:
   send_failed: '发送失败: {}'
   id_not_found: '未找到 ID 为 {} 的表情包'
   duplicate: '该表情包已经收藏过了 (ID: {}, 相似度: {:.1%})，无需重复收藏'
+  not_meme: '该图片不是表情包，无法收藏'

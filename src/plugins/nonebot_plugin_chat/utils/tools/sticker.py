@@ -38,7 +38,7 @@ async def save_sticker_func(session: "GroupSession", image_id: str) -> str:
     Returns:
         Success or error message
     """
-    from ..sticker_manager import DuplicateStickerError
+    from ..sticker_manager import DuplicateStickerError, NotMemeError
 
     # Get image data from cache
     image_data = await get_image_by_id(image_id)
@@ -57,6 +57,8 @@ async def save_sticker_func(session: "GroupSession", image_id: str) -> str:
         return await lang.text("sticker.saved", session.user_id, sticker.id)
     except DuplicateStickerError as e:
         return await lang.text("sticker.duplicate", session.user_id, e.existing_sticker.id, e.similarity)
+    except NotMemeError:
+        return await lang.text("sticker.not_meme", session.user_id)
 
 
 async def search_sticker_func(session: "GroupSession", query: str) -> str:
