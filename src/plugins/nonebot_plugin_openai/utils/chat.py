@@ -148,33 +148,19 @@ class MessageFetcher:
     def __init__(
         self,
         messages: Messages,
-        use_default_message: bool = False,
-        model: Optional[str] = None,
-        functions: Optional[list[AsyncFunction]] = None,
-        identify: Optional[str] = None,
+        use_default_message: bool,
+        model: str,
+        functions: Optional[list[AsyncFunction]],
+        identify: str,
         pre_function_call: Optional[
             Callable[[str, str, dict[str, Any]], Awaitable[tuple[str, str, dict[str, Any]]]]
-        ] = None,
-        post_function_call: Optional[Callable[[T], Awaitable[T]]] = None,
-        timeout_per_request: Optional[int] = None,
-        timeout_response: Optional[Choice] = None,
-        _skip_model_init: bool = False,
+        ],
+        post_function_call: Optional[Callable[[T], Awaitable[T]]],
+        timeout_per_request: Optional[int],
+        timeout_response: Optional[Choice],
         **kwargs,
     ) -> None:
-        if identify is None:
-            stack = inspect.stack()[1]
-            function_name = stack.function
-            plugin_name = get_module_name(inspect.getmodule(stack[0]))
-            identify = f"{plugin_name}.{function_name}"
         logger.debug(f"{identify=}")
-
-        # 注意：如果 model 是 None 且未使用 _skip_model_init，
-        # 将会抛出警告，因为应该使用 create() 方法来正确处理异步模型获取
-        if model is None and not _skip_model_init:
-            logger.warning(f"MessageFetcher 初始化时 model 为 None，建议使用 MessageFetcher.create() 方法")
-            # 临时使用 .env 中的默认值，实际运行时应使用 create() 方法
-            model = config.openai_default_model
-
         if use_default_message:
             messages.insert(0, generate_message(config.openai_default_message, "system"))
         func_index: dict[str, AsyncFunction] = {}
@@ -229,7 +215,6 @@ class MessageFetcher:
             post_function_call,
             timeout_per_request,
             timeout_response,
-            _skip_model_init=True,
             **kwargs,
         )
 
@@ -268,10 +253,7 @@ async def fetch_message(
         plugin_name = get_module_name(inspect.getmodule(stack[0]))
         identify = f"{plugin_name}.{function_name}"
 
-    if model is None:
-        model = await get_model_for_identify(identify)
-
-    fetcher = MessageFetcher(
+    fetcher = await MessageFetcher.create(
         messages,
         use_default_message,
         model,
