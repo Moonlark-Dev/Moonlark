@@ -185,26 +185,7 @@ class MessageQueue:
         async with self.fetcher_lock:
             await self._fetch_reply()
 
-    def _extract_reasoning_content(self, message: OpenAIMessage) -> Optional[str]:
-        """
-        从消息中提取思考过程内容
 
-        Args:
-            message: OpenAI 消息对象
-
-        Returns:
-            思考过程内容，如果没有找到则返回 None
-        """
-        content = None
-        if isinstance(message, dict):
-            content = message.get("content", "")
-        elif hasattr(message, "content"):
-            content = message.content
-
-        if content and isinstance(content, str) and content.strip().startswith("## 思考过程"):
-            return content
-
-        return None
 
     async def _fetch_reply(self) -> None:
         messages = await self.get_messages()
@@ -221,27 +202,17 @@ class MessageQueue:
             logger.info(f"Moonlark 说: {message}")
             fetcher.session.messages.extend(self.messages)
             self.messages = []
+            if message.startswith("## 思考过程"):
+                logger.debug("检测到思考过程，正在更新表情包推荐...")
+                new_system_prompt = await self.processor.generate_system_prompt(message)
+                if fetcher.session.messages and get_role(self.messages[0]) == "system":
+                    fetcher.session.messages[0] = new_system_prompt
+                else:
+                    fetcher.session.messages.insert(0, new_system_prompt)
 
         # 在消息流结束后检测思考过程并更新 system 消息
         self.messages = fetcher.get_messages()
 
-        # 检查返回的消息中是否包含思考过程
-        reasoning_content: Optional[str] = None
-        for msg in self.messages:
-            extracted = self._extract_reasoning_content(msg)
-            if extracted:
-                reasoning_content = extracted
-                break
-
-        # 如果检测到思考过程，更新表情包推荐并重新生成 system 消息
-        if reasoning_content:
-            logger.debug("检测到思考过程，正在更新表情包推荐...")
-            new_system_prompt = await self.processor.generate_system_prompt(reasoning_content)
-            # 更新 self.messages 中的 system 消息（如果有的话），或在开头插入
-            if self.messages and get_role(self.messages[0]) == "system":
-                self.messages[0] = new_system_prompt
-            else:
-                self.messages.insert(0, new_system_prompt)
 
     def append_user_message(self, message: str) -> None:
         self.consecutive_bot_messages = 0  # 收到用户消息时重置计数器
@@ -759,7 +730,7 @@ class MessageProcessor:
                 l.append(str(msg.content))
         return l
 
-    async def _get_user_profiles(self, chat_history: str) -> list[str]:
+    async def _get_user_profiles(self) -> list[str]:
         """根据昵称获取用户的 profile 信息"""
         profiles = []
         async with get_session() as session:
@@ -810,7 +781,7 @@ class MessageProcessor:
         notes, notes_from_other_group = await note_manager.filter_note(chat_history)
 
         # 获取用户 profile 信息
-        user_profiles = await self._get_user_profiles(chat_history)
+        user_profiles = await self._get_user_profiles()
 
         # 格式化 profile 信息
         if user_profiles:
