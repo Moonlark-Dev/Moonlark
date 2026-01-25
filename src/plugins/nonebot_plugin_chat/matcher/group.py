@@ -190,7 +190,7 @@ class MessageQueue:
     async def _fetch_reply(self) -> None:
         messages = await self.get_messages()
         self.messages.clear()
-        fetcher = MessageFetcher(
+        fetcher = await MessageFetcher.create(
             messages,
             False,
             functions=self.processor.functions,
