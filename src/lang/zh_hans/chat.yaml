@@ -208,7 +208,7 @@ prompt_group:
 
     表情包推荐（根据当前你的情绪或群聊中的话题筛选）：
     {5}
-  group_member_info: '* {} ({}/{})[好感:{}][入群:{}] - {}'
+  group_member_info: '* {} ({}/{})[好感:{}/{}][入群:{}] - {}'
   member_info: '* {} [好感:{}] - {}'
   user_profile_not_found: '暂无该成员的更多信息。'
   image_describe_system: |

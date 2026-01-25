@@ -777,6 +777,7 @@ class MessageProcessor:
                 else:
                     member_info = None
                 fav = (await get_user(user_id)).get_fav()
+                fav_level = get_fav_level(fav)
                 if member_info:
                     profiles.append(await lang.text(
                         "prompt_group.group_member_info",
@@ -785,6 +786,7 @@ class MessageProcessor:
                         member_info["role"],
                         member_info["sex"],
                         fav,
+                        fav_level,
                         datetime.fromtimestamp(member_info["join_time"]).strftime("%Y-%m-%d"),
                         profile
                     ))
@@ -794,6 +796,7 @@ class MessageProcessor:
                         self.session.user_id,
                         nickname,
                         fav,
+                        fav_level,
                         profile
                     ))
         return profiles
