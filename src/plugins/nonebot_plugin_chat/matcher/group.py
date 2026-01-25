@@ -771,7 +771,9 @@ class MessageProcessor:
                     is_profile_found = True
                 if isinstance(self.session.bot, OB11Bot):
                     try:
-                        member_info = await self.session.bot.get_group_member_info(group_id=int(self.session.adapter_group_id), user_id=int(user_id))
+                        member_info = await self.session.bot.get_group_member_info(
+                            group_id=int(self.session.adapter_group_id), user_id=int(user_id)
+                        )
                     except Exception as e:
                         member_info = None
                 else:
@@ -779,26 +781,25 @@ class MessageProcessor:
                 fav = (await get_user(user_id)).get_fav()
                 fav_level = get_fav_level(fav)
                 if member_info:
-                    profiles.append(await lang.text(
-                        "prompt_group.group_member_info",
-                        self.session.user_id,
-                        nickname,
-                        member_info["role"],
-                        member_info["sex"],
-                        fav,
-                        fav_level,
-                        datetime.fromtimestamp(member_info["join_time"]).strftime("%Y-%m-%d"),
-                        profile
-                    ))
+                    profiles.append(
+                        await lang.text(
+                            "prompt_group.group_member_info",
+                            self.session.user_id,
+                            nickname,
+                            member_info["role"],
+                            member_info["sex"],
+                            fav,
+                            fav_level,
+                            datetime.fromtimestamp(member_info["join_time"]).strftime("%Y-%m-%d"),
+                            profile,
+                        )
+                    )
                 elif fav > 0 or is_profile_found:
-                    profiles.append(await lang.text(
-                        "prompt_group.member_info", 
-                        self.session.user_id,
-                        nickname,
-                        fav,
-                        fav_level,
-                        profile
-                    ))
+                    profiles.append(
+                        await lang.text(
+                            "prompt_group.member_info", self.session.user_id, nickname, fav, fav_level, profile
+                        )
+                    )
         return profiles
 
     async def generate_system_prompt(self, reasoning_content: Optional[str] = None) -> OpenAIMessage:
