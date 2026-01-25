@@ -152,9 +152,7 @@ class MessageFetcher:
         model: str,
         functions: Optional[list[AsyncFunction]],
         identify: str,
-        pre_function_call: Optional[
-            Callable[[str, str, dict[str, Any]], Awaitable[tuple[str, str, dict[str, Any]]]]
-        ],
+        pre_function_call: Optional[Callable[[str, str, dict[str, Any]], Awaitable[tuple[str, str, dict[str, Any]]]]],
         post_function_call: Optional[Callable[[T], Awaitable[T]]],
         timeout_per_request: Optional[int],
         timeout_response: Optional[Choice],

@@ -185,8 +185,6 @@ class MessageQueue:
         async with self.fetcher_lock:
             await self._fetch_reply()
 
-
-
     async def _fetch_reply(self) -> None:
         messages = await self.get_messages()
         self.messages.clear()
@@ -212,7 +210,6 @@ class MessageQueue:
 
         # 在消息流结束后检测思考过程并更新 system 消息
         self.messages = fetcher.get_messages()
-
 
     def append_user_message(self, message: str) -> None:
         self.consecutive_bot_messages = 0  # 收到用户消息时重置计数器
