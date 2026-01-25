@@ -20,7 +20,7 @@ import json
 import re
 import traceback
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple, TypedDict, Union
+from typing import Any, Dict, List, Optional, TypedDict
 
 from nonebot import logger
 from nonebot_plugin_orm import get_session
@@ -349,6 +349,217 @@ class StickerManager:
             stmt = select(Sticker).order_by(Sticker.created_time.desc()).limit(limit)
             result = await session.scalars(stmt)
             return list(result.all())
+
+    async def filter_by_emotion(self, emotion: str, limit: int = 10) -> List[Sticker]:
+        """
+        Filter stickers by emotion
+
+        Args:
+            emotion: Emotion to filter by (e.g., "高兴", "难过", "生气")
+            limit: Maximum number of results to return
+
+        Returns:
+            List of matching Sticker objects
+        """
+        async with get_session() as session:
+            stmt = (
+                select(Sticker)
+                .where(Sticker.emotion.contains(emotion))
+                .order_by(Sticker.created_time.desc())
+                .limit(limit)
+            )
+            result = await session.scalars(stmt)
+            return list(result.all())
+
+    async def filter_by_label(self, label: str, limit: int = 10) -> List[Sticker]:
+        """
+        Filter stickers by label (searches within JSON array)
+
+        Args:
+            label: Label to filter by (e.g., "赞同", "摆烂", "贴贴")
+            limit: Maximum number of results to return
+
+        Returns:
+            List of matching Sticker objects
+        """
+        async with get_session() as session:
+            # labels 字段是 JSON 数组字符串，使用 contains 进行模糊匹配
+            stmt = (
+                select(Sticker)
+                .where(Sticker.labels.contains(label))
+                .order_by(Sticker.created_time.desc())
+                .limit(limit)
+            )
+            result = await session.scalars(stmt)
+            return list(result.all())
+
+    async def filter_by_context_keyword(self, keyword: str, limit: int = 10) -> List[Sticker]:
+        """
+        Filter stickers by context keyword (searches within JSON array)
+
+        Args:
+            keyword: Context keyword to filter by
+            limit: Maximum number of results to return
+
+        Returns:
+            List of matching Sticker objects
+        """
+        async with get_session() as session:
+            # context_keywords 字段是 JSON 数组字符串，使用 contains 进行模糊匹配
+            stmt = (
+                select(Sticker)
+                .where(Sticker.context_keywords.contains(keyword))
+                .order_by(Sticker.created_time.desc())
+                .limit(limit)
+            )
+            result = await session.scalars(stmt)
+            return list(result.all())
+
+    async def filter_by_classification(
+        self,
+        emotion: Optional[str] = None,
+        labels: Optional[List[str]] = None,
+        context_keywords: Optional[List[str]] = None,
+        limit: int = 10,
+    ) -> List[Sticker]:
+        """
+        Filter stickers by multiple classification criteria (AND logic)
+
+        Args:
+            emotion: Emotion to filter by (optional)
+            labels: List of labels to filter by, all must match (optional)
+            context_keywords: List of context keywords to filter by, all must match (optional)
+            limit: Maximum number of results to return
+
+        Returns:
+            List of matching Sticker objects
+        """
+        async with get_session() as session:
+            stmt = select(Sticker)
+
+            # 应用情绪筛选
+            if emotion:
+                stmt = stmt.where(Sticker.emotion.contains(emotion))
+
+            # 应用标签筛选（所有标签都必须匹配）
+            if labels:
+                for label in labels:
+                    stmt = stmt.where(Sticker.labels.contains(label))
+
+            # 应用语境关键词筛选（所有关键词都必须匹配）
+            if context_keywords:
+                for keyword in context_keywords:
+                    stmt = stmt.where(Sticker.context_keywords.contains(keyword))
+
+            stmt = stmt.order_by(Sticker.created_time.desc()).limit(limit)
+            result = await session.scalars(stmt)
+            return list(result.all())
+
+    async def migrate_existing_stickers(self, batch_size: int = 10) -> Dict[str, int]:
+        """
+        Migrate existing stickers by classifying them with LLM
+        
+        This method processes stickers that don't have classification data
+        (meme_text, emotion, labels, context_keywords are all None)
+        
+        Args:
+            batch_size: Number of stickers to process in each batch
+            
+        Returns:
+            Dict with migration statistics:
+            - total: Total number of stickers processed
+            - success: Number of successfully classified stickers
+            - failed: Number of stickers that failed classification
+            - skipped: Number of stickers already classified
+        """
+        stats = {"total": 0, "success": 0, "failed": 0, "skipped": 0}
+        
+        async with get_session() as session:
+            # 查找所有未分类的表情包（分类字段都为 None）
+            stmt = select(Sticker).where(
+                Sticker.meme_text.is_(None),
+                Sticker.emotion.is_(None),
+                Sticker.labels.is_(None),
+                Sticker.context_keywords.is_(None),
+            )
+            result = await session.scalars(stmt)
+            stickers_to_migrate = list(result.all())
+            
+            stats["total"] = len(stickers_to_migrate)
+            
+            for sticker in stickers_to_migrate:
+                try:
+                    # 调用 LLM 进行分类
+                    classification = await classify_meme(sticker.raw)
+                    
+                    if classification is None:
+                        logger.warning(f"Failed to classify sticker {sticker.id}: LLM returned None")
+                        stats["failed"] += 1
+                        continue
+                    
+                    # 更新分类信息
+                    sticker.meme_text = classification["text"]
+                    sticker.emotion = classification["emotion"]
+                    sticker.labels = json.dumps(classification["labels"], ensure_ascii=False)
+                    sticker.context_keywords = json.dumps(classification["context_keywords"], ensure_ascii=False)
+                    
+                    session.add(sticker)
+                    stats["success"] += 1
+                    
+                    logger.info(f"Successfully classified sticker {sticker.id}: emotion={classification['emotion']}")
+                    
+                except Exception as e:
+                    logger.warning(f"Failed to migrate sticker {sticker.id}: {e}")
+                    stats["failed"] += 1
+            
+            # 提交所有更改
+            await session.commit()
+        
+        logger.info(
+            f"Sticker migration completed: {stats['success']} success, "
+            f"{stats['failed']} failed, {stats['skipped']} skipped out of {stats['total']} total"
+        )
+        
+        return stats
+
+    async def classify_single_sticker(self, sticker_id: int) -> bool:
+        """
+        Classify a single sticker by its ID
+        
+        Args:
+            sticker_id: The ID of the sticker to classify
+            
+        Returns:
+            True if classification was successful, False otherwise
+        """
+        async with get_session() as session:
+            sticker = await session.get(Sticker, sticker_id)
+            
+            if sticker is None:
+                logger.warning(f"Sticker {sticker_id} not found")
+                return False
+            
+            try:
+                classification = await classify_meme(sticker.raw)
+                
+                if classification is None:
+                    logger.warning(f"Failed to classify sticker {sticker_id}: LLM returned None")
+                    return False
+                
+                sticker.meme_text = classification["text"]
+                sticker.emotion = classification["emotion"]
+                sticker.labels = json.dumps(classification["labels"], ensure_ascii=False)
+                sticker.context_keywords = json.dumps(classification["context_keywords"], ensure_ascii=False)
+                
+                session.add(sticker)
+                await session.commit()
+                
+                logger.info(f"Successfully classified sticker {sticker_id}")
+                return True
+                
+            except Exception as e:
+                logger.warning(f"Failed to classify sticker {sticker_id}: {e}")
+                return False
 
 
 # Global sticker manager instance
