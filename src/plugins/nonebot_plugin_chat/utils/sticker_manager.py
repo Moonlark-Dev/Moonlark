@@ -66,60 +66,60 @@ MEME_CLASSIFICATION_PROMPT = """你是一个表情包分析 AI。
 def extract_json_from_response(response: str) -> Optional[Dict[str, Any]]:
     """
     从 LLM 响应中提取 JSON，处理可能包含 markdown 代码块的情况
-    
+
     Args:
         response: LLM 返回的原始响应文本
-        
+
     Returns:
         解析后的 JSON 字典，如果解析失败返回 None
     """
     # 去除首尾空白
     response = response.strip()
-    
+
     # 尝试直接解析
     try:
         return json.loads(response)
     except json.JSONDecodeError:
         pass
-    
+
     # 尝试提取 markdown 代码块中的 JSON
     # 匹配 ```json ... ``` 或 ``` ... ```
-    code_block_pattern = r'```(?:json)?\s*\n?([\s\S]*?)\n?```'
+    code_block_pattern = r"```(?:json)?\s*\n?([\s\S]*?)\n?```"
     matches = re.findall(code_block_pattern, response)
-    
+
     for match in matches:
         try:
             return json.loads(match.strip())
         except json.JSONDecodeError:
             continue
-    
+
     # 尝试查找 JSON 对象（以 { 开头，以 } 结尾）
-    json_pattern = r'\{[\s\S]*\}'
+    json_pattern = r"\{[\s\S]*\}"
     json_matches = re.findall(json_pattern, response)
-    
+
     for match in json_matches:
         try:
             return json.loads(match)
         except json.JSONDecodeError:
             continue
-    
+
     return None
 
 
 async def classify_meme(image_data: bytes) -> Optional[MemeClassification]:
     """
     使用 LLM 对表情包进行分类
-    
+
     Args:
         image_data: 图片二进制数据
-        
+
     Returns:
         MemeClassification 分类结果，如果分类失败返回 None
     """
     try:
         # 转换图片为 base64
         image_base64 = base64.b64encode(image_data).decode("utf-8")
-        
+
         # 构建消息
         messages = [
             generate_message(MEME_CLASSIFICATION_PROMPT, "system"),
@@ -131,17 +131,17 @@ async def classify_meme(image_data: bytes) -> Optional[MemeClassification]:
                 "user",
             ),
         ]
-        
+
         # 调用 LLM
         response = (await fetch_message(messages, identify="Meme Classification")).strip()
-        
+
         # 解析 JSON（处理可能的 markdown 代码块）
         result = extract_json_from_response(response)
-        
+
         if result is None:
             logger.warning(f"Failed to parse meme classification response: {response}")
             return None
-        
+
         # 验证并转换结果
         classification: MemeClassification = {
             "is_meme": bool(result.get("is_meme", False)),
@@ -150,9 +150,9 @@ async def classify_meme(image_data: bytes) -> Optional[MemeClassification]:
             "labels": list(result.get("labels", [])),
             "context_keywords": list(result.get("context_keywords", [])),
         }
-        
+
         return classification
-        
+
     except Exception as e:
         logger.warning(f"Failed to classify meme: {e}\n{traceback.format_exc()}")
         return None
@@ -207,21 +207,21 @@ class StickerManager:
 
             # 计算感知哈希
             p_hash = await calculate_hash_async(raw)
-            
+
             # 调用 LLM 进行表情包分类
             classification = await classify_meme(raw)
-            
+
             # 准备分类数据
             meme_text: Optional[str] = None
             emotion: Optional[str] = None
             labels_json: Optional[str] = None
             context_keywords_json: Optional[str] = None
-            
+
             if classification is not None:
                 # 如果不是表情包，拒绝添加
                 if not classification["is_meme"]:
                     raise NotMemeError("该图片不是表情包，无法收藏")
-                
+
                 meme_text = classification["text"]
                 emotion = classification["emotion"]
                 labels_json = json.dumps(classification["labels"], ensure_ascii=False)
@@ -385,10 +385,7 @@ class StickerManager:
         async with get_session() as session:
             # labels 字段是 JSON 数组字符串，使用 contains 进行模糊匹配
             stmt = (
-                select(Sticker)
-                .where(Sticker.labels.contains(label))
-                .order_by(Sticker.created_time.desc())
-                .limit(limit)
+                select(Sticker).where(Sticker.labels.contains(label)).order_by(Sticker.created_time.desc()).limit(limit)
             )
             result = await session.scalars(stmt)
             return list(result.all())
@@ -458,13 +455,13 @@ class StickerManager:
     async def migrate_existing_stickers(self, batch_size: int = 10) -> Dict[str, int]:
         """
         Migrate existing stickers by classifying them with LLM
-        
+
         This method processes stickers that don't have classification data
         (meme_text, emotion, labels, context_keywords are all None)
-        
+
         Args:
             batch_size: Number of stickers to process in each batch
-            
+
         Returns:
             Dict with migration statistics:
             - total: Total number of stickers processed
@@ -473,7 +470,7 @@ class StickerManager:
             - skipped: Number of stickers already classified
         """
         stats = {"total": 0, "success": 0, "failed": 0, "skipped": 0}
-        
+
         async with get_session() as session:
             # 查找所有未分类的表情包（分类字段都为 None）
             stmt = select(Sticker).where(
@@ -484,79 +481,79 @@ class StickerManager:
             )
             result = await session.scalars(stmt)
             stickers_to_migrate = list(result.all())
-            
+
             stats["total"] = len(stickers_to_migrate)
-            
+
             for sticker in stickers_to_migrate:
                 try:
                     # 调用 LLM 进行分类
                     classification = await classify_meme(sticker.raw)
-                    
+
                     if classification is None:
                         logger.warning(f"Failed to classify sticker {sticker.id}: LLM returned None")
                         stats["failed"] += 1
                         continue
-                    
+
                     # 更新分类信息
                     sticker.meme_text = classification["text"]
                     sticker.emotion = classification["emotion"]
                     sticker.labels = json.dumps(classification["labels"], ensure_ascii=False)
                     sticker.context_keywords = json.dumps(classification["context_keywords"], ensure_ascii=False)
-                    
+
                     session.add(sticker)
                     stats["success"] += 1
-                    
+
                     logger.info(f"Successfully classified sticker {sticker.id}: emotion={classification['emotion']}")
-                    
+
                 except Exception as e:
                     logger.warning(f"Failed to migrate sticker {sticker.id}: {e}")
                     stats["failed"] += 1
-            
+
             # 提交所有更改
             await session.commit()
-        
+
         logger.info(
             f"Sticker migration completed: {stats['success']} success, "
             f"{stats['failed']} failed, {stats['skipped']} skipped out of {stats['total']} total"
         )
-        
+
         return stats
 
     async def classify_single_sticker(self, sticker_id: int) -> bool:
         """
         Classify a single sticker by its ID
-        
+
         Args:
             sticker_id: The ID of the sticker to classify
-            
+
         Returns:
             True if classification was successful, False otherwise
         """
         async with get_session() as session:
             sticker = await session.get(Sticker, sticker_id)
-            
+
             if sticker is None:
                 logger.warning(f"Sticker {sticker_id} not found")
                 return False
-            
+
             try:
                 classification = await classify_meme(sticker.raw)
-                
+
                 if classification is None:
                     logger.warning(f"Failed to classify sticker {sticker_id}: LLM returned None")
                     return False
-                
+
                 sticker.meme_text = classification["text"]
                 sticker.emotion = classification["emotion"]
                 sticker.labels = json.dumps(classification["labels"], ensure_ascii=False)
                 sticker.context_keywords = json.dumps(classification["context_keywords"], ensure_ascii=False)
-                
+
                 session.add(sticker)
                 await session.commit()
-                
+
                 logger.info(f"Successfully classified sticker {sticker_id}")
                 return True
-                
+
             except Exception as e:
                 logger.warning(f"Failed to classify sticker {sticker_id}: {e}")
                 return False
