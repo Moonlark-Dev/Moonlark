@@ -51,7 +51,7 @@ MEME_CLASSIFICATION_PROMPT = """你是一个表情包分析 AI。
 {
      "is_meme": boolen,       // 这张图片是一个表情包吗？如果是为 true。
      "text": string,                 // 表情包中的文本，如果没有请填空字符串。
-     "emotion": string,        // 表情包所表达的情绪的类型，如：高兴、难过、生气、恐惧、伤心。
+     "emotion": string,        // 表情包所表达的情绪的类型，如：高兴、难过、生气、恐惧。
      "labels": array[string],       // 表情包的标签，按照参考的标签库分类中给出的示例进行编写。
      "context_keywords": array[string]       // 表情包适用的语境，这个表情包适合在群聊中谈到什么关键词时出现？
 }
@@ -566,7 +566,7 @@ class StickerManager:
 sticker_manager = StickerManager()
 
 
-async def get_sticker_manager() -> StickerManager:
+def get_sticker_manager() -> StickerManager:
     """
     Get the global StickerManager instance
 
