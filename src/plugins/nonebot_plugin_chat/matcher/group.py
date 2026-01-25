@@ -70,6 +70,28 @@ from ..utils.tools import (
 )
 
 
+def get_fav_level(fav: float) -> str:
+    """
+    根据好感度值确定好感等级
+
+    0.000 - 0.005: 素昧平生
+    0.006 - 0.050: 点头之交
+    0.051 - 0.150: 熟客
+    0.151 - 0.300: 挚友
+    0.301+: 赛博伴侣
+    """
+    if fav <= 0.005:
+        return "素昧平生"
+    elif fav <= 0.050:
+        return "点头之交"
+    elif fav <= 0.150:
+        return "熟客"
+    elif fav <= 0.300:
+        return "挚友"
+    else:
+        return "赛博伴侣"
+
+
 def calculate_trigger_probability(accumulated_length: int) -> float:
     """
     根据累计文本长度计算触发概率
@@ -737,14 +759,47 @@ class MessageProcessor:
                 l.append(str(msg.content))
         return l
 
-    async def _get_user_profiles(self, chat_history: str) -> dict[str, str]:
+    async def _get_user_profiles(self, chat_history: str) -> list[str]:
         """根据昵称获取用户的 profile 信息"""
-        profiles = {}
+        profiles = []
         async with get_session() as session:
-            for user_id in await session.scalars(select(UserProfile.user_id)):
-                nickname = (await get_user(user_id)).get_nickname()
-                if nickname in chat_history:
-                    profiles[nickname] = (await session.get_one(UserProfile, {"user_id": user_id})).profile_content
+            for nickname, user_id in (await self.session._get_users_in_cached_message()).items():
+                if not (profile := await session.get(UserProfile, {"user_id": user_id})):
+                    profile = await lang.text("prompt_group.user_profile_not_found", self.session.user_id)
+                    is_profile_found = False
+                else:
+                    is_profile_found = True
+                if isinstance(self.session.bot, OB11Bot):
+                    try:
+                        member_info = await self.session.bot.get_group_member_info(
+                            group_id=int(self.session.adapter_group_id), user_id=int(user_id)
+                        )
+                    except Exception as e:
+                        member_info = None
+                else:
+                    member_info = None
+                fav = (await get_user(user_id)).get_fav()
+                fav_level = get_fav_level(fav)
+                if member_info:
+                    profiles.append(
+                        await lang.text(
+                            "prompt_group.group_member_info",
+                            self.session.user_id,
+                            nickname,
+                            member_info["role"],
+                            member_info["sex"],
+                            fav,
+                            fav_level,
+                            datetime.fromtimestamp(member_info["join_time"]).strftime("%Y-%m-%d"),
+                            profile,
+                        )
+                    )
+                elif fav > 0 or is_profile_found:
+                    profiles.append(
+                        await lang.text(
+                            "prompt_group.member_info", self.session.user_id, nickname, fav, fav_level, profile
+                        )
+                    )
         return profiles
 
     async def generate_system_prompt(self, reasoning_content: Optional[str] = None) -> OpenAIMessage:
@@ -758,7 +813,7 @@ class MessageProcessor:
 
         # 格式化 profile 信息
         if user_profiles:
-            profiles_text = "\n".join([f"- {nickname}: {profile}" for nickname, profile in user_profiles.items()])
+            profiles_text = "\n".join(user_profiles)
         else:
             profiles_text = "暂无"
 
