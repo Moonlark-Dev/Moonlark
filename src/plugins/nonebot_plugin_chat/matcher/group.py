@@ -768,6 +768,7 @@ class MessageProcessor:
                     profile = await lang.text("prompt_group.user_profile_not_found", self.session.user_id)
                     is_profile_found = False
                 else:
+                    profile = profile.profile_content
                     is_profile_found = True
                 if isinstance(self.session.bot, OB11Bot):
                     try:
