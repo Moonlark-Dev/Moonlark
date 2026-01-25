@@ -38,7 +38,7 @@ async def save_sticker_func(session: "GroupSession", image_id: str) -> str:
     Returns:
         Success or error message
     """
-    from ..sticker_manager import DuplicateStickerError
+    from ..sticker_manager import DuplicateStickerError, NotMemeError
 
     # Get image data from cache
     image_data = await get_image_by_id(image_id)
@@ -47,7 +47,7 @@ async def save_sticker_func(session: "GroupSession", image_id: str) -> str:
         return await lang.text("sticker.not_found", session.user_id)
 
     # Get sticker manager and save
-    manager = await get_sticker_manager()
+    manager = get_sticker_manager()
     try:
         sticker = await manager.save_sticker(
             description=image_data["description"],
@@ -57,6 +57,8 @@ async def save_sticker_func(session: "GroupSession", image_id: str) -> str:
         return await lang.text("sticker.saved", session.user_id, sticker.id)
     except DuplicateStickerError as e:
         return await lang.text("sticker.duplicate", session.user_id, e.existing_sticker.id, e.similarity)
+    except NotMemeError:
+        return await lang.text("sticker.not_meme", session.user_id)
 
 
 async def search_sticker_func(session: "GroupSession", query: str) -> str:
@@ -70,7 +72,7 @@ async def search_sticker_func(session: "GroupSession", query: str) -> str:
     Returns:
         Formatted list of matching stickers or empty message
     """
-    manager = await get_sticker_manager()
+    manager = get_sticker_manager()
 
     # First try AND matching (all keywords must match)
     stickers = await manager.search_sticker(query, limit=5)
@@ -103,7 +105,7 @@ async def send_sticker_func(session: "GroupSession", sticker_id: int) -> str:
     Returns:
         Success or error message
     """
-    manager = await get_sticker_manager()
+    manager = get_sticker_manager()
     sticker = await manager.get_sticker(sticker_id)
 
     if sticker is None:
@@ -162,7 +164,7 @@ def get_sticker_tools(session: "GroupSession") -> List:
             description=(
                 "从收藏的表情包库中搜索合适的表情包。\n"
                 "**何时调用**: 当你想用表情包回复群友时，先调用此工具搜索合适的表情包。\n"
-                "**搜索技巧**: 使用描述性的关键词，如情绪（开心、悲伤、嘲讽）、动作（大笑、哭泣）或内容（猫、狗、熊猫头）。"
+                "**搜索技巧**: 使用描述性的关键词，如情绪（开心、悲伤、嘲讽）、动作（大笑、哭泣）或内容。"
             ),
             parameters={
                 "query": FunctionParameter(

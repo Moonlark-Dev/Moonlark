@@ -29,6 +29,7 @@ from nonebot.typing import T_State
 from typing import Literal, TypedDict, Optional, Any
 from nonebot_plugin_apscheduler import scheduler
 from nonebot_plugin_alconna import UniMessage, Target, get_target
+from nonebot_plugin_chat.utils.sticker_manager import get_sticker_manager
 from nonebot_plugin_userinfo import EventUserInfo, UserInfo
 
 from nonebot_plugin_larkuser import get_user
@@ -138,6 +139,7 @@ class MessageQueue:
         self.processor = processor
         self.max_message_count = max_message_count
         self.messages: list[OpenAIMessage] = []
+
         self.fetcher_lock = asyncio.Lock()
         self.consecutive_bot_messages = 0  # 连续发送消息计数器
 
@@ -148,11 +150,11 @@ class MessageQueue:
                 break
             self.messages.pop(0)
 
-    async def get_messages(self) -> list[OpenAIMessage]:
+    async def get_messages(self, reasoning_content: Optional[str] = None) -> list[OpenAIMessage]:
         self.clean_special_message()
         self.messages = self.messages[-self.max_message_count :]
         messages = copy.deepcopy(self.messages)
-        messages.insert(0, await self.processor.generate_system_prompt())
+        messages.insert(0, await self.processor.generate_system_prompt(reasoning_content))
         return messages
 
     async def fetch_reply(self) -> None:
@@ -160,6 +162,27 @@ class MessageQueue:
             return
         async with self.fetcher_lock:
             await self._fetch_reply()
+
+    def _extract_reasoning_content(self, message: OpenAIMessage) -> Optional[str]:
+        """
+        从消息中提取思考过程内容
+
+        Args:
+            message: OpenAI 消息对象
+
+        Returns:
+            思考过程内容，如果没有找到则返回 None
+        """
+        content = None
+        if isinstance(message, dict):
+            content = message.get("content", "")
+        elif hasattr(message, "content"):
+            content = message.content
+
+        if content and isinstance(content, str) and content.strip().startswith("## 思考过程"):
+            return content
+
+        return None
 
     async def _fetch_reply(self) -> None:
         messages = await self.get_messages()
@@ -176,7 +199,27 @@ class MessageQueue:
             logger.info(f"Moonlark 说: {message}")
             fetcher.session.messages.extend(self.messages)
             self.messages = []
+
+        # 在消息流结束后检测思考过程并更新 system 消息
         self.messages = fetcher.get_messages()
+
+        # 检查返回的消息中是否包含思考过程
+        reasoning_content: Optional[str] = None
+        for msg in self.messages:
+            extracted = self._extract_reasoning_content(msg)
+            if extracted:
+                reasoning_content = extracted
+                break
+
+        # 如果检测到思考过程，更新表情包推荐并重新生成 system 消息
+        if reasoning_content:
+            logger.debug("检测到思考过程，正在更新表情包推荐...")
+            new_system_prompt = await self.processor.generate_system_prompt(reasoning_content)
+            # 更新 self.messages 中的 system 消息（如果有的话），或在开头插入
+            if self.messages and get_role(self.messages[0]) == "system":
+                self.messages[0] = new_system_prompt
+            else:
+                self.messages.insert(0, new_system_prompt)
 
     def append_user_message(self, message: str) -> None:
         self.consecutive_bot_messages = 0  # 收到用户消息时重置计数器
@@ -208,10 +251,127 @@ class MessageQueue:
 
 class MessageProcessor:
 
+    async def get_sticker_recommendations(self, reasoning_content: Optional[str] = None) -> list[str]:
+        """
+        根据思考过程中的心情和上下文关键词获取表情包推荐
+
+        Args:
+            reasoning_content: LLM 输出的思考过程内容（以 "## 思考过程" 开头）
+                              如果为 None，则只根据 context_keywords 进行匹配，不根据心情筛选
+
+        Returns:
+            推荐的表情包列表（格式为 "ID: 描述"）
+        """
+        recommendations: list[str] = []
+        seen_ids: set[int] = set()  # 用于去重
+
+        # 获取聊天记录内容
+        chat_history = "\n".join(self.get_message_content_list())
+
+        # 只有当提供了 reasoning_content 时才根据心情筛选
+        # 如果请求来自 MessageProcessor 或其他地方（reasoning_content 为 None），则跳过心情筛选
+        if reasoning_content:
+            # 从思考过程中提取心情
+            mood = self._extract_mood_from_reasoning(reasoning_content)
+
+            # 根据心情筛选表情包
+            if mood:
+                stickers = await self.sticker_manager.filter_by_emotion(mood, limit=3)
+                for sticker in stickers:
+                    if sticker.id not in seen_ids:
+                        seen_ids.add(sticker.id)
+                        desc = sticker.description
+                        recommendations.append(f"{sticker.id}: {desc}")
+
+        # 根据 context_keywords 匹配聊天记录和思考过程
+        combined_text = chat_history
+        if reasoning_content:
+            combined_text += "\n" + reasoning_content
+
+        matched_stickers = await self._match_stickers_by_context(combined_text, exclude_ids=seen_ids)
+        for sticker in matched_stickers:
+            if sticker.id not in seen_ids:
+                seen_ids.add(sticker.id)
+                desc = sticker.description
+                recommendations.append(f"{sticker.id}: {desc}")
+
+        # 限制推荐数量
+        return recommendations[:10]
+
+    def _extract_mood_from_reasoning(self, reasoning_content: Optional[str]) -> Optional[str]:
+        """
+        从思考过程中提取心情
+
+        Args:
+            reasoning_content: LLM 输出的思考过程内容
+
+        Returns:
+            提取的心情字符串，如果未找到返回 None
+        """
+        if not reasoning_content:
+            return None
+
+        # 匹配 "- 心情: XXX" 格式
+        mood_pattern = r"-\s*心情[:：]\s*(.+?)(?:\n|$)"
+        match = re.search(mood_pattern, reasoning_content)
+        if match:
+            mood = match.group(1).strip()
+            # 清理可能的括号内容，如 "很高兴（因为...）" -> "很高兴"
+            mood = re.sub(r"[（(].+?[）)]", "", mood).strip()
+            return mood
+
+        return None
+
+    async def _match_stickers_by_context(self, text: str, exclude_ids: set[int], limit: int = 5) -> list:
+        """
+        根据上下文关键词匹配表情包
+
+        Args:
+            text: 要匹配的文本（聊天记录 + 思考过程）
+            exclude_ids: 要排除的表情包 ID 集合
+            limit: 返回的最大数量
+
+        Returns:
+            匹配的 Sticker 对象列表
+        """
+        from nonebot_plugin_orm import get_session
+        from sqlalchemy import select
+        from ..models import Sticker
+
+        matched: list = []
+
+        async with get_session() as session:
+            # 获取所有有 context_keywords 的表情包
+            stmt = select(Sticker).where(Sticker.context_keywords.isnot(None))
+            result = await session.scalars(stmt)
+            stickers = list(result.all())
+
+            for sticker in stickers:
+                if sticker.id in exclude_ids:
+                    continue
+
+                # 解析 context_keywords JSON
+                try:
+                    keywords = json.loads(sticker.context_keywords) if sticker.context_keywords else []
+                except json.JSONDecodeError:
+                    continue
+
+                # 检查关键词是否出现在文本中
+                for keyword in keywords:
+                    if keyword and keyword in text:
+                        matched.append(sticker)
+                        break
+
+                if len(matched) >= limit:
+                    break
+
+        return matched
+
     def __init__(self, session: "GroupSession"):
         self.openai_messages = MessageQueue(self, 50)
         self.session = session
         self.enabled = True
+        self.sticker_manager = get_sticker_manager()
         self.interrupter = Interrupter(session)
         self.cold_until = datetime.now()
         self.blocked = False
@@ -587,7 +747,7 @@ class MessageProcessor:
                     profiles[nickname] = (await session.get_one(UserProfile, {"user_id": user_id})).profile_content
         return profiles
 
-    async def generate_system_prompt(self) -> OpenAIMessage:
+    async def generate_system_prompt(self, reasoning_content: Optional[str] = None) -> OpenAIMessage:
         chat_history = "\n".join(self.get_message_content_list())
         # 获取相关笔记
         note_manager = await get_context_notes(self.session.group_id)
@@ -606,6 +766,12 @@ class MessageProcessor:
             created_time = datetime.fromtimestamp(note.created_time).strftime("%y-%m-%d")
             return f"- {note.content} (#{note.id}，创建于 {created_time})"
 
+        # 获取表情包推荐
+        sticker_recommendations = await self.get_sticker_recommendations(reasoning_content)
+        sticker_text = (
+            "\n".join([f"- {rec}" for rec in sticker_recommendations]) if sticker_recommendations else "暂无推荐"
+        )
+
         return generate_message(
             await lang.text(
                 "prompt_group.default",
@@ -619,6 +785,7 @@ class MessageProcessor:
                     else "暂无"
                 ),
                 profiles_text,
+                sticker_text,
             ),
             "system",
         )
