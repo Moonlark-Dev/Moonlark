@@ -203,7 +203,7 @@ class MessageQueue:
             if message.startswith("## 思考过程"):
                 logger.debug("检测到思考过程，正在更新表情包推荐...")
                 new_system_prompt = await self.processor.generate_system_prompt(message)
-                if fetcher.session.messages and get_role(self.messages[0]) == "system":
+                if fetcher.session.messages and get_role(fetcher.session.messages[0]) == "system":
                     fetcher.session.messages[0] = new_system_prompt
                 else:
                     fetcher.session.messages.insert(0, new_system_prompt)
