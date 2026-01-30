@@ -27,10 +27,10 @@ T = TypeVar("T")
 
 
 FAV_LEVELS = [
-    (0.005, "stranger"),     # 素昧平生
-    (0.050, "acquaintance"), # 点头之交
-    (0.150, "familiar"),     # 熟客
-    (0.300, "close_friend"), # 挚友
+    (0.005, "stranger"),  # 素昧平生
+    (0.050, "acquaintance"),  # 点头之交
+    (0.150, "familiar"),  # 熟客
+    (0.300, "close_friend"),  # 挚友
     (float("inf"), "cyber_partner"),  # 赛博伴侣
 ]
 
