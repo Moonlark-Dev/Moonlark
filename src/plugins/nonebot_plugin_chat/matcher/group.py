@@ -1020,10 +1020,73 @@ class GroupSession:
 
         return f"定时器已设置，将在 {delay} 分钟后触发"
 
+    async def post_event(self, event_prompt: str, trigger_mode: Literal["none", "probability", "all"]) -> None:
+        """
+        向消息队列中添加一个事件的文本
+
+        Args:
+            event_prompt: 事件的描述文本
+            trigger_mode: 触发模式
+                - "none": 不触发回复
+                - "probability": 使用概率计算判断是否触发回复
+                - "all": 强制触发回复
+        """
+        # 添加事件消息到消息队列
+        content = f"[{datetime.now().strftime('%H:%M:%S')}]: {event_prompt}"
+        self.processor.openai_messages.append_user_message(content)
+
+        # 根据触发模式决定是否生成回复
+        if trigger_mode == "none":
+            return
+        await self.processor.generate_reply(force_reply=trigger_mode == "all")
+        
 
 from ..config import config
 
 groups: dict[str, GroupSession] = {}
+
+
+def get_group_session(group_id: str) -> GroupSession:
+    """
+    获取指定群组的 GroupSession 对象
+
+    Args:
+        group_id: 群组 ID
+
+    Returns:
+        GroupSession 对象
+
+    Raises:
+        KeyError: 当群组 Session 不存在时
+    """
+    return groups[group_id]
+
+
+async def post_group_event(
+    group_id: str, event_prompt: str, trigger_mode: Literal["none", "probability", "all"]
+) -> bool:
+    """
+    向指定群组发送事件
+
+    Args:
+        group_id: 群组 ID
+        event_prompt: 事件的描述文本
+        trigger_mode: 触发模式
+            - "none": 不触发回复
+            - "probability": 使用概率计算判断是否触发回复
+            - "all": 强制触发回复
+
+    Returns:
+        bool: 是否成功执行
+    """
+    try:
+        session = get_group_session(group_id)
+        await session.post_event(event_prompt, trigger_mode)
+        return True
+    except KeyError:
+        return False
+
+
 matcher = on_message(priority=50, rule=enabled_group, block=False)
 
 

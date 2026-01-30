@@ -26,6 +26,9 @@ require("nonebot_plugin_alconna")
 
 from . import matcher
 
+# 导出供其他插件使用的接口
+from .matcher.group import get_group_session, post_group_event, GroupSession
+
 # 启动时初始化表情包感知哈希
 driver = get_driver()
 
