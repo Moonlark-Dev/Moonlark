@@ -33,3 +33,10 @@ async def _init_sticker_hashes():
     from .utils.hash_initializer import initialize_sticker_hashes
 
     await initialize_sticker_hashes()
+
+
+@driver.on_startup
+async def _init_sticker_classifications():
+    from .utils.hash_initializer import initialize_sticker_classifications
+
+    await initialize_sticker_classifications()

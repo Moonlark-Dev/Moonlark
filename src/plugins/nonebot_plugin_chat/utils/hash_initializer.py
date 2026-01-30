@@ -16,12 +16,14 @@
 # ##############################################################################
 
 import asyncio
+import json
 from nonebot import logger
 from nonebot_plugin_orm import get_session
 from sqlalchemy import select
 
 from ..models import Sticker
 from .sticker_similarity import calculate_perceptual_hash
+from .sticker_manager import classify_meme
 
 
 async def _check_and_update_sticker_hashes() -> None:
@@ -80,3 +82,64 @@ async def initialize_sticker_hashes() -> None:
     用于在运行时调用
     """
     await _check_and_update_sticker_hashes()
+
+
+async def _check_and_classify_stickers() -> None:
+    """
+    检查所有表情包是否都有分类信息，如果没有则调用 LLM 进行分类
+    """
+    async with get_session() as session:
+        # 查询所有没有分类信息的表情包（分类字段都为 None）
+        stickers_without_classification = (
+            await session.scalars(
+                select(Sticker).where(
+                    Sticker.meme_text.is_(None),
+                    Sticker.emotion.is_(None),
+                    Sticker.labels.is_(None),
+                    Sticker.context_keywords.is_(None),
+                )
+            )
+        ).all()
+
+        if not stickers_without_classification:
+            logger.info("[Chat] 所有表情包都已有分类信息")
+            return
+
+        logger.info(f"[Chat] 发现 {len(stickers_without_classification)} 个表情包缺少分类信息，开始分类...")
+
+        success_count = 0
+        fail_count = 0
+
+        for sticker in stickers_without_classification:
+            try:
+                # 调用 LLM 进行分类
+                classification = await classify_meme(sticker.raw)
+
+                if classification is not None:
+                    # 更新分类信息
+                    sticker.meme_text = classification["text"]
+                    sticker.emotion = classification["emotion"]
+                    sticker.labels = json.dumps(classification["labels"], ensure_ascii=False)
+                    sticker.context_keywords = json.dumps(classification["context_keywords"], ensure_ascii=False)
+
+                    success_count += 1
+                    logger.debug(f"[Chat] 已分类表情包 {sticker.id}: emotion={classification['emotion']}")
+                else:
+                    logger.warning(f"[Chat] 无法分类表情包 {sticker.id}: LLM 返回 None")
+                    fail_count += 1
+
+            except Exception as e:
+                logger.error(f"[Chat] 分类表情包 {sticker.id} 时出错: {e}")
+                fail_count += 1
+
+        # 提交所有更改
+        await session.commit()
+        logger.success(f"[Chat] 表情包分类初始化完成: 成功 {success_count} 个，失败 {fail_count} 个")
+
+
+async def initialize_sticker_classifications() -> None:
+    """
+    异步接口：检查并更新表情包分类
+    用于在运行时调用
+    """
+    await _check_and_classify_stickers()
