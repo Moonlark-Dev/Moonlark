@@ -1039,7 +1039,7 @@ class GroupSession:
         if trigger_mode == "none":
             return
         await self.processor.generate_reply(force_reply=trigger_mode == "all")
-        
+
 
 from ..config import config
 
