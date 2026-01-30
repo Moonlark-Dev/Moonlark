@@ -1,3 +1,5 @@
+import asyncio
+
 from nonebot import require, get_driver
 from nonebot.plugin import PluginMetadata
 
@@ -39,4 +41,5 @@ async def _init_sticker_hashes():
 async def _init_sticker_classifications():
     from .utils.hash_initializer import initialize_sticker_classifications
 
-    await initialize_sticker_classifications()
+    # 使用后台任务进行分类，避免阻塞启动流程
+    asyncio.create_task(initialize_sticker_classifications())
