@@ -31,7 +31,7 @@ async def get_user_info(matcher: Matcher, user_id: str) -> None:
                 ),
                 "level_progress": f"{level_progress}%",
                 "vimcoin": await lang.text("panel.vimcoin", user_id, round(user.get_vimcoin(), 3)),
-                "fav": await lang.text("panel.fav", user_id, round(user.get_fav(), 3)),
+                "fav": await lang.text("panel.fav", user_id, round(user.get_fav(), 3), await user.get_fav_level()),
                 "hp": await lang.text("panel.hp", user_id, round(user.get_health(), 3)),
                 "hp_progress": f"{int(user.get_health())}%",
             },

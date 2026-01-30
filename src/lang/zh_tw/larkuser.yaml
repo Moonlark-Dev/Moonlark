@@ -5,7 +5,7 @@ panel:
   level: "等级: {} ({} / {})"
   vimcoin: "VimCoin: {}"
   hp: "生命值: {} / 100"
-  fav: "好感度: {}"
+  fav: "好感度: {}/{}"
 fav_level:
   stranger: "素昧平生"
   acquaintance: "點頭之交"

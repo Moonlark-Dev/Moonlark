@@ -5,13 +5,13 @@ panel:
   level: "等级: {} ({} / {})"
   vimcoin: "VimCoin: {}"
   hp: "生命值: {} / 100"
-  fav: "好感度: {}"
+  fav: "好感度: {}/{}"
 fav_level:
   stranger: "素昧平生"
   acquaintance: "点头之交"
-  familiar: "熟客"
+  familiar: "知心相伴"
   close_friend: "挚友"
-  cyber_partner: "赛博伴侣"
+  cyber_partner: "灵魂耦合"
 help:
   description: 用户面板
   details: 查看用户数据面板
