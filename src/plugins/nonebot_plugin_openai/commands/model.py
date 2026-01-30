@@ -3,7 +3,7 @@
 仅 superuser 可用
 """
 
-from nonebot_plugin_alconna import Alconna, Args, on_alconna
+from nonebot_plugin_alconna import Alconna, Args, MultiVar, on_alconna
 from nonebot_plugin_larkutils import get_user_id, is_user_superuser
 
 from ..lang import lang
@@ -19,7 +19,7 @@ from ..utils.model_config import (
 model_cmd = on_alconna(
     Alconna(
         "model",
-        Args["model_name?", str]["identify?", str],
+        Args["model_name?", str]["identify_parts?", MultiVar(str, "*")],
     )
 )
 
@@ -27,10 +27,12 @@ model_cmd = on_alconna(
 @model_cmd.handle()
 async def handle_model(
     model_name: str | None = None,
-    identify: str | None = None,
+    identify_parts: tuple[str, ...] | None = None,
     is_superuser: bool = is_user_superuser(),
     user_id: str = get_user_id(),
 ) -> None:
+    # 将多个部分合并为一个应用标识（支持带空格的标识）
+    identify: str | None = " ".join(identify_parts) if identify_parts else None
     if not is_superuser:
         await lang.finish("model.no_permission", user_id)
 
