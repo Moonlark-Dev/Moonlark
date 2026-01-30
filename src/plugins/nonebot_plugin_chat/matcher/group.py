@@ -70,28 +70,6 @@ from ..utils.tools import (
 )
 
 
-def get_fav_level(fav: float) -> str:
-    """
-    根据好感度值确定好感等级
-
-    0.000 - 0.005: 素昧平生
-    0.006 - 0.050: 点头之交
-    0.051 - 0.150: 熟客
-    0.151 - 0.300: 挚友
-    0.301+: 赛博伴侣
-    """
-    if fav <= 0.005:
-        return "素昧平生"
-    elif fav <= 0.050:
-        return "点头之交"
-    elif fav <= 0.150:
-        return "熟客"
-    elif fav <= 0.300:
-        return "挚友"
-    else:
-        return "赛博伴侣"
-
-
 def calculate_trigger_probability(accumulated_length: int) -> float:
     """
     根据累计文本长度计算触发概率
@@ -747,8 +725,9 @@ class MessageProcessor:
                         member_info = None
                 else:
                     member_info = None
-                fav = (await get_user(user_id)).get_fav()
-                fav_level = get_fav_level(fav)
+                user = await get_user(user_id)
+                fav = user.get_fav()
+                fav_level = await user.get_fav_level()
                 if member_info:
                     profiles.append(
                         await lang.text(

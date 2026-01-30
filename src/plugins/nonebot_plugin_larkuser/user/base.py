@@ -21,8 +21,18 @@ from datetime import datetime
 from typing import Optional, TypeVar
 from abc import ABC, abstractmethod
 from nonebot_plugin_larkuser.utils.level import get_level_by_experience
+from nonebot_plugin_larkuser.lang import lang
 
 T = TypeVar("T")
+
+
+FAV_LEVELS = [
+    (0.005, "stranger"),     # 素昧平生
+    (0.050, "acquaintance"), # 点头之交
+    (0.150, "familiar"),     # 熟客
+    (0.300, "close_friend"), # 挚友
+    (float("inf"), "cyber_partner"),  # 赛博伴侣
+]
 
 
 class MoonlarkUser(ABC):
@@ -71,6 +81,26 @@ class MoonlarkUser(ABC):
 
     def get_fav(self) -> float:
         return self.fav
+
+    def _get_fav_level_key(self) -> str:
+        """
+        根据好感度值确定好感等级的语言键
+
+        0.000 - 0.005: 素昧平生 (stranger)
+        0.006 - 0.050: 点头之交 (acquaintance)
+        0.051 - 0.150: 熟客 (familiar)
+        0.151 - 0.300: 挚友 (close_friend)
+        0.301+: 赛博伴侣 (cyber_partner)
+        """
+        for threshold, level_key in FAV_LEVELS:
+            if self.fav <= threshold:
+                return level_key
+        return FAV_LEVELS[-1][1]  # 默认返回最高等级
+
+    async def get_fav_level(self) -> str:
+        """获取本地化后的好感等级名称"""
+        level_key = self._get_fav_level_key()
+        return await lang.text(f"fav_level.{level_key}", self.user_id)
 
     def get_vimcoin(self) -> float:
         return max(0.0, self.vimcoin)

@@ -6,6 +6,12 @@ panel:
   vimcoin: "VimCoin: {}"
   hp: "生命值: {} / 100"
   fav: "好感度: {}"
+fav_level:
+  stranger: "素昧平生"
+  acquaintance: "點頭之交"
+  familiar: "熟客"
+  close_friend: "摯友"
+  cyber_partner: "賽博伴侶"
 help:
   description: 用户面板
   details: 查看用户数据面板
