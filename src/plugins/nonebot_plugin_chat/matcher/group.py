@@ -1467,4 +1467,5 @@ async def _(event: NoticeEvent, bot: OB11Bot, state: T_State) -> None:
         state
     )
     operator_nickname = await get_nickname(user_id, bot, event)
+    logger.info(f"emoji like: {message} {operator_nickname}")
     await session.processor.handle_reaction(message, operator_nickname, event_dict["likes"][0]["emoji_id"])
