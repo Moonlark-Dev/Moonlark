@@ -6,8 +6,9 @@ import traceback
 from nonebot_plugin_larklang.__main__ import get_module_name
 import inspect
 import json
-from typing import Optional, Any, AsyncGenerator, Callable, TypeVar, cast
+from typing import Literal, Optional, Any, AsyncGenerator, Callable, TypeVar, TypedDict, cast
 from nonebot import logger
+import openai
 from openai.types.shared_params import FunctionDefinition
 from openai.types.chat import ChatCompletionToolMessageParam, ChatCompletionFunctionToolParam
 from nonebot_plugin_status_report import report_openai_history
@@ -17,7 +18,7 @@ from ..types import Messages, AsyncFunction, Message as OpenaiMessage
 from ..config import config
 from .message import generate_message
 from .client import client
-from .model_config import get_model_for_identify
+from .model_config import get_model_for_identify, is_default_model_for_identify, record_timeout_and_check_backup
 
 
 def generate_function_list(func_index: dict[str, AsyncFunction]) -> list[ChatCompletionFunctionToolParam]:
@@ -48,6 +49,15 @@ from openai.types.chat import ChatCompletion
 from openai.types.chat.chat_completion import Choice
 
 
+class ReplaceResponseStrategy(TypedDict):
+    strategy: Literal["replace"]
+    choice: Choice
+
+class StopSessionStrategy(TypedDict):
+    strategy: Literal["throw"]
+
+TimeoutStrategy = ReplaceResponseStrategy | StopSessionStrategy
+
 class LLMRequestSession:
 
     def __init__(
@@ -61,8 +71,8 @@ class LLMRequestSession:
             Callable[[str, str, dict[str, Any]], Awaitable[tuple[str, str, dict[str, Any]]]]
         ] = None,
         post_function_call: Optional[Callable[[T], Awaitable[T]]] = None,
-        timeout_per_request: Optional[int] = None,
-        timeout_response: Optional[Choice] = None,
+        timeout: Optional[int] = None,
+        timeout_strategy: Optional[TimeoutStrategy] = None,
     ) -> None:
         self.messages: Messages = messages
         self.identify = identify
@@ -70,14 +80,13 @@ class LLMRequestSession:
         self.func_index = func_index
         self.kwargs = kwargs
         self.stop = False
-        self.timeout_state = False
         self.model = model
         self.trigger_functions = {
             "pre_function_call": pre_function_call,
             "post_function_call": post_function_call,
         }
-        self.timeout_per_request = timeout_per_request
-        self.timeout_response = timeout_response
+        self.timeout_per_request = timeout
+        self.timeout_strategy = timeout_strategy
         self.insert_message_queue = []
 
     async def fetch_llm_response(self) -> AsyncGenerator[str, None]:
@@ -87,27 +96,28 @@ class LLMRequestSession:
         await report_openai_history(self.messages, self.identify, self.model)
 
     async def request(self) -> AsyncGenerator[str, None]:
-        completion = cast(
-            ChatCompletion,
-            await client.chat.completions.create(
-                messages=self.messages,
-                model=self.model,
-                tools=self.func_list,
-                tool_choice="auto" if self.func_list else "none",
-                extra_headers={
-                    "X-Title": (t := f"{config.identify_prefix} - {self.identify}"),
-                    "HTTP-Referer": f"https://{hashlib.sha256(t.encode()).hexdigest()}.moonlark.itcdt.top",
-                },
-                **self.kwargs,
-            ),
-        )
-        response = completion.choices[0]
-        if self.timeout_per_request and datetime.now() - datetime.fromtimestamp(completion.created) > timedelta(
-            seconds=self.timeout_per_request
-        ):
-            self.stop = True
-            if self.timeout_response:
-                response = self.timeout_response
+        try:
+            completion = cast(
+                ChatCompletion,
+                await client.chat.completions.create(
+                    messages=self.messages,
+                    model=self.model,
+                    tools=self.func_list,
+                    tool_choice="auto" if self.func_list else "none",
+                    extra_headers={
+                        "X-Title": (t := f"{config.identify_prefix} - {self.identify}"),
+                        "HTTP-Referer": f"https://{hashlib.sha256(t.encode()).hexdigest()}.moonlark.itcdt.top",
+                    },
+                    timeout=self.timeout_per_request,
+                    **self.kwargs,
+                ),
+            )
+            response = completion.choices[0]
+        except openai.APITimeoutError as e:
+            if self.timeout_strategy is None or self.timeout_strategy["strategy"] == "throw":
+                raise e
+            elif self.timeout_strategy["strategy"] == "replace":
+                response = self.timeout_strategy["choice"]
         logger.debug(f"{response=}\n{self.messages=}\n{self.model=}\n{self.func_list=}\n{completion=}")
         self.messages.append(response.message)
         if response.message.content:
@@ -162,8 +172,9 @@ class MessageFetcher:
         identify: str,
         pre_function_call: Optional[Callable[[str, str, dict[str, Any]], Awaitable[tuple[str, str, dict[str, Any]]]]],
         post_function_call: Optional[Callable[[T], Awaitable[T]]],
-        timeout_per_request: Optional[int],
-        timeout_response: Optional[Choice],
+        timeout: Optional[int] = None,
+        timeout_strategy: Optional[TimeoutStrategy] = None,
+        record_timeout: bool = False,
         **kwargs,
     ) -> None:
         logger.debug(f"{identify=}")
@@ -181,9 +192,12 @@ class MessageFetcher:
             identify,
             pre_function_call,
             post_function_call,
-            timeout_per_request,
-            timeout_response,
+            timeout,
+            timeout_strategy,
         )
+        self.record_timeout = record_timeout
+
+    
 
     @classmethod
     async def create(
@@ -197,8 +211,9 @@ class MessageFetcher:
             Callable[[str, str, dict[str, Any]], Awaitable[tuple[str, str, dict[str, Any]]]]
         ] = None,
         post_function_call: Optional[Callable[[T], Awaitable[T]]] = None,
-        timeout_per_request: Optional[int] = None,
-        timeout_response: Optional[Choice] = None,
+        timeout: Optional[int] = None,
+        timeout_strategy: Optional[TimeoutStrategy] = None,
+        record_timeout: Optional[bool] = None,
         **kwargs,
     ) -> "MessageFetcher":
         """异步创建 MessageFetcher 实例，正确处理模型配置获取"""
@@ -210,6 +225,9 @@ class MessageFetcher:
 
         if model is None:
             model = await get_model_for_identify(identify)
+            is_default_model = await is_default_model_for_identify(identify)
+        else:
+            is_default_model = False
 
         return cls(
             messages,
@@ -219,8 +237,9 @@ class MessageFetcher:
             identify,
             pre_function_call,
             post_function_call,
-            timeout_per_request,
-            timeout_response,
+            timeout,
+            timeout_strategy,
+            is_default_model if record_timeout is None else record_timeout,
             **kwargs,
         )
 
@@ -229,14 +248,27 @@ class MessageFetcher:
         return [msg async for msg in self.session.fetch_llm_response()][-1]
 
     async def fetch_message_stream(self) -> AsyncGenerator[str, None]:
-        async for msg in self.session.fetch_llm_response():
-            yield msg
+        try:
+            async for msg in self.session.fetch_llm_response():
+                yield msg
+        except openai.APITimeoutError as e:
+            if self.record_timeout:
+                await record_default_model_timeout()
+            raise e
 
     def get_messages(self) -> Messages:
         return self.session.messages
 
-    def is_time_outed(self) -> bool:
-        return self.session.timeout_state
+
+async def record_default_model_timeout() -> None:
+    """
+    记录默认模型超时事件
+    
+    当主模型在一小时内触发超时超过 2 次时，
+    将主模型临时替换为 identify 为 Backup 的模型，持续 1 小时。
+    """
+    await record_timeout_and_check_backup()
+
 
 
 async def fetch_message(
@@ -249,8 +281,8 @@ async def fetch_message(
         Callable[[str, str, dict[str, Any]], Awaitable[tuple[str, str, dict[str, Any]]]]
     ] = None,
     post_function_call: Optional[Callable[[T], Awaitable[T]]] = None,
-    timeout_per_request: Optional[int] = None,
-    timeout_response: Optional[Choice] = None,
+    timeout: Optional[int] = None,
+    timeout_strategy: Optional[TimeoutStrategy] = None,
     **kwargs,
 ) -> str:
     if identify is None:
@@ -267,8 +299,8 @@ async def fetch_message(
         identify,
         pre_function_call,
         post_function_call,
-        timeout_per_request,
-        timeout_response,
+        timeout,
+        timeout_strategy,
         **kwargs,
     )
     return await fetcher.fetch_last_message()

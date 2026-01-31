@@ -175,6 +175,7 @@ class MessageQueue:
             functions=self.processor.functions,
             identify="Chat",
             pre_function_call=self.processor.send_function_call_feedback,
+            timeout=90
         )
         async for message in fetcher.fetch_message_stream():
             logger.info(f"Moonlark 说: {message}")
