@@ -30,6 +30,7 @@ from nonebot.typing import T_State
 from typing import AsyncGenerator, Literal, TypedDict, Optional, Any
 from nonebot_plugin_apscheduler import scheduler
 from nonebot_plugin_alconna import UniMessage, Target, get_target
+from nonebot_plugin_chat.utils.ai_agent import AskAISession
 from nonebot_plugin_chat.utils.sticker_manager import get_sticker_manager
 from nonebot_plugin_userinfo import EventUserInfo, UserInfo
 
@@ -217,6 +218,7 @@ class MessageProcessor:
         self.openai_messages = MessageQueue(self, 50)
         self.session = session
         self.enabled = True
+        self.ai_agent = AskAISession(self.session.user_id)
         self.sticker_manager = get_sticker_manager()
         self.interrupter = Interrupter(session)
         self.cold_until = datetime.now()
@@ -282,12 +284,13 @@ class MessageProcessor:
                     "**何时必须调用**: 当用户提出任何**数学计算（微积分、代数、方程求解等）、数据分析、单位换算、科学问题（物理、化学）、日期与时间计算**等需要精确计算和结构化数据的问题时。\n"
                     "**判断标准**: 如果问题看起来像一个数学题、物理公式或需要精确数据的查询，优先选择 Wolfram|Alpha 而不是网络搜索。例如：“2x^2+5x-3=0 的解是什么？”或“今天的日落时间是几点？”。\n"
                     "**禁止行为**: 不要尝试自己进行复杂的数学计算，这容易出错。"
+                    "注意：这个工具不能用于解答物理应用题或者其他太复杂的题目，如果你需要解答请使用 ask_ai 工具。"
                 ),
                 parameters={
                     "question": FunctionParameter(
                         type="string",
                         description=(
-                            "输入 Wolfram|Alpha 的内容，形式可以是数学表达式、Wolfram Language、LaTeX 或自然语言。\n"
+                            "输入 Wolfram|Alpha 的内容，形式可以是数学表达式、Wolfram Language、LaTeX。\n"
                             "使用自然语言提问时，使用英文以保证 Wolfram|Alpha 可以理解问题。"
                         ),
                         required=True,
@@ -440,6 +443,21 @@ class MessageProcessor:
                     ),
                 },
             ),
+            AsyncFunction(
+                func=self.ai_agent.ask_ai,
+                description=(
+                    "使用 AI 进行深度研究，获得问题的答案。此工具获取信息的速度比你使用 browse_webpage 等工具稍慢但是获得的信息更准确且更易读。"
+                    "**何时调用**: 当需要获取一个比较复杂的问题的答案时，调用此工具。\n"
+                    "调用举例：解答一道物理应用题 / 查找关于 2024 年最新自动驾驶算法的实验对比数据"
+                ),
+                parameters={
+                    "query": FunctionParameter(
+                        type="string",
+                        required=True,
+                        description="需要询问的问题，必须是一个有效的问题。",
+                    ),
+                },
+            )
         ]
         
 
