@@ -19,7 +19,6 @@ import copy
 import math
 import json
 import re
-from tkinter import messagebox
 from nonebot_plugin_alconna import get_message_id
 import random
 import asyncio
