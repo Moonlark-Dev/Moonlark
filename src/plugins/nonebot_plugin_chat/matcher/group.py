@@ -601,7 +601,8 @@ class MessageProcessor:
         response = "消息发送成功。\n"
         if self.openai_messages.consecutive_bot_messages == 1:
             sticker_recommendations = "\n".join(await self.get_sticker_recommendations(self.openai_messages.cached_reasoning_content))
-            response += f"### 表情包推荐\n{sticker_recommendations}"
+            if sticker_recommendations:
+                response += f"### 表情包推荐\n{sticker_recommendations}"
         return response
 
     def append_user_message(self, msg_str: str) -> None:
