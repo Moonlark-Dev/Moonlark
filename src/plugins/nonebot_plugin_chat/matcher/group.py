@@ -1451,11 +1451,8 @@ async def group_msg_emoji_like(event: NoticeEvent) -> bool:
 
 @on_notice(rule=group_msg_emoji_like, block=False).handle()
 async def _(event: NoticeEvent, bot: OB11Bot, group_id: str = get_group_id(), user_id: str = get_user_id()) -> None:
-    logger.info("run here")
     event_dict = event.model_dump()
     if group_id not in groups:
-
-        logger.info(f"{group_id=} not in groups")
         return
     session = groups[group_id]
     message = await parse_message_to_string(
@@ -1469,5 +1466,5 @@ async def _(event: NoticeEvent, bot: OB11Bot, group_id: str = get_group_id(), us
         {}
     )
     operator_nickname = await get_nickname(user_id, bot, event)
-    logger.info(f"emoji like: {message} {operator_nickname}")
+    logger.debug(f"emoji like: {message} {operator_nickname}")
     await session.processor.handle_reaction(message, operator_nickname, event_dict["likes"][0]["emoji_id"])
