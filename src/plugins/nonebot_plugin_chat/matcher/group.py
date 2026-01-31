@@ -31,7 +31,7 @@ from nonebot_plugin_apscheduler import scheduler
 from nonebot_plugin_alconna import UniMessage, Target, get_target
 from nonebot_plugin_chat.utils.ai_agent import AskAISession
 from nonebot_plugin_chat.utils.sticker_manager import get_sticker_manager
-from nonebot_plugin_userinfo import EventUserInfo, UserInfo
+from nonebot_plugin_larkuser import get_nickname
 
 from nonebot_plugin_larkuser import get_user
 from nonebot import on_message, on_command, on_notice
@@ -1059,12 +1059,12 @@ async def post_group_event(
 matcher = on_message(priority=50, rule=enabled_group, block=False)
 
 
+
 @matcher.handle()
 async def _(
     event: Event,
     bot: Bot,
     state: T_State,
-    user_info: UserInfo = EventUserInfo(),
     user_id: str = get_user_id(),
     session_id: str = get_group_id(),
 ) -> None:
@@ -1079,13 +1079,8 @@ async def _(
         await matcher.finish()
     platform_message = event.get_message()
     message = await UniMessage.of(message=platform_message, bot=bot).attach_reply(event, bot)
-    user = await get_user(user_id)
-    if user.has_nickname():
-        nickname = user.get_nickname()
-    else:
-        nickname = user_info.user_displayname or user_info.user_name
+    nickname = await get_nickname(user_id, bot, event)
     await groups[session_id].handle_message(message, user_id, event, state, nickname, event.is_tome())
-
 
 async def group_disable(group_id: str) -> None:
     if group_id in groups:
@@ -1229,15 +1224,10 @@ async def _(event: GroupRecallNoticeEvent, group_id: str = get_group_id()) -> No
 async def _(
     event: PokeNotifyEvent,
     moonlark_group_id: str = get_group_id(),
-    user_info: UserInfo = EventUserInfo(),
     user_id: str = get_user_id(),
 ) -> None:
     if moonlark_group_id not in groups:
         return
     session = groups[moonlark_group_id]
-    user = await get_user(user_id)
-    if user.has_nickname():
-        nickname = user.get_nickname()
-    else:
-        nickname = user_info.user_displayname or user_info.user_name
+    nickname = await get_nickname(user_id, bot, event)
     await session.handle_poke(event, nickname)

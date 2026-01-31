@@ -13,3 +13,5 @@ force_success: 成功！
 no_target: 你要娶谁？
 queried: 提示：你已经认领过群老婆了哦，不许当花心大萝卜！
 unsupported: 不支持私聊使用此指令！
+chat_event:
+  matched: "{} 在今日群老婆中匹配到了 {}。"
