@@ -1421,7 +1421,7 @@ async def _() -> None:
         logger.info(f"Cleaned up {deleted_count} expired notes")
 
 
-@on_notice().handle()
+@on_notice(block=False).handle()
 async def _(event: GroupRecallNoticeEvent, group_id: str = get_group_id()) -> None:
     message_id = str(event.message_id)
     if group_id not in groups:
@@ -1430,7 +1430,7 @@ async def _(event: GroupRecallNoticeEvent, group_id: str = get_group_id()) -> No
     await session.handle_recall(message_id)
 
 
-@on_notice().handle()
+@on_notice(block=False).handle()
 async def _(
     event: PokeNotifyEvent,
     moonlark_group_id: str = get_group_id(),
@@ -1445,9 +1445,10 @@ async def _(
 from nonebot.adapters.onebot.v11 import NoticeEvent
 
 async def group_msg_emoji_like(event: NoticeEvent) -> bool:
-    return event.notice_type == "group_msg_emoji_like"
+    logger.info(result := event.notice_type == "group_msg_emoji_like")
+    return result
 
-@on_notice(rule=group_msg_emoji_like).handle()
+@on_notice(rule=group_msg_emoji_like, block=False).handle()
 async def _(event: NoticeEvent, bot: OB11Bot, state: T_State) -> None:
     event_dict = event.model_dump()
     group_id = f'qq_{event_dict["group_id"]}'
