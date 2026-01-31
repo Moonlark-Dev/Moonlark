@@ -26,7 +26,7 @@ from datetime import datetime, timedelta
 from nonebot.adapters.qq import Bot as BotQQ
 from nonebot.params import CommandArg
 from nonebot.typing import T_State
-from typing import Literal, TypedDict, Optional, Any
+from typing import AsyncGenerator, Literal, TypedDict, Optional, Any
 from nonebot_plugin_apscheduler import scheduler
 from nonebot_plugin_alconna import UniMessage, Target, get_target
 from nonebot_plugin_chat.utils.sticker_manager import get_sticker_manager
@@ -54,7 +54,7 @@ from sqlalchemy import select
 
 from ..lang import lang
 from ..utils.note_manager import get_context_notes
-from ..models import ChatGroup, UserProfile
+from ..models import ChatGroup, Sticker, UserProfile
 from ..utils import enabled_group, parse_message_to_string
 from ..utils.interrupter import Interrupter
 from ..utils.tools import (
@@ -131,15 +131,19 @@ def get_role(message: OpenAIMessage) -> str:
 
 class MessageQueue:
 
-    # 连续发送消息的警告阈值和停止阈值
-    CONSECUTIVE_WARNING_THRESHOLD = 5
-    CONSECUTIVE_STOP_THRESHOLD = 10
 
-    def __init__(self, processor: "MessageProcessor", max_message_count: int = 10) -> None:
+    def __init__(
+        self,
+        processor: "MessageProcessor",
+        max_message_count: int = 10,
+        consecutive_warning_threshold: int = 5,
+        consecutive_stop_threshold: int = 10,
+    ) -> None:
         self.processor = processor
         self.max_message_count = max_message_count
         self.messages: list[OpenAIMessage] = []
-
+        self.CONSECUTIVE_WARNING_THRESHOLD = consecutive_warning_threshold
+        self.CONSECUTIVE_STOP_THRESHOLD = consecutive_stop_threshold
         self.fetcher_lock = asyncio.Lock()
         self.consecutive_bot_messages = 0  # 连续发送消息计数器
 
@@ -150,11 +154,11 @@ class MessageQueue:
                 break
             self.messages.pop(0)
 
-    async def get_messages(self, reasoning_content: Optional[str] = None) -> list[OpenAIMessage]:
+    async def get_messages(self) -> list[OpenAIMessage]:
         self.clean_special_message()
         self.messages = self.messages[-self.max_message_count :]
         messages = copy.deepcopy(self.messages)
-        messages.insert(0, await self.processor.generate_system_prompt(reasoning_content))
+        messages.insert(0, await self.processor.generate_system_prompt())
         return messages
 
     async def fetch_reply(self) -> None:
@@ -178,15 +182,7 @@ class MessageQueue:
             logger.info(f"Moonlark 说: {message}")
             fetcher.session.messages.extend(self.messages)
             self.messages = []
-            if message.startswith("## 思考过程"):
-                logger.debug("检测到思考过程，正在更新表情包推荐...")
-                new_system_prompt = await self.processor.generate_system_prompt(message)
-                if fetcher.session.messages and get_role(fetcher.session.messages[0]) == "system":
-                    fetcher.session.messages[0] = new_system_prompt
-                else:
-                    fetcher.session.messages.insert(0, new_system_prompt)
 
-        # 在消息流结束后检测思考过程并更新 system 消息
         self.messages = fetcher.get_messages()
 
     def append_user_message(self, message: str) -> None:
@@ -218,122 +214,6 @@ class MessageQueue:
 
 
 class MessageProcessor:
-
-    async def get_sticker_recommendations(self, reasoning_content: Optional[str] = None) -> list[str]:
-        """
-        根据思考过程中的心情和上下文关键词获取表情包推荐
-
-        Args:
-            reasoning_content: LLM 输出的思考过程内容（以 "## 思考过程" 开头）
-                              如果为 None，则只根据 context_keywords 进行匹配，不根据心情筛选
-
-        Returns:
-            推荐的表情包列表（格式为 "ID: 描述"）
-        """
-        recommendations: list[str] = []
-        seen_ids: set[int] = set()  # 用于去重
-
-        # 获取聊天记录内容
-        chat_history = "\n".join(self.get_message_content_list())
-
-        # 只有当提供了 reasoning_content 时才根据心情筛选
-        # 如果请求来自 MessageProcessor 或其他地方（reasoning_content 为 None），则跳过心情筛选
-        if reasoning_content:
-            # 从思考过程中提取心情
-            mood = self._extract_mood_from_reasoning(reasoning_content)
-
-            # 根据心情筛选表情包
-            if mood:
-                stickers = await self.sticker_manager.filter_by_emotion(mood, limit=3)
-                for sticker in stickers:
-                    if sticker.id not in seen_ids:
-                        seen_ids.add(sticker.id)
-                        desc = sticker.description
-                        recommendations.append(f"{sticker.id}: {desc}")
-
-        # 根据 context_keywords 匹配聊天记录和思考过程
-        combined_text = chat_history
-        if reasoning_content:
-            combined_text += "\n" + reasoning_content
-
-        matched_stickers = await self._match_stickers_by_context(combined_text, exclude_ids=seen_ids)
-        for sticker in matched_stickers:
-            if sticker.id not in seen_ids:
-                seen_ids.add(sticker.id)
-                desc = sticker.description
-                recommendations.append(f"{sticker.id}: {desc}")
-
-        # 限制推荐数量
-        return recommendations[:10]
-
-    def _extract_mood_from_reasoning(self, reasoning_content: Optional[str]) -> Optional[str]:
-        """
-        从思考过程中提取心情
-
-        Args:
-            reasoning_content: LLM 输出的思考过程内容
-
-        Returns:
-            提取的心情字符串，如果未找到返回 None
-        """
-        if not reasoning_content:
-            return None
-
-        # 匹配 "- 心情: XXX" 格式
-        mood_pattern = r"-\s*心情[:：]\s*(.+?)(?:\n|$)"
-        match = re.search(mood_pattern, reasoning_content)
-        if match:
-            mood = match.group(1).strip()
-            # 清理可能的括号内容，如 "很高兴（因为...）" -> "很高兴"
-            mood = re.sub(r"[（(].+?[）)]", "", mood).strip()
-            return mood
-
-        return None
-
-    async def _match_stickers_by_context(self, text: str, exclude_ids: set[int], limit: int = 5) -> list:
-        """
-        根据上下文关键词匹配表情包
-
-        Args:
-            text: 要匹配的文本（聊天记录 + 思考过程）
-            exclude_ids: 要排除的表情包 ID 集合
-            limit: 返回的最大数量
-
-        Returns:
-            匹配的 Sticker 对象列表
-        """
-        from nonebot_plugin_orm import get_session
-        from sqlalchemy import select
-        from ..models import Sticker
-
-        matched: list = []
-
-        async with get_session() as session:
-            # 获取所有有 context_keywords 的表情包
-            stmt = select(Sticker).where(Sticker.context_keywords.isnot(None))
-            result = await session.scalars(stmt)
-            stickers = list(result.all())
-
-            for sticker in stickers:
-                if sticker.id in exclude_ids:
-                    continue
-
-                # 解析 context_keywords JSON
-                try:
-                    keywords = json.loads(sticker.context_keywords) if sticker.context_keywords else []
-                except json.JSONDecodeError:
-                    continue
-
-                # 检查关键词是否出现在文本中
-                for keyword in keywords:
-                    if keyword and keyword in text:
-                        matched.append(sticker)
-                        break
-
-                if len(matched) >= limit:
-                    break
-
-        return matched
 
     def __init__(self, session: "GroupSession"):
         self.openai_messages = MessageQueue(self, 50)
@@ -516,10 +396,6 @@ class MessageProcessor:
         ]
         # Add sticker tools
         self.functions.extend(get_sticker_tools(self.session))
-
-        # Add VM tools if configured
-        if is_vm_configured():
-            self.functions.extend(get_vm_tools())
 
         if self.session.can_send_poke():
             self.functions.append(
@@ -750,7 +626,37 @@ class MessageProcessor:
                     )
         return profiles
 
-    async def generate_system_prompt(self, reasoning_content: Optional[str] = None) -> OpenAIMessage:
+    async def generate_sticker_recommendations(self, reasoning_text: str) -> AsyncGenerator[str, None]:
+        """
+        根据聊天记录的上下文关键词获取表情包推荐
+
+        Returns:
+            推荐的表情包列表（格式为 "ID: 描述"）
+        """
+        chat_history = "\n".join(self.get_message_content_list())
+        async with get_session() as session:
+            results = await session.scalars(select(Sticker).where(
+                Sticker.context_keywords.isnot(None),
+                Sticker.emotion.isnot(None),
+                Sticker.labels.isnot(None)
+            ))
+            for sticker in results:
+                if sticker.emotion and sticker.emotion in reasoning_text:
+                    yield f"- {sticker.id}: {sticker.description}"
+                    break
+                for keyword in json.loads(sticker.context_keywords or "[]"):
+                    if keyword in chat_history:
+                        yield f"- {sticker.id}: {sticker.description}"
+                        break
+                for label in json.loads(sticker.labels or "[]"):
+                    if label in chat_history or label in reasoning_text:
+                        yield f"- {sticker.id}: {sticker.description}"
+                        break
+        
+    async def get_sticker_recommendations(self, reasoning_text: str) -> list[str]:
+        return [sticker async for sticker in self.generate_sticker_recommendations(reasoning_text)]
+
+    async def generate_system_prompt(self) -> OpenAIMessage:
         chat_history = "\n".join(self.get_message_content_list())
         # 获取相关笔记
         note_manager = await get_context_notes(self.session.group_id)
@@ -769,12 +675,6 @@ class MessageProcessor:
             created_time = datetime.fromtimestamp(note.created_time).strftime("%y-%m-%d")
             return f"- {note.content} (#{note.id}，创建于 {created_time})"
 
-        # 获取表情包推荐
-        sticker_recommendations = await self.get_sticker_recommendations(reasoning_content)
-        sticker_text = (
-            "\n".join([f"- {rec}" for rec in sticker_recommendations]) if sticker_recommendations else "暂无推荐"
-        )
-
         return generate_message(
             await lang.text(
                 "prompt_group.default",
@@ -788,7 +688,6 @@ class MessageProcessor:
                     else "暂无"
                 ),
                 profiles_text,
-                sticker_text,
             ),
             "system",
         )
