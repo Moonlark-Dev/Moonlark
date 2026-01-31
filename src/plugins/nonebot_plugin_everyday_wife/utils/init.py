@@ -85,6 +85,54 @@ async def get_available_members(group_id: str, members: list[str], exclude_user:
     return available_members
 
 
+async def pre_match_moonlark(group_id: str, members: list[str]) -> None:
+    """
+    为群内的 Moonlark 机器人进行预匹配
+    
+    从可用的好感度足够的用户中随机选择一个与每个未匹配的 Moonlark 进行匹配。
+    这个函数应该在每次用户请求匹配前调用，以确保 Moonlark 优先被好感度足够的用户匹配。
+    
+    Args:
+        group_id: 群组 ID
+        members: 所有群成员列表
+    """
+    moonlark_bot_ids = get_moonlark_bot_ids()
+    
+    # 获取群内所有可用的 Moonlark 机器人
+    available_moonlarks = []
+    for bot_id in moonlark_bot_ids:
+        if bot_id in members:
+            # 检查该 Moonlark 是否已被匹配
+            available = await get_available_members(group_id, [bot_id])
+            if available:
+                available_moonlarks.append(bot_id)
+    
+    if not available_moonlarks:
+        return
+    
+    # 获取可用于匹配 Moonlark 的成员（好感度足够且未被匹配）
+    all_available = await get_available_members(group_id, members)
+    
+    # 筛选出好感度足够的非 Moonlark 用户
+    eligible_users = []
+    for user_id in all_available:
+        if user_id in moonlark_bot_ids:
+            continue
+        if await can_match_moonlark(user_id):
+            eligible_users.append(user_id)
+    
+    # 为每个未匹配的 Moonlark 分配一个好感度足够的用户
+    for moonlark_id in available_moonlarks:
+        if not eligible_users:
+            break
+        
+        # 随机选择一个用户与 Moonlark 匹配
+        selected_user = random.choice(eligible_users)
+        eligible_users.remove(selected_user)
+        
+        await marry((moonlark_id, selected_user), group_id)
+
+
 async def match_user_with_available(
     caller_id: str, 
     group_id: str, 
@@ -92,6 +140,10 @@ async def match_user_with_available(
 ) -> Optional[str]:
     """
     为调用者从可用成员中匹配一个对象
+    
+    匹配逻辑：
+    1. 首先进行 Moonlark 预匹配（确保好感度足够的用户有机会匹配 Moonlark）
+    2. 然后从剩余可用成员中随机选择一个与调用者匹配
     
     Args:
         caller_id: 调用者的 platform_user_id
@@ -101,8 +153,8 @@ async def match_user_with_available(
     Returns:
         匹配到的成员 ID，如果无可用成员则返回 None
     """
-    moonlark_bot_ids = get_moonlark_bot_ids()
-    caller_can_match_moonlark = await can_match_moonlark(caller_id)
+    # 先进行 Moonlark 预匹配
+    await pre_match_moonlark(group_id, members)
     
     # 获取可用成员（排除调用者自己）
     available = await get_available_members(group_id, members, exclude_user=caller_id)
@@ -110,25 +162,8 @@ async def match_user_with_available(
     if not available:
         return None
     
-    # 根据调用者的好感度筛选可匹配的成员
-    if caller_can_match_moonlark:
-        # 调用者可以匹配任何人（包括 Moonlark）
-        matchable = available
-    else:
-        # 调用者不能匹配 Moonlark，也不能匹配好感度足够的用户（因为那些用户可能要匹配 Moonlark）
-        # 但是可以匹配其他好感度不足的用户
-        matchable = []
-        for member_id in available:
-            if member_id in moonlark_bot_ids:
-                continue
-            # 好感度不足的用户可以互相匹配
-            matchable.append(member_id)
-    
-    if not matchable:
-        return None
-    
     # 随机选择一个成员进行匹配
-    selected = random.choice(matchable)
+    selected = random.choice(available)
     
     # 执行匹配
     await marry((caller_id, selected), group_id)
