@@ -41,7 +41,7 @@ class MessageParser:
                 return f"[图片({image_id}): {description}]"
             else:
                 return f"[图片: {description}]"
-        elif isinstance(segment, Reply) and segment.msg is not None:
+        elif isinstance(segment, Reply) and (segment.msg is not None or segment.id is not None):
             return await self.parse_reply(segment)
         elif isinstance(segment, Reference) and isinstance(self.bot, OneBotV11Bot) and segment.id is not None:
             return await self.parse_forawrd_message(segment.id)
@@ -85,9 +85,17 @@ class MessageParser:
         if isinstance(segment.msg, UniMessage):
             return f"[回复: {await parse_message_to_string(segment.msg, self.event, self.bot, self.state)}]"
         elif isinstance(segment.msg, Message):
-            return f"[回复: {await parse_message_to_string(UniMessage.generate_without_reply(message=segment.msg), self.event, self.bot, self.state)}]"
-        else:
+            message = UniMessage.of(segment.msg, self.bot)
+            await message.attach_reply(self.event, self.bot)
+            return f"[回复: {await parse_message_to_string(message, self.event, self.bot, self.state)}]"
+        elif segment.msg is not None:
             return f"[回复: {segment.msg}]"
+        elif isinstance(self.bot, OneBotV11Bot):
+            result = await self.bot.get_msg(message_id=int(segment.id))
+            message = await parse_message_to_string(await parse_dict_message(result['message'], self.bot, self.event), self.event, self.bot, self.state)
+            return f"[回复: {message}]"
+        else:
+            return "[回复: 消息获取失败]"
 
 async def parse_dict_message(dict_message: list[dict], bot: Bot, event: Optional[Event] = None) -> UniMessage:
     ob11_message = OneBotV11Message()
