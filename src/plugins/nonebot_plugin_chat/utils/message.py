@@ -89,7 +89,7 @@ class MessageParser:
         elif isinstance(segment.msg, Message):
             message = UniMessage.of(message=segment.msg, bot=self.bot)
             
-            await message.attach_reply(self.event, self.bot)
+            # await message.attach_reply(self.event, self.bot)
             logger.info(f"Reply UniMessage: {message=}")
             return f"[回复: {await parse_message_to_string(message, self.event, self.bot, self.state)}]"
         elif segment.msg is not None:
