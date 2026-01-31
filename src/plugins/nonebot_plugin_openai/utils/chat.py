@@ -53,10 +53,13 @@ class ReplaceResponseStrategy(TypedDict):
     strategy: Literal["replace"]
     choice: Choice
 
+
 class StopSessionStrategy(TypedDict):
     strategy: Literal["throw"]
 
+
 TimeoutStrategy = ReplaceResponseStrategy | StopSessionStrategy
+
 
 class LLMRequestSession:
 
@@ -197,8 +200,6 @@ class MessageFetcher:
         )
         self.record_timeout = record_timeout
 
-    
-
     @classmethod
     async def create(
         cls,
@@ -263,12 +264,11 @@ class MessageFetcher:
 async def record_default_model_timeout() -> None:
     """
     记录默认模型超时事件
-    
+
     当主模型在一小时内触发超时超过 2 次时，
     将主模型临时替换为 identify 为 Backup 的模型，持续 1 小时。
     """
     await record_timeout_and_check_backup()
-
 
 
 async def fetch_message(
