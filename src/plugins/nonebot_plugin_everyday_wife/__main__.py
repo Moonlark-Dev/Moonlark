@@ -134,7 +134,7 @@ async def _(
     query.queried = True
     await post_group_event(
         group_id,
-        await lang.text("chat_event.matched", user_id, await get_nickname(user_id, bot, event), await get_nickname(user_id, bot, event)),
+        await lang.text("chat_event.matched", user_id, await get_nickname(user_id, bot, event), await get_nickname(query.wife_id, bot, event)),
         "none"
     )
     await session.commit()
