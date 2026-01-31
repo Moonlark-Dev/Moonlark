@@ -23,3 +23,4 @@ template:
   unregistered: 未注册用户无法参与排名
   title: 今日幸运星
 forward: 领先 {}% 的用户
+chat_event: '{} 在今日运势中得到了: {}/100'
