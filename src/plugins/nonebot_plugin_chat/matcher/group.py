@@ -19,6 +19,7 @@ import copy
 import math
 import json
 import re
+from click import group
 from nonebot_plugin_alconna import get_message_id
 import random
 import asyncio
@@ -30,6 +31,7 @@ from typing import AsyncGenerator, Literal, TypedDict, Optional, Any
 from nonebot_plugin_apscheduler import scheduler
 from nonebot_plugin_alconna import UniMessage, Target, get_target
 from nonebot_plugin_chat.utils.ai_agent import AskAISession
+from nonebot_plugin_chat.utils.message import parse_dict_message
 from nonebot_plugin_chat.utils.sticker_manager import get_sticker_manager
 from nonebot_plugin_larkuser import get_nickname
 
@@ -569,7 +571,7 @@ class MessageProcessor:
         delta_content = f"[{datetime.now().strftime('%H:%M:%S')}]: 当前群聊已经冷群了 {min_str} 分钟。"
         self.openai_messages.append_user_message(delta_content)
         if not self.blocked:
-            asyncio.create_task(self.generate_reply())
+            await self.generate_reply()
             self.blocked = True  # 再次收到消息后才会解锁
 
     async def leave_for_a_while(self) -> None:
@@ -649,10 +651,10 @@ class MessageProcessor:
         message = await self.session.format_message(message_content)
         if reply_message_id:
             message = message.reply(reply_message_id)
-        await message.send(target=self.session.target, bot=self.session.bot)
+        receipt = await message.send(target=self.session.target, bot=self.session.bot)
         self.session.accumulated_text_length = 0
-
-        response = "消息发送成功。\n"
+        message_id = receipt.msg_ids[0] if receipt.msg_ids else None
+        response = f"消息发送成功(消息ID: {message_id})。\n"
         if self.openai_messages.consecutive_bot_messages == 1:
             sticker_recommendations = "\n".join(
                 await self.get_sticker_recommendations(self.openai_messages.cached_reasoning_content)
@@ -817,6 +819,12 @@ class MessageProcessor:
             self.openai_messages.append_user_message(
                 f"[{datetime.now().strftime('%H:%M:%S')}]: {operator_name} 戳了戳 {target_name}。"
             )
+    
+    async def handle_reaction(self, message_string: str, operator_name: str, emoji_id: str) -> None:
+        self.openai_messages.append_user_message(
+            f"[{datetime.now().strftime('%H:%M:%S')}]: {operator_name} 回应了你的消息“{message_string}”: {QQ_EMOJI_MAP[emoji_id]}"
+        )
+        await self.generate_reply(False)
 
 
 from nonebot_plugin_ghot.function import get_group_hot_score
@@ -1269,3 +1277,27 @@ async def _(
     session = groups[moonlark_group_id]
     nickname = await get_nickname(user_id, bot, event)
     await session.handle_poke(event, nickname)
+
+from nonebot.adapters.onebot.v11 import NoticeEvent
+
+async def group_msg_emoji_like(event: NoticeEvent) -> bool:
+    return event.notice_type == "group_msg_emoji_like"
+
+@on_notice(rule=group_msg_emoji_like).handle()
+async def _(event: NoticeEvent, bot: OB11Bot, state: T_State, group_id: str = get_group_id(), user_id: str = get_user_id()) -> None:
+    if group_id not in groups:
+        return
+    event_dict = event.model_dump()
+    session = groups[group_id]
+    message = await parse_message_to_string(
+        await parse_dict_message(
+            (await bot.get_msg(message_id=event_dict["message_id"]))["message"],
+            bot,
+            event
+        ),
+        event,
+        bot,
+        state
+    )
+    operator_nickname = await get_nickname(user_id, bot, event)
+    await session.processor.handle_reaction(message, operator_nickname, event_dict["likes"][0]["emoji_id"])

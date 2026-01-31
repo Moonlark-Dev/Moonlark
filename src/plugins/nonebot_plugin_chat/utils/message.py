@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Optional
 from nonebot.adapters import Bot
 from nonebot.adapters import Event
 from nonebot.typing import T_State
@@ -69,10 +70,7 @@ class MessageParser:
         return "\n".join(message_list)
 
     async def get_parsed_message(self, node_message: list[dict]) -> str:
-        ob11_message = OneBotV11Message()
-        for segment in node_message:
-            ob11_message.append(OneBotV11Segment(**segment))
-        uni_message = UniMessage.of(message=ob11_message, bot=self.bot)
+        uni_message = await parse_dict_message(node_message, self.bot, self.event)
         return await parse_message_to_string(uni_message, self.event, self.bot, self.state)
 
     async def parse_mention(self, segment: At) -> str:
@@ -91,6 +89,14 @@ class MessageParser:
         else:
             return f"[回复: {segment.msg}]"
 
+async def parse_dict_message(dict_message: list[dict], bot: Bot, event: Optional[Event] = None) -> UniMessage:
+    ob11_message = OneBotV11Message()
+    for segment in dict_message:
+        ob11_message.append(OneBotV11Segment(**segment))
+    uni_message = UniMessage.of(message=ob11_message, bot=bot)
+    if event:
+        await uni_message.attach_reply(event, bot)
+    return uni_message
 
 async def parse_message_to_string(message: UniMessage, event: Event, bot: Bot, state: T_State) -> str:
     parser = MessageParser(message, event, bot, state)
