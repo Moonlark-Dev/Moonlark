@@ -1465,6 +1465,12 @@ async def _(event: NoticeEvent, bot: OB11Bot, platform_id: str = get_group_id(),
         bot,
         {}
     )
-    operator_nickname = await get_nickname(user_id, bot, event)
-    logger.debug(f"emoji like: {message} {operator_nickname}")
-    await session.processor.handle_reaction(message, operator_nickname, event_dict["likes"][0]["emoji_id"])
+    user = await get_user(user_id)
+    if user.has_nickname():
+        operator_nickname = user.nickname
+    else:
+        user_info = await bot.get_group_member_info(group_id=event_dict["group_id"], user_id=int(user_id))
+        operator_nickname = user_info["card"] or user_info["nickname"]
+    emoji_id = event_dict["likes"][0]["emoji_id"]
+    logger.debug(f"emoji like: {emoji_id} {message} {operator_nickname}")
+    await session.processor.handle_reaction(message, operator_nickname, emoji_id)
