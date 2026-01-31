@@ -1448,12 +1448,14 @@ async def group_msg_emoji_like(event: NoticeEvent) -> bool:
     return event.notice_type == "group_msg_emoji_like"
 
 @on_notice(rule=group_msg_emoji_like).handle()
-async def _(event: NoticeEvent, bot: OB11Bot, state: T_State, group_id: str = get_group_id()) -> None:
+async def _(event: NoticeEvent, bot: OB11Bot, state: T_State) -> None:
+    event_dict = event.model_dump()
+    group_id = f'qq_{event_dict["group_id"]}'
     if group_id not in groups:
         return
-    event_dict = event.model_dump()
     session = groups[group_id]
     user_id = event_dict["user_id"]
+    
     message = await parse_message_to_string(
         await parse_dict_message(
             (await bot.get_msg(message_id=event_dict["message_id"]))["message"],
