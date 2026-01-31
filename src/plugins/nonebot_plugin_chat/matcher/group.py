@@ -1450,7 +1450,7 @@ async def group_msg_emoji_like(event: NoticeEvent) -> bool:
     return result
 
 @on_notice(rule=group_msg_emoji_like, block=False).handle()
-async def _(event: NoticeEvent, bot: OB11Bot, state: T_State) -> None:
+async def _(event: NoticeEvent, bot: OB11Bot) -> None:
     event_dict = event.model_dump()
     group_id = f'qq_{event_dict["group_id"]}'
     if group_id not in groups:
@@ -1466,7 +1466,7 @@ async def _(event: NoticeEvent, bot: OB11Bot, state: T_State) -> None:
         ),
         event,
         bot,
-        state
+        {}
     )
     operator_nickname = await get_nickname(user_id, bot, event)
     logger.info(f"emoji like: {message} {operator_nickname}")
