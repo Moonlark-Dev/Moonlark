@@ -5,6 +5,7 @@ from nonebot.matcher import Matcher, matchers
 from nonebot.message import run_preprocessor
 from nonebot.params import Depends
 from nonebot_plugin_alconna import MsgTarget, UniMessage
+from nonebot_plugin_larkutils.subaccount import get_main_account
 from nonebot_plugin_orm import get_session
 from sqlalchemy import select
 
@@ -75,8 +76,12 @@ async def check_access(matcher: Matcher, event: Event, subject_list: list[str] =
 
 
 @run_preprocessor
-async def handler(user_id: str = get_user_id(), result: bool = Depends(check_access)) -> None:
+async def handler(event: Event, result: bool = Depends(check_access)) -> None:
     if config.access_fallback and not result:
-        await UniMessage().text(await lang.text("access.failed", user_id)).send()
+        try:
+            user_id = await get_main_account(event.get_user_id())
+            await UniMessage().text(await lang.text("access.failed", user_id)).send()
+        except ValueError:
+            logger.warning("权限检查反馈失败：无法从事件中获取用户ID")
     if not result:
         raise IgnoredException("权限检查不通过")
