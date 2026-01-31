@@ -1453,8 +1453,9 @@ async def group_msg_emoji_like(event: NoticeEvent) -> bool:
 async def _(event: NoticeEvent, bot: OB11Bot, group_id: str = get_group_id(), user_id: str = get_user_id()) -> None:
     logger.info("run here")
     event_dict = event.model_dump()
-    user_id = event_dict["user_id"]
     if group_id not in groups:
+
+        logger.info("group_id not in groups")
         return
     session = groups[group_id]
     message = await parse_message_to_string(
