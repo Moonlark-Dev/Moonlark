@@ -88,7 +88,7 @@ class MessageParser:
             return f"[回复: {await parse_message_to_string(segment.msg, self.event, self.bot, self.state)}]"
         elif isinstance(segment.msg, Message):
             message = UniMessage.of(message=segment.msg, bot=self.bot)
-            
+
             # await message.attach_reply(self.event, self.bot)
             logger.info(f"Reply UniMessage: {message=}")
             return f"[回复: {await parse_message_to_string(message, self.event, self.bot, self.state)}]"
@@ -96,10 +96,13 @@ class MessageParser:
             return f"[回复: {segment.msg}]"
         elif isinstance(self.bot, OneBotV11Bot):
             result = await self.bot.get_msg(message_id=int(segment.id))
-            message = await parse_message_to_string(await parse_dict_message(result['message'], self.bot), self.event, self.bot, self.state)
+            message = await parse_message_to_string(
+                await parse_dict_message(result["message"], self.bot), self.event, self.bot, self.state
+            )
             return f"[回复: {message}]"
         else:
             return "[回复: 消息获取失败]"
+
 
 async def parse_dict_message(dict_message: list[dict], bot: Bot, event: Optional[Event] = None) -> UniMessage:
     ob11_message = OneBotV11Message()
@@ -109,6 +112,7 @@ async def parse_dict_message(dict_message: list[dict], bot: Bot, event: Optional
     if event:
         await uni_message.attach_reply(event, bot)
     return uni_message
+
 
 async def parse_message_to_string(message: UniMessage, event: Event, bot: Bot, state: T_State) -> str:
     parser = MessageParser(message, event, bot, state)

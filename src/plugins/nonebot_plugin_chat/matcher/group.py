@@ -733,9 +733,7 @@ class MessageProcessor:
                     description="撤回一条消息，你只能撤回你自己发送的消息。",
                     parameters={
                         "message_id": FunctionParameter(
-                            type="integer",
-                            description="要撤回的消息的**消息 ID**。",
-                            required=True
+                            type="integer", description="要撤回的消息的**消息 ID**。", required=True
                         )
                     },
                 )
@@ -1052,7 +1050,7 @@ class MessageProcessor:
             self.openai_messages.append_user_message(
                 f"[{datetime.now().strftime('%H:%M:%S')}]: {operator_name} 戳了戳 {target_name}。"
             )
-    
+
     async def handle_reaction(self, message_string: str, operator_name: str, emoji_id: str) -> None:
         self.openai_messages.append_user_message(
             f"[{datetime.now().strftime('%H:%M:%S')}]: {operator_name} 回应了你的消息“{message_string}”: {QQ_EMOJI_MAP[emoji_id]}"
@@ -1285,6 +1283,7 @@ class GroupSession:
             return
         await self.processor.generate_reply(force_reply=trigger_mode == "all")
 
+
 from ..config import config
 
 groups: dict[str, GroupSession] = {}
@@ -1508,11 +1507,14 @@ async def _(
     nickname = await get_nickname(user_id, bot, event)
     await session.handle_poke(event, nickname)
 
+
 from nonebot.adapters.onebot.v11 import NoticeEvent
+
 
 async def group_msg_emoji_like(event: NoticeEvent) -> bool:
     logger.info(result := event.notice_type == "group_msg_emoji_like")
     return result
+
 
 @on_notice(rule=group_msg_emoji_like, block=False).handle()
 async def _(event: NoticeEvent, bot: OB11Bot, platform_id: str = get_group_id()) -> None:
@@ -1523,13 +1525,10 @@ async def _(event: NoticeEvent, bot: OB11Bot, platform_id: str = get_group_id())
         return
     session = groups[group_id]
     message = await parse_message_to_string(
-        await parse_dict_message(
-            (await bot.get_msg(message_id=event_dict["message_id"]))["message"],
-            bot
-        ),
+        await parse_dict_message((await bot.get_msg(message_id=event_dict["message_id"]))["message"], bot),
         event,
         bot,
-        {}
+        {},
     )
     user = await get_user(user_id)
     if user.has_nickname():
