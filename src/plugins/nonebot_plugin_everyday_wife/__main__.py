@@ -77,7 +77,7 @@ async def _(
         await lang.finish("unsupported", user_id)
     argv = arg_message.extract_plain_text().strip().lower()
     platform_user_id = event.get_user_id()
-    
+
     if argv == "divorce":
         await divorce(adapter_group_id, session, platform_user_id)
         await lang.finish("divorce", user_id, at_sender=True, reply_message=True)
@@ -101,15 +101,15 @@ async def _(
             )
         ),
     )
-    
+
     # 如果尚未匹配，则进行按需匹配
     if query is None:
         members = await get_group_members(bot, adapter_group_id)
         matched_id = await match_user_with_available(platform_user_id, adapter_group_id, members)
-        
+
         if matched_id is None:
             await lang.finish("unmatched", user_id, at_sender=True)
-        
+
         # 重新查询以获取新创建的匹配记录
         query = cast(
             Optional[WifeData],
@@ -121,10 +121,10 @@ async def _(
                 )
             ),
         )
-        
+
         if query is None:
             await lang.finish("unmatched", user_id, at_sender=True)
-    
+
     user_info = await get_user_info(bot, event, query.wife_id)
     message = UniMessage().text(text=await lang.text("matched", user_id)).at(user_id=query.wife_id)
     if user_info is not None and user_info.user_avatar:
@@ -134,8 +134,13 @@ async def _(
     query.queried = True
     await post_group_event(
         group_id,
-        await lang.text("chat_event.matched", user_id, await get_nickname(user_id, bot, event), await get_nickname(query.wife_id, bot, event)),
-        "none"
+        await lang.text(
+            "chat_event.matched",
+            user_id,
+            await get_nickname(user_id, bot, event),
+            await get_nickname(query.wife_id, bot, event),
+        ),
+        "none",
     )
     await session.commit()
     await matcher.finish(await message.export(), reply_message=True)

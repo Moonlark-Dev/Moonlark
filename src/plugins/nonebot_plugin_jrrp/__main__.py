@@ -19,6 +19,6 @@ async def _(bot: Bot, event: Event, user_id: str = get_user_id(), group_id: str 
     await post_group_event(
         group_id,
         await lang.text("chat_event", user_id, await get_nickname(user_id, bot, event), await get_luck_value(user_id)),
-        "probability"
+        "probability",
     )
     await jrrp.finish(await get_luck_message(user_id), at_sender=True)
