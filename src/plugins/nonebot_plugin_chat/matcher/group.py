@@ -64,10 +64,10 @@ from ..utils.tools import (
     search_abbreviation,
     get_note_poster,
     get_note_remover,
-    get_sticker_tools,
     get_vm_tools,
     is_vm_configured,
 )
+from ..utils.tools.sticker import StickerTools
 
 
 def calculate_trigger_probability(accumulated_length: int) -> float:
@@ -223,6 +223,8 @@ class MessageProcessor:
         self.interrupter = Interrupter(session)
         self.cold_until = datetime.now()
         self.blocked = False
+        self.sticker_tools = StickerTools(self.session)
+        
 
         self.functions = [
             AsyncFunction(
@@ -393,9 +395,55 @@ class MessageProcessor:
                     ),
                 },
             ),
+            AsyncFunction(
+                func=self.sticker_tools.save_sticker,
+                description=(
+                    "将当前对话中出现的一张图片收藏为表情包。\n"
+                    "**何时调用**: 当你觉得群友发的某张图片是表情包且很有趣时，可以主动收藏它。\n"
+                    "**调用建议**：积极地收藏表情包，避免你想要斗图时无图可发。\n"
+                    "**注意**: 只能收藏当前对话中出现的图片，使用消息中标注的图片 ID。\n"
+                    "**请在收藏前确定目标图片是一个表情包，而不是一个其他类型的图片，不要使用该工具收藏一些不适合作为表情包发送的截图。**"
+                ),
+                parameters={
+                    "image_id": FunctionParameter(
+                        type="string",
+                        description="要收藏的图片的临时 ID，格式如 'img_1'，从消息中的 [图片(ID:xxx): 描述] 中获取。",
+                        required=True,
+                    ),
+                },
+            ),
+            AsyncFunction(
+                func=self.sticker_tools.search_sticker,
+                description=(
+                    "从收藏的表情包库中搜索合适的表情包。\n"
+                    "**何时调用**: 当你想用表情包回复群友时，先调用此工具搜索合适的表情包。\n"
+                    "**搜索技巧**: 使用描述性的关键词，如情绪（开心、悲伤、嘲讽）、动作（大笑、哭泣）或内容。"
+                ),
+                parameters={
+                    "query": FunctionParameter(
+                        type="string",
+                        description="搜索关键词，可以是情绪、动作、内容等描述性词语，多个关键词用空格分隔。",
+                        required=True,
+                    ),
+                },
+            ),
+            AsyncFunction(
+                func=self.sticker_tools.send_sticker,
+                description=(
+                    "发送一个已收藏的表情包到群聊中。\n"
+                    "**何时调用**: 在使用 search_sticker 找到合适的表情包后，调用此工具发送。\n"
+                    "**注意**: sticker_id 必须是从 search_sticker 结果中获得的有效 ID。"
+                ),
+                parameters={
+                    "sticker_id": FunctionParameter(
+                        type="integer",
+                        description="要发送的表情包的数据库 ID，从 search_sticker 的搜索结果中获取。",
+                        required=True,
+                    ),
+                },
+            ),
         ]
-        # Add sticker tools
-        self.functions.extend(get_sticker_tools(self.session))
+        
 
         if self.session.can_send_poke():
             self.functions.append(

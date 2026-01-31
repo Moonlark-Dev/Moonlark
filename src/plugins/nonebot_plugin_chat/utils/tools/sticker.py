@@ -27,166 +27,100 @@ if TYPE_CHECKING:
     from ...matcher.group import GroupSession
 
 
-async def save_sticker_func(session: "GroupSession", image_id: str) -> str:
-    """
-    Save an image as a sticker
+class StickerTools:
+    """表情包工具类，封装表情包的保存、搜索和发送功能"""
 
-    Args:
-        session: The group session
-        image_id: Temporary image ID from the message context
+    def __init__(self, session: "GroupSession") -> None:
+        """
+        初始化表情包工具
 
-    Returns:
-        Success or error message
-    """
-    from ..sticker_manager import DuplicateStickerError, NotMemeError
+        Args:
+            session: 群聊会话对象
+        """
+        self.session = session
+        self.manager = get_sticker_manager()
 
-    # Get image data from cache
-    image_data = await get_image_by_id(image_id)
+    async def save_sticker(self, image_id: str) -> str:
+        """
+        将图片保存为表情包
 
-    if image_data is None:
-        return await lang.text("sticker.not_found", session.user_id)
+        Args:
+            image_id: 消息上下文中的临时图片 ID
 
-    # Get sticker manager and save
-    manager = get_sticker_manager()
-    try:
-        sticker = await manager.save_sticker(
-            description=image_data["description"],
-            raw=image_data["raw"],
-            group_id=session.group_id,
-        )
-        return await lang.text("sticker.saved", session.user_id, sticker.id)
-    except DuplicateStickerError as e:
-        return await lang.text("sticker.duplicate", session.user_id, e.existing_sticker.id, e.similarity)
-    except NotMemeError:
-        return await lang.text("sticker.not_meme", session.user_id)
+        Returns:
+            成功或错误消息
+        """
+        from ..sticker_manager import DuplicateStickerError, NotMemeError
+
+        # 从缓存获取图片数据
+        image_data = await get_image_by_id(image_id)
+
+        if image_data is None:
+            return await lang.text("sticker.not_found", self.session.user_id)
+
+        # 保存表情包
+        try:
+            sticker = await self.manager.save_sticker(
+                description=image_data["description"],
+                raw=image_data["raw"],
+                group_id=self.session.group_id,
+            )
+            return await lang.text("sticker.saved", self.session.user_id, sticker.id)
+        except DuplicateStickerError as e:
+            return await lang.text("sticker.duplicate", self.session.user_id, e.existing_sticker.id, e.similarity)
+        except NotMemeError:
+            return await lang.text("sticker.not_meme", self.session.user_id)
+
+    async def search_sticker(self, query: str) -> str:
+        """
+        根据描述搜索表情包
+
+        Args:
+            query: 搜索查询字符串
+
+        Returns:
+            格式化的匹配表情包列表或空消息
+        """
+        # 首先尝试 AND 匹配（所有关键词都必须匹配）
+        stickers = await self.manager.search_sticker(query, limit=5)
+
+        # 如果没有结果，尝试 OR 匹配（任一关键词匹配）
+        if not stickers:
+            stickers = await self.manager.search_sticker_any(query, limit=5)
+
+        if not stickers:
+            return await lang.text("sticker.search_empty", self.session.user_id)
+
+        # 格式化结果
+        results = []
+        for sticker in stickers:
+            desc = sticker.description
+            results.append(f"- {sticker.id}: {desc}")
+
+        return await lang.text("sticker.search_result", self.session.user_id, "\n".join(results))
+
+    async def send_sticker(self, sticker_id: int) -> str:
+        """
+        发送表情包到群聊
+
+        Args:
+            sticker_id: 要发送的表情包的数据库 ID
+
+        Returns:
+            成功或错误消息
+        """
+        sticker = await self.manager.get_sticker(sticker_id)
+
+        if sticker is None:
+            return await lang.text("sticker.id_not_found", self.session.user_id, sticker_id)
+
+        try:
+            # 创建并发送图片消息
+            message = UniMessage.image(raw=sticker.raw)
+            await message.send(target=self.session.target, bot=self.session.bot)
+            return await lang.text("sticker.sent", self.session.user_id)
+        except Exception as e:
+            return await lang.text("sticker.send_failed", self.session.user_id, str(e))
 
 
-async def search_sticker_func(session: "GroupSession", query: str) -> str:
-    """
-    Search for stickers by description
 
-    Args:
-        session: The group session
-        query: Search query string
-
-    Returns:
-        Formatted list of matching stickers or empty message
-    """
-    manager = get_sticker_manager()
-
-    # First try AND matching (all keywords must match)
-    stickers = await manager.search_sticker(query, limit=5)
-
-    # If no results, try OR matching (any keyword matches)
-    if not stickers:
-        stickers = await manager.search_sticker_any(query, limit=5)
-
-    if not stickers:
-        return await lang.text("sticker.search_empty", session.user_id)
-
-    # Format results
-    results = []
-    for sticker in stickers:
-        # Truncate description if too long
-        desc = sticker.description
-        results.append(f"- {sticker.id}: {desc}")
-
-    return await lang.text("sticker.search_result", session.user_id, "\n".join(results))
-
-
-async def send_sticker_func(session: "GroupSession", sticker_id: int) -> str:
-    """
-    Send a sticker to the group
-
-    Args:
-        session: The group session
-        sticker_id: Database ID of the sticker to send
-
-    Returns:
-        Success or error message
-    """
-    manager = get_sticker_manager()
-    sticker = await manager.get_sticker(sticker_id)
-
-    if sticker is None:
-        return await lang.text("sticker.id_not_found", session.user_id, sticker_id)
-
-    try:
-        # Create and send the image message
-        message = UniMessage.image(raw=sticker.raw)
-        await message.send(target=session.target, bot=session.bot)
-        return await lang.text("sticker.sent", session.user_id)
-    except Exception as e:
-        return await lang.text("sticker.send_failed", session.user_id, str(e))
-
-
-def get_sticker_tools(session: "GroupSession") -> List:
-    """
-    Get sticker-related tool functions for the LLM
-
-    Args:
-        session: The group session
-
-    Returns:
-        List of AsyncFunction objects for sticker tools
-    """
-    from nonebot_plugin_openai.types import AsyncFunction, FunctionParameter
-
-    async def save_sticker(image_id: str) -> str:
-        return await save_sticker_func(session, image_id)
-
-    async def search_sticker(query: str) -> str:
-        return await search_sticker_func(session, query)
-
-    async def send_sticker(sticker_id: int) -> str:
-        return await send_sticker_func(session, sticker_id)
-
-    return [
-        AsyncFunction(
-            func=save_sticker,
-            description=(
-                "将当前对话中出现的一张图片收藏为表情包。\n"
-                "**何时调用**: 当你觉得群友发的某张图片是表情包且很有趣时，可以主动收藏它。\n"
-                "**调用建议**：积极地收藏表情包，避免你想要斗图时无图可发。\n"
-                "**注意**: 只能收藏当前对话中出现的图片，使用消息中标注的图片 ID。\n"
-                "**请在收藏前确定目标图片是一个表情包，而不是一个其他类型的图片，不要使用该工具收藏一些不适合作为表情包发送的截图。**"
-            ),
-            parameters={
-                "image_id": FunctionParameter(
-                    type="string",
-                    description="要收藏的图片的临时 ID，格式如 'img_1'，从消息中的 [图片(ID:xxx): 描述] 中获取。",
-                    required=True,
-                ),
-            },
-        ),
-        AsyncFunction(
-            func=search_sticker,
-            description=(
-                "从收藏的表情包库中搜索合适的表情包。\n"
-                "**何时调用**: 当你想用表情包回复群友时，先调用此工具搜索合适的表情包。\n"
-                "**搜索技巧**: 使用描述性的关键词，如情绪（开心、悲伤、嘲讽）、动作（大笑、哭泣）或内容。"
-            ),
-            parameters={
-                "query": FunctionParameter(
-                    type="string",
-                    description="搜索关键词，可以是情绪、动作、内容等描述性词语，多个关键词用空格分隔。",
-                    required=True,
-                ),
-            },
-        ),
-        AsyncFunction(
-            func=send_sticker,
-            description=(
-                "发送一个已收藏的表情包到群聊中。\n"
-                "**何时调用**: 在使用 search_sticker 找到合适的表情包后，调用此工具发送。\n"
-                "**注意**: sticker_id 必须是从 search_sticker 结果中获得的有效 ID。"
-            ),
-            parameters={
-                "sticker_id": FunctionParameter(
-                    type="integer",
-                    description="要发送的表情包的数据库 ID，从 search_sticker 的搜索结果中获取。",
-                    required=True,
-                ),
-            },
-        ),
-    ]

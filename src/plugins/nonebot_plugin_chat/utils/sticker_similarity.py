@@ -21,7 +21,7 @@ from typing import Optional, Tuple
 
 import imagehash
 from PIL import Image
-from nonebot_plugin_orm import async_scoped_session
+from nonebot_plugin_orm import AsyncSession, async_scoped_session
 from sqlalchemy import select
 
 from ..models import Sticker
@@ -73,7 +73,7 @@ def compare_hash(hash1: str, hash2: str) -> float:
 
 
 async def check_sticker_duplicate(
-    image_data: bytes, session: async_scoped_session, similarity_threshold: float = 0.98
+    image_data: bytes, session: async_scoped_session | AsyncSession, similarity_threshold: float = 0.98
 ) -> Tuple[bool, Optional[Sticker], float]:
     """
     检查表情包是否与已存在的表情包重复
