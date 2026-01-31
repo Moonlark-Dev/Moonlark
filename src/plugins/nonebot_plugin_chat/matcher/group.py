@@ -597,7 +597,9 @@ class MessageProcessor:
 
         response = "消息发送成功。\n"
         if self.openai_messages.consecutive_bot_messages == 1:
-            sticker_recommendations = "\n".join(await self.get_sticker_recommendations(self.openai_messages.cached_reasoning_content))
+            sticker_recommendations = "\n".join(
+                await self.get_sticker_recommendations(self.openai_messages.cached_reasoning_content)
+            )
             if sticker_recommendations:
                 response += f"### 表情包推荐\n{sticker_recommendations}"
         return response
