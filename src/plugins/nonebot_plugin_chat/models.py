@@ -49,3 +49,12 @@ class Sticker(Model):
     emotion: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)  # 表情包表达的情绪
     labels: Mapped[Optional[str]] = mapped_column(Text(), nullable=True)  # 表情包标签（JSON 数组）
     context_keywords: Mapped[Optional[str]] = mapped_column(Text(), nullable=True)  # 适用语境关键词（JSON 数组）
+
+
+class MessageQueueCache(Model):
+    """消息队列缓存，用于持久化 OpenAI 消息历史以便重启后恢复"""
+
+    group_id: Mapped[str] = mapped_column(String(128), primary_key=True)  # 群组 ID，主键确保每个群组只有一条记录
+    messages_json: Mapped[str] = mapped_column(Text())  # JSON 序列化的消息列表
+    consecutive_bot_messages: Mapped[int] = mapped_column(Integer(), default=0)  # 连续 bot 消息计数
+    updated_time: Mapped[float] = mapped_column(Float())  # 最后更新时间戳

@@ -19,7 +19,6 @@ import copy
 import math
 import json
 import re
-from click import group
 from nonebot_plugin_alconna import get_message_id
 import random
 import asyncio
@@ -59,7 +58,7 @@ from sqlalchemy import select
 
 from ..lang import lang
 from ..utils.note_manager import get_context_notes
-from ..models import ChatGroup, Sticker, UserProfile
+from ..models import ChatGroup, Sticker, UserProfile, MessageQueueCache
 from ..utils import enabled_group, parse_message_to_string
 from ..utils.interrupter import Interrupter
 from ..utils.tools import (
@@ -319,6 +318,63 @@ class MessageQueue:
         self.fetcher_lock = asyncio.Lock()
         self.cached_reasoning_content = ""
         self.consecutive_bot_messages = 0  # 连续发送消息计数器
+        # 恢复完成事件，用于确保在处理消息前恢复已完成
+        self._restore_complete = asyncio.Event()
+        # 在初始化时从数据库恢复消息队列
+        asyncio.create_task(self._restore_from_db())
+
+    async def wait_for_restore(self) -> None:
+        """等待数据库恢复完成"""
+        await self._restore_complete.wait()
+
+    def _serialize_message(self, message: OpenAIMessage) -> dict:
+        """将 OpenAIMessage 序列化为可 JSON 化的字典"""
+        if isinstance(message, dict):
+            return message
+        # 如果是 Pydantic 模型或其他对象，转换为字典
+        if hasattr(message, "model_dump"):
+            return message.model_dump()
+        elif hasattr(message, "__dict__"):
+            return dict(message.__dict__)
+        else:
+            return {"content": str(message), "role": "user"}
+
+    def _serialize_messages(self) -> str:
+        """将消息列表序列化为 JSON 字符串"""
+        serialized = [self._serialize_message(msg) for msg in self.messages]
+        return json.dumps(serialized, ensure_ascii=False)
+
+    async def _restore_from_db(self) -> None:
+        """从数据库恢复消息队列"""
+        try:
+            group_id = self.processor.session.group_id
+            async with get_session() as session:
+                cache = await session.get(MessageQueueCache, {"group_id": group_id})
+                if cache:
+                    self.messages = json.loads(cache.messages_json)
+                    self.consecutive_bot_messages = cache.consecutive_bot_messages
+                    logger.info(f"已从数据库恢复群 {group_id} 的消息队列，共 {len(self.messages)} 条消息")
+        except Exception as e:
+            logger.warning(f"从数据库恢复消息队列失败: {e}")
+        finally:
+            # 无论恢复成功与否，都设置恢复完成事件
+            self._restore_complete.set()
+
+    async def save_to_db(self) -> None:
+        """将消息队列保存到数据库"""
+        try:
+            group_id = self.processor.session.group_id
+            async with get_session() as session:
+                cache = MessageQueueCache(
+                    group_id=group_id,
+                    messages_json=self._serialize_messages(),
+                    consecutive_bot_messages=self.consecutive_bot_messages,
+                    updated_time=datetime.now().timestamp(),
+                )
+                await session.merge(cache)
+                await session.commit()
+        except Exception as e:
+            logger.warning(f"保存消息队列到数据库失败: {e}")
 
     def clean_special_message(self) -> None:
         while True:
@@ -681,6 +737,8 @@ class MessageProcessor:
             return "失败：当前平台不支持发送回应。"
 
     async def loop(self) -> None:
+        # 在开始循环前等待消息队列从数据库恢复完成
+        await self.openai_messages.wait_for_restore()
         while self.enabled:
             try:
                 await self.get_message()
@@ -1144,6 +1202,8 @@ class GroupSession:
             self.llm_timers.remove(timer)
 
         if self.processor.blocked or not self.cached_messages:
+            # 即使阻塞或无缓存消息，也保存消息队列到数据库
+            await self.processor.openai_messages.save_to_db()
             return
         time_to_last_message = (dt - self.cached_messages[-1]["send_time"]).total_seconds()
         # 如果群聊冷却超过3分钟，根据累计文本长度判断是否主动发言
@@ -1151,6 +1211,9 @@ class GroupSession:
             probability = self.get_probability()
             if random.random() <= probability:
                 await self.processor.handle_group_cold(timedelta(seconds=time_to_last_message))
+
+        # 保存消息队列到数据库
+        await self.processor.openai_messages.save_to_db()
 
     async def get_cached_messages_string(self) -> str:
         messages = []
