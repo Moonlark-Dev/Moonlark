@@ -87,14 +87,15 @@ class MessageParser:
         if isinstance(segment.msg, UniMessage):
             return f"[回复: {await parse_message_to_string(segment.msg, self.event, self.bot, self.state)}]"
         elif isinstance(segment.msg, Message):
-            message = UniMessage.generate_without_reply(message=segment.msg, bot=self.bot, event=self.event)
+            message = UniMessage.of(message=segment.msg, bot=self.bot)
+            await message.attach_reply(self.event, self.bot)
             return f"[回复: {await parse_message_to_string(message, self.event, self.bot, self.state)}]"
         elif segment.msg is not None:
             return f"[回复: {segment.msg}]"
-        elif isinstance(self.bot, OneBotV11Bot):
-            result = await self.bot.get_msg(message_id=int(segment.id))
-            message = await parse_message_to_string(await parse_dict_message(result['message'], self.bot, self.event), self.event, self.bot, self.state)
-            return f"[回复: {message}]"
+        # elif isinstance(self.bot, OneBotV11Bot):
+        #     result = await self.bot.get_msg(message_id=int(segment.id))
+        #     message = await parse_message_to_string(await parse_dict_message(result['message'], self.bot, self.event), self.event, self.bot, self.state)
+        #     return f"[回复: {message}]"
         else:
             return "[回复: 消息获取失败]"
 
