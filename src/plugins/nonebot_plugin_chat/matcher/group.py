@@ -726,8 +726,28 @@ class MessageProcessor:
                     ),
                 ]
             )
+        if isinstance(self.session.bot, OB11Bot):
+            self.functions.append(
+                AsyncFunction(
+                    func=self.delete_message,
+                    description="撤回一条消息，你只能撤回你自己发送的消息。",
+                    parameters={
+                        "message_id": FunctionParameter(
+                            type="integer",
+                            description="要撤回的消息的**消息 ID**。",
+                            required=True
+                        )
+                    },
+                )
+            )
 
         asyncio.create_task(self.loop())
+
+    async def delete_message(self, message_id: int) -> str:
+        if isinstance(self.session.bot, OB11Bot):
+            await self.session.bot.delete_msg(message_id=message_id)
+            return "消息已撤回。"
+        return "当前平台不支持撤回消息。"
 
     async def send_reaction(self, message_id: str, emoji_id: str) -> str:
         if isinstance(self.session.bot, OB11Bot) and self.session.can_send_poke():
