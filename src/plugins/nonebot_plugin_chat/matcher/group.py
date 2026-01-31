@@ -463,7 +463,7 @@ class MessageProcessor:
         ]
 
         if self.session.can_send_poke():
-            emoji_id_table = ", ".join([f"{emoji}({emoji_id})" for emoji, emoji_id in QQ_EMOJI_MAP.items()])
+            emoji_id_table = ", ".join([f"{emoji}({emoji_id})" for emoji_id, emoji in QQ_EMOJI_MAP.items()])
             self.functions.extend([
                 AsyncFunction(
                     func=self.poke,
