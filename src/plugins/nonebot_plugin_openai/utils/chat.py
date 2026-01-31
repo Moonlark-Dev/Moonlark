@@ -7,13 +7,12 @@ from nonebot_plugin_larklang.__main__ import get_module_name
 import inspect
 import json
 from typing import Optional, Any, AsyncGenerator, Callable, TypeVar, cast
-from openai.types.chat import ChatCompletionMessage
 from nonebot import logger
 from openai.types.shared_params import FunctionDefinition
 from openai.types.chat import ChatCompletionToolMessageParam, ChatCompletionFunctionToolParam
 from nonebot_plugin_status_report import report_openai_history
 
-from ..types import Messages, AsyncFunction
+from ..types import Messages, AsyncFunction, Message as OpenaiMessage
 
 from ..config import config
 from .message import generate_message
@@ -79,6 +78,7 @@ class LLMRequestSession:
         }
         self.timeout_per_request = timeout_per_request
         self.timeout_response = timeout_response
+        self.insert_message_queue = []
 
     async def fetch_llm_response(self) -> AsyncGenerator[str, None]:
         while not self.stop:
@@ -110,13 +110,21 @@ class LLMRequestSession:
                 response = self.timeout_response
         logger.debug(f"{response=}\n{self.messages=}\n{self.model=}\n{self.func_list=}\n{completion=}")
         self.messages.append(response.message)
+        if response.message.content:
+            yield response.message.content
         if response.message.tool_calls:
             for request in response.message.tool_calls:
                 await self.call_function(request.id, request.function.name, json.loads(request.function.arguments))
-        if response.message.content:
-            yield response.message.content
         if response.finish_reason in ["stop", "eos"]:
             self.stop = True
+        self.messages.extend(self.insert_message_queue)
+        self.insert_message_queue.clear()
+
+    def insert_message(self, message: OpenaiMessage) -> None:
+        self.insert_message_queue.append(message)
+
+    def insert_messages(self, messages: Messages) -> None:
+        self.insert_message_queue.extend(messages)
 
     async def call_function(self, call_id: str, name: str, params: dict[str, Any]) -> None:
         if self.trigger_functions["pre_function_call"]:

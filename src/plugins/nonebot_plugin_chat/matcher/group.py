@@ -19,6 +19,7 @@ import copy
 import math
 import json
 import re
+from tkinter import messagebox
 from nonebot_plugin_alconna import get_message_id
 import random
 import asyncio
@@ -64,8 +65,6 @@ from ..utils.tools import (
     search_abbreviation,
     get_note_poster,
     get_note_remover,
-    get_vm_tools,
-    is_vm_configured,
 )
 from ..utils.tools.sticker import StickerTools
 
@@ -145,6 +144,7 @@ class MessageQueue:
         self.CONSECUTIVE_WARNING_THRESHOLD = consecutive_warning_threshold
         self.CONSECUTIVE_STOP_THRESHOLD = consecutive_stop_threshold
         self.fetcher_lock = asyncio.Lock()
+        self.cached_reasoning_content = ""
         self.consecutive_bot_messages = 0  # 连续发送消息计数器
 
     def clean_special_message(self) -> None:
@@ -177,12 +177,10 @@ class MessageQueue:
             identify="Chat",
             pre_function_call=self.processor.send_function_call_feedback,
         )
-
         async for message in fetcher.fetch_message_stream():
             logger.info(f"Moonlark 说: {message}")
-            fetcher.session.messages.extend(self.messages)
+            fetcher.session.insert_messages(self.messages)
             self.messages = []
-
         self.messages = fetcher.get_messages()
 
     def append_user_message(self, message: str) -> None:
@@ -599,7 +597,12 @@ class MessageProcessor:
             message = message.reply(reply_message_id)
         await message.send(target=self.session.target, bot=self.session.bot)
         self.session.accumulated_text_length = 0
-        return "消息发送成功"
+
+        response = "消息发送成功。\n"
+        if self.openai_messages.consecutive_bot_messages == 1:
+            sticker_recommendations = "\n".join(await self.get_sticker_recommendations(self.openai_messages.cached_reasoning_content))
+            response += f"### 表情包推荐\n{sticker_recommendations}"
+        return response
 
     def append_user_message(self, msg_str: str) -> None:
         self.openai_messages.append_user_message(msg_str)
