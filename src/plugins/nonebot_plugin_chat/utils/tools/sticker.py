@@ -121,6 +121,3 @@ class StickerTools:
             return await lang.text("sticker.sent", self.session.user_id)
         except Exception as e:
             return await lang.text("sticker.send_failed", self.session.user_id, str(e))
-
-
-
