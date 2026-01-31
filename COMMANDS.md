@@ -205,6 +205,12 @@ Moonlark 本地化设置
 
 ### 用法
 - `/calc <问题> (询问 WolframAlpha)`
+## `debate-helper`: 辩论助手
+
+分析群聊中的争议或辩论，提供客观的双方观点摘要。
+
+### 用法
+- `/debate [读取长度]`
 ## `github`: GitHub 链接解析
 
 预览 GitHub 链接内容
@@ -278,6 +284,16 @@ Linux 手册 (ManPage) 查询
 
 ### 用法
 - `/raw <文本...>`
+## `summary`: 历史消息总结
+
+使用 AI 总结群聊中的历史消息。读取长度默认为 200 条消息，最大为 270，该功能不支持 QQ 节点且需要在群聊中手动启用。
+
+### 用法
+- `/summary [读取长度] (总结历史消息)`
+- `/summary -s broadcast (广播风格总结)`
+- `/summary -s topic (话题梳理)`
+- `/summary -e|-d (功能开关)`
+- `/summary --everyday-summary <on/off> (每日总结开关)`
 ## `t`: 翻译器
 
 翻译文本（默认英到中）
@@ -321,6 +337,20 @@ Moonlark 投票
 - `/cave-s <ID> (恢复 7 天内删除的条目)`
 - `/cave-g <ID> (查看自己投稿的条目)`
 - `/cave-s (统计投稿者)`
+## `chat`: 主动水群
+
+基于 LLM 的主动水群功能，可以尝试用于活跃群气氛。（启用后将会收集、处理、并储存启用群聊的聊天记录和群员的昵称，仅支持非 QQ 官方节点）
+
+### 用法
+- `/chat switch (切换功能启用状态)`
+- `/chat on (启用功能)`
+- `/chat off (禁用功能)`
+- `/chat desire (查看触发概率信息)`
+- `/chat mute (临时禁用水群功能 15 分钟)`
+- `/chat unmute (取消临时禁用)`
+- `/chat calls (查看最近的工具调用记录)`
+- `/chat profile (查看自己的 profile)`
+- `/chat profile set <内容> (设置自己的 profile)`
 ## `email`: 邮件
 
 进入 Moonlark 邮箱
@@ -338,6 +368,12 @@ Moonlark 投票
 ### 用法
 - `/ghot (当前群聊热度分数)`
 - `/ghot history [-l] (最近的天分数历史)`
+## `neko-finder`: 找猫娘
+
+根据进 2 天的消息对群友的“猫娘指数”进行打分。
+
+### 用法
+- `/neko-finder`
 ## `online-timer`: 在线时间段
 
 查询 Moonlark 记录的群友在线时间段

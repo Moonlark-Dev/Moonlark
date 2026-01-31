@@ -9,8 +9,6 @@ from .tools import browse_webpage, web_search, request_wolfram_alpha, search_abb
 from ..lang import lang
 
 
-
-
 class AskAISession:
 
     def __init__(self, user_id: str) -> None:
@@ -90,17 +88,15 @@ class AskAISession:
         # 如果 VM 服务可用，添加 VM 相关工具
         if is_vm_available():
             self.functions.extend(get_vm_tools())
-        
 
     async def ask_ai(self, prompt: str) -> str:
         fetcher = await MessageFetcher.create(
             [
                 generate_message(await lang.text("prompt_agent.system", self.user_id, datetime.now().isoformat())),
-                generate_message(prompt, "user")
+                generate_message(prompt, "user"),
             ],
             False,
             functions=self.functions,
-            identify="Ask AI"
+            identify="Ask AI",
         )
         return await fetcher.fetch_last_message()
-    
