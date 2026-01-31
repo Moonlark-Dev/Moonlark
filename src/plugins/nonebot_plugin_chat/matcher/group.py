@@ -1433,6 +1433,7 @@ async def _(event: GroupRecallNoticeEvent, group_id: str = get_group_id()) -> No
 @on_notice(block=False).handle()
 async def _(
     event: PokeNotifyEvent,
+    bot: Bot,
     moonlark_group_id: str = get_group_id(),
     user_id: str = get_user_id(),
 ) -> None:
