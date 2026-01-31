@@ -45,63 +45,110 @@ async def can_match_moonlark(user_id: str) -> bool:
     return user.get_fav() > MOONLARK_MATCH_FAV_THRESHOLD
 
 
-async def init_group(members: list[str], group_id: str) -> None:
-    moonlark_bot_ids = get_moonlark_bot_ids()
-    unmatched_members = []
-    # 记录不满足好感度要求的用户（不能与 Moonlark 匹配）
-    low_fav_members = []
+async def get_available_members(group_id: str, members: list[str], exclude_user: Optional[str] = None) -> list[str]:
+    """
+    获取当天可用于匹配的群成员列表（尚未被匹配的成员）
+    
+    Args:
+        group_id: 群组 ID
+        members: 所有群成员列表
+        exclude_user: 需要排除的用户（通常是调用者自己）
+    
+    Returns:
+        可用于匹配的成员列表
+    """
+    available_members = []
     today = date.today()
+    
     async with get_session() as session:
         for member in members:
             user_id = str(member)
+            
+            # 排除指定用户
+            if exclude_user and user_id == exclude_user:
+                continue
+            
+            # 检查该成员今天是否已被匹配
             result = cast(
                 Optional[WifeData],
                 await session.scalar(
-                    select(WifeData).where(WifeData.group_id == group_id, WifeData.user_id == user_id)
+                    select(WifeData).where(
+                        WifeData.group_id == group_id,
+                        WifeData.user_id == user_id,
+                        WifeData.generate_date == today
+                    )
                 ),
             )
-            if result is None or result.generate_date != today:
-                # 检查是否为 Moonlark 机器人
-                if user_id in moonlark_bot_ids:
-                    unmatched_members.append(user_id)
-                elif await can_match_moonlark(user_id):
-                    unmatched_members.append(user_id)
-                else:
-                    low_fav_members.append(user_id)
+            if result is None:
+                available_members.append(user_id)
     
-    # 首先处理可以匹配 Moonlark 的用户
-    c = len(unmatched_members) // 2
-    for i in range(c):
-        couple = (
-            unmatched_members.pop(random.randint(0, len(unmatched_members) - 1)),
-            unmatched_members.pop(random.randint(0, len(unmatched_members) - 1)),
-        )
-        await marry(couple, group_id)
-    
-    # 然后处理好感度不足的用户（他们之间可以互相匹配）
-    # 将剩余的 unmatched_members（可能包含 Moonlark）中的非 Moonlark 用户也加入
-    remaining_non_moonlark = [m for m in unmatched_members if m not in moonlark_bot_ids]
-    low_fav_members.extend(remaining_non_moonlark)
-    
-    c = len(low_fav_members) // 2
-    for i in range(c):
-        couple = (
-            low_fav_members.pop(random.randint(0, len(low_fav_members) - 1)),
-            low_fav_members.pop(random.randint(0, len(low_fav_members) - 1)),
-        )
-        await marry(couple, group_id)
+    return available_members
 
 
-async def init_onebot_v11_group(bot: OneBotV11Bot, group_id: str) -> None:
+async def match_user_with_available(
+    caller_id: str, 
+    group_id: str, 
+    members: list[str]
+) -> Optional[str]:
+    """
+    为调用者从可用成员中匹配一个对象
+    
+    Args:
+        caller_id: 调用者的 platform_user_id
+        group_id: 群组 ID
+        members: 所有群成员列表
+    
+    Returns:
+        匹配到的成员 ID，如果无可用成员则返回 None
+    """
+    moonlark_bot_ids = get_moonlark_bot_ids()
+    caller_can_match_moonlark = await can_match_moonlark(caller_id)
+    
+    # 获取可用成员（排除调用者自己）
+    available = await get_available_members(group_id, members, exclude_user=caller_id)
+    
+    if not available:
+        return None
+    
+    # 根据调用者的好感度筛选可匹配的成员
+    if caller_can_match_moonlark:
+        # 调用者可以匹配任何人（包括 Moonlark）
+        matchable = available
+    else:
+        # 调用者不能匹配 Moonlark，也不能匹配好感度足够的用户（因为那些用户可能要匹配 Moonlark）
+        # 但是可以匹配其他好感度不足的用户
+        matchable = []
+        for member_id in available:
+            if member_id in moonlark_bot_ids:
+                continue
+            # 好感度不足的用户可以互相匹配
+            matchable.append(member_id)
+    
+    if not matchable:
+        return None
+    
+    # 随机选择一个成员进行匹配
+    selected = random.choice(matchable)
+    
+    # 执行匹配
+    await marry((caller_id, selected), group_id)
+    
+    return selected
+
+
+async def get_members_onebot_v11(bot: OneBotV11Bot, group_id: str) -> list[str]:
+    """获取 OneBotV11 群成员列表"""
     members = await bot.get_group_member_list(group_id=int(group_id))
-    await init_group([user["user_id"] for user in members], group_id)
+    return [str(user["user_id"]) for user in members]
 
 
-async def init_onebot_v12_group(bot: OneBotV12Bot, group_id: str) -> None:
+async def get_members_onebot_v12(bot: OneBotV12Bot, group_id: str) -> list[str]:
+    """获取 OneBotV12 群成员列表"""
     members = await bot.get_group_member_list(group_id=group_id)
-    await init_group([user["user_id"] for user in members], group_id)
+    return [str(user["user_id"]) for user in members]
 
 
-async def init_qq_group(bot: QQBot, group_id: str) -> None:
+async def get_members_qq(bot: QQBot, group_id: str) -> list[str]:
+    """获取 QQ 群成员列表"""
     members = await bot.post_group_members(group_id=group_id)
-    await init_group([user.member_openid for user in members.members], group_id)
+    return [user.member_openid for user in members.members]

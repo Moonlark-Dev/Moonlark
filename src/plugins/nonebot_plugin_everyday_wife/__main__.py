@@ -35,9 +35,25 @@ from nonebot_plugin_userinfo import get_user_info
 
 from .models import WifeData
 from .utils.control import marry, divorce, get_at_argument
-from .utils.init import init_onebot_v11_group, init_onebot_v12_group, init_qq_group
+from .utils.init import (
+    get_members_onebot_v11,
+    get_members_onebot_v12,
+    get_members_qq,
+    match_user_with_available,
+)
 
 lang = LangHelper()
+
+
+async def get_group_members(bot: Bot, group_id: str) -> list[str]:
+    """根据 Bot 类型获取群成员列表"""
+    if isinstance(bot, OneBotV11Bot):
+        return await get_members_onebot_v11(bot, group_id)
+    elif isinstance(bot, OneBotV12Bot):
+        return await get_members_onebot_v12(bot, group_id)
+    elif isinstance(bot, QQBot):
+        return await get_members_qq(bot, group_id)
+    return []
 
 
 @on_command("wife", aliases={"today-wife", "waifu"}).handle()
@@ -56,13 +72,8 @@ async def _(
     if is_c2c:
         await lang.finish("unsupported", user_id)
     argv = arg_message.extract_plain_text().strip().lower()
-    if isinstance(bot, OneBotV11Bot):
-        await init_onebot_v11_group(bot, group_id)
-    elif isinstance(bot, OneBotV12Bot):
-        await init_onebot_v12_group(bot, group_id)
-    elif isinstance(bot, QQBot):
-        await init_qq_group(bot, group_id)
     platform_user_id = event.get_user_id()
+    
     if argv == "divorce":
         await divorce(group_id, session, platform_user_id)
         await lang.finish("divorce", user_id, at_sender=True, reply_message=True)
@@ -75,6 +86,7 @@ async def _(
         await marry((platform_user_id, target), group_id)
         await lang.finish("force_success", user_id, at_sender=True, reply_message=True)
 
+    # 检查用户今天是否已有匹配
     query = cast(
         Optional[WifeData],
         await session.scalar(
@@ -85,11 +97,33 @@ async def _(
             )
         ),
     )
+    
+    # 如果尚未匹配，则进行按需匹配
     if query is None:
-        await lang.finish("unmatched", user_id, at_sender=True)
+        members = await get_group_members(bot, group_id)
+        matched_id = await match_user_with_available(platform_user_id, group_id, members)
+        
+        if matched_id is None:
+            await lang.finish("unmatched", user_id, at_sender=True)
+        
+        # 重新查询以获取新创建的匹配记录
+        query = cast(
+            Optional[WifeData],
+            await session.scalar(
+                select(WifeData).where(
+                    WifeData.user_id == platform_user_id,
+                    WifeData.group_id == group_id,
+                    WifeData.generate_date == date.today(),
+                )
+            ),
+        )
+        
+        if query is None:
+            await lang.finish("unmatched", user_id, at_sender=True)
+    
     user_info = await get_user_info(bot, event, query.wife_id)
     message = UniMessage().text(text=await lang.text("matched", user_id)).at(user_id=query.wife_id)
-    if user_info.user_avatar:
+    if user_info is not None and user_info.user_avatar:
         message = message.image(url=user_info.user_avatar.get_url())
     if query.queried:
         message = message.text(text=await lang.text("queried", user_id))
