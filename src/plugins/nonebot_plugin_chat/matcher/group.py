@@ -455,7 +455,7 @@ class MessageProcessor:
                         description="需要询问的问题，必须是一个有效的问题。",
                     ),
                 },
-            )
+            ),
         ]
 
         if self.session.can_send_poke():
