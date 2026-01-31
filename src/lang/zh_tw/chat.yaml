@@ -205,9 +205,6 @@ prompt_group:
 
     部分群友的介绍：
     {4}
-
-    表情包推荐（根据当前你的情绪或群聊中的话题筛选）：
-    {5}
   group_member_info: '* {} ({}/{})[好感:{}/{}][入群:{}] - {}'
   member_info: '* {} [好感:{}] - {}'
   user_profile_not_found: '暂无该成员的更多信息。'
@@ -367,17 +364,15 @@ command:
 help:
   details: 基于 LLM 的主动水群功能，可以尝试用于活跃群气氛。（启用后将会收集、处理、并储存启用群聊的聊天记录和群员的昵称，仅支持非 QQ 官方节点）
   description: 主动水群
-  usage1: chat switch (修改功能启用状态)
+  usage1: chat switch (切换功能启用状态)
   usage2: chat on (启用功能)
   usage3: chat off (禁用功能)
-  usage4: chat mute (临时禁用水群功能)
-  usage5: chat unmute (取消临时禁用)
-  usage6: chat reset-memory (重置储存的记忆)
-  usage7: chat note list (列出所有笔记)
-  usage8: chat note view <id> (查看指定笔记)
-  usage9: chat note delete <id> (删除指定笔记)
-  usage10: chat profile (查看自己的 profile)
-  usage11: chat profile set <内容> (设置自己的 profile)
+  usage4: chat desire (查看触发概率信息)
+  usage5: chat mute (临时禁用水群功能 15 分钟)
+  usage6: chat unmute (取消临时禁用)
+  usage7: chat calls (查看最近的工具调用记录)
+  usage8: chat profile (查看自己的 profile)
+  usage9: chat profile set <内容> (设置自己的 profile)
 profile:
   set_success: Profile 设置成功！
   review_failed: Profile 内容审核未通过：{}

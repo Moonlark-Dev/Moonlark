@@ -130,7 +130,6 @@ def get_role(message: OpenAIMessage) -> str:
 
 class MessageQueue:
 
-
     def __init__(
         self,
         processor: "MessageProcessor",
@@ -222,7 +221,6 @@ class MessageProcessor:
         self.cold_until = datetime.now()
         self.blocked = False
         self.sticker_tools = StickerTools(self.session)
-        
 
         self.functions = [
             AsyncFunction(
@@ -441,7 +439,6 @@ class MessageProcessor:
                 },
             ),
         ]
-        
 
         if self.session.can_send_poke():
             self.functions.append(
@@ -600,7 +597,9 @@ class MessageProcessor:
 
         response = "消息发送成功。\n"
         if self.openai_messages.consecutive_bot_messages == 1:
-            sticker_recommendations = "\n".join(await self.get_sticker_recommendations(self.openai_messages.cached_reasoning_content))
+            sticker_recommendations = "\n".join(
+                await self.get_sticker_recommendations(self.openai_messages.cached_reasoning_content)
+            )
             if sticker_recommendations:
                 response += f"### 表情包推荐\n{sticker_recommendations}"
         return response
@@ -687,11 +686,11 @@ class MessageProcessor:
         """
         chat_history = "\n".join(self.get_message_content_list())
         async with get_session() as session:
-            results = await session.scalars(select(Sticker).where(
-                Sticker.context_keywords.isnot(None),
-                Sticker.emotion.isnot(None),
-                Sticker.labels.isnot(None)
-            ))
+            results = await session.scalars(
+                select(Sticker).where(
+                    Sticker.context_keywords.isnot(None), Sticker.emotion.isnot(None), Sticker.labels.isnot(None)
+                )
+            )
             for sticker in results:
                 if sticker.emotion and sticker.emotion in reasoning_text:
                     yield f"- {sticker.id}: {sticker.description}"
@@ -704,7 +703,7 @@ class MessageProcessor:
                     if label in chat_history or label in reasoning_text:
                         yield f"- {sticker.id}: {sticker.description}"
                         break
-        
+
     async def get_sticker_recommendations(self, reasoning_text: str) -> list[str]:
         return [sticker async for sticker in self.generate_sticker_recommendations(reasoning_text)]
 
