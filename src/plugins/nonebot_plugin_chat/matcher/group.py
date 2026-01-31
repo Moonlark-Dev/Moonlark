@@ -1455,7 +1455,7 @@ async def _(event: NoticeEvent, bot: OB11Bot, group_id: str = get_group_id(), us
     event_dict = event.model_dump()
     if group_id not in groups:
 
-        logger.info("group_id not in groups")
+        logger.info(f"{group_id=} not in groups")
         return
     session = groups[group_id]
     message = await parse_message_to_string(
