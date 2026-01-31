@@ -41,6 +41,7 @@ from nonebot.adapters.onebot.v11 import Bot as OB11Bot
 from nonebot.adapters import Event, Bot, Message
 from nonebot.adapters.onebot.v11.event import PokeNotifyEvent
 from nonebot_plugin_larkutils import get_user_id, get_group_id
+from nonebot_plugin_larkutils.subaccount import get_main_account
 from nonebot_plugin_orm import async_scoped_session, get_session
 from nonebot.log import logger
 from nonebot_plugin_openai import generate_message
@@ -1450,9 +1451,10 @@ async def group_msg_emoji_like(event: NoticeEvent) -> bool:
     return result
 
 @on_notice(rule=group_msg_emoji_like, block=False).handle()
-async def _(event: NoticeEvent, bot: OB11Bot, platform_id: str = get_group_id(), user_id: str = get_user_id()) -> None:
+async def _(event: NoticeEvent, bot: OB11Bot, platform_id: str = get_group_id()) -> None:
     event_dict = event.model_dump()
     group_id = f"{platform_id}_{event_dict['group_id']}"
+    user_id = await get_main_account(str(event_dict["user_id"]))
     if group_id not in groups:
         return
     session = groups[group_id]
