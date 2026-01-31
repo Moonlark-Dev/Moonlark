@@ -205,12 +205,6 @@ Moonlark 本地化设置
 
 ### 用法
 - `/calc <问题> (询问 WolframAlpha)`
-## `debate-helper`: 辩论助手
-
-分析群聊中的争议或辩论，提供客观的双方观点摘要。
-
-### 用法
-- `/debate [读取长度]`
 ## `github`: GitHub 链接解析
 
 预览 GitHub 链接内容
@@ -284,16 +278,6 @@ Linux 手册 (ManPage) 查询
 
 ### 用法
 - `/raw <文本...>`
-## `summary`: 历史消息总结
-
-使用 AI 总结群聊中的历史消息。读取长度默认为 200 条消息，最大为 270，该功能不支持 QQ 节点且需要在群聊中手动启用。
-
-### 用法
-- `/summary [读取长度] (总结历史消息)`
-- `/summary -s broadcast (广播风格总结)`
-- `/summary -s topic (话题梳理)`
-- `/summary -e|-d (功能开关)`
-- `/summary --everyday-summary <on/off> (每日总结开关)`
 ## `t`: 翻译器
 
 翻译文本（默认英到中）
@@ -354,12 +338,6 @@ Moonlark 投票
 ### 用法
 - `/ghot (当前群聊热度分数)`
 - `/ghot history [-l] (最近的天分数历史)`
-## `neko-finder`: 找猫娘
-
-根据进 2 天的消息对群友的“猫娘指数”进行打分。
-
-### 用法
-- `/neko-finder`
 ## `online-timer`: 在线时间段
 
 查询 Moonlark 记录的群友在线时间段
