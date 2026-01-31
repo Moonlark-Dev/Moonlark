@@ -1064,7 +1064,6 @@ class GroupSession:
         self.tool_calls_history = []
         self.message_queue: list[tuple[UniMessage, Event, T_State, str, str, datetime, bool, str]] = []
         self.cached_messages: list[CachedMessage] = []
-        self.interest_coefficient = 1
         self.message_cache_counter = 0
         self.ghot_coefficient = 1
         self.accumulated_text_length = 0  # 累计文本长度
@@ -1084,13 +1083,6 @@ class GroupSession:
 
     def can_send_poke(self) -> bool:
         return self.bot.self_id in config.napcat_bot_ids
-
-    async def set_interest_coefficient(self, mode: Literal["low", "medium", "high"]) -> None:
-        self.interest_coefficient = {
-            "low": 0.5,
-            "medium": 1,
-            "high": 1.2,
-        }[mode]
 
     def get_probability(self, length_adjustment: int = 0, apply_ghot_coeefficient: bool = True) -> float:
         """
@@ -1282,7 +1274,6 @@ class GroupSession:
         if trigger_mode == "none":
             return
         await self.processor.generate_reply(force_reply=trigger_mode == "all")
-
 
 from ..config import config
 
