@@ -470,11 +470,6 @@ tools:
   browse: '访问了: {}'
   wolfram: '计算了: {}'
   abbreviation: '查询了缩写: {}'
-  vm:
-    create: '创建了 VM 任务: {} (命令: {})'
-    get_state: '查询了任务状态: {}'
-    send_input: '向任务 {} 发送了输入'
-    stop: '停止了任务: {}'
 
 sticker:
   saved: '表情包已保存，ID: {}'
