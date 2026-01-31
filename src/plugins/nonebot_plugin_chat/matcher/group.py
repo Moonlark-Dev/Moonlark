@@ -1459,8 +1459,7 @@ async def _(event: NoticeEvent, bot: OB11Bot, platform_id: str = get_group_id(),
     message = await parse_message_to_string(
         await parse_dict_message(
             (await bot.get_msg(message_id=event_dict["message_id"]))["message"],
-            bot,
-            event
+            bot
         ),
         event,
         bot,
