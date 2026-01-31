@@ -63,22 +63,24 @@ async def set_default_model(model: str) -> None:
 
 async def get_model_for_identify(identify: str) -> str:
     """获取指定应用的模型，如果没有特定配置则返回默认模型
-    
+
     注意：如果处于备用模式且该应用使用默认模型，则返回备用模型
     """
     data = await load_config()
-    
+
     # 如果该 identify 有特定配置，直接返回
     if identify in data["model_override"]:
         return data["model_override"][identify]
-    
+
     # 否则返回有效的默认模型（可能是备用模型）
     return await get_effective_default_model()
+
 
 async def is_default_model_for_identify(identify: str) -> bool:
     """判断指定应用的模型是否为默认模型"""
     data = await load_config()
     return data["model_override"].get(identify) is None
+
 
 async def set_model_for_identify(identify: str, model: str) -> None:
     """设置指定应用的模型"""
@@ -155,32 +157,29 @@ async def get_backup_model() -> Optional[str]:
 async def record_timeout_and_check_backup() -> bool:
     """
     记录一次超时事件，并检查是否需要切换到备用模型
-    
+
     返回 True 表示已切换到备用模型，False 表示未切换
     """
     now = datetime.now()
     state = await load_timeout_state()
-    
+
     # 如果已经在备用模式，不需要再次处理
     if state["backup_mode_until"] is not None:
         backup_until = datetime.fromisoformat(state["backup_mode_until"])
         if now < backup_until:
             logger.debug("Already in backup mode, skipping timeout record")
             return False
-    
+
     # 清理过期的超时记录（只保留窗口时间内的）
     window_start = now - timedelta(hours=config.timeout_window_hours)
-    valid_records = [
-        ts for ts in state["timeout_records"]
-        if datetime.fromisoformat(ts) > window_start
-    ]
-    
+    valid_records = [ts for ts in state["timeout_records"] if datetime.fromisoformat(ts) > window_start]
+
     # 添加新的超时记录
     valid_records.append(now.isoformat())
     state["timeout_records"] = valid_records
-    
+
     logger.info(f"Recorded timeout event, total timeouts in window: {len(valid_records)}")
-    
+
     # 检查是否超过阈值
     if len(valid_records) > config.timeout_threshold:
         # 检查是否配置了备用模型
@@ -189,19 +188,19 @@ async def record_timeout_and_check_backup() -> bool:
             logger.warning("Timeout threshold exceeded but no backup model configured")
             await save_timeout_state(state)
             return False
-        
+
         # 切换到备用模型模式
         backup_until = now + timedelta(hours=config.backup_model_duration_hours)
         state["backup_mode_until"] = backup_until.isoformat()
         state["timeout_records"] = []  # 清空记录
         await save_timeout_state(state)
-        
+
         logger.warning(
             f"Timeout threshold exceeded ({len(valid_records)} > {config.timeout_threshold}), "
             f"switching to backup model until {backup_until.isoformat()}"
         )
         return True
-    
+
     await save_timeout_state(state)
     return False
 

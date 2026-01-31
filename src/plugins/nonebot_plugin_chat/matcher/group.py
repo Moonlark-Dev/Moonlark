@@ -175,7 +175,7 @@ class MessageQueue:
             functions=self.processor.functions,
             identify="Chat",
             pre_function_call=self.processor.send_function_call_feedback,
-            timeout=90
+            timeout=90,
         )
         async for message in fetcher.fetch_message_stream():
             logger.info(f"Moonlark 说: {message}")
@@ -1059,7 +1059,6 @@ async def post_group_event(
 matcher = on_message(priority=50, rule=enabled_group, block=False)
 
 
-
 @matcher.handle()
 async def _(
     event: Event,
@@ -1081,6 +1080,7 @@ async def _(
     message = await UniMessage.of(message=platform_message, bot=bot).attach_reply(event, bot)
     nickname = await get_nickname(user_id, bot, event)
     await groups[session_id].handle_message(message, user_id, event, state, nickname, event.is_tome())
+
 
 async def group_disable(group_id: str) -> None:
     if group_id in groups:
