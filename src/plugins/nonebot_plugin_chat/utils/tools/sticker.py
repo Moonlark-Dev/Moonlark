@@ -24,13 +24,13 @@ from ..image import get_image_by_id
 from ..sticker_manager import get_sticker_manager
 
 if TYPE_CHECKING:
-    from ...matcher.group import GroupSession
+    from ...matcher.group import BaseSession
 
 
 class StickerTools:
     """表情包工具类，封装表情包的保存、搜索和发送功能"""
 
-    def __init__(self, session: "GroupSession") -> None:
+    def __init__(self, session: "BaseSession") -> None:
         """
         初始化表情包工具
 

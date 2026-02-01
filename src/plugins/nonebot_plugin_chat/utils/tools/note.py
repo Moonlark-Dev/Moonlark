@@ -25,7 +25,7 @@ from typing import TYPE_CHECKING, Awaitable, Callable, Literal, Optional, TypedD
 from ...utils.note_manager import get_context_notes
 
 if TYPE_CHECKING:
-    from ...matcher.group import GroupSession
+    from ...matcher.group import BaseSession
 
 
 class AvailableNote(TypedDict):
@@ -48,7 +48,7 @@ def decode_check_result(data: str) -> NoteCheckResult:
     return json.loads(re.sub(r"`{1,3}([a-zA-Z0-9]+)?", "", data))
 
 
-def get_note_poster(session: "GroupSession") -> Callable[[str, Optional[int], Optional[str]], Awaitable[str]]:
+def get_note_poster(session: "BaseSession") -> Callable[[str, Optional[int], Optional[str]], Awaitable[str]]:
     context_id = session.group_id
 
     async def push_note(text: str, expire_days: Optional[int] = None, keywords: Optional[str] = None) -> str:
@@ -94,7 +94,7 @@ def get_note_poster(session: "GroupSession") -> Callable[[str, Optional[int], Op
     return push_note
 
 
-def get_note_remover(session: "GroupSession") -> Callable[[int], Awaitable[str]]:
+def get_note_remover(session: "BaseSession") -> Callable[[int], Awaitable[str]]:
     context_id = session.group_id
 
     async def remove_note(note_id: int) -> str:
