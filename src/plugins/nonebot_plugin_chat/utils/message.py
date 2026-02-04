@@ -5,13 +5,12 @@ from nonebot.adapters import Bot
 from nonebot.adapters import Event
 from nonebot.typing import T_State
 from nonebot_plugin_userinfo import get_user_info
-from nonebot_plugin_alconna import Image, Segment, UniMessage, Text, At, Reply, Reference
+from nonebot_plugin_alconna import Image, Other, Segment, UniMessage, Text, At, Reply, Reference
 from nonebot_plugin_orm import get_session
 from nonebot_plugin_larkuser import get_user
 from nonebot_plugin_larkutils import get_group_id, get_user_id
 from nonebot.exception import ActionFailed
-from nonebot.adapters import Message
-
+from nonebot.adapters import Message, MessageSegment
 from nonebot.adapters.onebot.v11 import Bot as OneBotV11Bot
 from nonebot.adapters.onebot.v11 import Message as OneBotV11Message
 from nonebot.adapters.onebot.v11 import MessageSegment as OneBotV11Segment
@@ -46,8 +45,15 @@ class MessageParser:
             return await self.parse_reply(segment)
         elif isinstance(segment, Reference) and isinstance(self.bot, OneBotV11Bot) and segment.id is not None:
             return await self.parse_forawrd_message(segment.id)
+        elif isinstance(segment, Other):
+            return await self.parse_special_segment(segment.origin)
         else:
             return f"[特殊消息: {segment.dump()}]"
+
+    async def parse_special_segment(self, segment: MessageSegment) -> str:
+        if segment.type == "poke":
+            return f"[戳一戳]"
+        return f"[特殊消息: {segment}]"
 
     async def parse_forawrd_message(self, ref_id: str) -> str:
         if not isinstance(self.bot, OneBotV11Bot):

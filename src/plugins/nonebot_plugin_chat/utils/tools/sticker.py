@@ -24,13 +24,13 @@ from ..image import get_image_by_id
 from ..sticker_manager import get_sticker_manager
 
 if TYPE_CHECKING:
-    from ...matcher.group import GroupSession
+    from ...matcher.group import BaseSession
 
 
 class StickerTools:
     """表情包工具类，封装表情包的保存、搜索和发送功能"""
 
-    def __init__(self, session: "GroupSession") -> None:
+    def __init__(self, session: "BaseSession") -> None:
         """
         初始化表情包工具
 
@@ -56,20 +56,20 @@ class StickerTools:
         image_data = await get_image_by_id(image_id)
 
         if image_data is None:
-            return await lang.text("sticker.not_found", self.session.user_id)
+            return await lang.text("sticker.not_found", self.session.lang_str)
 
         # 保存表情包
         try:
             sticker = await self.manager.save_sticker(
                 description=image_data["description"],
                 raw=image_data["raw"],
-                group_id=self.session.group_id,
+                group_id=self.session.session_id,
             )
-            return await lang.text("sticker.saved", self.session.user_id, sticker.id)
+            return await lang.text("sticker.saved", self.session.lang_str, sticker.id)
         except DuplicateStickerError as e:
-            return await lang.text("sticker.duplicate", self.session.user_id, e.existing_sticker.id, e.similarity)
+            return await lang.text("sticker.duplicate", self.session.lang_str, e.existing_sticker.id, e.similarity)
         except NotMemeError:
-            return await lang.text("sticker.not_meme", self.session.user_id)
+            return await lang.text("sticker.not_meme", self.session.lang_str)
 
     async def search_sticker(self, query: str) -> str:
         """
@@ -89,7 +89,7 @@ class StickerTools:
             stickers = await self.manager.search_sticker_any(query, limit=5)
 
         if not stickers:
-            return await lang.text("sticker.search_empty", self.session.user_id)
+            return await lang.text("sticker.search_empty", self.session.lang_str)
 
         # 格式化结果
         results = []
@@ -97,7 +97,7 @@ class StickerTools:
             desc = sticker.description
             results.append(f"- {sticker.id}: {desc}")
 
-        return await lang.text("sticker.search_result", self.session.user_id, "\n".join(results))
+        return await lang.text("sticker.search_result", self.session.lang_str, "\n".join(results))
 
     async def send_sticker(self, sticker_id: int) -> str:
         """
@@ -112,12 +112,12 @@ class StickerTools:
         sticker = await self.manager.get_sticker(sticker_id)
 
         if sticker is None:
-            return await lang.text("sticker.id_not_found", self.session.user_id, sticker_id)
+            return await lang.text("sticker.id_not_found", self.session.lang_str, sticker_id)
 
         try:
             # 创建并发送图片消息
             message = UniMessage.image(raw=sticker.raw)
             await message.send(target=self.session.target, bot=self.session.bot)
-            return await lang.text("sticker.sent", self.session.user_id)
+            return await lang.text("sticker.sent", self.session.lang_str)
         except Exception as e:
-            return await lang.text("sticker.send_failed", self.session.user_id, str(e))
+            return await lang.text("sticker.send_failed", self.session.lang_str, str(e))

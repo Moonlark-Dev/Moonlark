@@ -15,6 +15,7 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
+from abc import ABC, abstractmethod
 import copy
 import math
 import json
@@ -41,6 +42,7 @@ from nonebot.adapters import Event, Bot, Message
 from nonebot.adapters.onebot.v11.event import PokeNotifyEvent
 from nonebot_plugin_larkutils import get_user_id, get_group_id
 from nonebot_plugin_larkutils.subaccount import get_main_account
+from nonebot_plugin_larkutils.user import is_private_message, private_message
 from nonebot_plugin_orm import async_scoped_session, get_session
 from nonebot.log import logger
 from nonebot_plugin_openai import generate_message
@@ -346,7 +348,7 @@ class MessageQueue:
     async def _restore_from_db(self) -> None:
         """从数据库恢复消息队列"""
         try:
-            group_id = self.processor.session.group_id
+            group_id = self.processor.session.session_id
             async with get_session() as session:
                 cache = await session.get(MessageQueueCache, {"group_id": group_id})
                 if cache:
@@ -362,7 +364,7 @@ class MessageQueue:
     async def save_to_db(self) -> None:
         """将消息队列保存到数据库"""
         try:
-            group_id = self.processor.session.group_id
+            group_id = self.processor.session.session_id
             async with get_session() as session:
                 cache = MessageQueueCache(
                     group_id=group_id,
@@ -440,13 +442,21 @@ class MessageQueue:
         self.messages.append(generate_message(warning, "user"))
 
 
+class AdapterUserInfo(TypedDict):
+    sex: Literal["male", "female", "unknown"]
+    role: Literal["member", "admin", "owner", "user"]
+    nickname: str
+    join_time: int
+    card: Optional[str]
+
+
 class MessageProcessor:
 
-    def __init__(self, session: "GroupSession"):
+    def __init__(self, session: "BaseSession"):
         self.openai_messages = MessageQueue(self, 50)
         self.session = session
         self.enabled = True
-        self.ai_agent = AskAISession(self.session.user_id)
+        self.ai_agent = AskAISession(self.session.lang_str)
         self.sticker_manager = get_sticker_manager()
         self.cold_until = datetime.now()
         self.blocked = False
@@ -686,7 +696,7 @@ class MessageProcessor:
             ),
         ]
 
-        if self.session.can_send_poke():
+        if self.session.is_napcat_bot():
             emoji_id_table = ", ".join([f"{emoji}({emoji_id})" for emoji_id, emoji in QQ_EMOJI_MAP.items()])
             self.functions.extend(
                 [
@@ -698,27 +708,6 @@ class MessageProcessor:
                                 type="string",
                                 description="被戳的群友的昵称。",
                                 required=True,
-                            ),
-                        },
-                    ),
-                    AsyncFunction(
-                        func=self.send_reaction,
-                        description=(
-                            "对一条消息添加一个表情反应。\n"
-                            "emoji_id 参数的对照表如下，文本反应内容为 QQ 的小黄脸表情（文本为“反应”的内容，括号内为对应的 emoji_id）：\n"
-                            f"{emoji_id_table}"
-                        ),
-                        parameters={
-                            "message_id": FunctionParameter(
-                                type="string",
-                                description="要添加反应的消息的**消息 ID**。",
-                                required=True,
-                            ),
-                            "emoji_id": FunctionParameterWithEnum(
-                                type="string",
-                                description="要添加的反应，为反应表情的 ID。",
-                                required=True,
-                                enum=set(QQ_EMOJI_MAP.keys()),
                             ),
                         },
                     ),
@@ -736,7 +725,30 @@ class MessageProcessor:
                     },
                 )
             )
-
+        if isinstance(self.session, GroupSession):
+            self.functions.append(
+                AsyncFunction(
+                    func=self.send_reaction,
+                    description=(
+                        "对一条消息添加一个表情反应。\n"
+                        "emoji_id 参数的对照表如下，文本反应内容为 QQ 的小黄脸表情（文本为“反应”的内容，括号内为对应的 emoji_id）：\n"
+                        f"{emoji_id_table}"
+                    ),
+                    parameters={
+                        "message_id": FunctionParameter(
+                            type="string",
+                            description="要添加反应的消息的**消息 ID**。",
+                            required=True,
+                        ),
+                        "emoji_id": FunctionParameterWithEnum(
+                            type="string",
+                            description="要添加的反应，为反应表情的 ID。",
+                            required=True,
+                            enum=set(QQ_EMOJI_MAP.keys()),
+                        ),
+                    },
+                )
+            )
         asyncio.create_task(self.loop())
 
     async def delete_message(self, message_id: int) -> str:
@@ -746,7 +758,7 @@ class MessageProcessor:
         return "当前平台不支持撤回消息。"
 
     async def send_reaction(self, message_id: str, emoji_id: str) -> str:
-        if isinstance(self.session.bot, OB11Bot) and self.session.can_send_poke():
+        if isinstance(self.session.bot, OB11Bot) and self.session.is_napcat_bot():
             await self.session.bot.call_api("set_msg_emoji_like", message_id=message_id, emoji_id=emoji_id)
             return f"已发送回应：{QQ_EMOJI_MAP.get(emoji_id)}"
         else:
@@ -837,7 +849,7 @@ class MessageProcessor:
 
     async def append_tool_call_history(self, call_string: str) -> None:
         self.session.tool_calls_history.append(
-            await lang.text("tools.template", self.session.user_id, datetime.now().strftime("%H:%M"), call_string)
+            await lang.text("tools.template", self.session.lang_str, datetime.now().strftime("%H:%M"), call_string)
         )
         self.session.tool_calls_history = self.session.tool_calls_history[-5:]
 
@@ -846,11 +858,11 @@ class MessageProcessor:
     ) -> tuple[str, str, dict[str, Any]]:
         match name:
             case "browse_webpage":
-                text = await lang.text("tools.browse", self.session.user_id, param.get("url"))
+                text = await lang.text("tools.browse", self.session.lang_str, param.get("url"))
             case "request_wolfram_alpha":
-                text = await lang.text("tools.wolfram", self.session.user_id, param.get("question"))
+                text = await lang.text("tools.wolfram", self.session.lang_str, param.get("question"))
             case "web_search":
-                text = await lang.text("tools.search", self.session.user_id, param.get("keyword"))
+                text = await lang.text("tools.search", self.session.lang_str, param.get("keyword"))
             case _:
                 return call_id, name, param
         await self.append_tool_call_history(text)
@@ -893,7 +905,7 @@ class MessageProcessor:
 
     async def process_messages(self, msg_dict: CachedMessage) -> None:
         async with get_session() as session:
-            r = await session.get(ChatGroup, {"group_id": self.session.group_id})
+            r = await session.get(ChatGroup, {"group_id": self.session.session_id})
             self.blocked = r and msg_dict["user_id"] in json.loads(r.blocked_user)
             if not self.blocked:
                 msg_str = generate_message_string(msg_dict)
@@ -922,16 +934,14 @@ class MessageProcessor:
         async with get_session() as session:
             for nickname, user_id in (await self.session._get_users_in_cached_message()).items():
                 if not (profile := await session.get(UserProfile, {"user_id": user_id})):
-                    profile = await lang.text("prompt_group.user_profile_not_found", self.session.user_id)
+                    profile = await lang.text("prompt_group.user_profile_not_found", self.session.lang_str)
                     is_profile_found = False
                 else:
                     profile = profile.profile_content
                     is_profile_found = True
                 if isinstance(self.session.bot, OB11Bot):
                     try:
-                        member_info = await self.session.bot.get_group_member_info(
-                            group_id=int(self.session.adapter_group_id), user_id=int(user_id)
-                        )
+                        member_info = await self.session.get_user_info(user_id)
                     except Exception as e:
                         member_info = None
                 else:
@@ -943,7 +953,7 @@ class MessageProcessor:
                     profiles.append(
                         await lang.text(
                             "prompt_group.group_member_info",
-                            self.session.user_id,
+                            self.session.lang_str,
                             nickname,
                             member_info["role"],
                             member_info["sex"],
@@ -956,7 +966,7 @@ class MessageProcessor:
                 elif fav > 0 or is_profile_found:
                     profiles.append(
                         await lang.text(
-                            "prompt_group.member_info", self.session.user_id, nickname, fav, fav_level, profile
+                            "prompt_group.member_info", self.session.lang_str, nickname, fav, fav_level, profile
                         )
                     )
         return profiles
@@ -994,7 +1004,7 @@ class MessageProcessor:
     async def generate_system_prompt(self) -> OpenAIMessage:
         chat_history = "\n".join(self.get_message_content_list())
         # 获取相关笔记
-        note_manager = await get_context_notes(self.session.group_id)
+        note_manager = await get_context_notes(self.session.session_id)
         notes, notes_from_other_group = await note_manager.filter_note(chat_history)
 
         # 获取用户 profile 信息
@@ -1013,10 +1023,10 @@ class MessageProcessor:
         return generate_message(
             await lang.text(
                 "prompt_group.default",
-                self.session.user_id,
+                self.session.lang_str,
                 "\n".join([format_note(note) for note in notes]) if notes else "暂无",
                 datetime.now().isoformat(),
-                self.session.group_name,
+                self.session.session_name,
                 (
                     "\n".join([format_note(note) for note in notes_from_other_group])
                     if notes_from_other_group
@@ -1055,14 +1065,13 @@ class MessageProcessor:
 from nonebot_plugin_ghot.function import get_group_hot_score
 
 
-class GroupSession:
+class BaseSession(ABC):
 
-    def __init__(self, group_id: str, bot: Bot, target: Target, lang_name: str = "zh_hans") -> None:
-        self.group_id = group_id
-        self.adapter_group_id = target.id
+    def __init__(self, session_id: str, bot: Bot, target: Target, lang_str: str = f"mlsid::--lang=zh_hans") -> None:
+        self.session_id = session_id
         self.target = target
         self.bot = bot
-        self.user_id = f"mlsid::--lang={lang_name}"
+        self.lang_str = lang_str
         self.tool_calls_history = []
         self.message_queue: list[tuple[UniMessage, Event, T_State, str, str, datetime, bool, str]] = []
         self.cached_messages: list[CachedMessage] = []
@@ -1074,17 +1083,21 @@ class GroupSession:
         self.group_users: dict[str, str] = {}
         self.setup_time = datetime.now()
         self.user_counter: dict[datetime, set[str]] = {}
-        self.group_name = "未命名群聊"
+        self.session_name = "未命名会话"
         self.llm_timers = []  # 定时器列表
         self.processor = MessageProcessor(self)
-        asyncio.create_task(self.setup_group_name())
-        asyncio.create_task(self.calculate_ghot_coefficient())
 
+    @abstractmethod
+    async def setup(self) -> None:
+        pass
+
+    @abstractmethod
+    def is_napcat_bot(self) -> bool:
+        pass
+
+    @abstractmethod
     async def send_poke(self, target_id: str) -> None:
-        await self.bot.call_api("group_poke", group_id=int(self.adapter_group_id), user_id=int(target_id))
-
-    def can_send_poke(self) -> bool:
-        return self.bot.self_id in config.napcat_bot_ids
+        pass
 
     def get_probability(self, length_adjustment: int = 0, apply_ghot_coeefficient: bool = True) -> float:
         """
@@ -1111,14 +1124,9 @@ class GroupSession:
         # 确保概率在 0.0-1.0 之间
         return max(0.0, min(1.0, final_probability))
 
+    @abstractmethod
     async def calculate_ghot_coefficient(self) -> None:
-        self.ghot_coefficient = round(max((15 - (await get_group_hot_score(self.group_id))[2]) * 0.8, 1))
-        cached_users = set()
-        for message in self.cached_messages[:-5]:
-            if not message["self"]:
-                cached_users.add(message["user_id"])
-        if len(cached_users) <= 1:
-            self.ghot_coefficient *= 0.75
+        pass
 
     def clean_cached_message(self) -> None:
         if len(self.cached_messages) > 50:
@@ -1129,39 +1137,24 @@ class GroupSession:
         await self.calculate_ghot_coefficient()
         self.clean_cached_message()
         if self.message_cache_counter % 50 == 0:
-            await self.setup_group_name()
+            await self.setup_session_name()
 
     async def mute(self) -> None:
         self.mute_until = datetime.now() + timedelta(minutes=15)
 
-    async def setup_group_name(self) -> None:
-        if isinstance(self.bot, OB11Bot):
-            self.group_name = (await self.bot.get_group_info(group_id=int(self.adapter_group_id)))["group_name"]
+    @abstractmethod
+    async def setup_session_name(self) -> None:
+        pass
 
     async def handle_message(
         self, message: UniMessage, user_id: str, event: Event, state: T_State, nickname: str, mentioned: bool = False
     ) -> None:
         message_id = get_message_id(event)
         self.message_queue.append((message, event, state, user_id, nickname, datetime.now(), mentioned, message_id))
-        # await self.calculate_ghot_coefficient()
 
+    @abstractmethod
     async def format_message(self, origin_message: str) -> UniMessage:
-        message = re.sub(r"\[\d\d:\d\d:\d\d]\[Moonlark]\(\d+\): ?", "", origin_message)
-        message = message.strip()
-        users = await self.get_users()
-        uni_msg = UniMessage()
-        at_list = re.finditer("|".join([f"@{re.escape(user)}" for user in users.keys()]), message)
-        cursor_index = 0
-        for at in at_list:
-            uni_msg = uni_msg.text(text=message[cursor_index : at.start()])
-            at_nickname = at.group(0)[1:]
-            if user_id := users.get(at_nickname):
-                uni_msg = uni_msg.at(user_id)
-            else:
-                uni_msg = uni_msg.text(at.group(0))
-            cursor_index = at.end()
-        uni_msg = uni_msg.text(text=message[cursor_index:])
-        return uni_msg
+        pass
 
     async def _get_users_in_cached_message(self) -> dict[str, str]:
         users = {}
@@ -1170,16 +1163,18 @@ class GroupSession:
                 users[message["nickname"]] = message["user_id"]
         return users
 
+    @abstractmethod
     async def get_users(self) -> dict[str, str]:
-        cached_users = await self._get_users_in_cached_message()
-        if any([u not in self.group_users for u in cached_users.keys()]):
-            if isinstance(self.bot, OB11Bot):
-                self.group_users.clear()
-                for user in await self.bot.get_group_member_list(group_id=int(self.adapter_group_id)):
-                    self.group_users[user["nickname"]] = str(user["user_id"])
-            else:
-                self.group_users = cached_users
-        return self.group_users
+        pass
+
+    @abstractmethod
+    async def get_user_info(self, user_id: str) -> AdapterUserInfo:
+        pass
+
+    async def handle_poke(self, event: PokeNotifyEvent, nickname: str) -> None:
+        user = await get_user(str(event.target_id))
+        target_nickname = await get_nickname(user.user_id, self.bot, event)
+        await self.processor.handle_poke(nickname, target_nickname, event.is_tome())
 
     async def process_timer(self) -> None:
         dt = datetime.now()
@@ -1195,18 +1190,6 @@ class GroupSession:
         for timer in triggered_timers:
             self.llm_timers.remove(timer)
 
-        if self.processor.blocked or not self.cached_messages:
-            # 即使阻塞或无缓存消息，也保存消息队列到数据库
-            await self.processor.openai_messages.save_to_db()
-            return
-        time_to_last_message = (dt - self.cached_messages[-1]["send_time"]).total_seconds()
-        # 如果群聊冷却超过3分钟，根据累计文本长度判断是否主动发言
-        if 90 < time_to_last_message < 300 and not self.cached_messages[-1]["self"]:
-            probability = self.get_probability()
-            if random.random() <= probability:
-                await self.processor.handle_group_cold(timedelta(seconds=time_to_last_message))
-
-        # 保存消息队列到数据库
         await self.processor.openai_messages.save_to_db()
 
     async def get_cached_messages_string(self) -> str:
@@ -1216,15 +1199,6 @@ class GroupSession:
                 f"[{message['send_time'].strftime('%H:%M:%S')}][{message['nickname']}]: {message['content']}"
             )
         return "\n".join(messages)
-
-    async def handle_poke(self, event: PokeNotifyEvent, nickname: str) -> None:
-        user = await get_user(str(event.target_id))
-        if event.group_id and (isinstance(self.bot, OB11Bot) or not user.has_nickname()):
-            info = await self.bot.get_group_member_info(group_id=event.group_id, user_id=event.target_id)
-            target_nickname = info["nickname"]
-        else:
-            target_nickname = user.get_nickname()
-        await self.processor.handle_poke(nickname, target_nickname, event.is_tome())
 
     async def handle_recall(self, message_id: str) -> None:
         for message in self.cached_messages:
@@ -1250,7 +1224,7 @@ class GroupSession:
         trigger_time = now + timedelta(minutes=delay)
 
         # 生成定时器ID
-        timer_id = f"{self.group_id}_{now.timestamp()}"
+        timer_id = f"{self.session_id}_{now.timestamp()}"
 
         # 存储定时器信息
         self.llm_timers.append({"id": timer_id, "trigger_time": trigger_time, "description": description})
@@ -1278,12 +1252,148 @@ class GroupSession:
         await self.processor.generate_reply(force_reply=trigger_mode == "all")
 
 
+class PrivateSession(BaseSession):
+
+    def __init__(self, session_id: str, bot: Bot, target: Target) -> None:
+        super().__init__(session_id, bot, target, lang_str=session_id)
+        self.nickname = ""
+        self.call = "你"
+        self.user_info: AdapterUserInfo
+
+    async def setup(self) -> None:
+        await self.setup_session_name()
+
+    async def setup_session_name(self) -> None:
+        ml_user = await get_user(self.session_id)
+        if isinstance(self.bot, OB11Bot):
+            user_info = await self.bot.get_stranger_info(user_id=int(self.session_id))
+            if ml_user.has_nickname():
+                self.nickname = ml_user.get_nickname()
+            else:
+                self.nickname = user_info["nickname"]
+            self.user_info = AdapterUserInfo(
+                nickname=self.nickname, sex=user_info["sex"], role="user", join_time=0, card=None
+            )
+        else:
+            self.nickname = ml_user.get_nickname()
+            self.user_info = AdapterUserInfo(nickname=self.nickname, sex="unknown", role="user", join_time=0, card=None)
+        self.call = ml_user.get_config_key("call", self.nickname)
+        self.session_name = f"与 {self.nickname} 的私聊"
+
+    async def format_message(self, origin_message: str) -> UniMessage:
+        return UniMessage().text(text=origin_message.replace(f"@{self.nickname}", self.call))
+
+    def is_napcat_bot(self) -> bool:
+        return self.bot.self_id in config.napcat_bot_ids
+
+    async def send_poke(self, _: str) -> None:
+        if isinstance(self.bot, OB11Bot):
+            await self.bot.call_api("friend_poke", user_id=self.session_id)
+
+    async def calculate_ghot_coefficient(self) -> int:
+        self.ghot_coefficient = 100
+        return 100
+
+    async def get_user_info(self, _: str) -> AdapterUserInfo:
+        return self.user_info
+
+    async def get_users(self) -> dict[str, str]:
+        return {}
+
+
+class GroupSession(BaseSession):
+
+    async def get_user_info(self, user_id: str) -> AdapterUserInfo:
+        if isinstance(self.bot, OB11Bot):
+            member_info = await self.bot.get_group_member_info(
+                group_id=int(self.adapter_group_id), user_id=int(user_id)
+            )
+            return AdapterUserInfo(**member_info)
+        cached_users = await self.get_users()
+        if user_id in cached_users.values():
+            for nickname, uid in cached_users.items():
+                if uid == user_id:
+                    return AdapterUserInfo(nickname=nickname, sex="unknown", role="member", join_time=0, card=None)
+        return AdapterUserInfo(
+            nickname=(await get_user(user_id)).get_nickname(), sex="unknown", role="member", join_time=0, card=None
+        )
+
+    async def get_users(self) -> dict[str, str]:
+        cached_users = await self._get_users_in_cached_message()
+        if any([u not in self.group_users for u in cached_users.keys()]):
+            if isinstance(self.bot, OB11Bot):
+                self.group_users.clear()
+                for user in await self.bot.get_group_member_list(group_id=int(self.adapter_group_id)):
+                    self.group_users[user["nickname"]] = str(user["user_id"])
+            else:
+                self.group_users = cached_users
+        return self.group_users
+
+    def __init__(self, session_id: str, bot: Bot, target: Target, lang_name: str = "zh_hans") -> None:
+        lang_str = f"mlsid::--lang={lang_name}"
+        super().__init__(session_id, bot, target, lang_str)
+        self.adapter_group_id = target.id
+
+    async def setup(self) -> None:
+        await self.setup_session_name()
+        await self.calculate_ghot_coefficient()
+
+    async def send_poke(self, target_id: str) -> None:
+        await self.bot.call_api("group_poke", group_id=int(self.adapter_group_id), user_id=int(target_id))
+
+    def is_napcat_bot(self) -> bool:
+        return self.bot.self_id in config.napcat_bot_ids
+
+    async def calculate_ghot_coefficient(self) -> None:
+        self.ghot_coefficient = round(max((15 - (await get_group_hot_score(self.session_id))[2]) * 0.8, 1))
+        cached_users = set()
+        for message in self.cached_messages[:-5]:
+            if not message["self"]:
+                cached_users.add(message["user_id"])
+        if len(cached_users) <= 1:
+            self.ghot_coefficient *= 0.75
+
+    async def setup_session_name(self) -> None:
+        if isinstance(self.bot, OB11Bot):
+            self.session_name = (await self.bot.get_group_info(group_id=int(self.adapter_group_id)))["group_name"]
+
+    async def format_message(self, origin_message: str) -> UniMessage:
+        message = re.sub(r"\[\d\d:\d\d:\d\d]\[Moonlark]\(\d+\): ?", "", origin_message)
+        message = message.strip()
+        users = await self.get_users()
+        uni_msg = UniMessage()
+        at_list = re.finditer("|".join([f"@{re.escape(user)}" for user in users.keys()]), message)
+        cursor_index = 0
+        for at in at_list:
+            uni_msg = uni_msg.text(text=message[cursor_index : at.start()])
+            at_nickname = at.group(0)[1:]
+            if user_id := users.get(at_nickname):
+                uni_msg = uni_msg.at(user_id)
+            else:
+                uni_msg = uni_msg.text(at.group(0))
+            cursor_index = at.end()
+        uni_msg = uni_msg.text(text=message[cursor_index:])
+        return uni_msg
+
+    async def process_timer(self) -> None:
+        await super().process_timer()
+        dt = datetime.now()
+        if self.processor.blocked or not self.cached_messages:
+            return
+        time_to_last_message = (dt - self.cached_messages[-1]["send_time"]).total_seconds()
+        # 如果群聊冷却超过3分钟，根据累计文本长度判断是否主动发言
+        if 90 < time_to_last_message < 300 and not self.cached_messages[-1]["self"]:
+            probability = self.get_probability()
+            if random.random() <= probability:
+                await self.processor.handle_group_cold(timedelta(seconds=time_to_last_message))
+
+
 from ..config import config
 
-groups: dict[str, GroupSession] = {}
+groups: dict[str, BaseSession] = {}
 
 
-def get_group_session(group_id: str) -> GroupSession:
+def get_group_session(group_id: str) -> BaseSession:
     """
     获取指定群组的 GroupSession 对象
 
@@ -1324,12 +1434,10 @@ async def post_group_event(
         return False
 
 
-matcher = on_message(priority=50, rule=enabled_group, block=False)
-
-
-@matcher.handle()
+@on_message(priority=50, rule=enabled_group, block=False).handle()
 async def _(
     event: Event,
+    matcher: Matcher,
     bot: Bot,
     state: T_State,
     user_id: str = get_user_id(),
@@ -1339,6 +1447,7 @@ async def _(
         await matcher.finish()
     elif session_id not in groups:
         groups[session_id] = GroupSession(session_id, bot, get_target(event))
+        await groups[session_id].setup()
     elif groups[session_id].mute_until is not None:
         await matcher.finish()
     plaintext = event.get_plaintext().strip()
@@ -1348,6 +1457,32 @@ async def _(
     message = await UniMessage.of(message=platform_message, bot=bot).attach_reply(event, bot)
     nickname = await get_nickname(user_id, bot, event)
     await groups[session_id].handle_message(message, user_id, event, state, nickname, event.is_tome())
+
+
+@on_message(priority=50, rule=private_message, block=False).handle()
+async def _(
+    event: Event,
+    matcher: Matcher,
+    bot: Bot,
+    state: T_State,
+    user_id: str = get_user_id(),
+) -> None:
+    session_id = user_id
+    if isinstance(bot, BotQQ):
+        await matcher.finish()
+    elif session_id not in groups:
+        groups[session_id] = PrivateSession(session_id, bot, get_target(event))
+        await groups[session_id].setup()
+    elif groups[session_id].mute_until is not None:
+        await matcher.finish()
+    plaintext = event.get_plaintext().strip()
+    if any([plaintext.startswith(p) for p in config.command_start]):
+        # TODO 避免与 cave 冲突
+        await matcher.finish()
+    platform_message = event.get_message()
+    message = await UniMessage.of(message=platform_message, bot=bot).attach_reply(event, bot)
+    nickname = await get_nickname(user_id, bot, event)
+    await groups[session_id].handle_message(message, user_id, event, state, nickname, True)
 
 
 async def group_disable(group_id: str) -> None:
@@ -1440,7 +1575,7 @@ class CommandHandler:
             case _:
                 await lang.finish("command.no_argv", self.user_id)
 
-    async def get_group_session(self) -> GroupSession:
+    async def get_group_session(self) -> BaseSession:
         if self.group_id in groups:
             return groups[self.group_id]
         elif self.is_group_enabled():
@@ -1533,3 +1668,13 @@ async def _(event: NoticeEvent, bot: OB11Bot, platform_id: str = get_group_id())
     emoji_id = event_dict["likes"][0]["emoji_id"]
     logger.debug(f"emoji like: {emoji_id} {message} {operator_nickname}")
     await session.processor.handle_reaction(message, operator_nickname, emoji_id)
+
+
+from nonebot.adapters.onebot.v11.event import FriendRecallNoticeEvent
+
+
+@on_notice(block=False).handle()
+async def _(event: FriendRecallNoticeEvent, user_id: str = get_user_id()) -> None:
+    message_id = str(event.message_id)
+    session = groups[user_id]
+    await session.handle_recall(message_id)
