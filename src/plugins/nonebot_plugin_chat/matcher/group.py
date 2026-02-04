@@ -871,6 +871,7 @@ class MessageProcessor:
     async def send_message(self, message_content: str, reply_message_id: str | None = None) -> str:
         # 增加连续发送消息计数
         self.openai_messages.increment_bot_message_count()
+        self.session.last_activate = datetime.now()
 
         # 检查是否超过停止阈值
         if self.openai_messages.should_stop_response():
@@ -1078,11 +1079,9 @@ class BaseSession(ABC):
         self.message_cache_counter = 0
         self.ghot_coefficient = 1
         self.accumulated_text_length = 0  # 累计文本长度
-        self.last_reward_participation: Optional[datetime] = None
+        self.last_activate = datetime.now()
         self.mute_until: Optional[datetime] = None
         self.group_users: dict[str, str] = {}
-        self.setup_time = datetime.now()
-        self.user_counter: dict[datetime, set[str]] = {}
         self.session_name = "未命名会话"
         self.llm_timers = []  # 定时器列表
         self.processor = MessageProcessor(self)
@@ -1138,6 +1137,7 @@ class BaseSession(ABC):
         self.clean_cached_message()
         if self.message_cache_counter % 50 == 0:
             await self.setup_session_name()
+        self.last_activate = datetime.now()
 
     async def mute(self) -> None:
         self.mute_until = datetime.now() + timedelta(minutes=15)
@@ -1600,8 +1600,16 @@ async def _(
 
 @scheduler.scheduled_job("cron", minute="*", id="trigger_group")
 async def _() -> None:
-    for group in groups.values():
-        await group.process_timer()
+    expired_session_id = []
+    for session_id, session in groups.items():
+        await session.process_timer()
+        if isinstance(session, PrivateSession) and (datetime.now() - session.last_activate) >= timedelta(minutes=15):
+            expired_session_id.append(session_id)
+    for session_id in expired_session_id:
+        session = groups[session_id]
+        await session.processor.openai_messages.save_to_db()
+        groups.pop(session_id)
+        logger.info(f"Session {session_id} expired and removed.")
 
 
 @scheduler.scheduled_job("cron", hour="3", id="cleanup_expired_notes")
