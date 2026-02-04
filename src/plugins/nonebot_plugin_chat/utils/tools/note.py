@@ -49,7 +49,7 @@ def decode_check_result(data: str) -> NoteCheckResult:
 
 
 def get_note_poster(session: "BaseSession") -> Callable[[str, Optional[int], Optional[str]], Awaitable[str]]:
-    context_id = session.group_id
+    context_id = session.session_id
 
     async def push_note(text: str, expire_days: Optional[int] = None, keywords: Optional[str] = None) -> str:
         # Get the note manager for this context
@@ -60,12 +60,12 @@ def get_note_poster(session: "BaseSession") -> Callable[[str, Optional[int], Opt
                 await fetch_message(
                     [
                         generate_message(
-                            await lang.text("note.system", session.user_id, datetime.now().isoformat()), "system"
+                            await lang.text("note.system", session.lang_str, datetime.now().isoformat()), "system"
                         ),
                         generate_message(
                             await lang.text(
                                 "note.message",
-                                session.user_id,
+                                session.lang_str,
                                 await session.get_cached_messages_string(),
                                 keywords or "",
                                 text,
@@ -81,7 +81,7 @@ def get_note_poster(session: "BaseSession") -> Callable[[str, Optional[int], Opt
                 create=True, keywords=keywords, expire_days=expire_days or 3650, text=text, comment=""
             )
         if note_check_result["create"] == False:
-            return await lang.text("note.not_create", session.user_id, note_check_result["comment"])
+            return await lang.text("note.not_create", session.lang_str, note_check_result["comment"])
         text = note_check_result["text"]
         keywords = note_check_result["keywords"]
         expire_days = note_check_result["expire_days"]
@@ -89,13 +89,13 @@ def get_note_poster(session: "BaseSession") -> Callable[[str, Optional[int], Opt
         # Create the note
         note = await note_manager.create_note(content=text, keywords=keywords or "", expire_days=expire_days or 3650)
 
-        return await lang.text("note.create", session.user_id)
+        return await lang.text("note.create", session.lang_str)
 
     return push_note
 
 
 def get_note_remover(session: "BaseSession") -> Callable[[int], Awaitable[str]]:
-    context_id = session.group_id
+    context_id = session.session_id
 
     async def remove_note(note_id: int) -> str:
         # Get the note manager for this context
@@ -105,8 +105,8 @@ def get_note_remover(session: "BaseSession") -> Callable[[int], Awaitable[str]]:
         success = await note_manager.delete_note(note_id)
 
         if success:
-            return await lang.text("note.remove_success", session.user_id, note_id)
+            return await lang.text("note.remove_success", session.lang_str, note_id)
         else:
-            return await lang.text("note.remove_not_found", session.user_id, note_id)
+            return await lang.text("note.remove_not_found", session.lang_str, note_id)
 
     return remove_note
