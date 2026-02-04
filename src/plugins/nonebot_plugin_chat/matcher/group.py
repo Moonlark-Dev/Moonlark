@@ -329,7 +329,7 @@ class MessageQueue:
     def _serialize_message(self, message: OpenAIMessage) -> dict:
         """将 OpenAIMessage 序列化为可 JSON 化的字典"""
         if isinstance(message, dict):
-            return message # type: ignore
+            return message  # type: ignore
         # 如果是 Pydantic 模型或其他对象，转换为字典
         if hasattr(message, "model_dump"):
             return message.model_dump()
