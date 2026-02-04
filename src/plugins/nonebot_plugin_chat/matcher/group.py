@@ -61,7 +61,6 @@ from ..lang import lang
 from ..utils.note_manager import get_context_notes
 from ..models import ChatGroup, Sticker, UserProfile, MessageQueueCache
 from ..utils import enabled_group, parse_message_to_string
-from ..utils.interrupter import Interrupter
 from ..utils.tools import (
     browse_webpage,
     web_search,
@@ -331,7 +330,7 @@ class MessageQueue:
     def _serialize_message(self, message: OpenAIMessage) -> dict:
         """将 OpenAIMessage 序列化为可 JSON 化的字典"""
         if isinstance(message, dict):
-            return message
+            return message  # type: ignore
         # 如果是 Pydantic 模型或其他对象，转换为字典
         if hasattr(message, "model_dump"):
             return message.model_dump()
@@ -450,7 +449,6 @@ class MessageProcessor:
         self.enabled = True
         self.ai_agent = AskAISession(self.session.user_id)
         self.sticker_manager = get_sticker_manager()
-        self.interrupter = Interrupter(session)
         self.cold_until = datetime.now()
         self.blocked = False
         self.sticker_tools = StickerTools(self.session)
@@ -793,8 +791,7 @@ class MessageProcessor:
         await self.process_messages(msg_dict)
         self.session.cached_messages.append(msg_dict)
         await self.session.on_cache_posted()
-        self.interrupter.record_message()
-        if (not mentioned) and await self.interrupter.should_interrupt(text, user_id):
+        if not mentioned:
             # 如果需要阻断，直接返回
             return
         if (mentioned or not self.session.message_queue) and not self.blocked:
@@ -836,10 +833,7 @@ class MessageProcessor:
                 return
 
         # 记录一次机器人响应
-        self.interrupter.record_response()
         await self.openai_messages.fetch_reply()
-        if datetime.now() < self.interrupter.sleep_end_time:
-            self.interrupter.sleep_end_time = datetime.min
 
     async def append_tool_call_history(self, call_string: str) -> None:
         self.session.tool_calls_history.append(
