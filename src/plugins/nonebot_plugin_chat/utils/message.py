@@ -49,7 +49,7 @@ class MessageParser:
             return await self.parse_special_segment(segment.origin)
         else:
             return f"[特殊消息: {segment.dump()}]"
-        
+
     async def parse_special_segment(self, segment: MessageSegment) -> str:
         if segment.type == "poke":
             return f"[戳一戳]"

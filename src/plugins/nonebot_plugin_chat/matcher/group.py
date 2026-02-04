@@ -449,6 +449,7 @@ class AdapterUserInfo(TypedDict):
     join_time: int
     card: Optional[str]
 
+
 class MessageProcessor:
 
     def __init__(self, session: "BaseSession"):
@@ -1085,7 +1086,7 @@ class BaseSession(ABC):
         self.session_name = "未命名会话"
         self.llm_timers = []  # 定时器列表
         self.processor = MessageProcessor(self)
-    
+
     @abstractmethod
     async def setup(self) -> None:
         pass
@@ -1124,9 +1125,9 @@ class BaseSession(ABC):
         return max(0.0, min(1.0, final_probability))
 
     @abstractmethod
-    async def calculate_ghot_coefficient(self) -> None: pass
+    async def calculate_ghot_coefficient(self) -> None:
+        pass
 
-    
     def clean_cached_message(self) -> None:
         if len(self.cached_messages) > 50:
             self.cached_messages = self.cached_messages[-50:]
@@ -1161,16 +1162,15 @@ class BaseSession(ABC):
             if not message["self"]:
                 users[message["nickname"]] = message["user_id"]
         return users
-    
+
     @abstractmethod
     async def get_users(self) -> dict[str, str]:
         pass
-    
-    
+
     @abstractmethod
     async def get_user_info(self, user_id: str) -> AdapterUserInfo:
         pass
-    
+
     async def handle_poke(self, event: PokeNotifyEvent, nickname: str) -> None:
         user = await get_user(str(event.target_id))
         target_nickname = await get_nickname(user.user_id, self.bot, event)
@@ -1189,10 +1189,9 @@ class BaseSession(ABC):
                 triggered_timers.append(timer)
         for timer in triggered_timers:
             self.llm_timers.remove(timer)
-        
+
         await self.processor.openai_messages.save_to_db()
-    
-    
+
     async def get_cached_messages_string(self) -> str:
         messages = []
         for message in self.cached_messages:
@@ -1211,7 +1210,6 @@ class BaseSession(ABC):
 
         await self.processor.handle_recall(message_id, message_content)
 
-    
     async def set_timer(self, delay: int, description: str = ""):
         """
         设置定时器
@@ -1253,6 +1251,7 @@ class BaseSession(ABC):
             return
         await self.processor.generate_reply(force_reply=trigger_mode == "all")
 
+
 class PrivateSession(BaseSession):
 
     def __init__(self, session_id: str, bot: Bot, target: Target) -> None:
@@ -1263,7 +1262,7 @@ class PrivateSession(BaseSession):
 
     async def setup(self) -> None:
         await self.setup_session_name()
-    
+
     async def setup_session_name(self) -> None:
         ml_user = await get_user(self.session_id)
         if isinstance(self.bot, OB11Bot):
@@ -1273,21 +1272,11 @@ class PrivateSession(BaseSession):
             else:
                 self.nickname = user_info["nickname"]
             self.user_info = AdapterUserInfo(
-                nickname=self.nickname,
-                sex=user_info["sex"],
-                role="user",
-                join_time=0,
-                card=None
+                nickname=self.nickname, sex=user_info["sex"], role="user", join_time=0, card=None
             )
         else:
             self.nickname = ml_user.get_nickname()
-            self.user_info = AdapterUserInfo(
-                nickname=self.nickname,
-                sex="unknown",
-                role="user",
-                join_time=0,
-                card=None
-            )
+            self.user_info = AdapterUserInfo(nickname=self.nickname, sex="unknown", role="user", join_time=0, card=None)
         self.call = ml_user.get_config_key("call", self.nickname)
         self.session_name = f"与 {self.nickname} 的私聊"
 
@@ -1296,47 +1285,37 @@ class PrivateSession(BaseSession):
 
     def is_napcat_bot(self) -> bool:
         return self.bot.self_id in config.napcat_bot_ids
-        
 
     async def send_poke(self, _: str) -> None:
         if isinstance(self.bot, OB11Bot):
             await self.bot.call_api("friend_poke", user_id=self.session_id)
-            
-    
+
     async def calculate_ghot_coefficient(self) -> int:
         self.ghot_coefficient = 100
         return 100
-    
+
     async def get_user_info(self, _: str) -> AdapterUserInfo:
         return self.user_info
 
     async def get_users(self) -> dict[str, str]:
         return {}
 
+
 class GroupSession(BaseSession):
 
     async def get_user_info(self, user_id: str) -> AdapterUserInfo:
         if isinstance(self.bot, OB11Bot):
             member_info = await self.bot.get_group_member_info(
-                    group_id=int(self.adapter_group_id), user_id=int(user_id))
+                group_id=int(self.adapter_group_id), user_id=int(user_id)
+            )
             return AdapterUserInfo(**member_info)
         cached_users = await self.get_users()
         if user_id in cached_users.values():
             for nickname, uid in cached_users.items():
                 if uid == user_id:
-                    return AdapterUserInfo(
-                        nickname=nickname,
-                        sex="unknown",
-                        role="member",
-                        join_time=0,
-                        card=None
-                    )
+                    return AdapterUserInfo(nickname=nickname, sex="unknown", role="member", join_time=0, card=None)
         return AdapterUserInfo(
-            nickname=(await get_user(user_id)).get_nickname(),
-            sex="unknown",
-            role="member",
-            join_time=0,
-            card=None
+            nickname=(await get_user(user_id)).get_nickname(), sex="unknown", role="member", join_time=0, card=None
         )
 
     async def get_users(self) -> dict[str, str]:
@@ -1355,11 +1334,10 @@ class GroupSession(BaseSession):
         super().__init__(session_id, bot, target, lang_str)
         self.adapter_group_id = target.id
 
-    
     async def setup(self) -> None:
         await self.setup_session_name()
         await self.calculate_ghot_coefficient()
-    
+
     async def send_poke(self, target_id: str) -> None:
         await self.bot.call_api("group_poke", group_id=int(self.adapter_group_id), user_id=int(target_id))
 
@@ -1397,8 +1375,6 @@ class GroupSession(BaseSession):
         uni_msg = uni_msg.text(text=message[cursor_index:])
         return uni_msg
 
-    
-
     async def process_timer(self) -> None:
         await super().process_timer()
         dt = datetime.now()
@@ -1410,8 +1386,6 @@ class GroupSession(BaseSession):
             probability = self.get_probability()
             if random.random() <= probability:
                 await self.processor.handle_group_cold(timedelta(seconds=time_to_last_message))
-
-
 
 
 from ..config import config
@@ -1458,8 +1432,6 @@ async def post_group_event(
         return True
     except KeyError:
         return False
-
-
 
 
 @on_message(priority=50, rule=enabled_group, block=False).handle()
@@ -1664,6 +1636,7 @@ async def _(
     nickname = await get_nickname(user_id, bot, event)
     await session.handle_poke(event, nickname)
 
+
 from nonebot.adapters.onebot.v11 import NoticeEvent
 
 
@@ -1696,7 +1669,9 @@ async def _(event: NoticeEvent, bot: OB11Bot, platform_id: str = get_group_id())
     logger.debug(f"emoji like: {emoji_id} {message} {operator_nickname}")
     await session.processor.handle_reaction(message, operator_nickname, emoji_id)
 
+
 from nonebot.adapters.onebot.v11.event import FriendRecallNoticeEvent
+
 
 @on_notice(block=False).handle()
 async def _(event: FriendRecallNoticeEvent, user_id: str = get_user_id()) -> None:
