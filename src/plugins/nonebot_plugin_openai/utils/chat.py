@@ -6,6 +6,8 @@ import uuid
 
 from nonebot_plugin_larklang.__main__ import get_module_name
 import inspect
+from openai.types.chat.chat_completion_message_function_tool_call import ChatCompletionMessageFunctionToolCall
+
 import json
 from typing import Literal, Optional, Any, AsyncGenerator, Callable, TypeVar, TypedDict, cast
 from nonebot import logger
@@ -130,7 +132,8 @@ class LLMRequestSession:
             yield response.message.content
         if response.message.tool_calls:
             for request in response.message.tool_calls:
-                await self.call_function(request.id, request.function.name, json.loads(request.function.arguments))
+                if isinstance(request, ChatCompletionMessageFunctionToolCall):
+                    await self.call_function(request.id, request.function.name, json.loads(request.function.arguments))
         if response.finish_reason in ["stop", "eos"]:
             self.stop = True
         self.messages.extend(self.insert_message_queue)

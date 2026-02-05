@@ -20,6 +20,7 @@ import copy
 import math
 import json
 import re
+from nonebot.adapters.onebot.v11 import NoticeEvent
 from nonebot_plugin_alconna import get_message_id
 import random
 import asyncio
@@ -42,7 +43,7 @@ from nonebot.adapters import Event, Bot, Message
 from nonebot.adapters.onebot.v11.event import PokeNotifyEvent
 from nonebot_plugin_larkutils import get_user_id, get_group_id
 from nonebot_plugin_larkutils.subaccount import get_main_account
-from nonebot_plugin_larkutils.user import is_private_message, private_message
+from nonebot_plugin_larkutils.user import private_message
 from nonebot_plugin_orm import async_scoped_session, get_session
 from nonebot.log import logger
 from nonebot_plugin_openai import generate_message
@@ -683,7 +684,7 @@ class MessageProcessor:
                 description=(
                     "使用 AI 进行深度研究，获得问题的答案。此工具获取信息的速度比你使用 browse_webpage 等工具稍慢但是获得的信息更准确且更易读。"
                     "**何时调用**: 当需要获取一个比较复杂的问题的答案时，调用此工具。\n"
-                    "**判断标准**：如果你不能使用你现有的工具获取答案，或者你希望获得更准确和易读的答案，那么你应该使用此工具。\n"
+                    "**判断标准**：如果你使用你现有的工具无法获取答案，或者你希望获得更准确和易读的答案，那么你应该使用此工具。\n"
                     "调用举例：解答一道物理应用题 / 查找关于 2024 年最新自动驾驶算法的实验对比数据"
                 ),
                 parameters={
@@ -1645,7 +1646,6 @@ async def _(
     await session.handle_poke(event, nickname)
 
 
-from nonebot.adapters.onebot.v11 import NoticeEvent
 
 
 async def group_msg_emoji_like(event: NoticeEvent) -> bool:

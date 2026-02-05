@@ -89,11 +89,11 @@ class AskAISession:
         if is_vm_available():
             self.functions.extend(get_vm_tools())
 
-    async def ask_ai(self, prompt: str) -> str:
+    async def ask_ai(self, query: str) -> str:
         fetcher = await MessageFetcher.create(
             [
                 generate_message(await lang.text("prompt_agent.system", self.user_id, datetime.now().isoformat())),
-                generate_message(prompt, "user"),
+                generate_message(query, "user"),
             ],
             False,
             functions=self.functions,
