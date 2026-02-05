@@ -462,6 +462,7 @@ class MessageProcessor:
         self.sticker_manager = get_sticker_manager()
         self.cold_until = datetime.now()
         self.blocked = False
+        self._latest_reasioning_content_cache = ""
         self.sticker_tools = StickerTools(self.session)
         self.functions = [
             AsyncFunction(
@@ -895,7 +896,7 @@ class MessageProcessor:
         self.session.accumulated_text_length = 0
         message_id = receipt.msg_ids[0] if receipt.msg_ids else None
         response = f"消息发送成功(消息ID: {message_id})。\n"
-        if self.openai_messages.consecutive_bot_messages == 1:
+        if self.openai_messages.cached_reasoning_content != self._latest_reasioning_content_cache:
             sticker_recommendations = "\n".join(
                 await self.get_sticker_recommendations(self.openai_messages.cached_reasoning_content)
             )
