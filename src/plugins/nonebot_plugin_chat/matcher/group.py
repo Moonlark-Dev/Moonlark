@@ -410,6 +410,7 @@ class MessageQueue:
             timeout=90,
         )
         async for message in fetcher.fetch_message_stream():
+            self.cached_reasoning_content = message
             logger.info(f"Moonlark 说: {message}")
             fetcher.session.insert_messages(self.messages)
             self.messages = []
