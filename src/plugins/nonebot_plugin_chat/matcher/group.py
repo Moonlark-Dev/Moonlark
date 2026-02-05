@@ -37,7 +37,7 @@ from nonebot_plugin_chat.utils.sticker_manager import get_sticker_manager
 from nonebot_plugin_larkuser import get_nickname
 
 from nonebot_plugin_larkuser import get_user
-from nonebot import on_message, on_command, on_notice
+from nonebot import get_driver, on_message, on_command, on_notice
 from nonebot.adapters.onebot.v11 import Bot as OB11Bot
 from nonebot.adapters import Event, Bot, Message
 from nonebot.adapters.onebot.v11.event import PokeNotifyEvent
@@ -1686,3 +1686,8 @@ async def _(event: FriendRecallNoticeEvent, user_id: str = get_user_id()) -> Non
     message_id = str(event.message_id)
     session = groups[user_id]
     await session.handle_recall(message_id)
+
+@get_driver().on_shutdown
+async def _() -> None:
+    for session in groups.values():
+        await session.processor.openai_messages.save_to_db()
