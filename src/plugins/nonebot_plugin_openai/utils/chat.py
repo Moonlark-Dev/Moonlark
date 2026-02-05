@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 import hashlib
 from collections.abc import Awaitable
 import traceback
+import uuid
 
 from nonebot_plugin_larklang.__main__ import get_module_name
 import inspect
@@ -83,6 +84,7 @@ class LLMRequestSession:
         self.func_index = func_index
         self.kwargs = kwargs
         self.stop = False
+        self.trace_id = uuid.uuid4().hex
         self.model = model
         self.trigger_functions = {
             "pre_function_call": pre_function_call,
@@ -108,7 +110,8 @@ class LLMRequestSession:
                     tools=self.func_list,
                     tool_choice="auto" if self.func_list else "none",
                     extra_headers={
-                        "X-Title": (t := f"{config.identify_prefix} - {self.identify}"),
+                        config.openai_thread_header: (t := f"{config.identify_prefix} - {self.identify}"),
+                        config.openai_trace_header: self.trace_id,
                         "HTTP-Referer": f"https://{hashlib.sha256(t.encode()).hexdigest()}.moonlark.itcdt.top",
                     },
                     timeout=self.timeout_per_request,
