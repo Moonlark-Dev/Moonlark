@@ -1,8 +1,11 @@
-from datetime import datetime, timedelta
+
 import hashlib
 from collections.abc import Awaitable
 import traceback
 import uuid
+
+from openai.types.chat import ChatCompletion
+from openai.types.chat.chat_completion import Choice
 
 from nonebot_plugin_larklang.__main__ import get_module_name
 import inspect
@@ -31,12 +34,12 @@ def generate_function_list(func_index: dict[str, AsyncFunction]) -> list[ChatCom
             name=name, description=data["description"], parameters={"type": "object", "properties": {}, "required": []}
         )
         for p_name, p_data in data["parameters"].items():
-            param_info = {"type": p_data["type"], "description": p_data["description"]}
+            param_info: dict[str, Any] = {"type": p_data["type"], "description": p_data["description"]}
             if "enum" in p_data:
                 param_info["enum"] = list(p_data["enum"])
-            func_info["parameters"]["properties"][p_name] = param_info
+            func_info["parameters"]["properties"][p_name] = param_info # type: ignore
             if p_data["required"]:
-                func_info["parameters"]["required"].append(p_name)
+                func_info["parameters"]["required"].append(p_name) # type: ignore
         func_list.append(
             ChatCompletionFunctionToolParam(
                 type="function",
@@ -47,10 +50,6 @@ def generate_function_list(func_index: dict[str, AsyncFunction]) -> list[ChatCom
 
 
 T = TypeVar("T")
-
-from openai.types.chat import ChatCompletion
-from openai.types.chat.chat_completion import Choice
-
 
 class ReplaceResponseStrategy(TypedDict):
     strategy: Literal["replace"]
