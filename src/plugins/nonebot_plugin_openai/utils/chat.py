@@ -1,4 +1,3 @@
-
 import hashlib
 from collections.abc import Awaitable
 import traceback
@@ -37,9 +36,9 @@ def generate_function_list(func_index: dict[str, AsyncFunction]) -> list[ChatCom
             param_info: dict[str, Any] = {"type": p_data["type"], "description": p_data["description"]}
             if "enum" in p_data:
                 param_info["enum"] = list(p_data["enum"])
-            func_info["parameters"]["properties"][p_name] = param_info # type: ignore
+            func_info["parameters"]["properties"][p_name] = param_info  # type: ignore
             if p_data["required"]:
-                func_info["parameters"]["required"].append(p_name) # type: ignore
+                func_info["parameters"]["required"].append(p_name)  # type: ignore
         func_list.append(
             ChatCompletionFunctionToolParam(
                 type="function",
@@ -50,6 +49,7 @@ def generate_function_list(func_index: dict[str, AsyncFunction]) -> list[ChatCom
 
 
 T = TypeVar("T")
+
 
 class ReplaceResponseStrategy(TypedDict):
     strategy: Literal["replace"]
