@@ -497,3 +497,38 @@ prompt_agent:
 
     **当前时间：**
     {}
+rua:
+  index_error: 无效的动作编号。
+  favorability_error: 你与 Moonlark 的好感度不足，无法进行该动作。（需要：{}；你有：{}）
+  success: 指令动作已被设为：{}
+  action_list: "可用的动作列表(*表示选中): \n{}"
+  action_list_item: "[{}] {}"
+  refusable: "（该动作可被拒绝：如果你不喜欢，可以通过 `refuse_interaction_request` 工具躲开。）"
+  refusable_hint: "（该动作可被拒绝，交互 ID: {}。如果你不喜欢，可以通过 `refuse_interaction_request` 工具躲开。）"
+  bite_msg: "*Moonlark 躲开了你的手，并咬了一口"
+  bite_prompt: "你躲开了 {} 的互动，并咬了 TA 一口。"
+  actions:
+    poke:
+      name: 戳一戳
+      prompt: "{} 戳了戳你。"
+      refuse_msg: "你的手指被 Moonlark 躲开了"
+      refuse_prompt: "你躲开了 {} 的戳。"
+    head:
+      name: 摸头
+      prompt: "{} 摸了摸你的头。"
+      refuse_msg: Moonlark 躲开了
+      refuse_prompt: "你躲开了 {} 的摸头。"
+    chin:
+      name: 挠下巴
+      prompt: "{} 挠了挠你的下巴，你感到很舒适。"
+    cheek:
+      name: 捏脸
+      prompt: "{} 捏了捏你的脸颊。"
+    hug:
+      name: 拥抱
+      prompt: "{} 紧紧的抱着你。"
+    ears:
+      name: 揉耳朵
+      prompt: "{} 揉了揉你的耳朵。"
+      refuse_msg: "Moonlark 躲开了你的手，并将耳朵向下压了压。"
+      refuse_prompt: "你躲开了 {} 的揉耳朵。"
