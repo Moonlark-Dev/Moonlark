@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+from typing import Optional, TypedDict
 
 from nonebot_plugin_orm import Model
 from sqlalchemy.orm import Mapped, mapped_column
@@ -25,6 +25,11 @@ class Note(Model):
     keywords: Mapped[str] = mapped_column(String(length=256), default="")
     created_time: Mapped[float] = mapped_column(Float())
     expire_time: Mapped[Optional[datetime]] = mapped_column(nullable=True)  # Optional expiration time
+
+class RuaData(Model):
+    user_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    action_id: Mapped[int]
+    count: Mapped[int] = mapped_column(default=0)
 
 
 class UserProfile(Model):
@@ -58,3 +63,9 @@ class MessageQueueCache(Model):
     messages_json: Mapped[str] = mapped_column(Text())  # JSON 序列化的消息列表
     consecutive_bot_messages: Mapped[int] = mapped_column(Integer(), default=0)  # 连续 bot 消息计数
     updated_time: Mapped[float] = mapped_column(Float())  # 最后更新时间戳
+
+
+class RuaAction(TypedDict):
+    name: str
+    refusable: bool
+    unlock_favorability: float
