@@ -26,6 +26,7 @@ class Note(Model):
     created_time: Mapped[float] = mapped_column(Float())
     expire_time: Mapped[Optional[datetime]] = mapped_column(nullable=True)  # Optional expiration time
 
+
 class RuaData(Model):
     user_id: Mapped[str] = mapped_column(String(128), primary_key=True)
     action_id: Mapped[int]

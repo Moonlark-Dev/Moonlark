@@ -78,11 +78,13 @@ from ..utils.tools.sticker import StickerTools
 
 class PendingInteraction(TypedDict):
     """待处理的交互请求"""
+
     interaction_id: str
     user_id: str
     nickname: str
     action: RuaAction
     created_at: float  # timestamp
+
 
 QQ_EMOJI_MAP = {
     "4": "得意",
@@ -803,21 +805,21 @@ class MessageProcessor:
     async def refuse_interaction_request(self, id_: str, type_: Literal["dodge", "bite"]) -> str:
         """
         拒绝交互请求
-        
+
         Args:
             id_: 交互请求 ID
             type_: 拒绝类型，dodge（躲开）或 bite（躲开并咬一口）
-        
+
         Returns:
             处理结果消息
         """
         interaction = self.session.remove_pending_interaction(id_)
         if interaction is None:
             return "未找到该交互请求，可能已过期或已被处理。"
-        
+
         action_name = interaction["action"]["name"]
         nickname = interaction["nickname"]
-        
+
         # 根据拒绝类型生成不同的提示
         if type_ == "dodge":
             # 发送拒绝消息到会话
@@ -1243,12 +1245,7 @@ class BaseSession(ABC):
         target_nickname = await get_nickname(user.user_id, self.bot, event)
         await self.processor.handle_poke(nickname, target_nickname, event.is_tome())
 
-    def create_pending_interaction(
-        self,
-        user_id: str,
-        nickname: str,
-        action: RuaAction
-    ) -> str:
+    def create_pending_interaction(self, user_id: str, nickname: str, action: RuaAction) -> str:
         """创建一个待处理的交互请求，返回交互 ID"""
         interaction_id = str(uuid.uuid4())[:8]  # 使用短 UUID
         self.pending_interactions[interaction_id] = PendingInteraction(
@@ -1256,7 +1253,7 @@ class BaseSession(ABC):
             user_id=user_id,
             nickname=nickname,
             action=action,
-            created_at=datetime.now().timestamp()
+            created_at=datetime.now().timestamp(),
         )
         return interaction_id
 
@@ -1292,11 +1289,7 @@ class BaseSession(ABC):
 
         # 如果该动作可以被拒绝，生成交互 ID 并添加拒绝提示
         if action["refusable"]:
-            interaction_id = self.create_pending_interaction(
-                user_id=user_id,
-                nickname=nickname,
-                action=action
-            )
+            interaction_id = self.create_pending_interaction(user_id=user_id, nickname=nickname, action=action)
             refusable_hint = await lang.text("rua.refusable_hint", self.lang_str, interaction_id)
             event_prompt = f"{event_prompt}\n{refusable_hint}"
 
@@ -1559,10 +1552,9 @@ async def post_group_event(
         return True
     except KeyError:
         return False
-    
-async def get_private_session(
-    user_id: str, target: Target, bot: Bot
-) -> PrivateSession:
+
+
+async def get_private_session(user_id: str, target: Target, bot: Bot) -> PrivateSession:
     if user_id not in groups:
         groups[user_id] = PrivateSession(user_id, bot, target)
         await groups[user_id].setup()
@@ -1599,6 +1591,7 @@ async def get_group_session_forced(group_id: str, target: Target, bot: Bot) -> G
         groups[group_id] = GroupSession(group_id, bot, target)
         await groups[group_id].setup()
     return cast(GroupSession, groups[group_id])
+
 
 @on_message(priority=50, rule=private_message, block=False).handle()
 async def _(
@@ -1748,7 +1741,7 @@ async def _() -> None:
         total_expired_count += expired_count
     if total_expired_count > 0:
         logger.debug(f"Cleaned up {total_expired_count} expired interaction requests")
-    
+
     expired_session_id = []
     for session_id, session in groups.items():
         await session.process_timer()
@@ -1824,6 +1817,7 @@ async def _(event: NoticeEvent, bot: OB11Bot, platform_id: str = get_group_id())
     emoji_id = event_dict["likes"][0]["emoji_id"]
     logger.debug(f"emoji like: {emoji_id} {message} {operator_nickname}")
     await session.processor.handle_reaction(message, operator_nickname, emoji_id)
+
 
 @on_notice(block=False).handle()
 async def _(event: FriendRecallNoticeEvent, user_id: str = get_user_id()) -> None:
