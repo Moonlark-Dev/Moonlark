@@ -28,9 +28,10 @@ from datetime import datetime, timedelta
 from nonebot.adapters.qq import Bot as BotQQ
 from nonebot.params import CommandArg
 from nonebot.typing import T_State
-from typing import AsyncGenerator, Literal, TypedDict, Optional, Any
+from typing import AsyncGenerator, Literal, TypedDict, Optional, Any, cast
 from nonebot_plugin_apscheduler import scheduler
 from nonebot_plugin_alconna import UniMessage, Target, get_target
+from nonebot.adapters.onebot.v11.event import FriendRecallNoticeEvent
 from nonebot_plugin_chat.utils.ai_agent import AskAISession
 from nonebot_plugin_chat.utils.message import parse_dict_message
 from nonebot_plugin_chat.utils.sticker_manager import get_sticker_manager
@@ -61,7 +62,7 @@ from sqlalchemy import select
 
 from ..lang import lang
 from ..utils.note_manager import get_context_notes
-from ..models import ChatGroup, Sticker, UserProfile, MessageQueueCache
+from ..models import ChatGroup, RuaAction, Sticker, UserProfile, MessageQueueCache
 from ..utils import enabled_group, parse_message_to_string
 from ..utils.tools import (
     browse_webpage,
@@ -71,7 +72,19 @@ from ..utils.tools import (
     get_note_poster,
     get_note_remover,
 )
+import uuid
 from ..utils.tools.sticker import StickerTools
+
+
+class PendingInteraction(TypedDict):
+    """待处理的交互请求"""
+
+    interaction_id: str
+    user_id: str
+    nickname: str
+    action: RuaAction
+    created_at: float  # timestamp
+
 
 QQ_EMOJI_MAP = {
     "4": "得意",
@@ -698,6 +711,27 @@ class MessageProcessor:
                     ),
                 },
             ),
+            AsyncFunction(
+                func=self.refuse_interaction_request,
+                description=(
+                    "拒绝一个交互请求（如戳一戳、摸头等）。\n"
+                    "**何时调用**: 当你收到一个可拒绝的交互请求，并且你想要拒绝它时（例如：对方过于频繁的交互、你觉得对方与你的好感度过低。合适的拒绝会让你显得更傲娇、可爱。）。\n"
+                    "**注意**: 只有标记为可拒绝的交互请求才能被拒绝，消息中会包含交互 ID。"
+                ),
+                parameters={
+                    "id_": FunctionParameter(
+                        type="string",
+                        description="交互请求的 ID，从事件消息中获取。",
+                        required=True,
+                    ),
+                    "type_": FunctionParameterWithEnum(
+                        type="string",
+                        description="拒绝类型：dodge（躲开）或 bite（躲开并咬一口）。",
+                        required=True,
+                        enum={"dodge", "bite"},
+                    ),
+                },
+            ),
         ]
 
         if self.session.is_napcat_bot():
@@ -767,6 +801,36 @@ class MessageProcessor:
             return f"已发送回应：{QQ_EMOJI_MAP.get(emoji_id)}"
         else:
             return "失败：当前平台不支持发送回应。"
+
+    async def refuse_interaction_request(self, id_: str, type_: Literal["dodge", "bite"]) -> str:
+        """
+        拒绝交互请求
+
+        Args:
+            id_: 交互请求 ID
+            type_: 拒绝类型，dodge（躲开）或 bite（躲开并咬一口）
+
+        Returns:
+            处理结果消息
+        """
+        interaction = self.session.remove_pending_interaction(id_)
+        if interaction is None:
+            return "未找到该交互请求，可能已过期或已被处理。"
+
+        action_name = interaction["action"]["name"]
+        nickname = interaction["nickname"]
+
+        # 根据拒绝类型生成不同的提示
+        if type_ == "dodge":
+            # 发送拒绝消息到会话
+            refuse_msg = await lang.text(f"rua.actions.{action_name}.refuse_msg", self.session.lang_str)
+            await self.send_message(refuse_msg)
+            return await lang.text(f"rua.actions.{action_name}.refuse_prompt", self.session.lang_str, nickname)
+        else:  # bite
+            # 躲开并咬一口
+            refuse_msg = await lang.text("rua.bite_msg", self.session.lang_str, nickname)
+            await self.send_message(refuse_msg)
+            return await lang.text("rua.bite_prompt", self.session.lang_str, nickname)
 
     async def loop(self) -> None:
         # 在开始循环前等待消息队列从数据库恢复完成
@@ -1088,6 +1152,7 @@ class BaseSession(ABC):
         self.group_users: dict[str, str] = {}
         self.session_name = "未命名会话"
         self.llm_timers = []  # 定时器列表
+        self.pending_interactions: dict[str, PendingInteraction] = {}  # 待处理的交互请求
         self.processor = MessageProcessor(self)
 
     @abstractmethod
@@ -1179,6 +1244,57 @@ class BaseSession(ABC):
         user = await get_user(str(event.target_id))
         target_nickname = await get_nickname(user.user_id, self.bot, event)
         await self.processor.handle_poke(nickname, target_nickname, event.is_tome())
+
+    def create_pending_interaction(self, user_id: str, nickname: str, action: RuaAction) -> str:
+        """创建一个待处理的交互请求，返回交互 ID"""
+        interaction_id = str(uuid.uuid4())[:8]  # 使用短 UUID
+        self.pending_interactions[interaction_id] = PendingInteraction(
+            interaction_id=interaction_id,
+            user_id=user_id,
+            nickname=nickname,
+            action=action,
+            created_at=datetime.now().timestamp(),
+        )
+        return interaction_id
+
+    def remove_pending_interaction(self, interaction_id: str) -> Optional[PendingInteraction]:
+        """移除并返回待处理的交互请求"""
+        return self.pending_interactions.pop(interaction_id, None)
+
+    def cleanup_expired_interactions(self, max_age_seconds: int = 300) -> int:
+        """清理过期的交互请求（默认5分钟过期）"""
+        now = datetime.now().timestamp()
+        expired_ids = [
+            interaction_id
+            for interaction_id, interaction in self.pending_interactions.items()
+            if now - interaction["created_at"] > max_age_seconds
+        ]
+        for interaction_id in expired_ids:
+            self.pending_interactions.pop(interaction_id, None)
+        return len(expired_ids)
+
+    async def handle_rua(self, nickname: str, user_id: str, action: RuaAction) -> None:
+        """
+        处理 rua 互动事件
+
+        Args:
+            nickname: 发起互动的用户昵称
+            user_id: 发起互动的用户 ID
+            action: 选择的 rua 动作
+        """
+        action_name = action["name"]
+
+        # 生成事件提示
+        event_prompt = await lang.text(f"rua.actions.{action_name}.prompt", self.lang_str, nickname)
+
+        # 如果该动作可以被拒绝，生成交互 ID 并添加拒绝提示
+        if action["refusable"]:
+            interaction_id = self.create_pending_interaction(user_id=user_id, nickname=nickname, action=action)
+            refusable_hint = await lang.text("rua.refusable_hint", self.lang_str, interaction_id)
+            event_prompt = f"{event_prompt}\n{refusable_hint}"
+
+        # 向会话发送事件，强制触发回复
+        await self.post_event(event_prompt, "all")
 
     async def process_timer(self) -> None:
         dt = datetime.now()
@@ -1438,6 +1554,13 @@ async def post_group_event(
         return False
 
 
+async def get_private_session(user_id: str, target: Target, bot: Bot) -> PrivateSession:
+    if user_id not in groups:
+        groups[user_id] = PrivateSession(user_id, bot, target)
+        await groups[user_id].setup()
+    return cast(PrivateSession, groups[user_id])
+
+
 @on_message(priority=50, rule=enabled_group, block=False).handle()
 async def _(
     event: Event,
@@ -1461,6 +1584,13 @@ async def _(
     message = await UniMessage.of(message=platform_message, bot=bot).attach_reply(event, bot)
     nickname = await get_nickname(user_id, bot, event)
     await groups[session_id].handle_message(message, user_id, event, state, nickname, event.is_tome())
+
+
+async def get_group_session_forced(group_id: str, target: Target, bot: Bot) -> GroupSession:
+    if group_id not in groups:
+        groups[group_id] = GroupSession(group_id, bot, target)
+        await groups[group_id].setup()
+    return cast(GroupSession, groups[group_id])
 
 
 @on_message(priority=50, rule=private_message, block=False).handle()
@@ -1604,6 +1734,14 @@ async def _(
 
 @scheduler.scheduled_job("cron", minute="*", id="trigger_group")
 async def _() -> None:
+    # 清理过期的交互请求
+    total_expired_count = 0
+    for session in groups.values():
+        expired_count = session.cleanup_expired_interactions()
+        total_expired_count += expired_count
+    if total_expired_count > 0:
+        logger.debug(f"Cleaned up {total_expired_count} expired interaction requests")
+
     expired_session_id = []
     for session_id, session in groups.items():
         await session.process_timer()
@@ -1677,9 +1815,6 @@ async def _(event: NoticeEvent, bot: OB11Bot, platform_id: str = get_group_id())
     emoji_id = event_dict["likes"][0]["emoji_id"]
     logger.debug(f"emoji like: {emoji_id} {message} {operator_nickname}")
     await session.processor.handle_reaction(message, operator_nickname, emoji_id)
-
-
-from nonebot.adapters.onebot.v11.event import FriendRecallNoticeEvent
 
 
 @on_notice(block=False).handle()
