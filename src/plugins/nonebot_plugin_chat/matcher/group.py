@@ -1787,8 +1787,6 @@ async def _(
     await session.handle_poke(event, nickname)
 
 
-
-
 async def group_msg_emoji_like(event: NoticeEvent) -> bool:
     logger.info(result := event.notice_type == "group_msg_emoji_like")
     return result
@@ -1824,6 +1822,7 @@ async def _(event: FriendRecallNoticeEvent, user_id: str = get_user_id()) -> Non
     message_id = str(event.message_id)
     session = groups[user_id]
     await session.handle_recall(message_id)
+
 
 @get_driver().on_shutdown
 async def _() -> None:
