@@ -9,7 +9,7 @@ from nonebot_plugin_orm import get_session
 from nonebot.adapters import Bot, Event
 from ..lang import lang
 
-alc = Alconna("rua", Subcommand("action", Args["target_index", int]))
+alc = Alconna("rua", Subcommand("action", Args["target_index?", int]))
 matcher = on_alconna(alc)
 
 RUA_ACTIONS: dict[int, RuaAction] = {
