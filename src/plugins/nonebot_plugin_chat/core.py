@@ -1,7 +1,5 @@
 import math
-from nonebot_plugin_openai.types import (
-    Message as OpenAIMessage
-)
+from nonebot_plugin_openai.types import Message as OpenAIMessage
 from .types import CachedMessage
 
 
@@ -45,6 +43,7 @@ def calculate_trigger_probability(accumulated_length: int) -> float:
 
 def generate_message_string(message: CachedMessage) -> str:
     return f"[{message['send_time'].strftime('%H:%M:%S')}][{message['nickname']}]({message['message_id']}): {message['content']}\n"
+
 
 def get_role(message: OpenAIMessage) -> str:
     if isinstance(message, dict):
