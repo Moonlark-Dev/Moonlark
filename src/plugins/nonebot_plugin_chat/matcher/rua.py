@@ -33,7 +33,7 @@ async def _(target_index: int, user_id: str = get_user_id()) -> None:
         await lang.finish("rua.favorability_error", user_id, target_action["unlock_favorability"], user.get_fav())
     async with get_session() as session:
         if (rua_data := await session.get(RuaData, {"user_id": user_id})) is None:
-            rua_data = RuaData(user_id=user_id, action_id=target_action)
+            rua_data = RuaData(user_id=user_id, action_id=target_index)
         else:
             rua_data.action_id = target_index
         await session.merge(rua_data)
