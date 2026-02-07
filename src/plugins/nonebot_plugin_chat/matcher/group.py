@@ -321,7 +321,7 @@ class MessageQueue:
     def __init__(
         self,
         processor: "MessageProcessor",
-        max_message_count: int = 10,
+        max_message_count: int = 50,
         consecutive_warning_threshold: int = 5,
         consecutive_stop_threshold: int = 10,
     ) -> None:

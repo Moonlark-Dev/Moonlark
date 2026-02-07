@@ -17,3 +17,4 @@
 
 from . import group
 from . import profile
+from . import rua
