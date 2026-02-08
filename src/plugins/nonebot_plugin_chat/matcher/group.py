@@ -389,7 +389,7 @@ class MessageQueue:
                 await session.merge(cache)
                 await session.commit()
         except Exception as e:
-            logger.warning(f"保存消息队列到数据库失败: {e}")
+            logger.exception(e)
 
     def clean_special_message(self) -> None:
         while True:
