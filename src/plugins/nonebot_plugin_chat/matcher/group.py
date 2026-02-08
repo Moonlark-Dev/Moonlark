@@ -913,7 +913,7 @@ class MessageProcessor:
             if random.random() > probability:
                 return
 
-        # 记录一次机器人响应
+        logger.info(f"Generating reply ({force_reply=})...")
         await self.openai_messages.fetch_reply()
 
     async def append_tool_call_history(self, call_string: str) -> None:
