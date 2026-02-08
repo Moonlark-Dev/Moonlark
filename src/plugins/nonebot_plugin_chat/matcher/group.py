@@ -336,6 +336,7 @@ class MessageQueue:
         # 恢复完成事件，用于确保在处理消息前恢复已完成
         self._restore_complete = asyncio.Event()
         # 在初始化时从数据库恢复消息队列
+        self.inserted_messages = []
         asyncio.create_task(self._restore_from_db())
 
     async def wait_for_restore(self) -> None:
@@ -415,6 +416,7 @@ class MessageQueue:
     async def _fetch_reply(self) -> None:
         messages = await self.get_messages()
         self.messages.clear()
+        self.inserted_messages.clear()
         fetcher = await MessageFetcher.create(
             messages,
             False,
@@ -423,13 +425,20 @@ class MessageQueue:
             pre_function_call=self.processor.send_function_call_feedback,
             timeout=90,
         )
-        async for message in fetcher.fetch_message_stream():
-            if message.startswith("## 思考过程"):
-                self.cached_reasoning_content = message
-            logger.info(f"Moonlark 说: {message}")
-            fetcher.session.insert_messages(self.messages)
-            self.messages = []
-        self.messages = fetcher.get_messages()
+        try:
+            async for message in fetcher.fetch_message_stream():
+                if message.startswith("## 思考过程"):
+                    self.cached_reasoning_content = message
+                logger.info(f"Moonlark 说: {message}")
+                fetcher.session.insert_messages(self.messages)
+                self.inserted_messages.append(message)
+                self.messages = []
+            self.messages = fetcher.get_messages()
+        except Exception as e:
+            logger.exception(e)
+            # 恢复 Message
+            self.messages = messages + self.inserted_messages
+            self.inserted_messages.clear()
 
     def append_user_message(self, message: str) -> None:
         self.consecutive_bot_messages = 0  # 收到用户消息时重置计数器
@@ -1740,11 +1749,11 @@ async def _() -> None:
     for session in groups.values():
         expired_count = session.cleanup_expired_interactions()
         total_expired_count += expired_count
-    if total_expired_count > 0:
-        logger.debug(f"Cleaned up {total_expired_count} expired interaction requests")
+    logger.debug(f"Will clean up {total_expired_count} expired session.")
 
     expired_session_id = []
     for session_id, session in groups.items():
+        logger.debug(f"Triggering timer from {session_id=}.")
         await session.process_timer()
         if isinstance(session, PrivateSession) and (datetime.now() - session.last_activate) >= timedelta(minutes=15):
             expired_session_id.append(session_id)
