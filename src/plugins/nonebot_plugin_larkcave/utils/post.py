@@ -19,7 +19,7 @@ import asyncio
 from datetime import datetime
 from typing import NoReturn, cast
 
-from nonebot import Bot
+from nonebot.adapters import Bot
 from nonebot.internal.adapter import Event
 from nonebot.typing import T_State
 from nonebot_plugin_alconna import Image, Text, UniMessage, image_fetch
@@ -60,6 +60,7 @@ async def post_cave(
         msg.append(Text(await lang.text("add.similarity_footer", user_id, round(e.score * 100, 3))))
         await cave.finish(msg, reply_message=True)
     async with lock:
+        await session.flush()
         cave_id = await get_cave_id(session)
         content = " ".join(
             [

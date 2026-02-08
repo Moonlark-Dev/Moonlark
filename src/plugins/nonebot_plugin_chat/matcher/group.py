@@ -960,13 +960,14 @@ class MessageProcessor:
         receipt = await message.send(target=self.session.target, bot=self.session.bot)
         self.session.accumulated_text_length = 0
         message_id = receipt.msg_ids[0] if receipt.msg_ids else None
+        message_id = message_id['message_id'] if message_id else "获取失败"
         response = f"消息发送成功(消息ID: {message_id})。\n"
         if self.openai_messages.cached_reasoning_content != self._latest_reasioning_content_cache:
             sticker_recommendations = "\n".join(
                 await self.get_sticker_recommendations(self.openai_messages.cached_reasoning_content)
             )
             if sticker_recommendations:
-                response += f"### 表情包推荐\n{sticker_recommendations}"
+                response += f"### 表情包推荐 ()\n{sticker_recommendations}"
         return response
 
     def append_user_message(self, msg_str: str) -> None:
