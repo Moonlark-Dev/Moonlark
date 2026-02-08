@@ -378,16 +378,17 @@ class MessageQueue:
     async def save_to_db(self) -> None:
         """将消息队列保存到数据库"""
         try:
-            group_id = self.processor.session.session_id
-            async with get_session() as session:
-                cache = MessageQueueCache(
-                    group_id=group_id,
-                    messages_json=self._serialize_messages(),
-                    consecutive_bot_messages=self.consecutive_bot_messages,
-                    updated_time=datetime.now().timestamp(),
-                )
-                await session.merge(cache)
-                await session.commit()
+            async with self.fetcher_lock:
+                group_id = self.processor.session.session_id
+                async with get_session() as session:
+                    cache = MessageQueueCache(
+                        group_id=group_id,
+                        messages_json=self._serialize_messages(),
+                        consecutive_bot_messages=self.consecutive_bot_messages,
+                        updated_time=datetime.now().timestamp(),
+                    )
+                    await session.merge(cache)
+                    await session.commit()
         except Exception as e:
             logger.exception(e)
 
