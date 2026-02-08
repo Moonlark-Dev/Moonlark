@@ -883,15 +883,15 @@ class MessageProcessor:
         self.openai_messages.append_user_message(content)
         await self.generate_reply(force_reply=True)
 
-    async def handle_group_cold(self, time_d: timedelta) -> None:
-        min_str = time_d.total_seconds() // 60
-        if not len(self.openai_messages.messages):
-            return
-        delta_content = f"[{datetime.now().strftime('%H:%M:%S')}]: 当前群聊已经冷群了 {min_str} 分钟。"
-        self.openai_messages.append_user_message(delta_content)
-        if not self.blocked:
-            await self.generate_reply()
-            self.blocked = True  # 再次收到消息后才会解锁
+    # async def handle_group_cold(self, time_d: timedelta) -> None:
+    #     min_str = time_d.total_seconds() // 60
+    #     if not len(self.openai_messages.messages):
+    #         return
+    #     delta_content = f"[{datetime.now().strftime('%H:%M:%S')}]: 当前群聊已经冷群了 {min_str} 分钟。"
+    #     self.openai_messages.append_user_message(delta_content)
+    #     if not self.blocked:
+    #         await self.generate_reply()
+    #         self.blocked = True  # 再次收到消息后才会解锁
 
     async def leave_for_a_while(self) -> None:
         await self.session.mute()
@@ -1455,6 +1455,7 @@ class GroupSession(BaseSession):
         lang_str = f"mlsid::--lang={lang_name}"
         super().__init__(session_id, bot, target, lang_str)
         self.adapter_group_id = target.id
+        self.cached_latest_message = None
 
     async def setup(self) -> None:
         await self.setup_session_name()
@@ -1503,11 +1504,9 @@ class GroupSession(BaseSession):
         if self.processor.blocked or not self.cached_messages:
             return
         time_to_last_message = (dt - self.cached_messages[-1]["send_time"]).total_seconds()
-        # 如果群聊冷却超过3分钟，根据累计文本长度判断是否主动发言
-        if 90 < time_to_last_message < 300 and not self.cached_messages[-1]["self"]:
-            probability = self.get_probability()
-            if random.random() <= probability:
-                await self.processor.handle_group_cold(timedelta(seconds=time_to_last_message))
+        if 30 < time_to_last_message and not self.cached_messages[-1]["self"] and self.cached_messages[-1] is not self.cached_latest_message:
+            self.cached_latest_message = self.cached_messages[-1]
+            asyncio.create_task(self.processor.generate_reply(True))
 
 
 from ..config import config
