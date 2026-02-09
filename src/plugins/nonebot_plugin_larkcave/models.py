@@ -17,7 +17,6 @@ class CaveData(Model):
 
 class ImageData(Model):
     id: Mapped[float] = mapped_column(Double(), primary_key=True)
-    file_id: Mapped[str] = mapped_column(String(32))
     name: Mapped[str] = mapped_column(Text())
     belong: Mapped[int]
     p_hash: Mapped[str] = mapped_column(String(64), nullable=True)

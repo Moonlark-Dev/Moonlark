@@ -108,12 +108,24 @@ def _migrate_blob_to_text(
     rows = result.fetchall()
 
     # 2. 修改列类型
+    # 检查列类型，如果已经是 TEXT 则跳过 alter_column
+    columns_info = {c["name"]: c for c in inspector.get_columns(table_name)}
+    
     with op.batch_alter_table(table_name, schema=None) as batch_op:
         for col in columns:
-            if dialect == "mysql":
-                batch_op.alter_column(col, existing_type=sa.LargeBinary(), type_=sa.Text(), existing_nullable=False)
-            else:  # SQLite
-                batch_op.alter_column(col, existing_type=sa.LargeBinary(), type_=sa.Text(), existing_nullable=False)
+            col_info = columns_info.get(col)
+            if not col_info:
+                continue
+            
+            # 简单检查类型是否已经是文本类型
+            type_str = str(col_info["type"]).upper()
+            is_text = "TEXT" in type_str or "CHAR" in type_str or "CLOB" in type_str
+            
+            if not is_text:
+                if dialect == "mysql":
+                    batch_op.alter_column(col, existing_type=sa.LargeBinary(), type_=sa.Text(), existing_nullable=False)
+                else:  # SQLite
+                    batch_op.alter_column(col, existing_type=sa.LargeBinary(), type_=sa.Text(), existing_nullable=False)
 
     # 3. 转换并更新数据
     # 重新加载表元数据以获取新的列类型
@@ -148,8 +160,6 @@ def _migrate_blob_to_text(
         if updates:
             stmt = table.update().where(table.c[pk_column] == pk_value).values(**updates)
             bind.execute(stmt)
-
-    bind.commit()
 
 
 def downgrade(name: str = "") -> None:
@@ -258,5 +268,3 @@ def _migrate_text_to_blob(
         if updates:
             stmt = table.update().where(table.c[pk_column] == pk_value).values(**updates)
             bind.execute(stmt)
-
-    bind.commit()
