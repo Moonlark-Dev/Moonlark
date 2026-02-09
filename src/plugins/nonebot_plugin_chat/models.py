@@ -4,10 +4,13 @@ from typing import Optional, TypedDict
 from nonebot_plugin_orm import Model
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy import LargeBinary, String, Text, Float, Integer
-from sqlalchemy.dialects.mysql import MEDIUMBLOB
+from sqlalchemy.dialects.mysql import MEDIUMBLOB, MEDIUMTEXT
 
 # 创建跨数据库兼容的二进制类型：MySQL 使用 MEDIUMBLOB (16MB)，其他数据库使用 LargeBinary
 CompatibleBlob = LargeBinary().with_variant(MEDIUMBLOB(), "mysql")
+
+# 创建跨数据库兼容的大文本类型：MySQL 使用 MEDIUMTEXT (16MB)，其他数据库使用 Text
+CompatibleMediumText = Text().with_variant(MEDIUMTEXT(), "mysql")
 
 
 class ChatGroup(Model):
@@ -61,7 +64,8 @@ class MessageQueueCache(Model):
     """消息队列缓存，用于持久化 OpenAI 消息历史以便重启后恢复"""
 
     group_id: Mapped[str] = mapped_column(String(128), primary_key=True)  # 群组 ID，主键确保每个群组只有一条记录
-    messages_json: Mapped[str] = mapped_column(Text())  # JSON 序列化的消息列表
+    # MySQL 使用 MEDIUMTEXT (16MB)，SQLite 使用 Text（无大小限制）
+    messages_json: Mapped[str] = mapped_column(CompatibleMediumText)  # JSON 序列化的消息列表
     consecutive_bot_messages: Mapped[int] = mapped_column(Integer(), default=0)  # 连续 bot 消息计数
     updated_time: Mapped[float] = mapped_column(Float())  # 最后更新时间戳
 
