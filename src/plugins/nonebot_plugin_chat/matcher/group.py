@@ -500,7 +500,10 @@ class MessageProcessor:
                     ),
                     "reply_message_id": FunctionParameter(
                         type="string",
-                        description="要回复的消息的**消息 ID**，不指定则不会对有关消息进行引用。",
+                        description=(
+                            "要回复的消息的**消息 ID**，不指定则不会对有关消息进行引用。\n"
+                            "你也可以通过在这个参数填入 `send_message` 工具中返回的消息来引用你自己发送的消息，这在连续发送消息时候非常有用。"
+                        ),
                         required=False,
                     ),
                 },
@@ -765,7 +768,11 @@ class MessageProcessor:
             self.functions.append(
                 AsyncFunction(
                     func=self.delete_message,
-                    description="撤回一条消息，你只能撤回你自己发送的消息。",
+                    description=(
+                        "撤回一条消息，你只能撤回你自己发送的消息。消息 ID 为 `send_message` 工具返回的消息 ID。\n"
+                        "你可以少量的在发送消息时制造一些错误输入，随后通过此工具撤回重发来增强你的活人感。\n"
+                        "参考的使用场景：在发送消息后发现群友实际上想说的内容和此前你的分析有偏离时。"
+                    ),
                     parameters={
                         "message_id": FunctionParameter(
                             type="integer", description="要撤回的消息的**消息 ID**。", required=True
