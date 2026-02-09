@@ -1,7 +1,7 @@
 """Migrate larkcave images from local files to database
 
-迁移 ID: c1d2e3f4g5h6
-父迁移: b1c2d3e4f5g6
+迁移 ID: c1d2e3f4a5b6
+父迁移: b1c2d3e4f5a6
 创建时间: 2026-02-09 21:47:00.000000
 
 此迁移将 nonebot_plugin_larkcave_imagedata 表添加 image_data 列，
@@ -18,8 +18,8 @@ from alembic import op
 import sqlalchemy as sa
 from nonebot_plugin_localstore import get_data_dir
 
-revision: str = "c1d2e3f4g5h6"
-down_revision: str | Sequence[str] | None = "b1c2d3e4f5g6"
+revision: str = "c1d2e3f4a5b6"
+down_revision: str | Sequence[str] | None = "b1c2d3e4f5a6"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
