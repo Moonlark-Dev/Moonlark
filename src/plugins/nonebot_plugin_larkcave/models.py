@@ -6,6 +6,8 @@ from pydantic import BaseModel
 
 from .config import config
 
+from sqlalchemy.dialects.mysql import LONGBLOB
+CompatibleBlob = LargeBinary().with_variant(LONGBLOB(), "mysql")
 
 class CaveData(Model):
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -20,7 +22,7 @@ class ImageData(Model):
     name: Mapped[str] = mapped_column(Text())
     belong: Mapped[int]
     p_hash: Mapped[str] = mapped_column(String(64), nullable=True)
-    image_data: Mapped[bytes] = mapped_column(LargeBinary(), nullable=True)
+    image_data: Mapped[bytes] = mapped_column(CompatibleBlob, nullable=True)
 
 
 class CaveImage(BaseModel):
