@@ -40,16 +40,17 @@ def upgrade(name: str = "") -> None:
     # 检查列是否已存在
     columns = [c["name"] for c in inspector.get_columns("nonebot_plugin_larkcave_imagedata")]
     if "image_data" not in columns:
-        with op.batch_alter_table("nonebot_plugin_larkcave_imagedata", schema=None) as batch_op:
-            if dialect == "mysql":
-                # MySQL: 使用 LONGBLOB 以支持大图片
-                from sqlalchemy.dialects.mysql import LONGBLOB
-                batch_op.add_column(sa.Column("image_data", LONGBLOB(), nullable=True))
-            else:
-                # SQLite: 使用 LargeBinary
-                batch_op.add_column(sa.Column("image_data", sa.LargeBinary(), nullable=True))
-    else:
-        return
+        try:
+            with op.batch_alter_table("nonebot_plugin_larkcave_imagedata", schema=None) as batch_op:
+                if dialect == "mysql":
+                    # MySQL: 使用 LONGBLOB 以支持大图片
+                    from sqlalchemy.dialects.mysql import LONGBLOB
+                    batch_op.add_column(sa.Column("image_data", LONGBLOB(), nullable=True))
+                else:
+                    # SQLite: 使用 LargeBinary
+                    batch_op.add_column(sa.Column("image_data", sa.LargeBinary(), nullable=True))
+        except Exception:
+            pass
 
     # 2. 从本地文件读取图片数据并写入数据库
     data_dir = get_data_dir("nonebot_plugin_larkcave")
