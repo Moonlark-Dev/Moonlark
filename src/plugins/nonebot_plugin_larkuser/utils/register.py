@@ -15,7 +15,6 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
-import base64
 import json
 import traceback
 from datetime import datetime
@@ -82,7 +81,7 @@ async def register_user(session: AsyncSession | async_scoped_session, user_id: s
         user_id=user_id,
         nickname=(d := await get_nickname(user, user_id))[0],
         register_time=datetime.now(),
-        config=base64.b64encode(json.dumps({"lock_nickname": d[1]}).encode("utf-8")),
+        config=json.dumps({"lock_nickname": d[1]}),
     )
     await session.merge(u)
     await session.commit()

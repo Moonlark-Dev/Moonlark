@@ -6,7 +6,6 @@ from nonebot_plugin_orm import async_scoped_session
 from nonebot_plugin_userinfo import EventUserInfo, UserInfo
 from sqlalchemy.exc import NoResultFound
 import json
-import base64
 from ..models import UserData, GuestUser
 
 
@@ -26,7 +25,7 @@ async def _(session: async_scoped_session, user: UserInfo = EventUserInfo()) -> 
         user_data = await session.get_one(UserData, {"user_id": user.user_id})
     except NoResultFound:
         return
-    config = json.loads(base64.b64decode(user_data.config))
+    config = json.loads(user_data.config)
     if user_data.nickname != user.user_name and not config.get("lock_nickname"):
         logger.info(f"用户 {user_data.user_id} 修改了其昵称 ({user_data.nickname} => {user.user_name})")
         user_data.nickname = user.user_name
