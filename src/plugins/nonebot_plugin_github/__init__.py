@@ -82,9 +82,7 @@ async def _github_handler(matcher, url: str, user_id: str, reply_unknown_url: bo
     )
     if not (result := await review_image(image))["compliance"]:
         await lang.finish("not_compliance", user_id, result["message"])
-    await matcher.finish(
-        await UniMessage().image(raw=image).export()
-    )
+    await matcher.finish(await UniMessage().image(raw=image).export())
 
 
 @github_command.handle()
