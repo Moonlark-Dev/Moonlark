@@ -96,6 +96,7 @@ class LLMRequestSession:
         self.insert_message_queue = []
 
     async def fetch_llm_response(self) -> AsyncGenerator[str, None]:
+        retry_count = 0
         while not self.stop:
             async for message in self.request():
                 yield message
@@ -125,6 +126,9 @@ class LLMRequestSession:
                 raise e
             elif self.timeout_strategy["strategy"] == "replace":
                 response = self.timeout_strategy["choice"]
+        except IndexError:
+            logger.warning(f"Response is empty, {self.messages=}")
+            return
         logger.debug(f"{response=}\n{self.messages=}\n{self.model=}\n{self.func_list=}\n{completion=}")
         self.messages.append(response.message)
         if response.message.content:
