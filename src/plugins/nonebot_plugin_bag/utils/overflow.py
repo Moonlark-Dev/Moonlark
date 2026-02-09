@@ -1,4 +1,3 @@
-import base64
 from datetime import datetime
 import json
 from typing import AsyncGenerator
@@ -20,7 +19,7 @@ async def get_overflow_item(index: int) -> OverflowItem:
             raise IndexError(f"Item {index} not found.")
         return {
             "item": await get_item(
-                get_location_by_id(item.item_id), item.user_id, item.count, json.loads(base64.b64decode(item.data))
+                get_location_by_id(item.item_id), item.user_id, item.count, json.loads(item.data)
             ),
             "index": index,
             "time": item.time,
@@ -40,7 +39,7 @@ async def put_overflow_item(item: ItemStack) -> None:
             BagOverflow(
                 item_id=str(item.item.getLocation()),
                 count=item.count,
-                data=base64.b64encode(json.dumps(item.data).encode("utf-8")),
+                data=json.dumps(item.data),
                 user_id=item.user_id,
                 time=datetime.now(),
             )

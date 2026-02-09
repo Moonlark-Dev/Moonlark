@@ -108,7 +108,7 @@ class LangLoader:
     async def commit_keys(self, langugage: str, plugin: str, keys: dict[str, LanguageKey]) -> None:
         for key, value in keys.items():
             self.session.add(
-                LanguageKeyCache(language=langugage, plugin=plugin, key=key, text=json.dumps(value.text).encode())
+                LanguageKeyCache(language=langugage, plugin=plugin, key=key, text=json.dumps(value.text))
             )
 
     def get_languages(self) -> dict[str, LanguageData]:

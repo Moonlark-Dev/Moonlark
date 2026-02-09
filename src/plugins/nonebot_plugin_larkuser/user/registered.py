@@ -14,7 +14,6 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
-import base64
 from datetime import datetime
 from typing import Optional
 
@@ -54,7 +53,7 @@ class MoonlarkRegisteredUser(MoonlarkUser):
             if favorability:
                 user.favorability = favorability
             if config:
-                user.config = base64.b64encode(json.dumps(config).encode())
+                user.config = json.dumps(config)
             await session.commit()
         await self.setup_user()
 
@@ -76,7 +75,7 @@ class MoonlarkRegisteredUser(MoonlarkUser):
             self.health = user.health
             self.fav = user.favorability
             self.avatar = await get_user_avatar(self.user_id)
-            self.config = json.loads(base64.b64decode(user.config))
+            self.config = json.loads(user.config)
         if not self.nickname:
             self.nickname = f"用户-{self.user_id}"
 
