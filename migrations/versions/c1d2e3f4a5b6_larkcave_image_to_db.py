@@ -48,6 +48,8 @@ def upgrade(name: str = "") -> None:
             else:
                 # SQLite: 使用 LargeBinary
                 batch_op.add_column(sa.Column("image_data", sa.LargeBinary(), nullable=True))
+    else:
+        return
 
     # 2. 从本地文件读取图片数据并写入数据库
     data_dir = get_data_dir("nonebot_plugin_larkcave")
