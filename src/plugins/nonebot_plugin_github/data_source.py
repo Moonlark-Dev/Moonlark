@@ -6,9 +6,9 @@ from nonebot_plugin_render.render import render_template
 from nonebot_plugin_larkutils.user import get_user_id
 
 
-def render_markdown_body(body: str | None) -> Markup | None:
+def render_markdown_body(body: str | None) -> Markup:
     if not body:
-        return body
+        return Markup("")
     html = markdown.markdown(
         body,
         extensions=["fenced_code", "tables", "nl2br"],
