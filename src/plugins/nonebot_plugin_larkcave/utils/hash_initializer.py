@@ -17,13 +17,11 @@
 
 import asyncio
 import zlib
-import aiofiles
 from nonebot import logger
 from nonebot_plugin_orm import async_scoped_session, get_session
 from sqlalchemy import select
 
 from ..models import ImageData
-from .decoder import data_dir
 from .encoder import calculate_perceptual_hash
 
 
@@ -48,16 +46,13 @@ async def _check_and_update_hashes() -> None:
 
         for image_data in images_without_hash:
             try:
-                # 读取图片文件
-                file_path = data_dir.joinpath(image_data.file_id)
-                if not file_path.exists():
-                    logger.warning(f"图片文件不存在: {image_data.file_id} (ID: {image_data.id})")
+                # 从数据库读取图片数据
+                if image_data.image_data is None:
+                    logger.warning(f"图片数据为空: ID {image_data.id}")
                     fail_count += 1
                     continue
 
-                async with aiofiles.open(file_path, "rb") as f:
-                    compressed_data = await f.read()
-                    image_bytes = zlib.decompress(compressed_data)
+                image_bytes = zlib.decompress(image_data.image_data)
 
                 # 计算感知哈希
                 p_hash = calculate_perceptual_hash(image_bytes)

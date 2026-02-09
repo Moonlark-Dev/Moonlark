@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import String, Text, Double
+from sqlalchemy import String, Text, Double, LargeBinary
 from nonebot_plugin_orm import Model
 from sqlalchemy.orm import Mapped, mapped_column
 from pydantic import BaseModel
@@ -21,6 +21,7 @@ class ImageData(Model):
     name: Mapped[str] = mapped_column(Text())
     belong: Mapped[int]
     p_hash: Mapped[str] = mapped_column(String(64), nullable=True)
+    image_data: Mapped[bytes] = mapped_column(LargeBinary(), nullable=True)
 
 
 class CaveImage(BaseModel):
