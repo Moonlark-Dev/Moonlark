@@ -27,9 +27,7 @@ async def get_bag_item(user_id: str, index: int, ignore_lock: bool = False) -> B
         result = await session.scalar(select(Bag).where(Bag.user_id == user_id, Bag.bag_index == index))
         if result is None:
             raise IndexError(f"Item {user_id}->{index} not found.")
-        item = await get_item(
-            get_location_by_id(result.item_id), user_id, result.count, json.loads(result.data)
-        )
+        item = await get_item(get_location_by_id(result.item_id), user_id, result.count, json.loads(result.data))
         bag_item = BagItem(item, result.bag_index)
         if not ignore_lock:
             await bag_item.setup_bag_lock()

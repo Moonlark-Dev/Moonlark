@@ -18,9 +18,7 @@ async def get_overflow_item(index: int) -> OverflowItem:
         if item is None:
             raise IndexError(f"Item {index} not found.")
         return {
-            "item": await get_item(
-                get_location_by_id(item.item_id), item.user_id, item.count, json.loads(item.data)
-            ),
+            "item": await get_item(get_location_by_id(item.item_id), item.user_id, item.count, json.loads(item.data)),
             "index": index,
             "time": item.time,
         }
