@@ -977,7 +977,7 @@ class MessageProcessor:
         receipt = await message.send(target=self.session.target, bot=self.session.bot)
         self.session.accumulated_text_length = 0
         message_id = receipt.msg_ids[0] if receipt.msg_ids else None
-        message_id = message_id['message_id'] if message_id else "获取失败"
+        message_id = message_id["message_id"] if message_id else "获取失败"
         response = f"消息发送成功(消息ID: {message_id})。\n"
         if self.openai_messages.cached_reasoning_content != self._latest_reasioning_content_cache:
             sticker_recommendations = "\n".join(
@@ -1520,7 +1520,11 @@ class GroupSession(BaseSession):
         if self.processor.blocked or not self.cached_messages:
             return
         time_to_last_message = (dt - self.cached_messages[-1]["send_time"]).total_seconds()
-        if 30 < time_to_last_message and not self.cached_messages[-1]["self"] and self.cached_messages[-1] is not self.cached_latest_message:
+        if (
+            30 < time_to_last_message
+            and not self.cached_messages[-1]["self"]
+            and self.cached_messages[-1] is not self.cached_latest_message
+        ):
             self.cached_latest_message = self.cached_messages[-1]
             asyncio.create_task(self.processor.generate_reply(True))
 
