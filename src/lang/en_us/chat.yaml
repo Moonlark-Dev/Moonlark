@@ -365,6 +365,13 @@ help:
   usage7: chat calls (查看最近的工具调用记录)
   usage8: chat profile (查看自己的 profile)
   usage9: chat profile set <内容> (设置自己的 profile)
+help_rua:
+  description: Interact with Moonlark
+  details: Use the rua command to interact with Moonlark (e.g., poke, pat head, hug, etc.). Different actions require different favorability levels to unlock.
+  usage1: rua (Interact with Moonlark using the currently selected action)
+  usage2: rua action (View the list of available interaction actions)
+  usage3: rua action <number> (Switch the current interaction action)
+
 profile:
   set_success: Profile 设置成功！
   review_failed: Profile 内容审核未通过：{}
