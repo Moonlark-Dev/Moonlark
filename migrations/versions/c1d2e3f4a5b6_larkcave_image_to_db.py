@@ -45,6 +45,7 @@ def upgrade(name: str = "") -> None:
                 if dialect == "mysql":
                     # MySQL: 使用 LONGBLOB 以支持大图片
                     from sqlalchemy.dialects.mysql import LONGBLOB
+
                     batch_op.add_column(sa.Column("image_data", LONGBLOB(), nullable=True))
                 else:
                     # SQLite: 使用 LargeBinary
@@ -54,7 +55,7 @@ def upgrade(name: str = "") -> None:
 
     # 2. 从本地文件读取图片数据并写入数据库
     data_dir = get_data_dir("nonebot_plugin_larkcave")
-    
+
     # 重新加载表元数据
     metadata = sa.MetaData()
     table = sa.Table("nonebot_plugin_larkcave_imagedata", metadata, autoload_with=bind)
@@ -72,13 +73,13 @@ def upgrade(name: str = "") -> None:
 
             image_id = row.id
             file_id = row.file_id
-            
+
             file_path = data_dir.joinpath(file_id)
             if file_path.exists():
                 # 读取文件内容
                 with open(file_path, "rb") as f:
                     image_bytes = f.read()
-                
+
                 # 更新数据库
                 stmt = table.update().where(table.c.id == image_id).values(image_data=image_bytes)
                 bind.execute(stmt)
@@ -98,7 +99,7 @@ def downgrade(name: str = "") -> None:
     # 1. 将数据库中的图片数据写回本地文件
     data_dir = get_data_dir("nonebot_plugin_larkcave")
     data_dir.mkdir(parents=True, exist_ok=True)
-    
+
     metadata = sa.MetaData()
     table = sa.Table("nonebot_plugin_larkcave_imagedata", metadata, autoload_with=bind)
 
@@ -109,7 +110,7 @@ def downgrade(name: str = "") -> None:
     for row in rows:
         file_id = row.file_id
         image_data = row.image_data
-        
+
         if image_data is not None:
             file_path = data_dir.joinpath(file_id)
             with open(file_path, "wb") as f:
