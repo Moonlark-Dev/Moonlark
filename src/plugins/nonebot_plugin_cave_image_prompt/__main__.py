@@ -1,7 +1,8 @@
 from nonebot import on_message
-from nonebot.adapters import Event, Bot
+from nonebot.adapters import Event
+from nonebot.adapters.qq import Bot
 from nonebot.rule import Rule
-from nonebot_plugin_alconna import Image, UniMessage
+from nonebot_plugin_alconna import Image, UniMessage, Text
 from nonebot_plugin_larklang import LangHelper
 from nonebot_plugin_larkutils import get_user_id
 from nonebot_plugin_larkutils.user import private_message as is_private_message
@@ -49,6 +50,6 @@ async def handle_image_prompt(
         return
     # 询问用户是否要投稿
     if await ask_cave_submission(user_id):
-        content = [image]
+        content: list[Image | Text] = [image]
         await post_cave(content, user_id, event, bot, state, session)
     await lang.finish("cancelled", user_id)
