@@ -442,7 +442,7 @@ class MessageQueue:
                 fetcher.session.insert_messages(self.messages)
                 self.inserted_messages.append(message)
                 self.messages = []
-                if "<parameter" in message:
+                if any([keyword in message for keyword in ["<parameter", "</function_calls>", "<function"]]):
                     include_wrong_tool_calls = True
             self.messages = fetcher.get_messages()
         except Exception as e:
