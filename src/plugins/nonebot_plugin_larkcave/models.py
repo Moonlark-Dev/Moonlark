@@ -7,7 +7,9 @@ from pydantic import BaseModel
 from .config import config
 
 from sqlalchemy.dialects.mysql import LONGBLOB
+
 CompatibleBlob = LargeBinary().with_variant(LONGBLOB(), "mysql")
+
 
 class CaveData(Model):
     id: Mapped[int] = mapped_column(primary_key=True)
