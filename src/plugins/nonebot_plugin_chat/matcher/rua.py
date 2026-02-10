@@ -1,4 +1,5 @@
-from nonebot_plugin_alconna import Alconna, Args, Subcommand, Target, on_alconna
+from nonebot_plugin_alconna import Alconna, Args, Subcommand, Target, get_target, on_alconna
+from nonebot.params import Depends
 from nonebot_plugin_chat.models import RuaData
 from nonebot_plugin_chat.models import RuaAction
 from nonebot_plugin_larkuser.utils.nickname import get_nickname
@@ -75,9 +76,13 @@ async def _(user_id: str = get_user_id()) -> None:
     await lang.finish("rua.action_list", user_id, "\n".join(actions))
 
 
+async def _get_target(event: Event) -> Target:
+    return get_target(event)
+
+
 @matcher.assign("$main")
 async def _(
-    bot: Bot, event: Event, target: Target, group_id: str = get_group_id(), user_id: str = get_user_id()
+    bot: Bot, event: Event, target: Target = Depends(_get_target), group_id: str = get_group_id(), user_id: str = get_user_id()
 ) -> None:
     from nonebot_plugin_chat.matcher.group import get_group_session_forced, get_private_session
 
