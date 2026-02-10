@@ -1209,7 +1209,9 @@ class BaseSession(ABC):
 
         # 应用好感度系数
         if len(self.cached_messages) > 0:
-            avg_fav = sum([(await get_user(msg["user_id"])).get_fav() for msg in self.cached_messages if not msg["self"]]) / len(self.cached_messages)
+            avg_fav = sum(
+                [(await get_user(msg["user_id"])).get_fav() for msg in self.cached_messages if not msg["self"]]
+            ) / len(self.cached_messages)
             logger.debug(f"{avg_fav=}")
             final_probability *= 1 + 0.8 * (1 - math.e ** (-5 * (avg_fav - 0.3)))
 
