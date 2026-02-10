@@ -80,9 +80,7 @@ async def send_to_group(group_id: str, message: UniMessage) -> bool:
             groups = await bot.get_group_list()
             if any(str(g["group_id"]) == group_id for g in groups):
                 exported = await message.export(bot)
-                await bot.send_group_msg(
-                    group_id=int(group_id), message=V11Message(exported)
-                )
+                await bot.send_group_msg(group_id=int(group_id), message=V11Message(exported))
                 return True
         except Exception:
             logger.warning(f"向群 {group_id} 发送消息失败: {traceback.format_exc()}")

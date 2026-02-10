@@ -82,7 +82,11 @@ async def _get_target(event: Event) -> Target:
 
 @matcher.assign("$main")
 async def _(
-    bot: Bot, event: Event, target: Target = Depends(_get_target), group_id: str = get_group_id(), user_id: str = get_user_id()
+    bot: Bot,
+    event: Event,
+    target: Target = Depends(_get_target),
+    group_id: str = get_group_id(),
+    user_id: str = get_user_id(),
 ) -> None:
     from nonebot_plugin_chat.matcher.group import get_group_session_forced, get_private_session
 

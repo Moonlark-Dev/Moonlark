@@ -150,7 +150,7 @@ async def _() -> None:
 async def get_group_bot(group_id: str) -> Optional[Bot]:
     """
     通过群 ID 获取一个 Bot 实例
-    
+
     :param group_id: 群号
     :type group_id: str
     :return: Bot 实例
@@ -165,4 +165,3 @@ async def get_group_bot(group_id: str) -> Optional[Bot]:
             assign_session(group_id, bot_id)
             return bot
     return None
-
