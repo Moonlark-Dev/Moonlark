@@ -901,9 +901,6 @@ class MessageProcessor:
         await self.process_messages(msg_dict)
         self.session.cached_messages.append(msg_dict)
         await self.session.on_cache_posted()
-        if not mentioned:
-            # 如果需要阻断，直接返回
-            return
         if (mentioned or not self.session.message_queue) and not self.blocked:
             asyncio.create_task(self.generate_reply(force_reply=mentioned))
 
