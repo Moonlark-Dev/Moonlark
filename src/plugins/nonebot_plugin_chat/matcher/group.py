@@ -1213,7 +1213,7 @@ class BaseSession(ABC):
                 [(await get_user(msg["user_id"])).get_fav() for msg in self.cached_messages if not msg["self"]]
             ) / len(self.cached_messages)
             logger.debug(f"{avg_fav=}")
-            final_probability *= 1 + 0.8 * (1 - math.e ** (-5 * (avg_fav - 0.3)))
+            final_probability *= 1 + 0.8 * (1 - math.e ** (-5 * avg_fav))
 
         # 确保概率在 0.0-1.0 之间
         return max(0.0, min(1.0, final_probability))
