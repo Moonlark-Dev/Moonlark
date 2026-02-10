@@ -13,3 +13,4 @@ __plugin_meta__ = PluginMetadata(
 require("nonebot_plugin_apscheduler")
 
 from . import __main__
+from .__main__ import get_group_bot
