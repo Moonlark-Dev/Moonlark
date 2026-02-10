@@ -922,7 +922,7 @@ class MessageProcessor:
 
         # 检查是否应该触发回复
         if not force_reply:
-            probability = self.session.get_probability()
+            probability = await self.session.get_probability()
             logger.debug(
                 f"Accumulated length: {self.session.accumulated_text_length}, Trigger probability: {probability:.2%}"
             )
@@ -1185,7 +1185,7 @@ class BaseSession(ABC):
     async def send_poke(self, target_id: str) -> None:
         pass
 
-    def get_probability(self, length_adjustment: int = 0, apply_ghot_coeefficient: bool = True) -> float:
+    async def get_probability(self, length_adjustment: int = 0, apply_ghot_coeefficient: bool = True) -> float:
         """
         计算触发回复的概率
 
@@ -1206,6 +1206,14 @@ class BaseSession(ABC):
             final_probability = base_probability * self.ghot_coefficient
         else:
             final_probability = base_probability
+
+        # 应用好感度系数
+        if len(self.cached_messages) > 0:
+            avg_fav = sum(
+                [(await get_user(msg["user_id"])).get_fav() for msg in self.cached_messages if not msg["self"]]
+            ) / len(self.cached_messages)
+            logger.debug(f"{avg_fav=}")
+            final_probability *= 1 + 0.8 * (1 - math.e ** (-5 * (avg_fav - 0.3)))
 
         # 确保概率在 0.0-1.0 之间
         return max(0.0, min(1.0, final_probability))
@@ -1694,7 +1702,7 @@ class CommandHandler:
     async def handle_desire(self) -> None:
         session = await self.get_group_session()
         length = session.accumulated_text_length
-        probability = session.get_probability(apply_ghot_coeefficient=False)
+        probability = await session.get_probability(apply_ghot_coeefficient=False)
         await lang.send("command.desire.get", self.user_id, length, round(probability, 2), session.ghot_coefficient)
 
     async def handle_mute(self) -> None:
