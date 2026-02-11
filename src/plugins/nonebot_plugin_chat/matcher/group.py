@@ -431,7 +431,6 @@ class MessageQueue:
             functions=self.processor.functions,
             identify="Chat",
             pre_function_call=self.processor.send_function_call_feedback,
-            timeout=90,
         )
         include_wrong_tool_calls = False
         try:
