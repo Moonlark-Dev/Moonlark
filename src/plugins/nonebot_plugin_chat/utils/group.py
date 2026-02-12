@@ -92,7 +92,7 @@ class LinkParser:
                 generate_message(generate_page_info(page_markdown), "user"),
             ],
             identify="Link Parse",
-            timeout=90
+            timeout=90,
         )
 
 
