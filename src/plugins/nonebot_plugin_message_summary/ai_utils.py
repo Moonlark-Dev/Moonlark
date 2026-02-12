@@ -6,6 +6,7 @@ from nonebot_plugin_openai import fetch_message, generate_message
 from .lang import lang
 from .models import GroupMessage, CatGirlScore, DebateAnalysis
 
+
 async def generate_message_string(result: list[GroupMessage] | Sequence[GroupMessage], style: str) -> str:
     messages = ""
     for message in list(result)[::-1]:
@@ -16,6 +17,7 @@ async def generate_message_string(result: list[GroupMessage] | Sequence[GroupMes
         else:
             messages += f"[{message.sender_nickname}] {message.message}\n"
     return messages
+
 
 async def fetch_broadcast_summary(user_id: str, messages: str) -> str:
     time_str = datetime.now(timezone(timedelta(hours=8))).strftime("%Y-%m-%d %H:%M:%S")
@@ -28,6 +30,7 @@ async def fetch_broadcast_summary(user_id: str, messages: str) -> str:
     )
     return summary_string
 
+
 async def fetch_default_summary(user_id: str, messages: str) -> str:
     summary_string = await fetch_message(
         [generate_message(await lang.text("prompt", user_id), "system"), generate_message(messages, "user")],
@@ -35,12 +38,14 @@ async def fetch_default_summary(user_id: str, messages: str) -> str:
     )
     return summary_string
 
+
 async def fetch_topic_summary(user_id: str, messages: str) -> str:
     summary_string = await fetch_message(
         [generate_message(await lang.text("prompt_topic", user_id), "system"), generate_message(messages, "user")],
         identify="Message Summary (Topic)",
     )
     return summary_string
+
 
 async def fetch_daily_summary(user_id: str, messages: str) -> str:
     summary_string = await fetch_message(
@@ -51,6 +56,7 @@ async def fetch_daily_summary(user_id: str, messages: str) -> str:
         identify="Message Summary (Daily)",
     )
     return summary_string
+
 
 async def get_catgirl_score(message_list: str) -> list[CatGirlScore]:
     """获取由聊天记录总结出来的猫娘分数"""
@@ -63,6 +69,7 @@ async def get_catgirl_score(message_list: str) -> list[CatGirlScore]:
             identify="Message Summary (Neko)",
         )
     )
+
 
 async def analyze_debate(messages: str, user_id: str) -> DebateAnalysis | None:
     """分析聊天记录中的辩论内容"""
@@ -88,6 +95,7 @@ async def analyze_debate(messages: str, user_id: str) -> DebateAnalysis | None:
 
     return json.loads(result)
 
+
 async def generate_semantic_search_payload(query: str) -> str:
     """Stage 1: Intent Extraction"""
     prompt = await lang.text("check_history.prompt_stage1", "")
@@ -100,11 +108,12 @@ async def generate_semantic_search_payload(query: str) -> str:
     )
     return result.strip()
 
+
 async def analyze_history(payload: str, history: list[GroupMessage], user_id: str) -> dict | None:
     """Stage 2: Historical Analysis"""
     messages_str = await generate_message_string(history, "broadcast")
     prompt = await lang.text("check_history.prompt_stage2", user_id)
-    
+
     result = await fetch_message(
         [
             generate_message(prompt, "system"),
@@ -112,10 +121,10 @@ async def analyze_history(payload: str, history: list[GroupMessage], user_id: st
         ],
         identify="Message Summary (History Check Stage 2)",
     )
-    
+
     if "NO_MATCH_FOUND" in result:
         return None
-        
+
     # Clean JSON string
     result = result.strip()
     if result.startswith("```json"):
@@ -123,7 +132,7 @@ async def analyze_history(payload: str, history: list[GroupMessage], user_id: st
     if result.endswith("```"):
         result = result[:-3]
     result = result.strip()
-    
+
     try:
         return json.loads(result)
     except json.JSONDecodeError as e:

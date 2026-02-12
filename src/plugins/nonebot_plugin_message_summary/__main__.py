@@ -30,6 +30,7 @@ from .ai_utils import generate_message_string
 # This file is kept for backward compatibility and scheduler tasks
 # Most logic has been moved to matcher.py, ai_utils.py, render_utils.py
 
+
 def get_everyday_summary_config() -> FileManager:
     """Get the config file for everyday summary feature"""
     return open_file("everyday_summary_config.json", FileType.CONFIG, [])
@@ -80,9 +81,7 @@ async def send_daily_summary_to_group(group_id: str) -> None:
     try:
         image_bytes = await md_to_pic(summary_string)
         msg = await UniMessage().image(raw=image_bytes).export(bot)
-        await bot.send_group_msg(
-            group_id=int(target_group_id), message=msg # type: ignore
-        )
+        await bot.send_group_msg(group_id=int(target_group_id), message=msg)  # type: ignore
     except Exception as e:
         logger.exception(e)
 

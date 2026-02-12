@@ -57,8 +57,10 @@ check_history = on_command("check-history", aliases={"发过了吗"})
 
 # --- Config Helpers ---
 
+
 def get_config() -> FileManager:
     return open_file("disabled_groups.json", FileType.CONFIG, [])
+
 
 def get_everyday_summary_config() -> FileManager:
     """Get the config file for everyday summary feature"""
@@ -66,6 +68,7 @@ def get_everyday_summary_config() -> FileManager:
 
 
 # --- Handlers ---
+
 
 @summary.assign("style")
 async def _(
@@ -90,7 +93,7 @@ async def handle_main(
     async with get_config() as conf:
         if group_id in conf.data:
             await lang.finish("disabled", user_id)
-    
+
     result = (
         await session.scalars(
             select(GroupMessage)
@@ -100,9 +103,9 @@ async def handle_main(
             .order_by(GroupMessage.id_)
         )
     ).all()
-    
+
     messages = await generate_message_string(result, style)
-    
+
     if style in ["broadcast", "bc"]:
         summary_string = await fetch_broadcast_summary(user_id, messages)
         await summary.finish(summary_string)
@@ -204,27 +207,27 @@ async def handle_check_history(
     group_id: str = get_group_id(),
 ) -> None:
     """处理 .check-history 指令"""
-    
+
     # 1. Input Parsing & Validation
     target_content = ""
-    
+
     # Check for reply first
     uni_msg = UniMessage.of(args)
     await uni_msg.attach_reply(event, bot)
     if uni_msg.has(Reply):
         reply = uni_msg[Reply, 0]
         target_content = await parse_message_to_string(UniMessage([reply]), event, bot, state)
-    
+
     # If no reply content, check arguments
     if not target_content:
         target_content = args.extract_plain_text().strip()
-    
+
     if not target_content:
         await lang.finish("check_history.no_content", user_id)
 
     # 2. Stage 1: Intent Extraction
     payload = await generate_semantic_search_payload(target_content)
-    
+
     # 3. Stage 2: Historical Analysis
     # Fetch last 48 hours of messages
     start_time = datetime.now() - timedelta(hours=48)
@@ -236,7 +239,7 @@ async def handle_check_history(
             .order_by(GroupMessage.id_)
         )
     ).all()
-    
+
     if not history:
         await lang.finish("check_history.no_history", user_id)
 
@@ -250,16 +253,17 @@ async def handle_check_history(
                 break
 
     result = await analyze_history(payload, history_list, user_id)
-    
+
     # 4. Visualization & Output
     if not result:
         await lang.finish("check_history.no_match", user_id)
-    
+
     msg = await render_history_check_result(result, user_id)
     await check_history.finish(await msg.export(bot))
 
 
 # --- Recorder Logic ---
+
 
 async def clean_recorded_message(session: async_scoped_session) -> None:
     end_time = datetime.now() - timedelta(days=2)
@@ -268,6 +272,7 @@ async def clean_recorded_message(session: async_scoped_session) -> None:
     # But keeping original logic structure for safety unless refactoring DB logic entirely
     for item in await session.scalars(select(GroupMessage).where(GroupMessage.timestamp < end_time)):
         await session.delete(item)
+
 
 @recorder.handle()
 async def _(
