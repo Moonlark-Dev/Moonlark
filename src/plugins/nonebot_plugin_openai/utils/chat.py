@@ -130,6 +130,7 @@ class LLMRequestSession:
                     **self.kwargs,
                 ),
             )
+            logger.debug(f"{completion=}")
             response = completion.choices[0]
         except openai.APITimeoutError as e:
             if self.timeout_strategy is None or self.timeout_strategy["strategy"] == "throw":

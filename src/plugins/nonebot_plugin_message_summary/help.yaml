@@ -3,3 +3,4 @@ commands:
   summary: help;5;tools
   neko-finder: help_neko;1;community
   debate-helper: help_debate;1;tools
+  check-history: help_check_history;2;tools
