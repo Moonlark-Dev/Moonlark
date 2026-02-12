@@ -439,7 +439,7 @@ class MessageQueue:
                     self.cached_reasoning_content = message
                 logger.info(f"Moonlark 说: {message}")
                 fetcher.session.insert_messages(self.messages)
-                self.inserted_messages.append(message)
+                self.inserted_messages.extend(self.messages)
                 self.messages = []
                 if any([keyword in message for keyword in ["<parameter", "</function_calls>", "<function"]]):
                     include_wrong_tool_calls = True
