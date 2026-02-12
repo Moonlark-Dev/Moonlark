@@ -516,7 +516,7 @@ class MessageProcessor:
                 parameters={
                     "image_id": FunctionParameter(
                         type="string",
-                        description="目标图片的唯一标识 ID，格式如 'img_1'，从消息中的 [图片(ID:xxx): 描述] 中获取。",
+                        description="目标图片的唯一标识 ID，格式如 'img_1'，从你收到的消息中的 [图片(ID:xxx): 描述] 中获取。",
                         required=True,
                     ),
                     "query_prompt": FunctionParameter(
