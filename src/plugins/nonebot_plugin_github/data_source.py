@@ -1,7 +1,19 @@
 import re
 import httpx
+import markdown
+from markupsafe import Markup
 from nonebot_plugin_render.render import render_template
 from nonebot_plugin_larkutils.user import get_user_id
+
+
+def render_markdown_body(body: str | None) -> Markup:
+    if not body:
+        return Markup("")
+    html = markdown.markdown(
+        body,
+        extensions=["fenced_code", "tables", "nl2br"],
+    )
+    return Markup(html)
 
 
 def rreplace(s, old, new, count=1):
@@ -65,7 +77,7 @@ async def parse_github(url):
                 "comments": response["comments"],
                 "updated_at": response["updated_at"],
                 "avatar": response["user"]["avatar_url"],
-                "body": response["body"],
+                "body": render_markdown_body(response["body"]),
             }
         case "discussions":
             return {
@@ -76,7 +88,7 @@ async def parse_github(url):
                 "number": response["number"],
                 "labels": response["labels"],
                 "state": response["state"],
-                "body": response["body"],
+                "body": render_markdown_body(response["body"]),
                 "comments": response["comments"],
                 "updated_at": response["updated_at"],
                 "category": response["category"]["name"],
@@ -94,7 +106,7 @@ async def parse_github(url):
                 "comments": response["comments"],
                 "updated_at": response["updated_at"],
                 "avatar": response["user"]["avatar_url"],
-                "body": response["body"],
+                "body": render_markdown_body(response["body"]),
                 "from": response["head"]["label"],
                 "to": response["base"]["label"],
             }
