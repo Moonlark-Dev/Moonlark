@@ -240,7 +240,16 @@ async def handle_check_history(
     if not history:
         await lang.finish("check_history.no_history", user_id)
 
-    result = await analyze_history(payload, list(history), user_id)
+    # Filter out the replied message itself if it exists in history
+    history_list = list(history)
+    if uni_msg.has(Reply):
+        # Iterate backwards to find the most recent matching message
+        for i in range(len(history_list) - 1, -1, -1):
+            if history_list[i].message == target_content:
+                history_list.pop(i)
+                break
+
+    result = await analyze_history(payload, history_list, user_id)
     
     # 4. Visualization & Output
     if not result:
