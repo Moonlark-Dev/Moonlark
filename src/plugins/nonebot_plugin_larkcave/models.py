@@ -1,10 +1,14 @@
 from datetime import datetime
-from sqlalchemy import String, Text, Double
+from sqlalchemy import String, Text, Double, LargeBinary
 from nonebot_plugin_orm import Model
 from sqlalchemy.orm import Mapped, mapped_column
 from pydantic import BaseModel
 
 from .config import config
+
+from sqlalchemy.dialects.mysql import LONGBLOB
+
+CompatibleBlob = LargeBinary().with_variant(LONGBLOB(), "mysql")
 
 
 class CaveData(Model):
@@ -17,10 +21,10 @@ class CaveData(Model):
 
 class ImageData(Model):
     id: Mapped[float] = mapped_column(Double(), primary_key=True)
-    file_id: Mapped[str] = mapped_column(String(32))
     name: Mapped[str] = mapped_column(Text())
     belong: Mapped[int]
     p_hash: Mapped[str] = mapped_column(String(64), nullable=True)
+    image_data: Mapped[bytes] = mapped_column(CompatibleBlob, nullable=True)
 
 
 class CaveImage(BaseModel):

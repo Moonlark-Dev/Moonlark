@@ -1,3 +1,4 @@
+import asyncio
 import hashlib
 from collections.abc import Awaitable
 import traceback
@@ -98,8 +99,17 @@ class LLMRequestSession:
     async def fetch_llm_response(self) -> AsyncGenerator[str, None]:
         retry_count = 0
         while not self.stop:
+            is_success = False
             async for message in self.request():
                 yield message
+                is_success = True
+            if not is_success:
+                retry_count += 1
+                if retry_count > 3:
+                    raise Exception("Failed to fetch LLM response after 3 retries")
+                await asyncio.sleep(1)
+            else:
+                retry_count = 0
         await report_openai_history(self.messages, self.identify, self.model)
 
     async def request(self) -> AsyncGenerator[str, None]:
@@ -137,7 +147,9 @@ class LLMRequestSession:
             for request in response.message.tool_calls:
                 if isinstance(request, ChatCompletionMessageFunctionToolCall):
                     await self.call_function(request.id, request.function.name, json.loads(request.function.arguments))
-        if response.finish_reason in ["stop", "eos"]:
+        else:
+            # FUCK YOU OPENAI
+            # 我操你妈逼谷歌
             self.stop = True
         self.messages.extend(self.insert_message_queue)
         self.insert_message_queue.clear()

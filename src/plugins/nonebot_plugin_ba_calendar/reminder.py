@@ -21,9 +21,9 @@ from datetime import datetime
 from typing import Literal
 
 from nonebot import get_bots
-from nonebot.adapters.onebot.v11 import Bot as V11Bot
+from nonebot.adapters.onebot.v11 import Bot as V11Bot, Message as V11Message
 from nonebot.log import logger
-from nonebot_plugin_alconna import UniMessage, Target
+from nonebot_plugin_alconna import UniMessage
 from nonebot_plugin_apscheduler import scheduler
 from nonebot_plugin_larklang import LangHelper
 from nonebot_plugin_orm import get_session
@@ -38,8 +38,8 @@ lang = LangHelper()
 REMINDER_WINDOW = 4200
 
 
-async def check_and_mark_reminder(activity_id: int, reminder_type: str, server: str) -> bool:
-    """检查提醒是否已发送，如未发送则标记并返回 True"""
+async def is_reminder_sent(activity_id: int, reminder_type: str, server: str) -> bool:
+    """检查提醒是否已发送"""
     async with get_session() as session:
         result = await session.execute(
             select(BacReminderSent).where(
@@ -50,12 +50,14 @@ async def check_and_mark_reminder(activity_id: int, reminder_type: str, server: 
                 )
             )
         )
-        if result.scalar_one_or_none() is not None:
-            return False
+        return result.scalar_one_or_none() is not None
 
+
+async def mark_reminder_sent(activity_id: int, reminder_type: str, server: str) -> None:
+    """标记提醒为已发送"""
+    async with get_session() as session:
         session.add(BacReminderSent(activity_id=activity_id, reminder_type=reminder_type, server=server))
         await session.commit()
-        return True
 
 
 async def get_subscribed_groups(server: str) -> list[str]:
@@ -77,9 +79,8 @@ async def send_to_group(group_id: str, message: UniMessage) -> bool:
         try:
             groups = await bot.get_group_list()
             if any(str(g["group_id"]) == group_id for g in groups):
-                await message.send(
-                    target=Target(group_id, self_id=bot.self_id, adapter=bot.adapter.get_name()), bot=bot
-                )
+                exported = await message.export(bot)
+                await bot.send_group_msg(group_id=int(group_id), message=V11Message(exported))
                 return True
         except Exception:
             logger.warning(f"向群 {group_id} 发送消息失败: {traceback.format_exc()}")
@@ -158,16 +159,21 @@ async def process_server_reminders(server: str) -> None:
         if not reminder_type:
             continue
 
-        if not await check_and_mark_reminder(activity_id, reminder_type, server):
+        if await is_reminder_sent(activity_id, reminder_type, server):
             continue
 
         logger.info(f"发送 {server} 服务器总力战提醒: {activity['title']} ({reminder_type})")
 
         message = await build_reminder_message(activity, reminder_type, server)
 
+        sent_any = False
         for group_id in groups:
-            await send_to_group(group_id, message)
+            if await send_to_group(group_id, message):
+                sent_any = True
             await asyncio.sleep(1)
+
+        if sent_any:
+            await mark_reminder_sent(activity_id, reminder_type, server)
 
 
 @scheduler.scheduled_job("cron", minute="*/10", id="bac_reminder_check")

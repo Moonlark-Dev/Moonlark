@@ -62,7 +62,7 @@ async def post_cave(
     async with lock:
         await session.flush()
         cave_id = await get_cave_id(session)
-        content = " ".join(
+        parsed_content = " ".join(
             [
                 (
                     (await encode_text(seg.text))
@@ -76,6 +76,6 @@ async def post_cave(
                 for seg in content
             ]
         )
-        session.add(CaveData(id=cave_id, author=user_id, time=datetime.now(), content=content))
+        session.add(CaveData(id=cave_id, author=user_id, time=datetime.now(), content=parsed_content))
         await session.commit()
     await lang.finish("add.posted", user_id, cave_id)

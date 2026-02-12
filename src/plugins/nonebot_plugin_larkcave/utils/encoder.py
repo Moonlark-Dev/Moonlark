@@ -16,11 +16,8 @@
 # ##############################################################################
 
 import time
-import uuid
 from ..models import ImageData
-import aiofiles
 import zlib
-from .decoder import data_dir
 from nonebot_plugin_orm import async_scoped_session
 import io
 import imagehash
@@ -48,11 +45,10 @@ async def encode_text(text: str) -> str:
 
 async def encode_image(cave_id: int, name: str, data: bytes, session: async_scoped_session) -> str:
     image_id = time.time()
-    file_id = uuid.uuid4().hex
     # 计算感知哈希
     p_hash = calculate_perceptual_hash(data)
-    session.add(ImageData(id=image_id, file_id=file_id, name=name, belong=cave_id, p_hash=p_hash))
-    async with aiofiles.open(data_dir.joinpath(file_id), "wb") as f:
-        await f.write(zlib.compress(data))
+    # 将压缩后的图片数据存入数据库
+    compressed_data = zlib.compress(data)
+    session.add(ImageData(id=image_id, name=name, belong=cave_id, p_hash=p_hash, image_data=compressed_data))
     await session.commit()
     return f"[[Img:{image_id}]]]"

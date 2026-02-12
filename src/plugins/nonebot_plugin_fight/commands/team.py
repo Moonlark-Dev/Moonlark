@@ -84,7 +84,7 @@ async def _(session: async_scoped_session, pos: int, character_index: int, user_
     ).all()[character_index - 1]
     team_result = await session.get(PlayerTeam, {"user_id": user_id})
     if team_result is None:
-        team_result = PlayerTeam(user_id=user_id, character_list=json.dumps({pos: character.character_id}).encode())
+        team_result = PlayerTeam(user_id=user_id, character_list=json.dumps({pos: character.character_id}))
         session.add(team_result)
         await session.commit()
     else:
@@ -93,6 +93,6 @@ async def _(session: async_scoped_session, pos: int, character_index: int, user_
             if data[k] == character.character_id:
                 data[k] = None
         data[pos] = character.character_id
-        team_result.character_list = json.dumps(data).encode()
+        team_result.character_list = json.dumps(data)
         await session.commit()
         await lang.finish("cmd.t.success", user_id)

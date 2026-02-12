@@ -365,6 +365,12 @@ help:
   usage7: chat calls (查看最近的工具调用记录)
   usage8: chat profile (查看自己的 profile)
   usage9: chat profile set <内容> (设置自己的 profile)
+help_rua:
+  description: 互动
+  details: 通过 rua 指令与 Moonlark 进行亲密互动（如戳一戳、摸头、拥抱等）。不同的互动动作需要不同的好感度才能解锁。
+  usage1: rua (使用当前选中的动作与 Moonlark 互动)
+  usage2: rua action (查看可用的互动动作列表)
+  usage3: rua action <编号> (切换当前使用的互动动作)
 profile:
   set_success: Profile 设置成功！
   review_failed: Profile 内容审核未通过：{}

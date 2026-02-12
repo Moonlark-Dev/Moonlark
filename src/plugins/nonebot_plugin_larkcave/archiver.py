@@ -67,8 +67,9 @@ async def archive_cave(cave_id: int, session: AsyncSession) -> None:
     await session.commit()
     images = (await session.scalars(select(ImageData).where(ImageData.belong == cave_id))).all()
     for image in images:
-        async with aiofiles.open(path.joinpath(f"{image.id}_{image.name}"), "wb") as f:
-            await f.write(image.data)
+        if image.image_data is not None:
+            async with aiofiles.open(path.joinpath(f"{image.id}_{image.name}"), "wb") as f:
+                await f.write(image.image_data)
         await session.delete(image)
         await session.commit()
     logger.success(f"已归档回声洞 {cave_id} 于 {path.as_posix()}")

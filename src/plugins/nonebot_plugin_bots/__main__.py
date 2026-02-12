@@ -76,29 +76,7 @@ def assign_session(session_id: str, bot_id: str) -> None:
     logger.info(f"已将会话 {session_id} 分配给 {bot_id}")
 
 
-# async def process_to_me_message(event: Event, bot: Bot, session_id: str) -> None:
-#     message = event.get_message()
-#     for segment in message:
-#         if segment.type == "at":
-#             user_id = str(segment.get("user_id"))
-#             if user_id in config.bots_list.keys() and session_id in sessions and sessions[session_id] != user_id:
-#                 segment.user_id = bot.self_id
-#                 if hasattr(event, "to_me"):
-#                     event.to_me = True
-#                 assign_session(session_id, bot.self_id)
-
-
 from nonebot.adapters.onebot.v11.event import PokeNotifyEvent
-
-# async def process_to_me_event(event: Event, bot: Bot, session_id: str) -> None:
-#     if isinstance(event, PokeNotifyEvent):
-#         target_id = str(event.target_id)
-#     else:
-#         return
-#     if target_id in config.bots_list.keys() and session_id in sessions and sessions[session_id] != target_id:
-#         assign_session(session_id, bot.self_id)
-#         event.is_tome = lambda cls: True
-
 from nonebot.adapters import Message
 
 
@@ -167,3 +145,23 @@ async def _() -> None:
             logger.debug(f"将回收过期或不可用会话: {key} ({value})")
     for key in expired_sessions:
         sessions.pop(key)
+
+
+async def get_group_bot(group_id: str) -> Optional[Bot]:
+    """
+    通过群 ID 获取一个 Bot 实例
+
+    :param group_id: 群号
+    :type group_id: str
+    :return: Bot 实例
+    :rtype: Bot | None
+    """
+    if sessions.get(group_id) in (bots := get_bots()):
+        return bots[sessions[group_id][0]]
+    # 尝试遍历所有 bot 查找
+    adapter_group_id = group_id.split("_", 1)[-1]
+    for bot_id, bot in bots.items():
+        if isinstance(bot, V11Bot) and adapter_group_id in [gid["group_id"] for gid in await bot.get_group_list()]:
+            assign_session(group_id, bot_id)
+            return bot
+    return None

@@ -19,6 +19,7 @@ import re
 import traceback
 
 from nonebot import logger
+from openai import APITimeoutError
 from .tools.browser import browser_tool, generate_page_info
 from nonebot.adapters import Bot
 from nonebot.adapters import Event
@@ -69,6 +70,8 @@ class LinkParser:
                 )
             except BrowserErrorOccurred:
                 logger.warning(traceback.format_exc())
+            except APITimeoutError:
+                logger.warning(f"解析超时: {link}")
         return self.message
 
     @staticmethod
@@ -89,6 +92,7 @@ class LinkParser:
                 generate_message(generate_page_info(page_markdown), "user"),
             ],
             identify="Link Parse",
+            timeout=90
         )
 
 

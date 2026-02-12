@@ -411,9 +411,17 @@ class MessageQueue:
         if self.fetcher_lock.locked():
             return
         async with self.fetcher_lock:
-            await self._fetch_reply()
+            retried = False
+            while not await self._fetch_reply() and not retried:
+                retried = True
+                self.append_user_message(
+                    f"[{datetime.now().strftime('%H:%M:%S')}]: 检测到了无法识别工具调用请求，请进行检查。如果相关请求确实存在请按照正确的结构和用法重新生成工具调用请求。",
+                    False
+                )
 
-    async def _fetch_reply(self) -> None:
+                
+
+    async def _fetch_reply(self) -> bool:
         messages = await self.get_messages()
         self.messages.clear()
         self.inserted_messages.clear()
@@ -423,25 +431,29 @@ class MessageQueue:
             functions=self.processor.functions,
             identify="Chat",
             pre_function_call=self.processor.send_function_call_feedback,
-            timeout=90,
         )
+        include_wrong_tool_calls = False
         try:
             async for message in fetcher.fetch_message_stream():
                 if message.startswith("## 思考过程"):
                     self.cached_reasoning_content = message
                 logger.info(f"Moonlark 说: {message}")
                 fetcher.session.insert_messages(self.messages)
-                self.inserted_messages.append(message)
+                self.inserted_messages.extend(self.messages)
                 self.messages = []
+                if any([keyword in message for keyword in ["<parameter", "</function_calls>", "<function"]]):
+                    include_wrong_tool_calls = True
             self.messages = fetcher.get_messages()
         except Exception as e:
             logger.exception(e)
             # 恢复 Message
             self.messages = messages + self.inserted_messages
             self.inserted_messages.clear()
+        return not include_wrong_tool_calls
 
-    def append_user_message(self, message: str) -> None:
-        self.consecutive_bot_messages = 0  # 收到用户消息时重置计数器
+    def append_user_message(self, message: str, reset_bot_message_counter: bool = True) -> None:
+        if reset_bot_message_counter:
+            self.consecutive_bot_messages = 0  # 收到用户消息时重置计数器
         self.messages.append(generate_message(message, "user"))
 
     def is_last_message_from_user(self) -> bool:
@@ -888,9 +900,6 @@ class MessageProcessor:
         await self.process_messages(msg_dict)
         self.session.cached_messages.append(msg_dict)
         await self.session.on_cache_posted()
-        if not mentioned:
-            # 如果需要阻断，直接返回
-            return
         if (mentioned or not self.session.message_queue) and not self.blocked:
             asyncio.create_task(self.generate_reply(force_reply=mentioned))
 
@@ -922,7 +931,7 @@ class MessageProcessor:
 
         # 检查是否应该触发回复
         if not force_reply:
-            probability = self.session.get_probability()
+            probability = await self.session.get_probability()
             logger.debug(
                 f"Accumulated length: {self.session.accumulated_text_length}, Trigger probability: {probability:.2%}"
             )
@@ -1185,7 +1194,7 @@ class BaseSession(ABC):
     async def send_poke(self, target_id: str) -> None:
         pass
 
-    def get_probability(self, length_adjustment: int = 0, apply_ghot_coeefficient: bool = True) -> float:
+    async def get_probability(self, length_adjustment: int = 0, apply_ghot_coeefficient: bool = True) -> float:
         """
         计算触发回复的概率
 
@@ -1206,6 +1215,14 @@ class BaseSession(ABC):
             final_probability = base_probability * self.ghot_coefficient
         else:
             final_probability = base_probability
+
+        # 应用好感度系数
+        if len(self.cached_messages) > 0:
+            avg_fav = sum(
+                [(await get_user(msg["user_id"])).get_fav() for msg in self.cached_messages if not msg["self"]]
+            ) / len(self.cached_messages)
+            logger.debug(f"{avg_fav=}")
+            final_probability *= 1 + 0.8 * (1 - math.e ** (-5 * avg_fav))
 
         # 确保概率在 0.0-1.0 之间
         return max(0.0, min(1.0, final_probability))
@@ -1694,7 +1711,7 @@ class CommandHandler:
     async def handle_desire(self) -> None:
         session = await self.get_group_session()
         length = session.accumulated_text_length
-        probability = session.get_probability(apply_ghot_coeefficient=False)
+        probability = await session.get_probability(apply_ghot_coeefficient=False)
         await lang.send("command.desire.get", self.user_id, length, round(probability, 2), session.ghot_coefficient)
 
     async def handle_mute(self) -> None:
