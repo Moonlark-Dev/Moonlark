@@ -416,10 +416,8 @@ class MessageQueue:
                 retried = True
                 self.append_user_message(
                     f"[{datetime.now().strftime('%H:%M:%S')}]: 检测到了无法识别工具调用请求，请进行检查。如果相关请求确实存在请按照正确的结构和用法重新生成工具调用请求。",
-                    False
+                    False,
                 )
-
-                
 
     async def _fetch_reply(self) -> bool:
         messages = await self.get_messages()
