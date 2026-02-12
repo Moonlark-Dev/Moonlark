@@ -64,6 +64,7 @@ from ..lang import lang
 from ..utils.note_manager import get_context_notes
 from ..models import ChatGroup, RuaAction, Sticker, UserProfile, MessageQueueCache
 from ..utils import enabled_group, parse_message_to_string
+from ..utils.image import query_image_content
 from ..utils.tools import (
     browse_webpage,
     web_search,
@@ -500,7 +501,31 @@ class MessageProcessor:
         self.blocked = False
         self._latest_reasioning_content_cache = ""
         self.sticker_tools = StickerTools(self.session)
+
+        async def query_image(image_id: str, query_prompt: str) -> str:
+            return await query_image_content(image_id, query_prompt, self.session.lang_str)
+
         self.functions = [
+            AsyncFunction(
+                func=query_image,
+                description=(
+                    "对聊天中已出现的某张图片进行针对性的内容查询。\n"
+                    "**使用场景**: 已有的图片描述信息不足以做出回复（例如你想要知道图片中某个特定细节）\n"
+                    "例如：用户 XiaoDeng3386 发送了一个战绩截图，但是这张截图的描述并没有包含 XiaoDeng3386 的战绩，可以调用此工具，并在 `query_prompt` 中输入“XiaoDeng3386 的战绩”获取有关信息。"
+                ),
+                parameters={
+                    "image_id": FunctionParameter(
+                        type="string",
+                        description="目标图片的唯一标识 ID，格式如 'img_1'，从消息中的 [图片(ID:xxx): 描述] 中获取。",
+                        required=True,
+                    ),
+                    "query_prompt": FunctionParameter(
+                        type="string",
+                        description="自然语言形式的查询指令，描述本次需要从图片中提取的具体信息。",
+                        required=True,
+                    )
+                },
+            ),
             AsyncFunction(
                 func=self.send_message,
                 description="作为 Moonlark 发送一条消息到群聊中。",

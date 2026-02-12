@@ -143,3 +143,45 @@ async def get_image_by_id(image_id: str) -> Optional[ImageCacheData]:
         ImageCacheData 或 None（如果未找到或已过期）
     """
     return await image_id_cache.get(image_id)
+
+
+async def query_image_content(image_id: str, query_prompt: str, user_id: str) -> str:
+    """
+    对指定图片进行内容查询
+
+    Args:
+        image_id: 图片 ID
+        query_prompt: 查询指令
+        user_id: 用户 ID
+
+    Returns:
+        str: 查询结果
+    """
+    # 获取图片缓存
+    cache_data = await get_image_by_id(image_id)
+    if not cache_data:
+        return "未找到指定的图片，可能已过期或不存在。"
+
+    image = cache_data["raw"]
+    image_base64 = base64.b64encode(image).decode("utf-8")
+
+    messages = [
+        generate_message(
+            await lang.text("prompt_group.image_query_system", datetime.datetime.now().isoformat()),
+            "system",
+        ),
+        generate_message(
+            [
+                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_base64}"}},
+                {"type": "text", "text": await lang.text("prompt_group.image_query_user", query_prompt)},
+            ],
+            "user",
+        ),
+    ]
+
+    try:
+        result = (await fetch_message(messages, identify="Image Query")).strip()
+        return result
+    except Exception as e:
+        logger.warning(traceback.format_exc())
+        return f"查询失败 ({e})"
