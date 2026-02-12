@@ -416,7 +416,10 @@ class MessageQueue:
             while not await self._fetch_reply() and not retried:
                 retried = True
                 self.append_user_message(
-                    f"[{datetime.now().strftime('%H:%M:%S')}]: 检测到了无法识别工具调用请求，请进行检查。如果相关请求确实存在请按照正确的结构和用法重新生成工具调用请求。",
+                    await self.processor.session.text(
+                        "prompt.warning.invalid_tool_call",
+                        datetime.now().strftime("%H:%M:%S"),
+                    ),
                     False,
                 )
 
@@ -470,12 +473,9 @@ class MessageQueue:
         """检查是否应该停止响应（超过限制）"""
         return self.consecutive_bot_messages >= self.CONSECUTIVE_STOP_THRESHOLD
 
-    def insert_warning_message(self) -> None:
+    async def insert_warning_message(self) -> None:
         """向消息队列中插入警告消息"""
-        warning = (
-            f"[系统警告]: 你已连续发送 {self.consecutive_bot_messages} 条消息，"
-            "请等待用户回复后再继续发言，避免刷屏。"
-        )
+        warning = await self.processor.session.text("prompt.warning.excessive_messages", self.consecutive_bot_messages)
         self.messages.append(generate_message(warning, "user"))
 
 
@@ -499,282 +499,199 @@ class MessageProcessor:
         self.blocked = False
         self._latest_reasioning_content_cache = ""
         self.sticker_tools = StickerTools(self.session)
+        self.functions = []
 
-        async def query_image(image_id: str, query_prompt: str) -> str:
-            return await query_image_content(image_id, query_prompt, self.session.lang_str)
+    async def query_image(self, image_id: str, query_prompt: str) -> str:
+        return await query_image_content(image_id, query_prompt, self.session.lang_str)
+
+    async def setup(self) -> None:
 
         self.functions = [
             AsyncFunction(
-                func=query_image,
-                description=(
-                    "对聊天中已出现的某张图片进行针对性的内容查询。\n"
-                    "**使用场景**: 已有的图片描述信息不足以做出回复（例如你想要知道图片中某个特定细节）\n"
-                    "例如：用户 XiaoDeng3386 发送了一个战绩截图，但是这张截图的描述并没有包含 XiaoDeng3386 的战绩，可以调用此工具，并在 `query_prompt` 中输入“XiaoDeng3386 的战绩”获取有关信息。"
-                ),
+                func=self.query_image,
+                description=await self.session.text("tools_desc.query_image.desc"),
                 parameters={
                     "image_id": FunctionParameter(
                         type="string",
-                        description="目标图片的唯一标识 ID，格式如 'img_1'，从你收到的消息中的 [图片(ID:xxx): 描述] 中获取。",
+                        description=await self.session.text("tools_desc.query_image.image_id"),
                         required=True,
                     ),
                     "query_prompt": FunctionParameter(
                         type="string",
-                        description="自然语言形式的查询指令，描述本次需要从图片中提取的具体信息。",
+                        description=await self.session.text("tools_desc.query_image.query_prompt"),
                         required=True,
                     ),
                 },
             ),
             AsyncFunction(
                 func=self.send_message,
-                description="作为 Moonlark 发送一条消息到群聊中。",
+                description=await self.session.text("tools_desc.send_message.desc"),
                 parameters={
                     "message_content": FunctionParameter(
                         type="string",
-                        description="要发送的消息内容，可以使用 @群友的昵称 来提及某位群友。",
+                        description=await self.session.text("tools_desc.send_message.message_content"),
                         required=True,
                     ),
                     "reply_message_id": FunctionParameter(
                         type="string",
-                        description=(
-                            "要回复的消息的**消息 ID**，不指定则不会对有关消息进行引用。\n"
-                            "你也可以通过在这个参数填入 `send_message` 工具中返回的消息来引用你自己发送的消息，这在连续发送消息时候非常有用。"
-                        ),
+                        description=await self.session.text("tools_desc.send_message.reply_message_id"),
                         required=False,
                     ),
                 },
             ),
             AsyncFunction(
                 func=self.leave_for_a_while,
-                description=("离开当前群聊 15 分钟。\n" "**何时必须调用**: Moonlark 被要求停止发言。"),
+                description=await self.session.text("tools_desc.leave_for_a_while.desc"),
                 parameters={},
             ),
             AsyncFunction(
                 func=browse_webpage,
-                description=(
-                    "使用浏览器访问指定 URL 并获取网页内容的 Markdown 格式文本。\n"
-                    "**何时必须调用**:\n"
-                    "1. 当用户直接提供一个 URL，或者要求你**总结、分析、提取特定网页的内容**时。\n"
-                    "2. 当你使用 web_search 获取到了一些结果，需要详细查看某个网页获取更多的信息时。\n"
-                    "**判断标准**: 只要输入中包含 `http://` 或 `https://`，并且用户的意图与该链接内容相关，就**必须**调用此工具。"
-                ),
+                description=await self.session.text("tools_desc.browse_webpage.desc"),
                 parameters={
-                    "url": FunctionParameter(type="string", description="要访问的网页的 URL 地址", required=True)
+                    "url": FunctionParameter(
+                        type="string",
+                        description=await self.session.text("tools_desc.browse_webpage.url"),
+                        required=True,
+                    )
                 },
             ),
             AsyncFunction(
                 func=web_search,
-                description=(
-                    "调用搜索引擎，从网络中搜索信息。\n"
-                    "**何时必须调用**: 当被问及任何关于**时事新闻、近期事件、特定人物、产品、公司、地点、定义、统计数据**或任何你的知识库可能未覆盖的现代事实性信息时。\n"
-                    "**判断标准**: 只要问题涉及“是什么”、“谁是”、“在哪里”、“最新的”、“...怎么样”等客观事实查询，就**必须**使用网络搜索。\n"
-                    "**当你阅读到了一个你不了解或无法确定的概念时，应使用此工具搜索而不是给出类似“XX是什么喵？”的回应**"
-                ),
+                description=await self.session.text("tools_desc.web_search.desc"),
                 parameters={
                     "keyword": FunctionParameter(
                         type="string",
-                        description="搜索关键词。请使用简洁的关键词而非完整句子。将用户问题转换为2-5个相关的关键词，用空格分隔。例如：'人工智能 发展 趋势' 而不是 '人工智能的发展趋势是什么'",
+                        description=await self.session.text("tools_desc.web_search.keyword"),
                         required=True,
                     )
                 },
             ),
             AsyncFunction(
                 func=request_wolfram_alpha,
-                description=(
-                    "调用 Wolfram|Alpha 进行计算。\n"
-                    "**何时必须调用**: 当用户提出任何**数学计算（微积分、代数、方程求解等）、数据分析、单位换算、科学问题（物理、化学）、日期与时间计算**等需要精确计算和结构化数据的问题时。\n"
-                    "**判断标准**: 如果问题看起来像一个数学题、物理公式或需要精确数据的查询，优先选择 Wolfram|Alpha 而不是网络搜索。例如：“2x^2+5x-3=0 的解是什么？”或“今天的日落时间是几点？”。\n"
-                    "**禁止行为**: 不要尝试自己进行复杂的数学计算，这容易出错。"
-                    "注意：这个工具不能用于解答物理应用题或者其他太复杂的题目，如果你需要解答请使用 ask_ai 工具。"
-                ),
+                description=await self.session.text("tools_desc.request_wolfram_alpha.desc"),
                 parameters={
                     "question": FunctionParameter(
                         type="string",
-                        description=(
-                            "输入 Wolfram|Alpha 的内容，形式可以是数学表达式、Wolfram Language、LaTeX。\n"
-                            "使用自然语言提问时，使用英文以保证 Wolfram|Alpha 可以理解问题。"
-                        ),
+                        description=await self.session.text("tools_desc.request_wolfram_alpha.question"),
                         required=True,
                     )
                 },
             ),
             AsyncFunction(
                 func=search_abbreviation,
-                description=(
-                    "查询英文字母缩写的含义。\n"
-                    "**何时调用**: 当遇到不理解的英文字母缩写（如 yyds、xswl、nsdd 等网络用语缩写）时使用。\n"
-                    "**判断标准**: 当消息中出现看起来像是拼音首字母缩写的字母组合，且不确定其含义时使用。"
-                ),
+                description=await self.session.text("tools_desc.search_abbreviation.desc"),
                 parameters={
                     "text": FunctionParameter(
                         type="string",
-                        description="要查询的英文字母缩写，如 'yyds'、'xswl' 等。",
+                        description=await self.session.text("tools_desc.search_abbreviation.text"),
                         required=True,
                     )
                 },
             ),
             AsyncFunction(
                 func=get_note_poster(self.session),
-                description="""添加一段笔记到你的笔记本中。
-
-何时需要调用: 当你认为某些信息对你理解群友或未来的互动非常重要时，可以使用它来记下。
-
-建议的使用场景 (完全由你判断！):
-
-群友的重要个人信息（例如：身份、生日、重要的纪念日、个人喜好、愿望或需求等）
-群聊中达成的重要共识或约定（例如：大家约定好下次一起玩游戏的时间）。
-你在聊天过程中的想法或作出的承诺（例如：你喜欢某群友，你说了你要守护某群友）。
-群友讨厌的话题或称呼（例如：某群友不喜欢被开玩笑，或不喜欢提到某个特定的游戏）。
-群友的独特习惯（例如：某群友习惯在深夜出没，或者说话时喜欢带特定的后缀）。
-群聊中提到的梗或黑话（例如：“AA”在群中代表“BB”）。
-你对某个群友的观察（例如：某群友最近心情不好；A群友和B群友关系不好；C群友很富有但自己不承认）。
-对你有用的事实性知识，特别是通过工具查询到的。
-群内的风云人物或历史事件。
-
-使用提示: 把你需要记住的核心信息整理成简洁的句子放进 text 参数里，这个工具的目的是帮助你更好地维系和群友的关系。""",
+                description=await self.session.text("tools_desc.get_note_poster.desc"),
                 parameters={
                     "text": FunctionParameter(
                         type="string",
-                        description="要添加的笔记内容。",
+                        description=await self.session.text("tools_desc.get_note_poster.text"),
                         required=True,
                     ),
                     "expire_days": FunctionParameter(
                         type="integer",
-                        description="笔记的过期天数。如果一条笔记有一定时效性（例如它在某个日期前才有用），一定要指定本参数，默认为十年。",
+                        description=await self.session.text("tools_desc.get_note_poster.expire_days"),
                         required=False,
                     ),
                     "keywords": FunctionParameter(
                         type="string",
-                        description=(
-                            "笔记的关键词，每条笔记只能有 **一个** 关键词，用于索引。\n"
-                            "若在笔记过期前，消息列表中出现被指定的关键词，被添加的笔记会出现在“附加信息”中。\n"
-                            "关键词可以匹配消息的内容、图片的描述或发送者的昵称。\n"
-                            "若不指定关键词，笔记会一直展示在“附加信息”中。"
-                        ),
+                        description=await self.session.text("tools_desc.get_note_poster.keywords"),
                         required=False,
                     ),
                 },
             ),
             AsyncFunction(
                 func=get_note_remover(self.session),
-                description="""删除一条你之前创建的笔记。
-
-何时需要调用: 当你认为某条笔记已经不再需要，或者笔记内容已经过时、错误时，可以使用此工具删除它。
-
-使用场景:
-- 笔记内容已经过时或不再相关
-- 笔记信息有误需要删除
-- 群友要求你忘记某些事情
-- 你发现之前记录的信息不准确
-
-使用提示: 在删除前，确保你真的不再需要这条笔记。删除操作是不可逆的。""",
+                description=await self.session.text("tools_desc.get_note_remover.desc"),
                 parameters={
                     "note_id": FunctionParameter(
                         type="integer",
-                        description="要删除的笔记的 ID，即笔记后面的 #数字。",
+                        description=await self.session.text("tools_desc.get_note_remover.note_id"),
                         required=True,
                     ),
                 },
             ),
             AsyncFunction(
                 func=self.session.set_timer,
-                description=(
-                    "设置一个定时器，在指定时间后触发。\n"
-                    "**何时必须调用**: 当需要在未来的某个时间点执行某个操作时。\n"
-                    "**判断标准**: 当需要延迟执行某些操作或提醒时使用。\n"
-                    "例如：群友要求你在 X 分钟后提醒他做某事；群友正在做某事，你想要几分钟后关心一下他的完成进度。\n"
-                ),
+                description=await self.session.text("tools_desc.set_timer.desc"),
                 parameters={
                     "delay": FunctionParameter(
                         type="integer",
-                        description="延迟时间，以分钟为单位，计时器将在此时间后触发。",
+                        description=await self.session.text("tools_desc.set_timer.delay"),
                         required=True,
                     ),
                     "description": FunctionParameter(
                         type="string",
-                        description="定时器描述，用于描述定时器的用途。",
+                        description=await self.session.text("tools_desc.set_timer.description"),
                         required=True,
                     ),
                 },
             ),
             AsyncFunction(
                 func=self.sticker_tools.save_sticker,
-                description=(
-                    "将当前对话中出现的一张图片收藏为表情包。\n"
-                    "**何时调用**: 当你觉得群友发的某张图片是表情包且很有趣时，可以主动收藏它。\n"
-                    "**调用建议**：积极地收藏表情包，避免你想要斗图时无图可发。\n"
-                    "**注意**: 只能收藏当前对话中出现的图片，使用消息中标注的图片 ID。\n"
-                    "**请在收藏前确定目标图片是一个表情包，而不是一个其他类型的图片，不要使用该工具收藏一些不适合作为表情包发送的截图。**"
-                ),
+                description=await self.session.text("tools_desc.save_sticker.desc"),
                 parameters={
                     "image_id": FunctionParameter(
                         type="string",
-                        description="要收藏的图片的临时 ID，格式如 'img_1'，从消息中的 [图片(ID:xxx): 描述] 中获取。",
+                        description=await self.session.text("tools_desc.save_sticker.image_id"),
                         required=True,
                     ),
                 },
             ),
             AsyncFunction(
                 func=self.sticker_tools.search_sticker,
-                description=(
-                    "从收藏的表情包库中搜索合适的表情包。\n"
-                    "**何时调用**: 当你想用表情包回复群友时，先调用此工具搜索合适的表情包。\n"
-                    "**搜索技巧**: 使用描述性的关键词，如情绪（开心、悲伤、嘲讽）、动作（大笑、哭泣）或内容。"
-                ),
+                description=await self.session.text("tools_desc.search_sticker.desc"),
                 parameters={
                     "query": FunctionParameter(
                         type="string",
-                        description="搜索关键词，可以是情绪、动作、内容等描述性词语，多个关键词用空格分隔。",
+                        description=await self.session.text("tools_desc.search_sticker.query"),
                         required=True,
                     ),
                 },
             ),
             AsyncFunction(
                 func=self.sticker_tools.send_sticker,
-                description=(
-                    "发送一个已收藏的表情包到群聊中。\n"
-                    "**何时调用**: 在使用 search_sticker 找到合适的表情包后，调用此工具发送。\n"
-                    "**注意**: sticker_id 必须是从 search_sticker 结果中获得的有效 ID。"
-                ),
+                description=await self.session.text("tools_desc.send_sticker.desc"),
                 parameters={
                     "sticker_id": FunctionParameter(
                         type="integer",
-                        description="要发送的表情包的数据库 ID，从 search_sticker 的搜索结果中获取。",
+                        description=await self.session.text("tools_desc.send_sticker.sticker_id"),
                         required=True,
                     ),
                 },
             ),
             AsyncFunction(
                 func=self.ai_agent.ask_ai,
-                description=(
-                    "使用 AI 进行深度研究，获得问题的答案。此工具获取信息的速度比你使用 browse_webpage 等工具稍慢但是获得的信息更准确且更易读。"
-                    "**何时调用**: 当需要获取一个比较复杂的问题的答案时，调用此工具。\n"
-                    "**判断标准**：如果你使用你现有的工具无法获取答案，或者你希望获得更准确和易读的答案，那么你应该使用此工具。\n"
-                    "调用举例：解答一道物理应用题 / 查找关于 2024 年最新自动驾驶算法的实验对比数据"
-                ),
+                description=await self.session.text("tools_desc.ask_ai.desc"),
                 parameters={
                     "query": FunctionParameter(
                         type="string",
                         required=True,
-                        description="需要询问的问题，必须是一个有效的问题。",
+                        description=await self.session.text("tools_desc.ask_ai.query"),
                     ),
                 },
             ),
             AsyncFunction(
                 func=self.refuse_interaction_request,
-                description=(
-                    "拒绝一个交互请求（如戳一戳、摸头等）。\n"
-                    "**何时调用**: 当你收到一个可拒绝的交互请求，并且你想要拒绝它时（例如：对方过于频繁的交互、你觉得对方与你的好感度过低。合适的拒绝会让你显得更傲娇、可爱。）。\n"
-                    "**注意**: 只有标记为可拒绝的交互请求才能被拒绝，消息中会包含交互 ID。"
-                ),
+                description=await self.session.text("tools_desc.refuse_interaction_request.desc"),
                 parameters={
                     "id_": FunctionParameter(
                         type="string",
-                        description="交互请求的 ID，从事件消息中获取。",
+                        description=await self.session.text("tools_desc.refuse_interaction_request.id_"),
                         required=True,
                     ),
                     "type_": FunctionParameterWithEnum(
                         type="string",
-                        description="拒绝类型：dodge（躲开）或 bite（躲开并咬一口）。",
+                        description=await self.session.text("tools_desc.refuse_interaction_request.type_"),
                         required=True,
                         enum={"dodge", "bite"},
                     ),
@@ -783,16 +700,15 @@ class MessageProcessor:
         ]
 
         if self.session.is_napcat_bot():
-            emoji_id_table = ", ".join([f"{emoji}({emoji_id})" for emoji_id, emoji in QQ_EMOJI_MAP.items()])
             self.functions.extend(
                 [
                     AsyncFunction(
                         func=self.poke,
-                        description="向指定群友发送一个戳一戳互动。",
+                        description=await self.session.text("tools_desc.poke.desc"),
                         parameters={
                             "target_name": FunctionParameter(
                                 type="string",
-                                description="被戳的群友的昵称。",
+                                description=await self.session.text("tools_desc.poke.target_name"),
                                 required=True,
                             ),
                         },
@@ -803,36 +719,31 @@ class MessageProcessor:
             self.functions.append(
                 AsyncFunction(
                     func=self.delete_message,
-                    description=(
-                        "撤回一条消息，你只能撤回你自己发送的消息。消息 ID 为 `send_message` 工具返回的消息 ID。\n"
-                        "你可以少量的在发送消息时制造一些错误输入，随后通过此工具撤回重发来增强你的活人感。\n"
-                        "参考的使用场景：在发送消息后发现群友实际上想说的内容和此前你的分析有偏离时。"
-                    ),
+                    description=await self.session.text("tools_desc.delete_message.desc"),
                     parameters={
                         "message_id": FunctionParameter(
-                            type="integer", description="要撤回的消息的**消息 ID**。", required=True
+                            type="integer",
+                            description=await self.session.text("tools_desc.delete_message.message_id"),
+                            required=True,
                         )
                     },
                 )
             )
         if isinstance(self.session, GroupSession):
+            emoji_id_table = ", ".join([f"{emoji}({emoji_id})" for emoji_id, emoji in QQ_EMOJI_MAP.items()])
             self.functions.append(
                 AsyncFunction(
                     func=self.send_reaction,
-                    description=(
-                        "对一条消息添加一个表情反应。\n"
-                        "emoji_id 参数的对照表如下，文本反应内容为 QQ 的小黄脸表情（文本为“反应”的内容，括号内为对应的 emoji_id）：\n"
-                        f"{emoji_id_table}"
-                    ),
+                    description=await self.session.text("tools_desc.send_reaction.desc", emoji_id_table),
                     parameters={
                         "message_id": FunctionParameter(
                             type="string",
-                            description="要添加反应的消息的**消息 ID**。",
+                            description=await self.session.text("tools_desc.send_reaction.message_id"),
                             required=True,
                         ),
                         "emoji_id": FunctionParameterWithEnum(
                             type="string",
-                            description="要添加的反应，为反应表情的 ID。",
+                            description=await self.session.text("tools_desc.send_reaction.emoji_id"),
                             required=True,
                             enum=set(QQ_EMOJI_MAP.keys()),
                         ),
@@ -844,15 +755,15 @@ class MessageProcessor:
     async def delete_message(self, message_id: int) -> str:
         if isinstance(self.session.bot, OB11Bot):
             await self.session.bot.delete_msg(message_id=message_id)
-            return "消息已撤回。"
-        return "当前平台不支持撤回消息。"
+            return await self.session.text("message.deleted")
+        return await self.session.text("message.delete_failed")
 
     async def send_reaction(self, message_id: str, emoji_id: str) -> str:
         if isinstance(self.session.bot, OB11Bot) and self.session.is_napcat_bot():
             await self.session.bot.call_api("set_msg_emoji_like", message_id=message_id, emoji_id=emoji_id)
-            return f"已发送回应：{QQ_EMOJI_MAP.get(emoji_id)}"
+            return await self.session.text("message.reaction_success", QQ_EMOJI_MAP.get(emoji_id))
         else:
-            return "失败：当前平台不支持发送回应。"
+            return await self.session.text("message.reaction_failed")
 
     async def refuse_interaction_request(self, id_: str, type_: Literal["dodge", "bite"]) -> str:
         """
@@ -867,7 +778,7 @@ class MessageProcessor:
         """
         interaction = self.session.remove_pending_interaction(id_)
         if interaction is None:
-            return "未找到该交互请求，可能已过期或已被处理。"
+            return await self.session.text("interaction.not_found")
 
         action_name = interaction["action"]["name"]
         nickname = interaction["nickname"]
@@ -875,14 +786,14 @@ class MessageProcessor:
         # 根据拒绝类型生成不同的提示
         if type_ == "dodge":
             # 发送拒绝消息到会话
-            refuse_msg = await lang.text(f"rua.actions.{action_name}.refuse_msg", self.session.lang_str)
+            refuse_msg = await self.session.text(f"rua.actions.{action_name}.refuse_msg")
             await self.send_message(refuse_msg)
-            return await lang.text(f"rua.actions.{action_name}.refuse_prompt", self.session.lang_str, nickname)
+            return await self.session.text(f"rua.actions.{action_name}.refuse_prompt", nickname)
         else:  # bite
             # 躲开并咬一口
-            refuse_msg = await lang.text("rua.bite_msg", self.session.lang_str, nickname)
+            refuse_msg = await self.session.text("rua.bite_msg", nickname)
             await self.send_message(refuse_msg)
-            return await lang.text("rua.bite_prompt", self.session.lang_str, nickname)
+            return await self.session.text("rua.bite_prompt", nickname)
 
     async def loop(self) -> None:
         # 在开始循环前等待消息队列从数据库恢复完成
@@ -898,9 +809,9 @@ class MessageProcessor:
         target_id = (await self.session.get_users()).get(target_name)
         if target_id:
             await self.session.send_poke(target_id)
-            return f"你戳了戳 {target_name}。"
+            return await self.session.text("poke.success", target_name)
         else:
-            return "未找到该用户"
+            return await self.session.text("poke.not_found")
 
     async def get_message(self) -> None:
         if not self.session.message_queue:
@@ -927,19 +838,9 @@ class MessageProcessor:
             asyncio.create_task(self.generate_reply(force_reply=mentioned))
 
     async def handle_timer(self, description: str) -> None:
-        content = f"[{datetime.now().strftime('%H:%M:%S')}]: 计时器 {description} 已触发。"
+        content = await self.session.text("prompt.timer_triggered", datetime.now().strftime("%H:%M:%S"), description)
         self.openai_messages.append_user_message(content)
         await self.generate_reply(force_reply=True)
-
-    # async def handle_group_cold(self, time_d: timedelta) -> None:
-    #     min_str = time_d.total_seconds() // 60
-    #     if not len(self.openai_messages.messages):
-    #         return
-    #     delta_content = f"[{datetime.now().strftime('%H:%M:%S')}]: 当前群聊已经冷群了 {min_str} 分钟。"
-    #     self.openai_messages.append_user_message(delta_content)
-    #     if not self.blocked:
-    #         await self.generate_reply()
-    #         self.blocked = True  # 再次收到消息后才会解锁
 
     async def leave_for_a_while(self) -> None:
         await self.session.mute()
@@ -966,7 +867,7 @@ class MessageProcessor:
 
     async def append_tool_call_history(self, call_string: str) -> None:
         self.session.tool_calls_history.append(
-            await lang.text("tools.template", self.session.lang_str, datetime.now().strftime("%H:%M"), call_string)
+            await self.session.text("tools.template", datetime.now().strftime("%H:%M"), call_string)
         )
         self.session.tool_calls_history = self.session.tool_calls_history[-5:]
 
@@ -975,11 +876,11 @@ class MessageProcessor:
     ) -> tuple[str, str, dict[str, Any]]:
         match name:
             case "browse_webpage":
-                text = await lang.text("tools.browse", self.session.lang_str, param.get("url"))
+                text = await self.session.text("tools.browse", param.get("url"))
             case "request_wolfram_alpha":
-                text = await lang.text("tools.wolfram", self.session.lang_str, param.get("question"))
+                text = await self.session.text("tools.wolfram", param.get("question"))
             case "web_search":
-                text = await lang.text("tools.search", self.session.lang_str, param.get("keyword"))
+                text = await self.session.text("tools.search", param.get("keyword"))
             case _:
                 return call_id, name, param
         await self.append_tool_call_history(text)
@@ -993,15 +894,12 @@ class MessageProcessor:
         # 检查是否超过停止阈值
         if self.openai_messages.should_stop_response():
             logger.warning(f"Bot 连续发送消息超过 {self.openai_messages.CONSECUTIVE_STOP_THRESHOLD} 条，强制停止响应")
-            return (
-                f"[错误] 你已连续发送 {self.openai_messages.consecutive_bot_messages} 条消息，"
-                "超过系统限制，本次发送已被阻止。请等待用户回复后再继续发言。"
-            )
+            return await self.session.text("message.stop_response", self.openai_messages.consecutive_bot_messages)
 
         # 检查是否需要发出警告
         if self.openai_messages.should_warn_excessive_messages():
             logger.warning(f"Bot 连续发送消息达到 {self.openai_messages.CONSECUTIVE_WARNING_THRESHOLD} 条，插入警告")
-            self.openai_messages.insert_warning_message()
+            await self.openai_messages.insert_warning_message()
 
         message = await self.session.format_message(message_content)
         if reply_message_id:
@@ -1009,14 +907,14 @@ class MessageProcessor:
         receipt = await message.send(target=self.session.target, bot=self.session.bot)
         self.session.accumulated_text_length = 0
         message_id = receipt.msg_ids[0] if receipt.msg_ids else None
-        message_id = message_id["message_id"] if message_id else "获取失败"
-        response = f"消息发送成功(消息ID: {message_id})。\n"
+        message_id = message_id["message_id"] if message_id else await self.session.text("prompt.recall_failed")
+        response = await self.session.text("message.sent", message_id)
         if self.openai_messages.cached_reasoning_content != self._latest_reasioning_content_cache:
             sticker_recommendations = "\n".join(
                 await self.get_sticker_recommendations(self.openai_messages.cached_reasoning_content)
             )
             if sticker_recommendations:
-                response += f"### 表情包推荐 ()\n{sticker_recommendations}"
+                response += await self.session.text("sticker.recommend", sticker_recommendations)
         return response
 
     def append_user_message(self, msg_str: str) -> None:
@@ -1053,7 +951,7 @@ class MessageProcessor:
         async with get_session() as session:
             for nickname, user_id in (await self.session._get_users_in_cached_message()).items():
                 if not (profile := await session.get(UserProfile, {"user_id": user_id})):
-                    profile = await lang.text("prompt_group.user_profile_not_found", self.session.lang_str)
+                    profile = await self.session.text("prompt_group.user_profile_not_found")
                     is_profile_found = False
                 else:
                     profile = profile.profile_content
@@ -1070,9 +968,8 @@ class MessageProcessor:
                 fav_level = await user.get_fav_level()
                 if member_info:
                     profiles.append(
-                        await lang.text(
+                        await self.session.text(
                             "prompt_group.group_member_info",
-                            self.session.lang_str,
                             nickname,
                             member_info["role"],
                             member_info["sex"],
@@ -1084,9 +981,7 @@ class MessageProcessor:
                     )
                 elif fav > 0 or is_profile_found:
                     profiles.append(
-                        await lang.text(
-                            "prompt_group.member_info", self.session.lang_str, nickname, fav, fav_level, profile
-                        )
+                        await self.session.text("prompt_group.member_info", nickname, fav, fav_level, profile)
                     )
         return profiles
 
@@ -1133,23 +1028,26 @@ class MessageProcessor:
         if user_profiles:
             profiles_text = "\n".join(user_profiles)
         else:
-            profiles_text = "暂无"
+            profiles_text = await self.session.text("prompt.profile.none")
 
-        def format_note(note):
+        async def format_note(note):
             created_time = datetime.fromtimestamp(note.created_time).strftime("%y-%m-%d")
-            return f"- {note.content} (#{note.id}，创建于 {created_time})"
+            return await self.session.text("prompt.note.format", note.content, note.id, created_time)
 
         return generate_message(
-            await lang.text(
+            await self.session.text(
                 "prompt_group.default",
-                self.session.lang_str,
-                "\n".join([format_note(note) for note in notes]) if notes else "暂无",
+                (
+                    "\n".join([await format_note(note) for note in notes])
+                    if notes
+                    else await self.session.text("prompt.note.none")
+                ),
                 datetime.now().isoformat(),
                 self.session.session_name,
                 (
-                    "\n".join([format_note(note) for note in notes_from_other_group])
+                    "\n".join([await format_note(note) for note in notes_from_other_group])
                     if notes_from_other_group
-                    else "暂无"
+                    else await self.session.text("prompt.note.none")
                 ),
                 profiles_text,
             ),
@@ -1158,25 +1056,41 @@ class MessageProcessor:
 
     async def handle_recall(self, message_id: str, message_content: str) -> None:
         self.openai_messages.append_user_message(
-            f"[{datetime.now().strftime('%H:%M:%S')}]: 消息 {message_id} ({message_content}) 被撤回。"
+            await self.session.text(
+                "prompt.recall",
+                datetime.now().strftime("%H:%M:%S"),
+                message_id,
+                message_content,
+            )
         )
 
     async def handle_poke(self, operator_name: str, target_name: str, to_me: bool) -> None:
         if to_me:
             self.openai_messages.append_user_message(
-                f"[{datetime.now().strftime('%H:%M:%S')}]: {operator_name} 戳了戳你。"
+                await self.session.text("prompt.poke.to_me", datetime.now().strftime("%H:%M:%S"), operator_name)
             )
             self.blocked = False
             await self.generate_reply(True)
             self.blocked = True
         else:
             self.openai_messages.append_user_message(
-                f"[{datetime.now().strftime('%H:%M:%S')}]: {operator_name} 戳了戳 {target_name}。"
+                await self.session.text(
+                    "prompt.poke.to_other",
+                    datetime.now().strftime("%H:%M:%S"),
+                    operator_name,
+                    target_name,
+                )
             )
 
     async def handle_reaction(self, message_string: str, operator_name: str, emoji_id: str) -> None:
         self.openai_messages.append_user_message(
-            f"[{datetime.now().strftime('%H:%M:%S')}]: {operator_name} 回应了你的消息“{message_string}”: {QQ_EMOJI_MAP[emoji_id]}"
+            await self.session.text(
+                "prompt.reaction",
+                datetime.now().strftime("%H:%M:%S"),
+                operator_name,
+                message_string,
+                QQ_EMOJI_MAP[emoji_id],
+            )
         )
         await self.generate_reply(False)
 
@@ -1207,7 +1121,7 @@ class BaseSession(ABC):
 
     @abstractmethod
     async def setup(self) -> None:
-        pass
+        await self.processor.setup()
 
     @abstractmethod
     def is_napcat_bot(self) -> bool:
@@ -1315,6 +1229,9 @@ class BaseSession(ABC):
         )
         return interaction_id
 
+    async def text(self, key: str, *args, **kwargs) -> str:
+        return await lang.text(key, self.lang_str, *args, **kwargs)
+
     def remove_pending_interaction(self, interaction_id: str) -> Optional[PendingInteraction]:
         """移除并返回待处理的交互请求"""
         return self.pending_interactions.pop(interaction_id, None)
@@ -1407,7 +1324,7 @@ class BaseSession(ABC):
         # 存储定时器信息
         self.llm_timers.append({"id": timer_id, "trigger_time": trigger_time, "description": description})
 
-        return f"定时器已设置，将在 {delay} 分钟后触发"
+        return await self.text("timer.set", delay)
 
     async def post_event(self, event_prompt: str, trigger_mode: Literal["none", "probability", "all"]) -> None:
         """
@@ -1421,7 +1338,7 @@ class BaseSession(ABC):
                 - "all": 强制触发回复
         """
         # 添加事件消息到消息队列
-        content = f"[{datetime.now().strftime('%H:%M:%S')}]: {event_prompt}"
+        content = await self.text("prompt.event_template", datetime.now().strftime("%H:%M:%S"), event_prompt)
         self.processor.openai_messages.append_user_message(content)
 
         # 根据触发模式决定是否生成回复
@@ -1439,6 +1356,7 @@ class PrivateSession(BaseSession):
         self.user_info: AdapterUserInfo
 
     async def setup(self) -> None:
+        await super().setup()
         await self.setup_session_name()
 
     async def setup_session_name(self) -> None:
@@ -1514,6 +1432,7 @@ class GroupSession(BaseSession):
         self.cached_latest_message = None
 
     async def setup(self) -> None:
+        await super().setup()
         await self.setup_session_name()
         await self.calculate_ghot_coefficient()
 
