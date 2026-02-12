@@ -475,9 +475,7 @@ class MessageQueue:
 
     async def insert_warning_message(self) -> None:
         """向消息队列中插入警告消息"""
-        warning = await self.processor.session.text(
-            "prompt.warning.excessive_messages", self.consecutive_bot_messages
-        )
+        warning = await self.processor.session.text("prompt.warning.excessive_messages", self.consecutive_bot_messages)
         self.messages.append(generate_message(warning, "user"))
 
 
@@ -502,7 +500,6 @@ class MessageProcessor:
         self._latest_reasioning_content_cache = ""
         self.sticker_tools = StickerTools(self.session)
         self.functions = []
-
 
     async def query_image(self, image_id: str, query_prompt: str) -> str:
         return await query_image_content(image_id, query_prompt, self.session.lang_str)
@@ -841,12 +838,9 @@ class MessageProcessor:
             asyncio.create_task(self.generate_reply(force_reply=mentioned))
 
     async def handle_timer(self, description: str) -> None:
-        content = await self.session.text(
-            "prompt.timer_triggered", datetime.now().strftime("%H:%M:%S"), description
-        )
+        content = await self.session.text("prompt.timer_triggered", datetime.now().strftime("%H:%M:%S"), description)
         self.openai_messages.append_user_message(content)
         await self.generate_reply(force_reply=True)
-
 
     async def leave_for_a_while(self) -> None:
         await self.session.mute()
@@ -900,9 +894,7 @@ class MessageProcessor:
         # 检查是否超过停止阈值
         if self.openai_messages.should_stop_response():
             logger.warning(f"Bot 连续发送消息超过 {self.openai_messages.CONSECUTIVE_STOP_THRESHOLD} 条，强制停止响应")
-            return await self.session.text(
-                "message.stop_response", self.openai_messages.consecutive_bot_messages
-            )
+            return await self.session.text("message.stop_response", self.openai_messages.consecutive_bot_messages)
 
         # 检查是否需要发出警告
         if self.openai_messages.should_warn_excessive_messages():
@@ -989,9 +981,7 @@ class MessageProcessor:
                     )
                 elif fav > 0 or is_profile_found:
                     profiles.append(
-                        await self.session.text(
-                            "prompt_group.member_info", nickname, fav, fav_level, profile
-                        )
+                        await self.session.text("prompt_group.member_info", nickname, fav, fav_level, profile)
                     )
         return profiles
 
@@ -1077,9 +1067,7 @@ class MessageProcessor:
     async def handle_poke(self, operator_name: str, target_name: str, to_me: bool) -> None:
         if to_me:
             self.openai_messages.append_user_message(
-                await self.session.text(
-                    "prompt.poke.to_me", datetime.now().strftime("%H:%M:%S"), operator_name
-                )
+                await self.session.text("prompt.poke.to_me", datetime.now().strftime("%H:%M:%S"), operator_name)
             )
             self.blocked = False
             await self.generate_reply(True)
@@ -1350,9 +1338,7 @@ class BaseSession(ABC):
                 - "all": 强制触发回复
         """
         # 添加事件消息到消息队列
-        content = await self.text(
-            "prompt.event_template", datetime.now().strftime("%H:%M:%S"), event_prompt
-        )
+        content = await self.text("prompt.event_template", datetime.now().strftime("%H:%M:%S"), event_prompt)
         self.processor.openai_messages.append_user_message(content)
 
         # 根据触发模式决定是否生成回复
@@ -1399,6 +1385,7 @@ class PrivateSession(BaseSession):
     async def send_poke(self, _: str) -> None:
         if isinstance(self.bot, OB11Bot):
             await self.bot.call_api("friend_poke", user_id=self.session_id)
+
     async def calculate_ghot_coefficient(self) -> int:
         self.ghot_coefficient = 100
         return 100
