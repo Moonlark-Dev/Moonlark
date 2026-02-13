@@ -205,6 +205,13 @@ Moonlark 本地化设置
 
 ### 用法
 - `/calc <问题> (询问 WolframAlpha)`
+## `check-history`: 发过了吗
+
+检查最近 48 小时内是否已经讨论过某个话题或发送过某条消息。
+
+### 用法
+- `/check-history [内容]`
+- `/check-history (回复某条消息)`
 ## `debate-helper`: 辩论助手
 
 分析群聊中的争议或辩论，提供客观的双方观点摘要。
