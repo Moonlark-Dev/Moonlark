@@ -1699,7 +1699,7 @@ class CommandHandler:
             blocked_list = json.loads(self.group_config.blocked_user)
             
             if action == "list":
-                 await lang.finish("command.block.user.list", self.user_id, ", ".join(blocked_list))
+                await lang.finish("command.block.user.list", self.user_id, ", ".join(blocked_list))
             
             if len(self.argv) < 4:
                 await lang.finish("command.no_argv", self.user_id)

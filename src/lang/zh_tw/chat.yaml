@@ -340,6 +340,23 @@ note:
   remove_success: '笔记 #{} 已成功删除！'
   remove_not_found: '未找到 ID 为 {} 的笔记，或该笔记不属于当前群聊。'
 command:
+  block:
+    user:
+      added: 已將用戶 {} 添加到屏蔽列表。
+      exists: 用戶 {} 已在屏蔽列表中。
+      removed: 已將用戶 {} 從屏蔽列表中移除。
+      not_found: 用戶 {} 不在屏蔽列表中。
+      list: |
+        屏蔽用戶列表:
+        {}
+    keyword:
+      added: 已將關鍵詞 {} 添加到屏蔽列表。
+      exists: 關鍵詞 {} 已在屏蔽列表中。
+      removed: 已將關鍵詞 {} 從屏蔽列表中移除。
+      not_found: 關鍵詞 {} 不在屏蔽列表中。
+      list: |
+        屏蔽關鍵詞列表:
+        {}
   switch:
     enabled: 已启用
     disabled: 已禁用
@@ -402,6 +419,8 @@ help:
   usage7: chat calls (查看最近的工具调用记录)
   usage8: chat profile (查看自己的 profile)
   usage9: chat profile set <内容> (设置自己的 profile)
+  usage10: chat block user <add|remove|list> [用戶ID] (管理屏蔽用戶)
+  usage11: chat block keyword <add|remove|list> [關鍵詞] (管理屏蔽關鍵詞)
 help_rua:
   description: 互动
   details: 通过 rua 指令与 Moonlark 进行亲密互动（如戳一戳、摸头、拥抱等）。不同的互动动作需要不同的好感度才能解锁。

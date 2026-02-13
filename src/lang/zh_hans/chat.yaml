@@ -432,6 +432,7 @@ help:
   usage9: chat profile set <内容> (设置自己的 profile)
   usage10: chat block user <add|remove|list> [用户ID] (管理屏蔽用户)
   usage11: chat block keyword <add|remove|list> [关键词] (管理屏蔽关键词)
+  usage12: chat block list (查看所有屏蔽项)
 
 help_rua:
   description: 互动
