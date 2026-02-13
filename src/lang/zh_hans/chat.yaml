@@ -349,6 +349,23 @@ note:
   remove_not_found: '未找到 ID 为 {} 的笔记，或该笔记不属于当前群聊。'
 
 command:
+  block:
+    user:
+      added: 已将用户 {} 添加到屏蔽列表。
+      exists: 用户 {} 已在屏蔽列表中。
+      removed: 已将用户 {} 从屏蔽列表中移除。
+      not_found: 用户 {} 不在屏蔽列表中。
+      list: |
+        屏蔽用户列表:
+        {}
+    keyword:
+      added: 已将关键词 {} 添加到屏蔽列表。
+      exists: 关键词 {} 已在屏蔽列表中。
+      removed: 已将关键词 {} 从屏蔽列表中移除。
+      not_found: 关键词 {} 不在屏蔽列表中。
+      list: |
+        屏蔽关键词列表:
+        {}
   switch:
     enabled: 已启用
     disabled: 已禁用
@@ -413,6 +430,8 @@ help:
   usage7: chat calls (查看最近的工具调用记录)
   usage8: chat profile (查看自己的 profile)
   usage9: chat profile set <内容> (设置自己的 profile)
+  usage10: chat block user <add|remove|list> [用户ID] (管理屏蔽用户)
+  usage11: chat block keyword <add|remove|list> [关键词] (管理屏蔽关键词)
 
 help_rua:
   description: 互动

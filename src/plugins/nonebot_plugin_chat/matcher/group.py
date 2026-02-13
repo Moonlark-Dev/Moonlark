@@ -923,7 +923,23 @@ class MessageProcessor:
     async def process_messages(self, msg_dict: CachedMessage) -> None:
         async with get_session() as session:
             r = await session.get(ChatGroup, {"group_id": self.session.session_id})
-            self.blocked = r and msg_dict["user_id"] in json.loads(r.blocked_user)
+            
+            # Check for blocked user
+            blocked_user = r and msg_dict["user_id"] in json.loads(r.blocked_user)
+            
+            # Check for blocked keywords
+            blocked_keyword = False
+            if r:
+                keywords = json.loads(r.blocked_keyword)
+                content = msg_dict.get("content", "")
+                if isinstance(content, str):
+                    for keyword in keywords:
+                        if keyword in content:
+                            blocked_keyword = True
+                            break
+            
+            self.blocked = blocked_user or blocked_keyword
+            
             if not self.blocked:
                 msg_str = generate_message_string(msg_dict)
                 self.append_user_message(msg_str)
@@ -1670,6 +1686,74 @@ class CommandHandler:
         session = await self.get_group_session()
         await self.matcher.finish("\n".join(session.tool_calls_history))
 
+    async def handle_block(self) -> None:
+        if len(self.argv) < 2:
+            await lang.finish("command.no_argv", self.user_id)
+        
+        target_type = self.argv[1]
+        
+        if target_type == "user":
+            if len(self.argv) < 3:
+                await lang.finish("command.no_argv", self.user_id)
+            action = self.argv[2]
+            blocked_list = json.loads(self.group_config.blocked_user)
+            
+            if action == "list":
+                 await lang.finish("command.block.user.list", self.user_id, ", ".join(blocked_list))
+            
+            if len(self.argv) < 4:
+                await lang.finish("command.no_argv", self.user_id)
+            target_id = self.argv[3]
+
+            if action == "add":
+                if target_id not in blocked_list:
+                    blocked_list.append(target_id)
+                    self.group_config.blocked_user = json.dumps(blocked_list)
+                    await self.merge_group_config()
+                    await lang.finish("command.block.user.added", self.user_id, target_id)
+                else:
+                    await lang.finish("command.block.user.exists", self.user_id, target_id)
+            elif action == "remove":
+                if target_id in blocked_list:
+                    blocked_list.remove(target_id)
+                    self.group_config.blocked_user = json.dumps(blocked_list)
+                    await self.merge_group_config()
+                    await lang.finish("command.block.user.removed", self.user_id, target_id)
+                else:
+                    await lang.finish("command.block.user.not_found", self.user_id, target_id)
+
+        elif target_type == "keyword":
+            if len(self.argv) < 3:
+                await lang.finish("command.no_argv", self.user_id)
+            action = self.argv[2]
+            blocked_list = json.loads(self.group_config.blocked_keyword)
+
+            if action == "list":
+                await lang.finish("command.block.keyword.list", self.user_id, ", ".join(blocked_list))
+            
+            if len(self.argv) < 4:
+                await lang.finish("command.no_argv", self.user_id)
+            target_keyword = self.argv[3]
+
+            if action == "add":
+                if target_keyword not in blocked_list:
+                    blocked_list.append(target_keyword)
+                    self.group_config.blocked_keyword = json.dumps(blocked_list)
+                    await self.merge_group_config()
+                    await lang.finish("command.block.keyword.added", self.user_id, target_keyword)
+                else:
+                    await lang.finish("command.block.keyword.exists", self.user_id, target_keyword)
+            elif action == "remove":
+                if target_keyword in blocked_list:
+                    blocked_list.remove(target_keyword)
+                    self.group_config.blocked_keyword = json.dumps(blocked_list)
+                    await self.merge_group_config()
+                    await lang.finish("command.block.keyword.removed", self.user_id, target_keyword)
+                else:
+                    await lang.finish("command.block.keyword.not_found", self.user_id, target_keyword)
+        else:
+             await lang.finish("command.no_argv", self.user_id)
+
     async def handle(self) -> None:
         match self.argv[0]:
             case "switch":
@@ -1686,6 +1770,8 @@ class CommandHandler:
                 await self.handle_on()
             case "off":
                 await self.handle_off()
+            case "block":
+                await self.handle_block()
             case _:
                 await lang.finish("command.no_argv", self.user_id)
 
