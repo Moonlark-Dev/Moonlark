@@ -227,23 +227,6 @@ prompt_group:
     “繁忙的现代办公室内部照片，前景中一位穿着蓝色衬衫的男性正指着墙上的白板，白板上写着‘Q4 增长策略’及相关柱状图数据。背景中有三位同事正专注于笔记本电脑屏幕，透过落地窗可以看到夕阳下的城市天际线。整体光线温暖，表现出一种专注且协作的工作氛围。”
     # Additional Information
     当前时间: {}
-  prompt:
-    warning:
-      excessive_messages: "[系统警告]: 你已连续发送 {} 条消息，请等待用户回复后再继续发言，避免刷屏。"
-      invalid_tool_call: "[{}]: 检测到了无法识别工具调用请求，请进行检查。如果相关请求确实存在请按照正确的结构和用法重新生成工具调用请求。"
-    timer_triggered: "[{}]: 计时器 {} 已触发。"
-    recall: "[{}]: 消息 {} ({}) 被撤回。"
-    poke:
-      to_me: "[{}]: {} 戳了戳你。"
-      to_other: "[{}]: {} 戳了戳 {}。"
-    reaction: "[{}]: {} 回应了你的消息“{}”: {}"
-    event_template: "[{}]: {}"
-    note:
-      format: "- {} (#{}，创建于 {})"
-      none: "暂无"
-    profile:
-      none: "暂无"
-    recall_failed: "消息内容获取失败"
   image_describe_user: |
     # Action
     请基于上述规则，描述提供的图片：
@@ -431,6 +414,23 @@ help_rua:
   usage1: rua (使用当前选中的动作与 Moonlark 互动)
   usage2: rua action (查看可用的互动动作列表)
   usage3: rua action <编号> (切换当前使用的互动动作)
+prompt:
+  warning:
+    excessive_messages: "[系统警告]: 你已连续发送 {} 条消息，请等待用户回复后再继续发言，避免刷屏。"
+    invalid_tool_call: "[{}]: 检测到了无法识别工具调用请求，请进行检查。如果相关请求确实存在请按照正确的结构和用法重新生成工具调用请求。"
+  timer_triggered: "[{}]: 计时器 {} 已触发。"
+  recall: "[{}]: 消息 {} ({}) 被撤回。"
+  poke:
+    to_me: "[{}]: {} 戳了戳你。"
+    to_other: "[{}]: {} 戳了戳 {}。"
+  reaction: "[{}]: {} 回应了你的消息“{}”: {}"
+  event_template: "[{}]: {}"
+  note:
+    format: "- {} (#{}，创建于 {})"
+    none: "暂无"
+  profile:
+    none: "暂无"
+  recall_failed: "消息内容获取失败"
 profile:
   set_success: Profile 设置成功！
   review_failed: Profile 内容审核未通过：{}
