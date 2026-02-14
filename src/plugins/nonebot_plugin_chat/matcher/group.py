@@ -800,10 +800,10 @@ class MessageProcessor:
     async def process_messages(self, msg_dict: CachedMessage) -> None:
         async with get_session() as session:
             r = await session.get(ChatGroup, {"group_id": self.session.session_id})
-            
+
             # Check for blocked user
             blocked_user = r and msg_dict["user_id"] in json.loads(r.blocked_user)
-            
+
             # Check for blocked keywords
             blocked_keyword = False
             if r:
@@ -814,9 +814,9 @@ class MessageProcessor:
                         if keyword in content:
                             blocked_keyword = True
                             break
-            
+
             self.blocked = blocked_user or blocked_keyword
-            
+
             if not self.blocked:
                 msg_str = generate_message_string(msg_dict)
                 self.append_user_message(msg_str)
@@ -1287,9 +1287,7 @@ class PrivateSession(BaseSession):
         return self.user_info
 
     async def get_users(self) -> dict[str, str]:
-        return {
-            self.nickname: self.session_id
-        }
+        return {self.nickname: self.session_id}
 
 
 class GroupSession(BaseSession):
@@ -1568,18 +1566,18 @@ class CommandHandler:
     async def handle_block(self) -> None:
         if len(self.argv) < 2:
             await lang.finish("command.no_argv", self.user_id)
-        
+
         target_type = self.argv[1]
-        
+
         if target_type == "user":
             if len(self.argv) < 3:
                 await lang.finish("command.no_argv", self.user_id)
             action = self.argv[2]
             blocked_list = json.loads(self.group_config.blocked_user)
-            
+
             if action == "list":
                 await lang.finish("command.block.user.list", self.user_id, ", ".join(blocked_list))
-            
+
             if len(self.argv) < 4:
                 await lang.finish("command.no_argv", self.user_id)
             target_id = self.argv[3]
@@ -1609,7 +1607,7 @@ class CommandHandler:
 
             if action == "list":
                 await lang.finish("command.block.keyword.list", self.user_id, ", ".join(blocked_list))
-            
+
             if len(self.argv) < 4:
                 await lang.finish("command.no_argv", self.user_id)
             target_keyword = self.argv[3]
@@ -1631,7 +1629,7 @@ class CommandHandler:
                 else:
                     await lang.finish("command.block.keyword.not_found", self.user_id, target_keyword)
         else:
-             await lang.finish("command.no_argv", self.user_id)
+            await lang.finish("command.no_argv", self.user_id)
 
     async def handle(self) -> None:
         match self.argv[0]:

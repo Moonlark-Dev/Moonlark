@@ -6,6 +6,7 @@ from nonebot import get_driver
 
 QQ_EMOJI_MAP: Dict[str, str] = {}
 
+
 @get_driver().on_startup
 async def load_qq_emoji_map() -> None:
     """
@@ -16,7 +17,7 @@ async def load_qq_emoji_map() -> None:
         return
 
     resource_path = Path(__file__).parent.parent / "resource" / "qq_emoji.json"
-    
+
     try:
         async with aiofiles.open(resource_path, mode="r", encoding="utf-8") as f:
             content = await f.read()
