@@ -92,6 +92,7 @@ class LLMRequestSession:
             "pre_function_call": pre_function_call,
             "post_function_call": post_function_call,
         }
+        self.has_tool_calls: bool = False
         self.timeout_per_request = timeout
         self.timeout_strategy = timeout_strategy
         self.insert_message_queue = []
@@ -162,6 +163,7 @@ class LLMRequestSession:
         self.insert_message_queue.extend(messages)
 
     async def call_function(self, call_id: str, name: str, params: dict[str, Any]) -> None:
+        self.has_tool_calls = True
         if self.trigger_functions["pre_function_call"]:
             call_id, name, params = await self.trigger_functions["pre_function_call"](call_id, name, params)
         try:

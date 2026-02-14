@@ -24,6 +24,7 @@ from nonebot.adapters.onebot.v11 import NoticeEvent
 from nonebot_plugin_alconna import get_message_id
 import random
 import asyncio
+from openai.types.chat import ChatCompletionMessage
 from datetime import datetime, timedelta
 from nonebot.adapters.qq import Bot as BotQQ
 from nonebot.params import CommandArg
@@ -64,6 +65,7 @@ from ..lang import lang
 from ..utils.note_manager import get_context_notes
 from ..models import ChatGroup, RuaAction, Sticker, UserProfile, MessageQueueCache
 from ..utils import enabled_group, parse_message_to_string
+from ..utils.enums import FetchStatus
 from ..utils.image import query_image_content
 from ..utils.tools import (
     browse_webpage,
@@ -238,22 +240,38 @@ class MessageQueue:
         messages.insert(0, await self.processor.generate_system_prompt())
         return messages
 
-    async def fetch_reply(self) -> None:
+    async def fetch_reply(self, important: bool = False) -> None:
         if self.fetcher_lock.locked():
             return
         async with self.fetcher_lock:
             retried = 0
-            while not await self._fetch_reply() and retried < 3:
-                retried += 1
-                self.append_user_message(
-                    await self.processor.session.text(
-                        "prompt.warning.invalid_tool_call",
-                        datetime.now().strftime("%H:%M:%S"),
-                    ),
-                    False,
-                )
+            while retried < 3:
+                status = await self._fetch_reply()
 
-    async def _fetch_reply(self) -> bool:
+                if status == FetchStatus.SUCCESS:
+                    break
+
+                elif status == FetchStatus.EMPTY_REPLY and important:
+                    if self.messages:
+                        self.messages.pop()
+                    retried += 1
+                    continue
+                elif status == FetchStatus.WRONG_TOOL_CALL:
+                    retried += 1
+                    self.append_user_message(
+                        await self.processor.session.text(
+                            "prompt.warning.invalid_tool_call",
+                            datetime.now().strftime("%H:%M:%S"),
+                        ),
+                        False,
+                    )
+                else:
+                    break
+
+                # FAILED status (invalid tool calls or exception)
+
+    async def _fetch_reply(self) -> FetchStatus:
+        state = FetchStatus.SUCCESS
         messages = await self.get_messages()
         self.messages.clear()
         self.inserted_messages.clear()
@@ -264,7 +282,6 @@ class MessageQueue:
             identify="Chat",
             pre_function_call=self.processor.send_function_call_feedback,
         )
-        include_wrong_tool_calls = False
         try:
             async for message in fetcher.fetch_message_stream():
                 if message.startswith("## 思考过程"):
@@ -274,14 +291,21 @@ class MessageQueue:
                 self.inserted_messages.extend(self.messages)
                 self.messages = []
                 if any([keyword in message for keyword in ["<parameter", "</function_calls>", "<function"]]):
-                    include_wrong_tool_calls = True
+                    state = FetchStatus.WRONG_TOOL_CALL
             self.messages = fetcher.get_messages()
+            if (
+                isinstance(assistant_msg := self.messages[-1], ChatCompletionMessage)
+                and not assistant_msg.content
+                and not fetcher.session.has_tool_calls
+            ):
+                state = FetchStatus.EMPTY_REPLY
         except Exception as e:
             logger.exception(e)
             # 恢复 Message
             self.messages = messages + self.inserted_messages
             self.inserted_messages.clear()
-        return not include_wrong_tool_calls
+            state = FetchStatus.FAILED
+        return state
 
     def append_user_message(self, message: str, reset_bot_message_counter: bool = True) -> None:
         if reset_bot_message_counter:
@@ -712,17 +736,17 @@ class MessageProcessor:
         self.session.cached_messages.append(msg_dict)
         await self.session.on_cache_posted()
         if (mentioned or not self.session.message_queue) and not self.blocked:
-            asyncio.create_task(self.generate_reply(force_reply=mentioned))
+            asyncio.create_task(self.generate_reply(important=mentioned))
 
     async def handle_timer(self, description: str) -> None:
         content = await self.session.text("prompt.timer_triggered", datetime.now().strftime("%H:%M:%S"), description)
         self.openai_messages.append_user_message(content)
-        await self.generate_reply(force_reply=True)
+        await self.generate_reply(important=True)
 
     async def leave_for_a_while(self) -> None:
         await self.session.mute()
 
-    async def generate_reply(self, force_reply: bool = False) -> None:
+    async def generate_reply(self, important: bool = False) -> None:
         # 如果在冷却期或消息为空，直接返回
         if self.cold_until > datetime.now():
             return
@@ -731,7 +755,7 @@ class MessageProcessor:
         self.cold_until = datetime.now() + timedelta(seconds=5)
 
         # 检查是否应该触发回复
-        if not force_reply:
+        if not important:
             probability = await self.session.get_probability()
             logger.debug(
                 f"Accumulated length: {self.session.accumulated_text_length}, Trigger probability: {probability:.2%}"
@@ -739,8 +763,8 @@ class MessageProcessor:
             if random.random() > probability:
                 return
 
-        logger.info(f"Generating reply ({force_reply=})...")
-        await self.openai_messages.fetch_reply()
+        logger.info(f"Generating reply ({important=})...")
+        await self.openai_messages.fetch_reply(important)
 
     async def append_tool_call_history(self, call_string: str) -> None:
         self.session.tool_calls_history.append(
@@ -963,7 +987,7 @@ class MessageProcessor:
                 await self.session.text("prompt.poke.to_me", datetime.now().strftime("%H:%M:%S"), operator_name)
             )
             self.blocked = False
-            await self.generate_reply(True)
+            await self.generate_reply(important=True)
             self.blocked = True
         else:
             self.openai_messages.append_user_message(
@@ -1237,7 +1261,7 @@ class BaseSession(ABC):
         # 根据触发模式决定是否生成回复
         if trigger_mode == "none":
             return
-        await self.processor.generate_reply(force_reply=trigger_mode == "all")
+        await self.processor.generate_reply(important=trigger_mode == "all")
 
 
 class PrivateSession(BaseSession):
@@ -1378,7 +1402,7 @@ class GroupSession(BaseSession):
             and self.cached_messages[-1] is not self.cached_latest_message
         ):
             self.cached_latest_message = self.cached_messages[-1]
-            asyncio.create_task(self.processor.generate_reply(True))
+            asyncio.create_task(self.processor.generate_reply(important=True))
 
 
 from ..config import config
