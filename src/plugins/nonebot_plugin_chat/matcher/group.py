@@ -412,9 +412,9 @@ class MessageQueue:
         if self.fetcher_lock.locked():
             return
         async with self.fetcher_lock:
-            retried = False
-            while not await self._fetch_reply() and not retried:
-                retried = True
+            retried = 0
+            while not await self._fetch_reply() and retried < 3:
+                retried += 1
                 self.append_user_message(
                     await self.processor.session.text(
                         "prompt.warning.invalid_tool_call",

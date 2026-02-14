@@ -426,7 +426,11 @@ help_rua:
 prompt:
   warning:
     excessive_messages: "[系统警告]: 你已连续发送 {} 条消息，请等待用户回复后再继续发言，避免刷屏。"
-    invalid_tool_call: "[{}]: 检测到了无法识别工具调用请求，请进行检查。如果相关请求确实存在请按照正确的结构和用法重新生成工具调用请求。"
+    invalid_tool_call: |
+      [{}]: 系统检测到你输出了文本格式的工具调用，这在当前环境下是无效的。
+      1. 不要输出任何类似 `<function_calls>` 的 XML 标签。
+      2. 直接触发原生的 tools call 协议，输出相应的特殊令牌。
+      3. 重新尝试调用该工具。
   timer_triggered: "[{}]: 计时器 {} 已触发。"
   recall: "[{}]: 消息 {} ({}) 被撤回。"
   poke:
