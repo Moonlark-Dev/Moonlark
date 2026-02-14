@@ -250,7 +250,7 @@ class MessageQueue:
 
                 if status == FetchStatus.SUCCESS:
                     break
-                
+
                 elif status == FetchStatus.EMPTY_REPLY and important:
                     if self.messages:
                         self.messages.pop()
@@ -269,7 +269,6 @@ class MessageQueue:
                     break
 
                 # FAILED status (invalid tool calls or exception)
-                
 
     async def _fetch_reply(self) -> FetchStatus:
         state = FetchStatus.SUCCESS
@@ -294,7 +293,11 @@ class MessageQueue:
                 if any([keyword in message for keyword in ["<parameter", "</function_calls>", "<function"]]):
                     state = FetchStatus.WRONG_TOOL_CALL
             self.messages = fetcher.get_messages()
-            if isinstance(assistant_msg := self.messages[-1], ChatCompletionMessage) and not assistant_msg.content and not fetcher.session.has_tool_calls:
+            if (
+                isinstance(assistant_msg := self.messages[-1], ChatCompletionMessage)
+                and not assistant_msg.content
+                and not fetcher.session.has_tool_calls
+            ):
                 state = FetchStatus.EMPTY_REPLY
         except Exception as e:
             logger.exception(e)
