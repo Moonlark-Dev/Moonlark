@@ -77,6 +77,7 @@ from ..utils.tools import (
 )
 import uuid
 from ..utils.tools.sticker import StickerTools
+from ..utils.emoji import QQ_EMOJI_MAP
 
 
 class PendingInteraction(TypedDict):
@@ -87,177 +88,6 @@ class PendingInteraction(TypedDict):
     nickname: str
     action: RuaAction
     created_at: float  # timestamp
-
-
-QQ_EMOJI_MAP = {
-    "4": "得意",
-    "5": "流泪",
-    "8": "睡",
-    "9": "大哭",
-    "10": "尴尬",
-    "12": "调皮",
-    "14": "微笑",
-    "16": "酷",
-    "21": "可爱",
-    "23": "傲慢",
-    "24": "饥饿",
-    "25": "困",
-    "26": "惊恐",
-    "27": "流汗",
-    "28": "憨笑",
-    "29": "悠闲",
-    "30": "奋斗",
-    "32": "疑问",
-    "33": "嘘",
-    "34": "晕",
-    "38": "敲打",
-    "39": "再见",
-    "41": "发抖",
-    "42": "爱情",
-    "43": "跳跳",
-    "49": "拥抱",
-    "53": "蛋糕",
-    "60": "咖啡",
-    "63": "玫瑰",
-    "66": "爱心",
-    "74": "太阳",
-    "75": "月亮",
-    "76": "赞",
-    "78": "握手",
-    "79": "胜利",
-    "85": "飞吻",
-    "89": "西瓜",
-    "96": "冷汗",
-    "97": "擦汗",
-    "98": "抠鼻",
-    "99": "鼓掌",
-    "100": "糗大了",
-    "101": "坏笑",
-    "102": "左哼哼",
-    "103": "右哼哼",
-    "104": "哈欠",
-    "106": "委屈",
-    "109": "左亲亲",
-    "111": "可怜",
-    "116": "示爱",
-    "118": "抱拳",
-    "120": "拳头",
-    "122": "爱你",
-    "123": "NO",
-    "124": "OK",
-    "125": "转圈",
-    "129": "挥手",
-    "144": "喝彩",
-    "147": "棒棒糖",
-    "171": "茶",
-    "173": "泪奔",
-    "174": "无奈",
-    "175": "卖萌",
-    "176": "小纠结",
-    "179": "doge",
-    "180": "惊喜",
-    "181": "骚扰",
-    "182": "笑哭",
-    "183": "我最美",
-    "201": "点赞",
-    "203": "托脸",
-    "212": "托腮",
-    "214": "啵啵",
-    "219": "蹭一蹭",
-    "222": "抱抱",
-    "227": "拍手",
-    "232": "佛系",
-    "240": "喷脸",
-    "243": "甩头",
-    "246": "加油抱抱",
-    "262": "脑阔疼",
-    "264": "捂脸",
-    "265": "辣眼睛",
-    "266": "哦哟",
-    "267": "头秃",
-    "268": "问号脸",
-    "269": "暗中观察",
-    "270": "emm",
-    "271": "吃瓜",
-    "272": "呵呵哒",
-    "273": "我酸了",
-    "277": "汪汪",
-    "278": "汗",
-    "281": "无眼笑",
-    "282": "敬礼",
-    "284": "面无表情",
-    "285": "摸鱼",
-    "287": "哦",
-    "289": "睁眼",
-    "290": "敲开心",
-    "293": "摸锦鲤",
-    "294": "期待",
-    "297": "拜谢",
-    "298": "元宝",
-    "299": "牛啊",
-    "305": "右亲亲",
-    "306": "牛气冲天",
-    "307": "喵喵",
-    "314": "仔细分析",
-    "315": "加油",
-    "318": "崇拜",
-    "319": "比心",
-    "320": "庆祝",
-    "322": "拒绝",
-    "324": "吃糖",
-    "326": "生气",
-    "9728": "☀",
-    "9749": "☕",
-    "9786": "☺",
-    "10024": "✨",
-    "10060": "❌",
-    "10068": "❔",
-    "127801": "🌹",
-    "127817": "🍉",
-    "127822": "🍎",
-    "127827": "🍓",
-    "127836": "🍜",
-    "127838": "🍞",
-    "127847": "🍧",
-    "127866": "🍺",
-    "127867": "🍻",
-    "127881": "🎉",
-    "128027": "🐛",
-    "128046": "🐮",
-    "128051": "🐳",
-    "128053": "🐵",
-    "128074": "👊",
-    "128076": "👌",
-    "128077": "👍",
-    "128079": "👏",
-    "128089": " bikini",
-    "128102": "👦",
-    "128104": "👨",
-    "128147": "💓",
-    "128157": "💝",
-    "128164": "💤",
-    "128166": "💦",
-    "128168": "💨",
-    "128170": "💪",
-    "128235": "📫",
-    "128293": "🔥",
-    "128513": "😁",
-    "128514": "😂",
-    "128516": "😄",
-    "128522": "😊",
-    "128524": "😌",
-    "128527": "😏",
-    "128530": "😒",
-    "128531": "😓",
-    "128532": "😔",
-    "128536": "😘",
-    "128538": "😚",
-    "128540": "😜",
-    "128541": "😝",
-    "128557": "😭",
-    "128560": "😰",
-    "128563": "😳",
-}
 
 
 def calculate_trigger_probability(accumulated_length: int) -> float:
@@ -991,10 +821,10 @@ class MessageProcessor:
     async def process_messages(self, msg_dict: CachedMessage) -> None:
         async with get_session() as session:
             r = await session.get(ChatGroup, {"group_id": self.session.session_id})
-            
+
             # Check for blocked user
             blocked_user = r and msg_dict["user_id"] in json.loads(r.blocked_user)
-            
+
             # Check for blocked keywords
             blocked_keyword = False
             if r:
@@ -1005,9 +835,9 @@ class MessageProcessor:
                         if keyword in content:
                             blocked_keyword = True
                             break
-            
+
             self.blocked = blocked_user or blocked_keyword
-            
+
             if not self.blocked:
                 msg_str = generate_message_string(msg_dict)
                 self.append_user_message(msg_str)
@@ -1478,9 +1308,7 @@ class PrivateSession(BaseSession):
         return self.user_info
 
     async def get_users(self) -> dict[str, str]:
-        return {
-            self.nickname: self.session_id
-        }
+        return {self.nickname: self.session_id}
 
 
 class GroupSession(BaseSession):
@@ -1759,18 +1587,18 @@ class CommandHandler:
     async def handle_block(self) -> None:
         if len(self.argv) < 2:
             await lang.finish("command.no_argv", self.user_id)
-        
+
         target_type = self.argv[1]
-        
+
         if target_type == "user":
             if len(self.argv) < 3:
                 await lang.finish("command.no_argv", self.user_id)
             action = self.argv[2]
             blocked_list = json.loads(self.group_config.blocked_user)
-            
+
             if action == "list":
                 await lang.finish("command.block.user.list", self.user_id, ", ".join(blocked_list))
-            
+
             if len(self.argv) < 4:
                 await lang.finish("command.no_argv", self.user_id)
             target_id = self.argv[3]
@@ -1800,7 +1628,7 @@ class CommandHandler:
 
             if action == "list":
                 await lang.finish("command.block.keyword.list", self.user_id, ", ".join(blocked_list))
-            
+
             if len(self.argv) < 4:
                 await lang.finish("command.no_argv", self.user_id)
             target_keyword = self.argv[3]
@@ -1822,7 +1650,7 @@ class CommandHandler:
                 else:
                     await lang.finish("command.block.keyword.not_found", self.user_id, target_keyword)
         else:
-             await lang.finish("command.no_argv", self.user_id)
+            await lang.finish("command.no_argv", self.user_id)
 
     async def handle(self) -> None:
         match self.argv[0]:
