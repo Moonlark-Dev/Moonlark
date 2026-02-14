@@ -697,6 +697,27 @@ class MessageProcessor:
                     ),
                 },
             ),
+            AsyncFunction(
+                func=self.judge_user_behavior,
+                description=await self.session.text("tools_desc.judge_user_behavior.desc"),
+                parameters={
+                    "nickname": FunctionParameter(
+                        type="string",
+                        description=await self.session.text("tools_desc.judge_user_behavior.nickname"),
+                        required=True,
+                    ),
+                    "score": FunctionParameter(
+                        type="integer",
+                        description=await self.session.text("tools_desc.judge_user_behavior.score"),
+                        required=True,
+                    ),
+                    "reason": FunctionParameter(
+                        type="string",
+                        description=await self.session.text("tools_desc.judge_user_behavior.reason"),
+                        required=True,
+                    ),
+                },
+            ),
         ]
 
         if self.session.is_napcat_bot():
@@ -794,6 +815,32 @@ class MessageProcessor:
             refuse_msg = await self.session.text("rua.bite_msg", nickname)
             await self.send_message(refuse_msg)
             return await self.session.text("rua.bite_prompt", nickname)
+
+    async def judge_user_behavior(self, nickname: str, score: int, reason: str) -> str:
+        # 获取用户 ID
+        users = await self.session.get_users()
+        if not (user_id := users.get(nickname)):
+            return await self.session.text("judge.user_not_found", nickname)
+        user = await get_user(user_id)
+        if user.get_register_time() is None:
+            return await self.session.text("judge.user_not_registered", nickname)
+        # 限制分数范围
+        score = max(-2, min(2, score))
+        # 检查冷却时间和每日上限
+        dt = datetime.now()
+        user_cache = user.get_config_key("chat_fav_judge_cache", [0, 0])
+        last_judge_time, daily_score = user_cache
+        if dt - datetime.fromtimestamp(last_judge_time) < timedelta(hours=1):
+            return await self.session.text("judge.cooldown", nickname)
+        if datetime.fromtimestamp(last_judge_time).date() != datetime.now().date():
+            daily_score = 0
+        delta = score * 0.0002
+        if abs(daily_score + delta) > 0.005:
+            return await self.session.text("judge.daily_limit", nickname)
+        await user.set_config_key("chat_fav_judge_cache", [dt.timestamp(), daily_score + delta])
+        await user.add_fav(delta)
+        logger.info(f"AI judged user {user_id} ({nickname}): {score} ({reason}), delta={delta}")
+        return await self.session.text("judge.success", nickname, reason)
 
     async def loop(self) -> None:
         # 在开始循环前等待消息队列从数据库恢复完成
@@ -1410,7 +1457,9 @@ class PrivateSession(BaseSession):
         return self.user_info
 
     async def get_users(self) -> dict[str, str]:
-        return {}
+        return {
+            self.nickname: self.session_id
+        }
 
 
 class GroupSession(BaseSession):
