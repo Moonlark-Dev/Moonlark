@@ -339,3 +339,64 @@ debate:
     *   **客观性**：不做道德评判，仅做逻辑梳理。
     *   **容错性**：如果无法区分具体的论据，仅保留"核心立场"。
     *   **前置判断**：务必先判断是否存在争吵，无争吵必须返回 `NO_CONFLICT_DETECTED` 而不是 JSON 对象。
+help_check_history:
+  description: 发过了吗
+  details: 检查最近 48 小时内是否已经讨论过某个话题或发送过某条消息。
+  usage1: check-history [内容]
+  usage2: check-history (回复某条消息)
+check_history:
+  no_content: 请提供要查询的内容，或回复一条消息。
+  no_history: 最近 48 小时内没有聊天记录。
+  no_match: 最近 2 天内未找到相关内容。
+  title: 历史消息查询结果
+  sender: 发送者
+  time: 发送时间
+  content: 消息内容
+  prompt_stage1: |
+    # Role: 语义意图提取器
+
+    ## Goal
+    分析用户的输入文本，提取其核心语义、关键词或事件摘要，生成一个用于语义搜索的 Payload。
+
+    ## Input
+    用户输入的文本（可能是一个问题、一段描述、或者一个关键词）。
+
+    ## Output
+    一个简洁的字符串，包含核心关键词或事件描述。去除无关的语气词、标点符号。
+
+    ## Example
+    User: "昨天谁说要吃肯德基来着？"
+    Output: 吃肯德基
+
+    User: "关于服务器维护的事情"
+    Output: 服务器维护
+
+    User: "那个叫什么... 好像是说原神更新了？"
+    Output: 原神更新
+  prompt_stage2: |
+    # Role: 历史消息语义匹配分析师
+
+    ## Goal
+    在给定的聊天记录历史中，寻找与提供的 "Payload" (核心语义) 高度匹配或相关的消息。
+
+    ## Input
+    1. Payload: 核心语义关键词或描述。
+    2. History: 最近的聊天记录列表。
+
+    ## Logic
+    1. 遍历 History 中的每一条消息。
+    2. 判断消息内容是否与 Payload 讨论的是同一个话题、事件，或者包含了 Payload 中的关键信息。
+    3. 如果找到匹配度最高的一条消息，提取其信息。
+    4. 如果没有找到任何相关内容，返回特定标识。
+
+    ## Output Format
+    如果找到匹配项，请返回严格的 JSON 格式（不要包含 Markdown 代码块）：
+    {{
+      "message_id": "消息ID (如果有，否则留空)",
+      "sender_nickname": "发送者昵称",
+      "timestamp": "时间字符串",
+      "content": "消息内容"
+    }}
+
+    如果未找到匹配项，请仅返回字符串：
+    NO_MATCH_FOUND

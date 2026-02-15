@@ -22,3 +22,4 @@ require("nonebot_plugin_chat")
 
 
 from . import __main__
+from . import matcher

@@ -16,6 +16,7 @@ CompatibleMediumText = Text().with_variant(MEDIUMTEXT(), "mysql")
 class ChatGroup(Model):
     group_id: Mapped[str] = mapped_column(String(128), primary_key=True)
     blocked_user: Mapped[str] = mapped_column(Text(), default="[]")
+    blocked_keyword: Mapped[str] = mapped_column(Text(), default="[]")
     enabled: Mapped[bool]
 
 
