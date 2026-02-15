@@ -8,6 +8,7 @@ import httpx
 matcher = on_alconna(Alconna("epic-free"), aliases={"epic"})
 lang = LangHelper()
 
+
 @matcher.handle()
 async def _(user_id: str = get_user_id()) -> None:
     url = "https://store-site-backend-static-ipv4.ak.epicgames.com/freeGamesPromotions?locale=zh-CN&country=CN&allowCountries=CN"
@@ -31,7 +32,7 @@ async def _(user_id: str = get_user_id()) -> None:
                     "coming_soon",
                     "remaining",
                 ],
-                "template"
+                "template",
             ),
         )
     ).send()

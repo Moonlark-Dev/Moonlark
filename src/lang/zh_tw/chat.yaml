@@ -770,6 +770,13 @@ tools_desc:
     nickname: "要評價的用戶暱稱"
     score: "評價分數，範圍為 -2 到 2。2: 非常開心/感動/極具價值; 1: 愉快/友善; -1: 不悅/冒犯; -2: 憤怒/惡意攻擊"
     reason: "評價理由"
+  describe_bilibili_video:
+    desc: |
+      根據 Bilibili 視頻的 BV 號，下載視頻並進行內容總結。
+      **使用場景**:
+      - 用戶提供了一個 B 站視頻的 BV 號，並詢問視頻內容
+      - 需要了解某個 B 站視頻的詳細信息和摘要
+    bv_id: "Bilibili 視頻的 BV 號，如 'BV1xx411c7mD'"
 judge:
   user_not_found: "找不到用戶 {}，請確認暱稱是否正確。"
   user_not_registered: "用戶 {} 還未註冊（其好感度在註冊之前是唯讀的），無法評價。"
