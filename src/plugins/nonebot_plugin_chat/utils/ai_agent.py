@@ -3,7 +3,15 @@ from nonebot_plugin_openai import MessageFetcher
 from nonebot_plugin_openai.types import AsyncFunction, FunctionParameter
 from nonebot_plugin_openai.utils.message import generate_message
 
-from .tools import browse_webpage, web_search, request_wolfram_alpha, search_abbreviation, get_vm_tools, is_vm_available, describe_bilibili_video
+from .tools import (
+    browse_webpage,
+    web_search,
+    request_wolfram_alpha,
+    search_abbreviation,
+    get_vm_tools,
+    is_vm_available,
+    describe_bilibili_video,
+)
 
 from ..lang import lang
 

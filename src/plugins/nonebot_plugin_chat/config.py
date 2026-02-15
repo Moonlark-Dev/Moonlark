@@ -11,7 +11,7 @@ class Config(BaseModel):
     # VM 远程执行服务配置
     vm_api_url: str = ""  # VM 服务地址，如 http://localhost:8000
     vm_api_token: str = ""  # VM API 鉴权 Token
-    moonlark_api_base: str = "http://localhost:8080" # Moonlark API 基础地址
+    moonlark_api_base: str = "http://localhost:8080"  # Moonlark API 基础地址
 
 
 config = get_plugin_config(Config)
