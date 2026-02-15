@@ -1,10 +1,17 @@
 from datetime import datetime
-from typing import Awaitable, Callable
 from nonebot_plugin_openai import MessageFetcher
 from nonebot_plugin_openai.types import AsyncFunction, FunctionParameter
 from nonebot_plugin_openai.utils.message import generate_message
 
-from .tools import browse_webpage, web_search, request_wolfram_alpha, search_abbreviation, get_vm_tools, is_vm_available
+from .tools import (
+    browse_webpage,
+    web_search,
+    request_wolfram_alpha,
+    search_abbreviation,
+    get_vm_tools,
+    is_vm_available,
+    describe_bilibili_video,
+)
 
 from ..lang import lang
 
@@ -80,6 +87,22 @@ class AskAISession:
                     "text": FunctionParameter(
                         type="string",
                         description="要查询的缩写文本，如 'yyds'、'xswl' 等",
+                        required=True,
+                    )
+                },
+            ),
+            AsyncFunction(
+                func=describe_bilibili_video,
+                description=(
+                    "根据 Bilibili 视频的 BV 号，下载视频并进行内容总结。\n"
+                    "**使用场景**:\n"
+                    "- 用户提供了一个 B 站视频的 BV 号，并询问视频内容\n"
+                    "- 需要了解某个 B 站视频的详细信息和摘要"
+                ),
+                parameters={
+                    "bv_id": FunctionParameter(
+                        type="string",
+                        description="Bilibili 视频的 BV 号，如 'BV1xx411c7mD'",
                         required=True,
                     )
                 },

@@ -74,6 +74,7 @@ from ..utils.tools import (
     search_abbreviation,
     get_note_poster,
     get_note_remover,
+    describe_bilibili_video,
 )
 import uuid
 from ..utils.tools.sticker import StickerTools
@@ -584,6 +585,17 @@ class MessageProcessor:
                         description=await self.session.text("tools_desc.judge_user_behavior.reason"),
                         required=True,
                     ),
+                },
+            ),
+            AsyncFunction(
+                func=describe_bilibili_video,
+                description=await self.session.text("tools_desc.describe_bilibili_video.desc"),
+                parameters={
+                    "bv_id": FunctionParameter(
+                        type="string",
+                        description=await self.session.text("tools_desc.describe_bilibili_video.bv_id"),
+                        required=True,
+                    )
                 },
             ),
         ]
