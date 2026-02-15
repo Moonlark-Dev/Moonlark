@@ -258,7 +258,9 @@ class MessageQueue:
                     continue
                 elif status == FetchStatus.NO_MESSAGE_SENT and important:
                     self.append_user_message(
-                        await self.processor.session.text("prompt.warning.no_message_sent", datetime.now().strftime("%H:%M:%S"))
+                        await self.processor.session.text(
+                            "prompt.warning.no_message_sent", datetime.now().strftime("%H:%M:%S")
+                        )
                     )
                     retried += 2
                     continue
@@ -305,7 +307,11 @@ class MessageQueue:
                 and state == FetchStatus.SUCCESS
             ):
                 state = FetchStatus.EMPTY_REPLY
-            elif self.consecutive_bot_messages == 0 and not fetcher.session.has_tool_calls and state == FetchStatus.SUCCESS:
+            elif (
+                self.consecutive_bot_messages == 0
+                and not fetcher.session.has_tool_calls
+                and state == FetchStatus.SUCCESS
+            ):
                 state = FetchStatus.NO_MESSAGE_SENT
         except Exception as e:
             logger.exception(e)
