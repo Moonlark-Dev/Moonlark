@@ -1,0 +1,10 @@
+title: Epic 免费游戏
+failed: 获取 Epic 免费游戏数据失败，请稍后再试。
+template:
+  free_now: 当前免费
+  coming_soon: 即将免费
+  remaining: 剩余
+help:
+  description: Epic 免费游戏查询
+  details: 查询 Epic Games Store 当前和即将到来的免费游戏。
+  usage: epic-free (查询免费游戏)
