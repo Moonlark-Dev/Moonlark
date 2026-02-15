@@ -33,12 +33,12 @@ async def _get_video_info(bv_id: str) -> Tuple[str, str, str, Optional[str]]:
         video_streams = play_url["dash"]["video"]
         video_streams.sort(key=lambda x: x["bandwidth"])
         video_url = video_streams[0]["baseUrl"]
-        
+
         if "audio" in play_url["dash"]:
             audio_streams = play_url["dash"]["audio"]
             audio_streams.sort(key=lambda x: x["bandwidth"])
             audio_url = audio_streams[0]["baseUrl"]
-            
+
     elif "durl" in play_url:
         video_url = play_url["durl"][0]["url"]
 
@@ -66,16 +66,20 @@ async def _merge_video_audio(video_path: Path, audio_path: Path, output_path: Pa
     process = await asyncio.create_subprocess_exec(
         "ffmpeg",
         "-y",
-        "-i", str(video_path),
-        "-i", str(audio_path),
-        "-c:v", "copy",
-        "-c:a", "aac",
+        "-i",
+        str(video_path),
+        "-i",
+        str(audio_path),
+        "-c:v",
+        "copy",
+        "-c:a",
+        "aac",
         str(output_path),
         stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE
+        stderr=asyncio.subprocess.PIPE,
     )
     stdout, stderr = await process.communicate()
-    
+
     if process.returncode != 0:
         logger.error(f"FFmpeg merge failed: {stderr.decode()}")
         raise RuntimeError("FFmpeg merge failed")
@@ -94,7 +98,7 @@ async def describe_bilibili_video(bv_id: str) -> str:
         title, desc, video_url, audio_url = await _get_video_info(bv_id)
 
         await _download_file(video_url, temp_video_path)
-        
+
         if audio_url:
             await _download_file(audio_url, temp_audio_path)
             try:
@@ -123,10 +127,10 @@ async def describe_bilibili_video(bv_id: str) -> str:
         ]
 
         result = await fetch_message(messages=messages, identify="Bilibili Video Summary")
-        
+
         if file_path.exists():
             os.remove(file_path)
-            
+
         return result
 
     finally:
