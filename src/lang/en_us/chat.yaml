@@ -781,6 +781,13 @@ tools_desc:
     nickname: "要评价的用户昵称"
     score: "评价分数，范围为 -2 到 2。2: 非常开心/感动/极具价值; 1: 愉快/友善; -1: 不悦/冒犯; -2: 愤怒/恶意攻击"
     reason: "评价理由"
+  describe_bilibili_video:
+    desc: |
+      根据 Bilibili 视频的 BV 号，下载视频并进行内容总结。
+      **使用场景**:
+      - 用户提供了一个 B 站视频的 BV 号，并询问视频内容
+      - 需要了解某个 B 站视频的详细信息和摘要
+    bv_id: "Bilibili 视频的 BV 号，如 'BV1xx411c7mD'"
 judge:
   user_not_found: "找不到用户 {}，请确认昵称是否正确。"
   user_not_registered: "用户 {} 还未注册（其好感度在注册之前是只读的），无法评价。"
