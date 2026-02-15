@@ -16,6 +16,8 @@
 {% block body %}
 {% for game in result.data.Catalog.searchStore.elements %}
 {% if game.promotions %}
+{% set offer = game.promotions.promotionalOffers or game.promotions.upcomingPromotionalOffers %}
+{% if offer[0].promotionalOffers[0].discountSetting.discountType == "PERCENTAGE" and offer[0].promotionalOffers[0].discountSetting.discountPercentage == 0 %}
 <div class="row">
     <div class="col-2">
         {% for image in game.keyImages %}
@@ -26,20 +28,22 @@
     </div>
     <div class="col-10">
         <h2>{{ game.title }}</h2>
-        <span class="badge bg-dark"><s>{{ game.price.fmtPrice.originalPrice }}</s></span>
+        <span class="badge bg-dark"><s>{{ game.price.totalPrice.fmtPrice.originalPrice }}</s></span>
         {% if game.promotions.promotionalOffers %}
-        <span class="badge bg-success">当前免费</span>
+        <span class="badge bg-success">{{ free_now }}</span>
         {% else %}
-        <span class="badge bg-warning">即将免费</span>
+        <span class="badge bg-warning">{{ coming_soon }}</span>
         {% endif %}
-        剩余 <span id="countdown-{{ game.id }}"></span>
+        {{ remaining }} <span id="countdown-{{ game.id }}"></span>
         <script>
-            {% if game.promotions.promotionalOffers %}
-            const dateStr = "{{ game.promotions.promotionalOffers[0].promotionalOffers[0].endDate }}";
-            {% else %}
-            const dateStr = "{{ game.promotions.upcomingPromotionalOffers[0].promotionalOffers[0].startDate }}";
-            {% endif %}
-            document.getElementById("countdown-{{ game.id }}").innerHTML = getCountDownString(dateStr);
+            {
+                {% if game.promotions.promotionalOffers %}
+                const dateStr = "{{ game.promotions.promotionalOffers[0].promotionalOffers[0].endDate }}";
+                {% else %}
+                const dateStr = "{{ game.promotions.upcomingPromotionalOffers[0].promotionalOffers[0].startDate }}";
+                {% endif %}
+                document.getElementById("countdown-{{ game.id }}").innerHTML = getCountDownString(dateStr);
+            }
         </script>
         <br>
         <small class="text-secondary">{{ game.description }}</small>
@@ -47,6 +51,7 @@
 </div>
 {% if not loop.last %}
 <hr>
+{% endif %}
 {% endif %}
 {% endif %}
 {% endfor %}

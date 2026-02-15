@@ -2,7 +2,7 @@ from nonebot import logger
 from nonebot_plugin_alconna import UniMessage, Alconna, on_alconna
 from nonebot_plugin_larklang import LangHelper
 from nonebot_plugin_larkutils import get_user_id
-from nonebot_plugin_render import render_template
+from nonebot_plugin_render import render_template, generate_render_keys
 import httpx
 
 matcher = on_alconna(Alconna("epic-free"), aliases={"epic"})
@@ -23,6 +23,16 @@ async def _(user_id: str = get_user_id()) -> None:
             await lang.text("title", user_id),
             user_id,
             {"result": data},
+            await generate_render_keys(
+                lang,
+                user_id,
+                [
+                    "free_now",
+                    "coming_soon",
+                    "remaining",
+                ],
+                "template"
+            ),
         )
     ).send()
     await matcher.finish()
