@@ -24,3 +24,6 @@ pull:
   into: 合并到
   merged: 已合并
 error: 服务器繁忙，请稍后再试。
+not_compliance: |
+  Failed: Content did not pass review
+  {}
