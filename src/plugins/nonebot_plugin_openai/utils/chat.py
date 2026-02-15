@@ -149,7 +149,7 @@ class LLMRequestSession:
             for request in response.message.tool_calls:
                 if isinstance(request, ChatCompletionMessageFunctionToolCall):
                     await self.call_function(request.id, request.function.name, json.loads(request.function.arguments))
-        else:
+        elif not self.insert_message_queue:
             # FUCK YOU OPENAI
             # 我操你妈逼谷歌
             self.stop = True

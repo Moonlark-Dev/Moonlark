@@ -358,6 +358,9 @@ Moonlark 投票
 - `/chat calls (查看最近的工具调用记录)`
 - `/chat profile (查看自己的 profile)`
 - `/chat profile set <内容> (设置自己的 profile)`
+- `/chat block user <add|remove|list> [用户ID] (管理屏蔽用户)`
+- `/chat block keyword <add|remove|list> [关键词] (管理屏蔽关键词)`
+- `/chat block list (查看所有屏蔽项)`
 ## `email`: 邮件
 
 进入 Moonlark 邮箱
