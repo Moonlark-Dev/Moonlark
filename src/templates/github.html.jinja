@@ -51,7 +51,10 @@
     <script>
         document.addEventListener("DOMContentLoaded", () => {
             document.querySelectorAll(".markdown-body").forEach((el) => {
-                el.innerHTML = DOMPurify.sanitize(marked.parse(el.innerText));
+                marked.setOptions({
+                    breaks: true
+                });
+                el.innerHTML = DOMPurify.sanitize(marked.parse(el.textContent));
             });
         });
     </script>
