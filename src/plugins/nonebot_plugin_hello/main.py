@@ -97,5 +97,3 @@ async def _(event: Event, user_id: str = get_user_id(), session_id: str = get_gr
     else:
         await lang.send("at.normal", user_id)
     await user.set_config_key("at_data", at_data)
-
-
