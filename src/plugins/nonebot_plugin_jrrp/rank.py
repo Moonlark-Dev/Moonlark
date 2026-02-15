@@ -1,4 +1,5 @@
 from typing import AsyncGenerator, NoReturn
+from nonebot.log import logger
 from nonebot_plugin_alconna import UniMessage
 from nonebot_plugin_larkuser.utils.user import get_registered_user_ids
 from nonebot_plugin_orm import get_session
@@ -60,15 +61,18 @@ async def get_rank(sender_id: str, reverse: bool = False) -> NoReturn:
         lucky_star_nickname = lucky_star_user.get_nickname()
         unlucky_one_nickname = unlucky_one_user.get_nickname()
 
-        event_prompt = (
-            f"今日运势排行已生成！\n"
-            f"发送者运势: {sender_luck}\n"
-            f"欧皇: {lucky_star_nickname} (运势: {lucky_star_value})\n"
-            f"倒霉蛋: {unlucky_one_nickname} (运势: {unlucky_one_value})"
+        event_prompt = await lang.text(
+            "group_event_prompt",
+            sender_id,
+            sender_luck,
+            lucky_star_nickname,
+            lucky_star_value,
+            unlucky_one_nickname,
+            unlucky_one_value,
         )
         await post_group_event(get_group_id(), event_prompt, "probability")
-    except Exception:
-        pass
+    except Exception as e:
+        logger.exception(e)
 
     image = await render_template(
         f"jrrp_rank{'_reverse' if reverse else ''}.html.jinja",
