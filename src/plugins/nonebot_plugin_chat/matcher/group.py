@@ -263,7 +263,7 @@ class MessageQueue:
                     retried += 2
                     continue
                 elif status == FetchStatus.WRONG_TOOL_CALL:
-                    retried += 1
+                    retried += 0.5
                     self.append_user_message(
                         await self.processor.session.text(
                             "prompt.warning.invalid_tool_call",
@@ -302,9 +302,10 @@ class MessageQueue:
                 isinstance(assistant_msg := self.messages[-1], ChatCompletionMessage)
                 and not assistant_msg.content
                 and not fetcher.session.has_tool_calls
+                and state == FetchStatus.SUCCESS
             ):
                 state = FetchStatus.EMPTY_REPLY
-            elif self.consecutive_bot_messages == 0 and not fetcher.session.has_tool_calls:
+            elif self.consecutive_bot_messages == 0 and not fetcher.session.has_tool_calls and state == FetchStatus.SUCCESS:
                 state = FetchStatus.NO_MESSAGE_SENT
         except Exception as e:
             logger.exception(e)
