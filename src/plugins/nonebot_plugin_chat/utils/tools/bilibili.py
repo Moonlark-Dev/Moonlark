@@ -6,6 +6,8 @@ from nonebot_plugin_openai import fetch_message
 from nonebot import logger, require
 import asyncio
 import os
+from pathlib import Path
+from typing import Optional, Tuple
 
 require("nonebot_plugin_localstore")
 import nonebot_plugin_localstore as store
@@ -16,100 +18,99 @@ if not VIDEO_DIR.exists():
     VIDEO_DIR.mkdir(parents=True, exist_ok=True)
 
 
+async def _get_video_info(bv_id: str) -> Tuple[str, str, str, Optional[str]]:
+    """获取视频信息和下载地址"""
+    v = video.Video(bvid=bv_id)
+    info = await v.get_info()
+    title = info["title"]
+    desc = info["desc"]
+
+    play_url = await v.get_download_url(page_index=0)
+    video_url = None
+    audio_url = None
+
+    if "dash" in play_url:
+        video_streams = play_url["dash"]["video"]
+        video_streams.sort(key=lambda x: x["bandwidth"])
+        video_url = video_streams[0]["baseUrl"]
+        
+        if "audio" in play_url["dash"]:
+            audio_streams = play_url["dash"]["audio"]
+            audio_streams.sort(key=lambda x: x["bandwidth"])
+            audio_url = audio_streams[0]["baseUrl"]
+            
+    elif "durl" in play_url:
+        video_url = play_url["durl"][0]["url"]
+
+    if not video_url:
+        raise ValueError("无法获取视频下载地址")
+
+    return title, desc, video_url, audio_url
+
+
+async def _download_file(url: str, path: Path) -> None:
+    """下载文件"""
+    headers = {
+        "Referer": "https://www.bilibili.com",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+    }
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(url, headers=headers)
+        resp.raise_for_status()
+        with open(path, "wb") as f:
+            f.write(resp.content)
+
+
+async def _merge_video_audio(video_path: Path, audio_path: Path, output_path: Path) -> None:
+    """合并视频和音频"""
+    process = await asyncio.create_subprocess_exec(
+        "ffmpeg",
+        "-y",
+        "-i", str(video_path),
+        "-i", str(audio_path),
+        "-c:v", "copy",
+        "-c:a", "aac",
+        str(output_path),
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE
+    )
+    stdout, stderr = await process.communicate()
+    
+    if process.returncode != 0:
+        logger.error(f"FFmpeg merge failed: {stderr.decode()}")
+        raise RuntimeError("FFmpeg merge failed")
+
+
 async def describe_bilibili_video(bv_id: str) -> str:
     """
     根据 BV 号总结 B 站视频内容
     """
-    # 文件路径
     file_name = f"{bv_id}.mp4"
     file_path = VIDEO_DIR / file_name
     temp_video_path = VIDEO_DIR / f"{bv_id}_temp_video.mp4"
     temp_audio_path = VIDEO_DIR / f"{bv_id}_temp_audio.m4a"
 
     try:
-        # 获取视频信息
-        v = video.Video(bvid=bv_id)
-        info = await v.get_info()
-        title = info["title"]
-        desc = info["desc"]
+        title, desc, video_url, audio_url = await _get_video_info(bv_id)
 
-        # 获取视频下载地址
-        play_url = await v.get_download_url(page_index=0)
-
-        video_url = None
-        audio_url = None
-
-        if "dash" in play_url:
-            # 优先选择清晰度较低的视频流以减小体积
-            video_streams = play_url["dash"]["video"]
-            # 按 bandwidth 排序，取最小的
-            video_streams.sort(key=lambda x: x["bandwidth"])
-            video_url = video_streams[0]["baseUrl"]
-            
-            # 获取音频流
-            if "audio" in play_url["dash"]:
-                audio_streams = play_url["dash"]["audio"]
-                # 按 bandwidth 排序，取最小的
-                audio_streams.sort(key=lambda x: x["bandwidth"])
-                audio_url = audio_streams[0]["baseUrl"]
-                
-        elif "durl" in play_url:
-            video_url = play_url["durl"][0]["url"]
-
-        if not video_url:
-            return "无法获取视频下载地址"
-
-        # 使用 httpx 下载，伪造 Referer
-        headers = {
-            "Referer": "https://www.bilibili.com",
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-        }
-
-        async with httpx.AsyncClient() as client:
-            # 下载视频流
-            resp = await client.get(video_url, headers=headers)
-            with open(temp_video_path, "wb") as f:
-                f.write(resp.content)
-            
-            # 下载音频流（如果有）
-            if audio_url:
-                resp = await client.get(audio_url, headers=headers)
-                with open(temp_audio_path, "wb") as f:
-                    f.write(resp.content)
-
-        # 合并视频和音频
+        await _download_file(video_url, temp_video_path)
+        
         if audio_url:
-            # 使用 ffmpeg 合并
-            process = await asyncio.create_subprocess_exec(
-                "ffmpeg",
-                "-y", # 覆盖输出文件
-                "-i", str(temp_video_path),
-                "-i", str(temp_audio_path),
-                "-c:v", "copy",
-                "-c:a", "aac",
-                str(file_path),
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
-            )
-            stdout, stderr = await process.communicate()
-            
-            if process.returncode != 0:
-                logger.error(f"FFmpeg merge failed: {stderr.decode()}")
-                # 如果合并失败，回退到只使用视频流（重命名临时视频文件）
-                if temp_video_path.exists():
-                    if file_path.exists():
-                        os.remove(file_path)
-                    os.rename(temp_video_path, file_path)
+            await _download_file(audio_url, temp_audio_path)
+            try:
+                await _merge_video_audio(temp_video_path, temp_audio_path, file_path)
+            except RuntimeError:
+                # 合并失败，回退到仅视频
+                if file_path.exists():
+                    os.remove(file_path)
+                os.rename(temp_video_path, file_path)
         else:
-            # 没有音频流，直接重命名视频文件
             if file_path.exists():
                 os.remove(file_path)
             os.rename(temp_video_path, file_path)
 
-        # 构建外部访问 URL
         external_url = f"{config.moonlark_api_base}/chat/video/{file_name}"
 
-        # 构造 OpenAI 请求
         messages = [
             generate_message("你是一个视频内容分析助手。请根据提供的视频，总结视频的主要内容。", role="system"),
             generate_message(
@@ -123,14 +124,12 @@ async def describe_bilibili_video(bv_id: str) -> str:
 
         result = await fetch_message(messages=messages, identify="Bilibili Video Summary")
         
-        # 处理完成后删除生成的合并视频
         if file_path.exists():
             os.remove(file_path)
             
         return result
 
     finally:
-        # 清理临时文件
         if temp_video_path.exists():
             os.remove(temp_video_path)
         if temp_audio_path.exists():
