@@ -1,0 +1,3 @@
+plugin: epic_freegame
+commands:
+  epic-free: help;1;game

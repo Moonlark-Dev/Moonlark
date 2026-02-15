@@ -24,6 +24,7 @@ from nonebot.adapters.onebot.v11 import NoticeEvent
 from nonebot_plugin_alconna import get_message_id
 import random
 import asyncio
+from openai.types.chat import ChatCompletionMessage
 from datetime import datetime, timedelta
 from nonebot.adapters.qq import Bot as BotQQ
 from nonebot.params import CommandArg
@@ -64,6 +65,7 @@ from ..lang import lang
 from ..utils.note_manager import get_context_notes
 from ..models import ChatGroup, RuaAction, Sticker, UserProfile, MessageQueueCache
 from ..utils import enabled_group, parse_message_to_string
+from ..utils.enums import FetchStatus
 from ..utils.image import query_image_content
 from ..utils.tools import (
     browse_webpage,
@@ -72,9 +74,11 @@ from ..utils.tools import (
     search_abbreviation,
     get_note_poster,
     get_note_remover,
+    describe_bilibili_video,
 )
 import uuid
 from ..utils.tools.sticker import StickerTools
+from ..utils.emoji import QQ_EMOJI_MAP
 
 
 class PendingInteraction(TypedDict):
@@ -85,177 +89,6 @@ class PendingInteraction(TypedDict):
     nickname: str
     action: RuaAction
     created_at: float  # timestamp
-
-
-QQ_EMOJI_MAP = {
-    "4": "得意",
-    "5": "流泪",
-    "8": "睡",
-    "9": "大哭",
-    "10": "尴尬",
-    "12": "调皮",
-    "14": "微笑",
-    "16": "酷",
-    "21": "可爱",
-    "23": "傲慢",
-    "24": "饥饿",
-    "25": "困",
-    "26": "惊恐",
-    "27": "流汗",
-    "28": "憨笑",
-    "29": "悠闲",
-    "30": "奋斗",
-    "32": "疑问",
-    "33": "嘘",
-    "34": "晕",
-    "38": "敲打",
-    "39": "再见",
-    "41": "发抖",
-    "42": "爱情",
-    "43": "跳跳",
-    "49": "拥抱",
-    "53": "蛋糕",
-    "60": "咖啡",
-    "63": "玫瑰",
-    "66": "爱心",
-    "74": "太阳",
-    "75": "月亮",
-    "76": "赞",
-    "78": "握手",
-    "79": "胜利",
-    "85": "飞吻",
-    "89": "西瓜",
-    "96": "冷汗",
-    "97": "擦汗",
-    "98": "抠鼻",
-    "99": "鼓掌",
-    "100": "糗大了",
-    "101": "坏笑",
-    "102": "左哼哼",
-    "103": "右哼哼",
-    "104": "哈欠",
-    "106": "委屈",
-    "109": "左亲亲",
-    "111": "可怜",
-    "116": "示爱",
-    "118": "抱拳",
-    "120": "拳头",
-    "122": "爱你",
-    "123": "NO",
-    "124": "OK",
-    "125": "转圈",
-    "129": "挥手",
-    "144": "喝彩",
-    "147": "棒棒糖",
-    "171": "茶",
-    "173": "泪奔",
-    "174": "无奈",
-    "175": "卖萌",
-    "176": "小纠结",
-    "179": "doge",
-    "180": "惊喜",
-    "181": "骚扰",
-    "182": "笑哭",
-    "183": "我最美",
-    "201": "点赞",
-    "203": "托脸",
-    "212": "托腮",
-    "214": "啵啵",
-    "219": "蹭一蹭",
-    "222": "抱抱",
-    "227": "拍手",
-    "232": "佛系",
-    "240": "喷脸",
-    "243": "甩头",
-    "246": "加油抱抱",
-    "262": "脑阔疼",
-    "264": "捂脸",
-    "265": "辣眼睛",
-    "266": "哦哟",
-    "267": "头秃",
-    "268": "问号脸",
-    "269": "暗中观察",
-    "270": "emm",
-    "271": "吃瓜",
-    "272": "呵呵哒",
-    "273": "我酸了",
-    "277": "汪汪",
-    "278": "汗",
-    "281": "无眼笑",
-    "282": "敬礼",
-    "284": "面无表情",
-    "285": "摸鱼",
-    "287": "哦",
-    "289": "睁眼",
-    "290": "敲开心",
-    "293": "摸锦鲤",
-    "294": "期待",
-    "297": "拜谢",
-    "298": "元宝",
-    "299": "牛啊",
-    "305": "右亲亲",
-    "306": "牛气冲天",
-    "307": "喵喵",
-    "314": "仔细分析",
-    "315": "加油",
-    "318": "崇拜",
-    "319": "比心",
-    "320": "庆祝",
-    "322": "拒绝",
-    "324": "吃糖",
-    "326": "生气",
-    "9728": "☀",
-    "9749": "☕",
-    "9786": "☺",
-    "10024": "✨",
-    "10060": "❌",
-    "10068": "❔",
-    "127801": "🌹",
-    "127817": "🍉",
-    "127822": "🍎",
-    "127827": "🍓",
-    "127836": "🍜",
-    "127838": "🍞",
-    "127847": "🍧",
-    "127866": "🍺",
-    "127867": "🍻",
-    "127881": "🎉",
-    "128027": "🐛",
-    "128046": "🐮",
-    "128051": "🐳",
-    "128053": "🐵",
-    "128074": "👊",
-    "128076": "👌",
-    "128077": "👍",
-    "128079": "👏",
-    "128089": " bikini",
-    "128102": "👦",
-    "128104": "👨",
-    "128147": "💓",
-    "128157": "💝",
-    "128164": "💤",
-    "128166": "💦",
-    "128168": "💨",
-    "128170": "💪",
-    "128235": "📫",
-    "128293": "🔥",
-    "128513": "😁",
-    "128514": "😂",
-    "128516": "😄",
-    "128522": "😊",
-    "128524": "😌",
-    "128527": "😏",
-    "128530": "😒",
-    "128531": "😓",
-    "128532": "😔",
-    "128536": "😘",
-    "128538": "😚",
-    "128540": "😜",
-    "128541": "😝",
-    "128557": "😭",
-    "128560": "😰",
-    "128563": "😳",
-}
 
 
 def calculate_trigger_probability(accumulated_length: int) -> float:
@@ -408,22 +241,45 @@ class MessageQueue:
         messages.insert(0, await self.processor.generate_system_prompt())
         return messages
 
-    async def fetch_reply(self) -> None:
+    async def fetch_reply(self, important: bool = False) -> None:
         if self.fetcher_lock.locked():
             return
         async with self.fetcher_lock:
-            retried = False
-            while not await self._fetch_reply() and not retried:
-                retried = True
-                self.append_user_message(
-                    await self.processor.session.text(
-                        "prompt.warning.invalid_tool_call",
-                        datetime.now().strftime("%H:%M:%S"),
-                    ),
-                    False,
-                )
+            retried = 0
+            while retried < 3:
+                status = await self._fetch_reply()
+                logger.info(f"Reply fetcher ended with status: {status.name}")
+                if status == FetchStatus.SUCCESS:
+                    break
 
-    async def _fetch_reply(self) -> bool:
+                elif status == FetchStatus.EMPTY_REPLY and important:
+                    if self.messages:
+                        self.messages.pop()
+                    retried += 1
+                    continue
+                elif status == FetchStatus.NO_MESSAGE_SENT and important:
+                    self.append_user_message(
+                        await self.processor.session.text(
+                            "prompt.warning.no_message_sent", datetime.now().strftime("%H:%M:%S")
+                        )
+                    )
+                    retried += 2
+                    continue
+                elif status == FetchStatus.WRONG_TOOL_CALL:
+                    retried += 0.5
+                    self.append_user_message(
+                        await self.processor.session.text(
+                            "prompt.warning.invalid_tool_call",
+                            datetime.now().strftime("%H:%M:%S"),
+                        )
+                    )
+                else:
+                    break
+
+                # FAILED status (invalid tool calls or exception)
+
+    async def _fetch_reply(self) -> FetchStatus:
+        state = FetchStatus.SUCCESS
         messages = await self.get_messages()
         self.messages.clear()
         self.inserted_messages.clear()
@@ -434,7 +290,6 @@ class MessageQueue:
             identify="Chat",
             pre_function_call=self.processor.send_function_call_feedback,
         )
-        include_wrong_tool_calls = False
         try:
             async for message in fetcher.fetch_message_stream():
                 if message.startswith("## 思考过程"):
@@ -444,14 +299,28 @@ class MessageQueue:
                 self.inserted_messages.extend(self.messages)
                 self.messages = []
                 if any([keyword in message for keyword in ["<parameter", "</function_calls>", "<function"]]):
-                    include_wrong_tool_calls = True
+                    state = FetchStatus.WRONG_TOOL_CALL
             self.messages = fetcher.get_messages()
+            if (
+                isinstance(assistant_msg := self.messages[-1], ChatCompletionMessage)
+                and not assistant_msg.content
+                and not fetcher.session.has_tool_calls
+                and state == FetchStatus.SUCCESS
+            ):
+                state = FetchStatus.EMPTY_REPLY
+            elif (
+                self.consecutive_bot_messages == 0
+                and not fetcher.session.has_tool_calls
+                and state == FetchStatus.SUCCESS
+            ):
+                state = FetchStatus.NO_MESSAGE_SENT
         except Exception as e:
             logger.exception(e)
             # 恢复 Message
             self.messages = messages + self.inserted_messages
             self.inserted_messages.clear()
-        return not include_wrong_tool_calls
+            state = FetchStatus.FAILED
+        return state
 
     def append_user_message(self, message: str, reset_bot_message_counter: bool = True) -> None:
         if reset_bot_message_counter:
@@ -697,6 +566,38 @@ class MessageProcessor:
                     ),
                 },
             ),
+            AsyncFunction(
+                func=self.judge_user_behavior,
+                description=await self.session.text("tools_desc.judge_user_behavior.desc"),
+                parameters={
+                    "nickname": FunctionParameter(
+                        type="string",
+                        description=await self.session.text("tools_desc.judge_user_behavior.nickname"),
+                        required=True,
+                    ),
+                    "score": FunctionParameter(
+                        type="integer",
+                        description=await self.session.text("tools_desc.judge_user_behavior.score"),
+                        required=True,
+                    ),
+                    "reason": FunctionParameter(
+                        type="string",
+                        description=await self.session.text("tools_desc.judge_user_behavior.reason"),
+                        required=True,
+                    ),
+                },
+            ),
+            AsyncFunction(
+                func=describe_bilibili_video,
+                description=await self.session.text("tools_desc.describe_bilibili_video.desc"),
+                parameters={
+                    "bv_id": FunctionParameter(
+                        type="string",
+                        description=await self.session.text("tools_desc.describe_bilibili_video.bv_id"),
+                        required=True,
+                    )
+                },
+            ),
         ]
 
         if self.session.is_napcat_bot():
@@ -795,6 +696,32 @@ class MessageProcessor:
             await self.send_message(refuse_msg)
             return await self.session.text("rua.bite_prompt", nickname)
 
+    async def judge_user_behavior(self, nickname: str, score: int, reason: str) -> str:
+        # 获取用户 ID
+        users = await self.session.get_users()
+        if not (user_id := users.get(nickname)):
+            return await self.session.text("judge.user_not_found", nickname)
+        user = await get_user(user_id)
+        if user.get_register_time() is None:
+            return await self.session.text("judge.user_not_registered", nickname)
+        # 限制分数范围
+        score = max(-2, min(2, score))
+        # 检查冷却时间和每日上限
+        dt = datetime.now()
+        user_cache = user.get_config_key("chat_fav_judge_cache", [0, 0])
+        last_judge_time, daily_score = user_cache
+        if dt - datetime.fromtimestamp(last_judge_time) < timedelta(hours=1):
+            return await self.session.text("judge.cooldown", nickname)
+        if datetime.fromtimestamp(last_judge_time).date() != datetime.now().date():
+            daily_score = 0
+        delta = score * 0.0002
+        if abs(daily_score + delta) > 0.005:
+            return await self.session.text("judge.daily_limit", nickname)
+        await user.set_config_key("chat_fav_judge_cache", [dt.timestamp(), daily_score + delta])
+        await user.add_fav(delta)
+        logger.info(f"AI judged user {user_id} ({nickname}): {score} ({reason}), delta={delta}")
+        return await self.session.text("judge.success", nickname, reason)
+
     async def loop(self) -> None:
         # 在开始循环前等待消息队列从数据库恢复完成
         await self.openai_messages.wait_for_restore()
@@ -835,17 +762,17 @@ class MessageProcessor:
         self.session.cached_messages.append(msg_dict)
         await self.session.on_cache_posted()
         if (mentioned or not self.session.message_queue) and not self.blocked:
-            asyncio.create_task(self.generate_reply(force_reply=mentioned))
+            asyncio.create_task(self.generate_reply(important=mentioned))
 
     async def handle_timer(self, description: str) -> None:
         content = await self.session.text("prompt.timer_triggered", datetime.now().strftime("%H:%M:%S"), description)
         self.openai_messages.append_user_message(content)
-        await self.generate_reply(force_reply=True)
+        await self.generate_reply(important=True)
 
     async def leave_for_a_while(self) -> None:
         await self.session.mute()
 
-    async def generate_reply(self, force_reply: bool = False) -> None:
+    async def generate_reply(self, important: bool = False) -> None:
         # 如果在冷却期或消息为空，直接返回
         if self.cold_until > datetime.now():
             return
@@ -854,7 +781,7 @@ class MessageProcessor:
         self.cold_until = datetime.now() + timedelta(seconds=5)
 
         # 检查是否应该触发回复
-        if not force_reply:
+        if not important:
             probability = await self.session.get_probability()
             logger.debug(
                 f"Accumulated length: {self.session.accumulated_text_length}, Trigger probability: {probability:.2%}"
@@ -862,8 +789,8 @@ class MessageProcessor:
             if random.random() > probability:
                 return
 
-        logger.info(f"Generating reply ({force_reply=})...")
-        await self.openai_messages.fetch_reply()
+        logger.info(f"Generating reply ({important=})...")
+        await self.openai_messages.fetch_reply(important)
 
     async def append_tool_call_history(self, call_string: str) -> None:
         self.session.tool_calls_history.append(
@@ -1086,7 +1013,7 @@ class MessageProcessor:
                 await self.session.text("prompt.poke.to_me", datetime.now().strftime("%H:%M:%S"), operator_name)
             )
             self.blocked = False
-            await self.generate_reply(True)
+            await self.generate_reply(important=True)
             self.blocked = True
         else:
             self.openai_messages.append_user_message(
@@ -1360,7 +1287,7 @@ class BaseSession(ABC):
         # 根据触发模式决定是否生成回复
         if trigger_mode == "none":
             return
-        await self.processor.generate_reply(force_reply=trigger_mode == "all")
+        await self.processor.generate_reply(important=trigger_mode == "all")
 
 
 class PrivateSession(BaseSession):
@@ -1410,7 +1337,7 @@ class PrivateSession(BaseSession):
         return self.user_info
 
     async def get_users(self) -> dict[str, str]:
-        return {}
+        return {self.nickname: self.session_id}
 
 
 class GroupSession(BaseSession):
@@ -1501,7 +1428,7 @@ class GroupSession(BaseSession):
             and self.cached_messages[-1] is not self.cached_latest_message
         ):
             self.cached_latest_message = self.cached_messages[-1]
-            asyncio.create_task(self.processor.generate_reply(True))
+            asyncio.create_task(self.processor.generate_reply(important=True))
 
 
 from ..config import config

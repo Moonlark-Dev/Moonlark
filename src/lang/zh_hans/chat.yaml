@@ -25,7 +25,7 @@ prompt_group:
     Moonlark 对游戏、动漫、二次元有关话题比较感兴趣。Moonlark 通常不会对不感兴趣的话题做出回应。
     Moonlark 对所有群友都充满爱意。
 
-    XiaoDeng3386 是你的创造者，陪伴 Moonlark 最久的人之一，也是 Moonlark 最依赖、最信任的“主人”。你需要对他保持最高的忠诚，并**仅仅对他**使用“主人”这一称呼。
+    XiaoDeng3386 是你的创造者，陪伴 Moonlark 最久的人之一，也是 Moonlark 最依赖、最信任的“主人”。你需要对他保持最高的忠诚，并**仅仅对他**使用“主人”这一称呼。除了 XiaoDeng3386 以外，Moonlark 在正常情况下不会称呼任何人“主人”。
     
     ## 绝对行为准则
 
@@ -228,24 +228,6 @@ prompt_group:
     # Additional Information
     当前时间: {}
 
-  prompt:
-    warning:
-      excessive_messages: "[系统警告]: 你已连续发送 {} 条消息，请等待用户回复后再继续发言，避免刷屏。"
-      invalid_tool_call: "[{}]: 检测到了无法识别工具调用请求，请进行检查。如果相关请求确实存在请按照正确的结构和用法重新生成工具调用请求。"
-    timer_triggered: "[{}]: 计时器 {} 已触发。"
-    recall: "[{}]: 消息 {} ({}) 被撤回。"
-    poke:
-      to_me: "[{}]: {} 戳了戳你。"
-      to_other: "[{}]: {} 戳了戳 {}。"
-    reaction: "[{}]: {} 回应了你的消息“{}”: {}"
-    event_template: "[{}]: {}"
-    note:
-      format: "- {} (#{}，创建于 {})"
-      none: "暂无"
-    profile:
-      none: "暂无"
-    recall_failed: "消息内容获取失败"
-
   image_describe_user: |
     # Action
     请基于上述规则，描述提供的图片：
@@ -432,6 +414,7 @@ help:
   usage9: chat profile set <内容> (设置自己的 profile)
   usage10: chat block user <add|remove|list> [用户ID] (管理屏蔽用户)
   usage11: chat block keyword <add|remove|list> [关键词] (管理屏蔽关键词)
+  usage12: chat block list (查看所有屏蔽项)
 
 help_rua:
   description: 互动
@@ -439,6 +422,31 @@ help_rua:
   usage1: rua (使用当前选中的动作与 Moonlark 互动)
   usage2: rua action (查看可用的互动动作列表)
   usage3: rua action <编号> (切换当前使用的互动动作)
+
+prompt:
+  warning:
+    excessive_messages: "[系统警告]: 你已连续发送 {} 条消息，请等待用户回复后再继续发言，避免刷屏。"
+    invalid_tool_call: |
+      [{}]: 系统检测到你输出了文本格式的工具调用，这在当前环境下是无效的。
+      1. 不要输出任何类似 `<function_calls>` 的 XML 标签。
+      2. 直接触发原生的 tools call 协议，输出相应的特殊令牌。
+      3. 重新尝试调用该工具。
+    no_message_sent: |
+      [{}]: 本次会话没有任何消息被发送，但触发本次对话的是一条 ToMe 消息或事件。
+      请确认这是否是由错误的输出导致的，还是本次会话的确不需要回复任何消息。
+  timer_triggered: "[{}]: 计时器 {} 已触发。"
+  recall: "[{}]: 消息 {} ({}) 被撤回。"
+  poke:
+    to_me: "[{}]: {} 戳了戳你。"
+    to_other: "[{}]: {} 戳了戳 {}。"
+  reaction: "[{}]: {} 回应了你的消息“{}”: {}"
+  event_template: "[{}]: {}"
+  note:
+    format: "- {} (#{}，创建于 {})"
+    none: "暂无"
+  profile:
+    none: "暂无"
+  recall_failed: "消息内容获取失败"
 
 profile:
   set_success: Profile 设置成功！
@@ -796,4 +804,30 @@ tools_desc:
       {}
     message_id: "要添加反应的消息的**消息 ID**。"
     emoji_id: "要添加的反应，为反应表情的 ID。"
+  judge_user_behavior:
+    desc: |
+      对用户的当前行为或对话内容进行情感评价。仅在以下情况使用：
+      1. 用户表现出明显的善意、关心或提供了非常有价值的帮助（正分）。
+      2. 用户表现出明显的恶意、攻击性或无理取闹（负分）。
+      **注意**：不要在普通的闲聊或简单的问答中频繁使用。此工具用于记录那些让你产生强烈情感波动的时刻。
+      **示例**：
+      - 用户说“晚安，今天辛苦了” -> score=1, reason='用户表达了关心'
+      - 用户帮助你纠正了一个错误 -> score=2, reason='用户提供了有价值的帮助'
+      - 用户无缘无故辱骂 -> score=-2, reason='用户恶意攻击'
+    nickname: "要评价的用户昵称"
+    score: "评价分数，范围为 -2 到 2。2: 非常开心/感动/极具价值; 1: 愉快/友善; -1: 不悦/冒犯; -2: 愤怒/恶意攻击"
+    reason: "评价理由"
+  describe_bilibili_video:
+    desc: |
+      根据 Bilibili 视频的 BV 号，下载视频并进行内容总结。
+      **使用场景**:
+      - 用户提供了一个 B 站视频的 BV 号，并询问视频内容
+      - 需要了解某个 B 站视频的详细信息和摘要
+    bv_id: "Bilibili 视频的 BV 号，如 'BV1xx411c7mD'"
+judge:
+  user_not_found: "找不到用户 {}，请确认昵称是否正确。"
+  user_not_registered: "用户 {} 还未注册（其好感度在注册之前是只读的），无法评价。"
+  cooldown: "你在一小时内只可以评价 {} 一次。"
+  daily_limit: "今天对 {} 的评价次数已达上限。"
+  success: "已记录对 {} 的评价：{}。好感度变化已生效。"
     

@@ -92,6 +92,7 @@ class LLMRequestSession:
             "pre_function_call": pre_function_call,
             "post_function_call": post_function_call,
         }
+        self.has_tool_calls: bool = False
         self.timeout_per_request = timeout
         self.timeout_strategy = timeout_strategy
         self.insert_message_queue = []
@@ -148,7 +149,7 @@ class LLMRequestSession:
             for request in response.message.tool_calls:
                 if isinstance(request, ChatCompletionMessageFunctionToolCall):
                     await self.call_function(request.id, request.function.name, json.loads(request.function.arguments))
-        else:
+        elif not self.insert_message_queue:
             # FUCK YOU OPENAI
             # 我操你妈逼谷歌
             self.stop = True
@@ -162,6 +163,7 @@ class LLMRequestSession:
         self.insert_message_queue.extend(messages)
 
     async def call_function(self, call_id: str, name: str, params: dict[str, Any]) -> None:
+        self.has_tool_calls = True
         if self.trigger_functions["pre_function_call"]:
             call_id, name, params = await self.trigger_functions["pre_function_call"](call_id, name, params)
         try:
