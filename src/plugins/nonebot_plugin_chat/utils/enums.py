@@ -6,3 +6,4 @@ class FetchStatus(Enum):
     WRONG_TOOL_CALL = auto()
     FAILED = auto()
     EMPTY_REPLY = auto()
+    NO_MESSAGE_SENT = auto()

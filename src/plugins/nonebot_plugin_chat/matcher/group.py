@@ -247,7 +247,7 @@ class MessageQueue:
             retried = 0
             while retried < 3:
                 status = await self._fetch_reply()
-
+                logger.info(f"Reply fetcher ended with status: {status.name}")
                 if status == FetchStatus.SUCCESS:
                     break
 
@@ -256,14 +256,19 @@ class MessageQueue:
                         self.messages.pop()
                     retried += 1
                     continue
+                elif status == FetchStatus.NO_MESSAGE_SENT and important:
+                    self.append_user_message(
+                        await self.processor.session.text("prompt.warning.no_message_sent", datetime.now().strftime("%H:%M:%S"))
+                    )
+                    retried += 2
+                    continue
                 elif status == FetchStatus.WRONG_TOOL_CALL:
                     retried += 1
                     self.append_user_message(
                         await self.processor.session.text(
                             "prompt.warning.invalid_tool_call",
                             datetime.now().strftime("%H:%M:%S"),
-                        ),
-                        False,
+                        )
                     )
                 else:
                     break
@@ -299,6 +304,8 @@ class MessageQueue:
                 and not fetcher.session.has_tool_calls
             ):
                 state = FetchStatus.EMPTY_REPLY
+            elif self.consecutive_bot_messages == 0 and not fetcher.session.has_tool_calls:
+                state = FetchStatus.NO_MESSAGE_SENT
         except Exception as e:
             logger.exception(e)
             # 恢复 Message
