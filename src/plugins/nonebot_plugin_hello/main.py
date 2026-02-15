@@ -1,12 +1,11 @@
 import copy
 import random
-from nonebot import on_message, on_type
+from nonebot import on_message
 from nonebot.rule import to_me
 from nonebot_plugin_larklang import LangHelper
 from nonebot_plugin_larkuser import get_user
 from nonebot_plugin_larkutils import get_user_id
-from nonebot.adapters.onebot.v11.event import PokeNotifyEvent
-from nonebot.adapters import Message, Event
+from nonebot.adapters import Event
 from nonebot_plugin_larkutils.group import get_group_id
 from nonebot_plugin_schedule.utils import complete_schedule
 
@@ -14,10 +13,10 @@ lang = LangHelper()
 
 
 from datetime import datetime
-from typing import Literal, TypedDict
+from typing import Literal, TypedDict, cast
 
 
-def get_current_time_segement_name() -> Literal["morning", "afternoon", "night", "midnight"]:
+def get_current_time_segment_name() -> Literal["morning", "afternoon", "night", "midnight"]:
     current_hour = datetime.now().hour
     if 5 <= current_hour < 12:
         return "morning"
@@ -27,6 +26,10 @@ def get_current_time_segement_name() -> Literal["morning", "afternoon", "night",
         return "night"
     else:
         return "midnight"
+
+
+GreetingKey = Literal["morning", "afternoon", "night"]
+GreetingCountKey = Literal["morning_count", "afternoon_count", "night_count"]
 
 
 class AtGreetingsData(TypedDict):
@@ -72,9 +75,9 @@ async def _(event: Event, user_id: str = get_user_id(), session_id: str = get_gr
     if (day := datetime.now().day) != at_data["greetings"]["updated_day"]:
         at_data["greetings"] = copy.deepcopy(DEFAULT_AT_GREETINGS)
         at_data["greetings"]["updated_day"] = day
-    time_segment_name = get_current_time_segement_name()
+    time_segment_name = get_current_time_segment_name()
     if time_segment_name != "midnight":
-        at_data["greetings"][f"{time_segment_name}_count"] += 1
+        at_data["greetings"][cast(GreetingCountKey, f"{time_segment_name}_count")] += 1
     at_data["count"] += 1
     if fav <= 0.007:
         await lang.send("at.unregistered", user_id)
@@ -82,21 +85,17 @@ async def _(event: Event, user_id: str = get_user_id(), session_id: str = get_gr
         await lang.send("at.special.midnight", user_id)
     elif (
         random.random() <= 0.05
-        or at_data["greetings"][f"{time_segment_name}_count"] == 20
-        and not at_data["greetings"][time_segment_name]
+        or at_data["greetings"][cast(GreetingCountKey, f"{time_segment_name}_count")] == 20
+        and not at_data["greetings"][cast(GreetingKey, time_segment_name)]
     ):
         await lang.send(f"at.special.{time_segment_name}", user_id)
-        if not at_data["greetings"][time_segment_name]:
-            at_data["greetings"][time_segment_name] = True
+        if not at_data["greetings"][cast(GreetingKey, time_segment_name)]:
+            at_data["greetings"][cast(GreetingKey, time_segment_name)] = True
             await user.add_fav(0.0002)
-    elif at_data["greetings"][f"{time_segment_name}_count"] >= 20 and random.random() <= 0.05:
+    elif at_data["greetings"][cast(GreetingCountKey, f"{time_segment_name}_count")] >= 20 and random.random() <= 0.05:
         await lang.send("at.busy", user_id)
     else:
         await lang.send("at.normal", user_id)
     await user.set_config_key("at_data", at_data)
 
 
-@on_type(PokeNotifyEvent, block=False).handle()
-async def _(user_id: str = get_user_id()) -> None:
-    pass
-    # TODO 画个饼，防止以后没东西想写。
