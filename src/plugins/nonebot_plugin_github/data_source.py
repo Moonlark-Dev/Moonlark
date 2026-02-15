@@ -65,7 +65,7 @@ async def parse_github(url):
                 "comments": response["comments"],
                 "updated_at": response["updated_at"],
                 "avatar": response["user"]["avatar_url"],
-                "body": response["body"],
+                "body": response["body"] or "",
             }
         case "discussions":
             return {
@@ -76,7 +76,7 @@ async def parse_github(url):
                 "number": response["number"],
                 "labels": response["labels"],
                 "state": response["state"],
-                "body": response["body"],
+                "body": response["body"] or "",
                 "comments": response["comments"],
                 "updated_at": response["updated_at"],
                 "category": response["category"]["name"],
@@ -94,7 +94,7 @@ async def parse_github(url):
                 "comments": response["comments"],
                 "updated_at": response["updated_at"],
                 "avatar": response["user"]["avatar_url"],
-                "body": response["body"],
+                "body": response["body"] or "",
                 "from": response["head"]["label"],
                 "to": response["base"]["label"],
             }

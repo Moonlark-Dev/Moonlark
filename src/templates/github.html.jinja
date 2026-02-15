@@ -1,4 +1,61 @@
 {% extends base %}
+{% block header %}
+<style>
+    .markdown-body {
+        border: 1px solid #d0d7de;
+        border-radius: 6px;
+        padding: 16px;
+        background-color: #f6f8fa;
+        overflow: auto;
+        word-wrap: break-word;
+        font-size: 14px;
+        line-height: 1.6;
+    }
+    .markdown-body pre {
+        background-color: #e8eaed;
+        border-radius: 6px;
+        padding: 12px;
+        overflow-x: auto;
+    }
+    .markdown-body code {
+        background-color: #e8eaed;
+        border-radius: 3px;
+        padding: 2px 6px;
+        font-size: 85%;
+    }
+    .markdown-body pre code {
+        background-color: transparent;
+        padding: 0;
+    }
+    .markdown-body table {
+        border-collapse: collapse;
+        width: 100%;
+    }
+    .markdown-body table th,
+    .markdown-body table td {
+        border: 1px solid #d0d7de;
+        padding: 6px 12px;
+    }
+    .markdown-body blockquote {
+        border-left: 4px solid #d0d7de;
+        padding-left: 12px;
+        color: #656d76;
+        margin: 8px 0;
+    }
+    .markdown-body img {
+        max-width: 100%;
+    }
+</style>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            document.querySelectorAll(".markdown-body").forEach((el) => {
+                el.innerHTML = DOMPurify.sanitize(marked.parse(el.innerText));
+            });
+        });
+    </script>
+{% endblock header %}
 {% block body %}
 {% if data.type == "repo" %}
 <div class="row">
@@ -35,7 +92,7 @@
     </div>
     <div class="col-10">
         <h4>{{ data.user }}</h4>
-        <small class="text-body">{{ data.body }}</small>
+        <div class="markdown-body">{{ data.body }}</div>
     </div>
 </div>
 <hr>
@@ -63,7 +120,7 @@
         <h4>{{ data.user }}</h4>
         <small>{{ text.discussion.at }} {{ data.category }}</small>
         <hr>
-        <small class="text-body">{{ data.body }}</small>
+        <div class="markdown-body">{{ data.body }}</div>
     </div>
 </div>
 <hr>
@@ -121,7 +178,7 @@
         {{ text.pull.wants_to_merge }} {{data.from}} {{text.pull.into}} {{data.to}}
     </div>
 </div>
-<small class="text-body">{{ data.body }}</small>
+<div class="markdown-body">{{ data.body }}</div>
 <hr>
 <span class="badge bg-dark">{{ data.updated_at }}</span>
 {% if data.state == "open" %}
@@ -133,12 +190,5 @@
 <span class="badge text-light" style="background-color: {{label.color}};">{{ label.name }}</span>
 {% endfor %}
 {% endif %}
-<script>
-document.querySelectorAll(".text-body").forEach((element, index, array) => {
-    element.innerHTML = element.innerHTML.replace(/(?:\r\n|\r|\n)/g, '<br>');
-});
-</script>
 
 {% endblock body %}
-
-
