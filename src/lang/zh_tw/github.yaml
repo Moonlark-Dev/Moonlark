@@ -25,5 +25,5 @@ pull:
   merged: 已合并
 error: 服务器繁忙，请稍后再试。
 not_compliance: |
-  失败：內容未通過審核
+  失败：内容未通过审核
   {}
