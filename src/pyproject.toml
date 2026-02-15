@@ -108,7 +108,8 @@ packages = [
     { include = "nonebot_plugin_broadcast", from = "./plugins" },
     { include = "nonebot_plugin_ghot", from = "./plugins" },
     { include = "nonebot_plugin_status", from = "./plugins" },
-    { include = "nonebot_plugin_wtfis", from = "./plugins" }
+    { include = "nonebot_plugin_wtfis", from = "./plugins" },
+    { include = "nonebot_plugin_epic_freegame", from = "./plugins" }
 ]
 
 
