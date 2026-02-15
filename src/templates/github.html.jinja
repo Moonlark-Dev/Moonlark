@@ -46,6 +46,15 @@
         max-width: 100%;
     }
 </style>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            document.querySelectorAll(".markdown-body").forEach((el) => {
+                el.innerHTML = DOMPurify.sanitize(marked.parse(el.innerText));
+            });
+        });
+    </script>
 {% endblock header %}
 {% block body %}
 {% if data.type == "repo" %}
