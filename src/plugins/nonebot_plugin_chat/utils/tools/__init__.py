@@ -19,7 +19,5 @@ from .browser import browse_webpage
 from .search import web_search
 from .wolfram_alpha import request_wolfram_alpha
 from .abbreviation import search_abbreviation
-
-from .note import get_note_poster, get_note_remover
 from .vm import get_vm_tools, is_vm_available, is_vm_configured
 from .bilibili import describe_bilibili_video, resolve_b23_url

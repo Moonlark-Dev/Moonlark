@@ -16,8 +16,13 @@
 # ##############################################################################
 
 from datetime import datetime, timedelta
-from typing import List, Optional
+import json
+import re
+from typing import TYPE_CHECKING, List, Optional
 
+from nonebot_plugin_chat.types import AvailableNote, NoteCheckResult
+from nonebot_plugin_openai.utils.chat import fetch_message
+from nonebot_plugin_openai.utils.message import generate_message
 from nonebot_plugin_orm import get_session
 from sqlalchemy import select
 
@@ -255,3 +260,39 @@ async def cleanup_expired_notes() -> int:
             await session.commit()
 
     return deleted_count
+
+
+
+def decode_check_result(data: str) -> NoteCheckResult:
+    return json.loads(re.sub(r"`{1,3}([a-zA-Z0-9]+)?", "", data))
+
+
+if TYPE_CHECKING:
+    from ..matcher.group import BaseSession
+
+async def check_note(session: "BaseSession", keywords: Optional[str], text: str, expire_days: Optional[int]) -> NoteCheckResult:
+    try:
+        return decode_check_result(
+            await fetch_message(
+                [
+                    generate_message(
+                        await session.text("note.system", datetime.now().isoformat()), "system"
+                    ),
+                    generate_message(
+                        await session.text(
+                            "note.message",
+                            session.lang_str,
+                            await session.get_cached_messages_string(),
+                            keywords or "",
+                            text,
+                            (datetime.now() + timedelta(days=expire_days or 3650)).isoformat(),
+                        ),
+                        "user",
+                    ),
+                ]
+            )
+        )
+    except json.JSONDecodeError:
+        return AvailableNote(
+            create=True, keywords=keywords, expire_days=expire_days or 3650, text=text, comment=""
+        )

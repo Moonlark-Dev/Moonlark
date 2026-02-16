@@ -40,3 +40,19 @@ class PendingInteraction(TypedDict):
     nickname: str
     action: RuaAction
     created_at: float  # timestamp
+
+
+class AvailableNote(TypedDict):
+    create: Literal[True]
+    text: str
+    expire_days: int
+    keywords: Optional[str]
+    comment: str
+
+
+class InvalidNote(TypedDict):
+    create: Literal[False]
+    comment: str
+
+
+NoteCheckResult = AvailableNote | InvalidNote

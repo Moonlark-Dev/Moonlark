@@ -15,7 +15,7 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
-from typing import TYPE_CHECKING, Literal, Any
+from typing import TYPE_CHECKING, Literal, Optional
 from nonebot_plugin_openai.types import AsyncFunction, FunctionParameter, FunctionParameterWithEnum
 from nonebot.adapters.onebot.v11 import Bot as OB11Bot
 from .tools import (
@@ -23,14 +23,13 @@ from .tools import (
     web_search,
     request_wolfram_alpha,
     search_abbreviation,
-    get_note_poster,
-    get_note_remover,
     describe_bilibili_video,
     resolve_b23_url,
     get_vm_tools,
     is_vm_available,
 )
 from ..utils.emoji import QQ_EMOJI_MAP
+from .note_manager import check_note, get_context_notes
 
 if TYPE_CHECKING:
     from ..matcher.group import MessageProcessor
@@ -212,7 +211,7 @@ class ToolManager:
             # get_note_poster
             tools.append(
                 AsyncFunction(
-                    func=get_note_poster(processor.session),
+                    func=self.push_note,
                     description=await self.text("tools_desc.get_note_poster.desc"),
                     parameters={
                         "text": FunctionParameter(
@@ -237,7 +236,7 @@ class ToolManager:
             # get_note_remover
             tools.append(
                 AsyncFunction(
-                    func=get_note_remover(processor.session),
+                    func=self.remove_note,
                     description=await self.text("tools_desc.get_note_remover.desc"),
                     parameters={
                         "note_id": FunctionParameter(
@@ -430,3 +429,27 @@ class ToolManager:
                 )
 
         return tools
+    
+    
+    async def remove_note(self, note_id: int) -> str:
+        # Get the note manager for this context
+        note_manager = await get_context_notes(self.processor.session.session_id)
+        # Try to delete the note
+        success = await note_manager.delete_note(note_id)
+        if success:
+            return await self.text("note.remove_success", note_id)
+        else:
+            return await self.text("note.remove_not_found", note_id)
+
+
+    async def push_note(self, text: str, expire_days: Optional[int] = None, keywords: Optional[str] = None) -> str:
+        # Get the note manager for this context
+        note_manager = await get_context_notes(self.processor.session.session_id)
+        note_check_result = await check_note(self.processor.session, keywords, text, expire_days)
+        if note_check_result["create"] == False:
+            return await self.text("note.not_create", note_check_result["comment"])
+        text = note_check_result["text"]
+        keywords = note_check_result["keywords"]
+        expire_days = note_check_result["expire_days"]
+        await note_manager.create_note(content=text, keywords=keywords or "", expire_days=expire_days or 3650)
+        return await self.text("note.create")
