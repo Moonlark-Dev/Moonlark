@@ -58,14 +58,7 @@ async def web_search(keyword: str, get_text: GetTextFunc) -> str:
                         title = item.get("title", "")
                         link = item.get("link", "")
                         snippet = item.get("snippet", "")
-                        results.append(
-                            await get_text(
-                                "web_search.result_item",
-                                title,
-                                snippet,
-                                link
-                            )
-                        )
+                        results.append(await get_text("web_search.result_item", title, snippet, link))
 
                 return "\n".join(results) if results else await get_text("web_search.no_result")
             else:

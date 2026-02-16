@@ -107,6 +107,7 @@ def calculate_trigger_probability(accumulated_length: int) -> float:
 
     return max(0.0, min(0.95, probability))
 
+
 def generate_message_string(message: CachedMessage) -> str:
     return f"[{message['send_time'].strftime('%H:%M:%S')}][{message['nickname']}]({message['message_id']}): {message['content']}\n"
 
