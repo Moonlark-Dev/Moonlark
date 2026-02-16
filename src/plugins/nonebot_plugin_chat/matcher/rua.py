@@ -1,5 +1,6 @@
 from nonebot_plugin_alconna import Alconna, Args, Subcommand, Target, get_target, on_alconna
 from nonebot.params import Depends
+from nonebot_plugin_chat.core.session import get_private_session
 from nonebot_plugin_chat.models import RuaData
 from nonebot_plugin_chat.models import RuaAction
 from nonebot_plugin_larkuser.utils.nickname import get_nickname
@@ -88,7 +89,7 @@ async def _(
     group_id: str = get_group_id(),
     user_id: str = get_user_id(),
 ) -> None:
-    from nonebot_plugin_chat.matcher.group import get_group_session_forced, get_private_session
+    from nonebot_plugin_chat.core.session import get_group_session_forced
 
     nickname = await get_nickname(user_id, bot, event)
     selected_action = await get_selected_action(user_id)

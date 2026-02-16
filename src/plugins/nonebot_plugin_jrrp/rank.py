@@ -9,7 +9,7 @@ from nonebot_plugin_larkutils.jrrp import get_luck_value
 from nonebot_plugin_larkutils import get_user_id, get_group_id
 from .__main__ import jrrp
 from nonebot_plugin_larkuser import get_user
-from nonebot_plugin_chat.matcher.group import post_group_event
+from nonebot_plugin_chat.core.session import post_group_event
 
 
 async def get_user_list() -> AsyncGenerator[tuple[str, int], None]:

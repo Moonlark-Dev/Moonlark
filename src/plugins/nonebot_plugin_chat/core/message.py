@@ -1,0 +1,216 @@
+from typing import TYPE_CHECKING
+from nonebot.log import logger
+from nonebot_plugin_chat.utils.role import get_role
+from nonebot_plugin_chat.models import MessageQueueCache
+from nonebot_plugin_chat.utils.enums import FetchStatus
+from nonebot_plugin_openai import generate_message
+from nonebot_plugin_openai.utils.chat import MessageFetcher
+from nonebot_plugin_orm import get_session
+from openai.types.chat import ChatCompletionMessage
+from nonebot_plugin_openai.types import Message as OpenAIMessage
+
+import asyncio
+import copy
+import json
+from datetime import datetime
+
+if TYPE_CHECKING:
+    from nonebot_plugin_chat.core.processor import MessageProcessor
+
+
+class MessageQueue:
+
+    def __init__(
+        self,
+        processor: "MessageProcessor",
+        max_message_count: int = 50,
+        consecutive_warning_threshold: int = 5,
+        consecutive_stop_threshold: int = 10,
+    ) -> None:
+        self.processor = processor
+        self.max_message_count = max_message_count
+        self.messages: list[OpenAIMessage] = []
+        self.CONSECUTIVE_WARNING_THRESHOLD = consecutive_warning_threshold
+        self.CONSECUTIVE_STOP_THRESHOLD = consecutive_stop_threshold
+        self.fetcher_lock = asyncio.Lock()
+        self.cached_reasoning_content = ""
+        self.consecutive_bot_messages = 0  # 连续发送消息计数器
+        # 恢复完成事件，用于确保在处理消息前恢复已完成
+        self._restore_complete = asyncio.Event()
+        # 在初始化时从数据库恢复消息队列
+        self.inserted_messages = []
+        asyncio.create_task(self._restore_from_db())
+
+    async def wait_for_restore(self) -> None:
+        """等待数据库恢复完成"""
+        await self._restore_complete.wait()
+
+    def _serialize_message(self, message: OpenAIMessage) -> dict:
+        """将 OpenAIMessage 序列化为可 JSON 化的字典"""
+        if isinstance(message, dict):
+            return message  # type: ignore
+        # 如果是 Pydantic 模型或其他对象，转换为字典
+        if hasattr(message, "model_dump"):
+            return message.model_dump()
+        elif hasattr(message, "__dict__"):
+            return dict(message.__dict__)
+        else:
+            return {"content": str(message), "role": "user"}
+
+    def _serialize_messages(self) -> str:
+        """将消息列表序列化为 JSON 字符串"""
+        serialized = [self._serialize_message(msg) for msg in self.messages]
+        return json.dumps(serialized, ensure_ascii=False)
+
+    async def _restore_from_db(self) -> None:
+        """从数据库恢复消息队列"""
+        try:
+            group_id = self.processor.session.session_id
+            async with get_session() as session:
+                cache = await session.get(MessageQueueCache, {"group_id": group_id})
+                if cache:
+                    self.messages = json.loads(cache.messages_json)
+                    self.consecutive_bot_messages = cache.consecutive_bot_messages
+                    logger.info(f"已从数据库恢复群 {group_id} 的消息队列，共 {len(self.messages)} 条消息")
+        except Exception as e:
+            logger.warning(f"从数据库恢复消息队列失败: {e}")
+        finally:
+            # 无论恢复成功与否，都设置恢复完成事件
+            self._restore_complete.set()
+
+    async def save_to_db(self) -> None:
+        """将消息队列保存到数据库"""
+        try:
+            async with self.fetcher_lock:
+                group_id = self.processor.session.session_id
+                async with get_session() as session:
+                    cache = MessageQueueCache(
+                        group_id=group_id,
+                        messages_json=self._serialize_messages(),
+                        consecutive_bot_messages=self.consecutive_bot_messages,
+                        updated_time=datetime.now().timestamp(),
+                    )
+                    await session.merge(cache)
+                    await session.commit()
+        except Exception as e:
+            logger.exception(e)
+
+    def clean_special_message(self) -> None:
+        while True:
+            role = get_role(self.messages[0])
+            if role in ["user", "assistant"]:
+                break
+            self.messages.pop(0)
+
+    async def get_messages(self) -> list[OpenAIMessage]:
+        self.clean_special_message()
+        self.messages = self.messages[-self.max_message_count :]
+        messages = copy.deepcopy(self.messages)
+        messages.insert(0, await self.processor.generate_system_prompt())
+        return messages
+
+    async def fetch_reply(self, important: bool = False) -> None:
+        if self.fetcher_lock.locked():
+            return
+        async with self.fetcher_lock:
+            retried = 0
+            while retried < 3:
+                status = await self._fetch_reply()
+                logger.info(f"Reply fetcher ended with status: {status.name}")
+                if status == FetchStatus.SUCCESS:
+                    break
+
+                elif status == FetchStatus.EMPTY_REPLY and important:
+                    if self.messages:
+                        self.messages.pop()
+                    retried += 1
+                    continue
+                elif status == FetchStatus.NO_MESSAGE_SENT and important:
+                    self.append_user_message(
+                        await self.processor.session.text(
+                            "prompt.warning.no_message_sent", datetime.now().strftime("%H:%M:%S")
+                        )
+                    )
+                    retried += 2
+                    continue
+                elif status == FetchStatus.WRONG_TOOL_CALL:
+                    retried += 0.5
+                    self.append_user_message(
+                        await self.processor.session.text(
+                            "prompt.warning.invalid_tool_call",
+                            datetime.now().strftime("%H:%M:%S"),
+                        )
+                    )
+                else:
+                    break
+
+                # FAILED status (invalid tool calls or exception)
+
+    async def _fetch_reply(self) -> FetchStatus:
+        state = FetchStatus.SUCCESS
+        messages = await self.get_messages()
+        self.messages.clear()
+        self.inserted_messages.clear()
+        fetcher = await MessageFetcher.create(
+            messages,
+            False,
+            functions=self.processor.functions,
+            identify="Chat",
+            pre_function_call=self.processor.send_function_call_feedback,
+        )
+        try:
+            async for message in fetcher.fetch_message_stream():
+                if message.startswith("## 思考过程"):
+                    self.cached_reasoning_content = message
+                logger.info(f"Moonlark 说: {message}")
+                fetcher.session.insert_messages(self.messages)
+                self.inserted_messages.extend(self.messages)
+                self.messages = []
+                if any([keyword in message for keyword in ["<parameter", "</function_calls>", "<function"]]):
+                    state = FetchStatus.WRONG_TOOL_CALL
+            self.messages = fetcher.get_messages()
+            if (
+                isinstance(assistant_msg := self.messages[-1], ChatCompletionMessage)
+                and not assistant_msg.content
+                and not fetcher.session.has_tool_calls
+                and state == FetchStatus.SUCCESS
+            ):
+                state = FetchStatus.EMPTY_REPLY
+            elif (
+                self.consecutive_bot_messages == 0
+                and not fetcher.session.has_tool_calls
+                and state == FetchStatus.SUCCESS
+            ):
+                state = FetchStatus.NO_MESSAGE_SENT
+        except Exception as e:
+            logger.exception(e)
+            # 恢复 Message
+            self.messages = messages + self.inserted_messages
+            self.inserted_messages.clear()
+            state = FetchStatus.FAILED
+        return state
+
+    def append_user_message(self, message: str, reset_bot_message_counter: bool = True) -> None:
+        if reset_bot_message_counter:
+            self.consecutive_bot_messages = 0  # 收到用户消息时重置计数器
+        self.messages.append(generate_message(message, "user"))
+
+    def is_last_message_from_user(self) -> bool:
+        return get_role(self.messages[-1]) == "user"
+
+    def increment_bot_message_count(self) -> None:
+        """增加 bot 发送消息计数"""
+        self.consecutive_bot_messages += 1
+
+    def should_warn_excessive_messages(self) -> bool:
+        """检查是否应该发出过多消息警告"""
+        return self.consecutive_bot_messages == self.CONSECUTIVE_WARNING_THRESHOLD
+
+    def should_stop_response(self) -> bool:
+        """检查是否应该停止响应（超过限制）"""
+        return self.consecutive_bot_messages >= self.CONSECUTIVE_STOP_THRESHOLD
+
+    async def insert_warning_message(self) -> None:
+        """向消息队列中插入警告消息"""
+        warning = await self.processor.session.text("prompt.warning.excessive_messages", self.consecutive_bot_messages)
+        self.messages.append(generate_message(warning, "user"))

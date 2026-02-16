@@ -32,7 +32,7 @@ from nonebot.adapters import Event, Bot, Message
 from nonebot.params import CommandArg
 from nonebot_plugin_session import SessionId, SessionIdType
 from nonebot_plugin_larkutils import get_user_id, is_private_message
-from nonebot_plugin_chat import post_group_event
+from nonebot_plugin_chat.core.session import post_group_event
 from nonebot_plugin_userinfo import get_user_info
 
 

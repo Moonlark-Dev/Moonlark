@@ -24,7 +24,7 @@ from ..image import get_image_by_id
 from ..sticker_manager import get_sticker_manager
 
 if TYPE_CHECKING:
-    from ...matcher.group import BaseSession
+    from ...core.session.base import BaseSession
 
 
 class StickerTools:

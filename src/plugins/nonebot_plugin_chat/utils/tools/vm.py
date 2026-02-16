@@ -23,14 +23,14 @@ VM 远程执行工具模块
 
 import httpx
 from datetime import datetime
-from typing import List, Optional
+from typing import Optional
 from dataclasses import dataclass
 from nonebot import get_driver
 from nonebot.log import logger
 from nonebot_plugin_apscheduler import scheduler
 
 from ...config import config
-from ...lang import lang
+from ...types import GetTextFunc
 
 # 输出截断长度限制
 OUTPUT_MAX_LENGTH = 4000
@@ -150,19 +150,20 @@ def _get_status_emoji(status: str) -> str:
     return status_emojis.get(status, "❓")
 
 
-async def vm_create_task(command: str, title: str) -> str:
+async def vm_create_task(command: str, title: str, get_text: GetTextFunc) -> str:
     """
     在远程 Docker 容器中创建一个命令执行任务
 
     Args:
         command: 要执行的 Shell 命令
         title: 任务标题
+        get_text: 获取本地化文本的函数
 
     Returns:
         任务创建结果
     """
     if not is_vm_available():
-        return f"❌ VM 服务当前不可用\n原因: {_vm_status_cache.error_message}"
+        return await get_text("vm.unavailable", _vm_status_cache.error_message)
 
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
@@ -175,32 +176,30 @@ async def vm_create_task(command: str, title: str) -> str:
             if response.status_code == 200:
                 data = response.json()
                 task_id = data.get("task_id", "未知")
-                return f"""✅ 任务创建成功！
-任务ID: {task_id}
-标题: {title}
-命令: {command}"""
+                return await get_text("vm.create_task.success", task_id, title, command)
             else:
-                return f"❌ 任务创建失败\n状态码: {response.status_code}\n响应: {response.text}"
+                return await get_text("vm.create_task.failed", response.status_code, response.text)
 
     except httpx.TimeoutException:
-        return "❌ 请求超时，无法创建任务"
+        return await get_text("vm.create_task.timeout")
     except Exception as e:
         logger.exception(e)
-        return f"❌ 创建任务时发生错误: {str(e)}"
+        return await get_text("vm.create_task.error", str(e))
 
 
-async def vm_get_task_state(task_id: str) -> str:
+async def vm_get_task_state(task_id: str, get_text: GetTextFunc) -> str:
     """
     获取任务的执行状态和输出
 
     Args:
         task_id: 任务 ID
+        get_text: 获取本地化文本的函数
 
     Returns:
         任务状态信息
     """
     if not is_vm_available():
-        return f"❌ VM 服务当前不可用\n原因: {_vm_status_cache.error_message}"
+        return await get_text("vm.unavailable", _vm_status_cache.error_message)
 
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
@@ -215,64 +214,71 @@ async def vm_get_task_state(task_id: str) -> str:
                 status_emoji = _get_status_emoji(status)
 
                 result_lines = [
-                    "📋 任务状态",
-                    f"任务ID: {data.get('id', task_id)}",
-                    f"标题: {data.get('title', '未知')}",
-                    f"状态: {status} {status_emoji}",
+                    await get_text("vm.get_task_state.status_header"),
+                    await get_text("vm.get_task_state.task_id", data.get("id", task_id)),
+                    await get_text("vm.get_task_state.title", data.get("title", "未知")),
+                    await get_text("vm.get_task_state.status", status, status_emoji),
                 ]
 
                 if data.get("exit_code") is not None:
-                    result_lines.append(f"退出码: {data['exit_code']}")
+                    result_lines.append(await get_text("vm.get_task_state.exit_code", data["exit_code"]))
 
-                result_lines.append(f"创建时间: {_format_datetime(data.get('created_at'))}")
+                result_lines.append(
+                    await get_text("vm.get_task_state.created_at", _format_datetime(data.get("created_at")))
+                )
 
                 if data.get("started_at"):
-                    result_lines.append(f"开始时间: {_format_datetime(data['started_at'])}")
+                    result_lines.append(
+                        await get_text("vm.get_task_state.started_at", _format_datetime(data["started_at"]))
+                    )
 
                 if data.get("finished_at"):
-                    result_lines.append(f"完成时间: {_format_datetime(data['finished_at'])}")
+                    result_lines.append(
+                        await get_text("vm.get_task_state.finished_at", _format_datetime(data["finished_at"]))
+                    )
 
                 # 处理输出
                 output = data.get("output", "")
                 if output:
                     truncated_output, was_truncated = _truncate_output(output)
                     result_lines.append("")
-                    result_lines.append("📤 输出内容:")
+                    result_lines.append(await get_text("vm.get_task_state.output_header"))
                     result_lines.append(truncated_output)
                     if was_truncated:
                         result_lines.append("")
-                        result_lines.append(f"（输出内容过长，仅显示最后 {OUTPUT_MAX_LENGTH} 个字符）")
+                        result_lines.append(await get_text("vm.get_task_state.output_truncated", OUTPUT_MAX_LENGTH))
                 else:
                     result_lines.append("")
-                    result_lines.append("📤 输出内容: (无)")
+                    result_lines.append(await get_text("vm.get_task_state.output_none"))
 
                 return "\n".join(result_lines)
 
             elif response.status_code == 404:
-                return f"❌ 找不到任务\n任务ID: {task_id}"
+                return await get_text("vm.get_task_state.not_found", task_id)
             else:
-                return f"❌ 查询任务状态失败\n状态码: {response.status_code}\n响应: {response.text}"
+                return await get_text("vm.get_task_state.failed", response.status_code, response.text)
 
     except httpx.TimeoutException:
-        return "❌ 请求超时，无法查询任务状态"
+        return await get_text("vm.get_task_state.timeout")
     except Exception as e:
         logger.exception(e)
-        return f"❌ 查询任务状态时发生错误: {str(e)}"
+        return await get_text("vm.get_task_state.error", str(e))
 
 
-async def vm_send_input(task_id: str, input_text: str) -> str:
+async def vm_send_input(task_id: str, input_text: str, get_text: GetTextFunc) -> str:
     """
     向正在运行的任务发送输入
 
     Args:
         task_id: 任务 ID
         input_text: 要发送的输入内容
+        get_text: 获取本地化文本的函数
 
     Returns:
         发送结果
     """
     if not is_vm_available():
-        return f"❌ VM 服务当前不可用\n原因: {_vm_status_cache.error_message}"
+        return await get_text("vm.unavailable", _vm_status_cache.error_message)
 
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
@@ -286,36 +292,35 @@ async def vm_send_input(task_id: str, input_text: str) -> str:
                 # 截断显示的输入内容，避免太长
                 display_input = input_text[:100] + "..." if len(input_text) > 100 else input_text
                 display_input = display_input.replace("\n", "\\n")
-                return f"""✅ 输入已发送
-任务ID: {task_id}
-发送内容: {display_input}"""
+                return await get_text("vm.send_input.success", task_id, display_input)
 
             elif response.status_code == 404:
-                return f"❌ 找不到任务\n任务ID: {task_id}"
+                return await get_text("vm.send_input.not_found", task_id)
             elif response.status_code == 400:
-                return f"❌ 任务未在运行中，无法发送输入\n任务ID: {task_id}"
+                return await get_text("vm.send_input.not_running", task_id)
             else:
-                return f"❌ 发送输入失败\n状态码: {response.status_code}\n响应: {response.text}"
+                return await get_text("vm.send_input.failed", response.status_code, response.text)
 
     except httpx.TimeoutException:
-        return "❌ 请求超时，无法发送输入"
+        return await get_text("vm.send_input.timeout")
     except Exception as e:
         logger.exception(e)
-        return f"❌ 发送输入时发生错误: {str(e)}"
+        return await get_text("vm.send_input.error", str(e))
 
 
-async def vm_stop_task(task_id: str) -> str:
+async def vm_stop_task(task_id: str, get_text: GetTextFunc) -> str:
     """
     停止正在运行的任务
 
     Args:
         task_id: 任务 ID
+        get_text: 获取本地化文本的函数
 
     Returns:
         停止结果
     """
     if not is_vm_available():
-        return f"❌ VM 服务当前不可用\n原因: {_vm_status_cache.error_message}"
+        return await get_text("vm.unavailable", _vm_status_cache.error_message)
 
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
@@ -325,146 +330,18 @@ async def vm_stop_task(task_id: str) -> str:
             )
 
             if response.status_code == 200:
-                return f"""🛑 任务已停止
-任务ID: {task_id}"""
+                return await get_text("vm.stop_task.success", task_id)
 
             elif response.status_code == 404:
-                return f"❌ 找不到任务\n任务ID: {task_id}"
+                return await get_text("vm.stop_task.not_found", task_id)
             else:
-                return f"❌ 停止任务失败\n状态码: {response.status_code}\n响应: {response.text}"
+                return await get_text("vm.stop_task.failed", response.status_code, response.text)
 
     except httpx.TimeoutException:
-        return "❌ 请求超时，无法停止任务"
+        return await get_text("vm.stop_task.timeout")
     except Exception as e:
         logger.exception(e)
-        return f"❌ 停止任务时发生错误: {str(e)}"
-
-
-def get_vm_tools() -> List:
-    """
-    获取 VM 相关的工具函数列表
-
-    Returns:
-        AsyncFunction 对象列表
-    """
-    from nonebot_plugin_openai.types import AsyncFunction, FunctionParameter
-
-    return [
-        AsyncFunction(
-            func=vm_create_task,
-            description=(
-                "在远程 Docker 容器中创建一个命令执行任务。\n"
-                "**何时调用**:\n"
-                "- 当需要执行系统命令、运行脚本或进行系统操作时\n"
-                "- 当需要编译或运行代码时\n"
-                "- 当需要查看系统信息、文件内容或进行文件操作时\n"
-                "**使用流程**:\n"
-                "1. 调用此工具创建任务，获得任务 ID\n"
-                "2. 使用 vm_get_task_state 查询任务执行结果\n"
-                "3. 如果任务需要交互式输入，使用 vm_send_input 发送输入\n"
-                "4. 如果需要终止长时间运行的任务，使用 vm_stop_task\n"
-                "**注意事项**:\n"
-                "- 命令将在 Linux 环境的 Docker 容器中执行\n"
-                "- 任务是异步执行的，创建后需查询状态获取结果\n"
-                "- 对于长时间运行的命令，任务状态会显示为 running"
-            ),
-            parameters={
-                "command": FunctionParameter(
-                    type="string",
-                    description=(
-                        "要在 Docker 容器中执行的 Shell 命令。"
-                        "支持所有标准的 Linux Shell 命令，如 ls、cat、python、gcc 等。"
-                        "可以使用管道、重定向等 Shell 特性。"
-                        "例如: 'ls -la /tmp' 或 'python3 script.py' 或 'echo hello > test.txt'"
-                    ),
-                    required=True,
-                ),
-                "title": FunctionParameter(
-                    type="string",
-                    description=(
-                        "任务标题，用于描述这个任务的用途。"
-                        "应简洁明了地说明任务目的，便于后续追踪和管理。"
-                        "例如: '查看系统信息'、'运行测试脚本'、'编译程序'"
-                    ),
-                    required=True,
-                ),
-            },
-        ),
-        AsyncFunction(
-            func=vm_get_task_state,
-            description=(
-                "获取指定任务的执行状态和输出内容。\n"
-                "**何时调用**:\n"
-                "- 在使用 vm_create_task 创建任务后，查询任务执行结果\n"
-                "- 需要检查长时间运行的任务是否完成\n"
-                "- 需要获取任务的输出内容\n"
-                "**任务状态说明**:\n"
-                "- pending: 任务等待执行\n"
-                "- running: 任务正在执行\n"
-                "- completed: 任务执行完成（成功）\n"
-                "- failed: 任务执行失败\n"
-                "- stopped: 任务被手动停止"
-            ),
-            parameters={
-                "task_id": FunctionParameter(
-                    type="string",
-                    description=(
-                        "由 vm_create_task 返回的任务 ID。" "格式为 UUID，例如: '550e8400-e29b-41d4-a716-446655440000'"
-                    ),
-                    required=True,
-                ),
-            },
-        ),
-        AsyncFunction(
-            func=vm_send_input,
-            description=(
-                "向正在运行的任务的标准输入（stdin）发送内容。\n"
-                "**何时调用**:\n"
-                "- 当任务需要交互式输入时（如程序等待用户输入）\n"
-                "- 当需要回答程序的提示问题时（如 yes/no 确认）\n"
-                "**注意事项**:\n"
-                "- 只能向状态为 running 的任务发送输入\n"
-                "- 如果需要发送换行符以模拟按下回车键，请在内容末尾添加 \\n\n"
-                "- 发送后可使用 vm_get_task_state 查看任务响应"
-            ),
-            parameters={
-                "task_id": FunctionParameter(
-                    type="string",
-                    description="正在运行的任务的 ID",
-                    required=True,
-                ),
-                "input_text": FunctionParameter(
-                    type="string",
-                    description=(
-                        "要发送到任务标准输入的内容。"
-                        "如需模拟按下回车键，请在末尾添加换行符 \\n。"
-                        "例如: 'yes\\n' 表示输入 yes 并按回车"
-                    ),
-                    required=True,
-                ),
-            },
-        ),
-        AsyncFunction(
-            func=vm_stop_task,
-            description=(
-                "停止一个正在运行的任务。\n"
-                "**何时调用**:\n"
-                "- 当任务运行时间过长需要终止时\n"
-                "- 当发现任务执行的命令有误需要中断时\n"
-                "- 当不再需要任务继续执行时\n"
-                "**注意事项**:\n"
-                "- 停止后的任务无法恢复\n"
-                "- 任务状态将变为 stopped"
-            ),
-            parameters={
-                "task_id": FunctionParameter(
-                    type="string",
-                    description="要停止的任务的 ID",
-                    required=True,
-                ),
-            },
-        ),
-    ]
+        return await get_text("vm.stop_task.error", str(e))
 
 
 # 注册定时任务检查 VM 状态

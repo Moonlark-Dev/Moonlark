@@ -4,11 +4,10 @@ from nonebot import logger
 from nonebot.adapters import Bot
 from nonebot.adapters import Event
 from nonebot.typing import T_State
+from nonebot_plugin_chat.types import CachedMessage
 from nonebot_plugin_userinfo import get_user_info
 from nonebot_plugin_alconna import Image, Other, Segment, UniMessage, Text, At, Reply, Reference
-from nonebot_plugin_orm import get_session
 from nonebot_plugin_larkuser import get_user
-from nonebot_plugin_larkutils import get_group_id, get_user_id
 from nonebot.exception import ActionFailed
 from nonebot.adapters import Message, MessageSegment
 from nonebot.adapters.onebot.v11 import Bot as OneBotV11Bot
@@ -123,3 +122,7 @@ async def parse_dict_message(dict_message: list[dict], bot: Bot, event: Optional
 async def parse_message_to_string(message: UniMessage, event: Event, bot: Bot, state: T_State) -> str:
     parser = MessageParser(message, event, bot, state)
     return await parser.parse()
+
+
+def generate_message_string(message: CachedMessage) -> str:
+    return f"[{message['send_time'].strftime('%H:%M:%S')}][{message['nickname']}]({message['message_id']}): {message['content']}\n"

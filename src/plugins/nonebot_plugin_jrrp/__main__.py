@@ -1,5 +1,5 @@
 from nonebot_plugin_alconna import Alconna, Option, on_alconna
-from nonebot_plugin_chat.matcher.group import post_group_event
+from nonebot_plugin_chat.core.session import post_group_event
 from nonebot_plugin_larkuser.utils.nickname import get_nickname
 from nonebot_plugin_larkutils.group import get_group_id
 from nonebot_plugin_larkutils.jrrp import get_luck_value

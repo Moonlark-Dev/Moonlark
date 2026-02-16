@@ -19,17 +19,18 @@ import re
 import traceback
 
 from nonebot import logger
+
 from openai import APITimeoutError
-from .tools.browser import browser_tool, generate_page_info
+from .tools.browser import browser_tool
 from nonebot.adapters import Bot
 from nonebot.adapters import Event
 from nonebot.typing import T_State
 from nonebot_plugin_alconna import UniMessage
 from nonebot_plugin_orm import get_session
 from .message import parse_message_to_string as _parse_message_to_string
-from nonebot_plugin_larkutils import get_group_id, get_user_id
+from nonebot_plugin_larkutils import get_group_id
 from nonebot_plugin_openai import generate_message, fetch_message
-
+from ..lang import lang
 
 from ..models import ChatGroup
 
@@ -50,8 +51,9 @@ class BrowserErrorOccurred(Exception):
 
 
 class LinkParser:
-    def __init__(self, message: str) -> None:
+    def __init__(self, message: str, lang_str: str) -> None:
         self.message = message
+        self.lang_str = lang_str
         self.pattern = re.compile(
             r"((https?|ftp):\/\/)?(([\w\-]+\.)+[a-zA-Z]{2,}|localhost|(\d{1,3}\.){3}\d{1,3})(:\d{2,5})?(\/[^\s]*)?"
         )
@@ -74,27 +76,35 @@ class LinkParser:
                 logger.warning(f"解析超时: {link}")
         return self.message
 
-    @staticmethod
-    async def get_description(link: str) -> str:
-        page_markdown = await browser_tool.browse(link)
-        if not page_markdown["success"]:
-            raise BrowserErrorOccurred(f"解析失败: {page_markdown}")
+    async def get_description(self, link: str) -> str:
+        result = await browser_tool.browse(link)
+        if not result["success"]:
+            raise BrowserErrorOccurred(f"解析失败: {result}")
         return await fetch_message(
             [
                 generate_message(
-                    (
-                        "接下来我会向你发送一个网页的内容，你需要为这个网页生成一条简介。\n"
-                        "简介只能包含一行，不能包含 Markdown 格式。\n"
-                        "你的回复中不能出现除了该页面的简介以外的任何内容。"
-                    ),
+                    await lang.text("prompt_link_parser", self.lang_str),
                     "system",
                 ),
-                generate_message(generate_page_info(page_markdown), "user"),
+                generate_message(
+                    await lang.text(
+                        "browse_webpage.success",
+                        self.lang_str,
+                        result["url"],
+                        result["metadata"]["status_code"],
+                        result["metadata"]["description"],
+                        result["metadata"]["keywords"],
+                        result["metadata"]["content_length"],
+                        result["title"],
+                        result["content"],
+                    ),
+                    "user",
+                ),
             ],
             identify="Link Parse",
             timeout=90,
         )
 
 
-async def parse_message_to_string(message: UniMessage, event: Event, bot: Bot, state: T_State) -> str:
-    return await LinkParser(await _parse_message_to_string(message, event, bot, state)).parse()
+async def parse_message_to_string(message: UniMessage, event: Event, bot: Bot, state: T_State, lang_str: str) -> str:
+    return await LinkParser(await _parse_message_to_string(message, event, bot, state), lang_str).parse()

@@ -18,6 +18,7 @@
 from typing import Literal, Optional, Dict, Any, TypedDict
 from urllib.parse import urlparse
 import html2text
+from nonebot_plugin_chat.types import GetTextFunc
 from nonebot_plugin_htmlrender import get_new_page
 from nonebot.log import logger
 import re
@@ -242,23 +243,30 @@ class AsyncBrowserTool:
 browser_tool = AsyncBrowserTool()
 
 
-def generate_page_info(result: BrowseResult) -> str:
-    return f"""- URL: {result['url']}
-- 请求状态: {result['metadata']['status_code']}
-- 页面简介: {result['metadata']['description']}
-- 关键词: {result['metadata']['keywords']}
-- 内容长度: {result['metadata']['content_length']}
+# f"""- URL: {result['url']}
+# - 请求状态: {result['metadata']['status_code']}
+# - 页面简介: {result['metadata']['description']}
+# - 关键词: {result['metadata']['keywords']}
+# - 内容长度: {result['metadata']['content_length']}
 
-# {result['title']}
+# # {result['title']}
 
-{result['content']}"""
+# {result['content']}"""
 
 
-async def browse_webpage(url: str) -> str:
+async def browse_webpage(url: str, get_text: GetTextFunc) -> str:
     logger.info(f"Moonlark 正在访问: {url}")
     result = await browser_tool.browse(url)
     if result["success"]:
-        return f"页面信息:\n{generate_page_info(result)}"
+        return await get_text(
+            "browse_webpage.success",
+            result["url"],
+            result["metadata"]["status_code"],
+            result["metadata"]["description"],
+            result["metadata"]["keywords"],
+            result["metadata"]["content_length"],
+            result["title"],
+            result["content"],
+        )
     else:
-        return f"""# 访问失败
-{result['error']}"""
+        return await get_text("browse_webpage.error", result["error"])

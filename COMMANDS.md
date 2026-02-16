@@ -43,6 +43,12 @@
 
 ### 用法
 - `/defuse-tnt`
+## `epic-free`: Epic 免费游戏查询
+
+查询 Epic Games Store 当前和即将到来的免费游戏。
+
+### 用法
+- `/[缺失: epic_freegame.help.usage1 ((); {})]`
 ## `ftt`: 寻径指津
 
 寻径指津玩法
