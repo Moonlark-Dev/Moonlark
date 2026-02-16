@@ -17,6 +17,7 @@ from datetime import datetime
 if TYPE_CHECKING:
     from nonebot_plugin_chat.core.processor import MessageProcessor
 
+
 class MessageQueue:
 
     def __init__(

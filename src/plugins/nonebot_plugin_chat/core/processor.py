@@ -27,10 +27,8 @@ from ..utils.sticker_manager import get_sticker_manager
 from ..utils.tool_manager import ToolManager
 from ..utils.tools.sticker import StickerTools
 
-
 if TYPE_CHECKING:
     from nonebot_plugin_chat.core.session.base import BaseSession
-
 
 
 class MessageProcessor:

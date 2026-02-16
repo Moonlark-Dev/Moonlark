@@ -18,6 +18,7 @@ from typing import Literal, Optional
 
 from ..processor import MessageProcessor
 
+
 class BaseSession(ABC):
 
     def __init__(self, session_id: str, bot: Bot, target: Target, lang_str: str = f"mlsid::--lang=zh_hans") -> None:

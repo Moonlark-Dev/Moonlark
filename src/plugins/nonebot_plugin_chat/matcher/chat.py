@@ -31,7 +31,6 @@ from ..lang import lang
 from ..models import ChatGroup
 
 
-
 class CommandHandler:
 
     def __init__(
@@ -208,4 +207,3 @@ async def _(
     handler = CommandHandler(matcher, bot, session, message, group_id, user_id)
     await handler.setup()
     await handler.handle()
-

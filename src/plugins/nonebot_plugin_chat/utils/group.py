@@ -98,7 +98,7 @@ class LinkParser:
                         result["title"],
                         result["content"],
                     ),
-                    "user"
+                    "user",
                 ),
             ],
             identify="Link Parse",

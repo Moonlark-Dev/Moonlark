@@ -298,7 +298,6 @@ async def check_note(
         return AvailableNote(create=True, keywords=keywords, expire_days=expire_days or 3650, text=text, comment="")
 
 
-
 @scheduler.scheduled_job("cron", hour="3", id="cleanup_expired_notes")
 async def _() -> None:
     """Daily cleanup of expired notes at 3 AM"""

@@ -24,6 +24,7 @@ from .session import create_group_session, create_private_session, get_session_d
 from ..utils.group import enabled_group, parse_message_to_string
 from ..config import config
 
+
 @on_message(priority=50, rule=enabled_group, block=False).handle()
 async def _(
     event: Event,
@@ -108,7 +109,7 @@ async def _(event: NoticeEvent, bot: OB11Bot, platform_id: str = get_group_id())
         event,
         bot,
         {},
-        session.lang_str
+        session.lang_str,
     )
     user = await get_user(user_id)
     if user.has_nickname():
