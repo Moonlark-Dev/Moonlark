@@ -25,7 +25,10 @@ from .tools import (
     search_abbreviation,
     describe_bilibili_video,
     resolve_b23_url,
-    get_vm_tools,
+    vm_create_task,
+    vm_get_task_state,
+    vm_send_input,
+    vm_stop_task,
     is_vm_available,
 )
 from ..utils.emoji import QQ_EMOJI_MAP
@@ -56,6 +59,18 @@ class ToolManager:
 
     async def resolve_b23_url(self, b23_url: str) -> str:
         return await resolve_b23_url(b23_url, self.text)
+
+    async def vm_create_task(self, command: str, title: str) -> str:
+        return await vm_create_task(command, title, self.text)
+
+    async def vm_get_task_state(self, task_id: str) -> str:
+        return await vm_get_task_state(task_id, self.text)
+
+    async def vm_send_input(self, task_id: str, input_text: str) -> str:
+        return await vm_send_input(task_id, input_text, self.text)
+
+    async def vm_stop_task(self, task_id: str) -> str:
+        return await vm_stop_task(task_id, self.text)
 
     async def select_tools(self, mode: Literal["group", "agent"]) -> list[AsyncFunction]:
         tools = []
@@ -155,7 +170,75 @@ class ToolManager:
 
         # VM tools (如果可用)
         if mode == "agent" and is_vm_available():
-            tools.extend(get_vm_tools())
+            # vm_create_task
+            tools.append(
+                AsyncFunction(
+                    func=self.vm_create_task,
+                    description=await self.text("tools_desc.vm_create_task.desc"),
+                    parameters={
+                        "command": FunctionParameter(
+                            type="string",
+                            description=await self.text("tools_desc.vm_create_task.command"),
+                            required=True,
+                        ),
+                        "title": FunctionParameter(
+                            type="string",
+                            description=await self.text("tools_desc.vm_create_task.title"),
+                            required=True,
+                        ),
+                    },
+                )
+            )
+
+            # vm_get_task_state
+            tools.append(
+                AsyncFunction(
+                    func=self.vm_get_task_state,
+                    description=await self.text("tools_desc.vm_get_task_state.desc"),
+                    parameters={
+                        "task_id": FunctionParameter(
+                            type="string",
+                            description=await self.text("tools_desc.vm_get_task_state.task_id"),
+                            required=True,
+                        ),
+                    },
+                )
+            )
+
+            # vm_send_input
+            tools.append(
+                AsyncFunction(
+                    func=self.vm_send_input,
+                    description=await self.text("tools_desc.vm_send_input.desc"),
+                    parameters={
+                        "task_id": FunctionParameter(
+                            type="string",
+                            description=await self.text("tools_desc.vm_send_input.task_id"),
+                            required=True,
+                        ),
+                        "input_text": FunctionParameter(
+                            type="string",
+                            description=await self.text("tools_desc.vm_send_input.input_text"),
+                            required=True,
+                        ),
+                    },
+                )
+            )
+
+            # vm_stop_task
+            tools.append(
+                AsyncFunction(
+                    func=self.vm_stop_task,
+                    description=await self.text("tools_desc.vm_stop_task.desc"),
+                    parameters={
+                        "task_id": FunctionParameter(
+                            type="string",
+                            description=await self.text("tools_desc.vm_stop_task.task_id"),
+                            required=True,
+                        ),
+                    },
+                )
+            )
 
         # === Group 模式特有工具 ===
         if mode == "group":

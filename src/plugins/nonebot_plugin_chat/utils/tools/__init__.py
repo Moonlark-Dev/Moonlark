@@ -19,5 +19,12 @@ from .browser import browse_webpage
 from .search import web_search
 from .wolfram_alpha import request_wolfram_alpha
 from .abbreviation import search_abbreviation
-from .vm import get_vm_tools, is_vm_available, is_vm_configured
+from .vm import (
+    vm_create_task,
+    vm_get_task_state,
+    vm_send_input,
+    vm_stop_task,
+    is_vm_available,
+    is_vm_configured,
+)
 from .bilibili import describe_bilibili_video, resolve_b23_url
