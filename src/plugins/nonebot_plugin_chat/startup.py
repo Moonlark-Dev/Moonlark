@@ -1,8 +1,6 @@
-
 # 启动时初始化表情包感知哈希
 import asyncio
 from nonebot import get_driver
-
 
 driver = get_driver()
 
