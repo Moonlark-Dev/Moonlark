@@ -8,6 +8,7 @@ import asyncio
 import os
 from pathlib import Path
 from typing import Optional, Tuple
+from nonebot_plugin_chat.types import GetTextFunc
 
 require("nonebot_plugin_localstore")
 import nonebot_plugin_localstore as store
@@ -21,7 +22,7 @@ if not VIDEO_DIR.exists():
 import re
 
 
-async def resolve_b23_url(b23_url: str) -> str:
+async def resolve_b23_url(b23_url: str, get_text: GetTextFunc) -> str:
     """
     解析 b23.tv 短链并返回 BV 号
     """
@@ -34,9 +35,9 @@ async def resolve_b23_url(b23_url: str) -> str:
         # 典型的 URL: https://www.bilibili.com/video/BV1xx411c7mD/?spm_id_from=...
         match = re.search(r"BV[a-zA-Z0-9]+", resp.url.path)
         if match:
-            return f"成功解析: {match.group(0)}"
+            return await get_text("bilibili.resolve_success", match.group(0))
         else:
-            return "无法解析该链接，请确认链接是否有效。"
+            return await get_text("bilibili.resolve_failed")
 
 
 async def _get_video_info(bv_id: str) -> Tuple[str, str, str, Optional[str]]:
@@ -106,7 +107,7 @@ async def _merge_video_audio(video_path: Path, audio_path: Path, output_path: Pa
         raise RuntimeError("FFmpeg merge failed")
 
 
-async def describe_bilibili_video(bv_id: str) -> str:
+async def describe_bilibili_video(bv_id: str, get_text: GetTextFunc) -> str:
     """
     根据 BV 号总结 B 站视频内容
     """
@@ -137,10 +138,10 @@ async def describe_bilibili_video(bv_id: str) -> str:
         external_url = f"{config.moonlark_api_base}/chat/video/{file_name}"
 
         messages = [
-            generate_message("你是一个视频内容分析助手。请根据提供的视频，总结视频的主要内容。", role="system"),
+            generate_message(await get_text("bilibili.summary_system_prompt"), role="system"),
             generate_message(
                 [
-                    {"type": "text", "text": f"这是 B 站视频：{title}\n简介：{desc}\n请总结这个视频的内容。"},
+                    {"type": "text", "text": await get_text("bilibili.summary_user_prompt", title, desc)},
                     {"type": "video_url", "video_url": {"url": external_url}},
                 ],
                 role="user",

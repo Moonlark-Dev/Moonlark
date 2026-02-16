@@ -17,9 +17,10 @@
 
 import httpx
 from nonebot.log import logger
+from nonebot_plugin_chat.types import GetTextFunc
 
 
-async def search_abbreviation(text: str) -> str:
+async def search_abbreviation(text: str, get_text: GetTextFunc) -> str:
     """
     查询英文字母缩写的含义（能不能好好说话）
 
@@ -41,10 +42,10 @@ async def search_abbreviation(text: str) -> str:
                     trans = result.get("trans", [])
                     if trans:
                         meanings = "\n".join([f"- {meaning}" for meaning in trans])
-                        return f"可能的含义如下：\n{meanings}"
-                return "未找到该缩写的含义"
+                        return await get_text("abbreviation.success", meanings)
+                return await get_text("abbreviation.not_found")
             else:
-                return f"查询失败，状态码: {response.status_code}"
+                return await get_text("abbreviation.failed", response.status_code)
     except Exception as e:
         logger.exception(e)
-        return f"查询过程中发生错误: {str(e)}"
+        return await get_text("abbreviation.error", str(e))

@@ -837,4 +837,36 @@ judge:
   cooldown: "你在一小时内只可以评价 {} 一次。"
   daily_limit: "今天对 {} 的评价次数已达上限。"
   success: "已记录对 {} 的评价：{}。好感度变化已生效。"
-    
+browse_webpage:
+  success: |
+    - URL: {}
+    - 请求状态: {}
+    - 页面简介: {}
+    - 关键词: {}
+    - 内容长度: {}
+
+    # {}
+
+    {}
+  error: |
+    # 访问失败
+    {}
+
+web_search:
+  metaso_unavailable: "Metaso 搜索暂不可用，以下是使用 Bing 搜索得到的结果：\n\n{}"
+  result_item: "**{}**\n{}\n链接: {}\n"
+  no_result: "未找到相关搜索结果"
+  failed: "搜索请求失败，状态码: {}"
+  error: "搜索过程中发生错误: {}"
+
+abbreviation:
+  success: "可能的含义如下：\n{}"
+  not_found: "未找到该缩写的含义"
+  failed: "查询失败，状态码: {}"
+  error: "查询过程中发生错误: {}"
+
+bilibili:
+  resolve_success: "成功解析: {}"
+  resolve_failed: "无法解析该链接，请确认链接是否有效。"
+  summary_system_prompt: "你是一个视频内容分析助手。请根据提供的视频，总结视频的主要内容。"
+  summary_user_prompt: "这是 B 站视频：{}\n简介：{}\n请总结这个视频的内容。"

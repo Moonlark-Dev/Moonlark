@@ -24,7 +24,9 @@ from nonebot.adapters.onebot.v11 import NoticeEvent
 from nonebot_plugin_alconna import get_message_id
 import random
 import asyncio
+from nonebot_plugin_chat.types import PendingInteraction
 from openai.types.chat import ChatCompletionMessage
+from ..types import CachedMessage, RuaAction
 from datetime import datetime, timedelta
 from nonebot.adapters.qq import Bot as BotQQ
 from nonebot.params import CommandArg
@@ -34,6 +36,7 @@ from nonebot_plugin_apscheduler import scheduler
 from nonebot_plugin_alconna import UniMessage, Target, get_target
 from nonebot.adapters.onebot.v11.event import FriendRecallNoticeEvent
 from nonebot_plugin_chat.utils.ai_agent import AskAISession
+from nonebot_plugin_chat.utils.tool_manager import ToolManager
 from nonebot_plugin_chat.utils.message import parse_dict_message
 from nonebot_plugin_chat.utils.sticker_manager import get_sticker_manager
 from nonebot_plugin_larkuser import get_nickname
@@ -51,12 +54,7 @@ from nonebot.log import logger
 from nonebot_plugin_openai import generate_message
 from nonebot.adapters.onebot.v11 import GroupRecallNoticeEvent
 
-from nonebot_plugin_openai.types import (
-    FunctionParameterWithEnum,
-    Message as OpenAIMessage,
-    AsyncFunction,
-    FunctionParameter,
-)
+from nonebot_plugin_openai.types import Message as OpenAIMessage
 from nonebot_plugin_openai.utils.chat import MessageFetcher
 from nonebot.matcher import Matcher
 from sqlalchemy import select
@@ -67,29 +65,9 @@ from ..models import ChatGroup, RuaAction, Sticker, UserProfile, MessageQueueCac
 from ..utils import enabled_group, parse_message_to_string
 from ..utils.enums import FetchStatus
 from ..utils.image import query_image_content
-from ..utils.tools import (
-    browse_webpage,
-    web_search,
-    request_wolfram_alpha,
-    search_abbreviation,
-    get_note_poster,
-    get_note_remover,
-    describe_bilibili_video,
-    resolve_b23_url,
-)
 import uuid
 from ..utils.tools.sticker import StickerTools
 from ..utils.emoji import QQ_EMOJI_MAP
-
-
-class PendingInteraction(TypedDict):
-    """待处理的交互请求"""
-
-    interaction_id: str
-    user_id: str
-    nickname: str
-    action: RuaAction
-    created_at: float  # timestamp
 
 
 def calculate_trigger_probability(accumulated_length: int) -> float:
@@ -128,16 +106,6 @@ def calculate_trigger_probability(accumulated_length: int) -> float:
     probability = 0.95 / (1 + math.exp(-(accumulated_length - 100) / 25))
 
     return max(0.0, min(0.95, probability))
-
-
-class CachedMessage(TypedDict):
-    content: str
-    nickname: str
-    user_id: str
-    send_time: datetime
-    self: bool
-    message_id: str
-
 
 def generate_message_string(message: CachedMessage) -> str:
     return f"[{message['send_time'].strftime('%H:%M:%S')}][{message['nickname']}]({message['message_id']}): {message['content']}\n"
@@ -363,7 +331,8 @@ class MessageProcessor:
         self.openai_messages = MessageQueue(self, 50)
         self.session = session
         self.enabled = True
-        self.ai_agent = AskAISession(self.session.lang_str)
+        self.tool_manager = ToolManager(self)
+        self.ai_agent = AskAISession(self.session.lang_str, self.tool_manager)
         self.sticker_manager = get_sticker_manager()
         self.cold_until = datetime.now()
         self.blocked = False
@@ -375,294 +344,8 @@ class MessageProcessor:
         return await query_image_content(image_id, query_prompt, self.session.lang_str)
 
     async def setup(self) -> None:
-
-        self.functions = [
-            AsyncFunction(
-                func=self.query_image,
-                description=await self.session.text("tools_desc.query_image.desc"),
-                parameters={
-                    "image_id": FunctionParameter(
-                        type="string",
-                        description=await self.session.text("tools_desc.query_image.image_id"),
-                        required=True,
-                    ),
-                    "query_prompt": FunctionParameter(
-                        type="string",
-                        description=await self.session.text("tools_desc.query_image.query_prompt"),
-                        required=True,
-                    ),
-                },
-            ),
-            AsyncFunction(
-                func=self.send_message,
-                description=await self.session.text("tools_desc.send_message.desc"),
-                parameters={
-                    "message_content": FunctionParameter(
-                        type="string",
-                        description=await self.session.text("tools_desc.send_message.message_content"),
-                        required=True,
-                    ),
-                    "reply_message_id": FunctionParameter(
-                        type="string",
-                        description=await self.session.text("tools_desc.send_message.reply_message_id"),
-                        required=False,
-                    ),
-                },
-            ),
-            AsyncFunction(
-                func=self.leave_for_a_while,
-                description=await self.session.text("tools_desc.leave_for_a_while.desc"),
-                parameters={},
-            ),
-            AsyncFunction(
-                func=browse_webpage,
-                description=await self.session.text("tools_desc.browse_webpage.desc"),
-                parameters={
-                    "url": FunctionParameter(
-                        type="string",
-                        description=await self.session.text("tools_desc.browse_webpage.url"),
-                        required=True,
-                    )
-                },
-            ),
-            AsyncFunction(
-                func=web_search,
-                description=await self.session.text("tools_desc.web_search.desc"),
-                parameters={
-                    "keyword": FunctionParameter(
-                        type="string",
-                        description=await self.session.text("tools_desc.web_search.keyword"),
-                        required=True,
-                    )
-                },
-            ),
-            AsyncFunction(
-                func=request_wolfram_alpha,
-                description=await self.session.text("tools_desc.request_wolfram_alpha.desc"),
-                parameters={
-                    "question": FunctionParameter(
-                        type="string",
-                        description=await self.session.text("tools_desc.request_wolfram_alpha.question"),
-                        required=True,
-                    )
-                },
-            ),
-            AsyncFunction(
-                func=search_abbreviation,
-                description=await self.session.text("tools_desc.search_abbreviation.desc"),
-                parameters={
-                    "text": FunctionParameter(
-                        type="string",
-                        description=await self.session.text("tools_desc.search_abbreviation.text"),
-                        required=True,
-                    )
-                },
-            ),
-            AsyncFunction(
-                func=get_note_poster(self.session),
-                description=await self.session.text("tools_desc.get_note_poster.desc"),
-                parameters={
-                    "text": FunctionParameter(
-                        type="string",
-                        description=await self.session.text("tools_desc.get_note_poster.text"),
-                        required=True,
-                    ),
-                    "expire_days": FunctionParameter(
-                        type="integer",
-                        description=await self.session.text("tools_desc.get_note_poster.expire_days"),
-                        required=False,
-                    ),
-                    "keywords": FunctionParameter(
-                        type="string",
-                        description=await self.session.text("tools_desc.get_note_poster.keywords"),
-                        required=False,
-                    ),
-                },
-            ),
-            AsyncFunction(
-                func=get_note_remover(self.session),
-                description=await self.session.text("tools_desc.get_note_remover.desc"),
-                parameters={
-                    "note_id": FunctionParameter(
-                        type="integer",
-                        description=await self.session.text("tools_desc.get_note_remover.note_id"),
-                        required=True,
-                    ),
-                },
-            ),
-            AsyncFunction(
-                func=self.session.set_timer,
-                description=await self.session.text("tools_desc.set_timer.desc"),
-                parameters={
-                    "delay": FunctionParameter(
-                        type="integer",
-                        description=await self.session.text("tools_desc.set_timer.delay"),
-                        required=True,
-                    ),
-                    "description": FunctionParameter(
-                        type="string",
-                        description=await self.session.text("tools_desc.set_timer.description"),
-                        required=True,
-                    ),
-                },
-            ),
-            AsyncFunction(
-                func=self.sticker_tools.save_sticker,
-                description=await self.session.text("tools_desc.save_sticker.desc"),
-                parameters={
-                    "image_id": FunctionParameter(
-                        type="string",
-                        description=await self.session.text("tools_desc.save_sticker.image_id"),
-                        required=True,
-                    ),
-                },
-            ),
-            AsyncFunction(
-                func=self.sticker_tools.search_sticker,
-                description=await self.session.text("tools_desc.search_sticker.desc"),
-                parameters={
-                    "query": FunctionParameter(
-                        type="string",
-                        description=await self.session.text("tools_desc.search_sticker.query"),
-                        required=True,
-                    ),
-                },
-            ),
-            AsyncFunction(
-                func=self.sticker_tools.send_sticker,
-                description=await self.session.text("tools_desc.send_sticker.desc"),
-                parameters={
-                    "sticker_id": FunctionParameter(
-                        type="integer",
-                        description=await self.session.text("tools_desc.send_sticker.sticker_id"),
-                        required=True,
-                    ),
-                },
-            ),
-            AsyncFunction(
-                func=self.ai_agent.ask_ai,
-                description=await self.session.text("tools_desc.ask_ai.desc"),
-                parameters={
-                    "query": FunctionParameter(
-                        type="string",
-                        required=True,
-                        description=await self.session.text("tools_desc.ask_ai.query"),
-                    ),
-                },
-            ),
-            AsyncFunction(
-                func=self.refuse_interaction_request,
-                description=await self.session.text("tools_desc.refuse_interaction_request.desc"),
-                parameters={
-                    "id_": FunctionParameter(
-                        type="string",
-                        description=await self.session.text("tools_desc.refuse_interaction_request.id_"),
-                        required=True,
-                    ),
-                    "type_": FunctionParameterWithEnum(
-                        type="string",
-                        description=await self.session.text("tools_desc.refuse_interaction_request.type_"),
-                        required=True,
-                        enum={"dodge", "bite"},
-                    ),
-                },
-            ),
-            AsyncFunction(
-                func=self.judge_user_behavior,
-                description=await self.session.text("tools_desc.judge_user_behavior.desc"),
-                parameters={
-                    "nickname": FunctionParameter(
-                        type="string",
-                        description=await self.session.text("tools_desc.judge_user_behavior.nickname"),
-                        required=True,
-                    ),
-                    "score": FunctionParameter(
-                        type="integer",
-                        description=await self.session.text("tools_desc.judge_user_behavior.score"),
-                        required=True,
-                    ),
-                    "reason": FunctionParameter(
-                        type="string",
-                        description=await self.session.text("tools_desc.judge_user_behavior.reason"),
-                        required=True,
-                    ),
-                },
-            ),
-            AsyncFunction(
-                func=describe_bilibili_video,
-                description=await self.session.text("tools_desc.describe_bilibili_video.desc"),
-                parameters={
-                    "bv_id": FunctionParameter(
-                        type="string",
-                        description=await self.session.text("tools_desc.describe_bilibili_video.bv_id"),
-                        required=True,
-                    )
-                },
-            ),
-            AsyncFunction(
-                func=resolve_b23_url,
-                description=await self.session.text("tools_desc.resolve_b23_url.desc"),
-                parameters={
-                    "b23_url": FunctionParameter(
-                        type="string",
-                        description=await self.session.text("tools_desc.resolve_b23_url.b23_url"),
-                        required=True,
-                    )
-                },
-            ),
-        ]
-
-        if self.session.is_napcat_bot():
-            self.functions.extend(
-                [
-                    AsyncFunction(
-                        func=self.poke,
-                        description=await self.session.text("tools_desc.poke.desc"),
-                        parameters={
-                            "target_name": FunctionParameter(
-                                type="string",
-                                description=await self.session.text("tools_desc.poke.target_name"),
-                                required=True,
-                            ),
-                        },
-                    ),
-                ]
-            )
-        if isinstance(self.session.bot, OB11Bot):
-            self.functions.append(
-                AsyncFunction(
-                    func=self.delete_message,
-                    description=await self.session.text("tools_desc.delete_message.desc"),
-                    parameters={
-                        "message_id": FunctionParameter(
-                            type="integer",
-                            description=await self.session.text("tools_desc.delete_message.message_id"),
-                            required=True,
-                        )
-                    },
-                )
-            )
-        if isinstance(self.session, GroupSession):
-            emoji_id_table = ", ".join([f"{emoji}({emoji_id})" for emoji_id, emoji in QQ_EMOJI_MAP.items()])
-            self.functions.append(
-                AsyncFunction(
-                    func=self.send_reaction,
-                    description=await self.session.text("tools_desc.send_reaction.desc", emoji_id_table),
-                    parameters={
-                        "message_id": FunctionParameter(
-                            type="string",
-                            description=await self.session.text("tools_desc.send_reaction.message_id"),
-                            required=True,
-                        ),
-                        "emoji_id": FunctionParameterWithEnum(
-                            type="string",
-                            description=await self.session.text("tools_desc.send_reaction.emoji_id"),
-                            required=True,
-                            enum=set(QQ_EMOJI_MAP.keys()),
-                        ),
-                    },
-                )
-            )
+        self.functions = await self.tool_manager.select_tools("group")
+        await self.ai_agent.setup()
         asyncio.create_task(self.loop())
 
     async def delete_message(self, message_id: int) -> str:

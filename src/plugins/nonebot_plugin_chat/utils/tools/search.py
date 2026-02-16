@@ -18,21 +18,22 @@
 import httpx
 from urllib.parse import quote
 from ...config import config
+from nonebot_plugin_chat.types import GetTextFunc
 from .browser import browse_webpage
 
 
-async def search_on_bing(keyword: str) -> str:
+async def search_on_bing(keyword: str, get_text: GetTextFunc) -> str:
     q = quote(keyword)
-    result = await browse_webpage(f"https://www.bing.com/search?q={q}")
-    return result["content"]
+    result = await browse_webpage(f"https://www.bing.com/search?q={q}", get_text)
+    return result
 
 
-async def web_search(keyword: str) -> str:
+async def web_search(keyword: str, get_text: GetTextFunc) -> str:
     """使用 Metaso API 进行搜索"""
     api_key = config.metaso_api_key
 
     if not api_key:
-        return "Metaso 搜索暂不可用，以下是使用 Bing 搜索得到的结果：\n\n" + await search_on_bing(keyword)
+        return await get_text("web_search.metaso_unavailable", await search_on_bing(keyword, get_text))
 
     url = "https://metaso.cn/api/v1/search"
     headers = {"Authorization": f"Bearer {api_key}", "Accept": "application/json", "Content-Type": "application/json"}
@@ -57,10 +58,17 @@ async def web_search(keyword: str) -> str:
                         title = item.get("title", "")
                         link = item.get("link", "")
                         snippet = item.get("snippet", "")
-                        results.append(f"**{title}**\n{snippet}\n链接: {link}\n")
+                        results.append(
+                            await get_text(
+                                "web_search.result_item",
+                                title,
+                                snippet,
+                                link
+                            )
+                        )
 
-                return "\n".join(results) if results else "未找到相关搜索结果"
+                return "\n".join(results) if results else await get_text("web_search.no_result")
             else:
-                return f"搜索请求失败，状态码: {response.status_code}"
+                return await get_text("web_search.failed", response.status_code)
     except Exception as e:
-        return f"搜索过程中发生错误: {str(e)}"
+        return await get_text("web_search.error", str(e))
