@@ -19,7 +19,6 @@ class CachedMessage(TypedDict):
     message_id: str
 
 
-
 class GetTextFunc(Protocol):
     # 在这里精确模拟你的函数签名
     async def __call__(self, key: str, *args: Any, **kwargs: Any) -> str: ...

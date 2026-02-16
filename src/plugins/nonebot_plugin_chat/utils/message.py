@@ -126,5 +126,3 @@ async def parse_message_to_string(message: UniMessage, event: Event, bot: Bot, s
 
 def generate_message_string(message: CachedMessage) -> str:
     return f"[{message['send_time'].strftime('%H:%M:%S')}][{message['nickname']}]({message['message_id']}): {message['content']}\n"
-
-

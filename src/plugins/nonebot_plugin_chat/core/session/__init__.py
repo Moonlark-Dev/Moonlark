@@ -8,7 +8,6 @@ from .base import BaseSession
 from .group import GroupSession
 from .private import PrivateSession
 
-
 groups: dict[str, BaseSession] = {}
 
 
@@ -79,11 +78,13 @@ async def create_group_session(group_id: str, target: Target, bot: Bot) -> Group
         await groups[group_id].setup()
     return cast(GroupSession, groups[group_id])
 
+
 async def create_private_session(user_id: str, target: Target, bot: Bot) -> PrivateSession:
     if user_id not in groups:
         groups[user_id] = PrivateSession(user_id, bot, target)
         await groups[user_id].setup()
     return cast(PrivateSession, groups[user_id])
+
 
 @scheduler.scheduled_job("cron", minute="*", id="trigger_group")
 async def _() -> None:
