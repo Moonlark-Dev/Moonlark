@@ -94,17 +94,19 @@ class ToolManager:
         )
 
         # request_wolfram_alpha
-        tools.append(AsyncFunction(
-            func=request_wolfram_alpha,
-            description=await self.text("tools_desc.request_wolfram_alpha.desc"),
-            parameters={
-                "question": FunctionParameter(
-                    type="string",
-                    description=await self.text("tools_desc.request_wolfram_alpha.question"),
-                    required=True,
-                )
-            },
-        ))
+        tools.append(
+            AsyncFunction(
+                func=request_wolfram_alpha,
+                description=await self.text("tools_desc.request_wolfram_alpha.desc"),
+                parameters={
+                    "question": FunctionParameter(
+                        type="string",
+                        description=await self.text("tools_desc.request_wolfram_alpha.question"),
+                        required=True,
+                    )
+                },
+            )
+        )
 
         # search_abbreviation
         tools.append(
