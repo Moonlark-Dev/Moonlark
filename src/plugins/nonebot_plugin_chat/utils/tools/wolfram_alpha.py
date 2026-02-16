@@ -16,8 +16,7 @@
 # ##############################################################################
 
 from nonebot_plugin_wolfram_alpha import request_llm_api
-from nonebot_plugin_chat.types import GetTextFunc
 
 
-async def request_wolfram_alpha(question: str, get_text: GetTextFunc) -> str:
+async def request_wolfram_alpha(question: str) -> str:
     return await request_llm_api(question)

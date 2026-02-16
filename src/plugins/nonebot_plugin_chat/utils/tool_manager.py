@@ -48,9 +48,6 @@ class ToolManager:
     async def web_search(self, keyword: str) -> str:
         return await web_search(keyword, self.text)
 
-    async def request_wolfram_alpha(self, question: str) -> str:
-        return await request_wolfram_alpha(question, self.text)
-
     async def search_abbreviation(self, text: str) -> str:
         return await search_abbreviation(text, self.text)
 
@@ -94,7 +91,7 @@ class ToolManager:
 
         # request_wolfram_alpha
         tools.append(AsyncFunction(
-            func=self.request_wolfram_alpha,
+            func=request_wolfram_alpha,
             description=await self.text("tools_desc.request_wolfram_alpha.desc"),
             parameters={
                 "question": FunctionParameter(
