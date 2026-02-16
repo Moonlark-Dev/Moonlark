@@ -20,6 +20,8 @@ import json
 import re
 from typing import TYPE_CHECKING, List, Optional
 
+from nonebot import logger
+from nonebot_plugin_apscheduler import scheduler
 from nonebot_plugin_chat.types import AvailableNote, NoteCheckResult
 from nonebot_plugin_openai.utils.chat import fetch_message
 from nonebot_plugin_openai.utils.message import generate_message
@@ -267,7 +269,7 @@ def decode_check_result(data: str) -> NoteCheckResult:
 
 
 if TYPE_CHECKING:
-    from ..matcher.group import BaseSession
+    from ..core.session.base import BaseSession
 
 
 async def check_note(
@@ -294,3 +296,12 @@ async def check_note(
         )
     except json.JSONDecodeError:
         return AvailableNote(create=True, keywords=keywords, expire_days=expire_days or 3650, text=text, comment="")
+
+
+
+@scheduler.scheduled_job("cron", hour="3", id="cleanup_expired_notes")
+async def _() -> None:
+    """Daily cleanup of expired notes at 3 AM"""
+    deleted_count = await cleanup_expired_notes()
+    if deleted_count > 0:
+        logger.info(f"Cleaned up {deleted_count} expired notes")

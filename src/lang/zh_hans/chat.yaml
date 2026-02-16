@@ -870,3 +870,7 @@ bilibili:
   resolve_failed: "无法解析该链接，请确认链接是否有效。"
   summary_system_prompt: "你是一个视频内容分析助手。请根据提供的视频，总结视频的主要内容。"
   summary_user_prompt: "这是 B 站视频：{}\n简介：{}\n请总结这个视频的内容。"
+prompt_link_parser: |
+  接下来我会向你发送一个网页的内容，你需要为这个网页生成一条简介。
+  简介只能包含一行，不能包含 Markdown 格式。
+  你的回复中不能出现除了该页面的简介以外的任何内容。

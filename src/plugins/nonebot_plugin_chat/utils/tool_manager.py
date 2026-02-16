@@ -32,7 +32,7 @@ from ..utils.emoji import QQ_EMOJI_MAP
 from .note_manager import check_note, get_context_notes
 
 if TYPE_CHECKING:
-    from ..matcher.group import MessageProcessor
+    from ..core.processor import MessageProcessor
 
 
 class ToolManager:

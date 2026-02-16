@@ -2,6 +2,8 @@ import asyncio
 
 from nonebot import require, get_driver
 from nonebot.plugin import PluginMetadata
+from .core.session import get_session_directly
+from .core.session.base import BaseSession
 
 from .config import Config
 
@@ -24,10 +26,11 @@ require("nonebot_plugin_wolfram_alpha")
 require("nonebot_plugin_ghot")
 require("nonebot_plugin_alconna")
 
-from . import matcher
+from . import matcher as _command_matchers
+from .core import matchers as _core_matchers
 
 # 导出供其他插件使用的接口
-from .matcher.group import get_group_session, post_group_event, BaseSession
+from .core.session import post_group_event
 
 # 启动时初始化表情包感知哈希
 driver = get_driver()

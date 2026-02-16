@@ -216,7 +216,8 @@ async def handle_check_history(
     await uni_msg.attach_reply(event, bot)
     if uni_msg.has(Reply):
         reply = uni_msg[Reply, 0]
-        target_content = await parse_message_to_string(UniMessage([reply]), event, bot, state)
+        lang_str = f"mlsid::--lang=zh_hans"
+        target_content = await parse_message_to_string(UniMessage([reply]), event, bot, state, lang_str)
 
     # If no reply content, check arguments
     if not target_content:
@@ -285,7 +286,8 @@ async def _(
     if (g := await session.get(ChatGroup, {"group_id": group_id})) and g.enabled:
         uni_msg = UniMessage.of(event.message, bot)
         await uni_msg.attach_reply(event, bot)
-        msg = await parse_message_to_string(uni_msg, event, bot, state)
+        lang_str = f"mlsid::--lang=zh_hans"
+        msg = await parse_message_to_string(uni_msg, event, bot, state, lang_str)
     else:
         msg = event.raw_message
     session.add(GroupMessage(message=msg, sender_nickname=event.sender.nickname, group_id=group_id))

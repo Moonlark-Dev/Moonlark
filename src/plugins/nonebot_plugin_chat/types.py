@@ -19,13 +19,6 @@ class CachedMessage(TypedDict):
     message_id: str
 
 
-class AdapterUserInfo(TypedDict):
-    sex: Literal["male", "female", "unknown"]
-    role: Literal["member", "admin", "owner", "user"]
-    nickname: str
-    join_time: int
-    card: Optional[str]
-
 
 class GetTextFunc(Protocol):
     # 在这里精确模拟你的函数签名
@@ -56,3 +49,11 @@ class InvalidNote(TypedDict):
 
 
 NoteCheckResult = AvailableNote | InvalidNote
+
+
+class AdapterUserInfo(TypedDict):
+    sex: Literal["male", "female", "unknown"]
+    role: Literal["member", "admin", "owner", "user"]
+    nickname: str
+    join_time: int
+    card: Optional[str]
