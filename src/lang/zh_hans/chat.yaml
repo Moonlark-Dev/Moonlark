@@ -824,6 +824,13 @@ tools_desc:
       - 用户提供了一个 B 站视频的 BV 号，并询问视频内容
       - 需要了解某个 B 站视频的详细信息和摘要
     bv_id: "Bilibili 视频的 BV 号，如 'BV1xx411c7mD'"
+  resolve_b23_url:
+    desc: |
+      解析 b23.tv 短链并返回 BV 号。
+      **使用场景**:
+      - 用户提供了一个 b23.tv 的短链，你需要提取其中的 BV 号
+      - 用户提供了一个 b23.tv 的短链，你需要了解这个视频的详细信息（配合 describe_bilibili_video 使用）
+    b23_url: "b23.tv 短链，如 'https://b23.tv/xxx'"
 judge:
   user_not_found: "找不到用户 {}，请确认昵称是否正确。"
   user_not_registered: "用户 {} 还未注册（其好感度在注册之前是只读的），无法评价。"

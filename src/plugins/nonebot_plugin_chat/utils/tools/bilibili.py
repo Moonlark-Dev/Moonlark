@@ -18,6 +18,25 @@ if not VIDEO_DIR.exists():
     VIDEO_DIR.mkdir(parents=True, exist_ok=True)
 
 
+import re
+
+async def resolve_b23_url(b23_url: str) -> str:
+    """
+    解析 b23.tv 短链并返回 BV 号
+    """
+    if not b23_url.startswith("http"):
+        b23_url = f"https://{b23_url}"
+
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(b23_url, follow_redirects=True)
+        # 从最终 URL 中提取 BV 号
+        # 典型的 URL: https://www.bilibili.com/video/BV1xx411c7mD/?spm_id_from=...
+        match = re.search(r"BV[a-zA-Z0-9]+", resp.url.path)
+        if match:
+            return f"成功解析: {match.group(0)}"
+        else:
+            return "无法解析该链接，请确认链接是否有效。"
+
 async def _get_video_info(bv_id: str) -> Tuple[str, str, str, Optional[str]]:
     """获取视频信息和下载地址"""
     v = video.Video(bvid=bv_id)

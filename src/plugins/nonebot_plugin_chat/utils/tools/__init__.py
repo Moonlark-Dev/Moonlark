@@ -22,4 +22,4 @@ from .abbreviation import search_abbreviation
 
 from .note import get_note_poster, get_note_remover
 from .vm import get_vm_tools, is_vm_available, is_vm_configured
-from .bilibili import describe_bilibili_video
+from .bilibili import describe_bilibili_video, resolve_b23_url

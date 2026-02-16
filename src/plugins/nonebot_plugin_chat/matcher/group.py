@@ -75,6 +75,7 @@ from ..utils.tools import (
     get_note_poster,
     get_note_remover,
     describe_bilibili_video,
+    resolve_b23_url,
 )
 import uuid
 from ..utils.tools.sticker import StickerTools
@@ -594,6 +595,17 @@ class MessageProcessor:
                     "bv_id": FunctionParameter(
                         type="string",
                         description=await self.session.text("tools_desc.describe_bilibili_video.bv_id"),
+                        required=True,
+                    )
+                },
+            ),
+            AsyncFunction(
+                func=resolve_b23_url,
+                description=await self.session.text("tools_desc.resolve_b23_url.desc"),
+                parameters={
+                    "b23_url": FunctionParameter(
+                        type="string",
+                        description=await self.session.text("tools_desc.resolve_b23_url.b23_url"),
                         required=True,
                     )
                 },

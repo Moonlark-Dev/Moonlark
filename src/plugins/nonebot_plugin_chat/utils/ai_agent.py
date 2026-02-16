@@ -11,6 +11,7 @@ from .tools import (
     get_vm_tools,
     is_vm_available,
     describe_bilibili_video,
+    resolve_b23_url,
 )
 
 from ..lang import lang
@@ -103,6 +104,22 @@ class AskAISession:
                     "bv_id": FunctionParameter(
                         type="string",
                         description="Bilibili 视频的 BV 号，如 'BV1xx411c7mD'",
+                        required=True,
+                    )
+                },
+            ),
+            AsyncFunction(
+                func=resolve_b23_url,
+                description=(
+                    "解析 b23.tv 短链并返回 BV 号。\n"
+                    "**使用场景**:\n"
+                    "- 用户提供了一个 b23.tv 的短链，你需要提取其中的 BV 号\n"
+                    "- 用户提供了一个 b23.tv 的短链，你需要了解这个视频的详细信息（配合 describe_bilibili_video 使用）"
+                ),
+                parameters={
+                    "b23_url": FunctionParameter(
+                        type="string",
+                        description="b23.tv 短链，如 'https://b23.tv/xxx'",
                         required=True,
                     )
                 },
