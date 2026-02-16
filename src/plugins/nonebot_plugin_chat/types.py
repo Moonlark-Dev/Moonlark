@@ -10,8 +10,6 @@ class RuaAction(TypedDict):
     unlock_favorability: float
 
 
-
-
 class CachedMessage(TypedDict):
     content: str
     nickname: str
@@ -29,13 +27,9 @@ class AdapterUserInfo(TypedDict):
     card: Optional[str]
 
 
-
-
 class GetTextFunc(Protocol):
-    #在这里精确模拟你的函数签名
+    # 在这里精确模拟你的函数签名
     async def __call__(self, key: str, *args: Any, **kwargs: Any) -> str: ...
-
-
 
 
 class PendingInteraction(TypedDict):

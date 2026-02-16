@@ -243,7 +243,6 @@ class AsyncBrowserTool:
 browser_tool = AsyncBrowserTool()
 
 
-
 # f"""- URL: {result['url']}
 # - 请求状态: {result['metadata']['status_code']}
 # - 页面简介: {result['metadata']['description']}

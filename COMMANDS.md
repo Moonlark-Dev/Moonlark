@@ -56,14 +56,6 @@
 ### 用法
 - `/ftt (从随机地图开始)`
 - `/ftt <seed> (从指定种子生成地图)`
-## `jrrp`: 今日人品
-
-查询今天的人品值，今天也是幸运的一天～
-
-### 用法
-- `/jrrp (获取今天的人品值)`
-- `/jrrp r (今日幸运星[--rank])`
-- `/jrrp rr (今日倒霉蛋[--rank-r])`
 ## `minigame`: 小游戏积分排名
 
 查看 Moonlark 中游玩玩法的用户的排名
@@ -211,19 +203,6 @@ Moonlark 本地化设置
 
 ### 用法
 - `/calc <问题> (询问 WolframAlpha)`
-## `check-history`: 发过了吗
-
-检查最近 48 小时内是否已经讨论过某个话题或发送过某条消息。
-
-### 用法
-- `/check-history [内容]`
-- `/check-history (回复某条消息)`
-## `debate-helper`: 辩论助手
-
-分析群聊中的争议或辩论，提供客观的双方观点摘要。
-
-### 用法
-- `/debate [读取长度]`
 ## `github`: GitHub 链接解析
 
 预览 GitHub 链接内容
@@ -297,16 +276,6 @@ Linux 手册 (ManPage) 查询
 
 ### 用法
 - `/raw <文本...>`
-## `summary`: 历史消息总结
-
-使用 AI 总结群聊中的历史消息。读取长度默认为 200 条消息，最大为 270，该功能不支持 QQ 节点且需要在群聊中手动启用。
-
-### 用法
-- `/summary [读取长度] (总结历史消息)`
-- `/summary -s broadcast (广播风格总结)`
-- `/summary -s topic (话题梳理)`
-- `/summary -e|-d (功能开关)`
-- `/summary --everyday-summary <on/off> (每日总结开关)`
 ## `t`: 翻译器
 
 翻译文本（默认英到中）
@@ -350,23 +319,6 @@ Moonlark 投票
 - `/cave-s <ID> (恢复 7 天内删除的条目)`
 - `/cave-g <ID> (查看自己投稿的条目)`
 - `/cave-s (统计投稿者)`
-## `chat`: 主动水群
-
-基于 LLM 的主动水群功能，可以尝试用于活跃群气氛。（启用后将会收集、处理、并储存启用群聊的聊天记录和群员的昵称，仅支持非 QQ 官方节点）
-
-### 用法
-- `/chat switch (切换功能启用状态)`
-- `/chat on (启用功能)`
-- `/chat off (禁用功能)`
-- `/chat desire (查看触发概率信息)`
-- `/chat mute (临时禁用水群功能 15 分钟)`
-- `/chat unmute (取消临时禁用)`
-- `/chat calls (查看最近的工具调用记录)`
-- `/chat profile (查看自己的 profile)`
-- `/chat profile set <内容> (设置自己的 profile)`
-- `/chat block user <add|remove|list> [用户ID] (管理屏蔽用户)`
-- `/chat block keyword <add|remove|list> [关键词] (管理屏蔽关键词)`
-- `/chat block list (查看所有屏蔽项)`
 ## `email`: 邮件
 
 进入 Moonlark 邮箱
@@ -384,12 +336,6 @@ Moonlark 投票
 ### 用法
 - `/ghot (当前群聊热度分数)`
 - `/ghot history [-l] (最近的天分数历史)`
-## `neko-finder`: 找猫娘
-
-根据进 2 天的消息对群友的“猫娘指数”进行打分。
-
-### 用法
-- `/neko-finder`
 ## `online-timer`: 在线时间段
 
 查询 Moonlark 记录的群友在线时间段
@@ -397,14 +343,6 @@ Moonlark 投票
 ### 用法
 - `/online-timer [@用户]`
 - `/online-timer rank (在线排行)`
-## `rua`: 互动
-
-通过 rua 指令与 Moonlark 进行亲密互动（如戳一戳、摸头、拥抱等）。不同的互动动作需要不同的好感度才能解锁。
-
-### 用法
-- `/rua (使用当前选中的动作与 Moonlark 互动)`
-- `/rua action (查看可用的互动动作列表)`
-- `/rua action <编号> (切换当前使用的互动动作)`
 ## `schedule`: 每日任务
 
 查看每日任务或领取每日任务奖励，每日刷新，部分功能仅在签到后可用。
@@ -412,14 +350,6 @@ Moonlark 投票
 ### 用法
 - `/schdeule (查看每日任务列表)`
 - `/schdeule collect (领取可领取的奖励)`
-## `waifu`: 今日群老婆
-
-匹配你的每日群老婆！（仅支持群聊使用）
-
-### 用法
-- `/waifu (今日群老婆)`
-- `/waifu divorce (离婚)`
-- `/waifu force-marry <@群员> (强娶)`
 ## `wtfis`: 这在说啥
 
 随机跨领域因果关系谬误文案。（基于预先生成的文案，绝对没有使用大语言模型及人工智能！）
