@@ -20,6 +20,7 @@ if not VIDEO_DIR.exists():
 
 import re
 
+
 async def resolve_b23_url(b23_url: str) -> str:
     """
     解析 b23.tv 短链并返回 BV 号
@@ -36,6 +37,7 @@ async def resolve_b23_url(b23_url: str) -> str:
             return f"成功解析: {match.group(0)}"
         else:
             return "无法解析该链接，请确认链接是否有效。"
+
 
 async def _get_video_info(bv_id: str) -> Tuple[str, str, str, Optional[str]]:
     """获取视频信息和下载地址"""
