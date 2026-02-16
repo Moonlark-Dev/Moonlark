@@ -624,6 +624,71 @@ message:
 interaction:
   not_found: "未找到该交互请求，可能已过期或已被处理。"
 tools_desc:
+  vm_create_task:
+    desc: |
+      在远程 Docker 容器中创建一个命令执行任务。
+      **何时调用**:
+      - 当需要执行系统命令、运行脚本或进行系统操作时
+      - 当需要编译或运行代码时
+      - 当需要查看系统信息、文件内容或进行文件操作时
+      **使用流程**:
+      1. 调用此工具创建任务，获得任务 ID
+      2. 使用 vm_get_task_state 查询任务执行结果
+      3. 如果任务需要交互式输入，使用 vm_send_input 发送输入
+      4. 如果需要终止长时间运行的任务，使用 vm_stop_task
+      **注意事项**:
+      - 命令将在 Linux 环境的 Docker 容器中执行
+      - 任务是异步执行的，创建后需查询状态获取结果
+      - 对于长时间运行的命令，任务状态会显示为 running
+    command: |
+      要在 Docker 容器中执行的 Shell 命令。
+      支持所有标准的 Linux Shell 命令，如 ls、cat、python、gcc 等。
+      可以使用管道、重定向等 Shell 特性。
+      例如: 'ls -la /tmp' 或 'python3 script.py' 或 'echo hello > test.txt'
+    title: |
+      任务标题，用于描述这个任务的用途。
+      应简洁明了地说明任务目的，便于后续追踪和管理。
+      例如: '查看系统信息'、'运行测试脚本'、'编译程序'
+  vm_get_task_state:
+    desc: |
+      获取指定任务的执行状态和输出内容。
+      **何时调用**:
+      - 在使用 vm_create_task 创建任务后，查询任务执行结果
+      - 需要检查长时间运行的任务是否完成
+      - 需要获取任务的输出内容
+      **任务状态说明**:
+      - pending: 任务等待执行
+      - running: 任务正在执行
+      - completed: 任务执行完成（成功）
+      - failed: 任务执行失败
+      - stopped: 任务被手动停止
+    task_id: "由 vm_create_task 返回的任务 ID。格式为 UUID，例如: '550e8400-e29b-41d4-a716-446655440000'"
+  vm_send_input:
+    desc: |
+      向正在运行的任务的标准输入（stdin）发送内容。
+      **何时调用**:
+      - 当任务需要交互式输入时（如程序等待用户输入）
+      - 当需要回答程序的提示问题时（如 yes/no 确认）
+      **注意事项**:
+      - 只能向状态为 running 的任务发送输入
+      - 如果需要发送换行符以模拟按下回车键，请在内容末尾添加 \n
+      - 发送后可使用 vm_get_task_state 查看任务响应
+    task_id: "正在运行的任务的 ID"
+    input_text: |
+      要发送到任务标准输入的内容。
+      如需模拟按下回车键，请在末尾添加换行符 \n。
+      例如: 'yes\n' 表示输入 yes 并按回车
+  vm_stop_task:
+    desc: |
+      停止一个正在运行的任务。
+      **何时调用**:
+      - 当任务运行时间过长需要终止时
+      - 当发现任务执行的命令有误需要中断时
+      - 当不再需要任务继续执行时
+      **注意事项**:
+      - 停止后的任务无法恢复
+      - 任务状态将变为 stopped
+    task_id: "要停止的任务的 ID"
   query_image:
     desc: |
       对聊天中已出现的某张图片进行针对性的内容查询。
@@ -788,9 +853,95 @@ tools_desc:
       - 用户提供了一个 B 站视频的 BV 号，并询问视频内容
       - 需要了解某个 B 站视频的详细信息和摘要
     bv_id: "Bilibili 视频的 BV 号，如 'BV1xx411c7mD'"
+  resolve_b23_url:
+    desc: |
+      解析 b23.tv 短链并返回 BV 号。
+      **使用场景**:
+      - 用户提供了一个 b23.tv 的短链，你需要提取其中的 BV 号
+      - 用户提供了一个 b23.tv 的短链，你需要了解这个视频的详细信息（配合 describe_bilibili_video 使用）
+    b23_url: "b23.tv 短链，如 'https://b23.tv/xxx'"
 judge:
   user_not_found: "找不到用户 {}，请确认昵称是否正确。"
   user_not_registered: "用户 {} 还未注册（其好感度在注册之前是只读的），无法评价。"
   cooldown: "你在一小时内只可以评价 {} 一次。"
   daily_limit: "今天对 {} 的评价次数已达上限。"
   success: "已记录对 {} 的评价：{}。好感度变化已生效。"
+browse_webpage:
+  success: |
+    - URL: {}
+    - 请求状态: {}
+    - 页面简介: {}
+    - 关键词: {}
+    - 内容长度: {}
+
+    # {}
+
+    {}
+  error: |
+    # 访问失败
+    {}
+web_search:
+  metaso_unavailable: "Metaso 搜索暂不可用，以下是使用 Bing 搜索得到的结果：\n\n{}"
+  result_item: "**{}**\n{}\n链接: {}\n"
+  no_result: "未找到相关搜索结果"
+  failed: "搜索请求失败，状态码: {}"
+  error: "搜索过程中发生错误: {}"
+abbreviation:
+  success: "可能的含义如下：\n{}"
+  not_found: "未找到该缩写的含义"
+  failed: "查询失败，状态码: {}"
+  error: "查询过程中发生错误: {}"
+bilibili:
+  resolve_success: "成功解析: {}"
+  resolve_failed: "无法解析该链接，请确认链接是否有效。"
+  summary_system_prompt: "你是一个视频内容分析助手。请根据提供的视频，总结视频的主要内容。"
+  summary_user_prompt: "这是 B 站视频：{}\n简介：{}\n请总结这个视频的内容。"
+vm:
+  unavailable: "❌ VM 服务当前不可用\n原因: {}"
+  create_task:
+    success: |
+      ✅ 任务创建成功！
+      任务ID: {}
+      标题: {}
+      命令: {}
+    failed: "❌ 任务创建失败\n状态码: {}\n响应: {}"
+    timeout: "❌ 请求超时，无法创建任务"
+    error: "❌ 创建任务时发生错误: {}"
+  get_task_state:
+    status_header: "📋 任务状态"
+    task_id: "任务ID: {}"
+    title: "标题: {}"
+    status: "状态: {} {}"
+    exit_code: "退出码: {}"
+    created_at: "创建时间: {}"
+    started_at: "开始时间: {}"
+    finished_at: "完成时间: {}"
+    output_header: "📤 输出内容:"
+    output_none: "📤 输出内容: (无)"
+    output_truncated: "（输出内容过长，仅显示最后 {} 个字符）"
+    not_found: "❌ 找不到任务\n任务ID: {}"
+    failed: "❌ 查询任务状态失败\n状态码: {}\n响应: {}"
+    timeout: "❌ 请求超时，无法查询任务状态"
+    error: "❌ 查询任务状态时发生错误: {}"
+  send_input:
+    success: |
+      ✅ 输入已发送
+      任务ID: {}
+      发送内容: {}
+    not_found: "❌ 找不到任务\n任务ID: {}"
+    not_running: "❌ 任务未在运行中，无法发送输入\n任务ID: {}"
+    failed: "❌ 发送输入失败\n状态码: {}\n响应: {}"
+    timeout: "❌ 请求超时，无法发送输入"
+    error: "❌ 发送输入时发生错误: {}"
+  stop_task:
+    success: |
+      🛑 任务已停止
+      任务ID: {}
+    not_found: "❌ 找不到任务\n任务ID: {}"
+    failed: "❌ 停止任务失败\n状态码: {}\n响应: {}"
+    timeout: "❌ 请求超时，无法停止任务"
+    error: "❌ 停止任务时发生错误: {}"
+prompt_link_parser: |
+  接下来我会向你发送一个网页的内容，你需要为这个网页生成一条简介。
+  简介只能包含一行，不能包含 Markdown 格式。
+  你的回复中不能出现除了该页面的简介以外的任何内容。
