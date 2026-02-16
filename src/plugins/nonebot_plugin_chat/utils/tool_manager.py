@@ -36,7 +36,7 @@ if TYPE_CHECKING:
 
 
 class ToolManager:
-    def __init__(self, processor: MessageProcessor):
+    def __init__(self, processor: "MessageProcessor"):
         self.processor = processor
 
     async def text(self, key: str, *args, **kwargs) -> str:
