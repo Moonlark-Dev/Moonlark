@@ -431,8 +431,7 @@ class ToolManager:
                 )
 
         return tools
-    
-    
+
     async def remove_note(self, note_id: int) -> str:
         # Get the note manager for this context
         note_manager = await get_context_notes(self.processor.session.session_id)
@@ -442,7 +441,6 @@ class ToolManager:
             return await self.text("note.remove_success", note_id)
         else:
             return await self.text("note.remove_not_found", note_id)
-
 
     async def push_note(self, text: str, expire_days: Optional[int] = None, keywords: Optional[str] = None) -> str:
         # Get the note manager for this context

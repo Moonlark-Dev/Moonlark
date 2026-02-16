@@ -262,7 +262,6 @@ async def cleanup_expired_notes() -> int:
     return deleted_count
 
 
-
 def decode_check_result(data: str) -> NoteCheckResult:
     return json.loads(re.sub(r"`{1,3}([a-zA-Z0-9]+)?", "", data))
 
@@ -270,14 +269,15 @@ def decode_check_result(data: str) -> NoteCheckResult:
 if TYPE_CHECKING:
     from ..matcher.group import BaseSession
 
-async def check_note(session: "BaseSession", keywords: Optional[str], text: str, expire_days: Optional[int]) -> NoteCheckResult:
+
+async def check_note(
+    session: "BaseSession", keywords: Optional[str], text: str, expire_days: Optional[int]
+) -> NoteCheckResult:
     try:
         return decode_check_result(
             await fetch_message(
                 [
-                    generate_message(
-                        await session.text("note.system", datetime.now().isoformat()), "system"
-                    ),
+                    generate_message(await session.text("note.system", datetime.now().isoformat()), "system"),
                     generate_message(
                         await session.text(
                             "note.message",
@@ -293,6 +293,4 @@ async def check_note(session: "BaseSession", keywords: Optional[str], text: str,
             )
         )
     except json.JSONDecodeError:
-        return AvailableNote(
-            create=True, keywords=keywords, expire_days=expire_days or 3650, text=text, comment=""
-        )
+        return AvailableNote(create=True, keywords=keywords, expire_days=expire_days or 3650, text=text, comment="")
