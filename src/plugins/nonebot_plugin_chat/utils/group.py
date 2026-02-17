@@ -60,7 +60,12 @@ class LinkParser:
         self.links = self.get_links()
 
     def get_links(self) -> list[re.Match[str]]:
-        return [i for i in self.pattern.finditer(self.message)]
+        return [
+            i
+            for i in self.pattern.finditer(self.message)
+            if "bilibili.com" not in i.group().lower()
+            and "b23.tv" not in i.group().lower()
+        ]
 
     async def parse(self) -> str:
         for link_match in self.get_links()[::-1]:
