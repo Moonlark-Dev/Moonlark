@@ -198,6 +198,7 @@ class MessageFetcher:
         **kwargs,
     ) -> None:
         logger.debug(f"{identify=}")
+        logger.debug(f"{reasoning_effort=}")
         if use_default_message:
             messages.insert(0, generate_message(config.openai_default_message, "system"))
         func_index: dict[str, AsyncFunction] = {}
