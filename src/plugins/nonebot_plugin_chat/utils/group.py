@@ -63,8 +63,7 @@ class LinkParser:
         return [
             i
             for i in self.pattern.finditer(self.message)
-            if "bilibili.com" not in i.group().lower()
-            and "b23.tv" not in i.group().lower()
+            if "bilibili.com" not in i.group().lower() and "b23.tv" not in i.group().lower()
         ]
 
     async def parse(self) -> str:
