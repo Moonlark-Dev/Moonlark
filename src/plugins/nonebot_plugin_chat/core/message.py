@@ -113,38 +113,8 @@ class MessageQueue:
         if self.fetcher_lock.locked():
             return
         async with self.fetcher_lock:
-            retried = 0
-            while retried < 3:
-                status = await self._fetch_reply()
-                logger.info(f"Reply fetcher ended with status: {status.name}")
-                # if status == FetchStatus.SUCCESS:
-                #     break
-
-                # elif status == FetchStatus.EMPTY_REPLY:
-                #     if self.messages:
-                #         self.messages.pop()
-                #     retried += 1
-                #     continue
-                # elif status == FetchStatus.NO_MESSAGE_SENT:
-                #     self.append_user_message(
-                #         await self.processor.session.text(
-                #             "prompt.warning.no_message_sent", datetime.now().strftime("%H:%M:%S")
-                #         )
-                #     )
-                #     retried += 2
-                #     continue
-                # elif status == FetchStatus.WRONG_TOOL_CALL:
-                #     retried += 0.5
-                #     self.append_user_message(
-                #         await self.processor.session.text(
-                #             "prompt.warning.invalid_tool_call",
-                #             datetime.now().strftime("%H:%M:%S"),
-                #         )
-                #     )
-                # else:
-                #     break
-
-                # # FAILED status (invalid tool calls or exception)
+            status = await self._fetch_reply()
+            logger.info(f"Reply fetcher ended with status: {status.name}")
 
     async def _fetch_reply(self) -> FetchStatus:
         state = FetchStatus.SUCCESS
