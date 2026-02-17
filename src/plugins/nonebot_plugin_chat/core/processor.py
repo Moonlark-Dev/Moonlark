@@ -26,6 +26,7 @@ from ..utils.note_manager import get_context_notes
 from ..utils.sticker_manager import get_sticker_manager
 from ..utils.tool_manager import ToolManager
 from ..utils.tools.sticker import StickerTools
+from ..utils.status_manager import get_status_manager
 
 if TYPE_CHECKING:
     from nonebot_plugin_chat.core.session.base import BaseSession
@@ -378,6 +379,15 @@ class MessageProcessor:
             created_time = datetime.fromtimestamp(note.created_time).strftime("%y-%m-%d")
             return await self.session.text("prompt.note.format", note.content, note.id, created_time)
 
+        status_manager = get_status_manager()
+        mood, mood_reason, activity, remain_minutes = status_manager.get_status()
+        
+        mood_text = await self.session.text(f"status.mood.{mood.value}")
+        if mood_reason:
+            mood_text += f" ({mood_reason})"
+            
+        status_prompt = await self.session.text("status.info", mood_text, activity, remain_minutes)
+
         return generate_message(
             await self.session.text(
                 "prompt_group.default",
@@ -394,6 +404,7 @@ class MessageProcessor:
                     else await self.session.text("prompt.note.none")
                 ),
                 profiles_text,
+                status_prompt,
             ),
             "system",
         )
