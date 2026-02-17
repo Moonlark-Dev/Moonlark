@@ -1011,4 +1011,4 @@ prompt_link_parser: |
 
 fetcher:
   parse_failed: "[异常] 解析输出失败，请检查你的输出内容并尝试重新输出。错误信息：{}"
-  sticker_recommendation: "[提示] 表情包推荐："
+  sticker_recommendation: "[提示] 消息已发送，表情包推荐（可能为空）："
