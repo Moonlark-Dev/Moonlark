@@ -157,6 +157,7 @@ class MessageQueue:
             functions=self.processor.functions,
             identify="Chat",
             pre_function_call=self.processor.send_function_call_feedback,
+            reasoning_effort="medium"
         )
         retry_count = 0
         try:
