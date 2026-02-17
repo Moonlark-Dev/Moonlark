@@ -99,5 +99,4 @@ class ModelResponse(BaseModel):
     activity: Optional[ActivityData] = None
     judge: Optional[JudgeData] = None
     messages: list[MessageData] = []
-    allow_sticker_recommend: bool
     

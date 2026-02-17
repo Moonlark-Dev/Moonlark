@@ -452,6 +452,13 @@ class ToolManager:
             )
             tools.append(
                 AsyncFunction(
+                    func=processor.sticker_tools.recommend_sticker,
+                    description=await self.text("tools_desc.recommend_sticker.desc"),
+                    parameters={},
+                )
+            )
+            tools.append(
+                AsyncFunction(
                     func=processor.sticker_tools.send_sticker,
                     description=await self.text("tools_desc.send_sticker.desc"),
                     parameters={
