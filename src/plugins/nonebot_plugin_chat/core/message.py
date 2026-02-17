@@ -171,10 +171,10 @@ class MessageQueue:
                     continue
                 try:
                     analysis = type_validate_python(ModelResponse, json.loads(re.sub(r"`{1,3}([a-zA-Z0-9]+)?", "", message)))
-                except Exception:
+                except Exception as e:
                     retry_count += 1
                     fetcher.session.insert_message(generate_message(
-                        await self.processor.session.text("fetcher.parse_failed", traceback.format_exc()),
+                        await self.processor.session.text("fetcher.parse_failed", str(e)),
                         "user"
                     ))
                     continue
