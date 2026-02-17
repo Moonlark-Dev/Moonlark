@@ -1,18 +1,19 @@
 import asyncio
+from nonebot_plugin_openai.types import TimeoutStrategy
+from openai.types.shared.reasoning_effort import ReasoningEffort
 import hashlib
 from collections.abc import Awaitable
 import traceback
 import uuid
 
 from openai.types.chat import ChatCompletion
-from openai.types.chat.chat_completion import Choice
 
 from nonebot_plugin_larklang.__main__ import get_module_name
 import inspect
 from openai.types.chat.chat_completion_message_function_tool_call import ChatCompletionMessageFunctionToolCall
 
 import json
-from typing import Literal, Optional, Any, AsyncGenerator, Callable, TypeVar, TypedDict, cast
+from typing import Optional, Any, AsyncGenerator, Callable, TypeVar, cast
 from nonebot import logger
 import openai
 from openai.types.shared_params import FunctionDefinition
@@ -52,18 +53,6 @@ def generate_function_list(func_index: dict[str, AsyncFunction]) -> list[ChatCom
 T = TypeVar("T")
 
 
-class ReplaceResponseStrategy(TypedDict):
-    strategy: Literal["replace"]
-    choice: Choice
-
-
-class StopSessionStrategy(TypedDict):
-    strategy: Literal["throw"]
-
-
-TimeoutStrategy = ReplaceResponseStrategy | StopSessionStrategy
-
-
 class LLMRequestSession:
 
     def __init__(
@@ -79,6 +68,7 @@ class LLMRequestSession:
         post_function_call: Optional[Callable[[T], Awaitable[T]]] = None,
         timeout: Optional[int] = None,
         timeout_strategy: Optional[TimeoutStrategy] = None,
+        reasoning_effort: Optional[ReasoningEffort] = None,
     ) -> None:
         self.messages: Messages = messages
         self.identify = identify
@@ -92,6 +82,7 @@ class LLMRequestSession:
             "pre_function_call": pre_function_call,
             "post_function_call": post_function_call,
         }
+        self.reasoning_effort = reasoning_effort
         self.has_tool_calls: bool = False
         self.timeout_per_request = timeout
         self.timeout_strategy = timeout_strategy
@@ -128,6 +119,7 @@ class LLMRequestSession:
                         "HTTP-Referer": f"https://{hashlib.sha256(t.encode()).hexdigest()}.moonlark.itcdt.top",
                     },
                     timeout=self.timeout_per_request,
+                    reasoning_effort=self.reasoning_effort,
                     **self.kwargs,
                 ),
             )
@@ -202,6 +194,7 @@ class MessageFetcher:
         timeout: Optional[int] = None,
         timeout_strategy: Optional[TimeoutStrategy] = None,
         record_timeout: bool = False,
+        reasoning_effort: Optional[ReasoningEffort] = None,
         **kwargs,
     ) -> None:
         logger.debug(f"{identify=}")
@@ -221,6 +214,7 @@ class MessageFetcher:
             post_function_call,
             timeout,
             timeout_strategy,
+            reasoning_effort,
         )
         self.record_timeout = record_timeout
 
@@ -239,6 +233,7 @@ class MessageFetcher:
         timeout: Optional[int] = None,
         timeout_strategy: Optional[TimeoutStrategy] = None,
         record_timeout: Optional[bool] = None,
+        reasoning_effort: Optional[ReasoningEffort] = None,
         **kwargs,
     ) -> "MessageFetcher":
         """异步创建 MessageFetcher 实例，正确处理模型配置获取"""
@@ -265,6 +260,7 @@ class MessageFetcher:
             timeout,
             timeout_strategy,
             is_default_model if record_timeout is None else record_timeout,
+            reasoning_effort,
             **kwargs,
         )
 
@@ -307,6 +303,7 @@ async def fetch_message(
     post_function_call: Optional[Callable[[T], Awaitable[T]]] = None,
     timeout: Optional[int] = None,
     timeout_strategy: Optional[TimeoutStrategy] = None,
+    reasoning_effort: Optional[ReasoningEffort] = None,
     **kwargs,
 ) -> str:
     if identify is None:
@@ -325,6 +322,8 @@ async def fetch_message(
         post_function_call,
         timeout,
         timeout_strategy,
+        None,
+        reasoning_effort,
         **kwargs,
     )
     return await fetcher.fetch_last_message()

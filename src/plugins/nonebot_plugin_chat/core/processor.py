@@ -192,7 +192,7 @@ class MessageProcessor:
                 return
 
         logger.info(f"Generating reply ({important=})...")
-        await self.openai_messages.fetch_reply(important)
+        await self.openai_messages.fetch_reply()
 
     async def append_tool_call_history(self, call_string: str) -> None:
         self.session.tool_calls_history.append(
@@ -215,36 +215,14 @@ class MessageProcessor:
         await self.append_tool_call_history(text)
         return call_id, name, param
 
-    async def send_message(self, message_content: str, reply_message_id: str | None = None) -> str:
+    async def send_message(self, message_content: str, reply_message_id: str | None = None) -> None:
         # 增加连续发送消息计数
-        self.openai_messages.increment_bot_message_count()
         self.session.last_activate = datetime.now()
-
-        # 检查是否超过停止阈值
-        if self.openai_messages.should_stop_response():
-            logger.warning(f"Bot 连续发送消息超过 {self.openai_messages.CONSECUTIVE_STOP_THRESHOLD} 条，强制停止响应")
-            return await self.session.text("message.stop_response", self.openai_messages.consecutive_bot_messages)
-
-        # 检查是否需要发出警告
-        if self.openai_messages.should_warn_excessive_messages():
-            logger.warning(f"Bot 连续发送消息达到 {self.openai_messages.CONSECUTIVE_WARNING_THRESHOLD} 条，插入警告")
-            await self.openai_messages.insert_warning_message()
-
         message = await self.session.format_message(message_content)
         if reply_message_id:
             message = message.reply(reply_message_id)
-        receipt = await message.send(target=self.session.target, bot=self.session.bot)
+        await message.send(target=self.session.target, bot=self.session.bot)
         self.session.accumulated_text_length = 0
-        message_id = receipt.msg_ids[0] if receipt.msg_ids else None
-        message_id = message_id["message_id"] if message_id else await self.session.text("prompt.recall_failed")
-        response = await self.session.text("message.sent", message_id)
-        if self.openai_messages.cached_reasoning_content != self._latest_reasioning_content_cache:
-            sticker_recommendations = "\n".join(
-                await self.get_sticker_recommendations(self.openai_messages.cached_reasoning_content)
-            )
-            if sticker_recommendations:
-                response += await self.session.text("sticker.recommend", sticker_recommendations)
-        return response
 
     def append_user_message(self, msg_str: str) -> None:
         self.openai_messages.append_user_message(msg_str)
@@ -330,14 +308,9 @@ class MessageProcessor:
                     )
         return profiles
 
-    async def generate_sticker_recommendations(self, reasoning_text: str) -> AsyncGenerator[str, None]:
-        """
-        根据聊天记录的上下文关键词获取表情包推荐
-
-        Returns:
-            推荐的表情包列表（格式为 "ID: 描述"）
-        """
+    async def generate_sticker_recommendations(self) -> AsyncGenerator[str, None]:
         chat_history = "\n".join(self.get_message_content_list())
+        emotion_type = get_status_manager().get_status()[0].value
         async with get_session() as session:
             results = await session.scalars(
                 select(Sticker).where(
@@ -345,7 +318,7 @@ class MessageProcessor:
                 )
             )
             for sticker in results:
-                if sticker.emotion and sticker.emotion in reasoning_text:
+                if sticker.emotion == emotion_type:
                     yield f"- {sticker.id}: {sticker.description}"
                     break
                 for keyword in json.loads(sticker.context_keywords or "[]"):
@@ -353,12 +326,9 @@ class MessageProcessor:
                         yield f"- {sticker.id}: {sticker.description}"
                         break
                 for label in json.loads(sticker.labels or "[]"):
-                    if label in chat_history or label in reasoning_text:
+                    if label in chat_history or label == emotion_type:
                         yield f"- {sticker.id}: {sticker.description}"
                         break
-
-    async def get_sticker_recommendations(self, reasoning_text: str) -> list[str]:
-        return [sticker async for sticker in self.generate_sticker_recommendations(reasoning_text)]
 
     async def generate_system_prompt(self) -> OpenAIMessage:
         chat_history = "\n".join(self.get_message_content_list())

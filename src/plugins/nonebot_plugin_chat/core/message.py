@@ -1,7 +1,10 @@
+import re
+import traceback
 from typing import TYPE_CHECKING
+from nonebot.compat import type_validate_python
 from nonebot.log import logger
 from nonebot_plugin_chat.utils.role import get_role
-from nonebot_plugin_chat.models import MessageQueueCache
+from nonebot_plugin_chat.models import MessageQueueCache, ModelResponse
 from nonebot_plugin_chat.utils.enums import FetchStatus
 from nonebot_plugin_openai import generate_message
 from nonebot_plugin_openai.utils.chat import MessageFetcher
@@ -33,9 +36,6 @@ class MessageQueue:
         self.CONSECUTIVE_WARNING_THRESHOLD = consecutive_warning_threshold
         self.CONSECUTIVE_STOP_THRESHOLD = consecutive_stop_threshold
         self.fetcher_lock = asyncio.Lock()
-        self.cached_reasoning_content = ""
-        self.consecutive_bot_messages = 0  # 连续发送消息计数器
-        # 恢复完成事件，用于确保在处理消息前恢复已完成
         self._restore_complete = asyncio.Event()
         # 在初始化时从数据库恢复消息队列
         self.inserted_messages = []
@@ -109,7 +109,7 @@ class MessageQueue:
         messages.insert(0, await self.processor.generate_system_prompt())
         return messages
 
-    async def fetch_reply(self, important: bool = False) -> None:
+    async def fetch_reply(self) -> None:
         if self.fetcher_lock.locked():
             return
         async with self.fetcher_lock:
@@ -117,34 +117,34 @@ class MessageQueue:
             while retried < 3:
                 status = await self._fetch_reply()
                 logger.info(f"Reply fetcher ended with status: {status.name}")
-                if status == FetchStatus.SUCCESS:
-                    break
+                # if status == FetchStatus.SUCCESS:
+                #     break
 
-                elif status == FetchStatus.EMPTY_REPLY and important:
-                    if self.messages:
-                        self.messages.pop()
-                    retried += 1
-                    continue
-                elif status == FetchStatus.NO_MESSAGE_SENT and important:
-                    self.append_user_message(
-                        await self.processor.session.text(
-                            "prompt.warning.no_message_sent", datetime.now().strftime("%H:%M:%S")
-                        )
-                    )
-                    retried += 2
-                    continue
-                elif status == FetchStatus.WRONG_TOOL_CALL:
-                    retried += 0.5
-                    self.append_user_message(
-                        await self.processor.session.text(
-                            "prompt.warning.invalid_tool_call",
-                            datetime.now().strftime("%H:%M:%S"),
-                        )
-                    )
-                else:
-                    break
+                # elif status == FetchStatus.EMPTY_REPLY:
+                #     if self.messages:
+                #         self.messages.pop()
+                #     retried += 1
+                #     continue
+                # elif status == FetchStatus.NO_MESSAGE_SENT:
+                #     self.append_user_message(
+                #         await self.processor.session.text(
+                #             "prompt.warning.no_message_sent", datetime.now().strftime("%H:%M:%S")
+                #         )
+                #     )
+                #     retried += 2
+                #     continue
+                # elif status == FetchStatus.WRONG_TOOL_CALL:
+                #     retried += 0.5
+                #     self.append_user_message(
+                #         await self.processor.session.text(
+                #             "prompt.warning.invalid_tool_call",
+                #             datetime.now().strftime("%H:%M:%S"),
+                #         )
+                #     )
+                # else:
+                #     break
 
-                # FAILED status (invalid tool calls or exception)
+                # # FAILED status (invalid tool calls or exception)
 
     async def _fetch_reply(self) -> FetchStatus:
         state = FetchStatus.SUCCESS
@@ -158,30 +158,40 @@ class MessageQueue:
             identify="Chat",
             pre_function_call=self.processor.send_function_call_feedback,
         )
+        retry_count = 0
         try:
             async for message in fetcher.fetch_message_stream():
-                if message.startswith("## 思考过程"):
-                    self.cached_reasoning_content = message
-                logger.info(f"Moonlark 说: {message}")
+                if retry_count > 5:
+                    raise Exception("Failed to fetch message")
                 fetcher.session.insert_messages(self.messages)
                 self.inserted_messages.extend(self.messages)
                 self.messages = []
-                if any([keyword in message for keyword in ["<parameter", "</function_calls>", "<function"]]):
-                    state = FetchStatus.WRONG_TOOL_CALL
+                try:
+                    analysis = type_validate_python(ModelResponse, json.loads(re.sub(r"`{1,3}([a-zA-Z0-9]+)?", "", message)))
+                except Exception:
+                    retry_count += 1
+                    fetcher.session.insert_message(generate_message(
+                        await self.processor.session.text("fetcher.parse_failed", traceback.format_exc()),
+                        "user"
+                    ))
+                    continue
+                if analysis.activity:
+                    await self.processor.tool_manager.set_activity(analysis.activity.content, analysis.activity.duration)
+                if analysis.mood:
+                    await self.processor.tool_manager.set_mood(analysis.mood)
+                if analysis.judge:
+                    await self.processor.judge_user_behavior(analysis.judge.target, analysis.judge.score, analysis.judge.reason)
+                for msg in analysis.messages:
+                    await self.processor.send_message(msg.message_content, msg.reply_message_id)
+                if analysis.allow_sticker_recommend:
+                    recommend_str = await self.processor.session.text("fetcher.sticker_recommendation")
+                    async for sticker in self.processor.generate_sticker_recommendations():
+                        recommend_str += f"\n{sticker}"
+                    fetcher.session.insert_message(
+                        generate_message(recommend_str, "user")
+                    )
+
             self.messages = fetcher.get_messages()
-            if (
-                isinstance(assistant_msg := self.messages[-1], ChatCompletionMessage)
-                and not assistant_msg.content
-                and not fetcher.session.has_tool_calls
-                and state == FetchStatus.SUCCESS
-            ):
-                state = FetchStatus.EMPTY_REPLY
-            elif (
-                self.consecutive_bot_messages == 0
-                and not fetcher.session.has_tool_calls
-                and state == FetchStatus.SUCCESS
-            ):
-                state = FetchStatus.NO_MESSAGE_SENT
         except Exception as e:
             logger.exception(e)
             # 恢复 Message
@@ -197,20 +207,3 @@ class MessageQueue:
 
     def is_last_message_from_user(self) -> bool:
         return get_role(self.messages[-1]) == "user"
-
-    def increment_bot_message_count(self) -> None:
-        """增加 bot 发送消息计数"""
-        self.consecutive_bot_messages += 1
-
-    def should_warn_excessive_messages(self) -> bool:
-        """检查是否应该发出过多消息警告"""
-        return self.consecutive_bot_messages == self.CONSECUTIVE_WARNING_THRESHOLD
-
-    def should_stop_response(self) -> bool:
-        """检查是否应该停止响应（超过限制）"""
-        return self.consecutive_bot_messages >= self.CONSECUTIVE_STOP_THRESHOLD
-
-    async def insert_warning_message(self) -> None:
-        """向消息队列中插入警告消息"""
-        warning = await self.processor.session.text("prompt.warning.excessive_messages", self.consecutive_bot_messages)
-        self.messages.append(generate_message(warning, "user"))

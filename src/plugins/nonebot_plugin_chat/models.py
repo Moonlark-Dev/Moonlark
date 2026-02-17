@@ -1,7 +1,8 @@
 from datetime import datetime
-from typing import Optional, TypedDict
+from typing import Literal, Optional, TypedDict
 
 from nonebot_plugin_orm import Model
+from pydantic import BaseModel
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy import LargeBinary, String, Text, Float, Integer
 from sqlalchemy.dialects.mysql import MEDIUMBLOB, MEDIUMTEXT
@@ -75,3 +76,28 @@ class RuaAction(TypedDict):
     name: str
     refusable: bool
     unlock_favorability: float
+
+
+class ActivityData(BaseModel):
+    content: str
+    duration: int
+    
+
+class JudgeData(BaseModel):
+    target: str
+    score: Literal[-2, -1, 0, 1, 2]
+    reason: str
+
+class MessageData(BaseModel):
+    message_content: str
+    reply_message_id: Optional[str] = None
+
+class ModelResponse(BaseModel):
+    reply_required: bool
+    mood: Optional[Literal["joy", "sadness", "anger", "fear", "surprise", "disgust", "trust", "anticipation", "calm", "bored", "confused", "tired", "shy"]]
+    mood_reason: Optional[str] = None
+    activity: Optional[ActivityData] = None
+    judge: Optional[JudgeData] = None
+    messages: list[MessageData] = []
+    allow_sticker_recommend: bool
+    

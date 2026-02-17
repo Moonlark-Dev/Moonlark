@@ -262,46 +262,46 @@ class ToolManager:
         # === Group 模式特有工具 ===
         if mode == "group":
 
-            # set_mood
-            tools.append(
-                AsyncFunction(
-                    func=self.set_mood,
-                    description=await self.text("tools_desc.set_mood.desc"),
-                    parameters={
-                        "mood": FunctionParameterWithEnum(
-                            type="string",
-                            description=await self.text("tools_desc.set_mood.mood"),
-                            required=True,
-                            enum={m.value for m in MoodEnum},
-                        ),
-                        "reason": FunctionParameter(
-                            type="string",
-                            description=await self.text("tools_desc.set_mood.reason"),
-                            required=False,
-                        ),
-                    },
-                )
-            )
+            # # set_mood
+            # tools.append(
+            #     AsyncFunction(
+            #         func=self.set_mood,
+            #         description=await self.text("tools_desc.set_mood.desc"),
+            #         parameters={
+            #             "mood": FunctionParameterWithEnum(
+            #                 type="string",
+            #                 description=await self.text("tools_desc.set_mood.mood"),
+            #                 required=True,
+            #                 enum={m.value for m in MoodEnum},
+            #             ),
+            #             "reason": FunctionParameter(
+            #                 type="string",
+            #                 description=await self.text("tools_desc.set_mood.reason"),
+            #                 required=False,
+            #             ),
+            #         },
+            #     )
+            # )
 
-            # set_activity
-            tools.append(
-                AsyncFunction(
-                    func=self.set_activity,
-                    description=await self.text("tools_desc.set_activity.desc"),
-                    parameters={
-                        "content": FunctionParameter(
-                            type="string",
-                            description=await self.text("tools_desc.set_activity.content"),
-                            required=True,
-                        ),
-                        "duration": FunctionParameter(
-                            type="integer",
-                            description=await self.text("tools_desc.set_activity.duration"),
-                            required=False,
-                        ),
-                    },
-                )
-            )
+            # # set_activity
+            # tools.append(
+            #     AsyncFunction(
+            #         func=self.set_activity,
+            #         description=await self.text("tools_desc.set_activity.desc"),
+            #         parameters={
+            #             "content": FunctionParameter(
+            #                 type="string",
+            #                 description=await self.text("tools_desc.set_activity.content"),
+            #                 required=True,
+            #             ),
+            #             "duration": FunctionParameter(
+            #                 type="integer",
+            #                 description=await self.text("tools_desc.set_activity.duration"),
+            #                 required=False,
+            #             ),
+            #         },
+            #     )
+            # )
 
             # query_image
             tools.append(
@@ -323,25 +323,25 @@ class ToolManager:
                 )
             )
 
-            # send_message
-            tools.append(
-                AsyncFunction(
-                    func=processor.send_message,
-                    description=await self.text("tools_desc.send_message.desc"),
-                    parameters={
-                        "message_content": FunctionParameter(
-                            type="string",
-                            description=await self.text("tools_desc.send_message.message_content"),
-                            required=True,
-                        ),
-                        "reply_message_id": FunctionParameter(
-                            type="string",
-                            description=await self.text("tools_desc.send_message.reply_message_id"),
-                            required=False,
-                        ),
-                    },
-                )
-            )
+            # # send_message
+            # tools.append(
+            #     AsyncFunction(
+            #         func=processor.send_message,
+            #         description=await self.text("tools_desc.send_message.desc"),
+            #         parameters={
+            #             "message_content": FunctionParameter(
+            #                 type="string",
+            #                 description=await self.text("tools_desc.send_message.message_content"),
+            #                 required=True,
+            #             ),
+            #             "reply_message_id": FunctionParameter(
+            #                 type="string",
+            #                 description=await self.text("tools_desc.send_message.reply_message_id"),
+            #                 required=False,
+            #             ),
+            #         },
+            #     )
+            # )
 
             # leave_for_a_while
             tools.insert(
@@ -500,30 +500,30 @@ class ToolManager:
                 )
             )
 
-            # judge_user_behavior
-            tools.append(
-                AsyncFunction(
-                    func=processor.judge_user_behavior,
-                    description=await self.text("tools_desc.judge_user_behavior.desc"),
-                    parameters={
-                        "nickname": FunctionParameter(
-                            type="string",
-                            description=await self.text("tools_desc.judge_user_behavior.nickname"),
-                            required=True,
-                        ),
-                        "score": FunctionParameter(
-                            type="integer",
-                            description=await self.text("tools_desc.judge_user_behavior.score"),
-                            required=True,
-                        ),
-                        "reason": FunctionParameter(
-                            type="string",
-                            description=await self.text("tools_desc.judge_user_behavior.reason"),
-                            required=True,
-                        ),
-                    },
-                )
-            )
+            # # judge_user_behavior
+            # tools.append(
+            #     AsyncFunction(
+            #         func=processor.judge_user_behavior,
+            #         description=await self.text("tools_desc.judge_user_behavior.desc"),
+            #         parameters={
+            #             "nickname": FunctionParameter(
+            #                 type="string",
+            #                 description=await self.text("tools_desc.judge_user_behavior.nickname"),
+            #                 required=True,
+            #             ),
+            #             "score": FunctionParameter(
+            #                 type="integer",
+            #                 description=await self.text("tools_desc.judge_user_behavior.score"),
+            #                 required=True,
+            #             ),
+            #             "reason": FunctionParameter(
+            #                 type="string",
+            #                 description=await self.text("tools_desc.judge_user_behavior.reason"),
+            #                 required=True,
+            #             ),
+            #         },
+            #     )
+            # )
 
             # Conditional tools
             if processor.session.is_napcat_bot():
