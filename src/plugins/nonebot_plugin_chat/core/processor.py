@@ -381,11 +381,11 @@ class MessageProcessor:
 
         status_manager = get_status_manager()
         mood, mood_reason, activity, remain_minutes = status_manager.get_status()
-        
+
         mood_text = await self.session.text(f"status.mood.{mood.value}")
         if mood_reason:
             mood_text += f" ({mood_reason})"
-            
+
         status_prompt = await self.session.text("status.info", mood_text, activity, remain_minutes)
 
         return generate_message(

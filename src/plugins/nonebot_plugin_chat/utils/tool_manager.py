@@ -79,7 +79,7 @@ class ToolManager:
             mood_enum = MoodEnum(mood)
         except ValueError:
             return await self.text("status.invalid_mood", mood)
-        
+
         success, message_key = self.status_manager.set_mood(mood_enum, reason)
         if success:
             mood_text = await self.text(f"status.mood.{mood_enum.value}")

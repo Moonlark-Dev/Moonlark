@@ -72,7 +72,7 @@ class StatusManager:
         :return: (心情, 心情原因, 活动, 剩余时间)
         """
         now = datetime.now()
-        
+
         # 计算活动剩余时间
         if now > self._activity_expire:
             activity = "daze"
@@ -80,8 +80,9 @@ class StatusManager:
         else:
             activity = self._activity
             remain_minutes = int((self._activity_expire - now).total_seconds() / 60)
-            
+
         return self._mood, self._mood_reason, activity, remain_minutes
+
 
 def get_status_manager() -> StatusManager:
     return StatusManager()
