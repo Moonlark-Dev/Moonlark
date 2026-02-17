@@ -167,6 +167,8 @@ class MessageQueue:
                 fetcher.session.insert_messages(self.messages)
                 self.inserted_messages.extend(self.messages)
                 self.messages = []
+                if not message:
+                    continue
                 try:
                     analysis = type_validate_python(ModelResponse, json.loads(re.sub(r"`{1,3}([a-zA-Z0-9]+)?", "", message)))
                 except Exception:
