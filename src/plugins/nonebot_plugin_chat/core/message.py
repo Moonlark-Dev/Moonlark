@@ -157,7 +157,7 @@ class MessageQueue:
             functions=self.processor.functions,
             identify="Chat",
             pre_function_call=self.processor.send_function_call_feedback,
-            reasoning_effort="medium"
+            reasoning_effort="medium",
         )
         retry_count = 0
         try:
@@ -170,29 +170,32 @@ class MessageQueue:
                 if not message:
                     continue
                 try:
-                    analysis = type_validate_python(ModelResponse, json.loads(re.sub(r"`{1,3}([a-zA-Z0-9]+)?", "", message)))
+                    analysis = type_validate_python(
+                        ModelResponse, json.loads(re.sub(r"`{1,3}([a-zA-Z0-9]+)?", "", message))
+                    )
                 except Exception as e:
                     retry_count += 1
-                    fetcher.session.insert_message(generate_message(
-                        await self.processor.session.text("fetcher.parse_failed", str(e)),
-                        "user"
-                    ))
+                    fetcher.session.insert_message(
+                        generate_message(await self.processor.session.text("fetcher.parse_failed", str(e)), "user")
+                    )
                     continue
                 if analysis.activity:
-                    await self.processor.tool_manager.set_activity(analysis.activity.content, analysis.activity.duration)
+                    await self.processor.tool_manager.set_activity(
+                        analysis.activity.content, analysis.activity.duration
+                    )
                 if analysis.mood:
                     await self.processor.tool_manager.set_mood(analysis.mood)
                 if analysis.judge:
-                    await self.processor.judge_user_behavior(analysis.judge.target, analysis.judge.score, analysis.judge.reason)
+                    await self.processor.judge_user_behavior(
+                        analysis.judge.target, analysis.judge.score, analysis.judge.reason
+                    )
                 for msg in analysis.messages:
                     await self.processor.send_message(msg.message_content, msg.reply_message_id)
                 if analysis.allow_sticker_recommend:
                     recommend_str = await self.processor.session.text("fetcher.sticker_recommendation")
                     async for sticker in self.processor.generate_sticker_recommendations():
                         recommend_str += f"\n{sticker}"
-                    fetcher.session.insert_message(
-                        generate_message(recommend_str, "user")
-                    )
+                    fetcher.session.insert_message(generate_message(recommend_str, "user"))
 
             self.messages = fetcher.get_messages()
         except Exception as e:
