@@ -131,7 +131,7 @@ class ToolManager:
                 parameters={
                     "text": FunctionParameter(
                         type="string",
-                        description=await self.text("tools_desc.search_abbreviation.text"),
+                        description=await self.text("tools_desc.search_abbreviation.text_arg"),
                         required=True,
                     )
                 },
@@ -301,8 +301,18 @@ class ToolManager:
                     parameters={
                         "text": FunctionParameter(
                             type="string",
-                            description=await self.text("tools_desc.get_note_poster.text"),
+                            description=await self.text("tools_desc.get_note_poster.text_arg"),
                             required=True,
+                        ),
+                        "expire_days": FunctionParameter(
+                            type="integer",
+                            description=await self.text("tools_desc.get_note_poster.expire_days"),
+                            required=False,
+                        ),
+                        "keywords": FunctionParameter(
+                            type="string",
+                            description=await self.text("tools_desc.get_note_poster.keywords"),
+                            required=False,
                         ),
                         "expire_days": FunctionParameter(
                             type="integer",
