@@ -33,6 +33,7 @@ from .tools import (
 )
 from ..utils.emoji import QQ_EMOJI_MAP
 from .note_manager import check_note, get_context_notes
+from .status_manager import get_status_manager, MoodEnum
 
 if TYPE_CHECKING:
     from ..core.processor import MessageProcessor
@@ -41,6 +42,7 @@ if TYPE_CHECKING:
 class ToolManager:
     def __init__(self, processor: "MessageProcessor"):
         self.processor = processor
+        self.status_manager = get_status_manager()
 
     async def text(self, key: str, *args, **kwargs) -> str:
         return await self.processor.session.text(key, *args, **kwargs)
@@ -71,6 +73,23 @@ class ToolManager:
 
     async def vm_stop_task(self, task_id: str) -> str:
         return await vm_stop_task(task_id, self.text)
+
+    async def set_mood(self, mood: str, reason: Optional[str] = None) -> str:
+        try:
+            mood_enum = MoodEnum(mood)
+        except ValueError:
+            return await self.text("status.invalid_mood", mood)
+        
+        success, message_key = self.status_manager.set_mood(mood_enum, reason)
+        if success:
+            mood_text = await self.text(f"status.mood.{mood_enum.value}")
+            return await self.text(message_key, mood_text, reason or await self.text("status.no_reason"))
+        else:
+            return await self.text(message_key)
+
+    async def set_activity(self, content: str, duration: int = 10) -> str:
+        self.status_manager.set_activity(content, duration)
+        return await self.text("status.activity_set", content, duration)
 
     async def select_tools(self, mode: Literal["group", "agent"]) -> list[AsyncFunction]:
         tools = []
@@ -242,6 +261,47 @@ class ToolManager:
 
         # === Group 模式特有工具 ===
         if mode == "group":
+
+            # set_mood
+            tools.append(
+                AsyncFunction(
+                    func=self.set_mood,
+                    description=await self.text("tools_desc.set_mood.desc"),
+                    parameters={
+                        "mood": FunctionParameterWithEnum(
+                            type="string",
+                            description=await self.text("tools_desc.set_mood.mood"),
+                            required=True,
+                            enum={m.value for m in MoodEnum},
+                        ),
+                        "reason": FunctionParameter(
+                            type="string",
+                            description=await self.text("tools_desc.set_mood.reason"),
+                            required=False,
+                        ),
+                    },
+                )
+            )
+
+            # set_activity
+            tools.append(
+                AsyncFunction(
+                    func=self.set_activity,
+                    description=await self.text("tools_desc.set_activity.desc"),
+                    parameters={
+                        "content": FunctionParameter(
+                            type="string",
+                            description=await self.text("tools_desc.set_activity.content"),
+                            required=True,
+                        ),
+                        "duration": FunctionParameter(
+                            type="integer",
+                            description=await self.text("tools_desc.set_activity.duration"),
+                            required=False,
+                        ),
+                    },
+                )
+            )
 
             # query_image
             tools.append(
