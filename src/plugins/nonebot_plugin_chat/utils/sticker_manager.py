@@ -44,7 +44,7 @@ class MemeClassification(TypedDict):
 
 _EMOTIONS = "\n".join([f"- {emotion}" for emotion in EMOTIONS])
 # 表情包分类提示词
-MEME_CLASSIFICATION_PROMPT = """你是一个表情包分析 AI。
+MEME_CLASSIFICATION_PROMPT = f"""你是一个表情包分析 AI。
 我会向你提供一张表情包图片，你需要分析表情包的内容，并对其进行分类。
   
 ### 输出格式
