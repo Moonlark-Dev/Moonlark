@@ -23,6 +23,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional, TypedDict
 
 from nonebot import logger
+from nonebot_plugin_chat.types import EMOTIONS, MoodEnum
 from nonebot_plugin_orm import get_session
 from nonebot_plugin_openai.utils.chat import fetch_message
 from nonebot_plugin_openai.utils.message import generate_message
@@ -41,6 +42,7 @@ class MemeClassification(TypedDict):
     context_keywords: List[str]
 
 
+_EMOTIONS = "\n".join([f"- {emotion}" for emotion in EMOTIONS])
 # 表情包分类提示词
 MEME_CLASSIFICATION_PROMPT = """你是一个表情包分析 AI。
 我会向你提供一张表情包图片，你需要分析表情包的内容，并对其进行分类。
@@ -56,6 +58,13 @@ MEME_CLASSIFICATION_PROMPT = """你是一个表情包分析 AI。
      "context_keywords": array[string]       // 表情包适用的语境，这个表情包适合在群聊中谈到什么关键词时出现？
 }
   
+
+### 可用的情绪列表
+
+`emotion` 字段只能从如下的字符串中选择：
+
+{_EMOTIONS}
+
 ### 参考的标签库分类
 1.  **社交回应类**：`赞同`、`反对`、`无语`、`震惊`、`委屈`、`认怂`。
 2.  **网络梗类**：`吃瓜`、`摆烂`、`摸鱼`、`内卷`、`抽象`、`典`。

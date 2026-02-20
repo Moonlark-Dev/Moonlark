@@ -1,22 +1,7 @@
 from datetime import datetime, timedelta
-from enum import Enum
 from typing import Optional
 
-
-class MoodEnum(str, Enum):
-    JOY = "joy"
-    SADNESS = "sadness"
-    ANGER = "anger"
-    FEAR = "fear"
-    SURPRISE = "surprise"
-    DISGUST = "disgust"
-    TRUST = "trust"
-    ANTICIPATION = "anticipation"
-    CALM = "calm"
-    BORED = "bored"
-    CONFUSED = "confused"
-    TIRED = "tired"
-    SHY = "shy"
+from nonebot_plugin_chat.types import MoodEnum
 
 
 class StatusManager:

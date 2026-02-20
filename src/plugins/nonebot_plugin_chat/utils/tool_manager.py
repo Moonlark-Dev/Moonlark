@@ -16,6 +16,7 @@
 # ##############################################################################
 
 from typing import TYPE_CHECKING, Literal, Optional
+from ..types import MoodEnum
 from nonebot_plugin_openai.types import AsyncFunction, FunctionParameter, FunctionParameterWithEnum
 from nonebot.adapters.onebot.v11 import Bot as OB11Bot
 from .tools import (
@@ -33,7 +34,7 @@ from .tools import (
 )
 from ..utils.emoji import QQ_EMOJI_MAP
 from .note_manager import check_note, get_context_notes
-from .status_manager import get_status_manager, MoodEnum
+from .status_manager import get_status_manager
 
 if TYPE_CHECKING:
     from ..core.processor import MessageProcessor
