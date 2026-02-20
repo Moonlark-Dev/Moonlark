@@ -353,10 +353,8 @@ class MessageProcessor:
         mood, mood_reason, activity, remain_minutes = status_manager.get_status()
 
         mood_text = await self.session.text(f"status.mood.{mood.value}")
-        if mood_reason:
-            mood_text += f" ({mood_reason})"
 
-        status_prompt = await self.session.text("status.info", mood_text, activity, remain_minutes)
+        # status_prompt = await self.session.text("status.info", , activity, remain_minutes)
 
         return generate_message(
             await self.session.text(
@@ -374,7 +372,11 @@ class MessageProcessor:
                     else await self.session.text("prompt.note.none")
                 ),
                 profiles_text,
-                status_prompt,
+                mood_text,
+                status_manager.get_mood_retention(),
+                mood_reason,
+                activity,
+                remain_minutes,
             ),
             "system",
         )

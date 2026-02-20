@@ -19,10 +19,14 @@ class StatusManager:
         self._mood: MoodEnum = MoodEnum.CALM
         self._mood_reason: Optional[str] = None
         self._last_mood_update: datetime = datetime.now()
+        self.mood_retention_rate: float = 1.0
         self._activity: str = "daze"
         self._activity_time: datetime = datetime.now()
-        self._activity_expire: datetime = datetime.now() + timedelta(minutes=10)
+        self._activity_expire: datetime = datetime.now()
         self._initialized = True
+
+    def get_mood_retention(self) -> float:
+        return  4 ** - (self.mood_retention_rate * (datetime.now() - self._last_mood_update).total_seconds() / 60)
 
     def set_mood(self, mood: MoodEnum, reason: Optional[str] = None) -> tuple[bool, str]:
         """
@@ -31,14 +35,18 @@ class StatusManager:
         :param reason: 心情原因
         :return: (是否成功, 提示信息)
         """
-        now = datetime.now()
-        # 冷却时间检查 (5分钟)
-        if now - self._last_mood_update < timedelta(minutes=5) and self._mood != MoodEnum.CALM:
-            return False, "status.mood_cooldown"
-
+        dt = datetime.now()
+        mood_retention = self.get_mood_retention()
+        if mood_retention >= 0.3:
+            self._last_mood_update -= timedelta(seconds=10)
+            return False, "status.mood_set"
+        elif mood_retention >= 0.1:
+            self.mood_retention_rate = 2
+        else:
+            self.mood_retention_rate = 1
         self._mood = mood
         self._mood_reason = reason
-        self._last_mood_update = now
+        self._last_mood_update = dt
         return True, "status.mood_set"
 
     def set_activity(self, activity: str, duration: int = 10) -> None:
