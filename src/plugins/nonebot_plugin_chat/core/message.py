@@ -149,11 +149,14 @@ class MessageQueue:
                     ))
                     continue
                 if analysis.activity:
-                    await self.processor.tool_manager.set_activity(analysis.activity.content, analysis.activity.duration)
+                    res = await self.processor.tool_manager.set_activity(analysis.activity.content, analysis.activity.duration)
+                    logger.info(f"Set activity: {res}")
                 if analysis.mood:
-                    await self.processor.tool_manager.set_mood(analysis.mood)
+                    res = await self.processor.tool_manager.set_mood(analysis.mood, analysis.mood_reason)
+                    logger.info(f"Set mood: {res}")
                 if analysis.judge:
-                    await self.processor.judge_user_behavior(analysis.judge.target, analysis.judge.score, analysis.judge.reason)
+                    res = await self.processor.judge_user_behavior(analysis.judge.target, analysis.judge.score, analysis.judge.reason)
+                    logger.info(f"Judge user behavior: {res}")
                 for msg in analysis.messages:
                     await self.processor.send_message(msg.message_content, msg.reply_message_id)
 
