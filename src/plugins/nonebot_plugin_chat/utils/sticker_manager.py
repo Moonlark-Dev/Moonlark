@@ -50,13 +50,13 @@ MEME_CLASSIFICATION_PROMPT = f"""你是一个表情包分析 AI。
 ### 输出格式
 一段 JSON，不要包含除了 JSON 结构以外的任何内容。
   
-{
+{{
      "is_meme": boolen,       // 这张图片是一个表情包吗？如果是为 true。
      "text": string,                 // 表情包中的文本，如果没有请填空字符串。
      "emotion": string,        // 表情包所表达的情绪的类型，如：高兴、难过、生气、恐惧。
      "labels": array[string],       // 表情包的标签，按照参考的标签库分类中给出的示例进行编写。
      "context_keywords": array[string]       // 表情包适用的语境，这个表情包适合在群聊中谈到什么关键词时出现？
-}
+}}
   
 
 ### 可用的情绪列表
