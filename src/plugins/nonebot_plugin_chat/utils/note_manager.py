@@ -283,7 +283,6 @@ async def check_note(
                     generate_message(
                         await session.text(
                             "note.message",
-                            session.lang_str,
                             await session.get_cached_messages_string(),
                             keywords or "",
                             text,

@@ -113,38 +113,8 @@ class MessageQueue:
         if self.fetcher_lock.locked():
             return
         async with self.fetcher_lock:
-            retried = 0
-            while retried < 3:
-                status = await self._fetch_reply()
-                logger.info(f"Reply fetcher ended with status: {status.name}")
-                # if status == FetchStatus.SUCCESS:
-                #     break
-
-                # elif status == FetchStatus.EMPTY_REPLY:
-                #     if self.messages:
-                #         self.messages.pop()
-                #     retried += 1
-                #     continue
-                # elif status == FetchStatus.NO_MESSAGE_SENT:
-                #     self.append_user_message(
-                #         await self.processor.session.text(
-                #             "prompt.warning.no_message_sent", datetime.now().strftime("%H:%M:%S")
-                #         )
-                #     )
-                #     retried += 2
-                #     continue
-                # elif status == FetchStatus.WRONG_TOOL_CALL:
-                #     retried += 0.5
-                #     self.append_user_message(
-                #         await self.processor.session.text(
-                #             "prompt.warning.invalid_tool_call",
-                #             datetime.now().strftime("%H:%M:%S"),
-                #         )
-                #     )
-                # else:
-                #     break
-
-                # # FAILED status (invalid tool calls or exception)
+            status = await self._fetch_reply()
+            logger.info(f"Reply fetcher ended with status: {status.name}")
 
     async def _fetch_reply(self) -> FetchStatus:
         state = FetchStatus.SUCCESS
@@ -180,22 +150,16 @@ class MessageQueue:
                     )
                     continue
                 if analysis.activity:
-                    await self.processor.tool_manager.set_activity(
-                        analysis.activity.content, analysis.activity.duration
-                    )
+                    res = await self.processor.tool_manager.set_activity(analysis.activity.content, analysis.activity.duration)
+                    logger.info(f"Set activity: {res}")
                 if analysis.mood:
-                    await self.processor.tool_manager.set_mood(analysis.mood)
-                if analysis.judge:
-                    await self.processor.judge_user_behavior(
-                        analysis.judge.target, analysis.judge.score, analysis.judge.reason
-                    )
+                    res = await self.processor.tool_manager.set_mood(analysis.mood, analysis.mood_reason)
+                    logger.info(f"Set mood: {res}")
+                if analysis.favorability_judge:
+                    res = await self.processor.judge_user_behavior(analysis.favorability_judge.target, analysis.favorability_judge.score, analysis.favorability_judge.reason)
+                    logger.info(f"Judge user behavior: {res}")
                 for msg in analysis.messages:
                     await self.processor.send_message(msg.message_content, msg.reply_message_id)
-                if analysis.allow_sticker_recommend:
-                    recommend_str = await self.processor.session.text("fetcher.sticker_recommendation")
-                    async for sticker in self.processor.generate_sticker_recommendations():
-                        recommend_str += f"\n{sticker}"
-                    fetcher.session.insert_message(generate_message(recommend_str, "user"))
 
             self.messages = fetcher.get_messages()
         except Exception as e:

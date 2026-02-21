@@ -1,4 +1,5 @@
 from datetime import datetime
+from enum import Enum
 from typing import Any, Literal, Optional, Protocol, TypedDict
 
 from nonebot_plugin_chat.models import RuaAction
@@ -56,3 +57,22 @@ class AdapterUserInfo(TypedDict):
     nickname: str
     join_time: int
     card: Optional[str]
+
+
+class MoodEnum(str, Enum):
+    JOY = "joy"
+    SADNESS = "sadness"
+    ANGER = "anger"
+    FEAR = "fear"
+    SURPRISE = "surprise"
+    DISGUST = "disgust"
+    TRUST = "trust"
+    ANTICIPATION = "anticipation"
+    CALM = "calm"
+    BORED = "bored"
+    CONFUSED = "confused"
+    TIRED = "tired"
+    SHY = "shy"
+
+
+EMOTIONS = [e.value for e in MoodEnum]

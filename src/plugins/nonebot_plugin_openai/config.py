@@ -17,11 +17,5 @@ class Config(BaseModel):
     openai_thread_header: str = "AH-Thread-Id"
     openai_trace_header: str = "AH-Trace-Id"
 
-    # 超时记录相关配置
-    timeout_window_hours: int = 1  # 超时统计窗口（小时）
-    timeout_threshold: int = 2  # 触发备用模型的超时次数阈值
-    backup_model_duration_hours: int = 1  # 备用模型持续时间（小时）
-    backup_model_identify: str = "Backup"  # 备用模型的 identify
-
 
 config = get_plugin_config(Config)

@@ -99,6 +99,15 @@ class StickerTools:
 
         return await lang.text("sticker.search_result", self.session.lang_str, "\n".join(results))
 
+    async def recommend_sticker(self) -> str:
+        """
+        推荐表情包
+        """
+        recommend_str = await lang.text("fetcher.sticker_recommendation", self.session.lang_str)
+        async for sticker in self.session.processor.generate_sticker_recommendations():
+            recommend_str += f"\n{sticker}"
+        return recommend_str
+
     async def send_sticker(self, sticker_id: int) -> str:
         """
         发送表情包到群聊

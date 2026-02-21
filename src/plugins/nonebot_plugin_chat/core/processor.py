@@ -55,12 +55,6 @@ class MessageProcessor:
         await self.ai_agent.setup()
         asyncio.create_task(self.loop())
 
-    async def delete_message(self, message_id: int) -> str:
-        if isinstance(self.session.bot, OB11Bot):
-            await self.session.bot.delete_msg(message_id=message_id)
-            return await self.session.text("message.deleted")
-        return await self.session.text("message.delete_failed")
-
     async def send_reaction(self, message_id: str, emoji_id: str) -> str:
         if isinstance(self.session.bot, OB11Bot) and self.session.is_napcat_bot():
             await self.session.bot.call_api("set_msg_emoji_like", message_id=message_id, emoji_id=emoji_id)
@@ -353,10 +347,8 @@ class MessageProcessor:
         mood, mood_reason, activity, remain_minutes = status_manager.get_status()
 
         mood_text = await self.session.text(f"status.mood.{mood.value}")
-        if mood_reason:
-            mood_text += f" ({mood_reason})"
 
-        status_prompt = await self.session.text("status.info", mood_text, activity, remain_minutes)
+        # status_prompt = await self.session.text("status.info", , activity, remain_minutes)
 
         return generate_message(
             await self.session.text(
@@ -374,7 +366,11 @@ class MessageProcessor:
                     else await self.session.text("prompt.note.none")
                 ),
                 profiles_text,
-                status_prompt,
+                mood_text,
+                status_manager.get_mood_retention(),
+                mood_reason,
+                activity,
+                remain_minutes,
             ),
             "system",
         )

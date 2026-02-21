@@ -167,13 +167,13 @@ async def query_image_content(image_id: str, query_prompt: str, user_id: str) ->
 
     messages = [
         generate_message(
-            await lang.text("prompt_group.image_query_system", datetime.datetime.now().isoformat()),
+            await lang.text("prompt_group.image_query_system", user_id, datetime.datetime.now().isoformat()),
             "system",
         ),
         generate_message(
             [
                 {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_base64}"}},
-                {"type": "text", "text": await lang.text("prompt_group.image_query_user", query_prompt)},
+                {"type": "text", "text": await lang.text("prompt_group.image_query_user", user_id, query_prompt)},
             ],
             "user",
         ),

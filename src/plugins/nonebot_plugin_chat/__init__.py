@@ -25,6 +25,7 @@ require("nonebot_plugin_alconna")
 from . import matcher as _command_matchers
 from .core import matchers as _core_matchers
 from . import startup as _startup
+from .core import proactive_chat as _proactive_chat
 
 # 导出供其他插件使用的接口
 from .core.session import post_group_event

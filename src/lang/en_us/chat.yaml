@@ -941,5 +941,7 @@ prompt_link_parser: |
   接下来我会向你发送一个网页的内容，你需要为这个网页生成一条简介。
   简介只能包含一行，不能包含 Markdown 格式。
   你的回复中不能出现除了该页面的简介以外的任何内容。
-fetcher:
-  parse_failed: "[异常] 解析输出失败，请检查你的输出内容并尝试重新输出。错误信息：{}"
+
+proactive_message:
+  prompt: |
+    You are authorized to initiate a "proactive message" in this private chat. Your response must fully align with your character settings and strictly adhere to all output rules.

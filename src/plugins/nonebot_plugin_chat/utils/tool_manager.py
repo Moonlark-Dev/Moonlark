@@ -16,6 +16,7 @@
 # ##############################################################################
 
 from typing import TYPE_CHECKING, Literal, Optional
+from ..types import MoodEnum
 from nonebot_plugin_openai.types import AsyncFunction, FunctionParameter, FunctionParameterWithEnum
 from nonebot.adapters.onebot.v11 import Bot as OB11Bot
 from .tools import (
@@ -33,7 +34,7 @@ from .tools import (
 )
 from ..utils.emoji import QQ_EMOJI_MAP
 from .note_manager import check_note, get_context_notes
-from .status_manager import get_status_manager, MoodEnum
+from .status_manager import get_status_manager
 
 if TYPE_CHECKING:
     from ..core.processor import MessageProcessor
@@ -452,6 +453,13 @@ class ToolManager:
             )
             tools.append(
                 AsyncFunction(
+                    func=processor.sticker_tools.recommend_sticker,
+                    description=await self.text("tools_desc.recommend_sticker.desc"),
+                    parameters={},
+                )
+            )
+            tools.append(
+                AsyncFunction(
                     func=processor.sticker_tools.send_sticker,
                     description=await self.text("tools_desc.send_sticker.desc"),
                     parameters={
@@ -500,30 +508,6 @@ class ToolManager:
                 )
             )
 
-            # # judge_user_behavior
-            # tools.append(
-            #     AsyncFunction(
-            #         func=processor.judge_user_behavior,
-            #         description=await self.text("tools_desc.judge_user_behavior.desc"),
-            #         parameters={
-            #             "nickname": FunctionParameter(
-            #                 type="string",
-            #                 description=await self.text("tools_desc.judge_user_behavior.nickname"),
-            #                 required=True,
-            #             ),
-            #             "score": FunctionParameter(
-            #                 type="integer",
-            #                 description=await self.text("tools_desc.judge_user_behavior.score"),
-            #                 required=True,
-            #             ),
-            #             "reason": FunctionParameter(
-            #                 type="string",
-            #                 description=await self.text("tools_desc.judge_user_behavior.reason"),
-            #                 required=True,
-            #             ),
-            #         },
-            #     )
-            # )
 
             # Conditional tools
             if processor.session.is_napcat_bot():
@@ -541,20 +525,7 @@ class ToolManager:
                     )
                 )
 
-            if isinstance(processor.session.bot, OB11Bot):
-                tools.append(
-                    AsyncFunction(
-                        func=processor.delete_message,
-                        description=await self.text("tools_desc.delete_message.desc"),
-                        parameters={
-                            "message_id": FunctionParameter(
-                                type="integer",
-                                description=await self.text("tools_desc.delete_message.message_id"),
-                                required=True,
-                            )
-                        },
-                    )
-                )
+            
 
             # GroupSession specific tools
             # Note: We check if session has adapter_group_id to imply GroupSession or import GroupSession to check instance
