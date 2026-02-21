@@ -55,12 +55,6 @@ class MessageProcessor:
         await self.ai_agent.setup()
         asyncio.create_task(self.loop())
 
-    async def delete_message(self, message_id: int) -> str:
-        if isinstance(self.session.bot, OB11Bot):
-            await self.session.bot.delete_msg(message_id=message_id)
-            return await self.session.text("message.deleted")
-        return await self.session.text("message.delete_failed")
-
     async def send_reaction(self, message_id: str, emoji_id: str) -> str:
         if isinstance(self.session.bot, OB11Bot) and self.session.is_napcat_bot():
             await self.session.bot.call_api("set_msg_emoji_like", message_id=message_id, emoji_id=emoji_id)

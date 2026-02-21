@@ -508,30 +508,6 @@ class ToolManager:
                 )
             )
 
-            # # judge_user_behavior
-            # tools.append(
-            #     AsyncFunction(
-            #         func=processor.judge_user_behavior,
-            #         description=await self.text("tools_desc.judge_user_behavior.desc"),
-            #         parameters={
-            #             "nickname": FunctionParameter(
-            #                 type="string",
-            #                 description=await self.text("tools_desc.judge_user_behavior.nickname"),
-            #                 required=True,
-            #             ),
-            #             "score": FunctionParameter(
-            #                 type="integer",
-            #                 description=await self.text("tools_desc.judge_user_behavior.score"),
-            #                 required=True,
-            #             ),
-            #             "reason": FunctionParameter(
-            #                 type="string",
-            #                 description=await self.text("tools_desc.judge_user_behavior.reason"),
-            #                 required=True,
-            #             ),
-            #         },
-            #     )
-            # )
 
             # Conditional tools
             if processor.session.is_napcat_bot():
@@ -549,20 +525,7 @@ class ToolManager:
                     )
                 )
 
-            if isinstance(processor.session.bot, OB11Bot):
-                tools.append(
-                    AsyncFunction(
-                        func=processor.delete_message,
-                        description=await self.text("tools_desc.delete_message.desc"),
-                        parameters={
-                            "message_id": FunctionParameter(
-                                type="integer",
-                                description=await self.text("tools_desc.delete_message.message_id"),
-                                required=True,
-                            )
-                        },
-                    )
-                )
+            
 
             # GroupSession specific tools
             # Note: We check if session has adapter_group_id to imply GroupSession or import GroupSession to check instance
