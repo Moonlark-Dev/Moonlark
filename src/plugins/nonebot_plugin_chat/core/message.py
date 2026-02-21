@@ -127,7 +127,7 @@ class MessageQueue:
             functions=self.processor.functions,
             identify="Chat",
             pre_function_call=self.processor.send_function_call_feedback,
-            reasoning_effort="medium"
+            reasoning_effort="medium",
         )
         retry_count = 0
         try:
@@ -140,22 +140,29 @@ class MessageQueue:
                 if not message:
                     continue
                 try:
-                    analysis = type_validate_python(ModelResponse, json.loads(re.sub(r"`{1,3}([a-zA-Z0-9]+)?", "", message)))
+                    analysis = type_validate_python(
+                        ModelResponse, json.loads(re.sub(r"`{1,3}([a-zA-Z0-9]+)?", "", message))
+                    )
                 except Exception as e:
                     retry_count += 1
-                    fetcher.session.insert_message(generate_message(
-                        await self.processor.session.text("fetcher.parse_failed", str(e)),
-                        "user"
-                    ))
+                    fetcher.session.insert_message(
+                        generate_message(await self.processor.session.text("fetcher.parse_failed", str(e)), "user")
+                    )
                     continue
                 if analysis.activity:
-                    res = await self.processor.tool_manager.set_activity(analysis.activity.content, analysis.activity.duration)
+                    res = await self.processor.tool_manager.set_activity(
+                        analysis.activity.content, analysis.activity.duration
+                    )
                     logger.info(f"Set activity: {res}")
                 if analysis.mood:
                     res = await self.processor.tool_manager.set_mood(analysis.mood, analysis.mood_reason)
                     logger.info(f"Set mood: {res}")
                 if analysis.favorability_judge:
-                    res = await self.processor.judge_user_behavior(analysis.favorability_judge.target, analysis.favorability_judge.score, analysis.favorability_judge.reason)
+                    res = await self.processor.judge_user_behavior(
+                        analysis.favorability_judge.target,
+                        analysis.favorability_judge.score,
+                        analysis.favorability_judge.reason,
+                    )
                     logger.info(f"Judge user behavior: {res}")
                 for msg in analysis.messages:
                     await self.processor.send_message(msg.message_content, msg.reply_message_id)

@@ -26,7 +26,6 @@ from .utils.chat import fetch_message, MessageFetcher
 from .utils.message import generate_message
 from .commands import model as _  # noqa: F401
 
-
 driver = get_driver()
 
 

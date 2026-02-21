@@ -26,7 +26,7 @@ class StatusManager:
         self._initialized = True
 
     def get_mood_retention(self) -> float:
-        return  4 ** - (self.mood_retention_rate * (datetime.now() - self._last_mood_update).total_seconds() / 60)
+        return 4 ** -(self.mood_retention_rate * (datetime.now() - self._last_mood_update).total_seconds() / 60)
 
     def set_mood(self, mood: MoodEnum, reason: Optional[str] = None) -> tuple[bool, str]:
         """

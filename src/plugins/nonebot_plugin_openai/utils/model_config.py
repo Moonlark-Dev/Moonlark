@@ -22,10 +22,9 @@ async def get_default_model() -> str:
     """获取默认模型"""
     async with get_session() as session:
         from ..models import OpenAIModelConfig
+
         result = await session.scalar(
-            select(OpenAIModelConfig.model_name).where(
-                OpenAIModelConfig.config_key == DEFAULT_MODEL_KEY
-            )
+            select(OpenAIModelConfig.model_name).where(OpenAIModelConfig.config_key == DEFAULT_MODEL_KEY)
         )
         return result if result else config.openai_default_model
 
@@ -34,10 +33,9 @@ async def set_default_model(model: str) -> None:
     """设置默认模型"""
     async with get_session() as session:
         from ..models import OpenAIModelConfig
+
         existing = await session.scalar(
-            select(OpenAIModelConfig).where(
-                OpenAIModelConfig.config_key == DEFAULT_MODEL_KEY
-            )
+            select(OpenAIModelConfig).where(OpenAIModelConfig.config_key == DEFAULT_MODEL_KEY)
         )
         if existing:
             existing.model_name = model
@@ -56,11 +54,10 @@ async def get_model_for_identify(identify: str) -> str:
     """获取指定应用的模型，如果没有特定配置则返回默认模型"""
     async with get_session() as session:
         from ..models import OpenAIModelConfig
+
         # 先查找特定应用的配置
         result = await session.scalar(
-            select(OpenAIModelConfig.model_name).where(
-                OpenAIModelConfig.config_key == identify
-            )
+            select(OpenAIModelConfig.model_name).where(OpenAIModelConfig.config_key == identify)
         )
         if result:
             return result
@@ -72,11 +69,8 @@ async def is_default_model_for_identify(identify: str) -> bool:
     """判断指定应用的模型是否为默认模型"""
     async with get_session() as session:
         from ..models import OpenAIModelConfig
-        result = await session.scalar(
-            select(OpenAIModelConfig).where(
-                OpenAIModelConfig.config_key == identify
-            )
-        )
+
+        result = await session.scalar(select(OpenAIModelConfig).where(OpenAIModelConfig.config_key == identify))
         return result is None
 
 
@@ -84,11 +78,8 @@ async def set_model_for_identify(identify: str, model: str) -> None:
     """设置指定应用的模型"""
     async with get_session() as session:
         from ..models import OpenAIModelConfig
-        existing = await session.scalar(
-            select(OpenAIModelConfig).where(
-                OpenAIModelConfig.config_key == identify
-            )
-        )
+
+        existing = await session.scalar(select(OpenAIModelConfig).where(OpenAIModelConfig.config_key == identify))
         if existing:
             existing.model_name = model
         else:
@@ -109,11 +100,8 @@ async def remove_model_for_identify(identify: str) -> bool:
     """
     async with get_session() as session:
         from ..models import OpenAIModelConfig
-        existing = await session.scalar(
-            select(OpenAIModelConfig).where(
-                OpenAIModelConfig.config_key == identify
-            )
-        )
+
+        existing = await session.scalar(select(OpenAIModelConfig).where(OpenAIModelConfig.config_key == identify))
         if existing:
             await session.delete(existing)
             await session.commit()
@@ -125,6 +113,7 @@ async def get_model_override() -> dict[str, str]:
     """获取所有应用特定的模型配置"""
     async with get_session() as session:
         from ..models import OpenAIModelConfig
+
         results = await session.execute(
             select(OpenAIModelConfig.config_key, OpenAIModelConfig.model_name).where(
                 OpenAIModelConfig.config_type == "override"

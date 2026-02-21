@@ -508,7 +508,6 @@ class ToolManager:
                 )
             )
 
-
             # Conditional tools
             if processor.session.is_napcat_bot():
                 tools.append(
@@ -524,8 +523,6 @@ class ToolManager:
                         },
                     )
                 )
-
-            
 
             # GroupSession specific tools
             # Note: We check if session has adapter_group_id to imply GroupSession or import GroupSession to check instance

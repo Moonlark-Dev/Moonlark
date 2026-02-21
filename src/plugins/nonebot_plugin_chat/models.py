@@ -81,20 +81,38 @@ class RuaAction(TypedDict):
 class ActivityData(BaseModel):
     content: str
     duration: int
-    
+
 
 class JudgeData(BaseModel):
     target: str
     score: Literal[-2, -1, 0, 1, 2]
     reason: str
 
+
 class MessageData(BaseModel):
     message_content: str
     reply_message_id: Optional[str] = None
 
+
 class ModelResponse(BaseModel):
     reply_required: bool
-    mood: Optional[Literal["joy", "sadness", "anger", "fear", "surprise", "disgust", "trust", "anticipation", "calm", "bored", "confused", "tired", "shy"]]
+    mood: Optional[
+        Literal[
+            "joy",
+            "sadness",
+            "anger",
+            "fear",
+            "surprise",
+            "disgust",
+            "trust",
+            "anticipation",
+            "calm",
+            "bored",
+            "confused",
+            "tired",
+            "shy",
+        ]
+    ]
     mood_reason: Optional[str] = None
     activity: Optional[ActivityData] = None
     favorability_judge: Optional[JudgeData] = None
@@ -115,4 +133,3 @@ class ProactiveMessageRecord(Model):
     id: Mapped[int] = mapped_column(Integer(), primary_key=True, autoincrement=True)
     user_id: Mapped[str] = mapped_column(String(128), index=True)
     sent_time: Mapped[float] = mapped_column(Float())  # 发送时间戳
-    
