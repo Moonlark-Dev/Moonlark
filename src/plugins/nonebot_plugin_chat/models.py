@@ -99,4 +99,20 @@ class ModelResponse(BaseModel):
     activity: Optional[ActivityData] = None
     favorability_judge: Optional[JudgeData] = None
     messages: list[MessageData] = []
+
+
+class PrivateChatSession(Model):
+    """记录用户私聊会话信息，用于主动消息时获取正确的 bot"""
+
+    user_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    bot_id: Mapped[str] = mapped_column(String(128))  # 用户最后使用的 bot ID
+    last_message_time: Mapped[float] = mapped_column(Float())  # 最后消息时间戳
+
+
+class ProactiveMessageRecord(Model):
+    """记录主动私聊消息历史，用于冷却检查"""
+
+    id: Mapped[int] = mapped_column(Integer(), primary_key=True, autoincrement=True)
+    user_id: Mapped[str] = mapped_column(String(128), index=True)
+    sent_time: Mapped[float] = mapped_column(Float())  # 发送时间戳
     

@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from nonebot import on_message
 from nonebot.adapters.onebot.v11 import NoticeEvent
 from nonebot.adapters.qq import Bot as BotQQ
@@ -6,6 +8,7 @@ from nonebot_plugin_alconna import UniMessage, get_target
 from nonebot.adapters.onebot.v11.event import FriendRecallNoticeEvent
 from nonebot_plugin_chat.utils.message import parse_dict_message
 from nonebot_plugin_larkuser import get_nickname
+from nonebot_plugin_orm import get_session
 
 from nonebot_plugin_larkuser import get_user
 from nonebot import on_message, on_notice
@@ -23,6 +26,24 @@ from .session import create_group_session, create_private_session, get_session_d
 
 from ..utils.group import enabled_group, parse_message_to_string
 from ..config import config
+from ..models import PrivateChatSession
+
+
+async def record_private_chat_session(user_id: str, bot_id: str) -> None:
+    """记录用户私聊会话信息
+
+    Args:
+        user_id: 用户 ID
+        bot_id: Bot ID
+    """
+    async with get_session() as session:
+        chat_session = PrivateChatSession(
+            user_id=user_id,
+            bot_id=bot_id,
+            last_message_time=datetime.now().timestamp(),
+        )
+        await session.merge(chat_session)
+        await session.commit()
 
 
 @on_message(priority=50, rule=enabled_group, block=False).handle()
@@ -58,6 +79,10 @@ async def _(
 ) -> None:
     if isinstance(bot, BotQQ):
         await matcher.finish()
+
+    # 记录私聊会话信息（用于主动消息时获取正确的 bot）
+    await record_private_chat_session(user_id, bot.self_id)
+
     session = await create_private_session(user_id, get_target(event), bot)
     if session.mute_until is not None:
         await matcher.finish()
