@@ -133,4 +133,3 @@ class ProactiveMessageRecord(Model):
     id: Mapped[int] = mapped_column(Integer(), primary_key=True, autoincrement=True)
     user_id: Mapped[str] = mapped_column(String(128), index=True)
     sent_time: Mapped[float] = mapped_column(Float())  # 发送时间戳
-    

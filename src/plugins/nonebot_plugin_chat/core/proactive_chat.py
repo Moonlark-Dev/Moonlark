@@ -123,8 +123,7 @@ async def get_recent_private_chat_sessions(days: int = 3) -> list[tuple[str, str
     async with get_session() as session:
         # 从 PrivateChatSession 查询所有近 N 天内有消息的私聊会话
         result = await session.execute(
-            select(PrivateChatSession)
-            .where(PrivateChatSession.last_message_time >= cutoff_timestamp)
+            select(PrivateChatSession).where(PrivateChatSession.last_message_time >= cutoff_timestamp)
         )
         chat_sessions = result.scalars().all()
 
@@ -149,6 +148,7 @@ async def check_and_send_proactive_messages() -> None:
         try:
             # 获取该用户对应的 Bot 实例
             from nonebot import get_bot
+
             try:
                 bot = get_bot(bot_id)
             except Exception as e:
