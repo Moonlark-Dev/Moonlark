@@ -6,7 +6,7 @@ from nonebot.adapters import Event
 from nonebot.typing import T_State
 from nonebot_plugin_chat.types import CachedMessage
 from nonebot_plugin_userinfo import get_user_info
-from nonebot_plugin_alconna import Image, Other, Segment, UniMessage, Text, At, Reply, Reference
+from nonebot_plugin_alconna import Image, Other, Segment, UniMessage, Text, At, Reply, Reference, File
 from nonebot_plugin_larkuser import get_user
 from nonebot.exception import ActionFailed
 from nonebot.adapters import Message, MessageSegment
@@ -16,6 +16,7 @@ from nonebot.adapters.onebot.v11 import MessageSegment as OneBotV11Segment
 
 
 from .image import get_image_summary
+from .file import get_file_summary
 
 
 class MessageParser:
@@ -40,6 +41,12 @@ class MessageParser:
                 return f"[图片({image_id}): {description}]"
             else:
                 return f"[图片: {description}]"
+        elif isinstance(segment, File):
+            file_type, file_name, description = await get_file_summary(segment, self.event, self.bot, self.state)
+            if file_type == "video":
+                return f"[视频({file_name}): {description}]"
+            else:
+                return f"[文件({file_name}): {description}]"
         elif isinstance(segment, Reply) and (segment.msg is not None or segment.id is not None):
             return await self.parse_reply(segment)
         elif isinstance(segment, Reference) and isinstance(self.bot, OneBotV11Bot) and segment.id is not None:

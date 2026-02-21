@@ -892,6 +892,7 @@ bilibili:
   resolve_failed: "无法解析该链接，请确认链接是否有效。"
   summary_system_prompt: "你是一个视频内容分析助手。请根据提供的视频，总结视频的主要内容。"
   summary_user_prompt: "这是 B 站视频：{}\n简介：{}\n请总结这个视频的内容。"
+
 vm:
   unavailable: "❌ VM 服务当前不可用\n原因: {}"
   create_task:
