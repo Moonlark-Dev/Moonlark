@@ -33,9 +33,8 @@ from ..config import config
 from ..lang import lang
 from .cache import AsyncCache
 
-
 # 视频文件扩展名
-VIDEO_EXTENSIONS = {'.mp4', '.avi', '.mov', '.mkv', '.flv', '.wmv', '.webm', '.m4v', '.3gp'}
+VIDEO_EXTENSIONS = {".mp4", ".avi", ".mov", ".mkv", ".flv", ".wmv", ".webm", ".m4v", ".3gp"}
 
 # 文件缓存目录
 FILE_CACHE_DIR: Path = get_cache_dir("nonebot_plugin_chat") / "files"
@@ -116,6 +115,7 @@ async def describe_video(file_path: Path, file_name: str, user_id: str) -> str:
     # 复制文件到缓存目录（如果不在那里）
     if not cache_file_path.exists():
         import shutil
+
         shutil.copy(file_path, cache_file_path)
 
     external_url = f"{config.moonlark_api_base}/chat/files/{file_id}"
@@ -153,9 +153,7 @@ async def describe_video(file_path: Path, file_name: str, user_id: str) -> str:
         return "视频分析失败"
 
 
-async def get_file_summary(
-    segment: File, event: Event, bot: Bot, state: T_State
-) -> tuple[str, str, str]:
+async def get_file_summary(segment: File, event: Event, bot: Bot, state: T_State) -> tuple[str, str, str]:
     """
     获取文件摘要信息
 
