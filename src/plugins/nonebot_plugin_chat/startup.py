@@ -32,3 +32,17 @@ async def _init_video_server():
 
     app = nonebot.get_app()
     app.mount("/chat/video", StaticFiles(directory=VIDEO_DIR), name="chat_video")
+
+
+@driver.on_startup
+async def _init_file_server():
+    import nonebot
+    from fastapi.staticfiles import StaticFiles
+    import nonebot_plugin_localstore as store
+
+    FILE_DIR = store.get_cache_dir("nonebot_plugin_chat") / "files"
+    if not FILE_DIR.exists():
+        FILE_DIR.mkdir(parents=True, exist_ok=True)
+
+    app = nonebot.get_app()
+    app.mount("/chat/files", StaticFiles(directory=FILE_DIR), name="chat_files")
