@@ -24,7 +24,7 @@ prompt_group:
         "content": "看番",
         "duration": 10          // 单位：分钟
       }},
-      "judge": {{               // 可选：评价用户行为，会引起你与目标用户的好感度的变动。
+      "favorability_judge": {{  // 可选：评价用户行为，会引起你与目标用户的好感度的变动。
         "target": "UserA",      // 目标用户昵称
         "score": 1,             // -2 到 2
         "reason": "..."

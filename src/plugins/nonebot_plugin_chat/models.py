@@ -97,6 +97,6 @@ class ModelResponse(BaseModel):
     mood: Optional[Literal["joy", "sadness", "anger", "fear", "surprise", "disgust", "trust", "anticipation", "calm", "bored", "confused", "tired", "shy"]]
     mood_reason: Optional[str] = None
     activity: Optional[ActivityData] = None
-    judge: Optional[JudgeData] = None
+    favorability_judge: Optional[JudgeData] = None
     messages: list[MessageData] = []
     
