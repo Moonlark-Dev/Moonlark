@@ -1,82 +1,105 @@
 """
 模型配置管理模块
-使用 localstore 存储模型配置，支持默认模型和应用特定模型
+使用数据库存储模型配置，支持默认模型和应用特定模型
 """
 
-import json
-from typing import TypedDict
+from typing import TYPE_CHECKING
 
-import aiofiles
-from nonebot_plugin_localstore import get_data_file
+from nonebot_plugin_orm import get_session
+from sqlalchemy import select, delete
 
 from ..config import config
 
-
-class ModelConfigData(TypedDict):
-    default_model: str
-    model_override: dict[str, str]
+if TYPE_CHECKING:
+    from ..models import OpenAIModelConfig
 
 
-# 获取配置文件路径
-config_file = get_data_file("nonebot_plugin_openai", "model_config.json")
-
-
-async def load_config() -> ModelConfigData:
-    """加载模型配置，如果不存在则从 .env 创建"""
-    if config_file.exists():
-        async with aiofiles.open(config_file, encoding="utf-8") as f:
-            return ModelConfigData(**json.loads(await f.read()))
-    # 从 .env 配置创建初始配置
-    data = ModelConfigData(
-        default_model=config.openai_default_model,
-        model_override=dict(config.model_override),
-    )
-    await save_config(data)
-    return data
-
-
-async def save_config(data: ModelConfigData) -> None:
-    """保存模型配置"""
-    async with aiofiles.open(config_file, "w", encoding="utf-8") as f:
-        await f.write(json.dumps(data, indent=4, ensure_ascii=False))
+# 特殊键名用于存储默认模型
+DEFAULT_MODEL_KEY = "__default__"
 
 
 async def get_default_model() -> str:
     """获取默认模型"""
-    data = await load_config()
-    return data["default_model"]
+    async with get_session() as session:
+        from ..models import OpenAIModelConfig
+        result = await session.scalar(
+            select(OpenAIModelConfig.model_name).where(
+                OpenAIModelConfig.config_key == DEFAULT_MODEL_KEY
+            )
+        )
+        return result if result else config.openai_default_model
 
 
 async def set_default_model(model: str) -> None:
     """设置默认模型"""
-    data = await load_config()
-    data["default_model"] = model
-    await save_config(data)
+    async with get_session() as session:
+        from ..models import OpenAIModelConfig
+        existing = await session.scalar(
+            select(OpenAIModelConfig).where(
+                OpenAIModelConfig.config_key == DEFAULT_MODEL_KEY
+            )
+        )
+        if existing:
+            existing.model_name = model
+        else:
+            session.add(
+                OpenAIModelConfig(
+                    config_key=DEFAULT_MODEL_KEY,
+                    model_name=model,
+                    config_type="default",
+                )
+            )
+        await session.commit()
 
 
 async def get_model_for_identify(identify: str) -> str:
     """获取指定应用的模型，如果没有特定配置则返回默认模型"""
-    data = await load_config()
-
-    # 如果该 identify 有特定配置，直接返回
-    if identify in data["model_override"]:
-        return data["model_override"][identify]
-
-    # 否则返回默认模型
-    return await get_default_model()
+    async with get_session() as session:
+        from ..models import OpenAIModelConfig
+        # 先查找特定应用的配置
+        result = await session.scalar(
+            select(OpenAIModelConfig.model_name).where(
+                OpenAIModelConfig.config_key == identify
+            )
+        )
+        if result:
+            return result
+        # 没有特定配置则返回默认模型
+        return await get_default_model()
 
 
 async def is_default_model_for_identify(identify: str) -> bool:
     """判断指定应用的模型是否为默认模型"""
-    data = await load_config()
-    return data["model_override"].get(identify) is None
+    async with get_session() as session:
+        from ..models import OpenAIModelConfig
+        result = await session.scalar(
+            select(OpenAIModelConfig).where(
+                OpenAIModelConfig.config_key == identify
+            )
+        )
+        return result is None
 
 
 async def set_model_for_identify(identify: str, model: str) -> None:
     """设置指定应用的模型"""
-    data = await load_config()
-    data["model_override"][identify] = model
-    await save_config(data)
+    async with get_session() as session:
+        from ..models import OpenAIModelConfig
+        existing = await session.scalar(
+            select(OpenAIModelConfig).where(
+                OpenAIModelConfig.config_key == identify
+            )
+        )
+        if existing:
+            existing.model_name = model
+        else:
+            session.add(
+                OpenAIModelConfig(
+                    config_key=identify,
+                    model_name=model,
+                    config_type="override",
+                )
+            )
+        await session.commit()
 
 
 async def remove_model_for_identify(identify: str) -> bool:
@@ -84,15 +107,43 @@ async def remove_model_for_identify(identify: str) -> bool:
 
     返回 True 表示成功删除，False 表示该应用没有特定配置
     """
-    data = await load_config()
-    if identify in data["model_override"]:
-        del data["model_override"][identify]
-        await save_config(data)
-        return True
-    return False
+    async with get_session() as session:
+        from ..models import OpenAIModelConfig
+        existing = await session.scalar(
+            select(OpenAIModelConfig).where(
+                OpenAIModelConfig.config_key == identify
+            )
+        )
+        if existing:
+            await session.delete(existing)
+            await session.commit()
+            return True
+        return False
 
 
 async def get_model_override() -> dict[str, str]:
     """获取所有应用特定的模型配置"""
-    data = await load_config()
-    return data["model_override"]
+    async with get_session() as session:
+        from ..models import OpenAIModelConfig
+        results = await session.execute(
+            select(OpenAIModelConfig.config_key, OpenAIModelConfig.model_name).where(
+                OpenAIModelConfig.config_type == "override"
+            )
+        )
+        return {key: model for key, model in results.all()}
+
+
+# 迁移相关函数
+async def migrate_from_json(data: dict) -> None:
+    """从旧的 JSON 格式迁移数据到数据库
+
+    data 格式: {"default_model": str, "model_override": dict[str, str]}
+    """
+    # 迁移默认模型
+    if "default_model" in data:
+        await set_default_model(data["default_model"])
+
+    # 迁移应用特定配置
+    if "model_override" in data:
+        for identify, model in data["model_override"].items():
+            await set_model_for_identify(identify, model)
