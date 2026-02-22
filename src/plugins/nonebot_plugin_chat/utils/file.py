@@ -155,8 +155,10 @@ async def describe_video(file_path: Path, file_name: str, user_id: str) -> str:
 
 from nonebot.adapters.onebot.v11 import Bot as OneBotV11Bot
 
+
 async def get_file_url(file_id: str, bot: OneBotV11Bot) -> str:
     return (await bot.call_api("get_file", file_id=file_id))["url"]
+
 
 async def get_file_summary(segment: File, event: Event, bot: Bot, state: T_State) -> tuple[str, str, str]:
     """
@@ -179,7 +181,6 @@ async def get_file_summary(segment: File, event: Event, bot: Bot, state: T_State
         file_url = await get_file_url(segment.id, bot)
     elif not file_url:
         file_url = ""
-
 
     # 判断是否为视频文件
     if is_video_file(file_name):

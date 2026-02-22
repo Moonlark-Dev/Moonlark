@@ -70,7 +70,9 @@ class MessageParser:
             return f"[合并转发: 获取信息失败（{e}）]"
         return f"[合并转发: {message_list_str}]"
 
-    async def get_forawrd_message_list(self, ref_id: str) -> str:  # 定义一个异步方法，获取转发消息列表，接收一个ref_id参数，返回字符串类型
+    async def get_forawrd_message_list(
+        self, ref_id: str
+    ) -> str:  # 定义一个异步方法，获取转发消息列表，接收一个ref_id参数，返回字符串类型
         forward = await self.bot.get_forward_msg(id=ref_id)  # 通过机器人获取转发消息，使用ref_id作为标识
         message_list = [
             (
