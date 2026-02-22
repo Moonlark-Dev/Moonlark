@@ -126,7 +126,7 @@ class MessageProcessor:
                 await self.get_message()
             except Exception as e:
                 logger.exception(e)
-                await asyncio.sleep(10)
+                await asyncio.sleep(5)
 
     async def poke(self, target_name: str) -> str:
         target_id = (await self.session.get_users()).get(target_name)
@@ -140,30 +140,44 @@ class MessageProcessor:
         if not self.session.message_queue:
             await asyncio.sleep(3)
             return
-        message, event, state, user_id, nickname, dt, mentioned, message_id = self.session.message_queue.pop(0)
-        text = await parse_message_to_string(message, event, self.session.bot, state, self.session.lang_str)
-        if not text:
-            return
-        if "@Moonlark" not in text and mentioned:
-            text = f"@Moonlark {text}"
-        msg_dict: CachedMessage = {
-            "content": text,
-            "nickname": nickname,
-            "send_time": dt,
-            "user_id": user_id,
-            "self": False,
-            "message_id": message_id,
-        }
-        await self.process_messages(msg_dict)
-        self.session.cached_messages.append(msg_dict)
-        await self.session.on_cache_posted()
-        if (mentioned or not self.session.message_queue) and not self.blocked:
-            asyncio.create_task(self.generate_reply(important=mentioned))
+        trigger_mode: Literal["none", "probability", "all"] = "none"
+
+        item = self.session.message_queue.pop(0)
+
+        if item[0] == "event":
+            # 处理事件类型队列项
+            event_prompt, trigger_mode = item[1]  # type: ignore
+            content = await self.session.text("prompt.event_template", datetime.now().strftime("%H:%M:%S"), event_prompt)
+            self.openai_messages.append_user_message(content)
+
+        elif item[0] == "message":
+        # 处理消息类型队列项
+            message, event, state, user_id, nickname, dt, mentioned, message_id = item[1]
+            text = await parse_message_to_string(message, event, self.session.bot, state, self.session.lang_str)
+            if not text:
+                return
+            if "@Moonlark" not in text and mentioned:
+                text = f"@Moonlark {text}"
+            msg_dict: CachedMessage = {
+                "content": text,
+                "nickname": nickname,
+                "send_time": dt,
+                "user_id": user_id,
+                "self": False,
+                "message_id": message_id,
+            }
+            await self.process_messages(msg_dict)
+            self.session.cached_messages.append(msg_dict)
+            await self.session.on_cache_posted()
+            trigger_mode = "probability" if not mentioned else "all"
+        if (trigger_mode == "all" or trigger_mode == "probability" and not self.session.message_queue) and not self.blocked:
+            asyncio.create_task(self.generate_reply(trigger_mode == "all"))
 
     async def handle_timer(self, description: str) -> None:
-        content = await self.session.text("prompt.timer_triggered", datetime.now().strftime("%H:%M:%S"), description)
-        self.openai_messages.append_user_message(content)
-        await self.generate_reply(important=True)
+        await self.session.add_event(
+            await self.session.text("prompt.timer_triggered", datetime.now().strftime("%H:%M:%S"), description),
+            "all"
+        )
 
     async def leave_for_a_while(self) -> None:
         await self.session.mute()
@@ -376,41 +390,43 @@ class MessageProcessor:
         )
 
     async def handle_recall(self, message_id: str, message_content: str) -> None:
-        self.openai_messages.append_user_message(
+        await self.session.add_event(
             await self.session.text(
                 "prompt.recall",
                 datetime.now().strftime("%H:%M:%S"),
                 message_id,
                 message_content,
-            )
+            ),
+            "probability"
         )
 
     async def handle_poke(self, operator_name: str, target_name: str, to_me: bool) -> None:
         if to_me:
-            self.openai_messages.append_user_message(
-                await self.session.text("prompt.poke.to_me", datetime.now().strftime("%H:%M:%S"), operator_name)
+            await self.session.add_event(
+                await self.session.text("prompt.poke.to_me", datetime.now().strftime("%H:%M:%S"), operator_name),
+                "all"
             )
-            self.blocked = False
-            await self.generate_reply(important=True)
-            self.blocked = True
+            # 注意：由于现在事件是异步处理的，blocked 标志不再需要在 poke 中设置
+            # 事件会在 get_message 中被处理并直接生成回复
         else:
-            self.openai_messages.append_user_message(
+            await self.session.add_event(
                 await self.session.text(
                     "prompt.poke.to_other",
                     datetime.now().strftime("%H:%M:%S"),
                     operator_name,
                     target_name,
-                )
+                ),
+                "probability"
             )
 
     async def handle_reaction(self, message_string: str, operator_name: str, emoji_id: str) -> None:
-        self.openai_messages.append_user_message(
+        await self.session.add_event(
             await self.session.text(
                 "prompt.reaction",
                 datetime.now().strftime("%H:%M:%S"),
                 operator_name,
                 message_string,
                 QQ_EMOJI_MAP[emoji_id],
-            )
+            ),
+            "probability"
         )
-        await self.generate_reply(False)

@@ -14,7 +14,16 @@ import math
 import uuid
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
-from typing import Literal, Optional
+from typing import Literal, Optional, TypeAlias
+
+# 消息队列项类型定义
+MessageQueueItem: TypeAlias = tuple[
+    Literal["message"],
+    tuple[UniMessage, Event, T_State, str, str, datetime, bool, str]
+] | tuple[
+    Literal["event"],
+    tuple[str, Literal["probability", "none", "all"]]
+]
 
 from ..processor import MessageProcessor
 
@@ -27,7 +36,7 @@ class BaseSession(ABC):
         self.bot = bot
         self.lang_str = lang_str
         self.tool_calls_history = []
-        self.message_queue: list[tuple[UniMessage, Event, T_State, str, str, datetime, bool, str]] = []
+        self.message_queue: list[MessageQueueItem] = []
         self.cached_messages: list[CachedMessage] = []
         self.message_cache_counter = 0
         self.ghot_coefficient = 1
@@ -112,7 +121,19 @@ class BaseSession(ABC):
         self, message: UniMessage, user_id: str, event: Event, state: T_State, nickname: str, mentioned: bool = False
     ) -> None:
         message_id = get_message_id(event)
-        self.message_queue.append((message, event, state, user_id, nickname, datetime.now(), mentioned, message_id))
+        self.message_queue.append(("message", (message, event, state, user_id, nickname, datetime.now(), mentioned, message_id)))
+
+    async def add_event(self, event_prompt: str, trigger_mode: Literal["probability", "none", "all"] = "probability") -> None:
+        """向消息队列中添加一个事件
+
+        Args:
+            event_prompt: 事件的描述文本
+            trigger_mode: 触发模式
+                - "none": 不触发回复
+                - "probability": 使用概率计算判断是否触发回复
+                - "all": 强制触发回复
+        """
+        self.message_queue.append(("event", (event_prompt, trigger_mode)))
 
     @abstractmethod
     async def format_message(self, origin_message: str) -> UniMessage:
@@ -258,11 +279,4 @@ class BaseSession(ABC):
                 - "probability": 使用概率计算判断是否触发回复
                 - "all": 强制触发回复
         """
-        # 添加事件消息到消息队列
-        content = await self.text("prompt.event_template", datetime.now().strftime("%H:%M:%S"), event_prompt)
-        self.processor.openai_messages.append_user_message(content)
-
-        # 根据触发模式决定是否生成回复
-        if trigger_mode == "none":
-            return
-        await self.processor.generate_reply(important=trigger_mode == "all")
+        await self.add_event(event_prompt, trigger_mode)
