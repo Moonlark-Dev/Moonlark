@@ -129,7 +129,7 @@ async def describe_video(file_path: Path, file_name: str, user_id: str) -> str:
             ),
             generate_message(
                 [
-                    {"type": "text", "text": await lang.text("bilibili.summary_user_prompt", user_id, file_name, "")},
+                    {"type": "text", "text": await lang.text("bilibili.summary_user_prompt_1", user_id, file_name, "")},
                     {"type": "video_url", "video_url": {"url": external_url}},
                 ],
                 role="user",
@@ -153,6 +153,11 @@ async def describe_video(file_path: Path, file_name: str, user_id: str) -> str:
         return "视频分析失败"
 
 
+from nonebot.adapters.onebot.v11 import Bot as OneBotV11Bot
+
+async def get_file_url(file_id: str, bot: OneBotV11Bot) -> str:
+    return (await bot.call_api("get_file", file_id=file_id))["url"]
+
 async def get_file_summary(segment: File, event: Event, bot: Bot, state: T_State) -> tuple[str, str, str]:
     """
     获取文件摘要信息
@@ -167,8 +172,14 @@ async def get_file_summary(segment: File, event: Event, bot: Bot, state: T_State
         tuple[str, str, str]: (文件类型, 文件名, 描述)
     """
     file_name = segment.name or "未知文件"
-    file_url = segment.url or ""
+    file_url = segment.url
     file_type = "file"
+
+    if file_url is None and isinstance(bot, OneBotV11Bot) and segment.id:
+        file_url = await get_file_url(segment.id, bot)
+    elif not file_url:
+        file_url = ""
+
 
     # 判断是否为视频文件
     if is_video_file(file_name):
