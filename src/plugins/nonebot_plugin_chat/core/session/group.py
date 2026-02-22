@@ -93,7 +93,7 @@ class GroupSession(BaseSession):
     async def process_timer(self) -> None:
         await super().process_timer()
         dt = datetime.now()
-        if self.processor.blocked or not self.cached_messages:
+        if self.message_queue or self.processor.blocked or not self.cached_messages:
             return
         time_to_last_message = (dt - self.cached_messages[-1]["send_time"]).total_seconds()
         if (
