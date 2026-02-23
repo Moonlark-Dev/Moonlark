@@ -159,8 +159,15 @@ class MessageQueue:
                 if analysis.interest is not None:
                     self.processor.session.set_interest(analysis.interest)
                     logger.debug(f"Cached interest: {analysis.interest:.2f}")
+                # 处理连续回复同一条消息的情况：第二条开始的重复 reply_message_id 设为 None
+                last_reply_id = None
                 for msg in analysis.messages:
-                    await self.processor.send_message(msg.message_content, msg.reply_message_id)
+                    reply_id = msg.reply_message_id
+                    # 如果当前消息的 reply_message_id 与上一条相同，则从第二条开始设为 None
+                    if reply_id == last_reply_id and last_reply_id is not None:
+                        reply_id = None
+                    await self.processor.send_message(msg.message_content, reply_id)
+                    last_reply_id = msg.reply_message_id  # 记录原始值
 
             self.messages = fetcher.get_messages() + self.messages
         except Exception as e:
