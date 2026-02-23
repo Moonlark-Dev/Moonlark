@@ -116,6 +116,15 @@ async def describe_bilibili_video(bv_id: str, get_text: GetTextFunc) -> str:
     temp_video_path = VIDEO_DIR / f"{bv_id}_temp_video.mp4"
     temp_audio_path = VIDEO_DIR / f"{bv_id}_temp_audio.m4a"
 
+    def _cleanup_cache_files():
+        """清理所有缓存文件"""
+        for path in [file_path, temp_video_path, temp_audio_path]:
+            try:
+                if path.exists():
+                    os.remove(path)
+            except OSError as e:
+                logger.warning(f"清理缓存文件失败 {path}: {e}")
+
     try:
         title, desc, video_url, audio_url = await _get_video_info(bv_id)
 
@@ -150,13 +159,7 @@ async def describe_bilibili_video(bv_id: str, get_text: GetTextFunc) -> str:
 
         result = await fetch_message(messages=messages, identify="Bilibili Video Summary")
 
-        if file_path.exists():
-            os.remove(file_path)
-
         return result
 
     finally:
-        if temp_video_path.exists():
-            os.remove(temp_video_path)
-        if temp_audio_path.exists():
-            os.remove(temp_audio_path)
+        _cleanup_cache_files()
