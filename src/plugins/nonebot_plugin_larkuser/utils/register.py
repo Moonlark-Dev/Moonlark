@@ -49,7 +49,7 @@ async def send_eula_screenshot(user_id: str) -> None:
 async def get_nickname(user: UserInfo, user_id: str) -> tuple[Optional[str], bool]:
     if user.user_displayname:
         return user.user_displayname, False
-    prompt_text = await lang.text("prompt.user_nickname", user_id, user_id)
+    prompt_text = await lang.text("input.user_nickname", user_id, user_id)
     for i in range(3):
         try:
             nickname = await prompt(
@@ -60,8 +60,8 @@ async def get_nickname(user: UserInfo, user_id: str) -> tuple[Optional[str], boo
         review_result = await review_text(nickname)
         if review_result["conclusion"]:
             return nickname, True
-        prompt_text = await lang.text("prompt.nickname_review_failed", user_id, review_result["message"])
-    await lang.text("prompt.nickname_failed", user_id)
+        prompt_text = await lang.text("input.nickname_review_failed", user_id, review_result["message"])
+    await lang.text("input.nickname_failed", user_id)
     return None, False
 
 
