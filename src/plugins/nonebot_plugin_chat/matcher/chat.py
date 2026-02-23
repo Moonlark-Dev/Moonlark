@@ -78,9 +78,16 @@ class CommandHandler:
 
     async def handle_desire(self) -> None:
         session = await self.get_group_session()
-        length = session.accumulated_text_length
-        probability = await session.get_probability(apply_ghot_coeefficient=False)
-        await lang.send("command.desire.get", self.user_id, length, round(probability, 2), session.ghot_coefficient)
+        details = await session.get_probability_details()
+        await lang.send(
+            "command.desire.get",
+            self.user_id,
+            round(details["final_probability"] * 100, 2),  # 消息触发概率 (%)
+            details["accumulated_length"],  # 当前累计文本长度
+            round(details["base_probability"] * 100, 2),  # 基础触发概率 (%)
+            details["ghot_coefficient"],  # 群热度分数系数
+            round(details["interest_coefficient"], 2),  # 兴趣系数
+        )
 
     async def handle_mute(self) -> None:
         session = await self.get_group_session()
