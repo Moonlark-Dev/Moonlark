@@ -27,14 +27,10 @@ class MessageQueue:
         self,
         processor: "MessageProcessor",
         max_message_count: int = 50,
-        consecutive_warning_threshold: int = 5,
-        consecutive_stop_threshold: int = 10,
     ) -> None:
         self.processor = processor
         self.max_message_count = max_message_count
         self.messages: list[OpenAIMessage] = []
-        self.CONSECUTIVE_WARNING_THRESHOLD = consecutive_warning_threshold
-        self.CONSECUTIVE_STOP_THRESHOLD = consecutive_stop_threshold
         self.fetcher_lock = asyncio.Lock()
         self._restore_complete = asyncio.Event()
         # 在初始化时从数据库恢复消息队列
@@ -70,7 +66,6 @@ class MessageQueue:
                 cache = await session.get(MessageQueueCache, {"group_id": group_id})
                 if cache:
                     self.messages = json.loads(cache.messages_json)
-                    self.consecutive_bot_messages = cache.consecutive_bot_messages
                     logger.info(f"已从数据库恢复群 {group_id} 的消息队列，共 {len(self.messages)} 条消息")
         except Exception as e:
             logger.warning(f"从数据库恢复消息队列失败: {e}")
@@ -87,7 +82,6 @@ class MessageQueue:
                     cache = MessageQueueCache(
                         group_id=group_id,
                         messages_json=self._serialize_messages(),
-                        consecutive_bot_messages=self.consecutive_bot_messages,
                         updated_time=datetime.now().timestamp(),
                     )
                     await session.merge(cache)
@@ -176,9 +170,7 @@ class MessageQueue:
             state = FetchStatus.FAILED
         return state
 
-    def append_user_message(self, message: str, reset_bot_message_counter: bool = True) -> None:
-        if reset_bot_message_counter:
-            self.consecutive_bot_messages = 0  # 收到用户消息时重置计数器
+    def append_user_message(self, message: str) -> None:
         self.messages.append(generate_message(message, "user"))
 
     def is_last_message_from_user(self) -> bool:

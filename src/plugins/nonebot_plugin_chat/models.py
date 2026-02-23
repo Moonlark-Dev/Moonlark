@@ -68,7 +68,6 @@ class MessageQueueCache(Model):
     group_id: Mapped[str] = mapped_column(String(128), primary_key=True)  # 群组 ID，主键确保每个群组只有一条记录
     # MySQL 使用 MEDIUMTEXT (16MB)，SQLite 使用 Text（无大小限制）
     messages_json: Mapped[str] = mapped_column(CompatibleMediumText)  # JSON 序列化的消息列表
-    consecutive_bot_messages: Mapped[int] = mapped_column(Integer(), default=0)  # 连续 bot 消息计数
     updated_time: Mapped[float] = mapped_column(Float())  # 最后更新时间戳
 
 
