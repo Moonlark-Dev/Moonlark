@@ -262,48 +262,6 @@ class ToolManager:
 
         # === Group 模式特有工具 ===
         if mode == "group":
-
-            # # set_mood
-            # tools.append(
-            #     AsyncFunction(
-            #         func=self.set_mood,
-            #         description=await self.text("tools_desc.set_mood.desc"),
-            #         parameters={
-            #             "mood": FunctionParameterWithEnum(
-            #                 type="string",
-            #                 description=await self.text("tools_desc.set_mood.mood"),
-            #                 required=True,
-            #                 enum={m.value for m in MoodEnum},
-            #             ),
-            #             "reason": FunctionParameter(
-            #                 type="string",
-            #                 description=await self.text("tools_desc.set_mood.reason"),
-            #                 required=False,
-            #             ),
-            #         },
-            #     )
-            # )
-
-            # # set_activity
-            # tools.append(
-            #     AsyncFunction(
-            #         func=self.set_activity,
-            #         description=await self.text("tools_desc.set_activity.desc"),
-            #         parameters={
-            #             "content": FunctionParameter(
-            #                 type="string",
-            #                 description=await self.text("tools_desc.set_activity.content"),
-            #                 required=True,
-            #             ),
-            #             "duration": FunctionParameter(
-            #                 type="integer",
-            #                 description=await self.text("tools_desc.set_activity.duration"),
-            #                 required=False,
-            #             ),
-            #         },
-            #     )
-            # )
-
             # query_image
             tools.append(
                 AsyncFunction(
