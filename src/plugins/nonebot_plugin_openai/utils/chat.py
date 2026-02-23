@@ -106,6 +106,7 @@ class LLMRequestSession:
 
     async def request(self) -> AsyncGenerator[str, None]:
         try:
+            logger.info(f"[{self.identify}] 正在请求模型 {self.model} ...")
             completion = cast(
                 ChatCompletion,
                 await client.chat.completions.create(
@@ -123,7 +124,7 @@ class LLMRequestSession:
                     **self.kwargs,
                 ),
             )
-            logger.debug(f"{completion=}")
+            logger.debug(f"{completion.choices=}")
             response = completion.choices[0]
         except openai.APITimeoutError as e:
             if self.timeout_strategy is None or self.timeout_strategy["strategy"] == "throw":
@@ -131,9 +132,9 @@ class LLMRequestSession:
             elif self.timeout_strategy["strategy"] == "replace":
                 response = self.timeout_strategy["choice"]
         except IndexError:
-            logger.warning(f"Response is empty, {self.messages=}")
+            logger.warning(f"请求取得了空回复")
             return
-        logger.debug(f"{response=}\n{self.messages=}\n{self.model=}\n{self.func_list=}\n{completion=}")
+        logger.debug(f"{response=}")
         self.messages.append(response.message)
         if response.message.content:
             yield response.message.content
@@ -155,6 +156,7 @@ class LLMRequestSession:
         self.insert_message_queue.extend(messages)
 
     async def call_function(self, call_id: str, name: str, params: dict[str, Any]) -> None:
+        logger.debug(f"[{self.identify}] Calling function {name} with params {params}")
         self.has_tool_calls = True
         if self.trigger_functions["pre_function_call"]:
             call_id, name, params = await self.trigger_functions["pre_function_call"](call_id, name, params)
