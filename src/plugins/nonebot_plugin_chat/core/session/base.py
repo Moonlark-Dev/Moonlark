@@ -44,6 +44,7 @@ class BaseSession(ABC):
         self.session_name = "未命名会话"
         self.llm_timers = []  # 定时器列表
         self.pending_interactions: dict[str, PendingInteraction] = {}  # 待处理的交互请求
+        self.last_interest: Optional[float] = None  # 缓存的 interest 值
         self.processor = MessageProcessor(self)
 
     @abstractmethod
@@ -88,8 +89,18 @@ class BaseSession(ABC):
             logger.debug(f"{avg_fav=}")
             final_probability *= 1 + 0.8 * (1 - math.e ** (-5 * avg_fav))
 
+        # 应用 interest 系数映射 (0-1) -> (0.25-4)
+        if self.last_interest is not None:
+            interest_coefficient = 0.25 + self.last_interest * 3.75  # interest=0 -> 0.25, interest=1 -> 4
+            final_probability *= interest_coefficient
+            logger.debug(f"Applied interest coefficient: {interest_coefficient:.2f} (interest={self.last_interest:.2f})")
+
         # 确保概率在 0.0-1.0 之间
         return max(0.0, min(1.0, final_probability))
+
+    def set_interest(self, interest: Optional[float]) -> None:
+        """缓存 interest 值用于后续概率计算"""
+        self.last_interest = interest
 
     @abstractmethod
     async def calculate_ghot_coefficient(self) -> None:

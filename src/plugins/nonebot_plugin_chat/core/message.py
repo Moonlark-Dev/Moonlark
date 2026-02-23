@@ -155,6 +155,10 @@ class MessageQueue:
                         analysis.favorability_judge.reason,
                     )
                     logger.info(f"Judge user behavior: {res}")
+                # 缓存 interest 值用于后续触发概率计算
+                if analysis.interest is not None:
+                    self.processor.session.set_interest(analysis.interest)
+                    logger.debug(f"Cached interest: {analysis.interest:.2f}")
                 for msg in analysis.messages:
                     await self.processor.send_message(msg.message_content, msg.reply_message_id)
 

@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Literal, Optional, TypedDict
 
 from nonebot_plugin_orm import Model
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy import LargeBinary, String, Text, Float, Integer
 from sqlalchemy.dialects.mysql import MEDIUMBLOB, MEDIUMTEXT
@@ -116,6 +116,7 @@ class ModelResponse(BaseModel):
     activity: Optional[ActivityData] = None
     favorability_judge: Optional[JudgeData] = None
     messages: list[MessageData] = []
+    interest: Optional[float] = Field(None, ge=0.0, le=1.0)
 
 
 class PrivateChatSession(Model):
