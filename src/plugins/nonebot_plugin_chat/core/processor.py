@@ -203,6 +203,7 @@ class MessageProcessor:
                 return
 
         logger.info(f"Generating reply ({important=})...")
+        self.session.accumulated_text_length = 0
         await self.openai_messages.fetch_reply()
 
     async def append_tool_call_history(self, call_string: str) -> None:
@@ -233,7 +234,7 @@ class MessageProcessor:
         if reply_message_id:
             message = message.reply(reply_message_id)
         await message.send(target=self.session.target, bot=self.session.bot)
-        self.session.accumulated_text_length = 0
+        # self.session.accumulated_text_length = 0
 
     def append_user_message(self, msg_str: str) -> None:
         self.openai_messages.append_user_message(msg_str)
