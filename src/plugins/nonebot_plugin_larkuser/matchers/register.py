@@ -37,4 +37,3 @@ async def _(
 ) -> None:
     nickname = await register_user(session, user_id, user)
     await lang.finish("welcome", user_id, nickname or f"用户-{user_id}")
-
