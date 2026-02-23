@@ -520,7 +520,6 @@ sticker:
   id_not_found: '未找到 ID 为 {} 的表情包'
   duplicate: '该表情包已经收藏过了 (ID: {}, 相似度: {:.1%})，无需重复收藏'
   not_meme: '该图片不是表情包，无法收藏'
-  recommend: "### 表情包推荐 ()\n{}"
 prompt_agent:
   system: |
     你是一名专业的信息检索专家和深度研究助手。你的核心任务是通过调用外部工具获取最新、最准确的数据，并对信息进行整合分析，为用户提供有据可查的回答。
@@ -563,7 +562,6 @@ rua:
   success: 指令动作已被设为：{}
   action_list: "可用的动作列表(*表示选中): \n{}"
   action_list_item: "[{}] {}"
-  refusable: "（该动作可被拒绝：如果你不喜欢，可以通过 `refuse_interaction_request` 工具躲开。）"
   refusable_hint: "（该动作可被拒绝，交互 ID: {}。如果你不喜欢，可以通过 `refuse_interaction_request` 工具躲开。）"
   bite_msg: "*Moonlark 躲开了你的手，并咬了一口"
   bite_prompt: "你躲开了 {} 的互动，并咬了 TA 一口。"
