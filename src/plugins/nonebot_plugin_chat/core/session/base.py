@@ -17,13 +17,10 @@ from datetime import datetime, timedelta
 from typing import Literal, Optional, TypeAlias
 
 # 消息队列项类型定义
-MessageQueueItem: TypeAlias = tuple[
-    Literal["message"],
-    tuple[UniMessage, Event, T_State, str, str, datetime, bool, str]
-] | tuple[
-    Literal["event"],
-    tuple[str, Literal["probability", "none", "all"]]
-]
+MessageQueueItem: TypeAlias = (
+    tuple[Literal["message"], tuple[UniMessage, Event, T_State, str, str, datetime, bool, str]]
+    | tuple[Literal["event"], tuple[str, Literal["probability", "none", "all"]]]
+)
 
 from ..processor import MessageProcessor
 
@@ -121,9 +118,13 @@ class BaseSession(ABC):
         self, message: UniMessage, user_id: str, event: Event, state: T_State, nickname: str, mentioned: bool = False
     ) -> None:
         message_id = get_message_id(event)
-        self.message_queue.append(("message", (message, event, state, user_id, nickname, datetime.now(), mentioned, message_id)))
+        self.message_queue.append(
+            ("message", (message, event, state, user_id, nickname, datetime.now(), mentioned, message_id))
+        )
 
-    async def add_event(self, event_prompt: str, trigger_mode: Literal["probability", "none", "all"] = "probability") -> None:
+    async def add_event(
+        self, event_prompt: str, trigger_mode: Literal["probability", "none", "all"] = "probability"
+    ) -> None:
         """向消息队列中添加一个事件
 
         Args:
