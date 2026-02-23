@@ -12,7 +12,7 @@ from nonebot_plugin_larkutils import parse_special_user_id
 from .config import Config
 from .exceptions import *
 from .loader import LangLoader
-from .models import LanguageData, LanguageKeyCache, DisplaySetting
+from .models import LanguageData, LanguageKeyCache, DisplaySetting, GroupLanguageSetting
 from nonebot_plugin_orm import get_session, AsyncSession
 from sqlalchemy import select
 import copy
@@ -96,6 +96,31 @@ async def get_user_language(user_id: str, session: AsyncSession) -> str:
             language = "zh_hans"
     if language not in languages:
         await set_user_language(user_id, language := config.language_index_order[0])
+    return language
+
+
+async def set_group_language(group_id: str, language: str) -> None:
+    """设置群聊的语言"""
+    async with get_session() as session:
+        group = await session.get(GroupLanguageSetting, group_id)
+        if group is None:
+            group = GroupLanguageSetting(group_id=group_id, language=language)
+        else:
+            group.language = language
+        await session.merge(group)
+        await session.commit()
+
+
+async def get_group_language(group_id: str) -> str:
+    """获取群聊的语言，如果不存在则返回默认语言 zh_hans"""
+    async with get_session() as session:
+        group = await session.get(GroupLanguageSetting, group_id)
+        if group is not None:
+            language = group.language
+        else:
+            language = "zh_hans"
+    if language not in languages:
+        language = config.language_index_order[0]
     return language
 
 

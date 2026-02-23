@@ -12,6 +12,13 @@ class DisplaySetting(Model):
     theme: Mapped[str] = mapped_column(String(16), default="default")
 
 
+class GroupLanguageSetting(Model):
+    """群语言设置模型"""
+
+    group_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    language: Mapped[str] = mapped_column(String(16), default="zh_hans")
+
+
 class LanguageKeyCache(Model):
     language: Mapped[str] = mapped_column(String(16), primary_key=True)
     plugin: Mapped[str] = mapped_column(String(32), primary_key=True)

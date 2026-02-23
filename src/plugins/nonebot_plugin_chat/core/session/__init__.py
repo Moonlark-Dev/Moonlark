@@ -4,6 +4,7 @@ from typing import Literal, cast
 from nonebot import get_driver, logger
 from nonebot.adapters import Bot
 from nonebot_plugin_alconna import Target
+from nonebot_plugin_larklang.__main__ import get_group_language
 from .base import BaseSession
 from .group import GroupSession
 from .private import PrivateSession
@@ -60,9 +61,9 @@ async def get_private_session(user_id: str, target: Target, bot: Bot) -> Private
 
 
 async def get_group_session_forced(group_id: str, target: Target, bot: Bot) -> GroupSession:
+    """强制获取群会话（如果存在则返回已存在的，否则创建新的）"""
     if group_id not in groups:
-        groups[group_id] = GroupSession(group_id, bot, target)
-        await groups[group_id].setup()
+        return await create_group_session(group_id, target, bot)
     return cast(GroupSession, groups[group_id])
 
 
@@ -73,8 +74,10 @@ async def group_disable(group_id: str) -> None:
 
 
 async def create_group_session(group_id: str, target: Target, bot: Bot) -> GroupSession:
+    """创建群会话，并查询群语言设置"""
     if group_id not in groups:
-        groups[group_id] = GroupSession(group_id, bot, target)
+        lang_name = await get_group_language(group_id)
+        groups[group_id] = GroupSession(group_id, bot, target, lang_name=lang_name)
         await groups[group_id].setup()
     return cast(GroupSession, groups[group_id])
 
