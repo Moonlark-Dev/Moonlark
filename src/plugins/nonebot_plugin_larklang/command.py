@@ -1,7 +1,8 @@
-from nonebot_plugin_alconna import Alconna, Args, Subcommand, on_alconna
+from nonebot_plugin_alconna import Alconna, Args, Subcommand, on_alconna, Option
+from nonebot_plugin_alconna.uniseg import Target
 
 from nonebot_plugin_larkutils.superuser import is_user_superuser
-from nonebot_plugin_larkutils import get_user_id
+from nonebot_plugin_larkutils import get_user_id, get_group_id
 from . import __main__ as main
 
 lang_cmd = on_alconna(
@@ -10,6 +11,7 @@ lang_cmd = on_alconna(
         Subcommand(
             "set",
             Args["language", str],
+            Option("--group|-g"),
         ),
         Subcommand("view", Args["language", str]),
         Subcommand("reload"),
@@ -27,11 +29,20 @@ async def _(user_id: str = get_user_id(), superuser: bool = is_user_superuser())
 
 
 @lang_cmd.assign("set")
-async def _(language: str, user_id: str = get_user_id()) -> None:
+async def _(
+    language: str,
+    group: bool,
+    user_id: str = get_user_id(),
+    group_id: str = get_group_id(),
+) -> None:
     if language not in main.get_languages():
         await lang.send("global.not_found", user_id, language)
-    await main.set_user_language(user_id, language)
-    await lang.send("set.success", user_id, language)
+    if group:
+        await main.set_group_language(group_id, language)
+        await lang.send("set.group.success", user_id, language)
+    else:
+        await main.set_user_language(user_id, language)
+        await lang.send("set.success", user_id, language)
     await lang_cmd.finish()
 
 

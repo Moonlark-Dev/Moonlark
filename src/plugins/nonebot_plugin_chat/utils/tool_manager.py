@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING, Literal, Optional
 from ..types import MoodEnum
 from nonebot_plugin_openai.types import AsyncFunction, FunctionParameter, FunctionParameterWithEnum
 from nonebot.adapters.onebot.v11 import Bot as OB11Bot
+from nonebot_plugin_larkutils.jrrp import get_luck_value
 from .tools import (
     browse_webpage,
     web_search,
@@ -91,6 +92,21 @@ class ToolManager:
     async def set_activity(self, content: str, duration: int = 10) -> str:
         self.status_manager.set_activity(content, duration)
         return await self.text("status.activity_set", content, duration)
+
+    async def calculate_luck_value(self, nickname: str) -> str:
+        """计算用户的人品值
+
+        Args:
+            nickname: 用户的昵称
+
+        Returns:
+            人品值结果消息
+        """
+        users = await self.processor.session.get_users()
+        if not (user_id := users.get(nickname)):
+            return await self.text("tools_desc.calculate_luck_value.user_not_found", nickname)
+        luck_value = await get_luck_value(user_id)
+        return await self.text("tools_desc.calculate_luck_value.result", nickname, luck_value)
 
     async def select_tools(self, mode: Literal["group", "agent"]) -> list[AsyncFunction]:
         tools = []
@@ -440,6 +456,21 @@ class ToolManager:
                             description=await self.text("tools_desc.refuse_interaction_request.type_"),
                             required=True,
                             enum={"dodge", "bite"},
+                        ),
+                    },
+                )
+            )
+
+            # calculate_luck_value
+            tools.append(
+                AsyncFunction(
+                    func=self.calculate_luck_value,
+                    description=await self.text("tools_desc.calculate_luck_value.desc"),
+                    parameters={
+                        "nickname": FunctionParameter(
+                            type="string",
+                            description=await self.text("tools_desc.calculate_luck_value.nickname"),
+                            required=True,
                         ),
                     },
                 )
