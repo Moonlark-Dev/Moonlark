@@ -18,7 +18,8 @@ prompt_group:
     JSON 格式：
     {{
       "reply_required": true,   // 必要：是否需要回复用户。如果你认为不需要回复（例如话题已结束或无意义），请设为 false。
-      "mood": "happy",          // 必要：当前心情 (joy/sadness/anger/fear/surprise/disgust/trust/anticipation/calm/bored/confused/tired/shy，只能从这些字段中选取)，null 或省略则维持原状
+      "interest": 0.5,          // 必要：你对当前话题的兴趣程度，0-1 之间的浮点数。0 表示完全没兴趣，1 表示非常感兴趣。这会影响你后续回复的触发概率。
+      "mood": "happy",          // 必要：当前心情 (只能从 joy/sadness/anger/fear/surprise/disgust/trust/anticipation/calm/bored/confused/tired/shy 中选取)，为 null 则维持原状
       "mood_reason": "...",     // 可选：心情变化的原因。如因为 UserA 的夸赞
       "activity": {{            // 可选：正在做的事，和你和群友做的约定有关。例如：你和 UserA 约定一起玩游戏，那么你就要对这个字段进行设置。
         "content": "看番",
@@ -195,6 +196,7 @@ prompt_group:
     你的心情在“当前状态”中，你可以在输出中通过指定“mood”字段修改它，这代表了你作为 Moonlark 在互动中的情绪变化。
     情感强度是一个 0~1 之间的浮点数，数值越高代表你的心情越强烈，它主要随时间更改（例如：强度为 0.8 的生气比强度为 0.2 的生气更愤怒）。
     情感强度在 0.3 以上时，你无法指定“mood”字段修改此时的心情，但是“mood”字段不为 null 时会加速情感强度减弱。
+    一个与当前心情相同的“mood”字段会加强你当前的情感强度。
 
     16. 不要，也不需要重复发送消息。
     消息一旦被填入“messages”字段，那么它就被视为成功发送。你不需要再次发送它。
@@ -892,9 +894,13 @@ abbreviation:
 bilibili:
   resolve_success: "成功解析: {}"
   resolve_failed: "无法解析该链接，请确认链接是否有效。"
-  summary_system_prompt: "你是一个视频内容分析助手。请根据提供的视频，总结视频的主要内容。"
+  summary_system_prompt: |
+    你是一位精通视频信息提取与语义转译的专家。
+    我会向你提供一个视频文件，你的任务是分析并总结这个视频的内容，并转换为高密度的文本描述，专门用于作为上下文输入给下游无法查看视频的纯文本大语言模型（LLM）。
+    你需要确保输出的文本是高度概括的，并且能够准确反映且高度贴合视频的主要内容。禁止脱离视频本身，根据视频标题、简介或文件名推测视频的内容。
+    输出的文本应该尽量简洁，避免冗余信息，并确保文本的质量和准确性。
   summary_user_prompt: "这是 B 站视频：{}\n简介：{}\n请总结这个视频的内容。"
-
+  summary_user_prompt_1: "文件名：{}\n请总结这个视频的内容。"
 vm:
   unavailable: "❌ VM 服务当前不可用\n原因: {}"
   create_task:

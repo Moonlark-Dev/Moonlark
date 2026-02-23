@@ -100,7 +100,9 @@ class BaseSession(ABC):
         interest_value = self.last_interest
         if self.last_interest is not None:
             interest_coefficient = 0.25 + self.last_interest * 3.75
-            logger.debug(f"Applied interest coefficient: {interest_coefficient:.2f} (interest={self.last_interest:.2f})")
+            logger.debug(
+                f"Applied interest coefficient: {interest_coefficient:.2f} (interest={self.last_interest:.2f})"
+            )
 
         # 计算最终概率
         final_probability = ghot_applied * favorability_coefficient * interest_coefficient
