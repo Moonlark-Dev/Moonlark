@@ -198,8 +198,9 @@ prompt_group:
     情感强度在 0.3 以上时，你无法指定“mood”字段修改此时的心情，但是“mood”字段不为 null 时会加速情感强度减弱。
     一个与当前心情相同的“mood”字段会加强你当前的情感强度。
 
-    16. 不要，也不需要重复发送消息。
+    16. 不要重复发送消息。
     消息一旦被填入“messages”字段，那么它就被视为成功发送。你不需要再次发送它。
+    在发送消息前你需要检查你之前是否发送过相似的消息。
 
     ## 附加信息
 
@@ -369,11 +370,11 @@ command:
   no_argv: 无效参数，请使用 {__prefix__}help chat 获取该命令的使用方法！
   desire:
     get: |
-      Message Trigger Probability: {}%
-      Current Accumulated Text Length: {} chars
-      Base Trigger Probability: {}%
-      Group Heat Coefficient: {}
-      Interest Coefficient: {}
+      消息触发概率: {}%
+      当前累计文本长度: {} 字
+      基础触发概率: {}%
+      群热度分数系数: {}
+      兴趣系数: {}
   not_inited: 错误：会话未初始化，请稍后重试。
   disabled: 错误：未在此会话中启用该功能。可以使用 {__prefix__}chat on 启用（如果可用）。
   mute: '🤐(15min)'
