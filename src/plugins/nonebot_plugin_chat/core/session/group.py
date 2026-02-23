@@ -60,7 +60,7 @@ class GroupSession(BaseSession):
         return self.bot.self_id in config.napcat_bot_ids
 
     async def calculate_ghot_coefficient(self) -> None:
-        self.ghot_coefficient = round(max((15 - (await get_group_hot_score(self.session_id))[2]) * 0.8, 1))
+        self.ghot_coefficient = round(max((10 - (await get_group_hot_score(self.session_id))[2]), 1))
         cached_users = set()
         for message in self.cached_messages[:-5]:
             if not message["self"]:
@@ -100,6 +100,7 @@ class GroupSession(BaseSession):
             30 < time_to_last_message
             and not self.cached_messages[-1]["self"]
             and self.cached_messages[-1] is not self.cached_latest_message
+            and (await get_group_hot_score(self.session_id))[2] <= 13
         ):
             self.cached_latest_message = self.cached_messages[-1]
-            asyncio.create_task(self.processor.generate_reply(important=True))
+            asyncio.create_task(self.processor.generate_reply())
