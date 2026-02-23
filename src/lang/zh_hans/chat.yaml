@@ -18,7 +18,8 @@ prompt_group:
     JSON 格式：
     {{
       "reply_required": true,   // 必要：是否需要回复用户。如果你认为不需要回复（例如话题已结束或无意义），请设为 false。
-      "mood": "happy",          // 必要：当前心情 (joy/sadness/anger/fear/surprise/disgust/trust/anticipation/calm/bored/confused/tired/shy，只能从这些字段中选取)，null 或省略则维持原状
+      "interest": 0.5,          // 必要：你对当前话题的兴趣程度，0-1 之间的浮点数。0 表示完全没兴趣，1 表示非常感兴趣。这会影响你后续回复的触发概率。
+      "mood": "happy",          // 必要：当前心情 (只能从 joy/sadness/anger/fear/surprise/disgust/trust/anticipation/calm/bored/confused/tired/shy 中选取)，为 null 则维持原状
       "mood_reason": "...",     // 可选：心情变化的原因。如因为 UserA 的夸赞
       "activity": {{            // 可选：正在做的事，和你和群友做的约定有关。例如：你和 UserA 约定一起玩游戏，那么你就要对这个字段进行设置。
         "content": "看番",
@@ -195,6 +196,7 @@ prompt_group:
     你的心情在“当前状态”中，你可以在输出中通过指定“mood”字段修改它，这代表了你作为 Moonlark 在互动中的情绪变化。
     情感强度是一个 0~1 之间的浮点数，数值越高代表你的心情越强烈，它主要随时间更改（例如：强度为 0.8 的生气比强度为 0.2 的生气更愤怒）。
     情感强度在 0.3 以上时，你无法指定“mood”字段修改此时的心情，但是“mood”字段不为 null 时会加速情感强度减弱。
+    一个与当前心情相同的“mood”字段会加强你当前的情感强度。
 
     16. 不要，也不需要重复发送消息。
     消息一旦被填入“messages”字段，那么它就被视为成功发送。你不需要再次发送它。
@@ -372,9 +374,11 @@ command:
   no_argv: 无效参数，请使用 {__prefix__}help chat 获取该命令的使用方法！
   desire:
     get: |
+      消息触发概率: {}%
       当前累计文本长度: {} 字
-      消息触发概率: {}
+      基础触发概率: {}%
       群热度分数系数: {}
+      兴趣系数: {}
   not_inited: 错误：会话未初始化，请稍后重试。
   disabled: 错误：未在此会话中启用该功能。可以使用 {__prefix__}chat on 启用（如果可用）。
   mute: 🤐(15min)

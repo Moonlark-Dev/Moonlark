@@ -44,6 +44,7 @@ class BaseSession(ABC):
         self.session_name = "未命名会话"
         self.llm_timers = []  # 定时器列表
         self.pending_interactions: dict[str, PendingInteraction] = {}  # 待处理的交互请求
+        self.last_interest: Optional[float] = None  # 缓存的 interest 值
         self.processor = MessageProcessor(self)
 
     @abstractmethod
@@ -58,7 +59,64 @@ class BaseSession(ABC):
     async def send_poke(self, target_id: str) -> None:
         pass
 
-    async def get_probability(self, length_adjustment: int = 0, apply_ghot_coeefficient: bool = True) -> float:
+    async def get_probability_details(self, length_adjustment: int = 0) -> dict:
+        """
+        计算触发回复的概率并返回详细信息
+
+        参数:
+            length_adjustment: 对累计文本长度的调整值，默认为0
+
+        返回:
+            包含概率计算详情的字典:
+            - accumulated_length: 当前累计文本长度
+            - base_probability: 基础触发概率 (0.0-0.95)
+            - ghot_coefficient: 群热度分数系数
+            - ghot_applied: 应用热度系数后的概率
+            - favorability_coefficient: 好感度系数
+            - interest_coefficient: 兴趣系数 (interest=0 -> 0.25, interest=1 -> 4)
+            - interest_value: 当前兴趣值 (0-1, 可能为 None)
+            - final_probability: 最终触发概率 (0.0-1.0)
+        """
+        # 使用调整后的累计文本长度
+        adjusted_length = self.accumulated_text_length + length_adjustment
+
+        # 使用 calculate_trigger_probability 函数计算基础概率
+        base_probability = calculate_trigger_probability(adjusted_length)
+
+        # 应用热度系数
+        ghot_applied = base_probability * self.ghot_coefficient
+
+        # 计算好感度系数
+        favorability_coefficient = 1.0
+        if len(self.cached_messages) > 0:
+            avg_fav = sum(
+                [(await get_user(msg["user_id"])).get_fav() for msg in self.cached_messages if not msg["self"]]
+            ) / len(self.cached_messages)
+            logger.debug(f"{avg_fav=}")
+            favorability_coefficient = 1 + 0.8 * (1 - math.e ** (-5 * avg_fav))
+
+        # 计算 interest 系数映射 (0-1) -> (0.25-4)
+        interest_coefficient = 1.0
+        interest_value = self.last_interest
+        if self.last_interest is not None:
+            interest_coefficient = 0.25 + self.last_interest * 3.75
+            logger.debug(f"Applied interest coefficient: {interest_coefficient:.2f} (interest={self.last_interest:.2f})")
+
+        # 计算最终概率
+        final_probability = ghot_applied * favorability_coefficient * interest_coefficient
+
+        return {
+            "accumulated_length": adjusted_length,
+            "base_probability": base_probability,
+            "ghot_coefficient": self.ghot_coefficient,
+            "ghot_applied": ghot_applied,
+            "favorability_coefficient": favorability_coefficient,
+            "interest_coefficient": interest_coefficient,
+            "interest_value": interest_value,
+            "final_probability": max(0.0, min(1.0, final_probability)),
+        }
+
+    async def get_probability(self, length_adjustment: int = 0) -> float:
         """
         计算触发回复的概率
 
@@ -68,28 +126,12 @@ class BaseSession(ABC):
         返回:
             触发回复的概率值（0.0-1.0之间）
         """
-        # 使用调整后的累计文本长度
-        adjusted_length = self.accumulated_text_length + length_adjustment
+        details = await self.get_probability_details(length_adjustment)
+        return details["final_probability"]
 
-        # 使用 calculate_trigger_probability 函数计算基础概率
-        base_probability = calculate_trigger_probability(adjusted_length)
-
-        # 应用热度系数
-        if apply_ghot_coeefficient:
-            final_probability = base_probability * self.ghot_coefficient
-        else:
-            final_probability = base_probability
-
-        # 应用好感度系数
-        if len(self.cached_messages) > 0:
-            avg_fav = sum(
-                [(await get_user(msg["user_id"])).get_fav() for msg in self.cached_messages if not msg["self"]]
-            ) / len(self.cached_messages)
-            logger.debug(f"{avg_fav=}")
-            final_probability *= 1 + 0.8 * (1 - math.e ** (-5 * avg_fav))
-
-        # 确保概率在 0.0-1.0 之间
-        return max(0.0, min(1.0, final_probability))
+    def set_interest(self, interest: Optional[float]) -> None:
+        """缓存 interest 值用于后续概率计算"""
+        self.last_interest = interest
 
     @abstractmethod
     async def calculate_ghot_coefficient(self) -> None:

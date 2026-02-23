@@ -369,9 +369,11 @@ command:
   no_argv: 无效参数，请使用 {__prefix__}help chat 获取该命令的使用方法！
   desire:
     get: |
-      当前累计文本长度: {} 字
-      消息触发概率: {}
-      群热度分数系数: {}
+      Message Trigger Probability: {}%
+      Current Accumulated Text Length: {} chars
+      Base Trigger Probability: {}%
+      Group Heat Coefficient: {}
+      Interest Coefficient: {}
   not_inited: 错误：会话未初始化，请稍后重试。
   disabled: 错误：未在此会话中启用该功能。可以使用 {__prefix__}chat on 启用（如果可用）。
   mute: '🤐(15min)'

@@ -191,7 +191,7 @@ class MessageProcessor:
             return
         if len(self.openai_messages.messages) <= 0 or not self.openai_messages.is_last_message_from_user():
             return
-        self.cold_until = datetime.now() + timedelta(seconds=5)
+        self.cold_until = datetime.now() + timedelta(seconds=3)
 
         # 检查是否应该触发回复
         if not important:

@@ -104,8 +104,6 @@ class MessageQueue:
         return messages
 
     async def fetch_reply(self) -> None:
-        if self.fetcher_lock.locked():
-            return
         async with self.fetcher_lock:
             status = await self._fetch_reply()
             logger.info(f"Reply fetcher ended with status: {status.name}")
@@ -113,6 +111,8 @@ class MessageQueue:
     async def _fetch_reply(self) -> FetchStatus:
         state = FetchStatus.SUCCESS
         messages = await self.get_messages()
+        if get_role(messages[-1]) == "assistant":
+            return FetchStatus.SKIP
         self.messages.clear()
         self.inserted_messages.clear()
         fetcher = await MessageFetcher.create(
@@ -128,9 +128,6 @@ class MessageQueue:
             async for message in fetcher.fetch_message_stream():
                 if retry_count > 5:
                     raise Exception("Failed to fetch message")
-                fetcher.session.insert_messages(self.messages)
-                self.inserted_messages.extend(self.messages)
-                self.messages = []
                 if not message:
                     continue
                 try:
@@ -158,10 +155,14 @@ class MessageQueue:
                         analysis.favorability_judge.reason,
                     )
                     logger.info(f"Judge user behavior: {res}")
+                # 缓存 interest 值用于后续触发概率计算
+                if analysis.interest is not None:
+                    self.processor.session.set_interest(analysis.interest)
+                    logger.debug(f"Cached interest: {analysis.interest:.2f}")
                 for msg in analysis.messages:
                     await self.processor.send_message(msg.message_content, msg.reply_message_id)
 
-            self.messages = fetcher.get_messages()
+            self.messages = fetcher.get_messages() + self.messages
         except Exception as e:
             logger.exception(e)
             # 恢复 Message
