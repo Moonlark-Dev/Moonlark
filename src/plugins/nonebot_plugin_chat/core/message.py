@@ -168,7 +168,6 @@ class MessageQueue:
                         reply_id = None
                     await self.processor.send_message(msg.message_content, reply_id)
                     last_reply_id = msg.reply_message_id  # 记录原始值
-
             self.messages = fetcher.get_messages() + self.messages
         except Exception as e:
             logger.exception(e)
