@@ -90,6 +90,7 @@ async def _(seed: str, user_id: str = get_user_id()) -> None:
     # 如果 seed 是 "help"，不处理，让 help 子命令处理器处理
     if seed in ["legend", "help"]:
         await get_legend(user_id)
+        return
     map_seed = seed if seed != "-1" else str(struct.unpack("I", os.urandom(4))[0])
     ftt_map = FttMap(map_seed)
     points = ftt_map.difficulty["points"]
