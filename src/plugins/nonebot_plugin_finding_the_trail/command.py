@@ -88,7 +88,7 @@ async def is_user_continue(user_id: str, d_list: list[Directions]) -> bool:
 @ftt.handle()
 async def _(seed: str, user_id: str = get_user_id()) -> None:
     # 如果 seed 是 "help"，不处理，让 help 子命令处理器处理
-    if seed == "help":
+    if seed == "legend":
         return
     map_seed = seed if seed != "-1" else str(struct.unpack("I", os.urandom(4))[0])
     ftt_map = FttMap(map_seed)
