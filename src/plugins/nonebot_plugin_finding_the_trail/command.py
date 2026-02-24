@@ -48,7 +48,7 @@ from .__main__ import ftt, lang
 async def get_block_info(user_id: str) -> tuple[dict[Blocks, str], dict[Blocks, str], str]:
     """获取方块名称和描述"""
     block_names = {
-        Blocks.NULL: await lang.text("legend.null.name", user_id),
+        Blocks.NULL: await lang.text("legend.null_block.name", user_id),
         Blocks.WALL: await lang.text("legend.wall.name", user_id),
         Blocks.START: await lang.text("legend.start.name", user_id),
         Blocks.END: await lang.text("legend.end.name", user_id),
@@ -59,7 +59,7 @@ async def get_block_info(user_id: str) -> tuple[dict[Blocks, str], dict[Blocks, 
         Blocks.GOLD_PISTON: await lang.text("legend.gold_piston.name", user_id),
     }
     block_descs = {
-        Blocks.NULL: await lang.text("legend.null.desc", user_id),
+        Blocks.NULL: await lang.text("legend.null_block.desc", user_id),
         Blocks.WALL: await lang.text("legend.wall.desc", user_id),
         Blocks.START: await lang.text("legend.start.desc", user_id),
         Blocks.END: await lang.text("legend.end.desc", user_id),

@@ -74,10 +74,14 @@ def generate_legend_image(block_names: dict[Blocks, str], block_descs: dict[Bloc
     y_offset = title_height + padding
     for block in block_order:
         # 绘制方块图片
-        if block in BLOCKS:
-            # 使用 BILINEAR 插值方法（兼容性更好）
-            block_img = BLOCKS[block].resize((block_size, block_size), Image.BILINEAR)
-            image.paste(block_img, (padding, y_offset + (row_height - block_size) // 2))
+        try:
+            if block in BLOCKS:
+                # 使用 BILINEAR 插值方法（兼容性更好）
+                block_img = BLOCKS[block].resize((block_size, block_size), Image.BILINEAR)
+                image.paste(block_img, (padding, y_offset + (row_height - block_size) // 2))
+        except NameError:
+            # BLOCKS 未定义（贴图加载失败），跳过绘制方块图片
+            pass
 
         # 绘制方块名称
         name_x = padding + block_size + 15

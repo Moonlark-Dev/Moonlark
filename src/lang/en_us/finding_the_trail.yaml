@@ -41,7 +41,7 @@ help:
   u3: ftt legend (View block legend)
 legend:
   title: Finding The Trail - Block Legend
-  null:
+  null_block:
     name: Stone Bricks
     desc: Normal floor, can pass through
   wall:
