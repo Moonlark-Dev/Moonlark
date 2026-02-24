@@ -15,10 +15,16 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
-from nonebot_plugin_alconna import on_alconna, Alconna, Args
+from nonebot_plugin_alconna import on_alconna, Alconna, Args, Subcommand
 from nonebot_plugin_larkuser import patch_matcher
 from nonebot_plugin_larklang import LangHelper
 
-ftt = on_alconna(Alconna("ftt", Args["seed?", str, "-1"]))
+ftt = on_alconna(
+    Alconna(
+        "ftt",
+        Subcommand("help"),
+        Args["seed?", str, "-1"],
+    )
+)
 lang = LangHelper()
 patch_matcher(ftt)

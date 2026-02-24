@@ -38,3 +38,33 @@ help:
   det: 寻径指津玩法
   u1: ftt (从随机地图开始)
   u2: ftt <seed> (从指定种子生成地图)
+  u3: ftt help (查看方块图例)
+legend:
+  title: 寻径指津 - 方块图例
+  null:
+    name: 石头砖
+    desc: 普通地板，可以正常通过
+  wall:
+    name: 砖块
+    desc: 障碍物，无法通过
+  start:
+    name: 铁块
+    desc: 起点位置
+  end:
+    name: 钻石块
+    desc: 终点位置，到达即可获胜
+  piston:
+    name: 活塞
+    desc: 经过后变成墙
+  sand:
+    name: 沙子
+    desc: 障碍物，玩家离开后其上下左右四格沙子变石头砖
+  portal:
+    name: 传送门
+    desc: 传送到另一个传送门位置
+  cobweb:
+    name: 蜘蛛网
+    desc: 经过后在该位置停止
+  gold_piston:
+    name: 金活塞
+    desc: 经过后变成普通活塞

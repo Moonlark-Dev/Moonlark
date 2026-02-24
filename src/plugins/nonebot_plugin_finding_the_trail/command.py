@@ -31,16 +31,46 @@
 
 import os
 import struct
+from nonebot_plugin_alconna.uniseg import UniMessage
 from nonebot_plugin_schedule.utils import complete_schedule
 from nonebot_plugin_waiter import prompt
 from nonebot_plugin_larkutils import get_user_id
 from nonebot_plugin_minigame_api import create_minigame_session
 from .exceptions import Quited, CannotMove
 from .utils.fttmap import FttMap
-from .utils.enums import Directions
+from .utils.enums import Directions, Blocks
 from .utils.string import get_command_list_string
 from .utils.answer import AnswerGetter
+from .utils.image.legend import generate_legend_image
 from .__main__ import ftt, lang
+
+
+async def get_block_info(user_id: str) -> tuple[dict[Blocks, str], dict[Blocks, str], str]:
+    """获取方块名称和描述"""
+    block_names = {
+        Blocks.NULL: await lang.text("legend.null.name", user_id),
+        Blocks.WALL: await lang.text("legend.wall.name", user_id),
+        Blocks.START: await lang.text("legend.start.name", user_id),
+        Blocks.END: await lang.text("legend.end.name", user_id),
+        Blocks.PISTON: await lang.text("legend.piston.name", user_id),
+        Blocks.SAND: await lang.text("legend.sand.name", user_id),
+        Blocks.PORTAL: await lang.text("legend.portal.name", user_id),
+        Blocks.COBWEB: await lang.text("legend.cobweb.name", user_id),
+        Blocks.GOLD_PISTON: await lang.text("legend.gold_piston.name", user_id),
+    }
+    block_descs = {
+        Blocks.NULL: await lang.text("legend.null.desc", user_id),
+        Blocks.WALL: await lang.text("legend.wall.desc", user_id),
+        Blocks.START: await lang.text("legend.start.desc", user_id),
+        Blocks.END: await lang.text("legend.end.desc", user_id),
+        Blocks.PISTON: await lang.text("legend.piston.desc", user_id),
+        Blocks.SAND: await lang.text("legend.sand.desc", user_id),
+        Blocks.PORTAL: await lang.text("legend.portal.desc", user_id),
+        Blocks.COBWEB: await lang.text("legend.cobweb.desc", user_id),
+        Blocks.GOLD_PISTON: await lang.text("legend.gold_piston.desc", user_id),
+    }
+    title = await lang.text("legend.title", user_id)
+    return block_names, block_descs, title
 
 
 async def is_user_continue(user_id: str, d_list: list[Directions]) -> bool:
@@ -99,3 +129,11 @@ async def _(seed: str, user_id: str = get_user_id()) -> None:
     await session.quit(
         await lang.text("ftt.example", user_id, await get_command_list_string(ftt_map.answer, user_id), map_seed)
     )
+
+
+@ftt.assign("help")
+async def _(user_id: str = get_user_id()) -> None:
+    """处理 ftt help 命令，显示方块图例"""
+    block_names, block_descs, title = await get_block_info(user_id)
+    image_bytes = generate_legend_image(block_names, block_descs, title)
+    await UniMessage().image(raw=image_bytes).send()
