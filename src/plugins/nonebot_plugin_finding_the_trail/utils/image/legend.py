@@ -56,11 +56,12 @@ def generate_legend_image(block_names: dict[Blocks, str], block_descs: dict[Bloc
     image = Image.new("RGB", (width, height), (40, 44, 52))  # 深色背景
     draw = ImageDraw.Draw(image)
 
-    # 尝试加载字体
+    # 加载项目内置字体
+    font_path = "./src/static/SarasaGothicSC-Regular.ttf"
     try:
-        title_font = ImageFont.truetype("simhei.ttf", 28)
-        name_font = ImageFont.truetype("simhei.ttf", 20)
-        desc_font = ImageFont.truetype("simhei.ttf", 14)
+        title_font = ImageFont.truetype(font_path, 28)
+        name_font = ImageFont.truetype(font_path, 20)
+        desc_font = ImageFont.truetype(font_path, 14)
     except:
         title_font = ImageFont.load_default()
         name_font = ImageFont.load_default()
@@ -74,7 +75,8 @@ def generate_legend_image(block_names: dict[Blocks, str], block_descs: dict[Bloc
     for block in block_order:
         # 绘制方块图片
         if block in BLOCKS:
-            block_img = BLOCKS[block].resize((block_size, block_size), Image.LANCZOS)
+            # 使用 BILINEAR 插值方法（兼容性更好）
+            block_img = BLOCKS[block].resize((block_size, block_size), Image.BILINEAR)
             image.paste(block_img, (padding, y_offset + (row_height - block_size) // 2))
 
         # 绘制方块名称
