@@ -22,7 +22,7 @@ from nonebot_plugin_larklang import LangHelper
 ftt = on_alconna(
     Alconna(
         "ftt",
-        Subcommand("help"),
+        Subcommand("legend"),
         Args["seed?", str, "-1"],
     )
 )
