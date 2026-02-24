@@ -134,7 +134,6 @@ async def _(seed: str, user_id: str = get_user_id()) -> None:
     )
 
 
-
 async def get_legend(user_id: str = get_user_id()) -> None:
     """处理 ftt legend 命令，显示方块图例"""
     block_names, block_descs, title = await get_block_info(user_id)
