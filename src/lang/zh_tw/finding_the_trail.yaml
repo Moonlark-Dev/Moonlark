@@ -41,7 +41,7 @@ help:
   u3: ftt legend (查看方块图例)
 legend:
   title: 寻径指津 - 方块图例
-  null:
+  null_block:
     name: 石头砖
     desc: 普通地板，可以正常通过
   wall:
