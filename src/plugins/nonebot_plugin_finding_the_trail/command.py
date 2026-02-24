@@ -88,8 +88,8 @@ async def is_user_continue(user_id: str, d_list: list[Directions]) -> bool:
 @ftt.handle()
 async def _(seed: str, user_id: str = get_user_id()) -> None:
     # 如果 seed 是 "help"，不处理，让 help 子命令处理器处理
-    if seed == "legend":
-        return
+    if seed in ["legend", "help"]:
+        await get_legend(user_id)
     map_seed = seed if seed != "-1" else str(struct.unpack("I", os.urandom(4))[0])
     ftt_map = FttMap(map_seed)
     points = ftt_map.difficulty["points"]
@@ -134,8 +134,8 @@ async def _(seed: str, user_id: str = get_user_id()) -> None:
     )
 
 
-@ftt.assign("legend")
-async def _(user_id: str = get_user_id()) -> None:
+
+async def get_legend(user_id: str = get_user_id()) -> None:
     """处理 ftt legend 命令，显示方块图例"""
     block_names, block_descs, title = await get_block_info(user_id)
     image_bytes = generate_legend_image(block_names, block_descs, title)
