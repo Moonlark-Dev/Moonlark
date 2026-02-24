@@ -34,7 +34,37 @@ ftt:
     恭喜您，挑战成功（获得 {} 积分）
     种子: {}
 help:
-  des: 寻径指津
-  det: 寻径指津玩法
-  u1: ftt (从随机地图开始)
-  u2: ftt <seed> (从指定种子生成地图)
+  des: Finding The Trail
+  det: Finding The Trail Game
+  u1: ftt (Start with random map)
+  u2: ftt <seed> (Start with specific seed)
+  u3: ftt help (View block legend)
+legend:
+  title: Finding The Trail - Block Legend
+  null:
+    name: Stone Bricks
+    desc: Normal floor, can pass through
+  wall:
+    name: Bricks
+    desc: Obstacle, cannot pass through
+  start:
+    name: Iron Block
+    desc: Starting position
+  end:
+    name: Diamond Block
+    desc: End position, reach to win
+  piston:
+    name: Piston
+    desc: Becomes wall after passing through
+  sand:
+    name: Sand
+    desc: Obstacle, adjacent sand turns to stone after player leaves
+  portal:
+    name: Portal
+    desc: Teleports to another portal
+  cobweb:
+    name: Cobweb
+    desc: Stops movement when passed through
+  gold_piston:
+    name: Golden Piston
+    desc: Becomes normal piston after passing through
