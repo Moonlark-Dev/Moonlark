@@ -1,3 +1,4 @@
+import asyncio
 import base64
 import math
 import random
@@ -27,6 +28,16 @@ from .models import SignData
 
 sign = on_alconna(Alconna("签到"), aliases={"签到", "sign"})
 patch_matcher(sign)
+
+# 用户级别的异步锁字典
+_user_locks: dict[str, asyncio.Lock] = {}
+
+
+def get_user_lock(user_id: str) -> asyncio.Lock:
+    """获取或创建用户的异步锁"""
+    if user_id not in _user_locks:
+        _user_locks[user_id] = asyncio.Lock()
+    return _user_locks[user_id]
 
 
 class SignClaimData(TypedDict):
@@ -170,44 +181,45 @@ async def is_user_signed(user_id: str) -> bool:
 @sign.handle()
 @patch_matcher(on_fullmatch(("sign", "签到"))).handle()
 async def _(matcher: Matcher, user_id: str = get_user_id()) -> None:
-    session = get_session()
-    data = await get_sign_data(session, user_id)
-    user = await get_user(user_id)
-    if (date.today() - data.last_sign).days < 1:
-        await lang.finish("sign.signed", user_id)
-    templates = {
-        "signdays": {
-            "text": await lang.text("image.signdays", user_id),
-            "value": await lang.text("image.signdays_text", user_id, await get_sign_days(data, user)),
-        },
-        "nickname": user.nickname,
-        "uid": await lang.text("image.uid", user_id, user_id),
-        "hitokoto": await get_hitokoto(user_id),
-        "exp": await get_sign_exp(user, data),
-        "vim": await get_sign_vim(user, data),
-        "fav": await get_sign_fav(user),
-        "rank": {
-            "text": await lang.text("image.rank", user_id),
-            "value": await lang.text(
-                "image.rank_text",
-                user_id,
-                len(
-                    (await session.execute(select(SignData.user_id).where(SignData.last_sign == date.today())))
-                    .scalars()
-                    .all()
-                )
-                + 1,
-            ),
-        },
-        "fortune": {
-            "text": await lang.text("image.fortune", user_id),
-            "value": await lang.text(f"luck.{await get_luck(user_id)}", user_id),
-        },
-        "avatar": base64.b64encode(user.avatar).decode() if user.avatar is not None else None,
-    }
-    data.last_sign = date.today()
-    await session.commit()
-    await session.close()
-    image = await render_template("sign.html.jinja", await lang.text("image.title", user_id), user_id, templates)
-    msg = UniMessage().image(raw=image)
-    await matcher.finish(await msg.export(), at_sender=True)
+    # 使用用户级别的异步锁防止同一用户并发签到
+    async with get_user_lock(user_id):
+        async with get_session() as session:
+            data = await get_sign_data(session, user_id)
+            user = await get_user(user_id)
+            if (date.today() - data.last_sign).days < 1:
+                await lang.finish("sign.signed", user_id)
+            templates = {
+                "signdays": {
+                    "text": await lang.text("image.signdays", user_id),
+                    "value": await lang.text("image.signdays_text", user_id, await get_sign_days(data, user)),
+                },
+                "nickname": user.nickname,
+                "uid": await lang.text("image.uid", user_id, user_id),
+                "hitokoto": await get_hitokoto(user_id),
+                "exp": await get_sign_exp(user, data),
+                "vim": await get_sign_vim(user, data),
+                "fav": await get_sign_fav(user),
+                "rank": {
+                    "text": await lang.text("image.rank", user_id),
+                    "value": await lang.text(
+                        "image.rank_text",
+                        user_id,
+                        len(
+                            (await session.execute(select(SignData.user_id).where(SignData.last_sign == date.today())))
+                            .scalars()
+                            .all()
+                        )
+                        + 1,
+                    ),
+                },
+                "fortune": {
+                    "text": await lang.text("image.fortune", user_id),
+                    "value": await lang.text(f"luck.{await get_luck(user_id)}", user_id),
+                },
+                "avatar": base64.b64encode(user.avatar).decode() if user.avatar is not None else None,
+            }
+            data.last_sign = date.today()
+            await session.commit()
+            image = await render_template("sign.html.jinja", await lang.text("image.title", user_id), user_id, templates)
+            msg = UniMessage().image(raw=image)
+            await matcher.finish(await msg.export(), at_sender=True)
