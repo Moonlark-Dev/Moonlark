@@ -220,6 +220,8 @@ async def _(matcher: Matcher, user_id: str = get_user_id()) -> None:
             }
             data.last_sign = date.today()
             await session.commit()
-            image = await render_template("sign.html.jinja", await lang.text("image.title", user_id), user_id, templates)
+            image = await render_template(
+                "sign.html.jinja", await lang.text("image.title", user_id), user_id, templates
+            )
             msg = UniMessage().image(raw=image)
             await matcher.finish(await msg.export(), at_sender=True)
