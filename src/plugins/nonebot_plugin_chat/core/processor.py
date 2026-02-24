@@ -106,11 +106,13 @@ class MessageProcessor:
         dt = datetime.now()
         user_cache = user.get_config_key("chat_fav_judge_cache", [0, 0])
         last_judge_time, daily_score = user_cache
-        if dt - datetime.fromtimestamp(last_judge_time) < timedelta(hours=1):
+        # 增加操作冷却时间为1小时，降低好感度操作冷却时间为0.5小时
+        cooldown_hours = 1.0 if score > 0 else 0.5
+        if dt - datetime.fromtimestamp(last_judge_time) < timedelta(hours=cooldown_hours):
             return await self.session.text("judge.cooldown", nickname)
         if datetime.fromtimestamp(last_judge_time).date() != datetime.now().date():
             daily_score = 0
-        delta = score * 0.0002
+        delta = score * 0.0004
         if abs(daily_score + delta) > 0.005:
             return await self.session.text("judge.daily_limit", nickname)
         await user.set_config_key("chat_fav_judge_cache", [dt.timestamp(), daily_score + delta])
