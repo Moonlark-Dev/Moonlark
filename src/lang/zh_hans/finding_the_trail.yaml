@@ -38,7 +38,7 @@ help:
   det: 寻径指津玩法
   u1: ftt (从随机地图开始)
   u2: ftt <seed> (从指定种子生成地图)
-  u3: ftt help (查看方块图例)
+  u3: ftt legend (查看方块图例)
 legend:
   title: 寻径指津 - 方块图例
   null:

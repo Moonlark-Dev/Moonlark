@@ -38,7 +38,7 @@ help:
   det: Finding The Trail Game
   u1: ftt (Start with random map)
   u2: ftt <seed> (Start with specific seed)
-  u3: ftt help (View block legend)
+  u3: ftt legend (View block legend)
 legend:
   title: Finding The Trail - Block Legend
   null:
