@@ -61,6 +61,7 @@ class GiftItem(UseableItem, ABC):
         """
         try:
             from nonebot_plugin_chat.utils.gift_manager import get_gift_manager
+
             gift_manager = get_gift_manager()
             nickname = await gift_manager._get_user_nickname(session, stack.user_id)
             gift_prompt = await self.getGiftPrompt(stack, nickname)
