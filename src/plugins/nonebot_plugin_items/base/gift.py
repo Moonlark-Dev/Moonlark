@@ -49,14 +49,17 @@ class GiftItem(UseableItem, ABC):
         bot = kwargs.get("bot")
         event = kwargs.get("event")
         session_id = kwargs.get("session_id")
+        is_private = kwargs.get("is_private", False)
 
         if bot is not None and event is not None and session_id is not None:
-            await self._trigger_gift_response(stack, bot, event, session_id)
+            await self._trigger_gift_response(stack, bot, event, session_id, is_private)
 
         # 3. 调用子类自定义逻辑
         return await self.on_gift_used(stack, *args, **kwargs)
 
-    async def _trigger_gift_response(self, stack: "ItemStack", bot: Any, event: Any, session_id: str) -> None:
+    async def _trigger_gift_response(
+        self, stack: "ItemStack", bot: Any, event: Any, session_id: str, is_private: bool
+    ) -> None:
         """
         触发礼物回复
 
@@ -67,6 +70,7 @@ class GiftItem(UseableItem, ABC):
             bot: Bot 实例
             event: Event 实例
             session_id: 会话 ID
+            is_private: 是否为私聊场景
         """
         try:
             from nonebot_plugin_chat.core.session import (
@@ -83,12 +87,12 @@ class GiftItem(UseableItem, ABC):
             except KeyError:
                 # Session 不存在，需要创建
                 target = Target(event)
-                if hasattr(event, "group_id") and event.group_id:
-                    # 群聊场景
-                    session = await get_group_session_forced(session_id, target, bot)
-                else:
+                if is_private:
                     # 私聊场景
                     session = await get_private_session(session_id, target, bot)
+                else:
+                    # 群聊场景
+                    session = await get_group_session_forced(session_id, target, bot)
 
             # 获取用户昵称并生成提示
             gift_manager = get_gift_manager()
