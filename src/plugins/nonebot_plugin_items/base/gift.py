@@ -47,23 +47,29 @@ class GiftItem(UseableItem, ABC):
         # 2. 尝试触发 AI 回复
         bot = kwargs.get("bot")
         event = kwargs.get("event")
+        group_id = kwargs.get("group_id")
+        is_private = kwargs.get("is_private")
 
-        if bot is not None and event is not None:
-            await self._trigger_gift_response(stack, bot, event)
+        if bot is not None and event is not None and group_id is not None and is_private is not None:
+            await self._trigger_gift_response(stack, bot, event, group_id, is_private)
 
         # 3. 调用子类自定义逻辑
         return await self.on_gift_used(stack, *args, **kwargs)
 
-    async def _trigger_gift_response(self, stack: "ItemStack", bot: Any, event: Any) -> None:
+    async def _trigger_gift_response(
+        self, stack: "ItemStack", bot: Any, event: Any, group_id: str, is_private: bool
+    ) -> None:
         """
         触发礼物回复
 
-        判断场景（私聊/群聊），获取或创建对应 chat session，然后触发 AI 回复。
+        根据 is_private 判断场景，获取或创建对应 chat session，然后触发 AI 回复。
 
         Args:
             stack: 物品堆叠
             bot: Bot 实例
             event: Event 实例
+            group_id: 群组 ID（作为群聊场景的 session_id）
+            is_private: 是否为私聊场景
         """
         try:
             from nonebot_plugin_chat.core.session import (
@@ -74,15 +80,13 @@ class GiftItem(UseableItem, ABC):
             from nonebot_plugin_chat.utils.gift_manager import get_gift_manager
             from nonebot_plugin_alconna import Target
 
-            # 判断场景并确定 session_id
-            if hasattr(event, "group_id") and event.group_id:
-                # 群聊场景
-                is_private = False
-                session_id = str(event.group_id)
-            else:
-                # 私聊场景
-                is_private = True
+            # 根据 is_private 确定 session_id
+            if is_private:
+                # 私聊场景：使用 user_id 作为 session_id
                 session_id = stack.user_id
+            else:
+                # 群聊场景：使用 group_id 作为 session_id
+                session_id = group_id
 
             # 尝试获取已存在的 session
             try:
