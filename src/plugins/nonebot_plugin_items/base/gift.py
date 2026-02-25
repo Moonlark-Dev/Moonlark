@@ -56,9 +56,7 @@ class GiftItem(UseableItem, ABC):
         # 3. 调用子类自定义逻辑
         return await self.on_gift_used(stack, *args, **kwargs)
 
-    async def _trigger_gift_response(
-        self, stack: "ItemStack", bot: Any, event: Any, session_id: str
-    ) -> None:
+    async def _trigger_gift_response(self, stack: "ItemStack", bot: Any, event: Any, session_id: str) -> None:
         """
         触发礼物回复
 
