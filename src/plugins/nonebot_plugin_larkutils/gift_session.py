@@ -29,9 +29,7 @@ if TYPE_CHECKING:
     from nonebot_plugin_chat.core.session.base import BaseSession
 
 
-async def get_or_create_session(
-    session_id: str, bot: Any, event: Any
-) -> "BaseSession | None":
+async def get_or_create_session(session_id: str, bot: Any, event: Any) -> "BaseSession | None":
     """
     获取或创建 Chat Session
 
@@ -73,9 +71,7 @@ async def get_or_create_session(
         return None
 
 
-async def trigger_gift_event(
-    session: "BaseSession", user_id: str, gift_prompt: str
-) -> bool:
+async def trigger_gift_event(session: "BaseSession", user_id: str, gift_prompt: str) -> bool:
     """
     触发礼物事件
 
