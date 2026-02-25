@@ -28,8 +28,6 @@ async def _(
     elif not item.stack.isUseable():
         await lang.finish("use.not_useable", user_id)
     # 传递上下文信息给物品使用
-    ret = await item.stack.use(
-        *args, count=count, bot=bot, event=event, user_id=user_id, session_id=session_id
-    )
+    ret = await item.stack.use(*args, count=count, bot=bot, event=event, user_id=user_id, session_id=session_id)
     if isinstance(ret, str) or isinstance(ret, UniMessage):
         await bag.finish(ret)
