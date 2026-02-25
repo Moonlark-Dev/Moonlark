@@ -28,43 +28,78 @@ class GiftItem(UseableItem, ABC):
         """
         使用礼物物品
 
-        自动处理好感度增加。如果提供了 session 参数，还会触发 AI 回复。
+        自动处理好感度增加和 AI 回复。
 
         Args:
             stack: 物品堆叠
-            session: Chat 会话对象（可选，用于触发 AI 回复）
+            bot: Bot 实例（从 kwargs 获取）
+            event: Event 实例（从 kwargs 获取）
+            session_id: 会话 ID（从 kwargs 获取，用于获取/创建 chat session）
 
         Returns:
             使用结果
         """
-        # 1. 增加好感度（无论是否有 session 都执行）
+        # 1. 增加好感度
         user = await get_user(stack.user_id)
         total_fav = self.fav_value * stack.count
         await user.add_fav(total_fav)
         logger.info(f"用户 {stack.user_id} 使用礼物 {self.getLocation()}, 好感度 +{total_fav}")
 
-        # 2. 如果有 session，触发 AI 回复
-        session = kwargs.get("session")
-        if session is not None:
-            await self._trigger_gift_response(stack, session)
+        # 2. 尝试触发 AI 回复
+        bot = kwargs.get("bot")
+        event = kwargs.get("event")
+        session_id = kwargs.get("session_id")
+
+        if bot is not None and event is not None and session_id is not None:
+            await self._trigger_gift_response(stack, bot, event, session_id)
 
         # 3. 调用子类自定义逻辑
         return await self.on_gift_used(stack, *args, **kwargs)
 
-    async def _trigger_gift_response(self, stack: "ItemStack", session: Any) -> None:
+    async def _trigger_gift_response(
+        self, stack: "ItemStack", bot: Any, event: Any, session_id: str
+    ) -> None:
         """
         触发礼物回复
 
+        通过 session_id 获取或创建 chat session，然后触发 AI 回复。
+
         Args:
             stack: 物品堆叠
-            session: Chat 会话对象
+            bot: Bot 实例
+            event: Event 实例
+            session_id: 会话 ID
         """
         try:
+            from nonebot_plugin_chat.core.session import (
+                get_session_directly,
+                get_group_session_forced,
+                get_private_session,
+            )
             from nonebot_plugin_chat.utils.gift_manager import get_gift_manager
+            from nonebot_plugin_alconna import Target
+
+            # 尝试获取已存在的 session
+            try:
+                session = get_session_directly(session_id)
+            except KeyError:
+                # Session 不存在，需要创建
+                target = Target(event)
+                if hasattr(event, "group_id") and event.group_id:
+                    # 群聊场景
+                    session = await get_group_session_forced(session_id, target, bot)
+                else:
+                    # 私聊场景
+                    session = await get_private_session(session_id, target, bot)
+
+            # 获取用户昵称并生成提示
             gift_manager = get_gift_manager()
             nickname = await gift_manager._get_user_nickname(session, stack.user_id)
             gift_prompt = await self.getGiftPrompt(stack, nickname)
+
+            # 触发 AI 回复
             await session.add_event(gift_prompt, trigger_mode="all")
+
         except Exception as e:
             logger.warning(f"触发礼物回复失败: {e}")
 

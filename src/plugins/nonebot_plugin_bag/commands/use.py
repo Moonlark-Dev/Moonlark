@@ -2,6 +2,7 @@ from typing import Any
 
 from nonebot.adapters import Bot, Event
 from nonebot_plugin_alconna import UniMessage
+from nonebot_plugin_session import SessionId, SessionIdType
 
 from ..utils.use import get_item
 from nonebot_plugin_larkutils.user import get_user_id
@@ -18,6 +19,7 @@ async def _(
     count: int,
     item: BagItem = Depends(get_item),
     user_id: str = get_user_id(),
+    session_id: str = SessionId(SessionIdType.GROUP, include_bot_type=False, include_bot_id=False),
 ) -> None:
     if 0 < count < item.stack.count:
         await lang.finish("use.not_enough", user_id, item.stack.count)
@@ -26,6 +28,8 @@ async def _(
     elif not item.stack.isUseable():
         await lang.finish("use.not_useable", user_id)
     # 传递上下文信息给物品使用
-    ret = await item.stack.use(*args, count=count, bot=bot, event=event, user_id=user_id)
+    ret = await item.stack.use(
+        *args, count=count, bot=bot, event=event, user_id=user_id, session_id=session_id
+    )
     if isinstance(ret, str) or isinstance(ret, UniMessage):
         await bag.finish(ret)
