@@ -28,10 +28,10 @@ async def _(
         await lang.finish("use.unsupported_count", user_id)
     elif not item.stack.isUseable():
         await lang.finish("use.not_useable", user_id)
-    
+
     # 根据场景确定 session_id：私聊用 user_id，群聊用 group_id
     session_id = user_id if is_private else group_id
-    
+
     # 传递上下文信息给物品使用
     ret = await item.stack.use(
         *args, count=count, bot=bot, event=event, user_id=user_id, session_id=session_id, is_private=is_private
