@@ -34,6 +34,8 @@ class GiftItem(UseableItem, ABC):
             stack: 物品堆叠
             bot: Bot 实例（从 kwargs 获取）
             event: Event 实例（从 kwargs 获取）
+            session_id: 会话 ID（从 kwargs 获取）
+            is_private: 是否为私聊场景（从 kwargs 获取）
 
         Returns:
             使用结果
@@ -47,17 +49,17 @@ class GiftItem(UseableItem, ABC):
         # 2. 尝试触发 AI 回复
         bot = kwargs.get("bot")
         event = kwargs.get("event")
-        group_id = kwargs.get("group_id")
+        session_id = kwargs.get("session_id")
         is_private = kwargs.get("is_private")
 
-        if bot is not None and event is not None and group_id is not None and is_private is not None:
-            await self._trigger_gift_response(stack, bot, event, group_id, is_private)
+        if bot is not None and event is not None and session_id is not None and is_private is not None:
+            await self._trigger_gift_response(stack, bot, event, session_id, is_private)
 
         # 3. 调用子类自定义逻辑
         return await self.on_gift_used(stack, *args, **kwargs)
 
     async def _trigger_gift_response(
-        self, stack: "ItemStack", bot: Any, event: Any, group_id: str, is_private: bool
+        self, stack: "ItemStack", bot: Any, event: Any, session_id: str, is_private: bool
     ) -> None:
         """
         触发礼物回复
@@ -68,7 +70,7 @@ class GiftItem(UseableItem, ABC):
             stack: 物品堆叠
             bot: Bot 实例
             event: Event 实例
-            group_id: 群组 ID（作为群聊场景的 session_id）
+            session_id: 会话 ID（群聊为 group_id，私聊时需使用 user_id）
             is_private: 是否为私聊场景
         """
         try:
@@ -77,33 +79,33 @@ class GiftItem(UseableItem, ABC):
                 get_group_session_forced,
                 get_private_session,
             )
-            from nonebot_plugin_chat.utils.gift_manager import get_gift_manager
             from nonebot_plugin_alconna import Target
 
-            # 根据 is_private 确定 session_id
+            # 根据 is_private 确定实际使用的 session_id
             if is_private:
                 # 私聊场景：使用 user_id 作为 session_id
-                session_id = stack.user_id
+                actual_session_id = stack.user_id
             else:
-                # 群聊场景：使用 group_id 作为 session_id
-                session_id = group_id
+                # 群聊场景：使用传入的 session_id（即 group_id）
+                actual_session_id = session_id
 
             # 尝试获取已存在的 session
             try:
-                session = get_session_directly(session_id)
+                session = get_session_directly(actual_session_id)
             except KeyError:
                 # Session 不存在，需要创建
                 target = Target(event)
                 if is_private:
                     # 私聊场景
-                    session = await get_private_session(session_id, target, bot)
+                    session = await get_private_session(actual_session_id, target, bot)
                 else:
                     # 群聊场景
-                    session = await get_group_session_forced(session_id, target, bot)
+                    session = await get_group_session_forced(actual_session_id, target, bot)
 
-            # 获取用户昵称并生成提示
-            gift_manager = get_gift_manager()
-            nickname = await gift_manager._get_user_nickname(session, stack.user_id)
+            # 获取用户昵称（使用 larkuser 的 get_nickname）
+            from nonebot_plugin_larkuser import get_nickname
+            nickname = await get_nickname(stack.user_id, bot, event)
+
             gift_prompt = await self.getGiftPrompt(stack, nickname)
 
             # 触发 AI 回复

@@ -20,7 +20,7 @@ async def _(
     item: BagItem = Depends(get_item),
     user_id: str = get_user_id(),
     is_private: bool = is_private_message(),
-    group_id: str = get_group_id(),
+    session_id: str = get_group_id(),  # 使用 group_id 作为 session_id
 ) -> None:
     if 0 < count < item.stack.count:
         await lang.finish("use.not_enough", user_id, item.stack.count)
@@ -28,10 +28,11 @@ async def _(
         await lang.finish("use.unsupported_count", user_id)
     elif not item.stack.isUseable():
         await lang.finish("use.not_useable", user_id)
-
-    # 传递 group_id 和 is_private，由 GiftItem 决定使用哪个作为 session_id
+    
+    # 传递 session_id 和 is_private，由 GiftItem 决定如何处理
     ret = await item.stack.use(
-        *args, count=count, bot=bot, event=event, user_id=user_id, group_id=group_id, is_private=is_private
+        *args, count=count, bot=bot, event=event, user_id=user_id, 
+        session_id=session_id, is_private=is_private
     )
     if isinstance(ret, str) or isinstance(ret, UniMessage):
         await bag.finish(ret)
