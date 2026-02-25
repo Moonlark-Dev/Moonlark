@@ -25,10 +25,8 @@ async def _(
         await lang.finish("use.unsupported_count", user_id)
     elif not item.stack.isUseable():
         await lang.finish("use.not_useable", user_id)
-    
+
     # 传递上下文信息给物品使用，由 GiftItem 判断 session 类型
-    ret = await item.stack.use(
-        *args, count=count, bot=bot, event=event, user_id=user_id
-    )
+    ret = await item.stack.use(*args, count=count, bot=bot, event=event, user_id=user_id)
     if isinstance(ret, str) or isinstance(ret, UniMessage):
         await bag.finish(ret)
