@@ -15,14 +15,13 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Optional, Any
 
 from nonebot_plugin_larkuser import get_user
 from nonebot import logger
 
 if TYPE_CHECKING:
     from nonebot_plugin_items.base.stack import ItemStack
-    from nonebot_plugin_items.base.gift import GiftItem
     from ..core.session.base import BaseSession
 
 

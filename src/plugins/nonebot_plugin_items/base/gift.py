@@ -62,7 +62,7 @@ class GiftItem(UseableItem, ABC):
         """
         触发礼物回复
 
-        通过 larkutils 获取或创建 chat session，然后触发 AI 回复。
+        通过 session_id 获取或创建 chat session，然后触发 AI 回复。
 
         Args:
             stack: 物品堆叠
@@ -71,14 +71,26 @@ class GiftItem(UseableItem, ABC):
             session_id: 会话 ID
         """
         try:
-            from nonebot_plugin_larkutils import get_or_create_session, trigger_gift_event
+            from nonebot_plugin_chat.core.session import (
+                get_session_directly,
+                get_group_session_forced,
+                get_private_session,
+            )
             from nonebot_plugin_chat.utils.gift_manager import get_gift_manager
+            from nonebot_plugin_alconna import Target
 
-            # 获取或创建 session
-            session = await get_or_create_session(session_id, bot, event)
-            if session is None:
-                logger.warning(f"无法获取或创建 session: {session_id}")
-                return
+            # 尝试获取已存在的 session
+            try:
+                session = get_session_directly(session_id)
+            except KeyError:
+                # Session 不存在，需要创建
+                target = Target(event)
+                if hasattr(event, "group_id") and event.group_id:
+                    # 群聊场景
+                    session = await get_group_session_forced(session_id, target, bot)
+                else:
+                    # 私聊场景
+                    session = await get_private_session(session_id, target, bot)
 
             # 获取用户昵称并生成提示
             gift_manager = get_gift_manager()
@@ -86,7 +98,7 @@ class GiftItem(UseableItem, ABC):
             gift_prompt = await self.getGiftPrompt(stack, nickname)
 
             # 触发 AI 回复
-            await trigger_gift_event(session, stack.user_id, gift_prompt)
+            await session.add_event(gift_prompt, trigger_mode="all")
 
         except Exception as e:
             logger.warning(f"触发礼物回复失败: {e}")
