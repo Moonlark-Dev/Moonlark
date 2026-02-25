@@ -86,10 +86,7 @@ class GiftManager:
 
         # 触发 AI 回复事件
         # 使用 "all" 模式确保 AI 会回复
-        await session.add_event(
-            gift_prompt,
-            trigger_mode="all"
-        )
+        await session.add_event(gift_prompt, trigger_mode="all")
 
     async def _get_user_nickname(self, session: "BaseSession", user_id: str) -> str:
         """
