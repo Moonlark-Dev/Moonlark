@@ -28,11 +28,10 @@ async def _(
         await lang.finish("use.unsupported_count", user_id)
     elif not item.stack.isUseable():
         await lang.finish("use.not_useable", user_id)
-    
+
     # 传递 session_id 和 is_private，由 GiftItem 决定如何处理
     ret = await item.stack.use(
-        *args, count=count, bot=bot, event=event, user_id=user_id, 
-        session_id=session_id, is_private=is_private
+        *args, count=count, bot=bot, event=event, user_id=user_id, session_id=session_id, is_private=is_private
     )
     if isinstance(ret, str) or isinstance(ret, UniMessage):
         await bag.finish(ret)

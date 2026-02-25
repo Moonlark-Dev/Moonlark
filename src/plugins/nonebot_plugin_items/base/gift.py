@@ -104,6 +104,7 @@ class GiftItem(UseableItem, ABC):
 
             # 获取用户昵称（使用 larkuser 的 get_nickname）
             from nonebot_plugin_larkuser import get_nickname
+
             nickname = await get_nickname(stack.user_id, bot, event)
 
             gift_prompt = await self.getGiftPrompt(stack, nickname)
