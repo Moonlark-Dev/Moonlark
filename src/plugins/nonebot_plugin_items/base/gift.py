@@ -1,6 +1,9 @@
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any, Optional
 
+from nonebot_plugin_larkuser import get_user
+from nonebot import logger
+
 from .useable import UseableItem
 from .properties import ItemProperties, get_properties
 
@@ -25,26 +28,45 @@ class GiftItem(UseableItem, ABC):
         """
         使用礼物物品
 
-        子类可以覆盖此方法以实现自定义逻辑，但需要调用 super().useItem() 来触发礼物处理。
+        自动处理好感度增加。如果提供了 session 参数，还会触发 AI 回复。
 
         Args:
             stack: 物品堆叠
-            session: Chat 会话对象（可选，由 GiftManager 使用）
+            session: Chat 会话对象（可选，用于触发 AI 回复）
 
         Returns:
             使用结果
         """
-        # 获取 session 参数（如果提供）
+        # 1. 增加好感度（无论是否有 session 都执行）
+        user = await get_user(stack.user_id)
+        total_fav = self.fav_value * stack.count
+        await user.add_fav(total_fav)
+        logger.info(f"用户 {stack.user_id} 使用礼物 {self.getLocation()}, 好感度 +{total_fav}")
+
+        # 2. 如果有 session，触发 AI 回复
         session = kwargs.get("session")
-
         if session is not None:
-            # 导入 GiftManager 处理礼物
-            from nonebot_plugin_chat.utils.gift_manager import get_gift_manager
+            await self._trigger_gift_response(stack, session)
 
-            gift_manager = get_gift_manager()
-            await gift_manager.handle_gift(stack, session)
-
+        # 3. 调用子类自定义逻辑
         return await self.on_gift_used(stack, *args, **kwargs)
+
+    async def _trigger_gift_response(self, stack: "ItemStack", session: Any) -> None:
+        """
+        触发礼物回复
+
+        Args:
+            stack: 物品堆叠
+            session: Chat 会话对象
+        """
+        try:
+            from nonebot_plugin_chat.utils.gift_manager import get_gift_manager
+            gift_manager = get_gift_manager()
+            nickname = await gift_manager._get_user_nickname(session, stack.user_id)
+            gift_prompt = await self.getGiftPrompt(stack, nickname)
+            await session.add_event(gift_prompt, trigger_mode="all")
+        except Exception as e:
+            logger.warning(f"触发礼物回复失败: {e}")
 
     @abstractmethod
     async def on_gift_used(self, stack: "ItemStack", *args: Any, **kwargs: Any) -> Any:
