@@ -5,6 +5,8 @@ from nonebot import get_driver, logger
 from nonebot.adapters import Bot
 from nonebot_plugin_alconna import Target
 from nonebot_plugin_larklang.__main__ import get_group_language
+from nonebot_plugin_orm import get_session
+from ...models import MessageQueueCache
 from .base import BaseSession
 from .group import GroupSession
 from .private import PrivateSession
@@ -71,6 +73,37 @@ async def group_disable(group_id: str) -> None:
     if group_id in groups:
         group = groups.pop(group_id)
         group.processor.enabled = False
+
+
+async def reset_session(session_id: str) -> bool:
+    """
+    重置指定会话，清除所有历史消息并销毁 Session
+
+    Args:
+        session_id: 会话 ID（群组 ID 或用户 ID）
+
+    Returns:
+        bool: 是否成功重置
+    """
+    if session_id not in groups:
+        return False
+
+    session = groups.pop(session_id)
+    session.processor.enabled = False
+
+    # 清除消息队列中的所有消息
+    session.processor.openai_messages.messages.clear()
+    session.processor.openai_messages.inserted_messages.clear()
+
+    # 删除数据库中的缓存
+    async with get_session() as db_session:
+        cache = await db_session.get(MessageQueueCache, {"group_id": session_id})
+        if cache:
+            await db_session.delete(cache)
+            await db_session.commit()
+
+    logger.info(f"Session {session_id} has been reset.")
+    return True
 
 
 async def create_group_session(group_id: str, target: Target, bot: Bot) -> GroupSession:
