@@ -89,10 +89,6 @@ class ToolManager:
         else:
             return await self.text(message_key)
 
-    async def set_activity(self, content: str, duration: int = 10) -> str:
-        self.status_manager.set_activity(content, duration)
-        return await self.text("status.activity_set", content, duration)
-
     async def calculate_luck_value(self, nickname: str) -> str:
         """计算用户的人品值
 

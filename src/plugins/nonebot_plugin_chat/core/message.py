@@ -140,11 +140,6 @@ class MessageQueue:
                         generate_message(await self.processor.session.text("fetcher.parse_failed", str(e)), "user")
                     )
                     continue
-                if analysis.activity:
-                    res = await self.processor.tool_manager.set_activity(
-                        analysis.activity.content, analysis.activity.duration
-                    )
-                    logger.info(f"Set activity: {res}")
                 if analysis.mood:
                     res = await self.processor.tool_manager.set_mood(analysis.mood, analysis.mood_reason)
                     logger.info(f"Set mood: {res}")

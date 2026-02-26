@@ -21,10 +21,6 @@ prompt_group:
       "interest": 0.5,          // 必要：你对当前话题的兴趣程度，0-1 之间的浮点数。0 表示完全没兴趣，1 表示非常感兴趣。这会影响你后续回复的触发概率。
       "mood": "happy",          // 必要：当前心情 (只能从 joy/sadness/anger/fear/surprise/disgust/trust/anticipation/calm/bored/confused/tired/shy 中选取)，为 null 则维持原状
       "mood_reason": "...",     // 可选：心情变化的原因。如因为 UserA 的夸赞
-      "activity": {{            // 可选：正在做的事，和你和群友做的约定有关。例如：你和 UserA 约定一起玩游戏，那么你就要对这个字段进行设置。
-        "content": "看番",
-        "duration": 10          // 单位：分钟
-      }},
       "favorability_judge": {{  // 可选：评价用户行为，会引起你与目标用户的好感度的变动。
         "target": "UserA",      // 目标用户昵称
         "score": 1,             // -2 到 2
@@ -216,7 +212,6 @@ prompt_group:
 
     当前状态：
     心情：{5} (情感强度: {6}; 原因: {7})
-    正在做的事：{8} (剩余 {9} 分钟)
   group_member_info: '* {} ({}/{})[好感:{}/{}][入群:{}] - {}'
   member_info: '* {} [好感:{}] - {}'
   user_profile_not_found: '暂无该成员的更多信息。'
@@ -889,11 +884,9 @@ tools_desc:
 status:
   info: |
     心情：{}
-    正在做的事：{} (剩余 {} 分钟)
   invalid_mood: "无效的心情：{}"
   mood_set: "心情已设置为：{} ({})"
   mood_cooldown: "心情变化太快了，请稍后再试。"
-  activity_set: "正在做的事已设置为：{} (持续 {} 分钟)"
   no_reason: "无"
   mood:
     joy: "开心"

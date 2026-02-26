@@ -364,11 +364,9 @@ class MessageProcessor:
             return await self.session.text("prompt.note.format", note.content, note.id, created_time)
 
         status_manager = get_status_manager()
-        mood, mood_reason, activity, remain_minutes = status_manager.get_status()
+        mood, mood_reason = status_manager.get_status()
 
         mood_text = await self.session.text(f"status.mood.{mood.value}")
-
-        # status_prompt = await self.session.text("status.info", , activity, remain_minutes)
 
         return generate_message(
             await self.session.text(
@@ -389,8 +387,6 @@ class MessageProcessor:
                 mood_text,
                 status_manager.get_mood_retention(),
                 mood_reason,
-                activity,
-                remain_minutes,
             ),
             "system",
         )
