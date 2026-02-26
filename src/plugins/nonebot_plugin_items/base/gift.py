@@ -11,6 +11,7 @@ from nonebot_plugin_chat.core.session import (
     get_private_session,
 )
 from nonebot_plugin_alconna import get_target
+
 # 获取用户昵称（使用 larkuser 的 get_nickname）
 from nonebot_plugin_larkuser import get_nickname
 
@@ -106,7 +107,6 @@ class GiftItem(UseableItem, ABC):
                 else:
                     # 群聊场景
                     session = await get_group_session_forced(actual_session_id, target, bot)
-
 
             nickname = await get_nickname(stack.user_id, bot, event)
 
