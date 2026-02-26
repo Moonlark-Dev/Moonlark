@@ -36,8 +36,6 @@ class MessageQueue:
         # 在初始化时从数据库恢复消息队列
         self.inserted_messages = []
 
-    
-
     def _serialize_message(self, message: OpenAIMessage) -> dict:
         """将 OpenAIMessage 序列化为可 JSON 化的字典"""
         if isinstance(message, dict):
@@ -104,7 +102,7 @@ class MessageQueue:
             self.fetcher_task = asyncio.create_task(self._fetch_reply())
             status = await self.fetcher_task
             logger.info(f"Reply fetcher ended with status: {status.name}")
-    
+
     async def stop_fetcher(self) -> None:
         if self.fetcher_task:
             self.fetcher_task.cancel()
