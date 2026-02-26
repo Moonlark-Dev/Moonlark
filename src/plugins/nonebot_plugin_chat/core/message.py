@@ -32,14 +32,11 @@ class MessageQueue:
         self.max_message_count = max_message_count
         self.messages: list[OpenAIMessage] = []
         self.fetcher_lock = asyncio.Lock()
-        self._restore_complete = asyncio.Event()
+        self.fetcher_task = None
         # 在初始化时从数据库恢复消息队列
         self.inserted_messages = []
-        asyncio.create_task(self._restore_from_db())
 
-    async def wait_for_restore(self) -> None:
-        """等待数据库恢复完成"""
-        await self._restore_complete.wait()
+    
 
     def _serialize_message(self, message: OpenAIMessage) -> dict:
         """将 OpenAIMessage 序列化为可 JSON 化的字典"""
@@ -58,7 +55,7 @@ class MessageQueue:
         serialized = [self._serialize_message(msg) for msg in self.messages]
         return json.dumps(serialized, ensure_ascii=False)
 
-    async def _restore_from_db(self) -> None:
+    async def restore_from_db(self) -> None:
         """从数据库恢复消息队列"""
         try:
             group_id = self.processor.session.session_id
@@ -69,9 +66,6 @@ class MessageQueue:
                     logger.info(f"已从数据库恢复群 {group_id} 的消息队列，共 {len(self.messages)} 条消息")
         except Exception as e:
             logger.warning(f"从数据库恢复消息队列失败: {e}")
-        finally:
-            # 无论恢复成功与否，都设置恢复完成事件
-            self._restore_complete.set()
 
     async def save_to_db(self) -> None:
         """将消息队列保存到数据库"""
@@ -104,9 +98,16 @@ class MessageQueue:
         return messages
 
     async def fetch_reply(self) -> None:
+        if self.fetcher_lock.locked():
+            return
         async with self.fetcher_lock:
-            status = await self._fetch_reply()
+            self.fetcher_task = asyncio.create_task(self._fetch_reply())
+            status = await self.fetcher_task
             logger.info(f"Reply fetcher ended with status: {status.name}")
+    
+    async def stop_fetcher(self) -> None:
+        if self.fetcher_task:
+            self.fetcher_task.cancel()
 
     async def _fetch_reply(self) -> FetchStatus:
         state = FetchStatus.SUCCESS
