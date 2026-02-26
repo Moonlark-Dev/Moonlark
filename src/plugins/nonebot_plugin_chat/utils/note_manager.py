@@ -43,7 +43,7 @@ class NoteManager:
 
         Args:
             content: The content of the note
-            keywords: Comma-separated keywords for the note
+            keywords: Space-separated keywords for the note (e.g., "keyword1 keyword2 keyword3")
             expire_days: Number of days until the note expires (default: 7 days)
 
         Returns:
@@ -199,13 +199,20 @@ class NoteManager:
 
         return deleted_count
 
+    def _parse_keywords(self, keywords_str: str) -> List[str]:
+        """Parse keywords string, supporting both space and comma separators for backward compatibility"""
+        if not keywords_str:
+            return []
+        # Support both space and comma separators (existing data uses space, docs mentioned comma)
+        return [k.strip() for k in re.split(r"[\s,]+", keywords_str) if k.strip()]
+
     async def filter_note(self, chat_history: str, include_expired: bool = False) -> tuple[List[Note], list[Note]]:
         notes = []
         for note in await self.get_notes(include_expired):
             if not note.keywords:
                 notes.append(note)
                 continue
-            keywords = note.keywords.split(" ")
+            keywords = self._parse_keywords(note.keywords)
             for keyword in keywords:
                 if keyword in chat_history:
                     notes.append(note)
@@ -214,7 +221,7 @@ class NoteManager:
         for note in await self.get_notes(include_expired, except_current_context=True):
             if not note.keywords:
                 continue
-            keywords = note.keywords.split(" ")
+            keywords = self._parse_keywords(note.keywords)
             for keyword in keywords:
                 if keyword in chat_history:
                     notes_from_other_groups.append(note)
