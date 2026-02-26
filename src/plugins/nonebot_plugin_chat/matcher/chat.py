@@ -17,7 +17,7 @@
 
 import json
 
-from nonebot_plugin_chat.core.session import get_session_directly, group_disable
+from nonebot_plugin_chat.core.session import get_session_directly, group_disable, reset_session
 from nonebot_plugin_chat.core.session.base import BaseSession
 from nonebot.adapters.qq import Bot as BotQQ
 from nonebot.params import CommandArg
@@ -102,6 +102,13 @@ class CommandHandler:
     async def handle_calls(self) -> None:
         session = await self.get_group_session()
         await self.matcher.finish("\n".join(session.tool_calls_history))
+
+    async def handle_reset(self) -> None:
+        result = await reset_session(self.group_id)
+        if result:
+            await lang.finish("command.reset.success", self.user_id)
+        else:
+            await lang.finish("command.reset.not_found", self.user_id)
 
     async def handle_block(self) -> None:
         if len(self.argv) < 2:
@@ -189,6 +196,8 @@ class CommandHandler:
                 await self.handle_off()
             case "block":
                 await self.handle_block()
+            case "reset":
+                await self.handle_reset()
             case _:
                 await lang.finish("command.no_argv", self.user_id)
 

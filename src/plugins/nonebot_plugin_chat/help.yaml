@@ -1,4 +1,4 @@
 plugin: 'chat'
 commands:
-  chat: help;12;community
+  chat: help;13;community
   rua: help_rua;3;community
