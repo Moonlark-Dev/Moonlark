@@ -4,7 +4,18 @@ from typing import TYPE_CHECKING, Any, Optional
 from nonebot_plugin_larkuser import get_user
 from nonebot import logger
 
+
+from nonebot_plugin_chat.core.session import (
+    get_session_directly,
+    get_group_session_forced,
+    get_private_session,
+)
+from nonebot_plugin_alconna import get_target
+# 获取用户昵称（使用 larkuser 的 get_nickname）
+from nonebot_plugin_larkuser import get_nickname
+
 from .useable import UseableItem
+
 from .properties import ItemProperties, get_properties
 
 if TYPE_CHECKING:
@@ -74,12 +85,6 @@ class GiftItem(UseableItem, ABC):
             is_private: 是否为私聊场景
         """
         try:
-            from nonebot_plugin_chat.core.session import (
-                get_session_directly,
-                get_group_session_forced,
-                get_private_session,
-            )
-            from nonebot_plugin_alconna import Target
 
             # 根据 is_private 确定实际使用的 session_id
             if is_private:
@@ -94,7 +99,7 @@ class GiftItem(UseableItem, ABC):
                 session = get_session_directly(actual_session_id)
             except KeyError:
                 # Session 不存在，需要创建
-                target = Target(event)
+                target = get_target(event)
                 if is_private:
                     # 私聊场景
                     session = await get_private_session(actual_session_id, target, bot)
@@ -102,8 +107,6 @@ class GiftItem(UseableItem, ABC):
                     # 群聊场景
                     session = await get_group_session_forced(actual_session_id, target, bot)
 
-            # 获取用户昵称（使用 larkuser 的 get_nickname）
-            from nonebot_plugin_larkuser import get_nickname
 
             nickname = await get_nickname(stack.user_id, bot, event)
 
@@ -149,5 +152,7 @@ class GiftItem(UseableItem, ABC):
         description = await self.getDescription(stack)
 
         if description:
-            return f"{user_nickname} 送给你 {item_name}：{description}"
-        return f"{user_nickname} 送给你 {item_name}"
+            return await self.lang.text(
+                "gift.prompt_with_description", stack.user_id, user_nickname, item_name, description
+            )
+        return await self.lang.text("gift.prompt", stack.user_id, user_nickname, item_name)

@@ -27,3 +27,7 @@ dice:
 
 fav:
   name: Moonlark 的好感
+
+gift:
+  prompt: "{} 送给你 {}"
+  prompt_with_description: "{} 送给你 {}：{}"
