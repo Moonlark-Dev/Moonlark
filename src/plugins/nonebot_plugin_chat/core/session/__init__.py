@@ -87,21 +87,21 @@ async def reset_session(session_id: str) -> bool:
     """
     if session_id not in groups:
         return False
-    
+
     session = groups.pop(session_id)
     session.processor.enabled = False
-    
+
     # 清除消息队列中的所有消息
     session.processor.openai_messages.messages.clear()
     session.processor.openai_messages.inserted_messages.clear()
-    
+
     # 删除数据库中的缓存
     async with get_session() as db_session:
         cache = await db_session.get(MessageQueueCache, {"group_id": session_id})
         if cache:
             await db_session.delete(cache)
             await db_session.commit()
-    
+
     logger.info(f"Session {session_id} has been reset.")
     return True
 
