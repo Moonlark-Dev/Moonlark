@@ -25,3 +25,7 @@ dice:
       _3: 大失败
 fav:
   name: Moonlark 的好感
+
+gift:
+  prompt: "{} 送給你 {}"
+  prompt_with_description: "{} 送給你 {}：{}"
