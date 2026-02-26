@@ -34,3 +34,4 @@ from .subaccount import get_main_account, set_main_account
 from .user_id import parse_special_user_id
 from .file import open_file, FileManager, FileType
 from .jrrp import get_luck_value
+from .gift_session import get_or_create_session, trigger_gift_event

@@ -16,3 +16,4 @@
 # ##############################################################################
 
 from .group import enabled_group, parse_message_to_string
+from .gift_manager import get_gift_manager, GiftManager
