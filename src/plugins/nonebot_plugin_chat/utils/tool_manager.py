@@ -314,19 +314,9 @@ class ToolManager:
                             description=await self.text("tools_desc.get_note_poster.text_arg"),
                             required=True,
                         ),
-                        "expire_days": FunctionParameter(
-                            type="integer",
-                            description=await self.text("tools_desc.get_note_poster.expire_days"),
-                            required=False,
-                        ),
-                        "keywords": FunctionParameter(
-                            type="string",
-                            description=await self.text("tools_desc.get_note_poster.keywords"),
-                            required=False,
-                        ),
-                        "expire_days": FunctionParameter(
-                            type="integer",
-                            description=await self.text("tools_desc.get_note_poster.expire_days"),
+                        "expire_hours": FunctionParameter(
+                            type="number",
+                            description=await self.text("tools_desc.get_note_poster.expire_hours"),
                             required=False,
                         ),
                         "keywords": FunctionParameter(
@@ -527,14 +517,14 @@ class ToolManager:
         else:
             return await self.text("note.remove_not_found", note_id)
 
-    async def push_note(self, text: str, expire_days: Optional[int] = None, keywords: Optional[str] = None) -> str:
+    async def push_note(self, text: str, expire_hours: Optional[float] = None, keywords: Optional[str] = None) -> str:
         # Get the note manager for this context
         note_manager = await get_context_notes(self.processor.session.session_id)
-        note_check_result = await check_note(self.processor.session, keywords, text, expire_days)
+        note_check_result = await check_note(self.processor.session, keywords, text, expire_hours)
         if note_check_result["create"] == False:
             return await self.text("note.not_create", note_check_result["comment"])
         text = note_check_result["text"]
         keywords = note_check_result["keywords"]
-        expire_days = note_check_result["expire_days"]
-        await note_manager.create_note(content=text, keywords=keywords or "", expire_days=expire_days or 3650)
+        expire_hours = note_check_result["expire_hours"]
+        await note_manager.create_note(content=text, keywords=keywords or "", expire_hours=expire_hours or 87600)
         return await self.text("note.create")
