@@ -380,6 +380,7 @@ command:
   unmute: '🔊✔'
   done: 完成
   not_available: 该功能在此节点不可用！
+  stop: 已強制停止響應。
 help:
   details: 基于 LLM 的主动水群功能，可以尝试用于活跃群气氛。（启用后将会收集、处理、并储存启用群聊的聊天记录和群员的昵称，仅支持非 QQ 官方节点）
   description: 主动水群
@@ -396,6 +397,7 @@ help:
   usage11: chat block keyword <add|remove|list> [关键词] (管理屏蔽关键词)
   usage12: chat block list (查看所有屏蔽项)
   usage13: chat reset (清除当前会话所有历史消息并重置会话状态)
+  usage14: chat stop (强制停止当前正在生成的响应)
 help_rua:
   description: 互动
   details: 通过 rua 指令与 Moonlark 进行亲密互动（如戳一戳、摸头、拥抱等）。不同的互动动作需要不同的好感度才能解锁。
