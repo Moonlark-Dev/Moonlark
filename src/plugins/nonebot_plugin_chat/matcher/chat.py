@@ -110,6 +110,11 @@ class CommandHandler:
         else:
             await lang.finish("command.reset.not_found", self.user_id)
 
+    async def handle_stop(self) -> None:
+        session = await self.get_group_session()
+        await session.processor.openai_messages.stop_fetcher()
+        await lang.finish("command.stop", self.user_id)
+
     async def handle_block(self) -> None:
         if len(self.argv) < 2:
             await lang.finish("command.no_argv", self.user_id)
@@ -198,6 +203,8 @@ class CommandHandler:
                 await self.handle_block()
             case "reset":
                 await self.handle_reset()
+            case "stop":
+                await self.handle_stop()
             case _:
                 await lang.finish("command.no_argv", self.user_id)
 

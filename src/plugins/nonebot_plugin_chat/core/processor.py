@@ -46,6 +46,7 @@ class MessageProcessor:
         self._latest_reasioning_content_cache = ""
         self.sticker_tools = StickerTools(self.session)
         self.functions = []
+        self.loop_task = None
 
     async def query_image(self, image_id: str, query_prompt: str) -> str:
         return await query_image_content(image_id, query_prompt, self.session.lang_str)
@@ -53,7 +54,8 @@ class MessageProcessor:
     async def setup(self) -> None:
         self.functions = await self.tool_manager.select_tools("group")
         await self.ai_agent.setup()
-        asyncio.create_task(self.loop())
+        if not self.loop_task:
+            self.loop_task = asyncio.create_task(self.loop())
 
     async def send_reaction(self, message_id: str, emoji_id: str) -> str:
         if isinstance(self.session.bot, OB11Bot) and self.session.is_napcat_bot():
@@ -121,8 +123,7 @@ class MessageProcessor:
         return await self.session.text("judge.success", nickname, reason)
 
     async def loop(self) -> None:
-        # 在开始循环前等待消息队列从数据库恢复完成
-        await self.openai_messages.wait_for_restore()
+        await self.openai_messages.restore_from_db()
         while self.enabled:
             try:
                 await self.get_message()
