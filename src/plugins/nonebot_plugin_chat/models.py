@@ -77,11 +77,6 @@ class RuaAction(TypedDict):
     unlock_favorability: float
 
 
-class ActivityData(BaseModel):
-    content: str
-    duration: int
-
-
 class JudgeData(BaseModel):
     target: str
     score: Literal[-2, -1, 0, 1, 2]
@@ -113,7 +108,6 @@ class ModelResponse(BaseModel):
         ]
     ]
     mood_reason: Optional[str] = None
-    activity: Optional[ActivityData] = None
     favorability_judge: Optional[JudgeData] = None
     messages: list[MessageData] = []
     interest: Optional[float] = Field(None, ge=0.0, le=1.0)
