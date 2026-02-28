@@ -3,6 +3,7 @@ from typing import Optional
 from nonebot import on_message, logger
 from nonebot.adapters import Bot, Event
 from nonebot_plugin_alconna import Alconna, Args, on_alconna, Match, At
+from nonebot_plugin_larkuser.utils.nickname import get_nickname
 from nonebot_plugin_larkutils import get_user_id, get_group_id, is_private_message
 from nonebot_plugin_larklang import LangHelper
 from nonebot_plugin_orm import get_session
@@ -68,24 +69,16 @@ async def handle_message(
     bot: Bot,
     event: Event,
     user_id: str = get_user_id(),
+    group_id: str = get_group_id(),
     is_private: bool = is_private_message()
 ) -> None:
     """监听所有消息，更新用户的最后上线时间"""
-    try:
-        # 更新全局最后上线时间
-        await update_last_seen(user_id, GLOBAL_SESSION_ID)
-        
-        # 如果不是私聊，更新会话内最后上线时间
-        if not is_private:
-            try:
-                group_id = await get_group_id().__call__()
-                if group_id:
-                    await update_last_seen(user_id, group_id)
-            except Exception:
-                pass
-            
-    except Exception as e:
-        logger.exception(f"更新最后上线时间失败: {e}")
+    # 更新全局最后上线时间
+    await update_last_seen(user_id, GLOBAL_SESSION_ID)
+    
+    # 如果不是私聊，更新会话内最后上线时间
+    if not is_private:
+        await update_last_seen(user_id, group_id)
 
 
 # Initialize command
@@ -127,6 +120,7 @@ async def get_last_seen_info(user_id: str, target_user_id: str, session_id: str,
         "time_point": await lang.text("item.time_point", user_id, formatted_time)
     }
 
+from nonebot_plugin_larkuser.utils.user import get_user
 
 @lastseen.handle()
 async def handle_lastseen(
@@ -141,19 +135,9 @@ async def handle_lastseen(
     target_user_id = sender_id
     if user.available:
         target_user_id = user.result.target
-    
-    # Get user nickname
-    try:
-        from nonebot_plugin_larkuser.utils.user import get_user
-        user_obj = await get_user(target_user_id)
-        nickname = user_obj.get_nickname()
-    except Exception:
-        nickname = target_user_id
-    
-    # Get global last seen info
+    nickname = get_nickname(target_user_id, bot, event)
     global_info = await get_last_seen_info(sender_id, target_user_id, GLOBAL_SESSION_ID, "global")
-    
-    # Initialize result items
+
     items = []
     
     # Add title if any record found
