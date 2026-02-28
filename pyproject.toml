@@ -87,7 +87,8 @@ plugins = [
     "nonebot_plugin_ghot",
     "nonebot_plugin_status",
     "nonebot_plugin_wtfis",
-    "nonebot_plugin_epic_freegame"
+    "nonebot_plugin_epic_freegame",
+    "nonebot_plugin_version_manager"
 ]
 plugin_dirs = []
 builtin_plugins = []

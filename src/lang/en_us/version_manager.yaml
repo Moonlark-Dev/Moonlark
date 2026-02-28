@@ -1,0 +1,24 @@
+version:
+  info: |
+    📋 Version Info
+    ———————————————
+    Branch: {0}
+    Commit: {1}
+    Message: {2}
+    Version: v{3}
+    Status: {4}{5}
+
+upgrade:
+  start: 🔄 Checking for updates...
+  failed: "❌ Update failed: {0}"
+  success: |
+    ✅ Update successful
+    ———————————————
+    Git output: {0}
+    {1}{2}{3}
+
+help: |
+  📋 Version Management Commands
+  ———————————————
+  version show - Display current version info
+  version upgrade - Pull latest code and update (SUPERUSER)
