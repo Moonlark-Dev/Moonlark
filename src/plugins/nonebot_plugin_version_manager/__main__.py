@@ -1,12 +1,13 @@
 import asyncio
 import os
+import signal
 import subprocess
 import sys
 import time
 from pathlib import Path
 from typing import Optional
 
-from nonebot import logger
+from nonebot import get_driver, logger
 from nonebot.permission import SUPERUSER
 from nonebot_plugin_alconna import Alconna, Subcommand, on_alconna
 from nonebot_plugin_larklang.__main__ import LangHelper
@@ -240,15 +241,17 @@ async def perform_upgrade(user_id: str) -> dict:
 
 
 async def delayed_restart(delay: float = 3.0):
-    """延迟重启机器人"""
-    await asyncio.sleep(delay)
-    logger.info("Restarting Moonlark...")
+    """延迟重启机器人
     
-    # 使用 os.execl 重启当前进程
-    # 这会替换当前进程，保留进程 ID
-    python = sys.executable
-    args = sys.argv
-    os.execl(python, python, *args)
+    注意：此函数仅退出当前进程，不启动新进程。
+    请确保使用进程管理器（如 MCSM、systemd、PM2 等）来自动重启服务。
+    """
+    await asyncio.sleep(delay)
+    logger.info("Sending SIGTERM to current process for restart...")
+    
+    # 给自己发送 SIGTERM 信号，让进程正常终止
+    # 这样可以触发 NoneBot2 的信号处理程序，执行清理工作
+    os.kill(os.getpid(), signal.SIGTERM)
 
 
 @version_cmd.assign("show")
