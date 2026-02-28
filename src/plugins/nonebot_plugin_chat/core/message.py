@@ -17,6 +17,8 @@ import copy
 import json
 from datetime import datetime
 
+from ..utils.timing_stats import timing_stats_manager
+
 if TYPE_CHECKING:
     from nonebot_plugin_chat.core.processor import MessageProcessor
 
@@ -98,10 +100,18 @@ class MessageQueue:
     async def fetch_reply(self) -> None:
         if self.fetcher_lock.locked():
             return
+        
+        # 记录抓取开始时间
+        session_id = self.processor.session.session_id
+        timing_stats_manager.record_fetch_start(session_id)
+        
         async with self.fetcher_lock:
             self.fetcher_task = asyncio.create_task(self._fetch_reply())
             status = await self.fetcher_task
             logger.info(f"Reply fetcher ended with status: {status.name}")
+        
+        # 记录抓取结束时间
+        timing_stats_manager.record_fetch_end(session_id)
 
     async def stop_fetcher(self) -> None:
         if self.fetcher_task:
