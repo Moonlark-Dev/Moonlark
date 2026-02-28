@@ -270,7 +270,6 @@ async def handle_version_show(user_id: str = get_user_id()) -> None:
         info["branch"],
         info["commit"],
         info["message"],
-        info["pyproject_version"],
         dirty_status,
         dirty_files_text
     )

@@ -5,8 +5,7 @@ version:
     Branch: {0}
     Commit: {1}
     Message: {2}
-    Version: v{3}
-    Status: {4}{5}
+    Status: {3}{4}
 
 upgrade:
   start: 🔄 Checking for updates...
