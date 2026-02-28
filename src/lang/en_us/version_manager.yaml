@@ -16,8 +16,8 @@ upgrade:
     Git output: {0}
     {1}{2}{3}
 
-help: |
-  📋 Version Management Commands
-  ———————————————
-  version show - Display current version info
-  version upgrade - Pull latest code and update (SUPERUSER)
+help:
+  description: Version Management
+  details: Manage version using git and nb_cli, SUPERUSER only
+  usage_show: version show (display version info)
+  usage_upgrade: version upgrade (update code)

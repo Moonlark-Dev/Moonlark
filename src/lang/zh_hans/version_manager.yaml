@@ -16,8 +16,8 @@ upgrade:
     Git 输出：{0}
     {1}{2}{3}
 
-help: |
-  📋 版本管理命令
-  ———————————————
-  version show - 显示当前版本信息
-  version upgrade - 拉取最新代码并更新（SUPERUSER）
+help:
+  description: 版本管理
+  details: 使用 git 和 nb_cli 管理版本，仅限 SUPERUSER
+  usage_show: version show (显示版本信息)
+  usage_upgrade: version upgrade (更新代码)

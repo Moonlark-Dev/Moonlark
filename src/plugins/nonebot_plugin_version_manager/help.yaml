@@ -1,6 +1,9 @@
-version:
-  description: 版本管理
-  details: 使用 git 和 nb_cli 管理版本，仅限 SUPERUSER
-  usages:
-    - version show
-    - version upgrade
+plugin: version
+commands:
+  version:
+    description: help.description
+    details: help.details
+    usages:
+      - help.usage_show
+      - help.usage_upgrade
+    category: system
