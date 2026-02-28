@@ -128,14 +128,15 @@ async def handle_lastseen(
     event: Event,
     user: Match[At],
     sender_id: str = get_user_id(),
-    is_private: bool = is_private_message()
+    is_private: bool = is_private_message(),
+    group_id: str = get_group_id()
 ) -> None:
     """Handle the /lastseen command"""
     # Determine target user
     target_user_id = sender_id
     if user.available:
         target_user_id = user.result.target
-    nickname = get_nickname(target_user_id, bot, event)
+    nickname = await get_nickname(target_user_id, bot, event)
     global_info = await get_last_seen_info(sender_id, target_user_id, GLOBAL_SESSION_ID, "global")
 
     items = []
@@ -149,19 +150,14 @@ async def handle_lastseen(
     
     # Get "here" last seen info (only in group chat)
     if not is_private:
-        try:
-            group_id = await get_group_id().__call__()
-            if group_id:
-                here_info = await get_last_seen_info(sender_id, target_user_id, group_id, "here")
-                if here_info:
-                    # Add empty line separator
-                    items.append("")
-                    items.append(f"{here_info['location']}")
-                    items.append(f"{here_info['time_diff']}")
-                    items.append(f"{here_info['time_point']}")
-        except Exception:
-            pass
-    
+        here_info = await get_last_seen_info(sender_id, target_user_id, group_id, "here")
+        if here_info:
+            # Add empty line separator
+            items.append("")
+            items.append(f"{here_info['location']}")
+            items.append(f"{here_info['time_diff']}")
+            items.append(f"{here_info['time_point']}")
+        
     # Check if any record found
     if not items:
         await lang.finish("no_record", sender_id)
