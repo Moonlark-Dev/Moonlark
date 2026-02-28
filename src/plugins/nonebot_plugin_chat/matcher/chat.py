@@ -122,18 +122,22 @@ class CommandHandler:
         session_stats = timing_stats_manager.get_session_stats(self.group_id)
         # 获取全局统计
         global_stats = timing_stats_manager.get_global_stats()
-        
+
         # 构建统计信息
-        session_fetch = f"{session_stats.avg_fetch_time_ms:.2f}ms" if session_stats and session_stats.avg_fetch_time_ms else "N/A"
+        session_fetch = (
+            f"{session_stats.avg_fetch_time_ms:.2f}ms" if session_stats and session_stats.avg_fetch_time_ms else "N/A"
+        )
         session_fetch_count = session_stats.fetch_count if session_stats else 0
-        session_reply = f"{session_stats.avg_reply_time_ms:.2f}ms" if session_stats and session_stats.avg_reply_time_ms else "N/A"
+        session_reply = (
+            f"{session_stats.avg_reply_time_ms:.2f}ms" if session_stats and session_stats.avg_reply_time_ms else "N/A"
+        )
         session_reply_count = session_stats.reply_count if session_stats else 0
-        
+
         global_fetch = f"{global_stats.avg_fetch_time_ms:.2f}ms" if global_stats.avg_fetch_time_ms else "N/A"
         global_fetch_count = global_stats.fetch_count
         global_reply = f"{global_stats.avg_reply_time_ms:.2f}ms" if global_stats.avg_reply_time_ms else "N/A"
         global_reply_count = global_stats.reply_count
-        
+
         await lang.finish(
             "command.stats.result",
             self.user_id,

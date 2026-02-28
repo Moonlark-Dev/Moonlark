@@ -238,12 +238,12 @@ class MessageProcessor:
         if reply_message_id:
             message = message.reply(reply_message_id)
         await message.send(target=self.session.target, bot=self.session.bot)
-        
+
         # 记录回应用时（使用 reply_message_id 查找对应的原消息）
         self._record_reply_timing(reply_message_id)
-        
+
         # self.session.accumulated_text_length = 0
-    
+
     def _record_reply_timing(self, reply_message_id: str | None = None) -> None:
         """记录回应用时（从 reply_message_id 对应的消息到发送回复的时间）"""
         # 如果提供了 reply_message_id，查找对应的消息
@@ -255,7 +255,7 @@ class MessageProcessor:
                         reply_time_ms = (datetime.now() - send_time).total_seconds() * 1000
                         timing_stats_manager.record_reply_time(self.session.session_id, reply_time_ms)
                     return
-        
+
         # 如果没有提供 reply_message_id 或找不到对应消息，
         # 则查找最近一条非自己发送的消息（兜底逻辑）
         # for msg in reversed(self.session.cached_messages):
