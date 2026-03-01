@@ -6,7 +6,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 class LastSeenRecord(Model):
     """用户最后上线时间记录模型
-    
+
     使用复合主键 (user_id, session_id)：
     - session_id = "global": 全局最后上线时间
     - session_id = get_group_id(): 特定会话的最后上线时间

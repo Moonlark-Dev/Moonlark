@@ -227,4 +227,3 @@ async def _(matcher: Matcher, user_id: str = get_user_id()) -> None:
             msg = UniMessage().image(raw=image)
             _user_locks.pop(user_id, None)
             await matcher.finish(await msg.export(), at_sender=True)
-        
