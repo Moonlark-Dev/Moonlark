@@ -130,14 +130,15 @@ async def resign(sign_data: SignData, user: MoonlarkUser) -> bool:
     if not await user.has_vimcoin(needed_vimcoin):
         return False
     try:
-        await prompt(
+        if not await prompt(
             await lang.text("resign.prompt", sign_data.user_id, days, needed_vimcoin),
             sign_data.user_id,
             retry=1,
-            parser=lambda message: message.lower().startswith("y"),
+            parser=lambda message: not message.lower().startswith("n"),
             ignore_error_details=False,
             allow_quit=False,
-        )
+        ):
+            return False
     except (PromptTimeout, PromptRetryTooMuch):
         return False
     got_vimcoin = 0
@@ -224,4 +225,6 @@ async def _(matcher: Matcher, user_id: str = get_user_id()) -> None:
                 "sign.html.jinja", await lang.text("image.title", user_id), user_id, templates
             )
             msg = UniMessage().image(raw=image)
+            _user_locks.pop(user_id, None)
             await matcher.finish(await msg.export(), at_sender=True)
+        

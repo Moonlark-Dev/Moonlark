@@ -37,25 +37,25 @@ class NoteManager:
     def __init__(self, context_id: str):
         self.context_id = context_id  # user_id for private, group_id for groups
 
-    async def create_note(self, content: str, keywords: str = "", expire_days: Optional[int] = None) -> Note:
+    async def create_note(self, content: str, keywords: str = "", expire_hours: Optional[float] = None) -> Note:
         """
         Create a new note
 
         Args:
             content: The content of the note
             keywords: Space-separated keywords for the note (e.g., "keyword1 keyword2 keyword3")
-            expire_days: Number of days until the note expires (default: 7 days)
+            expire_hours: Number of hours until the note expires (default: 7 days = 168 hours)
 
         Returns:
             The created Note object
         """
         current_time = datetime.now()
 
-        # Calculate expiration time (default 7 days)
+        # Calculate expiration time (default 7 days = 168 hours)
         expire_time = None
-        if expire_days is not None:
-            if expire_days != -1:  # -1 means no expiration
-                expire_time = current_time + timedelta(days=expire_days)
+        if expire_hours is not None:
+            if expire_hours != -1:  # -1 means no expiration
+                expire_time = current_time + timedelta(hours=expire_hours)
 
         # Create the note
         note = Note(
@@ -118,7 +118,7 @@ class NoteManager:
         note_id: int,
         content: Optional[str] = None,
         keywords: Optional[str] = None,
-        expire_days: Optional[int] = None,
+        expire_hours: Optional[float] = None,
     ) -> bool:
         """
         Update a note
@@ -127,7 +127,7 @@ class NoteManager:
             note_id: The ID of the note to update
             content: New content for the note (optional)
             keywords: New keywords for the note (optional)
-            expire_days: New expiration time in days (optional)
+            expire_hours: New expiration time in hours (optional)
 
         Returns:
             True if the note was updated, False if not found
@@ -142,12 +142,12 @@ class NoteManager:
                 note.content = content
             if keywords is not None:
                 note.keywords = keywords
-            if expire_days is not None:
+            if expire_hours is not None:
                 current_time = datetime.now()
-                if expire_days == -1:  # No expiration
+                if expire_hours == -1:  # No expiration
                     note.expire_time = None
                 else:
-                    note.expire_time = current_time + timedelta(days=expire_days)
+                    note.expire_time = current_time + timedelta(hours=expire_hours)
 
             await session.commit()
             return True
@@ -280,7 +280,7 @@ if TYPE_CHECKING:
 
 
 async def check_note(
-    session: "BaseSession", keywords: Optional[str], text: str, expire_days: Optional[int]
+    session: "BaseSession", keywords: Optional[str], text: str, expire_hours: Optional[float]
 ) -> NoteCheckResult:
     try:
         return decode_check_result(
@@ -293,7 +293,7 @@ async def check_note(
                             await session.get_cached_messages_string(),
                             keywords or "",
                             text,
-                            (datetime.now() + timedelta(days=expire_days or 3650)).isoformat(),
+                            (datetime.now() + timedelta(hours=expire_hours or 87600)).isoformat(),  # 默认10年
                         ),
                         "user",
                     ),
@@ -301,7 +301,7 @@ async def check_note(
             )
         )
     except json.JSONDecodeError:
-        return AvailableNote(create=True, keywords=keywords, expire_days=expire_days or 3650, text=text, comment="")
+        return AvailableNote(create=True, keywords=keywords, expire_hours=expire_hours or 87600, text=text, comment="")
 
 
 @scheduler.scheduled_job("cron", hour="3", id="cleanup_expired_notes")

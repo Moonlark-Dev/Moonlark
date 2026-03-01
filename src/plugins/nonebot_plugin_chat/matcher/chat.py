@@ -29,6 +29,7 @@ from nonebot_plugin_orm import async_scoped_session
 from nonebot.matcher import Matcher
 from ..lang import lang
 from ..models import ChatGroup
+from ..utils.timing_stats import timing_stats_manager
 
 
 class CommandHandler:
@@ -114,6 +115,41 @@ class CommandHandler:
         session = await self.get_group_session()
         await session.processor.openai_messages.stop_fetcher()
         await lang.finish("command.stop", self.user_id)
+
+    async def handle_stats(self) -> None:
+        """处理统计命令"""
+        # 获取当前会话的统计
+        session_stats = timing_stats_manager.get_session_stats(self.group_id)
+        # 获取全局统计
+        global_stats = timing_stats_manager.get_global_stats()
+
+        # 构建统计信息
+        session_fetch = (
+            f"{session_stats.avg_fetch_time_ms:.2f}ms" if session_stats and session_stats.avg_fetch_time_ms else "N/A"
+        )
+        session_fetch_count = session_stats.fetch_count if session_stats else 0
+        session_reply = (
+            f"{session_stats.avg_reply_time_ms:.2f}ms" if session_stats and session_stats.avg_reply_time_ms else "N/A"
+        )
+        session_reply_count = session_stats.reply_count if session_stats else 0
+
+        global_fetch = f"{global_stats.avg_fetch_time_ms:.2f}ms" if global_stats.avg_fetch_time_ms else "N/A"
+        global_fetch_count = global_stats.fetch_count
+        global_reply = f"{global_stats.avg_reply_time_ms:.2f}ms" if global_stats.avg_reply_time_ms else "N/A"
+        global_reply_count = global_stats.reply_count
+
+        await lang.finish(
+            "command.stats.result",
+            self.user_id,
+            session_fetch,
+            session_fetch_count,
+            session_reply,
+            session_reply_count,
+            global_fetch,
+            global_fetch_count,
+            global_reply,
+            global_reply_count,
+        )
 
     async def handle_block(self) -> None:
         if len(self.argv) < 2:
@@ -205,6 +241,8 @@ class CommandHandler:
                 await self.handle_reset()
             case "stop":
                 await self.handle_stop()
+            case "stats":
+                await self.handle_stats()
             case _:
                 await lang.finish("command.no_argv", self.user_id)
 

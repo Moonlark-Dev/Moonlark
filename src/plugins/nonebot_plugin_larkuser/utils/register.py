@@ -47,8 +47,8 @@ async def send_eula_screenshot(user_id: str) -> None:
 
 
 async def get_nickname(user: UserInfo, user_id: str) -> tuple[Optional[str], bool]:
-    if user.user_displayname:
-        return user.user_displayname, False
+    if user.user_name:
+        return user.user_name, False
     prompt_text = await lang.text("input.user_nickname", user_id, user_id)
     for i in range(3):
         try:
