@@ -50,5 +50,4 @@ async def encode_image(cave_id: int, name: str, data: bytes, session: async_scop
     # 将压缩后的图片数据存入数据库
     compressed_data = zlib.compress(data)
     session.add(ImageData(id=image_id, name=name, belong=cave_id, p_hash=p_hash, image_data=compressed_data))
-    await session.commit()
     return f"[[Img:{image_id}]]]"

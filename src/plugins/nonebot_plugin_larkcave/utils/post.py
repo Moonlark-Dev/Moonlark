@@ -60,7 +60,7 @@ async def post_cave(
         msg.append(Text(await lang.text("add.similarity_footer", user_id, round(e.score * 100, 3))))
         await cave.finish(msg, reply_message=True)
     async with lock:
-        await session.flush()
+        await session.commit()
         cave_id = await get_cave_id(session)
         parsed_content = " ".join(
             [
