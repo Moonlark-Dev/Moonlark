@@ -1,0 +1,9 @@
+plugin: last_seen
+commands:
+  lastseen:
+    description: help.description
+    details: help.details
+    usages:
+      - "lastseen (查看自己最后上线时间)"
+      - "lastseen @用户 (查看指定用户最后上线时间)"
+    category: community

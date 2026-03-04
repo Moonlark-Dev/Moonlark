@@ -1,0 +1,9 @@
+plugin: version
+commands:
+  version:
+    description: help.description
+    details: help.details
+    usages:
+      - help.usage_show
+      - help.usage_upgrade
+    category: system

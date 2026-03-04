@@ -38,7 +38,7 @@ class PendingInteraction(TypedDict):
 class AvailableNote(TypedDict):
     create: Literal[True]
     text: str
-    expire_days: int
+    expire_hours: float
     keywords: Optional[str]
     comment: str
 

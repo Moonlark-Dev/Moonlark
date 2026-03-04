@@ -27,6 +27,7 @@ from ..utils.sticker_manager import get_sticker_manager
 from ..utils.tool_manager import ToolManager
 from ..utils.tools.sticker import StickerTools
 from ..utils.status_manager import get_status_manager
+from ..utils.timing_stats import timing_stats_manager
 
 if TYPE_CHECKING:
     from nonebot_plugin_chat.core.session.base import BaseSession
@@ -237,7 +238,33 @@ class MessageProcessor:
         if reply_message_id:
             message = message.reply(reply_message_id)
         await message.send(target=self.session.target, bot=self.session.bot)
+
+        # 记录回应用时（使用 reply_message_id 查找对应的原消息）
+        self._record_reply_timing(reply_message_id)
+
         # self.session.accumulated_text_length = 0
+
+    def _record_reply_timing(self, reply_message_id: str | None = None) -> None:
+        """记录回应用时（从 reply_message_id 对应的消息到发送回复的时间）"""
+        # 如果提供了 reply_message_id，查找对应的消息
+        if reply_message_id is not None:
+            for msg in self.session.cached_messages:
+                if msg.get("message_id") == reply_message_id and not msg.get("self", False):
+                    send_time = msg.get("send_time")
+                    if send_time is not None:
+                        reply_time_ms = (datetime.now() - send_time).total_seconds() * 1000
+                        timing_stats_manager.record_reply_time(self.session.session_id, reply_time_ms)
+                    return
+
+        # 如果没有提供 reply_message_id 或找不到对应消息，
+        # 则查找最近一条非自己发送的消息（兜底逻辑）
+        # for msg in reversed(self.session.cached_messages):
+        #     if not msg.get("self", False):
+        #         send_time = msg.get("send_time")
+        #         if send_time is not None:
+        #             reply_time_ms = (datetime.now() - send_time).total_seconds() * 1000
+        #             timing_stats_manager.record_reply_time(self.session.session_id, reply_time_ms)
+        #         return
 
     def append_user_message(self, msg_str: str) -> None:
         self.openai_messages.append_user_message(msg_str)
@@ -365,11 +392,9 @@ class MessageProcessor:
             return await self.session.text("prompt.note.format", note.content, note.id, created_time)
 
         status_manager = get_status_manager()
-        mood, mood_reason, activity, remain_minutes = status_manager.get_status()
+        mood, mood_reason = status_manager.get_status()
 
         mood_text = await self.session.text(f"status.mood.{mood.value}")
-
-        # status_prompt = await self.session.text("status.info", , activity, remain_minutes)
 
         return generate_message(
             await self.session.text(
@@ -390,8 +415,6 @@ class MessageProcessor:
                 mood_text,
                 status_manager.get_mood_retention(),
                 mood_reason,
-                activity,
-                remain_minutes,
             ),
             "system",
         )
