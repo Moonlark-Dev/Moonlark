@@ -88,6 +88,7 @@ class MessageData(BaseModel):
     message_content: str
     reply_message_id: Optional[str] = None
 
+
 class ImageQueryRequest(BaseModel):
     image_id: str
     query_prompt: str
@@ -98,6 +99,7 @@ class NotePushRequest(BaseModel):
     expire_hours: Optional[int] = None
     keywords: Optional[str] = None
 
+
 class TimerCreateRequest(BaseModel):
     delay: int
     description: str
@@ -106,6 +108,7 @@ class TimerCreateRequest(BaseModel):
 class InteractionDealData(BaseModel):
     interaction_id: str
     deal_type: Literal["dodge", "bite", "enjoy"]
+
 
 class ModelResponse(BaseModel):
     reply_required: bool
@@ -150,10 +153,6 @@ class ModelResponse(BaseModel):
     request_wolfram_alpha: Optional[str] = None
     web_search: Optional[str] = None
     browse_webpage: Optional[str] = None
-
-    
-
-
 
 
 class PrivateChatSession(Model):

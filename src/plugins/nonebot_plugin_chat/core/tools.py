@@ -6,9 +6,9 @@ from nonebot_plugin_chat.utils.tools.wolfram_alpha import request_wolfram_alpha
 from nonebot_plugin_openai.utils.chat import MessageFetcher
 from nonebot_plugin_openai.utils.message import generate_message
 
-
 if TYPE_CHECKING:
     from .processor import MessageProcessor
+
 
 class ToolExecutor:
     def __init__(self, processor: "MessageProcessor", fetcher: MessageFetcher, analysis: ModelResponse):
@@ -17,16 +17,12 @@ class ToolExecutor:
         self.fetcher = fetcher
 
     def append_response(self, response: str) -> None:
-        self.fetcher.session.insert_message(generate_message(
-            response,
-            'user'
-        ))
+        self.fetcher.session.insert_message(generate_message(response, "user"))
 
     async def append_error(self, tool_name: str, error: str) -> None:
-        self.fetcher.session.insert_message(generate_message(
-            await self.processor.session.text("tool_executor.error", tool_name, error),
-            'user'
-        ))
+        self.fetcher.session.insert_message(
+            generate_message(await self.processor.session.text("tool_executor.error", tool_name, error), "user")
+        )
 
     async def _execute(self, func: Awaitable[str], tool_name: str) -> None:
         try:
@@ -81,5 +77,3 @@ class ToolExecutor:
             await self._execute(tool_manager.web_search(keyword), "web_search")
         if url := analysis.browse_webpage:
             await self._execute(tool_manager.browse_webpage(url), "browse_webpage")
-
-
