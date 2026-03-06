@@ -72,7 +72,6 @@ class MessageQueueCache(Model):
     updated_time: Mapped[float] = mapped_column(Float())  # 最后更新时间戳
 
 
-
 class JudgeData(BaseModel):
     target: str
     score: Literal[-2, -1, 0, 1, 2]
