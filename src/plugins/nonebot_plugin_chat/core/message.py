@@ -3,6 +3,7 @@ import traceback
 from typing import TYPE_CHECKING
 from nonebot.compat import type_validate_python
 from nonebot.log import logger
+from nonebot_plugin_chat.core.tools import ToolExecutor
 from nonebot_plugin_chat.utils.role import get_role
 from nonebot_plugin_chat.models import MessageQueueCache, ModelResponse
 from nonebot_plugin_chat.utils.enums import FetchStatus
@@ -34,6 +35,7 @@ class MessageQueue:
         self.max_message_count = max_message_count
         self.messages: list[OpenAIMessage] = []
         self.fetcher_lock = asyncio.Lock()
+        self.continuous_response = False
         self.fetcher_task = None
         # 在初始化时从数据库恢复消息队列
         self.inserted_messages = []
@@ -127,9 +129,7 @@ class MessageQueue:
         fetcher = await MessageFetcher.create(
             messages,
             False,
-            functions=self.processor.functions,
             identify="Chat",
-            pre_function_call=self.processor.send_function_call_feedback,
             reasoning_effort="medium",
         )
         retry_count = 0
@@ -172,6 +172,13 @@ class MessageQueue:
                         reply_id = None
                     await self.processor.send_message(msg.message_content, reply_id)
                     last_reply_id = msg.reply_message_id  # 记录原始值
+                if deal_data := analysis.interaction_deal:
+                    if deal_data.deal_type != "enjoy":
+                        await self.processor.refuse_interaction_request(deal_data.interaction_id, deal_data.deal_type)
+                await ToolExecutor(self.processor, fetcher, analysis).execute()
+                if self.continuous_response:
+                    fetcher.session.insert_messages(self.messages)
+                    self.messages.clear()
             self.messages = fetcher.get_messages() + self.messages
         except Exception as e:
             logger.exception(e)

@@ -19,6 +19,7 @@ class PrivateSession(BaseSession):
     async def setup(self) -> None:
         await super().setup()
         await self.setup_session_name()
+        self.processor.openai_messages.continuous_response = True
 
     async def setup_session_name(self) -> None:
         ml_user = await get_user(self.session_id)

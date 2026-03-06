@@ -134,13 +134,13 @@ async def _() -> None:
     for session_id, session in groups.items():
         logger.debug(f"Triggering timer from {session_id=}.")
         await session.process_timer()
-        if isinstance(session, PrivateSession) and (datetime.now() - session.last_activate) >= timedelta(minutes=15):
-            expired_session_id.append(session_id)
-    for session_id in expired_session_id:
-        session = groups[session_id]
-        await session.processor.openai_messages.save_to_db()
-        groups.pop(session_id)
-        logger.info(f"Session {session_id} expired and removed.")
+        # if isinstance(session, PrivateSession) and (datetime.now() - session.last_activate) >= timedelta(minutes=15):
+        #     expired_session_id.append(session_id)
+    # for session_id in expired_session_id:
+    #     session = groups[session_id]
+    #     await session.processor.openai_messages.save_to_db()
+    #     groups.pop(session_id)
+    #     logger.info(f"Session {session_id} expired and removed.")
 
 
 @get_driver().on_shutdown

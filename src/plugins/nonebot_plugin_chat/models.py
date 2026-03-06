@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import Literal, Optional, TypedDict
 
+from nonebot_plugin_chat.utils.tools.bilibili import resolve_b23_url
 from nonebot_plugin_orm import Model
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Mapped, mapped_column
@@ -87,6 +88,24 @@ class MessageData(BaseModel):
     message_content: str
     reply_message_id: Optional[str] = None
 
+class ImageQueryRequest(BaseModel):
+    image_id: str
+    query_prompt: str
+
+
+class NotePushRequest(BaseModel):
+    text: str
+    expire_hours: Optional[int] = None
+    keywords: Optional[str] = None
+
+class TimerCreateRequest(BaseModel):
+    delay: int
+    description: str
+
+
+class InteractionDealData(BaseModel):
+    interaction_id: str
+    deal_type: Literal["dodge", "bite", "enjoy"]
 
 class ModelResponse(BaseModel):
     reply_required: bool
@@ -111,6 +130,30 @@ class ModelResponse(BaseModel):
     favorability_judge: Optional[JudgeData] = None
     messages: list[MessageData] = []
     interest: Optional[float] = Field(None, ge=0.0, le=1.0)
+    interaction_deal: Optional[InteractionDealData] = None
+
+    poke: Optional[str] = None
+    leave_for_a_while: Optional[bool] = None
+    remove_note: Optional[int] = None
+    search_sticker: Optional[str] = None
+    get_sticker_recommend: Optional[bool] = None
+    send_sticker: Optional[int] = None
+    calculate_luck_value: Optional[str] = None
+
+    push_note: Optional[NotePushRequest] = None
+    query_image: Optional[ImageQueryRequest] = None
+    set_timer: Optional[TimerCreateRequest] = None
+    save_sticker: Optional[str] = None
+    ask_ai: Optional[str] = None
+    describe_bilibili_video: Optional[str] = None
+    search_abbreviation: Optional[str] = None
+    request_wolfram_alpha: Optional[str] = None
+    web_search: Optional[str] = None
+    browse_webpage: Optional[str] = None
+
+    
+
+
 
 
 class PrivateChatSession(Model):
