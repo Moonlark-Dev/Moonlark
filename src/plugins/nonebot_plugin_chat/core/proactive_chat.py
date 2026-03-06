@@ -75,10 +75,7 @@ async def is_in_cooldown(user_id: str, favorability: float) -> bool:
 
     async with get_session() as session:
         # 查询最近一次主动私聊记录
-        result = await session.execute(
-            select(PrivateChatSession)
-            .where(PrivateChatSession.user_id == user_id)
-        )
+        result = await session.execute(select(PrivateChatSession).where(PrivateChatSession.user_id == user_id))
         chat_session = result.scalar_one_or_none()
 
         if chat_session is None or chat_session.last_proactive_message_time is None:
@@ -98,9 +95,7 @@ async def record_proactive_message(user_id: str) -> None:
         user_id: 用户 ID
     """
     async with get_session() as session:
-        result = await session.execute(
-            select(PrivateChatSession).where(PrivateChatSession.user_id == user_id)
-        )
+        result = await session.execute(select(PrivateChatSession).where(PrivateChatSession.user_id == user_id))
         chat_session = result.scalar_one_or_none()
         if chat_session:
             chat_session.last_proactive_message_time = datetime.now().timestamp()

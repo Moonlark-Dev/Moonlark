@@ -72,7 +72,6 @@ class MessageQueueCache(Model):
     updated_time: Mapped[float] = mapped_column(Float())  # 最后更新时间戳
 
 
-
 class JudgeData(BaseModel):
     target: str
     score: Literal[-2, -1, 0, 1, 2]
@@ -82,6 +81,7 @@ class JudgeData(BaseModel):
 class MessageData(BaseModel):
     message_content: str
     reply_message_id: Optional[str] = None
+
 
 class ImageQueryRequest(BaseModel):
     image_id: str
@@ -93,6 +93,7 @@ class NotePushRequest(BaseModel):
     expire_hours: Optional[int] = None
     keywords: Optional[str] = None
 
+
 class TimerCreateRequest(BaseModel):
     delay: int
     description: str
@@ -101,6 +102,7 @@ class TimerCreateRequest(BaseModel):
 class InteractionDealData(BaseModel):
     interaction_id: str
     deal_type: Literal["dodge", "bite", "enjoy"]
+
 
 class ModelResponse(BaseModel):
     reply_required: bool
@@ -145,10 +147,6 @@ class ModelResponse(BaseModel):
     request_wolfram_alpha: Optional[str] = None
     web_search: Optional[str] = None
     browse_webpage: Optional[str] = None
-
-    
-
-
 
 
 class PrivateChatSession(Model):

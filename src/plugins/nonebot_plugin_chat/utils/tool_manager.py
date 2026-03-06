@@ -478,32 +478,32 @@ class ToolManager:
         #             )
         #         )
 
-            # GroupSession specific tools
-            # Note: We check if session has adapter_group_id to imply GroupSession or import GroupSession to check instance
-            # Avoiding circular import, checking attribute existence or class name might be safer if types not imported
-            # But GroupSession inherits from BaseSession.
-            # Let's check if session has attribute 'group_users' which implies group context, or just check class name
-            # if processor.session.__class__.__name__ == "GroupSession":
-            #     emoji_id_table = ", ".join([f"{emoji}({emoji_id})" for emoji_id, emoji in QQ_EMOJI_MAP.items()])
-            #     tools.append(
-            #         AsyncFunction(
-            #             func=processor.send_reaction,
-            #             description=await self.text("tools_desc.send_reaction.desc", emoji_id_table),
-            #             parameters={
-            #                 "message_id": FunctionParameter(
-            #                     type="string",
-            #                     description=await self.text("tools_desc.send_reaction.message_id"),
-            #                     required=True,
-            #                 ),
-            #                 "emoji_id": FunctionParameterWithEnum(
-            #                     type="string",
-            #                     description=await self.text("tools_desc.send_reaction.emoji_id"),
-            #                     required=True,
-            #                     enum=set(QQ_EMOJI_MAP.keys()),
-            #                 ),
-            #             },
-            #         )
-            #     )
+        # GroupSession specific tools
+        # Note: We check if session has adapter_group_id to imply GroupSession or import GroupSession to check instance
+        # Avoiding circular import, checking attribute existence or class name might be safer if types not imported
+        # But GroupSession inherits from BaseSession.
+        # Let's check if session has attribute 'group_users' which implies group context, or just check class name
+        # if processor.session.__class__.__name__ == "GroupSession":
+        #     emoji_id_table = ", ".join([f"{emoji}({emoji_id})" for emoji_id, emoji in QQ_EMOJI_MAP.items()])
+        #     tools.append(
+        #         AsyncFunction(
+        #             func=processor.send_reaction,
+        #             description=await self.text("tools_desc.send_reaction.desc", emoji_id_table),
+        #             parameters={
+        #                 "message_id": FunctionParameter(
+        #                     type="string",
+        #                     description=await self.text("tools_desc.send_reaction.message_id"),
+        #                     required=True,
+        #                 ),
+        #                 "emoji_id": FunctionParameterWithEnum(
+        #                     type="string",
+        #                     description=await self.text("tools_desc.send_reaction.emoji_id"),
+        #                     required=True,
+        #                     enum=set(QQ_EMOJI_MAP.keys()),
+        #                 ),
+        #             },
+        #         )
+        #     )
 
         return tools
 
