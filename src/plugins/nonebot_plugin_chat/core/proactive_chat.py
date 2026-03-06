@@ -35,7 +35,7 @@ from nonebot_plugin_online_timer import is_user_recently_online
 from sqlalchemy import select
 
 from ..lang import lang
-from ..models import PrivateChatSession, ProactiveMessageRecord
+from ..models import PrivateChatSession
 from .session import create_private_session
 
 
@@ -76,19 +76,17 @@ async def is_in_cooldown(user_id: str, favorability: float) -> bool:
     async with get_session() as session:
         # 查询最近一次主动私聊记录
         result = await session.execute(
-            select(ProactiveMessageRecord)
-            .where(ProactiveMessageRecord.user_id == user_id)
-            .order_by(ProactiveMessageRecord.sent_time.desc())
-            .limit(1)
+            select(PrivateChatSession)
+            .where(PrivateChatSession.user_id == user_id)
         )
-        last_record = result.scalar_one_or_none()
+        chat_session = result.scalar_one_or_none()
 
-        if last_record is None:
+        if chat_session is None or chat_session.last_proactive_message_time is None:
             # 没有发送记录，不在冷却期
             return False
 
         # 检查是否超过冷却时间
-        last_sent_time = datetime.fromtimestamp(last_record.sent_time)
+        last_sent_time = datetime.fromtimestamp(chat_session.last_proactive_message_time)
         cooldown_end = last_sent_time + timedelta(hours=cooldown_hours)
         return datetime.now() < cooldown_end
 
@@ -100,12 +98,14 @@ async def record_proactive_message(user_id: str) -> None:
         user_id: 用户 ID
     """
     async with get_session() as session:
-        record = ProactiveMessageRecord(
-            user_id=user_id,
-            sent_time=datetime.now().timestamp(),
+        result = await session.execute(
+            select(PrivateChatSession).where(PrivateChatSession.user_id == user_id)
         )
-        session.add(record)
-        await session.commit()
+        chat_session = result.scalar_one_or_none()
+        if chat_session:
+            chat_session.last_proactive_message_time = datetime.now().timestamp()
+            await session.merge(chat_session)
+            await session.commit()
 
 
 async def get_recent_private_chat_sessions(days: int = 3) -> list[tuple[str, str]]:

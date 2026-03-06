@@ -5,7 +5,6 @@ from nonebot.typing import T_State
 from nonebot_plugin_alconna import Target, UniMessage, get_message_id
 from nonebot_plugin_chat.utils.trigger import calculate_trigger_probability
 from nonebot_plugin_chat.lang import lang
-from nonebot_plugin_chat.models import RuaAction
 from nonebot_plugin_chat.types import AdapterUserInfo, CachedMessage, PendingInteraction, RuaAction
 from nonebot_plugin_larkuser import get_nickname, get_user
 

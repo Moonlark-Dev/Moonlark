@@ -72,11 +72,6 @@ class MessageQueueCache(Model):
     updated_time: Mapped[float] = mapped_column(Float())  # 最后更新时间戳
 
 
-class RuaAction(TypedDict):
-    name: str
-    refusable: bool
-    unlock_favorability: float
-
 
 class JudgeData(BaseModel):
     target: str
@@ -161,11 +156,4 @@ class PrivateChatSession(Model):
     user_id: Mapped[str] = mapped_column(String(128), primary_key=True)
     bot_id: Mapped[str] = mapped_column(String(128))  # 用户最后使用的 bot ID
     last_message_time: Mapped[float] = mapped_column(Float())  # 最后消息时间戳
-
-
-class ProactiveMessageRecord(Model):
-    """记录主动私聊消息历史，用于冷却检查"""
-
-    id: Mapped[int] = mapped_column(Integer(), primary_key=True, autoincrement=True)
-    user_id: Mapped[str] = mapped_column(String(128), index=True)
-    sent_time: Mapped[float] = mapped_column(Float())  # 发送时间戳
+    last_proactive_message_time: Mapped[Optional[float]] = mapped_column(Float(), nullable=True)  # 最后主动消息时间戳

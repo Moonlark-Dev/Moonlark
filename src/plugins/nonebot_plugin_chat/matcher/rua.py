@@ -2,7 +2,7 @@ from nonebot_plugin_alconna import Alconna, Args, Subcommand, Target, get_target
 from nonebot.params import Depends
 from nonebot_plugin_chat.core.session import get_private_session
 from nonebot_plugin_chat.models import RuaData
-from nonebot_plugin_chat.models import RuaAction
+from nonebot_plugin_chat.types import RuaAction
 from nonebot_plugin_larkuser.utils.nickname import get_nickname
 from nonebot_plugin_larkuser.utils.user import get_user
 from nonebot_plugin_larkutils.group import get_group_id
