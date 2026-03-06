@@ -72,11 +72,6 @@ class MessageQueueCache(Model):
     updated_time: Mapped[float] = mapped_column(Float())  # 最后更新时间戳
 
 
-class RuaAction(TypedDict):
-    name: str
-    refusable: bool
-    unlock_favorability: float
-
 
 class JudgeData(BaseModel):
     target: str

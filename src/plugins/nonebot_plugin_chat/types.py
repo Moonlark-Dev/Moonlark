@@ -2,7 +2,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Literal, Optional, Protocol, TypedDict
 
-from nonebot_plugin_chat.models import RuaAction
+# from nonebot_plugin_chat.models import RuaAction
 
 
 class RuaAction(TypedDict):
