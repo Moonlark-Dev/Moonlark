@@ -413,7 +413,7 @@ class MessageProcessor:
                 mood_text,
                 status_manager.get_mood_retention(),
                 mood_reason,
-                "/".join([i for i in QQ_EMOJI_MAP.values()])
+                "/".join([i for i in QQ_EMOJI_MAP.values()]),
             ),
             "system",
         )

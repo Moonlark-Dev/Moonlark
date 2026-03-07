@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 from nonebot.compat import type_validate_python
 from nonebot.log import logger
 from nonebot_plugin_chat.core.tools import ToolExecutor
+
 # from nonebot_plugin_chat.utils.emoji import QQ_EMOJI_MAP
 from nonebot_plugin_chat.utils.role import get_role
 from nonebot_plugin_chat.models import MessageQueueCache, ModelResponse
