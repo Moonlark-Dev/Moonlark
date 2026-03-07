@@ -310,8 +310,6 @@ class BaseSession(ABC):
         # 存储定时器信息
         self.llm_timers.append({"id": timer_id, "trigger_time": trigger_time, "description": description})
 
-        
-
     async def post_event(self, event_prompt: str, trigger_mode: Literal["none", "probability", "all"]) -> None:
         """
         向消息队列中添加一个事件的文本

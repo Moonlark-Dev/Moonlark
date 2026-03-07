@@ -102,6 +102,7 @@ class InteractionDealData(BaseModel):
     interaction_id: str
     deal_type: Literal["dodge", "bite", "enjoy"]
 
+
 class Reaction(BaseModel):
     message_id: str
     reaction: str
