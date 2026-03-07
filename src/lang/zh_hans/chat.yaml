@@ -1142,3 +1142,18 @@ proactive_message:
 tool_executor:
   error: |
     [异常] 执行工具 {} 时发生错误: {}
+
+parser:
+  image_with_id: '[图片({}): {}]'
+  image: '[图片: {}]'
+  video: '[视频({}): {}]'
+  file: '[文件({}): {}]'
+  other: '[特殊消息: {}]'
+  poke: '[戳一戳]'
+  forward:
+    not_supported: '[合并转发：获取信息失败（不支持）]'
+    failed: '[合并转发：获取信息失败（{}）]'
+    forward: '[合并转发：{}]'
+  reply: '[回复: {}]'
+  reply_with_sender: '[回复: {} (来自 {})]'
+  reply_failed: '[回复: 获取信息失败]'

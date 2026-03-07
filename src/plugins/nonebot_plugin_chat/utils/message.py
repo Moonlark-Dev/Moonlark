@@ -4,7 +4,9 @@ from nonebot import logger
 from nonebot.adapters import Bot
 from nonebot.adapters import Event
 from nonebot.typing import T_State
+from nonebot_plugin_chat.lang import lang
 from nonebot_plugin_chat.types import CachedMessage
+from nonebot_plugin_larkuser.utils.nickname import get_nickname
 from nonebot_plugin_userinfo import get_user_info
 from nonebot_plugin_alconna import Image, Other, Segment, UniMessage, Text, At, Reply, Reference, File
 from nonebot_plugin_larkuser import get_user
@@ -21,9 +23,10 @@ from .file import get_file_summary
 
 class MessageParser:
 
-    def __init__(self, message: UniMessage, event: Event, bot: Bot, state: T_State) -> None:
+    def __init__(self, message: UniMessage, event: Event, bot: Bot, state: T_State, lang_str: str) -> None:
         self.message = message
         self.event = event
+        self.user_id = lang_str
         self.bot = bot
         self.state = state
 
@@ -38,15 +41,15 @@ class MessageParser:
         elif isinstance(segment, Image):
             description, image_id = await get_image_summary(segment, self.event, self.bot, self.state)
             if image_id:
-                return f"[图片({image_id}): {description}]"
+                return await lang.text("parser.image_with_id", self.user_id, image_id, description)
             else:
-                return f"[图片: {description}]"
+                return await lang.text("parser.image", self.user_id, description)
         elif isinstance(segment, File):
             file_type, file_name, description = await get_file_summary(segment, self.event, self.bot, self.state)
             if file_type == "video":
-                return f"[视频({file_name}): {description}]"
+                return await lang.text("parser.video", self.user_id, file_name, description)
             else:
-                return f"[文件({file_name}): {description}]"
+                return await lang.text("parser.file", self.user_id, file_name, description)
         elif isinstance(segment, Reply) and (segment.msg is not None or segment.id is not None):
             return await self.parse_reply(segment)
         elif isinstance(segment, Reference) and isinstance(self.bot, OneBotV11Bot) and segment.id is not None:
@@ -54,21 +57,21 @@ class MessageParser:
         elif isinstance(segment, Other):
             return await self.parse_special_segment(segment.origin)
         else:
-            return f"[特殊消息: {segment.dump()}]"
+            return await lang.text("parser.other", self.user_id, segment.dump())
 
     async def parse_special_segment(self, segment: MessageSegment) -> str:
         if segment.type == "poke":
-            return f"[戳一戳]"
-        return f"[特殊消息: {segment}]"
+            return await lang.text("parser.poke", self.user_id)
+        return await lang.text("parser.other", self.user_id, segment)
 
     async def parse_forawrd_message(self, ref_id: str) -> str:
         if not isinstance(self.bot, OneBotV11Bot):
-            return f"[合并转发: 获取信息失败（不受支持）]"
+            return await lang.text("parser.forward.not_supported", self.user_id)
         try:
             message_list_str = await self.get_forawrd_message_list(ref_id)
         except ActionFailed as e:
-            return f"[合并转发: 获取信息失败（{e}）]"
-        return f"[合并转发: {message_list_str}]"
+            return await lang.text("parser.forward.failed", self.user_id, e)
+        return await lang.text("parser.forward", self.user_id, message_list_str)
 
     async def get_forawrd_message_list(
         self, ref_id: str
@@ -86,7 +89,7 @@ class MessageParser:
 
     async def get_parsed_message(self, node_message: list[dict]) -> str:
         uni_message = await parse_dict_message(node_message, self.bot, self.event)
-        return await parse_message_to_string(uni_message, self.event, self.bot, self.state)
+        return await parse_message_to_string(uni_message, self.event, self.bot, self.state, self.user_id)
 
     async def parse_mention(self, segment: At) -> str:
         user = await get_user(segment.target)
@@ -99,23 +102,24 @@ class MessageParser:
     async def parse_reply(self, segment: Reply) -> str:
         logger.info(f"Reply: {segment=} {segment.msg=} {segment.id=}")
         if isinstance(segment.msg, UniMessage):
-            return f"[回复: {await parse_message_to_string(segment.msg, self.event, self.bot, self.state)}]"
+            msg = await parse_message_to_string(segment.msg, self.event, self.bot, self.state, self.user_id)
+            return await lang.text("parser.reply", self.user_id, msg)
         elif isinstance(segment.msg, Message):
             message = UniMessage.of(message=segment.msg, bot=self.bot)
-
-            # await message.attach_reply(self.event, self.bot)
             logger.info(f"Reply UniMessage: {message=}")
-            return f"[回复: {await parse_message_to_string(message, self.event, self.bot, self.state)}]"
+            msg = await parse_message_to_string(message, self.event, self.bot, self.state, self.user_id)
+            return await lang.text("parser.reply", self.user_id, msg)
         elif segment.msg is not None:
-            return f"[回复: {segment.msg}]"
+            return await lang.text("parser.reply", self.user_id, segment.msg)
         elif isinstance(self.bot, OneBotV11Bot):
             result = await self.bot.get_msg(message_id=int(segment.id))
             message = await parse_message_to_string(
-                await parse_dict_message(result["message"], self.bot), self.event, self.bot, self.state
+                await parse_dict_message(result["message"], self.bot), self.event, self.bot, self.state, self.user_id
             )
-            return f"[回复: {message}]"
+            sender_nickname = await get_nickname(str(result["sender"]["user_id"]), self.bot, self.event)
+            return await lang.text("parser.reply_with_sender", self.user_id, message, sender_nickname)
         else:
-            return "[回复: 消息获取失败]"
+            return await lang.text("parser.reply_failed", self.user_id, segment.id)
 
 
 async def parse_dict_message(dict_message: list[dict], bot: Bot, event: Optional[Event] = None) -> UniMessage:
@@ -128,8 +132,8 @@ async def parse_dict_message(dict_message: list[dict], bot: Bot, event: Optional
     return uni_message
 
 
-async def parse_message_to_string(message: UniMessage, event: Event, bot: Bot, state: T_State) -> str:
-    parser = MessageParser(message, event, bot, state)
+async def parse_message_to_string(message: UniMessage, event: Event, bot: Bot, state: T_State, lang_str: str) -> str:
+    parser = MessageParser(message, event, bot, state, lang_str)
     return await parser.parse()
 
 
