@@ -1,7 +1,6 @@
 from datetime import datetime
 from typing import Literal, Optional, TypedDict
 
-from nonebot_plugin_chat.utils.tools.bilibili import resolve_b23_url
 from nonebot_plugin_orm import Model
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Mapped, mapped_column
