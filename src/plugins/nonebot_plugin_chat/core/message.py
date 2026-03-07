@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 from nonebot.compat import type_validate_python
 from nonebot.log import logger
 from nonebot_plugin_chat.core.tools import ToolExecutor
-from nonebot_plugin_chat.utils.emoji import QQ_EMOJI_MAP
+# from nonebot_plugin_chat.utils.emoji import QQ_EMOJI_MAP
 from nonebot_plugin_chat.utils.role import get_role
 from nonebot_plugin_chat.models import MessageQueueCache, ModelResponse
 from nonebot_plugin_chat.utils.enums import FetchStatus
@@ -160,9 +160,6 @@ class MessageQueue:
                         analysis.favorability_judge.reason,
                     )
                     logger.info(f"Judge user behavior: {res}")
-                if reaction := analysis.reaction:
-                    emoji_id = [key for key, value in QQ_EMOJI_MAP.items() if value == reaction][0]
-                    await self.processor.send_reaction(reaction.message_id, emoji_id)
                 if analysis.interest is not None:
                     self.processor.session.set_interest(analysis.interest)
                     logger.debug(f"Cached interest: {analysis.interest:.2f}")

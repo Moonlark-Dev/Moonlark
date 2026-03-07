@@ -2,6 +2,7 @@ import traceback
 from typing import TYPE_CHECKING, Awaitable, Optional
 
 from nonebot_plugin_chat.models import ModelResponse
+from nonebot_plugin_chat.utils.emoji import QQ_EMOJI_MAP
 from nonebot_plugin_chat.utils.tools.wolfram_alpha import request_wolfram_alpha
 from nonebot_plugin_openai.utils.chat import MessageFetcher
 from nonebot_plugin_openai.utils.message import generate_message
@@ -42,6 +43,13 @@ class ToolExecutor:
             bv_id = bv_or_b23_url
         return await self.processor.tool_manager.describe_bilibili_video(bv_id)
 
+    async def send_reaction(self, message_id: str, reaction: str) -> Optional[str]:
+        try:
+            emoji_id = [key for key, value in QQ_EMOJI_MAP.items() if value == reaction][0]
+        except IndexError:
+            return await self.processor.session.text("tools.reaction_not_found")
+        await self.processor.send_reaction(message_id, emoji_id)
+
     async def execute(self) -> None:
         analysis = self.analysis
         tool_manager = self.processor.tool_manager
@@ -79,3 +87,5 @@ class ToolExecutor:
             await self._execute(tool_manager.web_search(keyword), "web_search")
         if url := analysis.browse_webpage:
             await self._execute(tool_manager.browse_webpage(url), "browse_webpage")
+        if reaction := analysis.reaction:
+            await self._execute(self.send_reaction(reaction.message_id, reaction.reaction), "reaction")

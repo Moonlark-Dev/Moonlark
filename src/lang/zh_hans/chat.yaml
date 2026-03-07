@@ -1142,6 +1142,8 @@ proactive_message:
 tool_executor:
   error: |
     [异常] 执行工具 {} 时发生错误: {}
+  reaction_not_found: |
+    [异常] 发送反应时遇到问题：反应名称无效。
 
 parser:
   image_with_id: '[图片({}): {}]'
