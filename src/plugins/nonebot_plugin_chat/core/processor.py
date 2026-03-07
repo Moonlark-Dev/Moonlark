@@ -11,7 +11,7 @@ import json
 import random
 import re
 from datetime import datetime, timedelta
-from typing import TYPE_CHECKING, Any, AsyncGenerator, Literal
+from typing import TYPE_CHECKING, Any, AsyncGenerator, Literal, Optional
 
 from .message import MessageQueue
 from ..models import ChatGroup, Sticker, UserProfile
@@ -132,11 +132,10 @@ class MessageProcessor:
                 logger.exception(e)
                 await asyncio.sleep(5)
 
-    async def poke(self, target_name: str) -> str:
+    async def poke(self, target_name: str) -> Optional[str]:
         target_id = (await self.session.get_users()).get(target_name)
         if target_id:
             await self.session.send_poke(target_id)
-            return await self.session.text("poke.success", target_name)
         else:
             return await self.session.text("poke.not_found")
 

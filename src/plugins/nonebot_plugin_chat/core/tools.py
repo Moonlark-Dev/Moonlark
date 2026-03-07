@@ -1,5 +1,5 @@
 import traceback
-from typing import TYPE_CHECKING, Awaitable
+from typing import TYPE_CHECKING, Awaitable, Optional
 
 from nonebot_plugin_chat.models import ModelResponse
 from nonebot_plugin_chat.utils.tools.wolfram_alpha import request_wolfram_alpha
@@ -24,9 +24,11 @@ class ToolExecutor:
             generate_message(await self.processor.session.text("tool_executor.error", tool_name, error), "user")
         )
 
-    async def _execute(self, func: Awaitable[str], tool_name: str) -> None:
+    async def _execute(self, func: Awaitable[Optional[str]], tool_name: str) -> None:
         try:
-            self.append_response(await func)
+            response = await func
+            if response:
+                self.append_response(response)
         except Exception as e:
             await self.append_error(tool_name, traceback.format_exc())
 

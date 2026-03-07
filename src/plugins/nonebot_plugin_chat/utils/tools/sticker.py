@@ -15,7 +15,7 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING, List, Optional
 
 from nonebot_plugin_alconna import UniMessage
 
@@ -108,7 +108,7 @@ class StickerTools:
             recommend_str += f"\n{sticker}"
         return recommend_str
 
-    async def send_sticker(self, sticker_id: int) -> str:
+    async def send_sticker(self, sticker_id: int) -> Optional[str]:
         """
         发送表情包到群聊
 
@@ -123,10 +123,5 @@ class StickerTools:
         if sticker is None:
             return await lang.text("sticker.id_not_found", self.session.lang_str, sticker_id)
 
-        try:
-            # 创建并发送图片消息
-            message = UniMessage.image(raw=sticker.raw)
-            await message.send(target=self.session.target, bot=self.session.bot)
-            return await lang.text("sticker.sent", self.session.lang_str)
-        except Exception as e:
-            return await lang.text("sticker.send_failed", self.session.lang_str, str(e))
+        message = UniMessage.image(raw=sticker.raw)
+        await message.send(target=self.session.target, bot=self.session.bot)

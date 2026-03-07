@@ -507,17 +507,15 @@ class ToolManager:
 
         return tools
 
-    async def remove_note(self, note_id: int) -> str:
+    async def remove_note(self, note_id: int) -> Optional[str]:
         # Get the note manager for this context
         note_manager = await get_context_notes(self.processor.session.session_id)
         # Try to delete the note
         success = await note_manager.delete_note(note_id)
-        if success:
-            return await self.text("note.remove_success", note_id)
-        else:
+        if not success:
             return await self.text("note.remove_not_found", note_id)
 
-    async def push_note(self, text: str, expire_hours: Optional[float] = None, keywords: Optional[str] = None) -> str:
+    async def push_note(self, text: str, expire_hours: Optional[float] = None, keywords: Optional[str] = None) -> Optional[str]:
         # Get the note manager for this context
         note_manager = await get_context_notes(self.processor.session.session_id)
         note_check_result = await check_note(self.processor.session, keywords, text, expire_hours)
@@ -527,4 +525,4 @@ class ToolManager:
         keywords = note_check_result["keywords"]
         expire_hours = note_check_result["expire_hours"]
         await note_manager.create_note(content=text, keywords=keywords or "", expire_hours=expire_hours or 87600)
-        return await self.text("note.create")
+        

@@ -310,7 +310,7 @@ class BaseSession(ABC):
         # 存储定时器信息
         self.llm_timers.append({"id": timer_id, "trigger_time": trigger_time, "description": description})
 
-        return await self.text("timer.set", delay)
+        
 
     async def post_event(self, event_prompt: str, trigger_mode: Literal["none", "probability", "all"]) -> None:
         """
