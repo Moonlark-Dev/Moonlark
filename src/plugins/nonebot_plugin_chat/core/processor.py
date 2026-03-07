@@ -58,10 +58,9 @@ class MessageProcessor:
         if not self.loop_task:
             self.loop_task = asyncio.create_task(self.loop())
 
-    async def send_reaction(self, message_id: str, emoji_id: str) -> str:
+    async def send_reaction(self, message_id: str, emoji_id: str) -> Optional[str]:
         if isinstance(self.session.bot, OB11Bot) and self.session.is_napcat_bot():
             await self.session.bot.call_api("set_msg_emoji_like", message_id=message_id, emoji_id=emoji_id)
-            return await self.session.text("message.reaction_success", QQ_EMOJI_MAP.get(emoji_id))
         else:
             return await self.session.text("message.reaction_failed")
 
@@ -414,6 +413,7 @@ class MessageProcessor:
                 mood_text,
                 status_manager.get_mood_retention(),
                 mood_reason,
+                "/".join([i for i in QQ_EMOJI_MAP.values()])
             ),
             "system",
         )

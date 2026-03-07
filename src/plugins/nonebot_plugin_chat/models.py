@@ -103,6 +103,10 @@ class InteractionDealData(BaseModel):
     interaction_id: str
     deal_type: Literal["dodge", "bite", "enjoy"]
 
+class Reaction(BaseModel):
+    message_id: str
+    reaction: str
+
 
 class ModelResponse(BaseModel):
     reply_required: bool
@@ -128,6 +132,7 @@ class ModelResponse(BaseModel):
     messages: list[MessageData] = []
     interest: Optional[float] = Field(None, ge=0.0, le=1.0)
     interaction_deal: Optional[InteractionDealData] = None
+    reaction: Optional[Reaction] = None
 
     poke: Optional[str] = None
     leave_for_a_while: Optional[bool] = None

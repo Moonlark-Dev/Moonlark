@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 from nonebot.compat import type_validate_python
 from nonebot.log import logger
 from nonebot_plugin_chat.core.tools import ToolExecutor
+from nonebot_plugin_chat.utils.emoji import QQ_EMOJI_MAP
 from nonebot_plugin_chat.utils.role import get_role
 from nonebot_plugin_chat.models import MessageQueueCache, ModelResponse
 from nonebot_plugin_chat.utils.enums import FetchStatus
@@ -159,19 +160,20 @@ class MessageQueue:
                         analysis.favorability_judge.reason,
                     )
                     logger.info(f"Judge user behavior: {res}")
-                # 缓存 interest 值用于后续触发概率计算
+                if reaction := analysis.reaction:
+                    emoji_id = [key for key, value in QQ_EMOJI_MAP.items() if value == reaction][0]
+                    await self.processor.send_reaction(reaction.message_id, emoji_id)
                 if analysis.interest is not None:
                     self.processor.session.set_interest(analysis.interest)
                     logger.debug(f"Cached interest: {analysis.interest:.2f}")
-                # 处理连续回复同一条消息的情况：第二条开始的重复 reply_message_id 设为 None
                 last_reply_id = None
                 for msg in analysis.messages:
                     reply_id = msg.reply_message_id
-                    # 如果当前消息的 reply_message_id 与上一条相同，则从第二条开始设为 None
                     if reply_id == last_reply_id and last_reply_id is not None:
                         reply_id = None
                     await self.processor.send_message(msg.message_content, reply_id)
-                    last_reply_id = msg.reply_message_id  # 记录原始值
+                    last_reply_id = msg.reply_message_id
+                    await asyncio.sleep(0.5)
                 if deal_data := analysis.interaction_deal:
                     if deal_data.deal_type != "enjoy":
                         await self.processor.refuse_interaction_request(deal_data.interaction_id, deal_data.deal_type)
