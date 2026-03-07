@@ -25,9 +25,8 @@ from ..processor import MessageProcessor
 
 
 class BaseSession(ABC):
-
-    @abstractmethod
     @staticmethod
+    @abstractmethod
     def get_session_type() -> Literal["private", "group"]:
         ...
 
