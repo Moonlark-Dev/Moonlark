@@ -458,8 +458,6 @@ note:
     内容：{}
     过期时间：{}
   not_create: 笔记创建请求被拒绝。(原因：{})
-  create: 笔记创建成功！
-  remove_success: '笔记 #{} 已成功删除！'
   remove_not_found: '未找到 ID 为 {} 的笔记，或该笔记不属于当前群聊。'
 
 command:
@@ -736,9 +734,6 @@ rua:
       prompt: "{} 揉了揉你的耳朵。"
       refuse_msg: "Moonlark 躲开了你的手，并将耳朵向下压了压。"
       refuse_prompt: "你躲开了 {} 的揉耳朵。"
-
-timer:
-  set: "定时器已设置，将在 {} 分钟后触发"
 
 poke:
   success: "你戳了戳 {}。"

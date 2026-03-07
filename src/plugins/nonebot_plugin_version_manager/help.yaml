@@ -6,4 +6,4 @@ commands:
     usages:
       - help.usage_show
       - help.usage_upgrade
-    category: system
+    category: setting
