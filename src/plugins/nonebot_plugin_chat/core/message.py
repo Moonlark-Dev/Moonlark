@@ -114,6 +114,9 @@ class MessageQueue:
             status = await self.fetcher_task
             logger.info(f"Reply fetcher ended with status: {status.name}")
 
+        if self.continuous_response and self.processor.session.get_session_type() == "group":
+            self.continuous_response = False
+
         # 记录抓取结束时间
         timing_stats_manager.record_fetch_end(session_id)
 

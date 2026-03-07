@@ -1,3 +1,5 @@
+from typing import Literal
+
 from nonebot.adapters import Bot
 from nonebot.adapters.onebot.v11 import Bot as OB11Bot
 from nonebot_plugin_alconna import Target, UniMessage
@@ -9,6 +11,10 @@ from .base import BaseSession
 
 
 class PrivateSession(BaseSession):
+
+    @staticmethod
+    def get_session_type() -> Literal['private']:
+        return "private"
 
     def __init__(self, session_id: str, bot: Bot, target: Target) -> None:
         super().__init__(session_id, bot, target, lang_str=session_id)

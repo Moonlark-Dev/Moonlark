@@ -204,6 +204,10 @@ class MessageProcessor:
             if random.random() > probability:
                 return
 
+
+        if self.session.get_session_type() == "group":
+            self.openai_messages.continuous_response = self.openai_messages.continuous_response or important
+
         logger.info(f"Generating reply ({important=})...")
         self.session.accumulated_text_length = 0
         await self.openai_messages.fetch_reply()

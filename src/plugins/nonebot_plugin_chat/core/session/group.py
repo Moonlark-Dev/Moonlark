@@ -1,3 +1,5 @@
+from typing import Literal
+
 from nonebot.adapters import Bot
 from nonebot.adapters.onebot.v11 import Bot as OB11Bot
 from nonebot_plugin_alconna import Target, UniMessage
@@ -15,6 +17,10 @@ from datetime import datetime
 
 
 class GroupSession(BaseSession):
+
+    @staticmethod
+    def get_session_type() -> Literal['group']:
+        return 'group'
 
     async def get_user_info(self, user_id: str) -> AdapterUserInfo:
         if isinstance(self.bot, OB11Bot):
