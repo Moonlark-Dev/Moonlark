@@ -16,6 +16,7 @@
 # ##############################################################################
 
 import base64
+import io
 import json
 import re
 import traceback
@@ -23,6 +24,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional, TypedDict
 
 from nonebot import logger
+from PIL import Image
 from nonebot_plugin_chat.types import EMOTIONS, MoodEnum
 from nonebot_plugin_orm import get_session
 from nonebot_plugin_openai.utils.chat import fetch_message
@@ -70,6 +72,68 @@ MEME_CLASSIFICATION_PROMPT = f"""你是一个表情包分析 AI。
 2.  **网络梗类**：`吃瓜`、`摆烂`、`摸鱼`、`内卷`、`抽象`、`典`。
 3.  **时间/天气类**：`早安`、`周五`、`放假`。
 4.  **互动类**：`贴贴`、`抱抱`、`禁言`、`反弹`。"""
+
+
+def is_gif(image_data: bytes) -> bool:
+    """
+    检测图片是否为 GIF 格式
+
+    Args:
+        image_data: 图片二进制数据
+
+    Returns:
+        是否为 GIF 格式
+    """
+    try:
+        img = Image.open(io.BytesIO(image_data))
+        return img.format == "GIF"
+    except Exception:
+        return False
+
+
+def extract_gif_first_frame(image_data: bytes) -> bytes:
+    """
+    提取 GIF 图片的第一帧并转换为 JPEG 格式
+
+    Args:
+        image_data: GIF 图片二进制数据
+
+    Returns:
+        JPEG 格式的第一帧图片数据
+    """
+    try:
+        img = Image.open(io.BytesIO(image_data))
+        # 跳到第一帧
+        img.seek(0)
+        # 转换为 RGB 模式（去除透明通道）
+        if img.mode in ("RGBA", "P"):
+            rgb_img = img.convert("RGB")
+        else:
+            rgb_img = img.convert("RGB")
+        # 保存为 JPEG 字节
+        output = io.BytesIO()
+        rgb_img.save(output, format="JPEG", quality=85)
+        return output.getvalue()
+    except Exception as e:
+        logger.warning(f"Failed to extract GIF first frame: {e}")
+        # 如果提取失败，返回原始数据
+        return image_data
+
+
+def prepare_image_for_classification(image_data: bytes) -> bytes:
+    """
+    准备图片用于分类：如果是 GIF 则提取第一帧，否则返回原图
+
+    Args:
+        image_data: 图片二进制数据
+
+    Returns:
+        处理后的图片数据
+    """
+    if is_gif(image_data):
+        logger.debug("GIF detected, extracting first frame for classification")
+        return extract_gif_first_frame(image_data)
+    return image_data
 
 
 def extract_json_from_response(response: str) -> Optional[Dict[str, Any]]:
@@ -126,8 +190,11 @@ async def classify_meme(image_data: bytes) -> Optional[MemeClassification]:
         MemeClassification 分类结果，如果分类失败返回 None
     """
     try:
+        # 准备图片：如果是 GIF 则提取第一帧
+        processed_image = prepare_image_for_classification(image_data)
+
         # 转换图片为 base64
-        image_base64 = base64.b64encode(image_data).decode("utf-8")
+        image_base64 = base64.b64encode(processed_image).decode("utf-8")
 
         # 构建消息
         messages = [
