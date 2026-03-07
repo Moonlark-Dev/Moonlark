@@ -90,6 +90,10 @@ async def reset_session(session_id: str) -> bool:
 
     session = groups.pop(session_id)
     session.processor.enabled = False
+    if session.processor.loop_task:
+        session.processor.loop_task.cancel()
+    if session.processor.openai_messages.fetcher_task:
+        session.processor.openai_messages.fetcher_task.cancel()
 
     # 清除消息队列中的所有消息
     session.processor.openai_messages.messages.clear()
