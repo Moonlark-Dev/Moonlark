@@ -35,7 +35,7 @@ async def resolve_b23_url(b23_url: str, get_text: GetTextFunc) -> str:
         # 典型的 URL: https://www.bilibili.com/video/BV1xx411c7mD/?spm_id_from=...
         match = re.search(r"BV[a-zA-Z0-9]+", resp.url.path)
         if match:
-            return await get_text("bilibili.resolve_success", match.group(0))
+            return match.group(0)
         else:
             return await get_text("bilibili.resolve_failed")
 
