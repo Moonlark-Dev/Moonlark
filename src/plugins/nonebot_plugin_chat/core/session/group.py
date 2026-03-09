@@ -19,8 +19,8 @@ from datetime import datetime
 class GroupSession(BaseSession):
 
     @staticmethod
-    def get_session_type() -> Literal['group']:
-        return 'group'
+    def get_session_type() -> Literal["group"]:
+        return "group"
 
     async def get_user_info(self, user_id: str) -> AdapterUserInfo:
         if isinstance(self.bot, OB11Bot):
