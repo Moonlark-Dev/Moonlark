@@ -27,8 +27,7 @@ from ..processor import MessageProcessor
 class BaseSession(ABC):
     @staticmethod
     @abstractmethod
-    def get_session_type() -> Literal["private", "group"]:
-        ...
+    def get_session_type() -> Literal["private", "group"]: ...
 
     def __init__(self, session_id: str, bot: Bot, target: Target, lang_str: str = f"mlsid::--lang=zh_hans") -> None:
         self.session_id = session_id

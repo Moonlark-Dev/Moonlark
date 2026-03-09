@@ -13,7 +13,7 @@ from .base import BaseSession
 class PrivateSession(BaseSession):
 
     @staticmethod
-    def get_session_type() -> Literal['private']:
+    def get_session_type() -> Literal["private"]:
         return "private"
 
     def __init__(self, session_id: str, bot: Bot, target: Target) -> None:
