@@ -38,6 +38,7 @@ class BaseSession(ABC):
         self.message_queue: list[MessageQueueItem] = []
         self.cached_messages: list[CachedMessage] = []
         self.message_cache_counter = 0
+        self.last_message_for_instant_memory_generation: Optional[CachedMessage] = None
         self.ghot_coefficient = 1
         self.accumulated_text_length = 0  # 累计文本长度
         self.last_activate = datetime.now()
@@ -48,6 +49,15 @@ class BaseSession(ABC):
         self.pending_interactions: dict[str, PendingInteraction] = {}  # 待处理的交互请求
         self.last_interest: Optional[float] = None  # 缓存的 interest 值
         self.processor = MessageProcessor(self)
+
+    def get_message_for_instant_memory(self) -> list[CachedMessage]:
+        if self.last_message_for_instant_memory_generation and self.last_message_for_instant_memory_generation in self.cached_messages and self.cached_messages:
+            index = self.cached_messages.index(self.last_message_for_instant_memory_generation)
+            self.last_message_for_instant_memory_generation = self.cached_messages[-1]
+            return self.cached_messages[index + 1:]
+        self.last_message_for_instant_memory_generation = self.cached_messages[-1]
+        return self.cached_messages
+        
 
     @abstractmethod
     async def setup(self) -> None:

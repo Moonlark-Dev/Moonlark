@@ -1,6 +1,6 @@
 import re
 import traceback
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 from nonebot.compat import type_validate_python
 from nonebot.log import logger
 from nonebot_plugin_chat.core.tools import ToolExecutor
@@ -34,6 +34,7 @@ class MessageQueue:
         max_message_count: int = 50,
     ) -> None:
         self.processor = processor
+        self.instant_memory_generator_lock = asyncio.Lock()
         self.max_message_count = max_message_count
         self.messages: list[OpenAIMessage] = []
         self.fetcher_lock = asyncio.Lock()
@@ -119,6 +120,13 @@ class MessageQueue:
 
         # 记录抓取结束时间
         timing_stats_manager.record_fetch_end(session_id)
+
+    async def generate_instant_memory(self) -> None:
+        if self.instant_memory_generator_lock.locked():
+            return
+        async with self.instant_memory_generator_lock:
+            await self.processor.generate_instant_memory()
+            await asyncio.sleep(5)
 
     async def stop_fetcher(self) -> None:
         if self.fetcher_task:
