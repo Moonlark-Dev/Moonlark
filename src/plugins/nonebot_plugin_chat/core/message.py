@@ -114,6 +114,7 @@ class MessageQueue:
             self.fetcher_task = asyncio.create_task(self._fetch_reply())
             status = await self.fetcher_task
             logger.info(f"Reply fetcher ended with status: {status.name}")
+            asyncio.create_task(self.generate_instant_memory())
 
         if self.continuous_response and self.processor.session.get_session_type() == "group":
             self.continuous_response = False
