@@ -276,6 +276,15 @@ Moonlark 投票
 
 ### 用法
 - `/minigame-rank`
+## `quick-math`: 快速数学
+
+以计算为核心的玩法。找到问题的答案，并在排行榜中获取更高的积分。（指令别名：qm）
+
+### 用法
+- `/quick-math [--level <开始的等级>] (开始挑战)`
+- `/quick-math rank [--total] (积分排行榜)`
+- `/quick-math points (查看总分详情)`
+- `/quick-math zen <等级> (禅模式)`
 ## `sandbox`: 战斗沙箱
 
 （该功能仍在测试中）启动战斗沙箱，进行模拟战斗。

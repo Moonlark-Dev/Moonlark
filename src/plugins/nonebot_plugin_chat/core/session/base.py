@@ -51,13 +51,16 @@ class BaseSession(ABC):
         self.processor = MessageProcessor(self)
 
     def get_message_for_instant_memory(self) -> list[CachedMessage]:
-        if self.last_message_for_instant_memory_generation and self.last_message_for_instant_memory_generation in self.cached_messages and self.cached_messages:
+        if (
+            self.last_message_for_instant_memory_generation
+            and self.last_message_for_instant_memory_generation in self.cached_messages
+            and self.cached_messages
+        ):
             index = self.cached_messages.index(self.last_message_for_instant_memory_generation)
             self.last_message_for_instant_memory_generation = self.cached_messages[-1]
-            return self.cached_messages[index + 1:]
+            return self.cached_messages[index + 1 :]
         self.last_message_for_instant_memory_generation = self.cached_messages[-1]
         return self.cached_messages
-        
 
     @abstractmethod
     async def setup(self) -> None:

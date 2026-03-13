@@ -419,7 +419,17 @@ class MessageProcessor:
                 status_manager.get_mood_retention(),
                 mood_reason,
                 "/".join([i for i in QQ_EMOJI_MAP.values()]),
-                "\n".join([await self.session.text("prompt_group.instant_mem", mem["category"], mem['create_time'].strftime("%Y-%m-%d %H:%M:%S"), mem["content"]) for mem in filter_instant_memory(chat_history)])
+                "\n".join(
+                    [
+                        await self.session.text(
+                            "prompt_group.instant_mem",
+                            mem["category"],
+                            mem["create_time"].strftime("%Y-%m-%d %H:%M:%S"),
+                            mem["content"],
+                        )
+                        for mem in filter_instant_memory(chat_history)
+                    ]
+                ),
             ),
             "system",
         )
@@ -466,25 +476,22 @@ class MessageProcessor:
         )
 
     async def generate_instant_memory(self) -> None:
-        messages = [f"[{msg['send_time'].strftime('%H:%M:%S')}][{msg['nickname']}]({msg['message_id']}): {msg['content']}" for msg in self.session.get_message_for_instant_memory()]
+        messages = [
+            f"[{msg['send_time'].strftime('%H:%M:%S')}][{msg['nickname']}]({msg['message_id']}): {msg['content']}"
+            for msg in self.session.get_message_for_instant_memory()
+        ]
         try:
             model_response = await fetch_message(
                 [
-                    generate_message(await self.session.text("memory_cache.creator", datetime.now().isoformat()), 'system'),
-                    generate_message('\n'.join(messages), 'user')
+                    generate_message(
+                        await self.session.text("memory_cache.creator", datetime.now().isoformat()), "system"
+                    ),
+                    generate_message("\n".join(messages), "user"),
                 ],
-                reasoning_effort='medium'
+                reasoning_effort="medium",
             )
             memory_list = json.loads(re.sub(r"`{1,3}([a-zA-Z0-9]+)?", "", model_response))
             for mem in memory_list:
-                post_instant_memory(
-                    mem['category'],
-                    mem['content'],
-                    [k.strip() for k in mem['keywords'].split(',')]
-                )
+                post_instant_memory(mem["category"], mem["content"], [k.strip() for k in mem["keywords"].split(",")])
         except Exception as e:
             logger.exception(e)
-        
-        
-        
-
