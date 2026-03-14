@@ -1,5 +1,4 @@
 from nonebot.adapters.onebot.v11 import Bot as OB11Bot
-from .main_session import StateEnum, main_session
 from nonebot_plugin_chat.utils.instant_mem import filter_instant_memory, post_instant_memory
 from nonebot_plugin_openai.types import Message as OpenAIMessage
 from nonebot.log import logger
@@ -191,6 +190,9 @@ class MessageProcessor:
         await self.session.mute()
 
     async def generate_reply(self, important: bool = False) -> None:
+        # 延迟导入以避免循环导入
+        from .main_session import StateEnum, main_session
+
         # 如果在冷却期或消息为空，直接返回
         if self.cold_until > datetime.now():
             return
