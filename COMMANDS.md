@@ -8,20 +8,6 @@ Moonlark 权限控制 (仅 SUPERUSER 可用)
 ### 用法
 - `/access {ban|pardon} <主体ID> (封禁/解封用户)`
 - `/access {block|unblock} <权限> <主体ID> (添加/移除权限)`
-## `bag`: 背包
-
-查看，处理，使用背包中的物品
-
-### 用法
-- `/bag (查看背包)`
-- `/bag overflow list (查看 overflow 区物品列表)`
-- `/bag overflow show <INDEX> (查看 overflow 区物品)`
-- `/bag overflow get <INDEX> [count] (获取 overflow 区物品)`
-- `/bag show <INDEX> (查看物品)`
-- `/bag drop <INDEX> [count] (丢弃物品)`
-- `/bag tidy (整理背包)`
-- `/bag move <from> <to> (移动物品)`
-- `/bag use <INDEX> [-c|--count <count>] [argv...] (使用物品)`
 ## `lang`: 本地化
 
 Moonlark 本地化设置
@@ -250,32 +236,12 @@ Moonlark 投票
 - `/ct (群话痨排行)`
 - `/ct -e|-d (功能开关)`
 - `/ct me|<@用户> (查询指定用户的话痨排行)`
-## `defuse-tnt`: 拆除 TNT
-
-运气游戏——通过猜测排列出正确的拆除炸弹的密码。
-
-### 用法
-- `/defuse-tnt`
 ## `epic-free`: Epic 免费游戏查询
 
 查询 Epic Games Store 当前和即将到来的免费游戏。
 
 ### 用法
 - `/[缺失: epic_freegame.help.usage1 ((); {})]`
-## `jrrp`: 今日人品
-
-查询今天的人品值，今天也是幸运的一天～
-
-### 用法
-- `/jrrp (获取今天的人品值)`
-- `/jrrp r (今日幸运星[--rank])`
-- `/jrrp rr (今日倒霉蛋[--rank-r])`
-## `minigame`: 小游戏积分排名
-
-查看 Moonlark 中游玩玩法的用户的排名
-
-### 用法
-- `/minigame-rank`
 ## `sandbox`: 战斗沙箱
 
 （该功能仍在测试中）启动战斗沙箱，进行模拟战斗。
@@ -289,19 +255,6 @@ Moonlark 投票
 ### 用法
 - `/setu (随机图片)`
 - `/setu rank (查看使用排行)`
-## `sudoku`: 数独解谜游戏
-
-数独解谜游戏，提供不同难度级别的数独谜题。游戏可以错误检查功能，帮助用户学习数独技巧。
-
-### 用法
-- `/sudoku new <num-holes> (生成指定空格数的数独)`
-- `/sudoku change <row> <column> <value> (修改数独指定行列数字)`
-- `/sudoku erase <row> <column> (去除数独指定行列数字)`
-- `/sudoku hint (提供第一个空格的提示)`
-- `/sudoku reset (重置数独为初始状态)`
-- `/sudoku answer (展示答案)`
-- `/sudoku undo (撤销操作)`
-- `/sudoku redo (撤销操作)`
 ## `team`: 设置战斗队伍
 
 （该功能仍在测试中）设置战斗有关模块使用的队伍，配合 character 指令使用。
@@ -309,62 +262,6 @@ Moonlark 投票
 ### 用法
 - `/team (查看当前队伍)`
 - `/team set <位置> <index> (成员入队)`
-## `tol`: 关灯挑战
-
-尝试关掉所有的灯_一盏灯被开启或关闭时它上、下、左、右边的灯的状态也会发生改变。
-
-### 用法
-- `/tol`
-## `wordle`: WORDLE
-
-猜单词的游戏，支持多人游玩。
-
-游玩提示：为了避免干扰使用，不成功的匹配不会被提示，也不能在一个会话中同时开启多个 WORDLE 游戏。
-
-
-### 用法
-- `/wordle [长度=5]`
-## `cave`: 回声洞
-
-（与漂流瓶类似）投稿或查看其他用户投稿的回声洞，所有内容依照 CC-BY-NC-SA 4.0 许可协议授权
-
-### 用法
-- `/cave (随机条目)`
-- `/cave-a <内容...> (投稿条目)`
-- `/cave-r [-c] <ID> (删除条目或评论)`
-- `/cave-s <ID> (恢复 7 天内删除的条目)`
-- `/cave-g <ID> (查看自己投稿的条目)`
-- `/cave-s (统计投稿者)`
-## `chat`: 主动水群
-
-基于 LLM 的主动水群功能，可以尝试用于活跃群气氛。（启用后将会收集、处理、并储存启用群聊的聊天记录和群员的昵称，仅支持非 QQ 官方节点）
-
-### 用法
-- `/chat switch (切换功能启用状态)`
-- `/chat on (启用功能)`
-- `/chat off (禁用功能)`
-- `/chat desire (查看触发概率信息)`
-- `/chat mute (临时禁用水群功能 15 分钟)`
-- `/chat unmute (取消临时禁用)`
-- `/chat calls (查看最近的工具调用记录)`
-- `/chat profile (查看自己的 profile)`
-- `/chat profile set <内容> (设置自己的 profile)`
-- `/chat block user <add|remove|list> [用户ID] (管理屏蔽用户)`
-- `/chat block keyword <add|remove|list> [关键词] (管理屏蔽关键词)`
-- `/chat block list (查看所有屏蔽项)`
-- `/chat reset (清除当前会话所有历史消息并重置会话状态)`
-- `/chat stop (强制停止当前正在生成的响应)`
-- `/chat stats (查看时间统计数据)`
-## `email`: 邮件
-
-进入 Moonlark 邮箱
-
-### 用法
-- `/email (查看未读邮件)`
-- `/email claim all (领取全部物品)`
-- `/email claim <email_id> (领取指定邮件)`
-- `/email unread all (将所有邮件标为未读)`
-- `/email unread <email_id> (将邮件标为未读)`
 ## `ghot`: 群发言热度
 
 计算群聊消息的热度分数，并进行排名。使用此功能需要先使用 /summary -e 启用群历史消息总结功能，否则群热度分数恒为 0。
@@ -392,29 +289,6 @@ Moonlark 投票
 ### 用法
 - `/online-timer [@用户]`
 - `/online-timer rank (在线排行)`
-## `rua`: 互动
-
-通过 rua 指令与 Moonlark 进行亲密互动（如戳一戳、摸头、拥抱等）。不同的互动动作需要不同的好感度才能解锁。
-
-### 用法
-- `/rua (使用当前选中的动作与 Moonlark 互动)`
-- `/rua action (查看可用的互动动作列表)`
-- `/rua action <编号> (切换当前使用的互动动作)`
-## `schedule`: 每日任务
-
-查看每日任务或领取每日任务奖励，每日刷新，部分功能仅在签到后可用。
-
-### 用法
-- `/schdeule (查看每日任务列表)`
-- `/schdeule collect (领取可领取的奖励)`
-## `waifu`: 今日群老婆
-
-匹配你的每日群老婆！（仅支持群聊使用）
-
-### 用法
-- `/waifu (今日群老婆)`
-- `/waifu divorce (离婚)`
-- `/waifu force-marry <@群员> (强娶)`
 ## `wtfis`: 这在说啥
 
 随机跨领域因果关系谬误文案。（基于预先生成的文案，绝对没有使用大语言模型及人工智能！）
