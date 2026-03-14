@@ -336,7 +336,7 @@ prompt_group:
     心情：{5} (情感强度: {6}; 原因: {7})
   group_member_info: '* {} ({}/{})[好感:{}/{}][入群:{}] - {}'
   member_info: '* {} [好感:{}] - {}'
-  instant_mem: '- [{}][Lv{}](创建于: {}): {}'
+  instant_mem: '- [{}][{}](创建于: {}): {}'
   user_profile_not_found: '暂无该成员的更多信息。'
   image_describe_system: |
     # Role
