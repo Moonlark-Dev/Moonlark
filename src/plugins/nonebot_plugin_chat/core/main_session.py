@@ -6,7 +6,7 @@ from nonebot import get_bot
 from nonebot.compat import type_validate_python
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Literal, Optional, Union
+from typing import Literal, Optional, Union, TypedDict
 
 from nonebot_plugin_apscheduler import scheduler
 from nonebot_plugin_chat.core.proactive_chat import send_proactive_private_message
@@ -56,6 +56,18 @@ class BoredActionResponse(BaseModel):
     response: BoredAction
 
 
+# Action 状态类型
+class ActionState(TypedDict, total=False):
+    """动作执行后的状态信息"""
+    # sleep 动作的状态
+    actual_sleep_minutes: Optional[int]  # 实际睡眠时间（分钟）
+    sleep_interrupted: Optional[bool]     # 是否被提前唤醒
+    
+    # send_private_message 动作的状态
+    user_replied: Optional[bool]          # 用户是否回复
+    reply_time: Optional[datetime]        # 用户回复时间
+
+
 
 
 
@@ -65,11 +77,17 @@ class MainSession:
         self.lang_str = lang_str
         self.last_activate_time = last_activate_time
         self.boredom = 0.0
-        self.action_history: list[tuple[datetime, BoredAction]] = []
+        # action_history 现在存储 (datetime, BoredAction, ActionState) 元组
+        self.action_history: list[tuple[datetime, BoredAction, ActionState]] = []
         self.boredom_processor_lock = asyncio.Lock()
         self.state = StateEnum.ACTIVATE
         self.status_manager = StatusManager()
         self.state_until = None
+        # 记录当前正在执行的动作，用于后续更新状态
+        self._current_action_start_time: Optional[datetime] = None
+        self._current_action_sleep_plan_end: Optional[datetime] = None
+        self._current_action_send_private_user_id: Optional[str] = None
+        self._current_action_send_private_time: Optional[datetime] = None
         scheduler.scheduled_job("cron", minutes="*", id="chat_heartbeat")(self.process_timer)
 
 
@@ -86,9 +104,38 @@ class MainSession:
                 asyncio.create_task(self.process_boredom())
 
         if self.state_until is not None and datetime.now() > self.state_until:
+            # 如果当前是 SLEEPING 状态且是正常结束（没有被 wake_up 提前处理），更新状态
+            if self.state == StateEnum.SLEEPING:
+                self._update_sleep_action_state_on_timer_end()
+            
             self.state = StateEnum.ACTIVATE
             self.state_until = None
             self.boredom = 0.0
+
+    def _update_sleep_action_state_on_timer_end(self) -> None:
+        """当 sleep 状态自然结束时，更新最后一个 sleep action 的状态"""
+        if not self.action_history:
+            return
+        
+        last_action = self.action_history[-1]
+        if last_action[1].type != "sleep":
+            return
+        
+        dt, action, state = last_action
+        
+        # 如果状态已经被更新过（被 wake_up 处理过），不再更新
+        if state.get("actual_sleep_minutes") is not None:
+            return
+        
+        # 计算实际睡眠时间
+        if self._current_action_start_time is not None:
+            actual_duration = (datetime.now() - self._current_action_start_time).total_seconds() / 60
+            state["actual_sleep_minutes"] = int(actual_duration)
+            state["sleep_interrupted"] = False  # 自然结束，不是中断
+        
+        # 清除 sleep 相关状态
+        self._current_action_start_time = None
+        self._current_action_sleep_plan_end = None
 
     def record_activate(self, important: bool = False) -> None:
         self.last_activate_time = datetime.now()
@@ -98,12 +145,26 @@ class MainSession:
             self.boredom -= 2
         self.boredom = max(0, self.boredom)
 
-    async def get_action_str(self, action: BoredAction) -> Optional[str]:
+    async def get_action_str(self, action: BoredAction, state: ActionState) -> Optional[str]:
         match action.type:
             case "send_private_message":
-                return await lang.text("main_session.history.send_private_message", self.lang_str, action.target_nickname, action.subject)
+                if state.get("user_replied") is True:
+                    reply_time = state.get("reply_time")
+                    time_str = reply_time.strftime("%H:%M") if reply_time else ""
+                    return await lang.text("main_session.history.send_private_message.replied", self.lang_str, action.target_nickname, action.subject, time_str)
+                elif state.get("user_replied") is False:
+                    return await lang.text("main_session.history.send_private_message.no_reply", self.lang_str, action.target_nickname, action.subject)
+                else:
+                    return await lang.text("main_session.history.send_private_message.default", self.lang_str, action.target_nickname, action.subject)
             case "sleep":
-                return await lang.text("main_session.history.sleep", self.lang_str, action.time)
+                actual_minutes = state.get("actual_sleep_minutes")
+                if actual_minutes is not None:
+                    if state.get("sleep_interrupted"):
+                        return await lang.text("main_session.history.sleep.interrupted", self.lang_str, action.time, actual_minutes)
+                    else:
+                        return await lang.text("main_session.history.sleep.completed", self.lang_str, action.time, actual_minutes)
+                else:
+                    return await lang.text("main_session.history.sleep.default", self.lang_str, action.time)
             case "do":
                 return await lang.text("main_session.history.do", self.lang_str, action.information, action.estimated_time)
 
@@ -112,12 +173,12 @@ class MainSession:
         state_str = await lang.text("prompt_group.state", self.lang_str, await lang.text(f"status.mood.{mood[0].value}", self.lang_str), self.status_manager.get_mood_retention(), mood[1])
         return await lang.text(
             "main_session.prompt",
-            self.lang_str, 
+            self.lang_str,
             await lang.text("prompt_group.identify", self.lang_str),
             await lang.text("prompt_group.time", self.lang_str, datetime.now().isoformat()),
             state_str,
             "\n".join([await lang.text("prompt_group.instant_mem", self.lang_str, mem["category"], mem["expire_level"], mem["create_time"].strftime("%Y-%m-%d %H:%M:%S"), mem["content"]) for mem in get_instant_memories()]),
-            "\n".join([f"[{dt.strftime('%Y-%m-%d %H:%M:%S')}] {s}" for dt, item in self.action_history[-20:] if (s := await self.get_action_str(item))])
+            "\n".join([f"[{dt.strftime('%Y-%m-%d %H:%M:%S')}] {s}" for dt, item, state in self.action_history[-20:] if (s := await self.get_action_str(item, state))])
         )
 
     async def process_boredom(self) -> None:
@@ -137,7 +198,9 @@ class MainSession:
                 try:
                     response = type_validate_python(BoredActionResponse, {"response": json.loads(message)})
                     action = response.response
-                    self.action_history.append((datetime.now(), action))
+                    # 初始化空的 action_state
+                    action_state: ActionState = {}
+                    self.action_history.append((datetime.now(), action, action_state))
                     await self.handle_action(action, fetcher)
                 except Exception:
                     fetcher.session.insert_message(generate_message(traceback.format_exc(), "user"))
@@ -148,10 +211,17 @@ class MainSession:
             case "get_friends":
                 fetcher.session.insert_message(generate_message(await self.get_friends(), "user"))
             case "send_private_message":
+                # 记录发送私聊前的状态，用于后续判断用户是否回复
+                self._current_action_send_private_time = datetime.now()
                 await self.send_private_message(action.target_nickname, action.subject)
             case "sleep":
                 self.state = StateEnum.SLEEPING
-                self.state_until = datetime.now() + timedelta(minutes=action.time)
+                sleep_start = datetime.now()
+                sleep_end = sleep_start + timedelta(minutes=action.time)
+                self.state_until = sleep_end
+                # 记录 sleep 状态用于后续更新
+                self._current_action_start_time = sleep_start
+                self._current_action_sleep_plan_end = sleep_end
             case "do":
                 self.state = StateEnum.BUSY
                 self.state_until = datetime.now() + timedelta(minutes=action.estimated_time)
@@ -169,13 +239,81 @@ class MainSession:
                     break
             else:
                 raise ValueError("No such friend")
+        # 记录用户ID，用于后续检查是否回复
+        self._current_action_send_private_user_id = user_id
         bot = get_bot(bot_id)
         await send_proactive_private_message(bot, user_id, subject)
 
     def wake_up(self) -> None:
         if self.state == StateEnum.SLEEPING:
+            # 计算实际睡眠时间
+            wake_time = datetime.now()
+            actual_sleep_minutes = None
+            sleep_interrupted = False
+            
+            if self._current_action_start_time is not None and self._current_action_sleep_plan_end is not None:
+                planned_duration = (self._current_action_sleep_plan_end - self._current_action_start_time).total_seconds() / 60
+                actual_duration = (wake_time - self._current_action_start_time).total_seconds() / 60
+                actual_sleep_minutes = int(actual_duration)
+                # 如果被提前唤醒（比计划提前超过1分钟），标记为中断
+                if actual_duration < planned_duration - 1:
+                    sleep_interrupted = True
+            
+            # 更新最后一个 sleep action 的状态
+            if self.action_history:
+                last_action = self.action_history[-1]
+                if last_action[1].type == "sleep":
+                    dt, action, state = last_action
+                    state["actual_sleep_minutes"] = actual_sleep_minutes
+                    state["sleep_interrupted"] = sleep_interrupted
+            
             self.state = StateEnum.ACTIVATE
-            # TODO 在这里传入更多信息，记录实际的睡眠时间 
+            self.state_until = None
+            self.boredom = 0.0
+            
+            # 清除 sleep 相关状态
+            self._current_action_start_time = None
+            self._current_action_sleep_plan_end = None
+
+    async def update_send_private_message_state(self, user_id: str) -> None:
+        """检查用户是否回复了主动私聊，如果是，更新最后一个 send_private_message action 的状态
+        
+        Args:
+            user_id: 发送消息的用户 ID
+        """
+        # 检查是否是目标用户回复的
+        if (self._current_action_send_private_user_id is None or
+            self._current_action_send_private_user_id != user_id):
+            return
+        
+        # 检查时间窗口（30分钟内）
+        if self._current_action_send_private_time is None:
+            return
+        
+        time_elapsed = (datetime.now() - self._current_action_send_private_time).total_seconds() / 60
+        if time_elapsed > 30:
+            # 超过30分钟，认为用户没有回复
+            if self.action_history:
+                last_action = self.action_history[-1]
+                if last_action[1].type == "send_private_message":
+                    dt, action, state = last_action
+                    if state.get("user_replied") is None:
+                        state["user_replied"] = False
+            self._current_action_send_private_user_id = None
+            self._current_action_send_private_time = None
+            return
+        
+        # 更新状态为已回复
+        if self.action_history:
+            last_action = self.action_history[-1]
+            if last_action[1].type == "send_private_message":
+                dt, action, state = last_action
+                state["user_replied"] = True
+                state["reply_time"] = datetime.now()
+        
+        # 清除状态
+        self._current_action_send_private_user_id = None
+        self._current_action_send_private_time = None
 
     async def get_friends(self) -> str:
         friend_list = []

@@ -23,6 +23,7 @@ from nonebot.matcher import Matcher
 from nonebot.adapters.onebot.v11 import GroupRecallNoticeEvent
 
 from .session import create_group_session, create_private_session, get_session_directly
+from .main_session import main_session
 
 from ..utils.group import enabled_group, parse_message_to_string
 from ..config import config
@@ -82,6 +83,9 @@ async def _(
 
     # 记录私聊会话信息（用于主动消息时获取正确的 bot）
     await record_private_chat_session(user_id, bot.self_id)
+    
+    # 检查是否是主动私聊的回复
+    await main_session.update_send_private_message_state(user_id)
 
     session = await create_private_session(user_id, get_target(event), bot)
     if session.mute_until is not None:
