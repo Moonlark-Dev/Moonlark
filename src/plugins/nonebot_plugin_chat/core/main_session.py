@@ -92,7 +92,7 @@ class MainSession:
         self._current_action_sleep_plan_end: Optional[datetime] = None
         self._current_action_send_private_user_id: Optional[str] = None
         self._current_action_send_private_time: Optional[datetime] = None
-        scheduler.scheduled_job("cron", minutes="*", id="chat_heartbeat")(self.process_timer)
+        scheduler.scheduled_job("cron", minute="*", id="chat_heartbeat")(self.process_timer)
 
     async def process_timer(self) -> None:
         match self.state:
