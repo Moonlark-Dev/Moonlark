@@ -39,53 +39,53 @@ from ..models import PrivateChatSession
 from .session import create_private_session
 
 
-async def get_cooldown_hours(favorability: float) -> float:
-    """根据好感度获取冷却时间（小时）
+# async def get_cooldown_hours(favorability: float) -> float:
+#     """根据好感度获取冷却时间（小时）
 
-    Args:
-        favorability: 用户好感度
+#     Args:
+#         favorability: 用户好感度
 
-    Returns:
-        冷却时间（小时）
-    """
-    if favorability >= 0.301:
-        return 12.0
-    elif favorability >= 0.151:
-        return 24.0
-    elif favorability >= 0.051:
-        return 36.0
-    else:
-        # 好感度太低，不允许主动私聊
-        return float("inf")
+#     Returns:
+#         冷却时间（小时）
+#     """
+#     if favorability >= 0.301:
+#         return 12.0
+#     elif favorability >= 0.151:
+#         return 24.0
+#     elif favorability >= 0.051:
+#         return 36.0
+#     else:
+#         # 好感度太低，不允许主动私聊
+#         return float("inf")
 
 
-async def is_in_cooldown(user_id: str, favorability: float) -> bool:
-    """检查用户是否处于主动私聊冷却期
+# async def is_in_cooldown(user_id: str, favorability: float) -> bool:
+#     """检查用户是否处于主动私聊冷却期
 
-    Args:
-        user_id: 用户 ID
-        favorability: 当前好感度
+#     Args:
+#         user_id: 用户 ID
+#         favorability: 当前好感度
 
-    Returns:
-        如果处于冷却期返回 True，否则返回 False
-    """
-    cooldown_hours = await get_cooldown_hours(favorability)
-    if cooldown_hours == float("inf"):
-        return True
+#     Returns:
+#         如果处于冷却期返回 True，否则返回 False
+#     """
+#     cooldown_hours = await get_cooldown_hours(favorability)
+#     if cooldown_hours == float("inf"):
+#         return True
 
-    async with get_session() as session:
-        # 查询最近一次主动私聊记录
-        result = await session.execute(select(PrivateChatSession).where(PrivateChatSession.user_id == user_id))
-        chat_session = result.scalar_one_or_none()
+#     async with get_session() as session:
+#         # 查询最近一次主动私聊记录
+#         result = await session.execute(select(PrivateChatSession).where(PrivateChatSession.user_id == user_id))
+#         chat_session = result.scalar_one_or_none()
 
-        if chat_session is None or chat_session.last_proactive_message_time is None:
-            # 没有发送记录，不在冷却期
-            return False
+#         if chat_session is None or chat_session.last_proactive_message_time is None:
+#             # 没有发送记录，不在冷却期
+#             return False
 
-        # 检查是否超过冷却时间
-        last_sent_time = datetime.fromtimestamp(chat_session.last_proactive_message_time)
-        cooldown_end = last_sent_time + timedelta(hours=cooldown_hours)
-        return datetime.now() < cooldown_end
+#         # 检查是否超过冷却时间
+#         last_sent_time = datetime.fromtimestamp(chat_session.last_proactive_message_time)
+#         cooldown_end = last_sent_time + timedelta(hours=cooldown_hours)
+#         return datetime.now() < cooldown_end
 
 
 async def record_proactive_message(user_id: str) -> None:
@@ -103,81 +103,9 @@ async def record_proactive_message(user_id: str) -> None:
             await session.commit()
 
 
-async def get_recent_private_chat_sessions(days: int = 3) -> list[tuple[str, str]]:
-    """获取近 N 天内有过私聊的会话列表
-
-    Args:
-        days: 天数，默认 3 天
-
-    Returns:
-        (user_id, bot_id) 元组列表
-    """
-    cutoff_time = datetime.now() - timedelta(days=days)
-    cutoff_timestamp = cutoff_time.timestamp()
-
-    async with get_session() as session:
-        # 从 PrivateChatSession 查询所有近 N 天内有消息的私聊会话
-        result = await session.execute(
-            select(PrivateChatSession).where(PrivateChatSession.last_message_time >= cutoff_timestamp)
-        )
-        chat_sessions = result.scalars().all()
-
-        return [(cs.user_id, cs.bot_id) for cs in chat_sessions]
 
 
-async def check_and_send_proactive_messages() -> None:
-    """检查并发送主动私聊消息
-
-    每小时执行一次，检查所有私聊会话：
-    1. 近 3 天用户有主动私聊
-    2. 用户在近 30 分钟内上过线
-    3. 通过好感度检查主动私聊不在冷却期间
-    """
-    logger.info("开始检查主动私聊...")
-
-    # 获取近 3 天有过私聊的会话（包含 user_id 和 bot_id）
-    recent_sessions = await get_recent_private_chat_sessions(days=3)
-    logger.debug(f"近 3 天有过私聊的用户: {len(recent_sessions)} 人")
-
-    for user_id, bot_id in recent_sessions:
-        try:
-            # 获取该用户对应的 Bot 实例
-            from nonebot import get_bot
-
-            try:
-                bot = get_bot(bot_id)
-            except Exception as e:
-                logger.warning(f"无法获取 Bot 实例 {bot_id}: {e}")
-                continue
-
-            # 检查 30 分钟内是否在线
-            if not await is_user_recently_online(user_id, minutes=30):
-                logger.debug(f"用户 {user_id} 30 分钟内不在线，跳过")
-                continue
-
-            # 获取用户好感度
-            user = await get_user(user_id)
-            favorability = user.get_fav()
-
-            # 检查冷却期
-            if await is_in_cooldown(user_id, favorability):
-                logger.debug(f"用户 {user_id} 处于冷却期，跳过")
-                continue
-
-            if random.random() >= 0.3:
-                logger.debug(f"用户 {user_id} 概率检测未通过，跳过")
-                continue
-
-            # 检查通过，发送主动私聊
-            await send_proactive_private_message(bot, user_id)
-            logger.info(f"已向用户 {user_id} 发送主动私聊")
-
-        except Exception as e:
-            logger.exception(f"处理用户 {user_id} 时出错: {e}")
-            continue
-
-
-async def send_proactive_private_message(bot: Bot, user_id: str) -> None:
+async def send_proactive_private_message(bot: Bot, user_id: str, subject: str) -> None:
     """发送主动私聊消息
 
     Args:
@@ -191,16 +119,10 @@ async def send_proactive_private_message(bot: Bot, user_id: str) -> None:
     session = await create_private_session(user_id, target, bot)
 
     # 获取提示语
-    prompt = await lang.text("proactive_message.prompt", user_id)
+    prompt = await lang.text("proactive_message.prompt", user_id, subject)
 
     # 发送事件到会话（强制触发回复）
     await session.post_event(prompt, trigger_mode="all")
 
     # 记录发送历史
     await record_proactive_message(user_id)
-
-
-@scheduler.scheduled_job("cron", hour="8-23", minute=0, id="proactive_private_chat")
-async def _scheduled_proactive_chat() -> None:
-    """定时任务：每天 8:00-23:00 每小时执行一次"""
-    await check_and_send_proactive_messages()

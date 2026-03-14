@@ -34,7 +34,7 @@ class StatusManager:
         """
         dt = datetime.now()
         mood_retention = self.get_mood_retention()
-        if mood_retention >= 0.3:
+        if mood_retention >= 0.3 and self._mood not in [MoodEnum.CALM, MoodEnum.BORED]:
             self._last_mood_update -= timedelta(seconds=10)
             return False, "status.mood_set"
         elif mood_retention >= 0.1:

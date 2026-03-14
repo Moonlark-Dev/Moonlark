@@ -61,6 +61,9 @@ EXPIRE_TIME_MAP = {
 
 instant_memories: list[InstantMemory] = []
 
+def get_instant_memories() -> list[InstantMemory]:
+    clear_expired_instant_memory()
+    return instant_memories
 
 async def detect_conflicts_with_llm(
     new_category: str,

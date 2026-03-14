@@ -1,4 +1,5 @@
 from nonebot.adapters.onebot.v11 import Bot as OB11Bot
+from .main_session import StateEnum, main_session
 from nonebot_plugin_chat.utils.instant_mem import filter_instant_memory, post_instant_memory
 from nonebot_plugin_openai.types import Message as OpenAIMessage
 from nonebot.log import logger
@@ -208,6 +209,12 @@ class MessageProcessor:
 
         if self.session.get_session_type() == "group":
             self.openai_messages.continuous_response = self.openai_messages.continuous_response or important
+        
+        if main_session.state == StateEnum.SLEEPING:
+            if not important:
+                return
+            main_session.wake_up()
+        main_session.record_activate(important)
 
         logger.info(f"Generating reply ({important=})...")
         self.session.accumulated_text_length = 0
@@ -407,7 +414,7 @@ class MessageProcessor:
                     if notes
                     else await self.session.text("prompt.note.none")
                 ),
-                datetime.now().isoformat(),
+                await self.session.text("prompt_group.time", datetime.now().isoformat()),
                 self.session.session_name,
                 (
                     "\n".join([await format_note(note) for note in notes_from_other_group])
@@ -415,9 +422,7 @@ class MessageProcessor:
                     else await self.session.text("prompt.note.none")
                 ),
                 profiles_text,
-                mood_text,
-                status_manager.get_mood_retention(),
-                mood_reason,
+                await self.session.text("prompt_group.state", mood_text, status_manager.get_mood_retention(), mood_reason),
                 "/".join([i for i in QQ_EMOJI_MAP.values()]),
                 "\n".join(
                     [
@@ -431,6 +436,9 @@ class MessageProcessor:
                         for mem in filter_instant_memory(chat_history)
                     ]
                 ),
+                await self.session.text("prompt_group.identify"),
+                await self.session.text("prompt_group.rule"),
+                await self.session.text("prompt_group.fav_rule")
             ),
             "system",
         )
