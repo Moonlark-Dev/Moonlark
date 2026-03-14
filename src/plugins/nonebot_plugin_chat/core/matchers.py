@@ -83,7 +83,7 @@ async def _(
 
     # 记录私聊会话信息（用于主动消息时获取正确的 bot）
     await record_private_chat_session(user_id, bot.self_id)
-    
+
     # 检查是否是主动私聊的回复
     await main_session.update_send_private_message_state(user_id)
 

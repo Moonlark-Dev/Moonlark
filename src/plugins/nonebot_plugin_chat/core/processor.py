@@ -209,7 +209,7 @@ class MessageProcessor:
 
         if self.session.get_session_type() == "group":
             self.openai_messages.continuous_response = self.openai_messages.continuous_response or important
-        
+
         if main_session.state == StateEnum.SLEEPING:
             if not important:
                 return
@@ -422,7 +422,9 @@ class MessageProcessor:
                     else await self.session.text("prompt.note.none")
                 ),
                 profiles_text,
-                await self.session.text("prompt_group.state", mood_text, status_manager.get_mood_retention(), mood_reason),
+                await self.session.text(
+                    "prompt_group.state", mood_text, status_manager.get_mood_retention(), mood_reason
+                ),
                 "/".join([i for i in QQ_EMOJI_MAP.values()]),
                 "\n".join(
                     [
@@ -438,7 +440,7 @@ class MessageProcessor:
                 ),
                 await self.session.text("prompt_group.identify"),
                 await self.session.text("prompt_group.rule"),
-                await self.session.text("prompt_group.fav_rule")
+                await self.session.text("prompt_group.fav_rule"),
             ),
             "system",
         )

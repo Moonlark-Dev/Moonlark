@@ -38,7 +38,6 @@ from ..lang import lang
 from ..models import PrivateChatSession
 from .session import create_private_session
 
-
 # async def get_cooldown_hours(favorability: float) -> float:
 #     """根据好感度获取冷却时间（小时）
 
@@ -101,8 +100,6 @@ async def record_proactive_message(user_id: str) -> None:
             chat_session.last_proactive_message_time = datetime.now().timestamp()
             await session.merge(chat_session)
             await session.commit()
-
-
 
 
 async def send_proactive_private_message(bot: Bot, user_id: str, subject: str) -> None:
