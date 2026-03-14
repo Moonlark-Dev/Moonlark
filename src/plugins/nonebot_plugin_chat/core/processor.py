@@ -494,11 +494,12 @@ class MessageProcessor:
             memory_list = json.loads(re.sub(r"`{1,3}([a-zA-Z0-9]+)?", "", model_response))
             for mem in memory_list:
                 expire_level = mem.get("expire_level", 3)
-                post_instant_memory(
+                await post_instant_memory(
                     mem["category"],
                     mem["content"],
                     [k.strip() for k in mem["keywords"].split(",")],
-                    expire_level
+                    expire_level,
+                    self.session.lang_str
                 )
         except Exception as e:
             logger.exception(e)

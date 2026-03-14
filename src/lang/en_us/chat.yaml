@@ -1222,3 +1222,38 @@ memory_cache:
     - 推测要合理，不得凭空捏造；若信息不足，可不记录该类。
     - 时间信息可从消息时间戳中提取，用于 `goal` 和 `reference` 字段。
     - 确保 JSON 格式正确，无多余逗号或换行符。
+conflict_detection:
+  system_prompt: "You are an intelligent memory management system. Your task is to detect conflicts between new memories and existing memories."
+  user_prompt: |
+    Conflict Definition:
+    1. Content Contradiction: Facts described by old and new memories contradict each other (e.g., "I like apples" vs "I hate apples")
+    2. State Conflict: Different states of the same object (e.g., "I am eating" vs "I am sleeping")
+    3. Goal Conflict: Mutually exclusive goals (e.g., "I want to lose weight" vs "I want to eat a lot")
+    4. Emotional Conflict: Opposite emotions toward the same object (e.g., "I like this person" vs "I hate this person")
+
+    Non-Conflict Cases (the following are NOT conflicts):
+    1. Supplementary Information: Old and new memories can coexist and complement each other
+    2. Time-based Changes: Reasonable changes over time (e.g., "I used to like A" vs "I now like B")
+    3. Different Objects: Involving different people, things, or matters
+    4. Different Scenarios: Different behaviors in different contexts
+
+    Please analyze the following memories:
+
+    Existing Memories:
+    {existing_memories}
+
+    New Memory:
+    Category: {new_category}
+    Content: {new_content}
+    Keywords: {new_keywords}
+
+    Please determine if the new memory conflicts with any existing memory.
+
+    Output Format (JSON):
+    {{
+        "has_conflict": true/false,
+        "conflict_indices": [list of conflicting memory indices, starting from 0],
+        "reason": "Explain why there is a conflict or why there is no conflict"
+    }}
+
+    Output JSON only, do not include any other content.
