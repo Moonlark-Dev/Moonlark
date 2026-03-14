@@ -499,7 +499,7 @@ class MessageProcessor:
                     mem["content"],
                     [k.strip() for k in mem["keywords"].split(",")],
                     expire_level,
-                    self.session.lang_str
+                    self.session.lang_str,
                 )
         except Exception as e:
             logger.exception(e)

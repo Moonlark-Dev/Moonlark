@@ -71,25 +71,23 @@ async def detect_conflicts_with_llm(
 ) -> list[int]:
     """
     使用 LLM 检测新记忆与已有记忆的冲突
-    
+
     Args:
         lang_str: 语言代码，用于本地化提示词
-    
+
     Returns:
         冲突记忆的索引列表
     """
     if not existing_memories:
         return []
-    
+
     # 构建已有记忆的描述
     existing_descriptions = []
     for i, mem in enumerate(existing_memories):
-        existing_descriptions.append(
-            f"[{i}] {mem['category']}: {mem['content']} ({', '.join(mem['keywords'])}"
-        )
-    
+        existing_descriptions.append(f"[{i}] {mem['category']}: {mem['content']} ({', '.join(mem['keywords'])}")
+
     existing_memories_str = "\n".join(existing_descriptions) if existing_descriptions else "(none)"
-    
+
     # 使用本地化的提示词
     system_prompt = await lang.text("conflict_detection.system_prompt", lang_str)
     user_prompt = await lang.text(
@@ -100,20 +98,20 @@ async def detect_conflicts_with_llm(
         new_content=new_content,
         new_keywords=", ".join(new_keywords),
     )
-    
+
     try:
         messages = [
             generate_message(system_prompt, "system"),
             generate_message(user_prompt, "user"),
         ]
-        
+
         response = await fetch_message(messages, identify="Memory Conflict Detection")
-        
+
         # 清理响应，移除可能的 markdown 代码块标记
         cleaned_response = re.sub(r"`{1,3}(json)?", "", response).strip()
-        
+
         result = json.loads(cleaned_response)
-        
+
         if result.get("has_conflict", False):
             conflict_indices = result.get("conflict_indices", [])
             # 验证索引范围
@@ -122,7 +120,7 @@ async def detect_conflicts_with_llm(
                 logger.info(f"[InstantMemory] 检测到冲突: {result.get('reason', '无原因')}")
                 logger.info(f"[InstantMemory] 冲突索引: {valid_indices}")
             return valid_indices
-        
+
         return []
     except json.JSONDecodeError as e:
         logger.warning(f"[InstantMemory] LLM 冲突检测返回非 JSON 格式: {response}, 错误: {e}")
@@ -142,26 +140,24 @@ async def post_instant_memory(
     """
     post instant memory
     使用 LLM 检测并移除冲突的 memory
-    
+
     Args:
         lang_str: 语言代码，用于本地化提示词
     """
     global instant_memories
-    
+
     # 确保 expire_level 在 1-5 范围内
     expire_level = max(1, min(5, expire_level))
-    
+
     # 使用 LLM 检测冲突
-    conflict_indices = await detect_conflicts_with_llm(
-        category, content, keywords, instant_memories, lang_str
-    )
-    
+    conflict_indices = await detect_conflicts_with_llm(category, content, keywords, instant_memories, lang_str)
+
     # 移除冲突的记忆（从后往前删除以避免索引变化问题）
     if conflict_indices:
         for idx in sorted(conflict_indices, reverse=True):
             removed_mem = instant_memories.pop(idx)
             logger.info(f"[InstantMemory] 移除冲突记忆: {removed_mem['content'][:50]}...")
-    
+
     instant_memories.append(
         {
             "category": category,
@@ -172,7 +168,7 @@ async def post_instant_memory(
             "expire_level": expire_level,
         }
     )
-    
+
     logger.info(f"[InstantMemory] 添加新记忆: {content[:50]}...")
 
 
@@ -186,11 +182,7 @@ def filter_instant_memory(chat_history: str) -> Generator[InstantMemory, None, N
 
 def clear_expired_instant_memory() -> None:
     global instant_memories
-    instant_memories = [
-        memory
-        for memory in instant_memories
-        if _is_memory_valid(memory)
-    ]
+    instant_memories = [memory for memory in instant_memories if _is_memory_valid(memory)]
 
 
 def _is_memory_valid(memory: InstantMemory) -> bool:
@@ -199,19 +191,19 @@ def _is_memory_valid(memory: InstantMemory) -> bool:
     expire_level = memory["expire_level"]
     create_time = memory["create_time"]
     recall_level = memory["recall_level"]
-    
+
     # 获取基础过期时间
     base_expire_time = EXPIRE_TIME_MAP[category].get(expire_level, timedelta(minutes=30))
-    
+
     # 永久保存的记忆
     if base_expire_time is None:
         return True
-    
+
     # 根据 recall_level 延长过期时间（每次召回增加 10%）
     adjusted_expire_time = base_expire_time * (1 + 0.1 * recall_level)
-    
+
     # 最长不超过 30 小时
     max_expire_time = timedelta(hours=30)
     adjusted_expire_time = min(adjusted_expire_time, max_expire_time)
-    
+
     return datetime.now() - create_time < adjusted_expire_time
