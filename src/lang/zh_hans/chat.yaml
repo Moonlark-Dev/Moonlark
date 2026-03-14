@@ -1386,8 +1386,14 @@ main_session:
     {}
   prompt_user: 现在，请根据上述内容，输出 JSON。
   history:
-    send_private_message: "你向 {} 发送了私聊，主题为“{}”"
-    sleep: "你睡了 {} 分钟。"
+    send_private_message:
+      default: "你向 {} 发送了私聊，主题为“{}”"
+      replied: "你向 {} 发送了私聊（主题为“{}”），TA 于 {} 回复了你"
+      no_reply: "你向 {} 发送了私聊（主题为“{}”），但 TA 没有回复"
+    sleep:
+      default: "你睡了 {} 分钟。"
+      completed: "你计划睡 {} 分钟，实际睡了 {} 分钟。"
+      interrupted: "你计划睡 {} 分钟，但只睡了 {} 分钟就被唤醒了。"
     do: "你 {}，持续 {} 分钟。"
   friend: |
     昵称: {}
