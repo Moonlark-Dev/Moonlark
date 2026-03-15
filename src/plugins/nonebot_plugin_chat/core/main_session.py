@@ -87,6 +87,7 @@ class MainSession:
         self.state = StateEnum.ACTIVATE
         self.status_manager = StatusManager()
         self.state_until = None
+        self.last_boredom_trigger_time = None
         # 记录当前正在执行的动作，用于后续更新状态
         self._current_action_start_time: Optional[datetime] = None
         self._current_action_sleep_plan_end: Optional[datetime] = None
@@ -99,12 +100,17 @@ class MainSession:
 
             case StateEnum.ACTIVATE:
                 self.boredom += 1
-                if self.boredom >= 25 and self.status_manager.set_mood(MoodEnum.BORED)[0]:
+                if self.last_boredom_trigger_time and datetime.now() - self.last_boredom_trigger_time: 
+                    threshold = 50
+                else:
+                    threshold = 25
+                if self.boredom >= threshold:
                     self.state = StateEnum.BORED
                     self.boredom = 0.0
 
             case StateEnum.BORED:
                 asyncio.create_task(self.process_boredom())
+                
 
         if self.state_until is not None and datetime.now() > self.state_until:
             # 如果当前是 SLEEPING 状态且是正常结束（没有被 wake_up 提前处理），更新状态
@@ -235,6 +241,7 @@ class MainSession:
         if self.boredom_processor_lock.locked():
             return
         async with self.boredom_processor_lock:
+            self.last_boredom_trigger_time = datetime.now()
             fetcher = await MessageFetcher.create(
                 [
                     generate_message(await self.generate_system_prompt(), "system"),
