@@ -41,7 +41,7 @@ class CustomAction(BaseModel):
 
 
 # class GetFriendsAction(BaseModel):
-#     type: Literal["get_friends"]
+# type: Literal["get_friends"]
 
 
 class SendPrivateMsgAction(BaseModel):
