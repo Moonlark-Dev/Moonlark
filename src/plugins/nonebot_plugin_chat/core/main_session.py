@@ -40,8 +40,8 @@ class CustomAction(BaseModel):
     estimated_time: int
 
 
-class GetFriendsAction(BaseModel):
-    type: Literal["get_friends"]
+# class GetFriendsAction(BaseModel):
+#     type: Literal["get_friends"]
 
 
 class SendPrivateMsgAction(BaseModel):
@@ -55,7 +55,7 @@ class RestAction(BaseModel):
     time: int
 
 
-BoredAction = Union[SkipAction, CustomAction, GetFriendsAction, SendPrivateMsgAction, RestAction]
+BoredAction = Union[SkipAction, CustomAction, SendPrivateMsgAction, RestAction]
 
 
 class BoredActionResponse(BaseModel):
@@ -206,6 +206,7 @@ class MainSession:
             "main_session.prompt",
             self.lang_str,
             await lang.text("prompt_group.identify", self.lang_str),
+            await self.get_friends(),
             await lang.text("prompt_group.time", self.lang_str, datetime.now().isoformat()),
             state_str,
             "\n".join(
@@ -257,8 +258,8 @@ class MainSession:
 
     async def handle_action(self, action: BoredAction, fetcher: MessageFetcher) -> None:
         match action.type:
-            case "get_friends":
-                fetcher.session.insert_message(generate_message(await self.get_friends(), "user"))
+            # case "get_friends":
+            #     fetcher.session.insert_message(generate_message(await self.get_friends(), "user"))
             case "send_private_message":
                 # 记录发送私聊前的状态，用于后续判断用户是否回复
                 self._current_action_send_private_time = datetime.now()
