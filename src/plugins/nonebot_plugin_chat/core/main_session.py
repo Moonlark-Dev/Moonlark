@@ -167,16 +167,9 @@ class MainSession:
                         action.subject,
                         time_str,
                     )
-                elif state.get("user_replied") is False:
-                    return await lang.text(
-                        "main_session.history.send_private_message.no_reply",
-                        self.lang_str,
-                        action.target_nickname,
-                        action.subject,
-                    )
                 else:
                     return await lang.text(
-                        "main_session.history.send_private_message.default",
+                        "main_session.history.send_private_message.no_reply",
                         self.lang_str,
                         action.target_nickname,
                         action.subject,
@@ -255,8 +248,10 @@ class MainSession:
                 try:
                     response = type_validate_python(BoredActionResponse, {"response": json.loads(message)})
                     action = response.response
-                    # 初始化空的 action_state
+                    # 初始化 action_state，对于 send_private_message 默认标记为未回复
                     action_state: ActionState = {}
+                    if action.type == "send_private_message":
+                        action_state["user_replied"] = False
                     self.action_history.append((datetime.now(), action, action_state))
                     await self.handle_action(action, fetcher)
                 except Exception:
