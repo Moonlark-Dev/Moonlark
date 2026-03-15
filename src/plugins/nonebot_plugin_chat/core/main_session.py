@@ -41,7 +41,7 @@ class CustomAction(BaseModel):
 
 
 # class GetFriendsAction(BaseModel):
-#     type: Literal["get_friends"]
+# type: Literal["get_friends"]
 
 
 class SendPrivateMsgAction(BaseModel):
@@ -100,7 +100,7 @@ class MainSession:
 
             case StateEnum.ACTIVATE:
                 self.boredom += 1
-                if self.last_boredom_trigger_time and datetime.now() - self.last_boredom_trigger_time: 
+                if self.last_boredom_trigger_time and datetime.now() - self.last_boredom_trigger_time:
                     threshold = 50
                 else:
                     threshold = 25
@@ -110,7 +110,6 @@ class MainSession:
 
             case StateEnum.BORED:
                 asyncio.create_task(self.process_boredom())
-                
 
         if self.state_until is not None and datetime.now() > self.state_until:
             # 如果当前是 SLEEPING 状态且是正常结束（没有被 wake_up 提前处理），更新状态
