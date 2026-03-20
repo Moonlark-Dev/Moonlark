@@ -51,16 +51,16 @@ async def get_luck_value_with_reroll_count(user_id: str) -> Tuple[int, int]:
 async def reroll_luck_value(user_id: str, max_reroll_count: int) -> Optional[Tuple[int, int]]:
     """
     重新计算今日人品值
-    
+
     参数:
         user_id: 用户 ID
         max_reroll_count: 最大重算次数
-    
+
     返回: (新的人品值, 已重算次数) 或 None（如果已达到重算上限）
     """
     async with get_session() as session:
         value = await session.get(LuckValue, {"user_id": user_id})
-        
+
         # 如果没有记录或不是今天的记录，先创建今日记录
         if value is None or value.generate_date != date.today():
             new_luck_value = struct.unpack("<I", os.urandom(4))[0] % 101
@@ -73,17 +73,17 @@ async def reroll_luck_value(user_id: str, max_reroll_count: int) -> Optional[Tup
             await session.merge(value)
             await session.commit()
             return new_luck_value, 0
-        
+
         # 检查是否已达到重算上限
         if value.reroll_count >= max_reroll_count:
             return None
-        
+
         # 重新计算人品值
         new_luck_value = struct.unpack("<I", os.urandom(4))[0] % 101
         value.luck_value = new_luck_value
         value.reroll_count += 1
-        
+
         await session.merge(value)
         await session.commit()
-        
+
         return new_luck_value, value.reroll_count
