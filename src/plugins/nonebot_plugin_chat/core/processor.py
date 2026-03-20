@@ -422,6 +422,7 @@ class MessageProcessor:
 
         # 导入 main_session 获取最近做的事
         from .main_session import main_session
+
         recent_activities = await main_session.get_recent_actions_text(self.session.lang_str)
 
         return generate_message(

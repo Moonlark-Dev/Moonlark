@@ -303,16 +303,16 @@ class MainSession:
         """获取最近做的事的格式化文本，用于群聊 system prompt"""
         if not self.action_history:
             return await lang.text("main_session.recent_activities.none", lang_str)
-        
+
         activities = []
         for dt, item, state in self.action_history[-10:]:  # 取最近10条
             if s := await self.get_action_str(item, state):
                 time_str = dt.strftime("%Y-%m-%d %H:%M")
                 activities.append(f"[{time_str}] {s}")
-        
+
         if not activities:
             return await lang.text("main_session.recent_activities.none", lang_str)
-        
+
         return "\n".join(reversed(activities))  # 时间从早到晚排列
 
     async def process_boredom(self) -> None:
