@@ -319,6 +319,11 @@ prompt_group:
     {7}
 
     {5}
+
+    ## 最近做的事
+
+    以下是 Moonlark 最近在空闲时间做的事情（按时间从早到晚排列）：
+    {11}
   group_member_info: '* {} ({}/{})[好感:{}/{}][入群:{}] - {}'
   member_info: '* {} [好感:{}] - {}'
   fav_rule: |
@@ -1361,4 +1366,6 @@ main_session:
     ## 好感度规则
 
     {}
+  recent_activities:
+    none: 暂无记录（你还没有在空闲时间做任何事情）
 

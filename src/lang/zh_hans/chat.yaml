@@ -312,6 +312,9 @@ prompt_group:
     来自其他群聊的笔记：
     {3}
 
+    最近做的事：
+    {11}
+
     部分群友的介绍：
     {4}
 
@@ -319,6 +322,7 @@ prompt_group:
     {7}
 
     {5}
+
   group_member_info: '* {} ({}/{})[好感:{}/{}][入群:{}] - {}'
   member_info: '* {} [好感:{}] - {}'
   fav_rule: |
@@ -1411,4 +1415,6 @@ main_session:
     ## 好感度规则
 
     {}
+  recent_activities:
+    none: 暂无记录（你还没有在空闲时间做任何事情）
 
