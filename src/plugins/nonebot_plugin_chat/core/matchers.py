@@ -85,7 +85,7 @@ async def _(
     await record_private_chat_session(user_id, bot.self_id)
 
     # 检查是否是主动私聊的回复
-    await main_session.update_send_private_message_state(user_id)
+    main_session.update_send_private_message_state(user_id)
 
     session = await create_private_session(user_id, get_target(event), bot)
     if session.mute_until is not None:
