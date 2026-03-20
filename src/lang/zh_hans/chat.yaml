@@ -312,6 +312,9 @@ prompt_group:
     来自其他群聊的笔记：
     {3}
 
+    最近做的事：
+    {11}
+
     部分群友的介绍：
     {4}
 
@@ -319,6 +322,7 @@ prompt_group:
     {7}
 
     {5}
+
   group_member_info: '* {} ({}/{})[好感:{}/{}][入群:{}] - {}'
   member_info: '* {} [好感:{}] - {}'
   fav_rule: |
@@ -725,25 +729,31 @@ rua:
   actions:
     poke:
       name: 戳一戳
+      received: 你戳了戳 Moonlark。
       prompt: "{} 戳了戳你。"
       refuse_msg: "你的手指被 Moonlark 躲开了"
       refuse_prompt: "你躲开了 {} 的戳。"
     head:
       name: 摸头
+      received: 你摸了摸 Moonlark 的头。
       prompt: "{} 摸了摸你的头。"
       refuse_msg: Moonlark 躲开了
       refuse_prompt: "你躲开了 {} 的摸头。"
     chin:
       name: 挠下巴
+      received: 你挠了挠 Moonlark 的下巴。
       prompt: "{} 挠了挠你的下巴，你感到很舒适。"
     cheek:
       name: 捏脸
+      received: 你捏了捏 Moonlark 的脸颊。
       prompt: "{} 捏了捏你的脸颊。"
     hug:
       name: 拥抱
+      received: 你紧紧抱住了 Moonlark。
       prompt: "{} 紧紧的抱着你。"
     ears:
       name: 揉耳朵
+      received: 你揉了揉 Moonlark 的耳朵。
       prompt: "{} 揉了揉你的耳朵。"
       refuse_msg: "Moonlark 躲开了你的手，并将耳朵向下压了压。"
       refuse_prompt: "你躲开了 {} 的揉耳朵。"
@@ -1405,4 +1415,6 @@ main_session:
     ## 好感度规则
 
     {}
+  recent_activities:
+    none: 暂无记录（你还没有在空闲时间做任何事情）
 

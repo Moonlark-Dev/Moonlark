@@ -10,7 +10,7 @@ from typing import Literal, Optional, Union, TypedDict
 
 from nonebot_plugin_apscheduler import scheduler
 from nonebot_plugin_chat.core.proactive_chat import send_proactive_private_message
-from nonebot_plugin_chat.models import PrivateChatSession
+from nonebot_plugin_chat.models import PrivateChatSession, MainSessionData
 from nonebot_plugin_chat.utils.instant_mem import get_instant_memories
 from nonebot_plugin_larkuser.utils.user import get_user
 from nonebot_plugin_orm import get_session
@@ -77,6 +77,8 @@ class ActionState(TypedDict, total=False):
 
 class MainSession:
 
+    ACTION_HISTORY_KEY = "action_history"
+
     def __init__(self, last_activate_time: datetime, lang_str: str = "zh_hans") -> None:
         self.lang_str = lang_str
         self.last_activate_time = last_activate_time
@@ -94,6 +96,71 @@ class MainSession:
         self._current_action_send_private_user_id: Optional[str] = None
         self._current_action_send_private_time: Optional[datetime] = None
         scheduler.scheduled_job("cron", minute="*", id="chat_heartbeat")(self.process_timer)
+
+    def _serialize_action(self, action: BoredAction) -> dict:
+        """将 BoredAction 序列化为字典"""
+        if isinstance(action, SkipAction):
+            return {"type": "skip"}
+        elif isinstance(action, CustomAction):
+            return {"type": "do", "information": action.information, "estimated_time": action.estimated_time}
+        elif isinstance(action, SendPrivateMsgAction):
+            return {
+                "type": "send_private_message",
+                "target_nickname": action.target_nickname,
+                "subject": action.subject,
+            }
+        elif isinstance(action, RestAction):
+            return {"type": "sleep", "time": action.time}
+        return {"type": "skip"}
+
+    def _deserialize_action(self, data: dict) -> BoredAction:
+        """将字典反序列化为 BoredAction"""
+        action_type = data.get("type")
+        if action_type == "skip":
+            return SkipAction(type="skip")
+        elif action_type == "do":
+            return CustomAction(type="do", information=data["information"], estimated_time=data["estimated_time"])
+        elif action_type == "send_private_message":
+            return SendPrivateMsgAction(
+                type="send_private_message", target_nickname=data["target_nickname"], subject=data["subject"]
+            )
+        elif action_type == "sleep":
+            return RestAction(type="sleep", time=data["time"])
+        return SkipAction(type="skip")
+
+    async def load_from_database(self) -> None:
+        """从数据库加载 action_history"""
+        async with get_session() as session:
+            action_history_record = await session.get(MainSessionData, self.ACTION_HISTORY_KEY)
+            if action_history_record:
+                try:
+                    data = json.loads(action_history_record.data_json)
+                    self.action_history = []
+                    for item in data:
+                        dt = datetime.fromisoformat(item["datetime"])
+                        action = self._deserialize_action(item["action"])
+                        state = item["state"]
+                        self.action_history.append((dt, action, state))
+                except (json.JSONDecodeError, KeyError, ValueError):
+                    self.action_history = []
+
+    async def _save_action_history(self) -> None:
+        """将 action_history 保存到数据库"""
+        data = []
+        for dt, action, state in self.action_history:
+            data.append({"datetime": dt.isoformat(), "action": self._serialize_action(action), "state": state})
+
+        async with get_session() as session:
+            record = await session.get(MainSessionData, self.ACTION_HISTORY_KEY)
+            if record is None:
+                record = MainSessionData(
+                    key=self.ACTION_HISTORY_KEY, data_json=json.dumps(data), updated_time=datetime.now().timestamp()
+                )
+                session.add(record)
+            else:
+                record.data_json = json.dumps(data)
+                record.updated_time = datetime.now().timestamp()
+            await session.commit()
 
     async def process_timer(self) -> None:
         match self.state:
@@ -119,6 +186,9 @@ class MainSession:
             self.state = StateEnum.ACTIVATE
             self.state_until = None
             self.boredom = 0.0
+
+        # 保存 action_history 到数据库
+        await self._save_action_history()
 
     def _update_sleep_action_state_on_timer_end(self) -> None:
         """当 sleep 状态自然结束时，更新最后一个 sleep action 的状态"""
@@ -229,6 +299,22 @@ class MainSession:
             ),
         )
 
+    async def get_recent_actions_text(self, lang_str: str = "zh_hans") -> str:
+        """获取最近做的事的格式化文本，用于群聊 system prompt"""
+        if not self.action_history:
+            return await lang.text("main_session.recent_activities.none", lang_str)
+
+        activities = []
+        for dt, item, state in self.action_history[-10:]:  # 取最近10条
+            if s := await self.get_action_str(item, state):
+                time_str = dt.strftime("%Y-%m-%d %H:%M")
+                activities.append(f"[{time_str}] {s}")
+
+        if not activities:
+            return await lang.text("main_session.recent_activities.none", lang_str)
+
+        return "\n".join(reversed(activities))  # 时间从早到晚排列
+
     async def process_boredom(self) -> None:
         if self.boredom_processor_lock.locked():
             return
@@ -328,7 +414,7 @@ class MainSession:
             self._current_action_start_time = None
             self._current_action_sleep_plan_end = None
 
-    async def update_send_private_message_state(self, user_id: str) -> None:
+    def update_send_private_message_state(self, user_id: str) -> None:
         """检查用户是否回复了主动私聊，如果是，更新最后一个 send_private_message action 的状态
 
         Args:
@@ -396,4 +482,8 @@ class MainSession:
 
 
 main_session = MainSession(datetime.now())
-# TODO 使用数据库持久化保存 last_activate_time
+
+
+async def init_main_session() -> None:
+    """初始化 main_session，从数据库加载数据"""
+    await main_session.load_from_database()

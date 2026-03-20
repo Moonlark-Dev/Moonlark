@@ -33,6 +33,8 @@ class PendingInteraction(TypedDict):
     nickname: str
     action: RuaAction
     created_at: float  # timestamp
+    message_id: str  # 触发交互的消息 ID，用于 reaction
+    rua_reaction_config: dict | None  # rua reaction 配置
 
 
 class AvailableNote(TypedDict):

@@ -219,7 +219,14 @@ class BaseSession(ABC):
         target_nickname = await get_nickname(user.user_id, self.bot, event)
         await self.processor.handle_poke(nickname, target_nickname, event.is_tome())
 
-    def create_pending_interaction(self, user_id: str, nickname: str, action: RuaAction) -> str:
+    def create_pending_interaction(
+        self,
+        user_id: str,
+        nickname: str,
+        action: RuaAction,
+        message_id: str = "",
+        rua_reaction_config: dict | None = None,
+    ) -> str:
         """创建一个待处理的交互请求，返回交互 ID"""
         interaction_id = str(uuid.uuid4())[:8]  # 使用短 UUID
         self.pending_interactions[interaction_id] = PendingInteraction(
@@ -228,6 +235,8 @@ class BaseSession(ABC):
             nickname=nickname,
             action=action,
             created_at=datetime.now().timestamp(),
+            message_id=message_id,
+            rua_reaction_config=rua_reaction_config,
         )
         return interaction_id
 
@@ -250,7 +259,9 @@ class BaseSession(ABC):
             self.pending_interactions.pop(interaction_id, None)
         return len(expired_ids)
 
-    async def handle_rua(self, nickname: str, user_id: str, action: RuaAction) -> None:
+    async def handle_rua(
+        self, nickname: str, user_id: str, action: RuaAction, message_id: str, rua_reaction_config: dict
+    ) -> None:
         """
         处理 rua 互动事件
 
@@ -258,7 +269,12 @@ class BaseSession(ABC):
             nickname: 发起互动的用户昵称
             user_id: 发起互动的用户 ID
             action: 选择的 rua 动作
+            message_id: 触发 rua 命令的消息 ID，用于 reaction
+            rua_reaction_config: reaction emoji ID 配置
         """
+        import random
+        import asyncio
+
         action_name = action["name"]
 
         # 生成事件提示
@@ -266,12 +282,33 @@ class BaseSession(ABC):
 
         # 如果该动作可以被拒绝，生成交互 ID 并添加拒绝提示
         if action["refusable"]:
-            interaction_id = self.create_pending_interaction(user_id=user_id, nickname=nickname, action=action)
+            interaction_id = self.create_pending_interaction(
+                user_id=user_id,
+                nickname=nickname,
+                action=action,
+                message_id=message_id,
+                rua_reaction_config=rua_reaction_config,
+            )
             refusable_hint = await lang.text("rua.refusable_hint", self.lang_str, interaction_id)
             event_prompt = f"{event_prompt}\n{refusable_hint}"
 
         # 向会话发送事件，强制触发回复
         await self.post_event(event_prompt, "all")
+
+        # # 对于不可拒绝的动作，延迟后自动切换到 enjoy reaction
+        # if not action["refusable"]:
+        #     async def update_reaction_after_delay():
+        #         await asyncio.sleep(3)  # 等待 3 秒让 AI 处理
+        #         if self.is_napcat_bot():
+        #             # 移除 pending reaction
+        #             await self.processor.send_reaction(
+        #                 message_id, rua_reaction_config["pending"], set=False
+        #             )
+        #             # 添加 enjoy reaction（随机选择）
+        #             enjoy_emoji = random.choice(rua_reaction_config["enjoy"])
+        #             await self.processor.send_reaction(message_id, enjoy_emoji)
+
+        #     asyncio.create_task(update_reaction_after_delay())
 
     async def process_timer(self) -> None:
         dt = datetime.now()
