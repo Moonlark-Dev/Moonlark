@@ -99,4 +99,5 @@ async def _(
     else:
         session = await get_group_session_forced(group_id, target, bot)
 
+    await lang.send(f"rua.actions.{selected_action['name']}.received", user_id)
     await session.handle_rua(nickname, user_id, selected_action)
