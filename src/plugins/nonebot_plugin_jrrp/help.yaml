@@ -1,3 +1,11 @@
 plugin: jrrp
 commands:
-  jrrp: help;3;game
+  jrrp:
+    description: help.description
+    details: help.details
+    usages:
+      - help.usage1
+      - help.usage2
+      - help.usage3
+      - help.usage4
+    category: game
