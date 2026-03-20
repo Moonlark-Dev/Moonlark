@@ -104,7 +104,11 @@ class MainSession:
         elif isinstance(action, CustomAction):
             return {"type": "do", "information": action.information, "estimated_time": action.estimated_time}
         elif isinstance(action, SendPrivateMsgAction):
-            return {"type": "send_private_message", "target_nickname": action.target_nickname, "subject": action.subject}
+            return {
+                "type": "send_private_message",
+                "target_nickname": action.target_nickname,
+                "subject": action.subject,
+            }
         elif isinstance(action, RestAction):
             return {"type": "sleep", "time": action.time}
         return {"type": "skip"}
@@ -117,7 +121,9 @@ class MainSession:
         elif action_type == "do":
             return CustomAction(type="do", information=data["information"], estimated_time=data["estimated_time"])
         elif action_type == "send_private_message":
-            return SendPrivateMsgAction(type="send_private_message", target_nickname=data["target_nickname"], subject=data["subject"])
+            return SendPrivateMsgAction(
+                type="send_private_message", target_nickname=data["target_nickname"], subject=data["subject"]
+            )
         elif action_type == "sleep":
             return RestAction(type="sleep", time=data["time"])
         return SkipAction(type="skip")
@@ -142,19 +148,13 @@ class MainSession:
         """将 action_history 保存到数据库"""
         data = []
         for dt, action, state in self.action_history:
-            data.append({
-                "datetime": dt.isoformat(),
-                "action": self._serialize_action(action),
-                "state": state
-            })
-        
+            data.append({"datetime": dt.isoformat(), "action": self._serialize_action(action), "state": state})
+
         async with get_session() as session:
             record = await session.get(MainSessionData, self.ACTION_HISTORY_KEY)
             if record is None:
                 record = MainSessionData(
-                    key=self.ACTION_HISTORY_KEY,
-                    data_json=json.dumps(data),
-                    updated_time=datetime.now().timestamp()
+                    key=self.ACTION_HISTORY_KEY, data_json=json.dumps(data), updated_time=datetime.now().timestamp()
                 )
                 session.add(record)
             else:
@@ -186,7 +186,7 @@ class MainSession:
             self.state = StateEnum.ACTIVATE
             self.state_until = None
             self.boredom = 0.0
-            
+
         # 保存 action_history 到数据库
         await self._save_action_history()
 

@@ -283,7 +283,11 @@ class BaseSession(ABC):
         # 如果该动作可以被拒绝，生成交互 ID 并添加拒绝提示
         if action["refusable"]:
             interaction_id = self.create_pending_interaction(
-                user_id=user_id, nickname=nickname, action=action, message_id=message_id, rua_reaction_config=rua_reaction_config
+                user_id=user_id,
+                nickname=nickname,
+                action=action,
+                message_id=message_id,
+                rua_reaction_config=rua_reaction_config,
             )
             refusable_hint = await lang.text("rua.refusable_hint", self.lang_str, interaction_id)
             event_prompt = f"{event_prompt}\n{refusable_hint}"
