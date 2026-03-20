@@ -60,9 +60,9 @@ class MessageProcessor:
         if not self.loop_task:
             self.loop_task = asyncio.create_task(self.loop())
 
-    async def send_reaction(self, message_id: str, emoji_id: str) -> Optional[str]:
+    async def send_reaction(self, message_id: str, emoji_id: str, set: bool = True) -> Optional[str]:
         if isinstance(self.session.bot, OB11Bot) and self.session.is_napcat_bot():
-            await self.session.bot.call_api("set_msg_emoji_like", message_id=message_id, emoji_id=emoji_id)
+            await self.session.bot.call_api("set_msg_emoji_like", message_id=message_id, emoji_id=emoji_id, set=set)
         else:
             return await self.session.text("message.reaction_failed")
 
@@ -83,6 +83,18 @@ class MessageProcessor:
 
         action_name = interaction["action"]["name"]
         nickname = interaction["nickname"]
+        message_id = interaction.get("message_id", "")
+        rua_reaction_config = interaction.get("rua_reaction_config")
+
+        # 如果支持 reaction，切换 reaction 状态
+        if message_id and rua_reaction_config and self.session.is_napcat_bot():
+            # 移除 pending reaction
+            await self.send_reaction(message_id, rua_reaction_config["pending"], set=False)
+            # 添加对应状态的 reaction
+            if type_ == "dodge":
+                await self.send_reaction(message_id, rua_reaction_config["dodge"])
+            else:  # bite
+                await self.send_reaction(message_id, rua_reaction_config["bite"])
 
         # 根据拒绝类型生成不同的提示
         if type_ == "dodge":
@@ -408,6 +420,11 @@ class MessageProcessor:
 
         mood_text = await self.session.text(f"status.mood.{mood.value}")
 
+        # 导入 main_session 获取最近做的事
+        from .main_session import main_session
+
+        recent_activities = await main_session.get_recent_actions_text(self.session.lang_str)
+
         return generate_message(
             await self.session.text(
                 "prompt_group.default",
@@ -443,6 +460,7 @@ class MessageProcessor:
                 await self.session.text("prompt_group.identify"),
                 await self.session.text("prompt_group.rule"),
                 await self.session.text("prompt_group.fav_rule"),
+                recent_activities,
             ),
             "system",
         )

@@ -319,6 +319,11 @@ prompt_group:
     {7}
 
     {5}
+
+    ## 最近做的事
+
+    以下是 Moonlark 最近在空闲时间做的事情（按时间从早到晚排列）：
+    {11}
   group_member_info: '* {} ({}/{})[好感:{}/{}][入群:{}] - {}'
   member_info: '* {} [好感:{}] - {}'
   fav_rule: |
@@ -713,25 +718,31 @@ rua:
   actions:
     poke:
       name: 戳一戳
+      received: You poked Moonlark.
       prompt: "{} 戳了戳你。"
       refuse_msg: "你的手指被 Moonlark 躲开了"
       refuse_prompt: "你躲开了 {} 的戳。"
     head:
       name: 摸头
+      received: You patted Moonlark's head.
       prompt: "{} 摸了摸你的头。"
       refuse_msg: Moonlark 躲开了
       refuse_prompt: "你躲开了 {} 的摸头。"
     chin:
       name: 挠下巴
+      received: You scratched Moonlark's chin.
       prompt: "{} 挠了挠你的下巴，你感到很舒适。"
     cheek:
       name: 捏脸
+      received: You pinched Moonlark's cheek.
       prompt: "{} 捏了捏你的脸颊。"
     hug:
       name: 拥抱
+      received: You hugged Moonlark tightly.
       prompt: "{} 紧紧的抱着你。"
     ears:
       name: 揉耳朵
+      received: You rubbed Moonlark's ears.
       prompt: "{} 揉了揉你的耳朵。"
       refuse_msg: "Moonlark 躲开了你的手，并将耳朵向下压了压。"
       refuse_prompt: "你躲开了 {} 的揉耳朵。"
@@ -1355,4 +1366,6 @@ main_session:
     ## 好感度规则
 
     {}
+  recent_activities:
+    none: 暂无记录（你还没有在空闲时间做任何事情）
 
