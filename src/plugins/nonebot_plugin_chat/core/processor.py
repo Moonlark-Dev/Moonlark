@@ -420,6 +420,10 @@ class MessageProcessor:
 
         mood_text = await self.session.text(f"status.mood.{mood.value}")
 
+        # 导入 main_session 获取最近做的事
+        from .main_session import main_session
+        recent_activities = await main_session.get_recent_actions_text(self.session.lang_str)
+
         return generate_message(
             await self.session.text(
                 "prompt_group.default",
@@ -455,6 +459,7 @@ class MessageProcessor:
                 await self.session.text("prompt_group.identify"),
                 await self.session.text("prompt_group.rule"),
                 await self.session.text("prompt_group.fav_rule"),
+                recent_activities,
             ),
             "system",
         )
