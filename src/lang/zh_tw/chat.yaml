@@ -1352,6 +1352,11 @@ main_session:
       completed: "你计划睡 {} 分钟，实际睡了 {} 分钟。"
       interrupted: "你计划睡 {} 分钟，但只睡了 {} 分钟就被唤醒了。"
     do: "你 {}，持续 {} 分钟。"
+  wake_up:
+    completed_prompt: |
+      [{}]: 你睡醒了，感覺精神飽滿。
+    interrupted_prompt: |
+      [{}]: 你計劃睡 {} 分鐘，但是被叫醒了，實際睡了 {} 分鐘。
   friend: |
     昵称: {}
     好感度: {}/{}

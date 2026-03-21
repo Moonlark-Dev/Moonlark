@@ -6,7 +6,7 @@ from nonebot import get_bot
 from nonebot.compat import type_validate_python
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Literal, Optional, Union, TypedDict
+from typing import TYPE_CHECKING, Literal, Optional, Union, TypedDict
 
 from nonebot_plugin_apscheduler import scheduler
 from nonebot_plugin_chat.core.proactive_chat import send_proactive_private_message
@@ -22,6 +22,9 @@ from nonebot_plugin_openai.utils.chat import MessageFetcher
 from nonebot_plugin_openai.utils.message import generate_message
 from pydantic import BaseModel
 
+
+if TYPE_CHECKING:
+    from .session import BaseSession
 
 class StateEnum(Enum):
     SLEEPING = "sleeping"
@@ -381,7 +384,7 @@ class MainSession:
         bot = get_bot(bot_id)
         await send_proactive_private_message(bot, user_id, subject)
 
-    def wake_up(self) -> None:
+    async def wake_up(self, session: Optional["BaseSession"] = None) -> None:
         if self.state == StateEnum.SLEEPING:
             # 计算实际睡眠时间
             wake_time = datetime.now()
@@ -410,10 +413,27 @@ class MainSession:
             self.state_until = None
             self.boredom = 0.0
 
-            # 清除 sleep 相关状态
+
+            if session is not None and actual_sleep_minutes is not None:
+                current_time = datetime.now().strftime("%H:%M:%S")
+                if sleep_interrupted:
+                    wake_up_prompt = await session.processor.session.text(
+                        "main_session.wake_up.interrupted_prompt",
+                        current_time, planned_duration, actual_sleep_minutes
+                    )
+                else:
+                    wake_up_prompt = await session.processor.session.text(
+                        "main_session.wake_up.completed_prompt",
+                        current_time
+                    )
+                session.processor.openai_messages.append_user_message(wake_up_prompt)
+
+
             self._current_action_start_time = None
             self._current_action_sleep_plan_end = None
 
+            # 如果提供了 session，向 openai_messages 添加唤醒提示
+            
     def update_send_private_message_state(self, user_id: str) -> None:
         """检查用户是否回复了主动私聊，如果是，更新最后一个 send_private_message action 的状态
 
