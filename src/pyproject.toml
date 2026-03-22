@@ -56,6 +56,7 @@ packages = [
     { include = "nonebot_plugin_bots", from = "./plugins" },
     { include = "nonebot_plugin_email", from = "./plugins" },
     { include = "nonebot_plugin_extrahelp", from = "./plugins" },
+    { include = "nonebot_plugin_favrank", from = "./plugins" },
     { include = "nonebot_plugin_fight", from = "./plugins" },
     { include = "nonebot_plugin_finding_the_trail", from = "./plugins" },
     { include = "nonebot_plugin_friend_add", from = "./plugins" },
