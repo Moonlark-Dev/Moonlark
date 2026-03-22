@@ -33,6 +33,7 @@ plugins = [
     "nonebot_plugin_bots",
     "nonebot_plugin_email",
     "nonebot_plugin_extrahelp",
+    "nonebot_plugin_favrank",
     "nonebot_plugin_fight",
     "nonebot_plugin_finding_the_trail",
     "nonebot_plugin_friend_add",
