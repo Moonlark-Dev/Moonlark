@@ -151,6 +151,10 @@ class MainSession:
         """将 action_history 保存到数据库"""
         data = []
         for dt, action, state in self.action_history:
+            # 处理 state 中的 datetime 对象
+            state_copy = state.copy()
+            if "reply_time" in state_copy and isinstance(state_copy["reply_time"], datetime):
+                state_copy["reply_time"] = state_copy["reply_time"].isoformat()
             data.append({"datetime": dt.isoformat(), "action": self._serialize_action(action), "state": state})
 
         async with get_session() as session:
