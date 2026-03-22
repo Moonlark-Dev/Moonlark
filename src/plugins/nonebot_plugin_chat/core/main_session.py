@@ -22,9 +22,9 @@ from nonebot_plugin_openai.utils.chat import MessageFetcher
 from nonebot_plugin_openai.utils.message import generate_message
 from pydantic import BaseModel
 
-
 if TYPE_CHECKING:
     from .session import BaseSession
+
 
 class StateEnum(Enum):
     SLEEPING = "sleeping"
@@ -413,27 +413,23 @@ class MainSession:
             self.state_until = None
             self.boredom = 0.0
 
-
             if session is not None and actual_sleep_minutes is not None:
                 current_time = datetime.now().strftime("%H:%M:%S")
                 if sleep_interrupted:
                     wake_up_prompt = await session.processor.session.text(
-                        "main_session.wake_up.interrupted_prompt",
-                        current_time, planned_duration, actual_sleep_minutes
+                        "main_session.wake_up.interrupted_prompt", current_time, planned_duration, actual_sleep_minutes
                     )
                 else:
                     wake_up_prompt = await session.processor.session.text(
-                        "main_session.wake_up.completed_prompt",
-                        current_time
+                        "main_session.wake_up.completed_prompt", current_time
                     )
                 session.processor.openai_messages.append_user_message(wake_up_prompt)
-
 
             self._current_action_start_time = None
             self._current_action_sleep_plan_end = None
 
             # 如果提供了 session，向 openai_messages 添加唤醒提示
-            
+
     def update_send_private_message_state(self, user_id: str) -> None:
         """检查用户是否回复了主动私聊，如果是，更新最后一个 send_private_message action 的状态
 
