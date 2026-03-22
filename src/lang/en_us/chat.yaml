@@ -545,6 +545,7 @@ help_rua:
   usage1: rua (使用当前选中的动作与 Moonlark 互动)
   usage2: rua action (查看可用的互动动作列表)
   usage3: rua action <编号> (切换当前使用的互动动作)
+  usage4: rua rank (查看 rua 次数排行榜)
 prompt:
   warning:
     excessive_messages: "[系统警告]: 你已连续发送 {} 条消息，请等待用户回复后再继续发言，避免刷屏。"
@@ -710,6 +711,8 @@ rua:
   success: 指令动作已被设为：{}
   action_list: "可用的动作列表(*表示选中): \n{}"
   action_list_item: "[{}] {}"
+  rank_title: rua 次数排行榜
+  rank_no_data: 暂无 rua 数据。
   refusable_hint: "（该动作可被拒绝，交互 ID: {}。如果你不喜欢，可以通过 `refuse_interaction_request` 工具躲开。）"
   bite_msg: "*Moonlark 躲开了你的手，并咬了一口"
   bite_prompt: "你躲开了 {} 的互动，并咬了 TA 一口。"

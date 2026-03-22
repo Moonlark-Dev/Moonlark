@@ -21,6 +21,7 @@ require("nonebot_plugin_openai")
 require("nonebot_plugin_wolfram_alpha")
 require("nonebot_plugin_ghot")
 require("nonebot_plugin_alconna")
+require("nonebot_plugin_ranking")
 
 from . import matcher as _command_matchers
 from .core import matchers as _core_matchers

@@ -1,17 +1,19 @@
-from nonebot_plugin_alconna import Alconna, Args, Subcommand, Target, get_target, on_alconna, get_message_id
+from nonebot_plugin_alconna import Alconna, Args, Subcommand, Target, UniMessage, get_target, on_alconna, get_message_id
 from nonebot.params import Depends
 from nonebot_plugin_chat.core.session import get_private_session
 from nonebot_plugin_chat.models import RuaData
 from nonebot_plugin_chat.types import RuaAction
+from nonebot_plugin_ranking import generate_image
 from nonebot_plugin_larkuser.utils.nickname import get_nickname
 from nonebot_plugin_larkuser.utils.user import get_user
 from nonebot_plugin_larkutils.group import get_group_id
 from nonebot_plugin_larkutils.user import get_user_id
 from nonebot_plugin_orm import get_session
 from nonebot.adapters import Bot, Event
+from sqlalchemy import select
 from ..lang import lang
 
-alc = Alconna("rua", Subcommand("action", Args["target_index?", int]))
+alc = Alconna("rua", Subcommand("action", Args["target_index?", int]), Subcommand("rank"))
 matcher = on_alconna(alc)
 
 # Reaction emoji IDs for rua command
@@ -57,6 +59,16 @@ async def get_selected_action(user_id: str) -> RuaAction:
             return RUA_ACTIONS[1]  # 默认返回 poke
 
 
+async def increment_rua_count(user_id: str) -> None:
+    async with get_session() as session:
+        if (rua_data := await session.get(RuaData, {"user_id": user_id})) is None:
+            rua_data = RuaData(user_id=user_id, action_id=1, count=1)
+        else:
+            rua_data.count += 1
+        await session.merge(rua_data)
+        await session.commit()
+
+
 @matcher.assign("action")
 async def _(user_id: str = get_user_id()) -> None:
     user = await get_user(user_id)
@@ -81,6 +93,23 @@ async def _(user_id: str = get_user_id()) -> None:
                 )
             )
     await lang.finish("rua.action_list", user_id, "\n".join(actions))
+
+
+@matcher.assign("rank")
+async def _(user_id: str = get_user_id()) -> None:
+    async with get_session() as session:
+        ranked_data = (await session.execute(select(RuaData).order_by(RuaData.count.desc()))).scalars().all()
+
+    if not ranked_data:
+        await lang.finish("rua.rank_no_data", user_id)
+
+    ranking_data = [{"user_id": data.user_id, "info": None, "data": data.count} for data in ranked_data if data.count > 0]
+
+    if not ranking_data:
+        await lang.finish("rua.rank_no_data", user_id)
+
+    image = await generate_image(ranking_data, user_id, await lang.text("rua.rank_title", user_id))
+    await matcher.finish(UniMessage().image(raw=image, name="image.png"))
 
 
 async def _get_target(event: Event) -> Target:
@@ -120,4 +149,5 @@ async def _(
     else:
         await lang.send(f"rua.actions.{selected_action['name']}.received", user_id)
 
+    await increment_rua_count(user_id)
     await session.handle_rua(nickname, user_id, selected_action, message_id, rua_reaction_config)
