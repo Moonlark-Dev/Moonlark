@@ -103,7 +103,9 @@ async def _(user_id: str = get_user_id()) -> None:
     if not ranked_data:
         await lang.finish("rua.rank_no_data", user_id)
 
-    ranking_data = [{"user_id": data.user_id, "info": None, "data": data.count} for data in ranked_data if data.count > 0]
+    ranking_data = [
+        {"user_id": data.user_id, "info": None, "data": data.count} for data in ranked_data if data.count > 0
+    ]
 
     if not ranking_data:
         await lang.finish("rua.rank_no_data", user_id)

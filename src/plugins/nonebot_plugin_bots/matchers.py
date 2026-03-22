@@ -1,4 +1,3 @@
-
 from nonebot import on_command
 from nonebot.adapters import Bot, Event
 from nonebot_plugin_orm import get_session
@@ -19,15 +18,11 @@ async def handle_pm_command(bot: Bot, event: Event, action: str) -> None:
 
         if settings is None:
             # 如果记录不存在，创建新记录
-            settings = UserBotPrivateChatSettings(
-                user_id=user_id,
-                bot_id=bot_id,
-                private_chat_enabled=(action == "on")
-            )
+            settings = UserBotPrivateChatSettings(user_id=user_id, bot_id=bot_id, private_chat_enabled=(action == "on"))
             session.add(settings)
         else:
             # 更新现有记录
-            settings.private_chat_enabled = (action == "on")
+            settings.private_chat_enabled = action == "on"
 
         await session.commit()
 
