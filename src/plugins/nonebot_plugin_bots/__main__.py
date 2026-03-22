@@ -12,11 +12,13 @@ from nonebot import get_app
 from fastapi import FastAPI, Request
 from typing import Optional, cast
 
-from nonebot_plugin_larkutils import get_group_id
+from nonebot_plugin_larkutils import get_group_id, get_user_id
 from .config import config
 from .types import BotStatus, OnlineBotStatus
+from .models import UserBotPrivateChatSettings
 
 from nonebot import get_bots
+from nonebot_plugin_orm import get_session
 
 sessions: dict[str, tuple[str, float]] = {}
 
@@ -130,6 +132,24 @@ async def _(bot: Bot, event: Event, session_id: str = get_group_id()) -> None:
         return
     if user_id in get_bots().keys():
         raise IgnoredException("忽略自身消息")
+
+    # 检查是否为私聊消息
+    try:
+        is_private = event.get_session_id() == user_id
+    except ValueError:
+        is_private = False
+
+    if is_private:
+        # 检查用户是否关闭了该 bot 的私聊
+        main_user_id = await get_user_id()(bot, event)
+        async with get_session() as session:
+            settings = await session.get(UserBotPrivateChatSettings, {"user_id": main_user_id, "bot_id": bot.self_id})
+            # 如果设置存在且私聊已关闭，检查是否为 .pm on 命令
+            if settings is not None and not settings.private_chat_enabled:
+                plaintext = event.get_plaintext().strip()
+                if plaintext != ".pm on":
+                    raise IgnoredException("用户已关闭该 bot 的私聊")
+
     ToMeProcessor(bot, event, session_id).process_to_me_event()
     if session_id in sessions and sessions[session_id][0] != bot.self_id:
         raise IgnoredException(f"此群组已分配给帐号 {session_id}")
