@@ -9,7 +9,7 @@ from .models import UserBotPrivateChatSettings
 
 async def handle_pm_command(bot: Bot, event: Event, action: str) -> None:
     """处理 .pm on/off 命令"""
-    user_id = await get_user_id()(bot, event)
+    user_id = event.get_user_id()
     bot_id = bot.self_id
 
     async with get_session() as session:
@@ -25,7 +25,6 @@ async def handle_pm_command(bot: Bot, event: Event, action: str) -> None:
             settings.private_chat_enabled = action == "on"
 
         await session.commit()
-
         # 发送响应消息
         if action == "on":
             await UniMessage.text("私聊已开启").send()
@@ -34,23 +33,24 @@ async def handle_pm_command(bot: Bot, event: Event, action: str) -> None:
 
 
 # 创建 .pm on 命令处理器
-pm_on = on_command(".pm", priority=10, block=True)
+pm_on = on_command("pm", priority=10, block=True)
 
 
 @pm_on.handle()
-async def _(bot: Bot, event: Event) -> None:
+async def _(bot: Bot, event: Event, is_private: bool=is_private_message()) -> None:
     """处理 .pm on/off 命令"""
     # 只在私聊中响应
-    if not await is_private_message()(bot, event):
+    # TODO 使用 commandarg
+    if not is_private:
         await pm_on.finish()
 
     # 获取消息内容
-    message = event.get_plaintext().strip()
+    message = event.get_plaintext().strip()[1:]
 
     # 检查是否为 .pm on 或 .pm off
-    if message == ".pm on":
+    if message == "pm on":
         await handle_pm_command(bot, event, "on")
-    elif message == ".pm off":
+    elif message == "pm off":
         await handle_pm_command(bot, event, "off")
     else:
         await pm_on.finish()
