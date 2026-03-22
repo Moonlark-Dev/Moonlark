@@ -227,7 +227,7 @@ class MessageProcessor:
         if main_session.state == StateEnum.SLEEPING:
             if not important:
                 return
-            main_session.wake_up()
+            await  main_session.wake_up(session=self.session)
         main_session.record_activate(important)
 
         logger.info(f"Generating reply ({important=})...")
