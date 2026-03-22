@@ -18,6 +18,7 @@ help:
   usage1: jrrp (获取今天的人品值)
   usage2: jrrp r (今日幸运星[--rank])
   usage3: jrrp rr (今日倒霉蛋[--rank-r])
+  usage4: jrrp reroll (重新计算今日人品值)
 template:
   reverse_title: 今日倒霉蛋
   unregistered: 未注册用户无法参与排名
@@ -29,3 +30,9 @@ group_event_prompt: |
   发送者运势: {}
   欧皇: {} (运势: {})
   倒霉蛋: {} (运势: {})
+reroll:
+  max_reached: 你今天已经重算过 {} 次了，明天再来吧～
+  insufficient_vimcoin: 你的 VimCoin 不足哦，需要 {} vi，但你只有 {} vi。
+  success: |
+    今日已重算: {}/{} 次
+    本次消耗: {} vi

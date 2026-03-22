@@ -312,6 +312,9 @@ prompt_group:
     来自其他群聊的笔记：
     {3}
 
+    最近做的事：
+    {11}
+
     部分群友的介绍：
     {4}
 
@@ -319,11 +322,6 @@ prompt_group:
     {7}
 
     {5}
-
-    ## 最近做的事
-
-    以下是 Moonlark 最近在空闲时间做的事情（按时间从早到晚排列）：
-    {11}
   group_member_info: '* {} ({}/{})[好感:{}/{}][入群:{}] - {}'
   member_info: '* {} [好感:{}] - {}'
   fav_rule: |
@@ -724,7 +722,7 @@ rua:
       refuse_prompt: "你躲开了 {} 的戳。"
     head:
       name: 摸头
-      received: 你摸了摸 Moonlark 的頭。
+      received: 你摸了摸 Moonlark 的头。
       prompt: "{} 摸了摸你的头。"
       refuse_msg: Moonlark 躲开了
       refuse_prompt: "你躲开了 {} 的摸头。"
@@ -734,11 +732,11 @@ rua:
       prompt: "{} 挠了挠你的下巴，你感到很舒适。"
     cheek:
       name: 捏脸
-      received: 你捏了捏 Moonlark 的臉頰。
+      received: 你捏了捏 Moonlark 的脸颊。
       prompt: "{} 捏了捏你的脸颊。"
     hug:
       name: 拥抱
-      received: 你緊緊抱住了 Moonlark。
+      received: 你紧紧抱住了 Moonlark。
       prompt: "{} 紧紧的抱着你。"
     ears:
       name: 揉耳朵
@@ -1318,7 +1316,7 @@ main_session:
 
     {{
         "type": "do",
-        "information": "XXX",         // 尽量详细的事件描述，例如：和主人一起吃中午饭（小鱼干）
+        "information": "XXX",         // 尽量详细的事件描述，例如：和主人一起吃中午饭（小鱼干）。该字段必须是一件具体的事，不能是“玩一会游戏或者看看番剧”这样模糊的表达。
         "estimated_time": 20          // 这个事件预计持续的时间，单位为分钟。
     }}
 
@@ -1354,9 +1352,9 @@ main_session:
     do: "你 {}，持续 {} 分钟。"
   wake_up:
     completed_prompt: |
-      [{}]: 你睡醒了，感覺精神飽滿。
+      [{}]: 你睡醒了，感觉精神饱满。
     interrupted_prompt: |
-      [{}]: 你計劃睡 {} 分鐘，但是被叫醒了，實際睡了 {} 分鐘。
+      [{}]: 你计划睡 {} 分钟，但是被叫醒了，实际睡了 {} 分钟。
   friend: |
     昵称: {}
     好感度: {}/{}
@@ -1372,5 +1370,5 @@ main_session:
 
     {}
   recent_activities:
-    none: 暫無記錄（你還沒有在空閒時間做任何事情）
+    none: 暂无记录（你还没有在空闲时间做任何事情）
 
