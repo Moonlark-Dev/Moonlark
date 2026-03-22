@@ -37,7 +37,7 @@ pm_on = on_command("pm", priority=10, block=True)
 
 
 @pm_on.handle()
-async def _(bot: Bot, event: Event, is_private: bool=is_private_message()) -> None:
+async def _(bot: Bot, event: Event, is_private: bool = is_private_message()) -> None:
     """处理 .pm on/off 命令"""
     # 只在私聊中响应
     # TODO 使用 commandarg
