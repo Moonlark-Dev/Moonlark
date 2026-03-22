@@ -83,7 +83,9 @@ async def reroll_luck_value(user_id: str, max_reroll_count: int) -> Optional[Tup
         value.luck_value = new_luck_value
         value.reroll_count += 1
 
+        reroll_count = value.reroll_count
+
         await session.merge(value)
         await session.commit()
 
-        return new_luck_value, value.reroll_count
+        return new_luck_value, reroll_count
