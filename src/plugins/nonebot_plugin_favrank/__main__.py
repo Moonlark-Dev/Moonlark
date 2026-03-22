@@ -18,9 +18,7 @@ async def _(user_id: str = get_user_id()) -> None:
         ranked_data = (
             (
                 await session.execute(
-                    select(UserData)
-                    .where(UserData.register_time.is_not(None))
-                    .order_by(UserData.favorability.desc())
+                    select(UserData).where(UserData.register_time.is_not(None)).order_by(UserData.favorability.desc())
                 )
             )
             .scalars()
