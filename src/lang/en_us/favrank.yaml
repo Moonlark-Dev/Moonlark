@@ -1,1 +1,8 @@
-fav_rank:  title: "Moonlark Favorability Ranking"  no_data: "No favorability data available."  help:    description: "Favorability Ranking"    details: "View Moonlark's favorability ranking, showing all users' favorability scores. Favorability accumulates through daily interactions; higher values indicate closer intimacy with Moonlark."    usage1: fav-rank (View favorability ranking)    usage2: fav-rank (View Moonlark's favorability ranking)
+fav_rank:
+  title: "Moonlark Favorability Ranking"
+  no_data: "No favorability data available."
+  help:
+    description: "Favorability Ranking"
+    details: "View Moonlark's favorability ranking, showing all users' favorability scores. Favorability accumulates through daily interactions; higher values indicate closer intimacy with Moonlark."
+    usage1: fav-rank (View favorability ranking)
+    usage2: fav-rank (View Moonlark's favorability ranking)
