@@ -1,0 +1,2 @@
+plugin: 'favrank' commands:
+  fav-rank: help;3;community
