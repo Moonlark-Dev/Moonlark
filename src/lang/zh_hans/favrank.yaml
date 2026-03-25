@@ -1,1 +1,7 @@
-fav_rank:  title: "Moonlark 好感度排行"  no_data: "暂无好感度数据。"  help:    description: "好感度排行"    details: "查看 Moonlark 好感度排行榜，展示所有用户的好感度排名。好感度通过日常互动累积，数值越高代表与 Moonlark 的亲密度越高。"    usage1: fav-rank (查看好感度排行榜)    usage2: fav-rank (查看 Moonlark 好感度排行)
+fav_rank:
+  title: "Moonlark 好感度排行"
+  no_data: "暂无好感度数据。"
+help:
+  description: "好感度排行"
+  details: "查看 Moonlark 好感度排行榜，展示所有用户的好感度排名。好感度通过日常互动累积，数值越高代表与 Moonlark 的亲密度越高。"
+  usage1: fav-rank (查看好感度排行榜)
