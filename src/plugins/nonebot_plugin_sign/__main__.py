@@ -7,7 +7,7 @@ from datetime import date
 import httpx
 
 from typing import TypedDict
-from nonebot import on_fullmatch
+from nonebot import logger, on_fullmatch
 from nonebot.matcher import Matcher
 from nonebot_plugin_alconna import Alconna, UniMessage, on_alconna
 from nonebot_plugin_orm import AsyncSession, get_session
@@ -162,15 +162,17 @@ async def get_sign_days(sign_data: SignData, user: MoonlarkUser) -> int:
 
 
 async def get_hitokoto(user_id: str) -> str:
-    # 是否有未读邮件
-    if (count := await get_unread_email_count(user_id)) > 0:
-        return await lang.text("image.email_unread", user_id, count)
-    # 获取一言
-    async with httpx.AsyncClient() as client:
-        response = await client.get(config.hitokoto_api)
-    if response.status_code == 200:
-        return response.json()["hitokoto"]
-    return await lang.text("image.hitokoto", user_id)
+    try:
+        if (count := await get_unread_email_count(user_id)) > 0:
+            return await lang.text("image.email_unread", user_id, count)
+        async with httpx.AsyncClient() as client:
+            response = await client.get(config.hitokoto_api)
+        if response.status_code == 200:
+            return response.json()["hitokoto"]
+        return await lang.text("image.hitokoto", user_id)
+    except Exception as e:
+        logger.exception(e)
+        return await lang.text("image.hitokoto", user_id)
 
 
 async def is_user_signed(user_id: str) -> bool:
