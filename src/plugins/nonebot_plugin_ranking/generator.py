@@ -24,9 +24,14 @@ async def find_user(ranked_data: list[RankingData], user_id: str) -> Optional[Us
 async def get_users(ranked_data: list[RankingData], user_id: str, limit: int = 12) -> list[UserData]:
     users = []
     for data in ranked_data[:limit]:
+        user = await get_user(data["user_id"])
+        if data["info"] is None and not user.has_nickname():
+            nickname = await lang.text("image.default_nickname", user_id)
+        else:
+            nickname = user.get_nickname()
         users.append(
             {
-                "nickname": (await get_user(data["user_id"])).nickname,
+                "nickname": nickname,
                 "info": data["info"] or await lang.text("image.info", user_id, data["user_id"]),
                 "data": data["data"],
             }
