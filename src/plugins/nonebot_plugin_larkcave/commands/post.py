@@ -16,7 +16,7 @@
 # ##############################################################################
 
 from typing import cast
-from nonebot_plugin_alconna import Arparma, Image, Text
+from nonebot_plugin_alconna import Arparma, Image, Reference, Text, UniMessage
 from nonebot.adapters import Event
 from nonebot.adapters import Bot
 from nonebot.typing import T_State
@@ -38,3 +38,39 @@ async def _(
         await lang.finish("add.empty", user_id)
         return
     await post_cave(content, user_id, event, bot, state, session)
+
+from nonebot.adapters.onebot.v11 import Bot as OB11Bot
+from nonebot.adapters.onebot.v11.message import MessageSegment as OB11Segment
+from nonebot.adapters.onebot.v11.message import Message as OB11Message
+
+
+@cave.assign("add-node.node_msg")
+async def _(
+    session: async_scoped_session, node_msg: Reference, event: Event, bot: Bot, state: T_State, user_id: str = get_user_id()
+) -> None:
+    content = []
+    if node_msg.id is None or not isinstance(bot, OB11Bot):
+        await lang.finish("node.unsupported", user_id)
+    try:
+        node_messages = (await bot.get_forward_msg(id=node_msg.id))["messages"]
+    except Exception:
+        await lang.finish("node.read_failed", user_id)
+    # 检查是否来自同一用户
+    if len(node_messages) == 0:
+        await lang.finish("node.invalid", user_id)
+    if any([msg["sender"]["user_id"] != node_messages[0]["sender"]["user_id"] for msg in node_messages]):
+        await lang.finish("node.check_failed_1", user_id)
+    for msg in node_messages:
+        message = OB11Message()
+        for segment in node_messages["message"]:
+            segment = OB11Segment(**segment)
+            message.append(segment)
+        uni_msg = UniMessage.generate_without_reply(message=message)
+        if not all([isinstance(seg, Image) or isinstance(seg, Text) for seg in uni_msg]):
+            await lang.finish("node.check_failed_2", user_id)
+        content.append(uni_msg)
+        content.append(Text("\n"))
+    content.pop(-1)
+    await post_cave(content, user_id, event, bot, state, session)
+
+
