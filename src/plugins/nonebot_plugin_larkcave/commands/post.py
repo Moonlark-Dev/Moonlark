@@ -39,6 +39,7 @@ async def _(
         return
     await post_cave(content, user_id, event, bot, state, session)
 
+
 from nonebot.adapters.onebot.v11 import Bot as OB11Bot
 from nonebot.adapters.onebot.v11.message import MessageSegment as OB11Segment
 from nonebot.adapters.onebot.v11.message import Message as OB11Message
@@ -46,7 +47,12 @@ from nonebot.adapters.onebot.v11.message import Message as OB11Message
 
 @cave.assign("add-node.node_msg")
 async def _(
-    session: async_scoped_session, node_msg: Reference, event: Event, bot: Bot, state: T_State, user_id: str = get_user_id()
+    session: async_scoped_session,
+    node_msg: Reference,
+    event: Event,
+    bot: Bot,
+    state: T_State,
+    user_id: str = get_user_id(),
 ) -> None:
     content = []
     if node_msg.id is None or not isinstance(bot, OB11Bot):
@@ -72,5 +78,3 @@ async def _(
         content.append(Text("\n"))
     content.pop(-1)
     await post_cave(content, user_id, event, bot, state, session)
-
-
