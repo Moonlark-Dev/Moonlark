@@ -4,12 +4,12 @@ from nonebot_plugin_alconna import Alconna, Args, Image, MultiVar, Option, Refer
 alc = Alconna(
     "cave",
     Subcommand(
-        "a|add",
-        Args["content", MultiVar(Union[Image, Text])],  # type: ignore
-    ),
-    Subcommand(
         "add-node",
         Args["node_msg", Reference],
+    ),
+    Subcommand(
+        "a|add",
+        Args["content", MultiVar(Union[Image, Text])],  # type: ignore
     ),
     Subcommand(
         "s|restore",
