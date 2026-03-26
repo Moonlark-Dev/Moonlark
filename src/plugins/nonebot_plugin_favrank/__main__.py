@@ -33,4 +33,4 @@ async def _(user_id: str = get_user_id()) -> None:
         user_id,
         await lang.text("fav_rank.title", user_id),
     )
-    await fav_rank.finish(UniMessage().image(raw=image, name="image.png"))
+    await fav_rank.finish(await UniMessage().image(raw=image, name="image.png").export())
