@@ -26,7 +26,6 @@ from nonebot_plugin_larkuser.utils.avatar import get_user_avatar
 from nonebot_plugin_larkutils import get_main_account
 import json
 
-
 guest_users = {}
 
 
