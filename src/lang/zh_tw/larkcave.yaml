@@ -64,3 +64,9 @@ stat:
   other: 其他
   tip: 正在统计数据，请稍后……
   title: 回声洞投稿统计
+node:
+  unsupported: 不支持的平台或合并转发
+  read_failed: 读取合并转发失败。
+  invalid: 无效的合并转发
+  check_failed_1: '不支持解析此类合并转发：存在多个不同的发送者'
+  check_failed_2: '不支持解析此类合并转发：存在不被支持的消息段'

@@ -140,7 +140,7 @@
           <div class="progress-circle success">
             <svg width="120" height="120" viewBox="0 0 120 120">
               <circle class="progress-bar-bg" cx="60" cy="60" r="54" stroke-width="6"></circle>
-              <circle class="progress-bar" id="cpu" cx="60" cy="60" r="54" stroke-width="6" stroke-dasharray="226"
+              <circle class="progress-bar" id="memory" cx="60" cy="60" r="54" stroke-width="6" stroke-dasharray="226"
                 stroke-dashoffset="0"></circle>
             </svg>
             <div class="progress-text">{{ system.mem.used }}{{ text.gb }}</div>
@@ -213,8 +213,8 @@
   }
 
   // 更新进度条
-  updateProgress("loadavg", Math.min(parseInt({{ system.loadavg }} * 20), 100));
-  updateProgress("memory", Math.min(parseInt({{ system.mem.used }} / {{ system.mem.total }} * 100), 100));
+  updateProgress("loadavg", Math.min(parseInt({{ system.loadavg }} / {{ system.cpu.core_count }} * 100), 100));
   updateProgress("cpu", Math.min(parseInt({{ system.cpu.usage }}), 100));
+  updateProgress("memory", Math.min(parseInt({{ system.mem.used }} / {{ system.mem.total }} * 100), 100));
 </script>
 {% endblock body %}

@@ -56,7 +56,12 @@ async def reroll_luck_value(user_id: str, max_reroll_count: int) -> Optional[Tup
         user_id: 用户 ID
         max_reroll_count: 最大重算次数
 
-    返回: (新的人品值, 已重算次数) 或 None（如果已达到重算上限）
+    返回: (新的人品值, 已重算次数) 或 None（如果已达到重算上限或人品值为100）
+
+    reroll 规则:
+        - 人品值为 0: 50% 留在 0，50% 随机 reroll
+        - 人品值为 1-99: 50% reroll 到更高值，50% reroll 到更低值
+        - 人品值为 100: 禁止 reroll
     """
     async with get_session() as session:
         value = await session.get(LuckValue, {"user_id": user_id})
@@ -78,8 +83,31 @@ async def reroll_luck_value(user_id: str, max_reroll_count: int) -> Optional[Tup
         if value.reroll_count >= max_reroll_count:
             return None
 
-        # 重新计算人品值
-        new_luck_value = struct.unpack("<I", os.urandom(4))[0] % 101
+        # 人品值为 100 时禁止 reroll
+        if value.luck_value == 100:
+            return None
+
+        current_luck = value.luck_value
+
+        # 根据当前人品值应用不同的 reroll 规则
+        if current_luck == 0:
+            # 50% 留在 0，50% 随机 reroll
+            if struct.unpack("<I", os.urandom(4))[0] % 2 == 0:
+                new_luck_value = 0
+            else:
+                new_luck_value = struct.unpack("<I", os.urandom(4))[0] % 101
+        elif 1 <= current_luck <= 99:
+            # 50% reroll 到更高值，50% reroll 到更低值
+            if struct.unpack("<I", os.urandom(4))[0] % 2 == 0:
+                # reroll 到更高值 (current_luck+1 到 100)
+                new_luck_value = current_luck + 1 + (struct.unpack("<I", os.urandom(4))[0] % (100 - current_luck))
+            else:
+                # reroll 到更低值 (0 到 current_luck-1)
+                if current_luck > 1:
+                    new_luck_value = struct.unpack("<I", os.urandom(4))[0] % current_luck
+                else:
+                    new_luck_value = 0
+
         value.luck_value = new_luck_value
         value.reroll_count += 1
 
