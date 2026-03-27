@@ -213,7 +213,7 @@
   }
 
   // 更新进度条
-  updateProgress("loadavg", Math.min(parseInt({{ system.loadavg }} * 20), 100));
+  updateProgress("loadavg", Math.min(parseInt({{ system.loadavg }} / {{ system.cpu.core_count }} * 100), 100));
   updateProgress("cpu", Math.min(parseInt({{ system.cpu.usage }}), 100));
   updateProgress("memory", Math.min(parseInt({{ system.mem.used }} / {{ system.mem.total }} * 100), 100));
 </script>
