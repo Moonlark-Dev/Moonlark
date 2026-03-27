@@ -26,8 +26,11 @@ from nonebot_plugin_larkuser.utils.avatar import get_user_avatar
 from nonebot_plugin_larkutils import get_main_account
 import json
 
+guest_users = {}
+
 
 class MoonlarkRegisteredUser(MoonlarkUser):
+    user_has_nickname: bool = True
 
     async def set_data(
         self,
@@ -78,9 +81,10 @@ class MoonlarkRegisteredUser(MoonlarkUser):
             self.config = json.loads(user.config)
         if not self.nickname:
             self.nickname = f"用户-{self.user_id}"
+            self.user_has_nickname = False
 
-
-guest_users = {}
+    def has_nickname(self) -> bool:
+        return self.user_has_nickname
 
 
 class MoonlarkRegisteredGuest(MoonlarkUser):
@@ -129,3 +133,6 @@ class MoonlarkRegisteredGuest(MoonlarkUser):
         self.fav = user["favorability"]
         self.avatar = None
         self.config = user["config"]
+
+    def has_nickname(self) -> bool:
+        return bool(self.nickname)
