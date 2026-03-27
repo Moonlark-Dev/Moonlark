@@ -28,6 +28,7 @@ import json
 
 
 class MoonlarkRegisteredUser(MoonlarkUser):
+    user_has_nickname: bool = True
 
     async def set_data(
         self,
@@ -78,6 +79,10 @@ class MoonlarkRegisteredUser(MoonlarkUser):
             self.config = json.loads(user.config)
         if not self.nickname:
             self.nickname = f"用户-{self.user_id}"
+            self.user_has_nickname = False
+
+    def has_nickname(self) -> bool:
+        return self.user_has_nickname
 
 
 guest_users = {}
@@ -105,27 +110,27 @@ class MoonlarkRegisteredGuest(MoonlarkUser):
             user["favorability"] = favorability
         if config:
             user["config"] = config
+        if user:
+            user["config"] = json.dumps(user["config"])
+        async with get_session() as session:
+            user_obj = await session.get(UserData, self.user_id)
+            if user_obj:
+                for key, value in user.items():
+                    setattr(user_obj, key, value)
+                await session.commit()
+        await self.setup_user()
 
     async def setup_user_id(self) -> None:
-        pass
+        self.user_id = -1
+        self.main_account = False
 
     async def setup_user(self) -> None:
-        user = guest_users.get(
-            self.user_id,
-            {
-                "nickname": f"GUEST-{self.user_id}",
-                "vimcoin": 0,
-                "experience": 0,
-                "health": 0,
-                "favorability": 0,
-                "config": {},
-            },
-        )
-        self.nickname = user["nickname"]
-        self.register_time = datetime.now()
-        self.vimcoin = user["vimcoin"]
-        self.experience = user["experience"]
-        self.health = user["health"]
-        self.fav = user["favorability"]
-        self.avatar = None
-        self.config = user["config"]
+        async with get_session() as session:
+            result = await session.get(UserData, self.user_id)
+            if result is not None:
+                self.nickname = result.nickname
+        if not self.nickname:
+            self.nickname = f"访客-{self.user_id}"
+
+    def has_nickname(self) -> bool:
+        return bool(self.nickname)
