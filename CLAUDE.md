@@ -43,23 +43,23 @@ poetry run pre-commit run --all-files
 
 ### Testing
 ```bash
-# Run tests with pytest
-poetry run pytest
+# Run tests with nonebug
+poetry run nb test
 
 # Run specific test file
-poetry run pytest tests/test_name.py
+poetry run nb test tests/test_name.py
 ```
 
 ### Database Migrations
 ```bash
 # Create new migration
-poetry run alembic revision --autogenerate -m "description"
+poetry run nb orm revision --autogenerate -m "description"
 
 # Apply migrations
-poetry run alembic upgrade head
+poetry run nb orm upgrade
 
 # Rollback migration
-poetry run alembic downgrade -1
+poetry run nb orm downgrade -1
 ```
 
 ### Plugin-Specific Scripts
