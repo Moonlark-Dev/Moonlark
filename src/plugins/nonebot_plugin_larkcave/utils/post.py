@@ -51,9 +51,9 @@ async def post_cave(
     try:
         await check_cave(content, event, bot, state, session)
     except ReviewFailed as e:
-        await lang.finish("add.review_fail", user_id, e.reason)
+        await lang.finish("add.review_fail", user_id, e.reason, reply_message=True)
     except EmptyImage:
-        await lang.finish("add.image_empty", user_id)
+        await lang.finish("add.image_empty", user_id, reply_message=True)
     except DuplicateCave as e:
         msg = UniMessage(await lang.text("add.similarity_title", user_id))
         msg.extend(await decode_cave(e.cave, session, user_id))
@@ -78,4 +78,4 @@ async def post_cave(
         )
         session.add(CaveData(id=cave_id, author=user_id, time=datetime.now(), content=parsed_content))
         await session.commit()
-    await lang.finish("add.posted", user_id, cave_id)
+    await lang.finish("add.posted", user_id, cave_id, reply_message=True)
