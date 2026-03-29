@@ -1,4 +1,14 @@
-from nonebot_plugin_alconna import Alconna, Args, Option, Subcommand, Target, UniMessage, get_target, on_alconna, get_message_id
+from nonebot_plugin_alconna import (
+    Alconna,
+    Args,
+    Option,
+    Subcommand,
+    Target,
+    UniMessage,
+    get_target,
+    on_alconna,
+    get_message_id,
+)
 from nonebot.params import Depends
 from nonebot_plugin_chat.core.session import get_private_session
 from nonebot_plugin_chat.models import RuaData
