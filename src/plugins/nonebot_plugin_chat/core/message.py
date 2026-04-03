@@ -187,6 +187,8 @@ class MessageQueue:
                 if deal_data := analysis.interaction_deal:
                     if deal_data.deal_type != "enjoy":
                         await self.processor.refuse_interaction_request(deal_data.interaction_id, deal_data.deal_type)
+                    else:
+                        await self.processor.accept_interaction_request(deal_data.interaction_id)
                 await ToolExecutor(self.processor, fetcher, analysis).execute()
                 if self.continuous_response:
                     fetcher.session.insert_messages(self.messages)
