@@ -98,6 +98,7 @@ async def execute_rua(
         "dodge": RUA_REACTION_DODGE,
         "bite": RUA_REACTION_BITE,
     }
+    session.set_target(target, bot)
 
     if session.is_napcat_bot():
         await session.processor.send_reaction(message_id, RUA_REACTION_PENDING)

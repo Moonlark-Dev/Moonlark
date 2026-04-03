@@ -50,6 +50,10 @@ class BaseSession(ABC):
         self.last_interest: Optional[float] = None  # 缓存的 interest 值
         self.processor = MessageProcessor(self)
 
+    def set_target(self, target: Target, bot: Bot) -> None:
+        self.target = target
+        self.bot = bot
+
     def get_message_for_instant_memory(self) -> list[CachedMessage]:
         if (
             self.last_message_for_instant_memory_generation
