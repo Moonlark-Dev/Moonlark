@@ -79,8 +79,6 @@ class MessageProcessor:
             await self.send_reaction(message_id, rua_reaction_config["enjoy"])
             logger.info(f"Accepted interaction request: {id_} from {nickname} (recation sent)")
 
-
-
     async def refuse_interaction_request(self, id_: str, type_: Literal["dodge", "bite"]) -> None:
         """
         拒绝交互请求
