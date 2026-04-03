@@ -318,10 +318,9 @@ class MainSession:
             ),
         )
 
-    
     async def format_note(self, note: Note) -> str:
         created_time = datetime.fromtimestamp(note.created_time).strftime("%y-%m-%d")
-        return await lang.text("prompt.note.format",  self.lang_str, note.content, note.id, created_time)
+        return await lang.text("prompt.note.format", self.lang_str, note.content, note.id, created_time)
 
     async def get_recent_actions_text(self, lang_str: str = "zh_hans") -> str:
         """获取最近做的事的格式化文本，用于群聊 system prompt"""
