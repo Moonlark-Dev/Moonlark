@@ -76,6 +76,7 @@ async def _github_handler(matcher, url: str, user_id: str, reply_unknown_url: bo
                     "wants_to_merge": await lang.text("pull.want", user_id),
                     "into": await lang.text("pull.into", user_id),
                     "merged": await lang.text("pull.merged", user_id),
+                    "no_body": await lang.text("pull.no_body", user_id),
                 },
             },
         },
