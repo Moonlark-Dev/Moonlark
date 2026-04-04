@@ -89,9 +89,8 @@ class ActionState(TypedDict, total=False):
 
 class MainSession:
 
-    ACTION_HISTORY_KEY = "action_history"
-
     def __init__(self, last_activate_time: datetime, lang_str: str = "zh_hans") -> None:
+        self.ACTION_HISTORY_KEY = "action_history"
         self.lang_str = lang_str
         self.last_activate_time = last_activate_time
         self.boredom = 0.0
@@ -180,7 +179,6 @@ class MainSession:
 
     async def process_timer(self) -> None:
         match self.state:
-
             case StateEnum.ACTIVATE:
                 self.boredom += 1
                 if self.last_boredom_trigger_time and datetime.now() - self.last_boredom_trigger_time:
@@ -294,10 +292,12 @@ class MainSession:
                     mem["category"],
                     mem["expire_level"],
                     mem["create_time"].strftime("%Y-%m-%d %H:%M:%S"),
+                    mem["name"],
+                    mem["ctx_id"],
                     mem["content"],
                 )
                 for mem in get_instant_memories()
-            ]
+            ],
         )
 
         note_manager = await get_context_notes("main_")

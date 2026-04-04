@@ -12,6 +12,7 @@ from nonebot_plugin_alconna import (
     get_target,
     on_alconna,
 )
+from nonebot_plugin_chat.config import config
 from nonebot_plugin_chat.core.session import get_group_session_forced, get_private_session
 from nonebot_plugin_chat.models import RuaData
 from nonebot_plugin_chat.types import RuaAction
@@ -39,11 +40,6 @@ alc = Alconna(
 )
 matcher = on_alconna(alc)
 
-# Reaction emoji IDs for rua command
-RUA_REACTION_PENDING = "181"  # 响应中
-RUA_REACTION_ENJOY = ["66", "76"]  # 享受（随机）
-RUA_REACTION_DODGE = "10"  # 躲开
-RUA_REACTION_BITE = "128074"  # 咬
 
 RUA_ACTIONS: dict[int, RuaAction] = {
     1: RuaAction(name="poke", refusable=True, unlock_favorability=0.0),
@@ -93,21 +89,15 @@ async def execute_rua(
     else:
         session = await get_group_session_forced(group_id, target, bot)
 
-    rua_reaction_config = {
-        "pending": RUA_REACTION_PENDING,
-        "enjoy": RUA_REACTION_ENJOY,
-        "dodge": RUA_REACTION_DODGE,
-        "bite": RUA_REACTION_BITE,
-    }
     session.set_target(target, bot)
 
     if session.is_napcat_bot():
-        await session.processor.send_reaction(message_id, RUA_REACTION_PENDING)
+        await session.processor.send_reaction(message_id, config.rua_reaction_config.pending)
     else:
         await lang.send(f"rua.actions.{action['name']}.received", user_id)
 
     await increment_rua_count(user_id)
-    await session.handle_rua(nickname, user_id, action, message_id, rua_reaction_config)
+    await session.handle_rua(nickname, user_id, action, message_id)
 
 
 @matcher.assign("action.target_index")

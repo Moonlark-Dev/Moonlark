@@ -1,4 +1,5 @@
 from nonebot.adapters.onebot.v11 import Bot as OB11Bot
+from ..config import config
 from nonebot_plugin_chat.utils.instant_mem import filter_instant_memory, post_instant_memory
 from nonebot_plugin_openai.types import Message as OpenAIMessage
 from nonebot.log import logger
@@ -36,7 +37,6 @@ if TYPE_CHECKING:
 
 
 class MessageProcessor:
-
     def __init__(self, session: "BaseSession"):
         self.openai_messages = MessageQueue(self, 50)
         self.session = session
@@ -73,10 +73,9 @@ class MessageProcessor:
             return
         nickname = interaction["nickname"]
         message_id = interaction.get("message_id", "")
-        rua_reaction_config = interaction.get("rua_reaction_config")
-        if message_id and rua_reaction_config and self.session.is_napcat_bot():
-            await self.send_reaction(message_id, rua_reaction_config["pending"], set=False)
-            await self.send_reaction(message_id, rua_reaction_config["enjoy"])
+        if message_id and self.session.is_napcat_bot():
+            await self.send_reaction(message_id, config.rua_reaction_config.pending, set=False)
+            await self.send_reaction(message_id, config.rua_reaction_config.enjoy)
             logger.info(f"Accepted interaction request: {id_} from {nickname} (recation sent)")
 
     async def refuse_interaction_request(self, id_: str, type_: Literal["dodge", "bite"]) -> None:
@@ -98,18 +97,17 @@ class MessageProcessor:
         action_name = interaction["action"]["name"]
         nickname = interaction["nickname"]
         message_id = interaction.get("message_id", "")
-        rua_reaction_config = interaction.get("rua_reaction_config")
 
         # 如果支持 reaction，切换 reaction 状态
-        if message_id and rua_reaction_config and self.session.is_napcat_bot():
+        if message_id and self.session.is_napcat_bot():
             # 移除 pending reaction
-            await self.send_reaction(message_id, rua_reaction_config["pending"], set=False)
+            await self.send_reaction(message_id, config.rua_reaction_config.pending, set=False)
             # 添加对应状态的 reaction
             if type_ == "dodge":
-                await self.send_reaction(message_id, rua_reaction_config["dodge"])
+                await self.send_reaction(message_id, config.rua_reaction_config.dodge)
                 logger.info(f"Interaction {id_} from {nickname} is refused by dodge (reaction sent)")
             else:  # bite
-                await self.send_reaction(message_id, rua_reaction_config["bite"])
+                await self.send_reaction(message_id, config.rua_reaction_config.bite)
                 logger.info(f"Interaction {id_} from {nickname} is refused by bite (reaction sent)")
         else:
             # 根据拒绝类型生成不同的提示
@@ -150,6 +148,37 @@ class MessageProcessor:
         await user.set_config_key("chat_fav_judge_cache", [dt.timestamp(), daily_score + delta])
         await user.add_fav(delta)
         logger.info(f"AI judged user {user_id} ({nickname}): {score} ({reason}), delta={delta}")
+
+        # 添加 reaction
+        if self.session.is_napcat_bot():
+            user_messages = [msg for msg in self.session.cached_messages if msg.get("user_id") == user_id]
+            if user_messages:
+                messages_text = "\n".join(
+                    f"ID: {msg.get('message_id')}, Time: {msg.get('send_time').strftime('%H:%M:%S')}, Content: {msg.get('content')}"
+                    for msg in user_messages[-10:]
+                )
+                if score > 0:
+                    reaction_id = config.judge_reaction_config.add
+                else:
+                    reaction_id = config.judge_reaction_config.sub
+                try:
+                    system_prompt = await self.session.text("judge.message_analysis_system", reason)
+                    target_message_id = await fetch_message(
+                        [
+                            generate_message(system_prompt, "system"),
+                            generate_message(messages_text, "user"),
+                        ],
+                        reasoning_effort="low",
+                        identify="Judge Analysis",
+                    )
+                    target_message_id = target_message_id.strip()
+                    if target_message_id != await self.session.text("judge.not_found"):
+                        if any([msg.get("message_id") == target_message_id for msg in user_messages]):
+                            await self.send_reaction(target_message_id, reaction_id)
+                            logger.info(f"Judged reaction sent to message {target_message_id}")
+                except Exception as e:
+                    logger.exception(e)
+
         return await self.session.text("judge.success", nickname, reason)
 
     async def loop(self) -> None:
@@ -468,6 +497,8 @@ class MessageProcessor:
                             mem["category"],
                             mem["expire_level"],
                             mem["create_time"].strftime("%Y-%m-%d %H:%M:%S"),
+                            mem["name"],
+                            mem["ctx_id"],
                             mem["content"],
                         )
                         for mem in filter_instant_memory(chat_history)
