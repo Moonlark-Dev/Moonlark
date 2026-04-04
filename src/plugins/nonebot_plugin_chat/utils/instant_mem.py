@@ -17,6 +17,8 @@ class InstantMemory(TypedDict):
     create_time: datetime
     recall_level: int
     expire_level: int
+    ctx_id: str
+    name: str
 
 
 # 每个 category 独立的过期时间等级映射表
@@ -141,6 +143,8 @@ async def post_instant_memory(
     keywords: list[str],
     expire_level: int,
     lang_str: str = "zh_tw",
+    ctx_id: str = "",
+    name: str = "",
 ) -> None:
     """
     post instant memory
@@ -171,6 +175,8 @@ async def post_instant_memory(
             "create_time": datetime.now(),
             "recall_level": 0,
             "expire_level": expire_level,
+            "ctx_id": ctx_id,
+            "name": name,
         }
     )
 
