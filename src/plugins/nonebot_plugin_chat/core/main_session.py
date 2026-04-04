@@ -405,7 +405,9 @@ class MainSession:
             result = result or await lang.text("main_session.fetch_chat_history.no_messages", self.lang_str)
             fetcher.session.insert_message(generate_message(result, "user"))
         else:
-            fetcher.session.insert_message(generate_message(await lang.text("main_session.fetch_chat_history.not_found", self.lang_str), "user"))
+            fetcher.session.insert_message(
+                generate_message(await lang.text("main_session.fetch_chat_history.not_found", self.lang_str), "user")
+            )
 
     async def send_private_message(self, target_nickname: str, subject: str) -> None:
         async with get_session() as session:
