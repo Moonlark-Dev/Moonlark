@@ -38,6 +38,7 @@ try:
     }
 except FileNotFoundError:
     logger.error(f"加载贴图失败（文件缺失）: {traceback.format_exc()}")
+    BLOCKS = {}
 
 
 def generate_map_image(game_map: list[list[Blocks]]) -> Image.Image:
