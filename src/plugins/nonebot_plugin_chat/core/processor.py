@@ -36,7 +36,6 @@ if TYPE_CHECKING:
 
 
 class MessageProcessor:
-
     def __init__(self, session: "BaseSession"):
         self.openai_messages = MessageQueue(self, 50)
         self.session = session
@@ -468,6 +467,8 @@ class MessageProcessor:
                             mem["category"],
                             mem["expire_level"],
                             mem["create_time"].strftime("%Y-%m-%d %H:%M:%S"),
+                            mem["name"],
+                            mem["ctx_id"],
                             mem["content"],
                         )
                         for mem in filter_instant_memory(chat_history)
