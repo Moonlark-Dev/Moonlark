@@ -10,8 +10,9 @@ from typing import TYPE_CHECKING, Literal, Optional, Union, TypedDict
 
 from nonebot_plugin_apscheduler import scheduler
 from nonebot_plugin_chat.core.proactive_chat import send_proactive_private_message
-from nonebot_plugin_chat.models import PrivateChatSession, MainSessionData
+from nonebot_plugin_chat.models import Note, PrivateChatSession, MainSessionData
 from nonebot_plugin_chat.utils.instant_mem import get_instant_memories
+from nonebot_plugin_chat.utils.note_manager import get_context_notes
 from nonebot_plugin_larkuser.utils.user import get_user
 from nonebot_plugin_orm import get_session
 from sqlalchemy import select
@@ -277,6 +278,24 @@ class MainSession:
             self.status_manager.get_mood_retention(),
             mood[1],
         )
+        instant_mem = "\n".join(
+            [
+                await lang.text(
+                    "prompt_group.instant_mem",
+                    self.lang_str,
+                    mem["category"],
+                    mem["expire_level"],
+                    mem["create_time"].strftime("%Y-%m-%d %H:%M:%S"),
+                    mem["content"],
+                )
+                for mem in get_instant_memories()
+            ]
+        )
+
+        note_manager = await get_context_notes("main_")
+        notes = await note_manager.filter_note(instant_mem)
+        notes = notes[0] + notes[1]
+
         return await lang.text(
             "main_session.prompt",
             self.lang_str,
@@ -284,18 +303,11 @@ class MainSession:
             await self.get_friends(),
             await lang.text("prompt_group.time", self.lang_str, datetime.now().isoformat()),
             state_str,
-            "\n".join(
-                [
-                    await lang.text(
-                        "prompt_group.instant_mem",
-                        self.lang_str,
-                        mem["category"],
-                        mem["expire_level"],
-                        mem["create_time"].strftime("%Y-%m-%d %H:%M:%S"),
-                        mem["content"],
-                    )
-                    for mem in get_instant_memories()
-                ]
+            instant_mem,
+            (
+                "\n".join([await self.format_note(note) for note in notes])
+                if notes
+                else await lang.text("prompt.note.none", self.lang_str)
             ),
             "\n".join(
                 [
@@ -305,6 +317,10 @@ class MainSession:
                 ]
             ),
         )
+
+    async def format_note(self, note: Note) -> str:
+        created_time = datetime.fromtimestamp(note.created_time).strftime("%y-%m-%d")
+        return await lang.text("prompt.note.format", self.lang_str, note.content, note.id, created_time)
 
     async def get_recent_actions_text(self, lang_str: str = "zh_hans") -> str:
         """获取最近做的事的格式化文本，用于群聊 system prompt"""
