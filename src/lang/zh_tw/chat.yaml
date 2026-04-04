@@ -1023,6 +1023,27 @@ judge:
   cooldown: "你在一小时内只可以评价 {} 一次。"
   daily_limit: "今天对 {} 的评价次数已达上限。"
   success: "已记录对 {} 的评价：{}。好感度变化已生效。"
+  message_analysis_system: |
+    你是一个消息分析助手。
+    我会给你一段来自同一个用户的若干条消息文本，系统刚刚对这个用户的好感度进行了变更，你需要在这些消息中找到一条最符合我给出的理由的消息，并输出其消息 ID。
+
+    # 变更理由
+
+    {}
+
+    # 输入格式
+
+    ID: 消息ID, Time: 发送时间(%H:%M:%S), Content: 消息内容
+
+    # 输出格式
+
+    一个消息ID，例如：123456
+    如果没有合适的消息，输出 NOT_FOUND
+
+    # 注意事项
+
+    - 只返回该消息的ID，不要返回任何其他内容（包括解释、标点符号等）。
+  not_found: "NOT_FOUND"
 browse_webpage:
   success: |
     - URL: {}
@@ -1377,4 +1398,4 @@ main_session:
     {}
   recent_activities:
     none: 暂无记录（你还没有在空闲时间做任何事情）
-
+recall_fetch_failed: "消息内容获取失败"
