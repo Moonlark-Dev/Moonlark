@@ -229,7 +229,6 @@ class BaseSession(ABC):
         nickname: str,
         action: RuaAction,
         message_id: str = "",
-        rua_reaction_config: dict | None = None,
     ) -> str:
         """创建一个待处理的交互请求，返回交互 ID"""
         interaction_id = str(uuid.uuid4())[:8]  # 使用短 UUID
@@ -240,7 +239,6 @@ class BaseSession(ABC):
             action=action,
             created_at=datetime.now().timestamp(),
             message_id=message_id,
-            rua_reaction_config=rua_reaction_config,
         )
         return interaction_id
 
@@ -263,9 +261,7 @@ class BaseSession(ABC):
             self.pending_interactions.pop(interaction_id, None)
         return len(expired_ids)
 
-    async def handle_rua(
-        self, nickname: str, user_id: str, action: RuaAction, message_id: str, rua_reaction_config: dict
-    ) -> None:
+    async def handle_rua(self, nickname: str, user_id: str, action: RuaAction, message_id: str) -> None:
         """
         处理 rua 互动事件
 
@@ -274,7 +270,6 @@ class BaseSession(ABC):
             user_id: 发起互动的用户 ID
             action: 选择的 rua 动作
             message_id: 触发 rua 命令的消息 ID，用于 reaction
-            rua_reaction_config: reaction emoji ID 配置
         """
         import random
         import asyncio
@@ -291,7 +286,6 @@ class BaseSession(ABC):
                 nickname=nickname,
                 action=action,
                 message_id=message_id,
-                rua_reaction_config=rua_reaction_config,
             )
             refusable_hint = await lang.text("rua.refusable_hint", self.lang_str, interaction_id)
             event_prompt = f"{event_prompt}\n{refusable_hint}"
@@ -329,7 +323,7 @@ class BaseSession(ABC):
                 message_content = message["content"]
                 break
         else:
-            message_content = "消息内容获取失败"
+            message_content = await self.text("recall_fetch_failed")
 
         await self.processor.handle_recall(message_id, message_content)
 
