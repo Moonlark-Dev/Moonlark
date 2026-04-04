@@ -181,7 +181,13 @@
         {{ text.pull.wants_to_merge }} {{data.from}} {{text.pull.into}} {{data.to}}
     </div>
 </div>
-<div class="markdown-body">{{ data.body }}</div>
+<div class="markdown-body">
+{% if data.body %}
+{{ data.body }}
+{% else if %}
+{{ text.pull.no_body }}
+{% endif %}
+</div>
 <hr>
 <span class="badge bg-dark">{{ data.updated_at }}</span>
 {% if data.state == "open" %}
