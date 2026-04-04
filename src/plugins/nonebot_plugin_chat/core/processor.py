@@ -1,4 +1,5 @@
 from nonebot.adapters.onebot.v11 import Bot as OB11Bot
+from ..config import config
 from nonebot_plugin_chat.utils.instant_mem import filter_instant_memory, post_instant_memory
 from nonebot_plugin_openai.types import Message as OpenAIMessage
 from nonebot.log import logger
@@ -72,10 +73,9 @@ class MessageProcessor:
             return
         nickname = interaction["nickname"]
         message_id = interaction.get("message_id", "")
-        rua_reaction_config = interaction.get("rua_reaction_config")
-        if message_id and rua_reaction_config and self.session.is_napcat_bot():
-            await self.send_reaction(message_id, rua_reaction_config["pending"], set=False)
-            await self.send_reaction(message_id, rua_reaction_config["enjoy"])
+        if message_id and self.session.is_napcat_bot():
+            await self.send_reaction(message_id, config.rua_reaction_config.pending, set=False)
+            await self.send_reaction(message_id, config.rua_reaction_config.enjoy)
             logger.info(f"Accepted interaction request: {id_} from {nickname} (recation sent)")
 
     async def refuse_interaction_request(self, id_: str, type_: Literal["dodge", "bite"]) -> None:
@@ -97,18 +97,17 @@ class MessageProcessor:
         action_name = interaction["action"]["name"]
         nickname = interaction["nickname"]
         message_id = interaction.get("message_id", "")
-        rua_reaction_config = interaction.get("rua_reaction_config")
 
         # 如果支持 reaction，切换 reaction 状态
-        if message_id and rua_reaction_config and self.session.is_napcat_bot():
+        if message_id and self.session.is_napcat_bot():
             # 移除 pending reaction
-            await self.send_reaction(message_id, rua_reaction_config["pending"], set=False)
+            await self.send_reaction(message_id, config.rua_reaction_config.pending, set=False)
             # 添加对应状态的 reaction
             if type_ == "dodge":
-                await self.send_reaction(message_id, rua_reaction_config["dodge"])
+                await self.send_reaction(message_id, config.rua_reaction_config.dodge)
                 logger.info(f"Interaction {id_} from {nickname} is refused by dodge (reaction sent)")
             else:  # bite
-                await self.send_reaction(message_id, rua_reaction_config["bite"])
+                await self.send_reaction(message_id, config.rua_reaction_config.bite)
                 logger.info(f"Interaction {id_} from {nickname} is refused by bite (reaction sent)")
         else:
             # 根据拒绝类型生成不同的提示
