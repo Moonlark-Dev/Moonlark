@@ -21,10 +21,13 @@ from nonebot_plugin_chat.types import MoodEnum
 from nonebot_plugin_chat.utils.status_manager import StatusManager
 from nonebot_plugin_openai.utils.chat import MessageFetcher
 from nonebot_plugin_openai.utils.message import generate_message
+from nonebot_plugin_chat.utils import parse_message_to_string
 from pydantic import BaseModel
 
 if TYPE_CHECKING:
-    from .session import BaseSession
+    from nonebot_plugin_chat.core.session.base import BaseSession
+
+from nonebot_plugin_chat.core.session import groups
 
 
 class StateEnum(Enum):
@@ -59,7 +62,12 @@ class RestAction(BaseModel):
     time: int
 
 
-BoredAction = Union[SkipAction, CustomAction, SendPrivateMsgAction, RestAction]
+class FetchChatHistoryAction(BaseModel):
+    type: Literal["fetch_chat_history"]
+    context_id: str
+
+
+BoredAction = Union[SkipAction, CustomAction, SendPrivateMsgAction, RestAction, FetchChatHistoryAction]
 
 
 class BoredActionResponse(BaseModel):
@@ -156,7 +164,7 @@ class MainSession:
             state_copy = state.copy()
             if "reply_time" in state_copy and isinstance(state_copy["reply_time"], datetime):
                 state_copy["reply_time"] = state_copy["reply_time"].isoformat()
-            data.append({"datetime": dt.isoformat(), "action": self._serialize_action(action), "state": state})
+            data.append({"datetime": dt.isoformat(), "action": self._serialize_action(action), "state": state_copy})
 
         async with get_session() as session:
             record = await session.get(MainSessionData, self.ACTION_HISTORY_KEY)
@@ -360,7 +368,8 @@ class MainSession:
                     action_state: ActionState = {}
                     if action.type == "send_private_message":
                         action_state["user_replied"] = False
-                    self.action_history.append((datetime.now(), action, action_state))
+                    if action.type != "fetch_chat_history":
+                        self.action_history.append((datetime.now(), action, action_state))
                     await self.handle_action(action, fetcher)
                 except Exception:
                     fetcher.session.insert_message(generate_message(traceback.format_exc(), "user"))
@@ -368,8 +377,6 @@ class MainSession:
 
     async def handle_action(self, action: BoredAction, fetcher: MessageFetcher) -> None:
         match action.type:
-            # case "get_friends":
-            #     fetcher.session.insert_message(generate_message(await self.get_friends(), "user"))
             case "send_private_message":
                 # 记录发送私聊前的状态，用于后续判断用户是否回复
                 self._current_action_send_private_time = datetime.now()
@@ -385,9 +392,20 @@ class MainSession:
             case "do":
                 self.state = StateEnum.BUSY
                 self.state_until = datetime.now() + timedelta(minutes=action.estimated_time)
-        if action.type != "skip" and self.state == StateEnum.BORED:
+            case "fetch_chat_history":
+                await self.fetch_chat_history(action.context_id, fetcher)
+        if action.type not in ["skip", "fetch_chat_history"] and self.state == StateEnum.BORED:
             self.state = StateEnum.ACTIVATE
             self.boredom = 0.0
+
+    async def fetch_chat_history(self, context_id: str, fetcher: MessageFetcher) -> None:
+        if context_id in groups:
+            session = groups[context_id]
+            result = await session.get_cached_messages_string()
+            result = result or await lang.text("main_session.fetch_chat_history.no_messages", self.lang_str)
+            fetcher.session.insert_message(generate_message(result, "user"))
+        else:
+            fetcher.session.insert_message(generate_message(await lang.text("main_session.fetch_chat_history.not_found", self.lang_str), "user"))
 
     async def send_private_message(self, target_nickname: str, subject: str) -> None:
         async with get_session() as session:
@@ -410,6 +428,7 @@ class MainSession:
             wake_time = datetime.now()
             actual_sleep_minutes = None
             sleep_interrupted = False
+            planned_duration = 0
 
             if self._current_action_start_time is not None and self._current_action_sleep_plan_end is not None:
                 planned_duration = (
