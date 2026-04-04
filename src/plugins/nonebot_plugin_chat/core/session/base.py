@@ -238,7 +238,7 @@ class BaseSession(ABC):
             nickname=nickname,
             action=action,
             created_at=datetime.now().timestamp(),
-            message_id=message_id
+            message_id=message_id,
         )
         return interaction_id
 
@@ -261,9 +261,7 @@ class BaseSession(ABC):
             self.pending_interactions.pop(interaction_id, None)
         return len(expired_ids)
 
-    async def handle_rua(
-        self, nickname: str, user_id: str, action: RuaAction, message_id: str
-    ) -> None:
+    async def handle_rua(self, nickname: str, user_id: str, action: RuaAction, message_id: str) -> None:
         """
         处理 rua 互动事件
 
