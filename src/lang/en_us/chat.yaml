@@ -1377,4 +1377,4 @@ main_session:
     {}
   recent_activities:
     none: 暂无记录（你还没有在空闲时间做任何事情）
-
+recall_fetch_failed: "消息内容获取失败"
