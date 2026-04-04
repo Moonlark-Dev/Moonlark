@@ -8,6 +8,7 @@ class RuaReactionConfig(BaseModel):
     bite: str = "128074"
     pending: str = "181"
 
+
 class JudgeReactionConfig(BaseModel):
     add: str = "66"
     sub: str = "106"

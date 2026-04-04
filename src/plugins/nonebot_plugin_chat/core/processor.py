@@ -169,7 +169,7 @@ class MessageProcessor:
                             generate_message(messages_text, "user"),
                         ],
                         reasoning_effort="low",
-                        identify="Judge Analysis"
+                        identify="Judge Analysis",
                     )
                     target_message_id = target_message_id.strip()
                     if target_message_id != await self.session.text("judge.not_found"):
