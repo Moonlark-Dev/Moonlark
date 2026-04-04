@@ -148,6 +148,37 @@ class MessageProcessor:
         await user.set_config_key("chat_fav_judge_cache", [dt.timestamp(), daily_score + delta])
         await user.add_fav(delta)
         logger.info(f"AI judged user {user_id} ({nickname}): {score} ({reason}), delta={delta}")
+
+        # 添加 reaction
+        if self.session.is_napcat_bot():
+            user_messages = [msg for msg in self.session.cached_messages if msg.get("user_id") == user_id]
+            if user_messages:
+                messages_text = "\n".join(
+                    f"ID: {msg.get('message_id')}, Time: {msg.get('send_time').strftime('%H:%M:%S')}, Content: {msg.get('content')}"
+                    for msg in user_messages[-10:]
+                )
+                if score > 0:
+                    reaction_id = config.judge_reaction_config.add
+                else:
+                    reaction_id = config.judge_reaction_config.sub
+                try:
+                    system_prompt = await self.session.text("judge.message_analysis_system", reason)
+                    target_message_id = await fetch_message(
+                        [
+                            generate_message(system_prompt, "system"),
+                            generate_message(messages_text, "user"),
+                        ],
+                        reasoning_effort="low",
+                        identify="Judge Analysis",
+                    )
+                    target_message_id = target_message_id.strip()
+                    if target_message_id != await self.session.text("judge.not_found"):
+                        if any([msg.get("message_id") == target_message_id for msg in user_messages]):
+                            await self.send_reaction(target_message_id, reaction_id)
+                            logger.info(f"Judged reaction sent to message {target_message_id}")
+                except Exception as e:
+                    logger.exception(e)
+
         return await self.session.text("judge.success", nickname, reason)
 
     async def loop(self) -> None:
