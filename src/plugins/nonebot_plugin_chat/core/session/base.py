@@ -50,6 +50,10 @@ class BaseSession(ABC):
         self.last_interest: Optional[float] = None  # 缓存的 interest 值
         self.processor = MessageProcessor(self)
 
+    def set_target(self, target: Target, bot: Bot) -> None:
+        self.target = target
+        self.bot = bot
+
     def get_message_for_instant_memory(self) -> list[CachedMessage]:
         if (
             self.last_message_for_instant_memory_generation
@@ -294,21 +298,6 @@ class BaseSession(ABC):
 
         # 向会话发送事件，强制触发回复
         await self.post_event(event_prompt, "all")
-
-        # # 对于不可拒绝的动作，延迟后自动切换到 enjoy reaction
-        # if not action["refusable"]:
-        #     async def update_reaction_after_delay():
-        #         await asyncio.sleep(3)  # 等待 3 秒让 AI 处理
-        #         if self.is_napcat_bot():
-        #             # 移除 pending reaction
-        #             await self.processor.send_reaction(
-        #                 message_id, rua_reaction_config["pending"], set=False
-        #             )
-        #             # 添加 enjoy reaction（随机选择）
-        #             enjoy_emoji = random.choice(rua_reaction_config["enjoy"])
-        #             await self.processor.send_reaction(message_id, enjoy_emoji)
-
-        #     asyncio.create_task(update_reaction_after_delay())
 
     async def process_timer(self) -> None:
         dt = datetime.now()

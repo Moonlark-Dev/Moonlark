@@ -65,7 +65,20 @@ class MessageProcessor:
         else:
             return await self.session.text("message.reaction_failed")
 
-    async def refuse_interaction_request(self, id_: str, type_: Literal["dodge", "bite"]) -> str:
+    async def accept_interaction_request(self, id_: str) -> None:
+        interaction = self.session.remove_pending_interaction(id_)
+        if interaction is None:
+            logger.warning(f"Interaction request not found: {id_}")
+            return
+        nickname = interaction["nickname"]
+        message_id = interaction.get("message_id", "")
+        rua_reaction_config = interaction.get("rua_reaction_config")
+        if message_id and rua_reaction_config and self.session.is_napcat_bot():
+            await self.send_reaction(message_id, rua_reaction_config["pending"], set=False)
+            await self.send_reaction(message_id, rua_reaction_config["enjoy"])
+            logger.info(f"Accepted interaction request: {id_} from {nickname} (recation sent)")
+
+    async def refuse_interaction_request(self, id_: str, type_: Literal["dodge", "bite"]) -> None:
         """
         拒绝交互请求
 
@@ -78,7 +91,8 @@ class MessageProcessor:
         """
         interaction = self.session.remove_pending_interaction(id_)
         if interaction is None:
-            return await self.session.text("interaction.not_found")
+            logger.warning(f"Interaction request not found: {id_}")
+            return
 
         action_name = interaction["action"]["name"]
         nickname = interaction["nickname"]
@@ -92,20 +106,22 @@ class MessageProcessor:
             # 添加对应状态的 reaction
             if type_ == "dodge":
                 await self.send_reaction(message_id, rua_reaction_config["dodge"])
+                logger.info(f"Interaction {id_} from {nickname} is refused by dodge (reaction sent)")
             else:  # bite
                 await self.send_reaction(message_id, rua_reaction_config["bite"])
-
-        # 根据拒绝类型生成不同的提示
-        if type_ == "dodge":
-            # 发送拒绝消息到会话
-            refuse_msg = await self.session.text(f"rua.actions.{action_name}.refuse_msg")
-            await self.send_message(refuse_msg)
-            return await self.session.text(f"rua.actions.{action_name}.refuse_prompt", nickname)
-        else:  # bite
-            # 躲开并咬一口
-            refuse_msg = await self.session.text("rua.bite_msg", nickname)
-            await self.send_message(refuse_msg)
-            return await self.session.text("rua.bite_prompt", nickname)
+                logger.info(f"Interaction {id_} from {nickname} is refused by bite (reaction sent)")
+        else:
+            # 根据拒绝类型生成不同的提示
+            if type_ == "dodge":
+                # 发送拒绝消息到会话
+                refuse_msg = await self.session.text(f"rua.actions.{action_name}.refuse_msg")
+                await self.send_message(refuse_msg)
+                logger.info(f"Interaction {id_} from {nickname} is refused by dodge")
+            else:  # bite
+                # 躲开并咬一口
+                refuse_msg = await self.session.text("rua.bite_msg", nickname)
+                await self.send_message(refuse_msg)
+                logger.info(f"Interaction {id_} from {nickname} is refused by bite")
 
     async def judge_user_behavior(self, nickname: str, score: int, reason: str) -> str:
         # 获取用户 ID

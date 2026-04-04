@@ -23,6 +23,7 @@ pull:
   want: 想要将分支
   into: 合并到
   merged: 已合并
+  no_body: '> 没有拉取请求描述'
 error: 服务器繁忙，请稍后再试。
 not_compliance: |
   失败：内容未通过审核
