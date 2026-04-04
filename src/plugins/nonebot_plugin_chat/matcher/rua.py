@@ -21,6 +21,7 @@ from nonebot_plugin_larkutils.group import get_group_id
 from nonebot_plugin_larkutils.user import get_user_id
 from nonebot_plugin_orm import get_session
 from nonebot_plugin_ranking import generate_image
+from nonebot_plugin_ranking.types import RankingData
 from sqlalchemy import select
 
 from ..lang import lang
@@ -182,7 +183,7 @@ async def _(user_id: str = get_user_id()) -> None:
         await lang.finish("rua.rank_no_data", user_id)
 
     ranking_data = [
-        {"user_id": data.user_id, "info": None, "data": data.count} for data in ranked_data if data.count > 0
+        RankingData(user_id=data.user_id, data=data.count, info=None) for data in ranked_data if data.count > 0
     ]
 
     if not ranking_data:
