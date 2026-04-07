@@ -2349,7 +2349,6 @@ files = [
 
 [package.dependencies]
 linkify-it-py = {version = ">=1,<3", optional = true, markers = "extra == \"linkify\""}
-mdit-py-plugins = {version = ">=0.5.0", optional = true, markers = "extra == \"plugins\""}
 mdurl = ">=0.1,<1.0"
 
 [package.extras]
@@ -3014,19 +3013,19 @@ files = [
 
 [[package]]
 name = "nonebot-adapter-console"
-version = "0.9.0"
+version = "0.10.0"
 description = "console adapter for nonebot2"
 optional = false
-python-versions = "<4.0,>=3.9"
+python-versions = "<4.0,>=3.10"
 groups = ["test"]
 files = [
-    {file = "nonebot_adapter_console-0.9.0-py3-none-any.whl", hash = "sha256:1f41b53a6ffdcef8c0cfe69e3675158b36792db4fb04163931d48fc052f1ad04"},
-    {file = "nonebot_adapter_console-0.9.0.tar.gz", hash = "sha256:d68ee2d2960575d729c81fd5d94d9a52425758e366ec4fc5b8c675a874caed1a"},
+    {file = "nonebot_adapter_console-0.10.0-py3-none-any.whl", hash = "sha256:e8a8817866ace0e0df08a8c5d3cde558302f4c4d5b7c1a7eaff0af191dcbf024"},
+    {file = "nonebot_adapter_console-0.10.0.tar.gz", hash = "sha256:aeb813038dd9e3403da5099d140b664582cb3d05471a2697ae27fe3e69843a47"},
 ]
 
 [package.dependencies]
-nonebot2 = ">=2.4.2"
-nonechat = ">=0.6.0,<0.7.0"
+nonebot2 = ">=2.4.4"
+nonechat = ">=0.7.0,<0.8.0"
 typing-extensions = ">=4.7.1"
 
 [[package]]
@@ -3408,18 +3407,18 @@ typing-extensions = ">=4.0.0,<5.0.0"
 
 [[package]]
 name = "nonechat"
-version = "0.6.1"
+version = "0.7.0"
 description = "Awesome chat console using Textual"
 optional = false
-python-versions = "<4.0,>=3.9"
+python-versions = "<4.0,>=3.10"
 groups = ["test"]
 files = [
-    {file = "nonechat-0.6.1-py3-none-any.whl", hash = "sha256:899f26416e01cc0f3beb4798e8ce73a47bac4627b610a0609fe07f6d8246bf0c"},
-    {file = "nonechat-0.6.1.tar.gz", hash = "sha256:4cf39badc4af1ebf72062dac879bd8f0a0063ce4f8e53e9679988b2ec6667117"},
+    {file = "nonechat-0.7.0-py3-none-any.whl", hash = "sha256:b77039722498eb8c0aba25fdd8873c263d265100add116e24ffeed7ecf90a4a2"},
+    {file = "nonechat-0.7.0.tar.gz", hash = "sha256:9e3dfbd9a6d53a0f6f7e26430b4f5092f60d18a658a28d571736098dff7ba67b"},
 ]
 
 [package.dependencies]
-textual = ">=3.7.0,<4.0.0"
+textual = ">=8.0.0,<9.0.0"
 
 [[package]]
 name = "noneprompt"
@@ -5726,24 +5725,26 @@ files = [
 
 [[package]]
 name = "textual"
-version = "3.7.1"
+version = "8.2.3"
 description = "Modern Text User Interface framework"
 optional = false
-python-versions = "<4.0.0,>=3.8.1"
+python-versions = "<4.0,>=3.9"
 groups = ["test"]
 files = [
-    {file = "textual-3.7.1-py3-none-any.whl", hash = "sha256:ab5d153f4f65e77017977fa150d0376409e0acf5f1d2e25e2e4ab9de6c0d61ff"},
-    {file = "textual-3.7.1.tar.gz", hash = "sha256:a76ba0c8a6c194ef24fd5c3681ebfddca55e7127c064a014128c84fbd7f5d271"},
+    {file = "textual-8.2.3-py3-none-any.whl", hash = "sha256:5008ac581bebf1f6fa0520404261844a231e5715fdbddd10ca73916a3af48ca2"},
+    {file = "textual-8.2.3.tar.gz", hash = "sha256:beea7b86b03b03558a2224f0cc35252e60ef8b0c4353b117b2f40972902d976a"},
 ]
 
 [package.dependencies]
-markdown-it-py = {version = ">=2.1.0", extras = ["linkify", "plugins"]}
+markdown-it-py = {version = ">=2.1.0", extras = ["linkify"]}
+mdit-py-plugins = "*"
 platformdirs = ">=3.6.0,<5"
-rich = ">=13.3.3"
+pygments = ">=2.19.2,<3.0.0"
+rich = ">=14.2.0"
 typing-extensions = ">=4.4.0,<5.0.0"
 
 [package.extras]
-syntax = ["tree-sitter (>=0.23.0) ; python_version >= \"3.9\"", "tree-sitter-bash (>=0.23.0) ; python_version >= \"3.9\"", "tree-sitter-css (>=0.23.0) ; python_version >= \"3.9\"", "tree-sitter-go (>=0.23.0) ; python_version >= \"3.9\"", "tree-sitter-html (>=0.23.0) ; python_version >= \"3.9\"", "tree-sitter-java (>=0.23.0) ; python_version >= \"3.9\"", "tree-sitter-javascript (>=0.23.0) ; python_version >= \"3.9\"", "tree-sitter-json (>=0.24.0) ; python_version >= \"3.9\"", "tree-sitter-markdown (>=0.3.0) ; python_version >= \"3.9\"", "tree-sitter-python (>=0.23.0) ; python_version >= \"3.9\"", "tree-sitter-regex (>=0.24.0) ; python_version >= \"3.9\"", "tree-sitter-rust (>=0.23.0,<=0.23.2) ; python_version >= \"3.9\"", "tree-sitter-sql (>=0.3.0,<0.3.8) ; python_version >= \"3.9\"", "tree-sitter-toml (>=0.6.0) ; python_version >= \"3.9\"", "tree-sitter-xml (>=0.7.0) ; python_version >= \"3.9\"", "tree-sitter-yaml (>=0.6.0) ; python_version >= \"3.9\""]
+syntax = ["tree-sitter (>=0.25.0) ; python_version >= \"3.10\"", "tree-sitter-bash (>=0.23.0) ; python_version >= \"3.10\"", "tree-sitter-css (>=0.23.0) ; python_version >= \"3.10\"", "tree-sitter-go (>=0.23.0) ; python_version >= \"3.10\"", "tree-sitter-html (>=0.23.0) ; python_version >= \"3.10\"", "tree-sitter-java (>=0.23.0) ; python_version >= \"3.10\"", "tree-sitter-javascript (>=0.23.0) ; python_version >= \"3.10\"", "tree-sitter-json (>=0.24.0) ; python_version >= \"3.10\"", "tree-sitter-markdown (>=0.3.0) ; python_version >= \"3.10\"", "tree-sitter-python (>=0.23.0) ; python_version >= \"3.10\"", "tree-sitter-regex (>=0.24.0) ; python_version >= \"3.10\"", "tree-sitter-rust (>=0.23.0) ; python_version >= \"3.10\"", "tree-sitter-sql (>=0.3.11) ; python_version >= \"3.10\"", "tree-sitter-toml (>=0.6.0) ; python_version >= \"3.10\"", "tree-sitter-xml (>=0.7.0) ; python_version >= \"3.10\"", "tree-sitter-yaml (>=0.6.0) ; python_version >= \"3.10\""]
 
 [[package]]
 name = "tifffile"
@@ -6440,4 +6441,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11, <4.0"
-content-hash = "c03ca3bec9ce734c8d02ab77165fd4c7de596767db283ab37683fe1ba00d2341"
+content-hash = "5cdd9b5400f97a4e03ad122078f5beff661fb5763815fa11545511eb5cecc444"
