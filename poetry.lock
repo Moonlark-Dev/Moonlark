@@ -3388,22 +3388,21 @@ websockets = ["websockets (>=15.0)"]
 
 [[package]]
 name = "nonebug"
-version = "0.4.3"
+version = "0.4.4"
 description = "nonebot2 test framework"
 optional = false
 python-versions = "<4.0,>=3.9"
 groups = ["dev", "test"]
 files = [
-    {file = "nonebug-0.4.3-py3-none-any.whl", hash = "sha256:eb9b2c8ab3d45459a4f00ebdaae90729e9e9628575c0685fca4c871dd4cfd425"},
-    {file = "nonebug-0.4.3.tar.gz", hash = "sha256:e9592d2c7a42b76f4a336f98726cba92e1300f6bab155c8822e865919786f10c"},
+    {file = "nonebug-0.4.4-py3-none-any.whl", hash = "sha256:0bbd3ea2147b2d213fca41755aa16493159f900f53d65d284a4d3517b2e4dd10"},
+    {file = "nonebug-0.4.4.tar.gz", hash = "sha256:694bebcac66e295f5cf75e3f11a869049365f4979870aa0f5521a0205efe956d"},
 ]
 
 [package.dependencies]
-asgiref = ">=3.4.0,<4.0.0"
+asgiref = ">=3.8.0,<4.0.0"
 async-asgi-testclient = ">=1.4.8,<2.0.0"
-nonebot2 = ">=2.2.0,<3.0.0"
-pytest = ">=7.0.0,<9.0.0"
-typing-extensions = ">=4.0.0,<5.0.0"
+nonebot2 = ">=2.3.0,<3.0.0"
+pytest = ">=7.0.0,<10.0.0"
 
 [[package]]
 name = "nonechat"
@@ -6441,4 +6440,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11, <4.0"
-content-hash = "5cdd9b5400f97a4e03ad122078f5beff661fb5763815fa11545511eb5cecc444"
+content-hash = "5960f3e7e4eca4d6ef8d42f731eb47649fa4589051f2f91131847372eef311d7"
