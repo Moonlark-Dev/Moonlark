@@ -447,12 +447,12 @@ class MessageProcessor:
         async def format_note(note):
             created_time = datetime.fromtimestamp(note.created_time).strftime("%y-%m-%d")
             return await self.session.text("prompt.note.format", note.content, note.id, created_time)
+
         return (
             "\n".join([await format_note(note) for note in notes])
             if notes
             else await self.session.text("prompt.note.none")
         )
-        
 
     async def generate_additional_prompt(self) -> str:
         chat_history = "\n".join(self.get_message_content_list())
@@ -477,7 +477,7 @@ class MessageProcessor:
         # 导入 main_session 获取最近做的事
         from .main_session import main_session
 
-        current_time = await self.session.text("prompt_group.time", datetime.now().isoformat()),
+        current_time = (await self.session.text("prompt_group.time", datetime.now().isoformat()),)
         session_name = self.session.session_name
         state = await self.session.text(
             "prompt_group.state", mood_text, status_manager.get_mood_retention(), mood_reason
@@ -493,7 +493,7 @@ class MessageProcessor:
             recent_activities,
             profiles_text,
             await self.filter_instant_mem(chat_history),
-            state
+            state,
         )
 
     async def filter_instant_mem(self, chat_history: str) -> str:
@@ -512,21 +512,19 @@ class MessageProcessor:
             ]
         )
 
-
     async def generate_system_prompt(self) -> OpenAIMessage:
         fav_rule = await get_prompt_text("favorability")
-        
+
         return generate_message(
             await self.session.text(
                 "prompt_group.default",
                 await get_prompt_text("identity"),
                 await get_prompt_text("rule"),
                 await get_prompt_text("interaction", fav_rule),
-                await self.generate_additional_prompt()
+                await self.generate_additional_prompt(),
             ),
             "system",
         )
-
 
     async def handle_recall(self, message_id: str, message_content: str) -> None:
         await self.session.add_event(
