@@ -172,7 +172,6 @@ class MainSessionData(Model):
     updated_time: Mapped[float] = mapped_column(Float())  # 最后更新时间戳
 
 
-
 class SkipAction(BaseModel):
     type: Literal["skip"]
 
@@ -181,7 +180,6 @@ class CustomAction(BaseModel):
     type: Literal["do"]
     information: str
     estimated_time: int
-
 
 
 class SendPrivateMsgAction(BaseModel):

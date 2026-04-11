@@ -10,7 +10,18 @@ from typing import TYPE_CHECKING, Literal, Optional, Union, TypedDict
 
 from nonebot_plugin_apscheduler import scheduler
 from nonebot_plugin_chat.core.proactive_chat import send_proactive_private_message
-from nonebot_plugin_chat.models import ActionState, BoredAction, BoredActionResponse, CustomAction, Note, PrivateChatSession, MainSessionData, RestAction, SendPrivateMsgAction, SkipAction
+from nonebot_plugin_chat.models import (
+    ActionState,
+    BoredAction,
+    BoredActionResponse,
+    CustomAction,
+    Note,
+    PrivateChatSession,
+    MainSessionData,
+    RestAction,
+    SendPrivateMsgAction,
+    SkipAction,
+)
 from nonebot_plugin_chat.types import StateEnum
 from nonebot_plugin_chat.utils.instant_mem import get_instant_memories
 from nonebot_plugin_chat.utils.note_manager import get_context_notes
@@ -30,7 +41,6 @@ if TYPE_CHECKING:
     from nonebot_plugin_chat.core.session.base import BaseSession
 
 from nonebot_plugin_chat.core.session import groups
-
 
 
 class MainSession:
