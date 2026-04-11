@@ -205,12 +205,15 @@ class MessageProcessor:
             await asyncio.sleep(3)
             return
         trigger_mode: Literal["none", "probability", "all"] = "none"
+        is_to_me = False
 
         item = self.session.message_queue.pop(0)
 
         if item[0] == "event":
             # 处理事件类型队列项
             event_prompt, trigger_mode = item[1]  # type: ignore
+            if "to_me" in event_prompt.lower() or "戳一戳" in event_prompt:
+                is_to_me = True
             content = await self.session.text(
                 "prompt.event_template", datetime.now().strftime("%H:%M:%S"), event_prompt
             )
@@ -237,9 +240,9 @@ class MessageProcessor:
             await self.session.on_cache_posted()
             trigger_mode = "probability" if not mentioned else "all"
         if (
-            trigger_mode == "all" or trigger_mode == "probability" and not self.session.message_queue
+            trigger_mode == "all" or (trigger_mode == "probability" and not self.session.message_queue)
         ) and not self.blocked:
-            asyncio.create_task(self.generate_reply(trigger_mode == "all"))
+            asyncio.create_task(self.generate_reply(trigger_mode == "all", is_to_me))
 
     async def handle_timer(self, description: str) -> None:
         await self.session.add_event(
@@ -249,7 +252,7 @@ class MessageProcessor:
     async def leave_for_a_while(self) -> None:
         await self.session.mute()
 
-    async def generate_reply(self, important: bool = False) -> None:
+    async def generate_reply(self, important: bool = False, is_to_me: bool = False) -> None:
         # 延迟导入以避免循环导入
         from .main_session import main_session
 
@@ -267,6 +270,13 @@ class MessageProcessor:
                 f"Accumulated length: {self.session.accumulated_text_length}, Trigger probability: {probability:.2%}"
             )
             if random.random() > probability:
+                return
+
+        # 非 to_me 事件需要进行消息截断检查
+        if not is_to_me:
+            is_truncated = await self.check_message_truncated()
+            if is_truncated:
+                logger.debug("Message truncated, skipping response")
                 return
 
         if self.session.get_session_type() == "group":
@@ -595,3 +605,21 @@ class MessageProcessor:
                 )
         except Exception as e:
             logger.exception(e)
+
+    async def check_message_truncated(self) -> bool:
+        chat_history = await self.session.get_cached_messages_string()
+        try:
+            model_response = await fetch_message(
+                [
+                    generate_message(await self.session.text("message_truncate_check.system"), "system"),
+                    generate_message(chat_history, "user"),
+                ],
+                reasoning_effort="low",
+                identify="Truncate Check",
+            )
+            result = model_response.strip().lower()
+            logger.debug(f"Message truncate check result: {result}")
+            return result == "true"
+        except Exception as e:
+            logger.exception(e)
+            return False
