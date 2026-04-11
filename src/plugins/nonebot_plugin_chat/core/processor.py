@@ -1,4 +1,6 @@
+import aiofiles
 from nonebot.adapters.onebot.v11 import Bot as OB11Bot
+from nonebot_plugin_chat.utils.prompt import get_prompt_text
 from ..config import config
 from nonebot_plugin_chat.utils.instant_mem import filter_instant_memory, post_instant_memory
 from nonebot_plugin_openai.types import Message as OpenAIMessage
@@ -441,7 +443,18 @@ class MessageProcessor:
                         yield f"- {sticker.id}: {sticker.description}"
                         break
 
-    async def generate_system_prompt(self) -> OpenAIMessage:
+    async def generate_note_text(self, notes) -> str:
+        async def format_note(note):
+            created_time = datetime.fromtimestamp(note.created_time).strftime("%y-%m-%d")
+            return await self.session.text("prompt.note.format", note.content, note.id, created_time)
+        return (
+            "\n".join([await format_note(note) for note in notes])
+            if notes
+            else await self.session.text("prompt.note.none")
+        )
+        
+
+    async def generate_additional_prompt(self) -> str:
         chat_history = "\n".join(self.get_message_content_list())
         # 获取相关笔记
         note_manager = await get_context_notes(self.session.session_id)
@@ -456,10 +469,6 @@ class MessageProcessor:
         else:
             profiles_text = await self.session.text("prompt.profile.none")
 
-        async def format_note(note):
-            created_time = datetime.fromtimestamp(note.created_time).strftime("%y-%m-%d")
-            return await self.session.text("prompt.note.format", note.content, note.id, created_time)
-
         status_manager = get_status_manager()
         mood, mood_reason = status_manager.get_status()
 
@@ -468,49 +477,56 @@ class MessageProcessor:
         # 导入 main_session 获取最近做的事
         from .main_session import main_session
 
-        recent_activities = await main_session.get_recent_actions_text(self.session.lang_str)
+        current_time = await self.session.text("prompt_group.time", datetime.now().isoformat()),
+        session_name = self.session.session_name
+        state = await self.session.text(
+            "prompt_group.state", mood_text, status_manager.get_mood_retention(), mood_reason
+        )
 
+        recent_activities = await main_session.get_recent_actions_text(self.session.lang_str)
+        return await self.session.text(
+            "prompt_group.additional_info",
+            current_time,
+            session_name,
+            await self.generate_note_text(notes),
+            await self.generate_note_text(notes_from_other_group),
+            recent_activities,
+            profiles_text,
+            await self.filter_instant_mem(chat_history),
+            state
+        )
+
+    async def filter_instant_mem(self, chat_history: str) -> str:
+        return "\n".join(
+            [
+                await self.session.text(
+                    "prompt_group.instant_mem",
+                    mem["category"],
+                    mem["expire_level"],
+                    mem["create_time"].strftime("%Y-%m-%d %H:%M:%S"),
+                    mem["name"],
+                    mem["ctx_id"],
+                    mem["content"],
+                )
+                for mem in filter_instant_memory(chat_history)
+            ]
+        )
+
+
+    async def generate_system_prompt(self) -> OpenAIMessage:
+        fav_rule = await get_prompt_text("favorability")
+        
         return generate_message(
             await self.session.text(
                 "prompt_group.default",
-                (
-                    "\n".join([await format_note(note) for note in notes])
-                    if notes
-                    else await self.session.text("prompt.note.none")
-                ),
-                await self.session.text("prompt_group.time", datetime.now().isoformat()),
-                self.session.session_name,
-                (
-                    "\n".join([await format_note(note) for note in notes_from_other_group])
-                    if notes_from_other_group
-                    else await self.session.text("prompt.note.none")
-                ),
-                profiles_text,
-                await self.session.text(
-                    "prompt_group.state", mood_text, status_manager.get_mood_retention(), mood_reason
-                ),
-                "/".join([i for i in QQ_EMOJI_MAP.values()]),
-                "\n".join(
-                    [
-                        await self.session.text(
-                            "prompt_group.instant_mem",
-                            mem["category"],
-                            mem["expire_level"],
-                            mem["create_time"].strftime("%Y-%m-%d %H:%M:%S"),
-                            mem["name"],
-                            mem["ctx_id"],
-                            mem["content"],
-                        )
-                        for mem in filter_instant_memory(chat_history)
-                    ]
-                ),
-                await self.session.text("prompt_group.identify"),
-                await self.session.text("prompt_group.rule"),
-                await self.session.text("prompt_group.fav_rule"),
-                recent_activities,
+                await get_prompt_text("identity"),
+                await get_prompt_text("rule"),
+                await get_prompt_text("interaction", fav_rule),
+                await self.generate_additional_prompt()
             ),
             "system",
         )
+
 
     async def handle_recall(self, message_id: str, message_content: str) -> None:
         await self.session.add_event(

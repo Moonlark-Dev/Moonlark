@@ -13,6 +13,7 @@ from nonebot_plugin_chat.core.proactive_chat import send_proactive_private_messa
 from nonebot_plugin_chat.models import Note, PrivateChatSession, MainSessionData
 from nonebot_plugin_chat.utils.instant_mem import get_instant_memories
 from nonebot_plugin_chat.utils.note_manager import get_context_notes
+from nonebot_plugin_chat.utils.prompt import get_prompt_text
 from nonebot_plugin_larkuser.utils.user import get_user
 from nonebot_plugin_orm import get_session
 from sqlalchemy import select
@@ -299,7 +300,7 @@ class MainSession:
         return await lang.text(
             "main_session.prompt",
             self.lang_str,
-            await lang.text("prompt_group.identify", self.lang_str),
+            await get_prompt_text("identity"),
             await self.get_friends(),
             await lang.text("prompt_group.time", self.lang_str, datetime.now().isoformat()),
             state_str,
@@ -513,7 +514,7 @@ class MainSession:
             "main_session.friends",
             self.lang_str,
             "\n".join(friend_list),
-            await lang.text("prompt_group.fav_rule", self.lang_str),
+            await get_prompt_text("favorability"),
         )
 
 
