@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 from typing import Optional
 
-from nonebot_plugin_chat.types import MoodEnum
+from nonebot_plugin_chat.enums import MoodEnum
 
 
 class StatusManager:

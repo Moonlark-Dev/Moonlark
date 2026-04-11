@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Literal, Optional, TypedDict
+from typing import Literal, Optional, TypedDict, Union
 
 from nonebot_plugin_orm import Model
 from pydantic import BaseModel, Field
@@ -170,3 +170,49 @@ class MainSessionData(Model):
     # MySQL 使用 MEDIUMTEXT，其他数据库使用 Text
     data_json: Mapped[str] = mapped_column(CompatibleMediumText)  # JSON 序列化的数据
     updated_time: Mapped[float] = mapped_column(Float())  # 最后更新时间戳
+
+
+class SkipAction(BaseModel):
+    type: Literal["skip"]
+
+
+class CustomAction(BaseModel):
+    type: Literal["do"]
+    information: str
+    estimated_time: int
+
+
+class SendPrivateMsgAction(BaseModel):
+    type: Literal["send_private_message"]
+    target_nickname: str
+    subject: str
+
+
+class RestAction(BaseModel):
+    type: Literal["sleep"]
+    time: int
+
+
+class FetchChatHistoryAction(BaseModel):
+    type: Literal["fetch_chat_history"]
+    context_id: str
+
+
+BoredAction = Union[SkipAction, CustomAction, SendPrivateMsgAction, RestAction, FetchChatHistoryAction]
+
+
+class BoredActionResponse(BaseModel):
+    response: BoredAction
+
+
+# Action 状态类型
+class ActionState(TypedDict, total=False):
+    """动作执行后的状态信息"""
+
+    # sleep 动作的状态
+    actual_sleep_minutes: Optional[int]  # 实际睡眠时间（分钟）
+    sleep_interrupted: Optional[bool]  # 是否被提前唤醒
+
+    # send_private_message 动作的状态
+    user_replied: Optional[bool]  # 用户是否回复
+    reply_time: Optional[datetime]  # 用户回复时间

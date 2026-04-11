@@ -8,7 +8,7 @@ from nonebot_plugin_chat.core.tools import ToolExecutor
 # from nonebot_plugin_chat.utils.emoji import QQ_EMOJI_MAP
 from nonebot_plugin_chat.utils.role import get_role
 from nonebot_plugin_chat.models import MessageQueueCache, ModelResponse
-from nonebot_plugin_chat.utils.enums import FetchStatus
+from nonebot_plugin_chat.enums import FetchStatus
 from nonebot_plugin_openai import generate_message
 from nonebot_plugin_openai.utils.chat import MessageFetcher
 from nonebot_plugin_orm import get_session

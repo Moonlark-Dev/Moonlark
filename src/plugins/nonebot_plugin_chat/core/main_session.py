@@ -10,14 +10,27 @@ from typing import TYPE_CHECKING, Literal, Optional, Union, TypedDict
 
 from nonebot_plugin_apscheduler import scheduler
 from nonebot_plugin_chat.core.proactive_chat import send_proactive_private_message
-from nonebot_plugin_chat.models import Note, PrivateChatSession, MainSessionData
+from nonebot_plugin_chat.models import (
+    ActionState,
+    BoredAction,
+    BoredActionResponse,
+    CustomAction,
+    Note,
+    PrivateChatSession,
+    MainSessionData,
+    RestAction,
+    SendPrivateMsgAction,
+    SkipAction,
+)
+from ..enums import StateEnum
 from nonebot_plugin_chat.utils.instant_mem import get_instant_memories
 from nonebot_plugin_chat.utils.note_manager import get_context_notes
+from nonebot_plugin_chat.utils.prompt import get_prompt_text
 from nonebot_plugin_larkuser.utils.user import get_user
 from nonebot_plugin_orm import get_session
 from sqlalchemy import select
 from ..lang import lang
-from nonebot_plugin_chat.types import MoodEnum
+from nonebot_plugin_chat.enums import MoodEnum
 from nonebot_plugin_chat.utils.status_manager import StatusManager
 from nonebot_plugin_openai.utils.chat import MessageFetcher
 from nonebot_plugin_openai.utils.message import generate_message
@@ -28,63 +41,6 @@ if TYPE_CHECKING:
     from nonebot_plugin_chat.core.session.base import BaseSession
 
 from nonebot_plugin_chat.core.session import groups
-
-
-class StateEnum(Enum):
-    SLEEPING = "sleeping"
-    ACTIVATE = "activate"
-    BORED = "bored"
-    BUSY = "busy"
-
-
-class SkipAction(BaseModel):
-    type: Literal["skip"]
-
-
-class CustomAction(BaseModel):
-    type: Literal["do"]
-    information: str
-    estimated_time: int
-
-
-# class GetFriendsAction(BaseModel):
-# type: Literal["get_friends"]
-
-
-class SendPrivateMsgAction(BaseModel):
-    type: Literal["send_private_message"]
-    target_nickname: str
-    subject: str
-
-
-class RestAction(BaseModel):
-    type: Literal["sleep"]
-    time: int
-
-
-class FetchChatHistoryAction(BaseModel):
-    type: Literal["fetch_chat_history"]
-    context_id: str
-
-
-BoredAction = Union[SkipAction, CustomAction, SendPrivateMsgAction, RestAction, FetchChatHistoryAction]
-
-
-class BoredActionResponse(BaseModel):
-    response: BoredAction
-
-
-# Action 状态类型
-class ActionState(TypedDict, total=False):
-    """动作执行后的状态信息"""
-
-    # sleep 动作的状态
-    actual_sleep_minutes: Optional[int]  # 实际睡眠时间（分钟）
-    sleep_interrupted: Optional[bool]  # 是否被提前唤醒
-
-    # send_private_message 动作的状态
-    user_replied: Optional[bool]  # 用户是否回复
-    reply_time: Optional[datetime]  # 用户回复时间
 
 
 class MainSession:
@@ -307,7 +263,7 @@ class MainSession:
         return await lang.text(
             "main_session.prompt",
             self.lang_str,
-            await lang.text("prompt_group.identify", self.lang_str),
+            await get_prompt_text("identity"),
             await self.get_friends(),
             await lang.text("prompt_group.time", self.lang_str, datetime.now().isoformat()),
             state_str,
@@ -534,7 +490,7 @@ class MainSession:
             "main_session.friends",
             self.lang_str,
             "\n".join(friend_list),
-            await lang.text("prompt_group.fav_rule", self.lang_str),
+            await get_prompt_text("favorability"),
         )
 
 
