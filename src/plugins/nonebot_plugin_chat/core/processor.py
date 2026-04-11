@@ -249,13 +249,18 @@ class MessageProcessor:
     async def leave_for_a_while(self) -> None:
         await self.session.mute()
 
-
     async def generate_reply(self, important: bool = False, is_event: bool = False) -> None:
         # 延迟导入以避免循环导入
         from .main_session import main_session
 
         dt = datetime.now()
-        recent_message_count = len([msg for msg in self.session.cached_messages if msg["send_time"] > dt - timedelta(minutes=1) and msg["self"]])
+        recent_message_count = len(
+            [
+                msg
+                for msg in self.session.cached_messages
+                if msg["send_time"] > dt - timedelta(minutes=1) and msg["self"]
+            ]
+        )
 
         # 如果在冷却期或消息为空，直接返回
         if (
@@ -329,7 +334,6 @@ class MessageProcessor:
         # 记录回应用时（使用 reply_message_id 查找对应的原消息）
         self._record_reply_timing(reply_message_id)
 
-
     def _record_reply_timing(self, reply_message_id: str | None = None) -> None:
         """记录回应用时（从 reply_message_id 对应的消息到发送回复的时间）"""
         # 如果提供了 reply_message_id，查找对应的消息
@@ -341,7 +345,6 @@ class MessageProcessor:
                         reply_time_ms = (datetime.now() - send_time).total_seconds() * 1000
                         timing_stats_manager.record_reply_time(self.session.session_id, reply_time_ms)
                     return
-
 
     def append_user_message(self, msg_str: str) -> None:
         self.openai_messages.append_user_message(msg_str)

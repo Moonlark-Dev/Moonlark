@@ -103,7 +103,9 @@ class GroupSession(BaseSession):
             return
         time_to_last_message = (dt - self.cached_messages[-1]["send_time"]).total_seconds()
         wait_threshold = max(15, 60 - (await get_group_hot_score(self.session_id))[2])
-        recent_message_count = len([msg for msg in self.cached_messages if (dt - msg["send_time"]) < timedelta(minutes=5)])
+        recent_message_count = len(
+            [msg for msg in self.cached_messages if (dt - msg["send_time"]) < timedelta(minutes=5)]
+        )
         if (
             wait_threshold < time_to_last_message
             and not self.cached_messages[-1]["self"]
