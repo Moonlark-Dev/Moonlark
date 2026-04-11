@@ -13,11 +13,12 @@ from datetime import datetime, timedelta
 from nonebot_plugin_larkutils import get_user_id, get_group_id, open_file, FileType
 from nonebot_plugin_larkutils.file import FileManager
 from nonebot_plugin_larkuser import get_user
+from nonebot_plugin_ranking import generate_image
 from nonebot_plugin_chat.utils.group import parse_message_to_string
 from nonebot_plugin_chat.models import ChatGroup
 from nonebot_plugin_broadcast import get_available_groups
 
-from .models import GroupMessage
+from .models import GroupMessage, MVPRecord
 from .lang import lang
 from .ai_utils import (
     fetch_broadcast_summary,
@@ -53,6 +54,7 @@ recorder = on_message(priority=3, block=False)
 neko_finder = on_alconna(Alconna("neko-finder"))
 debate_helper = on_alconna(Alconna("debate-helper", Args["limit", int, 200]))
 check_history = on_command("check-history", aliases={"发过了吗"})
+mvp_ranking = on_alconna(Alconna("mvp-rank"))
 
 
 # --- Config Helpers ---
@@ -290,7 +292,9 @@ async def _(
         msg = await parse_message_to_string(uni_msg, event, bot, state, lang_str)
     else:
         msg = event.raw_message
-    session.add(GroupMessage(message=msg, sender_nickname=event.sender.nickname, group_id=group_id))
+    session.add(
+        GroupMessage(message=msg, sender_nickname=event.sender.nickname, user_id=event.get_user_id(), group_id=group_id)
+    )
     await session.commit()
     await recorder.finish()
 
@@ -305,7 +309,40 @@ async def _(
     await clean_recorded_message(session)
     session.add(
         GroupMessage(
-            message=event.get_plaintext(), sender_nickname=(await get_user(user_id)).get_nickname(), group_id=group_id
+            message=event.get_plaintext(),
+            sender_nickname=(await get_user(user_id)).get_nickname(),
+            user_id=user_id,
+            group_id=group_id,
         )
     )
     await session.commit()
+
+
+@mvp_ranking.handle()
+async def handle_mvp_ranking(
+    session: async_scoped_session,
+    user_id: str = get_user_id(),
+    group_id: str = get_group_id(),
+) -> None:
+    """处理 .mvp-rank 指令"""
+    result = await session.scalars(
+        select(MVPRecord).where(MVPRecord.group_id == group_id).order_by(MVPRecord.mvp_count.desc())
+    )
+    mvp_records = result.all()
+
+    if not mvp_records:
+        await lang.finish("mvp_ranking.no_data", user_id)
+
+    ranked_data = []
+    for record in mvp_records:
+        user = await get_user(record.user_id)
+        ranked_data.append(
+            {
+                "user_id": record.user_id,
+                "data": record.mvp_count,
+                "info": None,
+            }
+        )
+
+    image = await generate_image(ranked_data, user_id, await lang.text("mvp_ranking.title", user_id))
+    await mvp_ranking.finish(UniMessage().image(raw=image))
