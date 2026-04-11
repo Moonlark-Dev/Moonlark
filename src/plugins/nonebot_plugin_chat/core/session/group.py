@@ -13,7 +13,7 @@ from .base import BaseSession
 
 import asyncio
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 
 
 class GroupSession(BaseSession):
@@ -102,11 +102,13 @@ class GroupSession(BaseSession):
         if self.message_queue or self.processor.blocked or not self.cached_messages:
             return
         time_to_last_message = (dt - self.cached_messages[-1]["send_time"]).total_seconds()
+        wait_threshold = max(15, 60 - (await get_group_hot_score(self.session_id))[2])
+        recent_message_count = len([msg for msg in self.cached_messages if (dt - msg["send_time"]) < timedelta(minutes=5)])
         if (
-            30 < time_to_last_message
+            wait_threshold < time_to_last_message
             and not self.cached_messages[-1]["self"]
             and self.cached_messages[-1] is not self.cached_latest_message
-            and (await get_group_hot_score(self.session_id))[2] <= 13
+            and recent_message_count < 26
         ):
             self.cached_latest_message = self.cached_messages[-1]
             asyncio.create_task(self.processor.generate_reply())

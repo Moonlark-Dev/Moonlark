@@ -205,15 +205,12 @@ class MessageProcessor:
             await asyncio.sleep(3)
             return
         trigger_mode: Literal["none", "probability", "all"] = "none"
-        is_to_me = False
 
         item = self.session.message_queue.pop(0)
 
         if item[0] == "event":
             # 处理事件类型队列项
             event_prompt, trigger_mode = item[1]  # type: ignore
-            if "to_me" in event_prompt.lower() or "戳一戳" in event_prompt:
-                is_to_me = True
             content = await self.session.text(
                 "prompt.event_template", datetime.now().strftime("%H:%M:%S"), event_prompt
             )
@@ -242,7 +239,7 @@ class MessageProcessor:
         if (
             trigger_mode == "all" or (trigger_mode == "probability" and not self.session.message_queue)
         ) and not self.blocked:
-            asyncio.create_task(self.generate_reply(trigger_mode == "all", is_to_me))
+            asyncio.create_task(self.generate_reply(trigger_mode == "all", item[0] == "event"))
 
     async def handle_timer(self, description: str) -> None:
         await self.session.add_event(
@@ -252,14 +249,22 @@ class MessageProcessor:
     async def leave_for_a_while(self) -> None:
         await self.session.mute()
 
-    async def generate_reply(self, important: bool = False, is_to_me: bool = False) -> None:
+
+    async def generate_reply(self, important: bool = False, is_event: bool = False) -> None:
         # 延迟导入以避免循环导入
         from .main_session import main_session
 
+        dt = datetime.now()
+        recent_message_count = len([msg for msg in self.session.cached_messages if msg["send_time"] > dt - timedelta(minutes=1) and msg["self"]])
+
         # 如果在冷却期或消息为空，直接返回
-        if self.cold_until > datetime.now():
-            return
-        if len(self.openai_messages.messages) <= 0 or not self.openai_messages.is_last_message_from_user():
+        if (
+            self.cold_until > datetime.now()
+            or len(self.openai_messages.messages) <= 0
+            or (not self.openai_messages.is_last_message_from_user())
+            or (len(self.openai_messages.messages) < 5 and not important)
+            or (recent_message_count > 12 and not important)
+        ):
             return
         self.cold_until = datetime.now() + timedelta(seconds=3)
 
@@ -269,11 +274,12 @@ class MessageProcessor:
             logger.debug(
                 f"Accumulated length: {self.session.accumulated_text_length}, Trigger probability: {probability:.2%}"
             )
+            probability *= min(1, 3 / (recent_message_count or 1))
             if random.random() > probability:
                 return
 
         # 非 to_me 事件需要进行消息截断检查
-        if not is_to_me:
+        if not is_event:
             is_truncated = await self.check_message_truncated()
             if is_truncated:
                 logger.debug("Message truncated, skipping response")
@@ -320,11 +326,9 @@ class MessageProcessor:
         if reply_message_id:
             message = message.reply(reply_message_id)
         await message.send(target=self.session.target, bot=self.session.bot)
-
         # 记录回应用时（使用 reply_message_id 查找对应的原消息）
         self._record_reply_timing(reply_message_id)
 
-        # self.session.accumulated_text_length = 0
 
     def _record_reply_timing(self, reply_message_id: str | None = None) -> None:
         """记录回应用时（从 reply_message_id 对应的消息到发送回复的时间）"""
@@ -338,15 +342,6 @@ class MessageProcessor:
                         timing_stats_manager.record_reply_time(self.session.session_id, reply_time_ms)
                     return
 
-        # 如果没有提供 reply_message_id 或找不到对应消息，
-        # 则查找最近一条非自己发送的消息（兜底逻辑）
-        # for msg in reversed(self.session.cached_messages):
-        #     if not msg.get("self", False):
-        #         send_time = msg.get("send_time")
-        #         if send_time is not None:
-        #             reply_time_ms = (datetime.now() - send_time).total_seconds() * 1000
-        #             timing_stats_manager.record_reply_time(self.session.session_id, reply_time_ms)
-        #         return
 
     def append_user_message(self, msg_str: str) -> None:
         self.openai_messages.append_user_message(msg_str)
