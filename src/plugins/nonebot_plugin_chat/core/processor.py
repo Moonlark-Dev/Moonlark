@@ -529,6 +529,7 @@ class MessageProcessor:
                 "prompt_group.default",
                 await get_prompt_text("identity"),
                 await get_prompt_text("rule"),
+                "/".join([i for i in QQ_EMOJI_MAP.values()]),
                 await get_prompt_text("interaction", fav_rule),
                 await self.generate_additional_prompt(),
             ),
