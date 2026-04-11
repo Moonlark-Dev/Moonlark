@@ -20,7 +20,7 @@ from typing import TYPE_CHECKING, Any, AsyncGenerator, Literal, Optional
 
 from .message import MessageQueue
 from ..models import ChatGroup, Sticker, UserProfile
-from ..types import CachedMessage
+from ..types import CachedMessage, StateEnum
 
 from ..utils.message import generate_message_string
 from ..utils import parse_message_to_string
@@ -250,7 +250,7 @@ class MessageProcessor:
 
     async def generate_reply(self, important: bool = False) -> None:
         # 延迟导入以避免循环导入
-        from .main_session import StateEnum, main_session
+        from .main_session import main_session
 
         # 如果在冷却期或消息为空，直接返回
         if self.cold_until > datetime.now():

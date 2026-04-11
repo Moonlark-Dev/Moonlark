@@ -77,3 +77,10 @@ class MoodEnum(str, Enum):
 
 
 EMOTIONS = [e.value for e in MoodEnum]
+
+
+class StateEnum(Enum):
+    SLEEPING = "sleeping"
+    ACTIVATE = "activate"
+    BORED = "bored"
+    BUSY = "busy"

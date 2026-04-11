@@ -10,7 +10,8 @@ from typing import TYPE_CHECKING, Literal, Optional, Union, TypedDict
 
 from nonebot_plugin_apscheduler import scheduler
 from nonebot_plugin_chat.core.proactive_chat import send_proactive_private_message
-from nonebot_plugin_chat.models import Note, PrivateChatSession, MainSessionData
+from nonebot_plugin_chat.models import ActionState, BoredAction, BoredActionResponse, CustomAction, Note, PrivateChatSession, MainSessionData, RestAction, SendPrivateMsgAction, SkipAction
+from nonebot_plugin_chat.types import StateEnum
 from nonebot_plugin_chat.utils.instant_mem import get_instant_memories
 from nonebot_plugin_chat.utils.note_manager import get_context_notes
 from nonebot_plugin_chat.utils.prompt import get_prompt_text
@@ -30,62 +31,6 @@ if TYPE_CHECKING:
 
 from nonebot_plugin_chat.core.session import groups
 
-
-class StateEnum(Enum):
-    SLEEPING = "sleeping"
-    ACTIVATE = "activate"
-    BORED = "bored"
-    BUSY = "busy"
-
-
-class SkipAction(BaseModel):
-    type: Literal["skip"]
-
-
-class CustomAction(BaseModel):
-    type: Literal["do"]
-    information: str
-    estimated_time: int
-
-
-# class GetFriendsAction(BaseModel):
-# type: Literal["get_friends"]
-
-
-class SendPrivateMsgAction(BaseModel):
-    type: Literal["send_private_message"]
-    target_nickname: str
-    subject: str
-
-
-class RestAction(BaseModel):
-    type: Literal["sleep"]
-    time: int
-
-
-class FetchChatHistoryAction(BaseModel):
-    type: Literal["fetch_chat_history"]
-    context_id: str
-
-
-BoredAction = Union[SkipAction, CustomAction, SendPrivateMsgAction, RestAction, FetchChatHistoryAction]
-
-
-class BoredActionResponse(BaseModel):
-    response: BoredAction
-
-
-# Action 状态类型
-class ActionState(TypedDict, total=False):
-    """动作执行后的状态信息"""
-
-    # sleep 动作的状态
-    actual_sleep_minutes: Optional[int]  # 实际睡眠时间（分钟）
-    sleep_interrupted: Optional[bool]  # 是否被提前唤醒
-
-    # send_private_message 动作的状态
-    user_replied: Optional[bool]  # 用户是否回复
-    reply_time: Optional[datetime]  # 用户回复时间
 
 
 class MainSession:
