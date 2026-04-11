@@ -16,7 +16,7 @@
 # ##############################################################################
 
 from typing import TYPE_CHECKING, Literal, Optional
-from ..types import MoodEnum
+from ..enums import MoodEnum
 from nonebot_plugin_openai.types import AsyncFunction, FunctionParameter, FunctionParameterWithEnum
 from nonebot.adapters.onebot.v11 import Bot as OB11Bot
 from nonebot_plugin_larkutils.jrrp import get_luck_value

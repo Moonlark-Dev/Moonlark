@@ -1,5 +1,6 @@
 import aiofiles
 from nonebot.adapters.onebot.v11 import Bot as OB11Bot
+from ..enums import StateEnum
 from nonebot_plugin_chat.utils.prompt import get_prompt_text
 from ..config import config
 from nonebot_plugin_chat.utils.instant_mem import filter_instant_memory, post_instant_memory
@@ -20,7 +21,7 @@ from typing import TYPE_CHECKING, Any, AsyncGenerator, Literal, Optional
 
 from .message import MessageQueue
 from ..models import ChatGroup, Sticker, UserProfile
-from ..types import CachedMessage, StateEnum
+from ..types import CachedMessage
 
 from ..utils.message import generate_message_string
 from ..utils import parse_message_to_string

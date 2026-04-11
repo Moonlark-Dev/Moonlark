@@ -25,7 +25,8 @@ from typing import Any, Dict, List, Optional, TypedDict
 
 from nonebot import logger
 from PIL import Image
-from nonebot_plugin_chat.types import EMOTIONS, MoodEnum
+from nonebot_plugin_chat.enums import MoodEnum
+from nonebot_plugin_chat.types import EMOTIONS
 from nonebot_plugin_orm import get_session
 from nonebot_plugin_openai.utils.chat import fetch_message
 from nonebot_plugin_openai.utils.message import generate_message

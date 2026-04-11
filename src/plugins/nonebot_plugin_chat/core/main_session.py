@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Literal, Optional, Union, TypedDict
 from nonebot_plugin_apscheduler import scheduler
 from nonebot_plugin_chat.core.proactive_chat import send_proactive_private_message
 from nonebot_plugin_chat.models import ActionState, BoredAction, BoredActionResponse, CustomAction, Note, PrivateChatSession, MainSessionData, RestAction, SendPrivateMsgAction, SkipAction
-from nonebot_plugin_chat.types import StateEnum
+from nonebot_plugin_chat.enums import StateEnum
 from nonebot_plugin_chat.utils.instant_mem import get_instant_memories
 from nonebot_plugin_chat.utils.note_manager import get_context_notes
 from nonebot_plugin_chat.utils.prompt import get_prompt_text
@@ -19,7 +19,7 @@ from nonebot_plugin_larkuser.utils.user import get_user
 from nonebot_plugin_orm import get_session
 from sqlalchemy import select
 from ..lang import lang
-from nonebot_plugin_chat.types import MoodEnum
+from nonebot_plugin_chat.enums import MoodEnum
 from nonebot_plugin_chat.utils.status_manager import StatusManager
 from nonebot_plugin_openai.utils.chat import MessageFetcher
 from nonebot_plugin_openai.utils.message import generate_message
