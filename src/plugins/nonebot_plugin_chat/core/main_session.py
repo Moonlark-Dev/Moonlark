@@ -22,7 +22,7 @@ from nonebot_plugin_chat.models import (
     SendPrivateMsgAction,
     SkipAction,
 )
-from nonebot_plugin_chat.types import StateEnum
+from ..enums import StateEnum
 from nonebot_plugin_chat.utils.instant_mem import get_instant_memories
 from nonebot_plugin_chat.utils.note_manager import get_context_notes
 from nonebot_plugin_chat.utils.prompt import get_prompt_text
