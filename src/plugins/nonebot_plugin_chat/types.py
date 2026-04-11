@@ -4,7 +4,6 @@ from typing import Any, Literal, Optional, Protocol, TypedDict
 from nonebot_plugin_chat.enums import MoodEnum
 
 
-
 class RuaAction(TypedDict):
     name: str
     refusable: bool
@@ -61,5 +60,3 @@ class AdapterUserInfo(TypedDict):
 
 
 EMOTIONS = [e.value for e in MoodEnum]
-
-
