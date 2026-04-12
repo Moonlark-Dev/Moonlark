@@ -21,6 +21,7 @@ from nonebot_plugin_chat.models import (
     RestAction,
     SendPrivateMsgAction,
     SkipAction,
+    WriteBlogAction,
 )
 from ..enums import StateEnum
 from nonebot_plugin_chat.utils.instant_mem import get_instant_memories
@@ -35,6 +36,7 @@ from nonebot_plugin_chat.utils.status_manager import StatusManager
 from nonebot_plugin_openai.utils.chat import MessageFetcher
 from nonebot_plugin_openai.utils.message import generate_message
 from nonebot_plugin_chat.utils import parse_message_to_string
+from nonebot_plugin_chat.utils.blog import create_blog_post
 from pydantic import BaseModel
 
 if TYPE_CHECKING:
@@ -78,6 +80,8 @@ class MainSession:
             }
         elif isinstance(action, RestAction):
             return {"type": "sleep", "time": action.time}
+        elif isinstance(action, WriteBlogAction):
+            return {"type": "write_blog", "title": action.title, "content": action.content}
         return {"type": "skip"}
 
     def _deserialize_action(self, data: dict) -> BoredAction:
@@ -93,6 +97,8 @@ class MainSession:
             )
         elif action_type == "sleep":
             return RestAction(type="sleep", time=data["time"])
+        elif action_type == "write_blog":
+            return WriteBlogAction(type="write_blog", title=data["title"], content=data["content"])
         return SkipAction(type="skip")
 
     async def load_from_database(self) -> None:
@@ -350,7 +356,9 @@ class MainSession:
                 self.state_until = datetime.now() + timedelta(minutes=action.estimated_time)
             case "fetch_chat_history":
                 await self.fetch_chat_history(action.context_id, fetcher)
-        if action.type not in ["skip", "fetch_chat_history"] and self.state == StateEnum.BORED:
+            case "write_blog":
+                await self.write_blog(action.title, action.content, fetcher)
+        if action.type not in ["skip", "fetch_chat_history", "write_blog"] and self.state == StateEnum.BORED:
             self.state = StateEnum.ACTIVATE
             self.boredom = 0.0
 
@@ -379,6 +387,11 @@ class MainSession:
         self._current_action_send_private_user_id = user_id
         bot = get_bot(bot_id)
         await send_proactive_private_message(bot, user_id, subject)
+
+    async def write_blog(self, title: str, content: str, fetcher: MessageFetcher) -> None:
+        await create_blog_post(title, content)
+        result = await lang.text("main_session.write_blog.success", self.lang_str, title)
+        fetcher.session.insert_message(generate_message(result, "user"))
 
     async def wake_up(self, session: Optional["BaseSession"] = None) -> None:
         if self.state == StateEnum.SLEEPING:
