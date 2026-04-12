@@ -165,4 +165,3 @@ async def describe_bilibili_video(bv_id: str, get_text: GetTextFunc) -> str:
         logger.exception(e)
         _cleanup_cache_files()
         raise e
-        
