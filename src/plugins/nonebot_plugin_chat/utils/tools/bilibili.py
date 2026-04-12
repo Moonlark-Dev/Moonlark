@@ -124,7 +124,6 @@ async def describe_bilibili_video(bv_id: str, get_text: GetTextFunc) -> str:
                     os.remove(path)
             except OSError as e:
                 logger.warning(f"清理缓存文件失败 {path}: {e}")
-
     try:
         title, desc, video_url, audio_url = await _get_video_info(bv_id)
 
@@ -158,8 +157,10 @@ async def describe_bilibili_video(bv_id: str, get_text: GetTextFunc) -> str:
         ]
 
         result = await fetch_message(messages=messages, identify="Bilibili Video Summary")
-
-        return result
-
-    finally:
         _cleanup_cache_files()
+        return result
+    except Exception as e:
+        logger.exception(e)
+        _cleanup_cache_files()
+        raise e
+        
