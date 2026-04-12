@@ -486,7 +486,7 @@ class MessageProcessor:
         # 导入 main_session 获取最近做的事
         from .main_session import main_session
 
-        current_time = (await self.session.text("prompt_group.time", datetime.now().isoformat()),)
+        current_time = await self.session.text("prompt_group.time", datetime.now().isoformat())
         session_name = self.session.session_name
         state = await self.session.text(
             "prompt_group.state", mood_text, status_manager.get_mood_retention(), mood_reason

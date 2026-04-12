@@ -172,6 +172,15 @@ class MainSessionData(Model):
     updated_time: Mapped[float] = mapped_column(Float())  # 最后更新时间戳
 
 
+class BlogPost(Model):
+    """Blog post model for storing Moonlark's blog posts"""
+
+    id: Mapped[int] = mapped_column(Integer(), primary_key=True, autoincrement=True)
+    title: Mapped[str] = mapped_column(String(256))
+    content: Mapped[str] = mapped_column(Text())
+    create_at: Mapped[datetime] = mapped_column(default=datetime.now)
+
+
 class SkipAction(BaseModel):
     type: Literal["skip"]
 
@@ -198,7 +207,13 @@ class FetchChatHistoryAction(BaseModel):
     context_id: str
 
 
-BoredAction = Union[SkipAction, CustomAction, SendPrivateMsgAction, RestAction, FetchChatHistoryAction]
+class WriteBlogAction(BaseModel):
+    type: Literal["write_blog"]
+    title: str
+    content: str
+
+
+BoredAction = Union[SkipAction, CustomAction, SendPrivateMsgAction, RestAction, FetchChatHistoryAction, WriteBlogAction]
 
 
 class BoredActionResponse(BaseModel):
