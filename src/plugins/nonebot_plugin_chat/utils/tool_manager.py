@@ -273,239 +273,239 @@ class ToolManager:
             )
 
         # # === Group 模式特有工具 ===
-        # if mode == "group":
-        #     # query_image
-        #     tools.append(
-        #         AsyncFunction(
-        #             func=processor.query_image,
-        #             description=await self.text("tools_desc.query_image.desc"),
-        #             parameters={
-        #                 "image_id": FunctionParameter(
-        #                     type="string",
-        #                     description=await self.text("tools_desc.query_image.image_id"),
-        #                     required=True,
-        #                 ),
-        #                 "query_prompt": FunctionParameter(
-        #                     type="string",
-        #                     description=await self.text("tools_desc.query_image.query_prompt"),
-        #                     required=True,
-        #                 ),
-        #             },
-        #         )
-        #     )
-        #     # leave_for_a_while
-        #     tools.insert(
-        #         2,
-        #         AsyncFunction(
-        #             func=processor.leave_for_a_while,
-        #             description=await self.text("tools_desc.leave_for_a_while.desc"),
-        #             parameters={},
-        #         ),
-        #     )
+        if mode == "group":
+            # query_image
+            tools.append(
+                AsyncFunction(
+                    func=processor.query_image,
+                    description=await self.text("tools_desc.query_image.desc"),
+                    parameters={
+                        "image_id": FunctionParameter(
+                            type="string",
+                            description=await self.text("tools_desc.query_image.image_id"),
+                            required=True,
+                        ),
+                        "query_prompt": FunctionParameter(
+                            type="string",
+                            description=await self.text("tools_desc.query_image.query_prompt"),
+                            required=True,
+                        ),
+                    },
+                )
+            )
+            # leave_for_a_while
+            tools.insert(
+                2,
+                AsyncFunction(
+                    func=processor.leave_for_a_while,
+                    description=await self.text("tools_desc.leave_for_a_while.desc"),
+                    parameters={},
+                ),
+            )
 
-        #     # get_note_poster
-        #     tools.append(
-        #         AsyncFunction(
-        #             func=self.push_note,
-        #             description=await self.text("tools_desc.get_note_poster.desc"),
-        #             parameters={
-        #                 "text": FunctionParameter(
-        #                     type="string",
-        #                     description=await self.text("tools_desc.get_note_poster.text_arg"),
-        #                     required=True,
-        #                 ),
-        #                 "expire_hours": FunctionParameter(
-        #                     type="number",
-        #                     description=await self.text("tools_desc.get_note_poster.expire_hours"),
-        #                     required=False,
-        #                 ),
-        #                 "keywords": FunctionParameter(
-        #                     type="string",
-        #                     description=await self.text("tools_desc.get_note_poster.keywords"),
-        #                     required=False,
-        #                 ),
-        #             },
-        #         )
-        #     )
+            # get_note_poster
+            tools.append(
+                AsyncFunction(
+                    func=self.push_note,
+                    description=await self.text("tools_desc.get_note_poster.desc"),
+                    parameters={
+                        "text": FunctionParameter(
+                            type="string",
+                            description=await self.text("tools_desc.get_note_poster.text_arg"),
+                            required=True,
+                        ),
+                        "expire_hours": FunctionParameter(
+                            type="number",
+                            description=await self.text("tools_desc.get_note_poster.expire_hours"),
+                            required=False,
+                        ),
+                        "keywords": FunctionParameter(
+                            type="string",
+                            description=await self.text("tools_desc.get_note_poster.keywords"),
+                            required=False,
+                        ),
+                    },
+                )
+            )
 
-        #     # get_note_remover
-        #     tools.append(
-        #         AsyncFunction(
-        #             func=self.remove_note,
-        #             description=await self.text("tools_desc.get_note_remover.desc"),
-        #             parameters={
-        #                 "note_id": FunctionParameter(
-        #                     type="integer",
-        #                     description=await self.text("tools_desc.get_note_remover.note_id"),
-        #                     required=True,
-        #                 ),
-        #             },
-        #         )
-        #     )
+            # get_note_remover
+            tools.append(
+                AsyncFunction(
+                    func=self.remove_note,
+                    description=await self.text("tools_desc.get_note_remover.desc"),
+                    parameters={
+                        "note_id": FunctionParameter(
+                            type="integer",
+                            description=await self.text("tools_desc.get_note_remover.note_id"),
+                            required=True,
+                        ),
+                    },
+                )
+            )
 
-        #     # set_timer
-        #     tools.append(
-        #         AsyncFunction(
-        #             func=processor.session.set_timer,
-        #             description=await self.text("tools_desc.set_timer.desc"),
-        #             parameters={
-        #                 "delay": FunctionParameter(
-        #                     type="integer",
-        #                     description=await self.text("tools_desc.set_timer.delay"),
-        #                     required=True,
-        #                 ),
-        #                 "description": FunctionParameter(
-        #                     type="string",
-        #                     description=await self.text("tools_desc.set_timer.description"),
-        #                     required=True,
-        #                 ),
-        #             },
-        #         )
-        #     )
+            # set_timer
+            tools.append(
+                AsyncFunction(
+                    func=processor.session.set_timer,
+                    description=await self.text("tools_desc.set_timer.desc"),
+                    parameters={
+                        "delay": FunctionParameter(
+                            type="integer",
+                            description=await self.text("tools_desc.set_timer.delay"),
+                            required=True,
+                        ),
+                        "description": FunctionParameter(
+                            type="string",
+                            description=await self.text("tools_desc.set_timer.description"),
+                            required=True,
+                        ),
+                    },
+                )
+            )
 
-        #     # sticker tools
-        #     tools.append(
-        #         AsyncFunction(
-        #             func=processor.sticker_tools.save_sticker,
-        #             description=await self.text("tools_desc.save_sticker.desc"),
-        #             parameters={
-        #                 "image_id": FunctionParameter(
-        #                     type="string",
-        #                     description=await self.text("tools_desc.save_sticker.image_id"),
-        #                     required=True,
-        #                 ),
-        #             },
-        #         )
-        #     )
-        #     tools.append(
-        #         AsyncFunction(
-        #             func=processor.sticker_tools.search_sticker,
-        #             description=await self.text("tools_desc.search_sticker.desc"),
-        #             parameters={
-        #                 "query": FunctionParameter(
-        #                     type="string",
-        #                     description=await self.text("tools_desc.search_sticker.query"),
-        #                     required=True,
-        #                 ),
-        #             },
-        #         )
-        #     )
-        #     tools.append(
-        #         AsyncFunction(
-        #             func=processor.sticker_tools.recommend_sticker,
-        #             description=await self.text("tools_desc.recommend_sticker.desc"),
-        #             parameters={},
-        #         )
-        #     )
-        #     tools.append(
-        #         AsyncFunction(
-        #             func=processor.sticker_tools.send_sticker,
-        #             description=await self.text("tools_desc.send_sticker.desc"),
-        #             parameters={
-        #                 "sticker_id": FunctionParameter(
-        #                     type="integer",
-        #                     description=await self.text("tools_desc.send_sticker.sticker_id"),
-        #                     required=True,
-        #                 ),
-        #             },
-        #         )
-        #     )
+            # sticker tools
+            tools.append(
+                AsyncFunction(
+                    func=processor.sticker_tools.save_sticker,
+                    description=await self.text("tools_desc.save_sticker.desc"),
+                    parameters={
+                        "image_id": FunctionParameter(
+                            type="string",
+                            description=await self.text("tools_desc.save_sticker.image_id"),
+                            required=True,
+                        ),
+                    },
+                )
+            )
+            tools.append(
+                AsyncFunction(
+                    func=processor.sticker_tools.search_sticker,
+                    description=await self.text("tools_desc.search_sticker.desc"),
+                    parameters={
+                        "query": FunctionParameter(
+                            type="string",
+                            description=await self.text("tools_desc.search_sticker.query"),
+                            required=True,
+                        ),
+                    },
+                )
+            )
+            tools.append(
+                AsyncFunction(
+                    func=processor.sticker_tools.recommend_sticker,
+                    description=await self.text("tools_desc.recommend_sticker.desc"),
+                    parameters={},
+                )
+            )
+            tools.append(
+                AsyncFunction(
+                    func=processor.sticker_tools.send_sticker,
+                    description=await self.text("tools_desc.send_sticker.desc"),
+                    parameters={
+                        "sticker_id": FunctionParameter(
+                            type="integer",
+                            description=await self.text("tools_desc.send_sticker.sticker_id"),
+                            required=True,
+                        ),
+                    },
+                )
+            )
 
-        #     # ask_ai
-        #     tools.append(
-        #         AsyncFunction(
-        #             func=processor.ai_agent.ask_ai,
-        #             description=await self.text("tools_desc.ask_ai.desc"),
-        #             parameters={
-        #                 "query": FunctionParameter(
-        #                     type="string",
-        #                     required=True,
-        #                     description=await self.text("tools_desc.ask_ai.query"),
-        #                 ),
-        #             },
-        #         )
-        #     )
+            # ask_ai
+            tools.append(
+                AsyncFunction(
+                    func=processor.ai_agent.ask_ai,
+                    description=await self.text("tools_desc.ask_ai.desc"),
+                    parameters={
+                        "query": FunctionParameter(
+                            type="string",
+                            required=True,
+                            description=await self.text("tools_desc.ask_ai.query"),
+                        ),
+                    },
+                )
+            )
 
-        #     # refuse_interaction_request
-        #     tools.append(
-        #         AsyncFunction(
-        #             func=processor.refuse_interaction_request,
-        #             description=await self.text("tools_desc.refuse_interaction_request.desc"),
-        #             parameters={
-        #                 "id_": FunctionParameter(
-        #                     type="string",
-        #                     description=await self.text("tools_desc.refuse_interaction_request.id_"),
-        #                     required=True,
-        #                 ),
-        #                 "type_": FunctionParameterWithEnum(
-        #                     type="string",
-        #                     description=await self.text("tools_desc.refuse_interaction_request.type_"),
-        #                     required=True,
-        #                     enum={"dodge", "bite"},
-        #                 ),
-        #             },
-        #         )
-        #     )
+            # refuse_interaction_request
+            tools.append(
+                AsyncFunction(
+                    func=self.deal_interaction_request,
+                    description=await self.text("tools_desc.deal_interaction_request.desc"),
+                    parameters={
+                        "interaction_id": FunctionParameter(
+                            type="string",
+                            description=await self.text("tools_desc.deal_interaction_request.interaction_id"),
+                            required=True,
+                        ),
+                        "deal_type": FunctionParameterWithEnum(
+                            type="string",
+                            description=await self.text("tools_desc.deal_interaction_request.deal_type"),
+                            required=True,
+                            enum={"dodge", "bite", "enjoy"},
+                        ),
+                    },
+                )
+            )
 
-        #     # calculate_luck_value
-        #     tools.append(
-        #         AsyncFunction(
-        #             func=self.calculate_luck_value,
-        #             description=await self.text("tools_desc.calculate_luck_value.desc"),
-        #             parameters={
-        #                 "nickname": FunctionParameter(
-        #                     type="string",
-        #                     description=await self.text("tools_desc.calculate_luck_value.nickname"),
-        #                     required=True,
-        #                 ),
-        #             },
-        #         )
-        #     )
+            # calculate_luck_value
+            tools.append(
+                AsyncFunction(
+                    func=self.calculate_luck_value,
+                    description=await self.text("tools_desc.calculate_luck_value.desc"),
+                    parameters={
+                        "nickname": FunctionParameter(
+                            type="string",
+                            description=await self.text("tools_desc.calculate_luck_value.nickname"),
+                            required=True,
+                        ),
+                    },
+                )
+            )
 
-        #     # Conditional tools
-        #     if processor.session.is_napcat_bot():
-        #         tools.append(
-        #             AsyncFunction(
-        #                 func=processor.poke,
-        #                 description=await self.text("tools_desc.poke.desc"),
-        #                 parameters={
-        #                     "target_name": FunctionParameter(
-        #                         type="string",
-        #                         description=await self.text("tools_desc.poke.target_name"),
-        #                         required=True,
-        #                     ),
-        #                 },
-        #             )
-        #         )
-
-        # GroupSession specific tools
-        # Note: We check if session has adapter_group_id to imply GroupSession or import GroupSession to check instance
-        # Avoiding circular import, checking attribute existence or class name might be safer if types not imported
-        # But GroupSession inherits from BaseSession.
-        # Let's check if session has attribute 'group_users' which implies group context, or just check class name
-        # if processor.session.__class__.__name__ == "GroupSession":
-        #     emoji_id_table = ", ".join([f"{emoji}({emoji_id})" for emoji_id, emoji in QQ_EMOJI_MAP.items()])
-        #     tools.append(
-        #         AsyncFunction(
-        #             func=processor.send_reaction,
-        #             description=await self.text("tools_desc.send_reaction.desc", emoji_id_table),
-        #             parameters={
-        #                 "message_id": FunctionParameter(
-        #                     type="string",
-        #                     description=await self.text("tools_desc.send_reaction.message_id"),
-        #                     required=True,
-        #                 ),
-        #                 "emoji_id": FunctionParameterWithEnum(
-        #                     type="string",
-        #                     description=await self.text("tools_desc.send_reaction.emoji_id"),
-        #                     required=True,
-        #                     enum=set(QQ_EMOJI_MAP.keys()),
-        #                 ),
-        #             },
-        #         )
-        #     )
+            # Conditional tools
+            if processor.session.is_napcat_bot():
+                tools.append(
+                    AsyncFunction(
+                        func=processor.poke,
+                        description=await self.text("tools_desc.poke.desc"),
+                        parameters={
+                            "target_name": FunctionParameter(
+                                type="string",
+                                description=await self.text("tools_desc.poke.target_name"),
+                                required=True,
+                            ),
+                        },
+                    )
+                )
+        if processor.session.__class__.__name__ == "GroupSession":
+            emoji_id_table = "/".join([f"{emoji}({emoji_id})" for emoji_id, emoji in QQ_EMOJI_MAP.items()])
+            tools.append(
+                AsyncFunction(
+                    func=processor.send_reaction,
+                    description=await self.text("tools_desc.send_reaction.desc", emoji_id_table),
+                    parameters={
+                        "message_id": FunctionParameter(
+                            type="string",
+                            description=await self.text("tools_desc.send_reaction.message_id"),
+                            required=True,
+                        ),
+                        "emoji_id": FunctionParameterWithEnum(
+                            type="string",
+                            description=await self.text("tools_desc.send_reaction.emoji_id"),
+                            required=True,
+                            enum=set(QQ_EMOJI_MAP.keys()),
+                        ),
+                    },
+                )
+            )
 
         return tools
+
+    async def deal_interaction_request(self, interaction_id: str, deal_type: Literal["dodge", "bite", "enjoy"]) -> None:
+        if deal_type == "enjoy":
+            await self.processor.accept_interaction_request(interaction_id)
+        else:
+            await self.processor.refuse_interaction_request(interaction_id, deal_type)
 
     async def remove_note(self, note_id: int) -> Optional[str]:
         # Get the note manager for this context
