@@ -907,6 +907,8 @@ parser:
   video: '[视频({}): {}]'
   file: '[文件({}): {}]'
   other: '[特殊消息: {}]'
+  image_failed: '[图片: 获取失败]'
+  image_without_desc: '[图片({})]'
   poke: '[戳一戳]'
   forward:
     not_supported: '[合并转发：获取信息失败（不支持）]'
