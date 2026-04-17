@@ -526,4 +526,3 @@ class ToolManager:
         keywords = note_check_result["keywords"]
         expire_hours = note_check_result["expire_hours"]
         await note_manager.create_note(content=text, keywords=keywords or "", expire_hours=expire_hours or 87600)
-
