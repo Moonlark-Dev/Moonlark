@@ -274,6 +274,25 @@ class ToolManager:
 
         # # === Group 模式特有工具 ===
         if mode == "group":
+            tools.append(
+                AsyncFunction(
+                    func=processor.send_message,
+                    description=await self.text("tools_desc.send_message.desc"),
+                    parameters={
+                        "message_content": FunctionParameter(
+                            type="string",
+                            description=await self.text("tools_desc.send_message.message_content"),
+                            required=True,
+                        ),
+                        "reply_message_id": FunctionParameter(
+                            type="integer",
+                            description=await self.text("tools_desc.send_message.reply_message_id"),
+                            required=False,
+                        )
+                    }
+                )
+            )
+
             # leave_for_a_while
             tools.append(
                 AsyncFunction(
