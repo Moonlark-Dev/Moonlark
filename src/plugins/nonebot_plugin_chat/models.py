@@ -76,38 +76,6 @@ class JudgeData(BaseModel):
     score: Literal[-2, -1, 0, 1, 2]
     reason: str
 
-
-class MessageData(BaseModel):
-    message_content: str
-    reply_message_id: Optional[str] = None
-
-
-class ImageQueryRequest(BaseModel):
-    image_id: str
-    query_prompt: str
-
-
-class NotePushRequest(BaseModel):
-    text: str
-    expire_hours: Optional[int] = None
-    keywords: Optional[str] = None
-
-
-class TimerCreateRequest(BaseModel):
-    delay: int
-    description: str
-
-
-class InteractionDealData(BaseModel):
-    interaction_id: str
-    deal_type: Literal["dodge", "bite", "enjoy"]
-
-
-class Reaction(BaseModel):
-    message_id: str
-    reaction: str
-
-
 class ModelResponse(BaseModel):
     reply_required: bool
     mood: Optional[
