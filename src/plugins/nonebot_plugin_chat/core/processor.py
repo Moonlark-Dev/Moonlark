@@ -207,7 +207,7 @@ class MessageProcessor:
             return await self.session.text("poke.not_found")
 
     async def parse_message(self, message: UniMessage, event: Event, state: T_State) -> tuple[str, list[bytes]]:
-        parser = MessageParser(message, event, self.session.bot, state ,self.session.lang_str, False)
+        parser = MessageParser(message, event, self.session.bot, state, self.session.lang_str, False)
         msg_str = await parser.parse()
         return (await LinkParser(msg_str, self.session.lang_str).parse()), parser.images
 
@@ -242,7 +242,7 @@ class MessageProcessor:
                 "user_id": user_id,
                 "self": False,
                 "message_id": message_id,
-                "images": images
+                "images": images,
             }
             await self.process_messages(msg_dict)
             self.session.cached_messages.append(msg_dict)
@@ -365,10 +365,7 @@ class MessageProcessor:
         for img in images:
             image_base64 = base64.b64encode(img).decode("utf-8")
             content.append({"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_base64}"}})
-        message = generate_message(
-            content,
-            "user"
-        )
+        message = generate_message(content, "user")
 
     async def process_messages(self, msg_dict: CachedMessage) -> None:
         async with get_session() as session:
