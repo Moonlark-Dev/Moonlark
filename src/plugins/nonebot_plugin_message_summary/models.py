@@ -1,4 +1,4 @@
-from datetime import datetime, date
+from datetime import datetime
 from nonebot_plugin_orm import Model
 from sqlalchemy.orm import mapped_column, Mapped
 from sqlalchemy import String, Text, Integer
