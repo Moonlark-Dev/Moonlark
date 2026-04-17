@@ -23,7 +23,9 @@ from .file import get_file_summary
 
 class MessageParser:
 
-    def __init__(self, message: UniMessage, event: Event, bot: Bot, state: T_State, lang_str: str, describe_image: bool = True) -> None:
+    def __init__(
+        self, message: UniMessage, event: Event, bot: Bot, state: T_State, lang_str: str, describe_image: bool = True
+    ) -> None:
         self.message = message
         self.event = event
         self.describe_image = describe_image
@@ -41,7 +43,7 @@ class MessageParser:
             return await lang.text("parser.image_with_id", self.user_id, image_id, description)
         else:
             return await lang.text("parser.image", self.user_id, description)
-        
+
     async def parse_image(self, image: Image) -> str:
         if self.describe_image:
             return await self.get_image_description(image)
@@ -152,9 +154,11 @@ async def parse_message_to_string(message: UniMessage, event: Event, bot: Bot, s
     parser = MessageParser(message, event, bot, state, lang_str)
     return await parser.parse()
 
+
 # async def parse_message_without_parsing_image(message: UniMessage, event: Event, bot: Bot, state: T_State, lang_str: str) -> tuple[str, list[bytes]]:
 #     parser = MessageParser(message, event, bot, state, lang_str, False)
 #     return (await parser.parse()), parser.images
+
 
 def generate_message_string(message: CachedMessage) -> str:
     return f"[{message['send_time'].strftime('%H:%M:%S')}][{message['nickname']}]({message['message_id']}): {message['content']}\n"

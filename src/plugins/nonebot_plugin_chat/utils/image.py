@@ -79,7 +79,6 @@ async def request_describe_image(image: bytes, user_id: str) -> tuple[str, str]:
             return cache["description"], cache["image_id"]
         else:
             image_id = cache["image_id"]
-    
 
     # 调用 VLM 获取描述
     image_base64 = base64.b64encode(image).decode("utf-8")
@@ -106,7 +105,9 @@ async def request_describe_image(image: bytes, user_id: str) -> tuple[str, str]:
     return summary, image_id
 
 
-async def write_image_cache(summary: str, raw: bytes, img_hash: Optional[str] = None, image_id: Optional[str] = None) -> str:
+async def write_image_cache(
+    summary: str, raw: bytes, img_hash: Optional[str] = None, image_id: Optional[str] = None
+) -> str:
     global image_id_counter
     if img_hash is None:
         img_hash = hashlib.sha256(raw).hexdigest()
@@ -153,6 +154,7 @@ async def get_image_by_id(image_id: str) -> Optional[ImageCacheData]:
         ImageCacheData 或 None（如果未找到或已过期）
     """
     return await image_id_cache.get(image_id)
+
 
 async def generate_image_id(image_raw: bytes) -> str:
     img_hash = hashlib.sha256(image_raw).hexdigest()
