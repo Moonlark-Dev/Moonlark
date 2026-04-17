@@ -55,6 +55,7 @@ prompt_group:
       "interest": 0.5,          // 必要：你对当前话题的兴趣程度，0-1 之间的浮点数。0 表示完全没兴趣，1 表示非常感兴趣。这会影响你后续回复的触发概率。
       "mood": "happy",          // 必要：当前心情 (只能从 joy/sadness/anger/fear/surprise/disgust/trust/anticipation/calm/bored/confused/tired/shy 中选取)，为 null 则维持原状
       "mood_reason": "...",     // 可选：心情变化的原因。如因为 UserA 的夸赞
+      "mood_intensity": 0.8,    // 可选：心情强度，0-1 之间的浮点数，1.0 为最强。
       "favorability_judge": {{  // 可选：评价用户行为，会引起你与目标用户的好感度的变动。
         "target": "UserA",      // 目标用户昵称
         "score": 1,             // -2 到 2
