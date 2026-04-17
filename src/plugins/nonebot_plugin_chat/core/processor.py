@@ -227,6 +227,7 @@ class MessageProcessor:
             # 处理消息类型队列项
             message, event, state, user_id, nickname, dt, mentioned, message_id = item[1]
             text, images = await self.parse_message(message, event, state)
+            logger.debug(f"{text=}")
             if not text:
                 return
             if "@Moonlark" not in text and mentioned:
