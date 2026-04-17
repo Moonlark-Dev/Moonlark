@@ -95,6 +95,7 @@ class ModelResponse(BaseModel):
             "shy",
         ]
     ]
+    mood_intensity: float = Field(0.5, ge=0.0, le=1.0)
     mood_reason: Optional[str] = None
     favorability_judge: Optional[JudgeData] = None
     interest: Optional[float] = Field(None, ge=0.0, le=1.0)

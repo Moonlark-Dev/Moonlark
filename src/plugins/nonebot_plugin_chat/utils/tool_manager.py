@@ -76,18 +76,14 @@ class ToolManager:
     async def vm_stop_task(self, task_id: str) -> str:
         return await vm_stop_task(task_id, self.text)
 
-    async def set_mood(self, mood: str, reason: Optional[str] = None) -> str:
+    async def set_mood(self, mood: str, reason: Optional[str] = None, intensity: float = 0.5) -> None:
         try:
             mood_enum = MoodEnum(mood)
         except ValueError:
-            return await self.text("status.invalid_mood", mood)
+            return
 
-        success, message_key = self.status_manager.set_mood(mood_enum, reason)
-        if success:
-            mood_text = await self.text(f"status.mood.{mood_enum.value}")
-            return await self.text(message_key, mood_text, reason or await self.text("status.no_reason"))
-        else:
-            return await self.text(message_key)
+        self.status_manager.set_mood(mood_enum, reason, intensity)
+        
 
     async def calculate_luck_value(self, nickname: str) -> str:
         """计算用户的人品值
