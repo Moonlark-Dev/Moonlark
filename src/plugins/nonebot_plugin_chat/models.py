@@ -76,6 +76,7 @@ class JudgeData(BaseModel):
     score: Literal[-2, -1, 0, 1, 2]
     reason: str
 
+
 class ModelResponse(BaseModel):
     reply_required: bool
     mood: Optional[

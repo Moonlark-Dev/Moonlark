@@ -165,7 +165,9 @@ class MessageQueue:
                     continue
                 if analysis is not None:
                     if analysis.mood:
-                        await self.processor.tool_manager.set_mood(analysis.mood, analysis.mood_reason, analysis.mood_intensity)
+                        await self.processor.tool_manager.set_mood(
+                            analysis.mood, analysis.mood_reason, analysis.mood_intensity
+                        )
                     if analysis.interest is not None:
                         self.processor.session.set_interest(analysis.interest)
                         logger.debug(f"Cached interest: {analysis.interest:.2f}")
