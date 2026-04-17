@@ -7,6 +7,7 @@ from nonebot.log import logger
 from nonebot_plugin_chat.utils.role import get_role
 from nonebot_plugin_chat.models import MessageQueueCache, ModelResponse
 from nonebot_plugin_chat.enums import FetchStatus
+from pydantic import ValidationError
 from nonebot_plugin_openai import generate_message
 from nonebot_plugin_openai.utils.chat import MessageFetcher
 from nonebot_plugin_orm import get_session
@@ -156,9 +157,12 @@ class MessageQueue:
                     analysis = type_validate_python(
                         ModelResponse, json.loads(re.sub(r"`{1,3}([a-zA-Z0-9]+)?", "", message))
                     )
-                except Exception as e:
+                except json.JSONDecodeError:
                     logger.warning(f"Failed to parse message: {message}")
                     analysis = None
+                except ValidationError as e:
+                    self.append_user_message(await self.processor.session.text("fetcher.parse_failed", str(e)))
+                    continue
                 if analysis is not None:
                     if analysis.mood:
                         res = await self.processor.tool_manager.set_mood(analysis.mood, analysis.mood_reason)
