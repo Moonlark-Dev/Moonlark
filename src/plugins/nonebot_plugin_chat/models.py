@@ -131,7 +131,6 @@ class ModelResponse(BaseModel):
     favorability_judge: Optional[JudgeData] = None
     interest: Optional[float] = Field(None, ge=0.0, le=1.0)
     thought: Optional[str] = None
-    
 
 
 class PrivateChatSession(Model):
