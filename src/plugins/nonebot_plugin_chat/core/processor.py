@@ -245,7 +245,7 @@ class MessageProcessor:
             self.session.cached_messages.append(msg_dict)
             await self.session.on_cache_posted()
             trigger_mode = "probability" if not mentioned else "all"
-        logger.debug(f"{trigger_mode=}")
+        logger.debug(f"{trigger_mode=} {self.blocked=}")
         if (
             trigger_mode == "all" or (trigger_mode == "probability" and not self.session.message_queue)
         ) and not self.blocked:
