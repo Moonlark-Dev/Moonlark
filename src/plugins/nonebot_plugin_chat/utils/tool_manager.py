@@ -274,25 +274,6 @@ class ToolManager:
 
         # # === Group 模式特有工具 ===
         if mode == "group":
-            # query_image
-            tools.append(
-                AsyncFunction(
-                    func=processor.query_image,
-                    description=await self.text("tools_desc.query_image.desc"),
-                    parameters={
-                        "image_id": FunctionParameter(
-                            type="string",
-                            description=await self.text("tools_desc.query_image.image_id"),
-                            required=True,
-                        ),
-                        "query_prompt": FunctionParameter(
-                            type="string",
-                            description=await self.text("tools_desc.query_image.query_prompt"),
-                            required=True,
-                        ),
-                    },
-                )
-            )
             # leave_for_a_while
             tools.insert(
                 2,

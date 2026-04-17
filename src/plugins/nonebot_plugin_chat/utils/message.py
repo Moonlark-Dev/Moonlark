@@ -8,7 +8,7 @@ from nonebot_plugin_chat.lang import lang
 from nonebot_plugin_chat.types import CachedMessage
 from nonebot_plugin_larkuser.utils.nickname import get_nickname
 from nonebot_plugin_userinfo import get_user_info
-from nonebot_plugin_alconna import Image, Other, Segment, UniMessage, Text, At, Reply, Reference, File
+from nonebot_plugin_alconna import Image, Other, Segment, UniMessage, Text, At, Reply, Reference, File, image_fetch
 from nonebot_plugin_larkuser import get_user
 from nonebot.exception import ActionFailed
 from nonebot.adapters import Message, MessageSegment
@@ -17,21 +17,41 @@ from nonebot.adapters.onebot.v11 import Message as OneBotV11Message
 from nonebot.adapters.onebot.v11 import MessageSegment as OneBotV11Segment
 
 
-from .image import get_image_summary
+from .image import generate_image_id, get_image_summary
 from .file import get_file_summary
 
 
 class MessageParser:
 
-    def __init__(self, message: UniMessage, event: Event, bot: Bot, state: T_State, lang_str: str) -> None:
+    def __init__(self, message: UniMessage, event: Event, bot: Bot, state: T_State, lang_str: str, describe_image: bool = True) -> None:
         self.message = message
         self.event = event
+        self.describe_image = describe_image
         self.user_id = lang_str
         self.bot = bot
         self.state = state
+        self.images = []
 
     async def parse(self) -> str:
         return "".join([await self.parse_segment(segment) for segment in self.message])
+
+    async def get_image_description(self, image: Image) -> str:
+        description, image_id = await get_image_summary(image, self.event, self.bot, self.state)
+        if image_id:
+            return await lang.text("parser.image_with_id", self.user_id, image_id, description)
+        else:
+            return await lang.text("parser.image", self.user_id, description)
+        
+    async def parse_image(self, image: Image) -> str:
+        if self.describe_image:
+            return await self.get_image_description(image)
+        else:
+            image_raw = await image_fetch(self.event, self.bot, self.state, image)
+            if not isinstance(image_raw, bytes):
+                return await lang.text("parser.image_failed", self.user_id)
+            image_id = await generate_image_id(image_raw)
+            self.images.append(image_raw)
+            return await lang.text("parser.image_without_desc", self.user_id, image_id)
 
     async def parse_segment(self, segment: Segment) -> str:
         if isinstance(segment, Text):
@@ -39,11 +59,7 @@ class MessageParser:
         elif isinstance(segment, At):
             return await self.parse_mention(segment)
         elif isinstance(segment, Image):
-            description, image_id = await get_image_summary(segment, self.event, self.bot, self.state)
-            if image_id:
-                return await lang.text("parser.image_with_id", self.user_id, image_id, description)
-            else:
-                return await lang.text("parser.image", self.user_id, description)
+            return await self.parse_image(segment)
         elif isinstance(segment, File):
             file_type, file_name, description = await get_file_summary(segment, self.event, self.bot, self.state)
             if file_type == "video":
@@ -136,6 +152,9 @@ async def parse_message_to_string(message: UniMessage, event: Event, bot: Bot, s
     parser = MessageParser(message, event, bot, state, lang_str)
     return await parser.parse()
 
+# async def parse_message_without_parsing_image(message: UniMessage, event: Event, bot: Bot, state: T_State, lang_str: str) -> tuple[str, list[bytes]]:
+#     parser = MessageParser(message, event, bot, state, lang_str, False)
+#     return (await parser.parse()), parser.images
 
 def generate_message_string(message: CachedMessage) -> str:
     return f"[{message['send_time'].strftime('%H:%M:%S')}][{message['nickname']}]({message['message_id']}): {message['content']}\n"

@@ -73,12 +73,13 @@ async def request_describe_image(image: bytes, user_id: str) -> tuple[str, str]:
     img_hash = hashlib.sha256(image).hexdigest()
 
     # 检查是否已缓存
+    image_id = None
     if (cache := await image_cache.get(img_hash)) is not None:
-        return cache["description"], cache["image_id"]
-
-    # 生成新的图片 ID
-    image_id_counter += 1
-    image_id = f"img_{image_id_counter}"
+        if cache["description"] is not None:
+            return cache["description"], cache["image_id"]
+        else:
+            image_id = cache["image_id"]
+    
 
     # 调用 VLM 获取描述
     image_base64 = base64.b64encode(image).decode("utf-8")
@@ -101,17 +102,26 @@ async def request_describe_image(image: bytes, user_id: str) -> tuple[str, str]:
     except Exception as e:
         logger.warning(traceback.format_exc())
         summary = f"暂无信息 ({e})"
+    image_id = await write_image_cache(summary, image, img_hash, image_id)
+    return summary, image_id
 
-    # 缓存数据
+
+async def write_image_cache(summary: str, raw: bytes, img_hash: Optional[str] = None, image_id: Optional[str] = None) -> str:
+    global image_id_counter
+    if img_hash is None:
+        img_hash = hashlib.sha256(raw).hexdigest()
+    # 生成新的图片 ID
+    if image_id is None:
+        image_id_counter += 1
+        image_id = f"img_{image_id_counter}"
     cache_data: ImageCacheData = {
         "description": summary,
         "image_id": image_id,
-        "raw": image,
+        "raw": raw,
     }
     await image_cache.set(img_hash, cache_data)
     await image_id_cache.set(image_id, cache_data)
-
-    return summary, image_id
+    return image_id
 
 
 async def get_image_summary(segment: Image, event: Event, bot: Bot, state: T_State) -> tuple[str, str]:
@@ -143,6 +153,15 @@ async def get_image_by_id(image_id: str) -> Optional[ImageCacheData]:
         ImageCacheData 或 None（如果未找到或已过期）
     """
     return await image_id_cache.get(image_id)
+
+async def generate_image_id(image_raw: bytes) -> str:
+    img_hash = hashlib.sha256(image_raw).hexdigest()
+
+    # 检查是否已缓存
+    image_id = None
+    if (cache := await image_cache.get(img_hash)) is not None:
+        return cache["image_id"]
+    return await write_image_cache("", image_raw, img_hash)
 
 
 async def query_image_content(image_id: str, query_prompt: str, user_id: str) -> str:
