@@ -274,33 +274,32 @@ class ToolManager:
 
         # # === Group 模式特有工具 ===
         if mode == "group":
-            # query_image
             tools.append(
                 AsyncFunction(
-                    func=processor.query_image,
-                    description=await self.text("tools_desc.query_image.desc"),
+                    func=processor.send_message,
+                    description=await self.text("tools_desc.send_message.desc"),
                     parameters={
-                        "image_id": FunctionParameter(
+                        "message_content": FunctionParameter(
                             type="string",
-                            description=await self.text("tools_desc.query_image.image_id"),
+                            description=await self.text("tools_desc.send_message.message_content"),
                             required=True,
                         ),
-                        "query_prompt": FunctionParameter(
-                            type="string",
-                            description=await self.text("tools_desc.query_image.query_prompt"),
-                            required=True,
+                        "reply_message_id": FunctionParameter(
+                            type="integer",
+                            description=await self.text("tools_desc.send_message.reply_message_id"),
+                            required=False,
                         ),
                     },
                 )
             )
+
             # leave_for_a_while
-            tools.insert(
-                2,
+            tools.append(
                 AsyncFunction(
                     func=processor.leave_for_a_while,
                     description=await self.text("tools_desc.leave_for_a_while.desc"),
                     parameters={},
-                ),
+                )
             )
 
             # get_note_poster

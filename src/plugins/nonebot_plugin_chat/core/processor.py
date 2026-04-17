@@ -1,5 +1,11 @@
+import base64
+
 import aiofiles
+from nonebot.adapters import Event
+from nonebot.typing import T_State
 from nonebot.adapters.onebot.v11 import Bot as OB11Bot
+from nonebot_plugin_alconna import UniMessage
+from nonebot_plugin_chat.utils.group import LinkParser
 from ..enums import StateEnum
 from nonebot_plugin_chat.utils.prompt import get_prompt_text
 from ..config import config
@@ -23,11 +29,10 @@ from .message import MessageQueue
 from ..models import ChatGroup, Sticker, UserProfile
 from ..types import CachedMessage
 
-from ..utils.message import generate_message_string
+from ..utils.message import MessageParser, generate_message_string
 from ..utils import parse_message_to_string
 from ..utils.ai_agent import AskAISession
 from ..utils.emoji import QQ_EMOJI_MAP
-from ..utils.image import query_image_content
 from ..utils.note_manager import get_context_notes
 from ..utils.sticker_manager import get_sticker_manager
 from ..utils.tool_manager import ToolManager
@@ -53,9 +58,6 @@ class MessageProcessor:
         self.sticker_tools = StickerTools(self.session)
         self.functions = []
         self.loop_task = None
-
-    async def query_image(self, image_id: str, query_prompt: str) -> str:
-        return await query_image_content(image_id, query_prompt, self.session.lang_str)
 
     async def setup(self) -> None:
         self.functions = await self.tool_manager.select_tools("group")
@@ -200,6 +202,11 @@ class MessageProcessor:
         else:
             return await self.session.text("poke.not_found")
 
+    async def parse_message(self, message: UniMessage, event: Event, state: T_State) -> tuple[str, list[bytes]]:
+        parser = MessageParser(message, event, self.session.bot, state, self.session.lang_str, False)
+        msg_str = await parser.parse()
+        return (await LinkParser(msg_str, self.session.lang_str).parse()), parser.images
+
     async def get_message(self) -> None:
         if not self.session.message_queue:
             await asyncio.sleep(3)
@@ -219,7 +226,7 @@ class MessageProcessor:
         elif item[0] == "message":
             # 处理消息类型队列项
             message, event, state, user_id, nickname, dt, mentioned, message_id = item[1]
-            text = await parse_message_to_string(message, event, self.session.bot, state, self.session.lang_str)
+            text, images = await self.parse_message(message, event, state)
             if not text:
                 return
             if "@Moonlark" not in text and mentioned:
@@ -231,6 +238,7 @@ class MessageProcessor:
                 "user_id": user_id,
                 "self": False,
                 "message_id": message_id,
+                "images": images,
             }
             await self.process_messages(msg_dict)
             self.session.cached_messages.append(msg_dict)
@@ -346,8 +354,14 @@ class MessageProcessor:
                         timing_stats_manager.record_reply_time(self.session.session_id, reply_time_ms)
                     return
 
-    def append_user_message(self, msg_str: str) -> None:
-        self.openai_messages.append_user_message(msg_str)
+    def append_user_message(self, msg_str: str, images: list[bytes]) -> None:
+        content: list = [
+            {"type": "text", "text": msg_str},
+        ]
+        for img in images:
+            image_base64 = base64.b64encode(img).decode("utf-8")
+            content.append({"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_base64}"}})
+        message = generate_message(content, "user")
 
     async def process_messages(self, msg_dict: CachedMessage) -> None:
         async with get_session() as session:
@@ -371,7 +385,7 @@ class MessageProcessor:
 
             if not self.blocked:
                 msg_str = generate_message_string(msg_dict)
-                self.append_user_message(msg_str)
+                self.append_user_message(msg_str, msg_dict["images"])
             if not self.blocked and not msg_dict["self"]:
                 content = msg_dict.get("content", "")
                 if isinstance(content, str) and content:
