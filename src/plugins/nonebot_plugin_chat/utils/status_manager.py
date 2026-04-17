@@ -4,12 +4,14 @@ from typing import Optional, TypedDict
 
 from nonebot_plugin_chat.enums import MoodEnum
 
+
 class EmotionData(TypedDict):
     name: str
     included_labels: list[str]
     # PAD 中心
     center: tuple[float, float, float]
     mood_enum: MoodEnum
+
 
 EMOTION_LIST = [
     EmotionData(
@@ -98,20 +100,28 @@ class StatusManager:
         self._mood_reason: Optional[str] = None
         # self._last_mood_update: datetime = datetime.now()
         # self.mood_retention_rate: float = 1.0
-        
 
     def get_mood_retention(self) -> float:
         mood_type = self.get_mood_type()
         mood_data = [e for e in EMOTION_LIST if e["mood_enum"] == mood_type][0]
-        return max(0, 1 - math.sqrt((mood_data["center"][0] - self.pad_pos[0]) ** 2 + (mood_data["center"][1] - self.pad_pos[1]) ** 2 + (mood_data["center"][2] - self.pad_pos[2]) ** 2) / 1.5)
-    
+        return max(
+            0,
+            1
+            - math.sqrt(
+                (mood_data["center"][0] - self.pad_pos[0]) ** 2
+                + (mood_data["center"][1] - self.pad_pos[1]) ** 2
+                + (mood_data["center"][2] - self.pad_pos[2]) ** 2
+            )
+            / 1.5,
+        )
+
     def set_mood(self, mood: MoodEnum, reason: Optional[str] = None, intensity: float = 0.5) -> None:
         mood_id = mood.value
         mood_pad = MOOD_DELTA_PAD[mood_id]
         self.pad_pos = (
             max(min(self.pad_pos[0] + mood_pad[0] * intensity, -1), 1),
             max(min(self.pad_pos[1] + mood_pad[1] * intensity, -1), 1),
-            max(min(self.pad_pos[2] + mood_pad[2] * intensity, -1), 1)
+            max(min(self.pad_pos[2] + mood_pad[2] * intensity, -1), 1),
         )
         self._mood_reason = reason
 
@@ -119,8 +129,15 @@ class StatusManager:
         return self.get_mood_type(), self._mood_reason
 
     def get_mood_type(self) -> MoodEnum:
-        return sorted(EMOTION_LIST, key=lambda x: math.sqrt((x["center"][0] - self.pad_pos[0]) ** 2 + (x["center"][1] - self.pad_pos[1]) ** 2 + (x["center"][2] - self.pad_pos[2]) ** 2))[0]["mood_enum"]
-        
+        return sorted(
+            EMOTION_LIST,
+            key=lambda x: math.sqrt(
+                (x["center"][0] - self.pad_pos[0]) ** 2
+                + (x["center"][1] - self.pad_pos[1]) ** 2
+                + (x["center"][2] - self.pad_pos[2]) ** 2
+            ),
+        )[0]["mood_enum"]
+
 
 def get_status_manager() -> StatusManager:
     return StatusManager()

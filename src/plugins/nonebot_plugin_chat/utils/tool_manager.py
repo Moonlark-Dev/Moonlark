@@ -83,7 +83,6 @@ class ToolManager:
             return
 
         self.status_manager.set_mood(mood_enum, reason, intensity)
-        
 
     async def calculate_luck_value(self, nickname: str) -> str:
         """计算用户的人品值

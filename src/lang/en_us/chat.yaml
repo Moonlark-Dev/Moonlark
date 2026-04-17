@@ -55,6 +55,7 @@ prompt_group:
       "interest": 0.5,          // 必要：你对当前话题的兴趣程度，0-1 之间的浮点数。0 表示完全没兴趣，1 表示非常感兴趣。这会影响你后续回复的触发概率。
       "mood": "happy",          // 必要：当前心情 (只能从 joy/sadness/anger/fear/surprise/disgust/trust/anticipation/calm/bored/confused/tired/shy 中选取)，为 null 则维持原状
       "mood_reason": "...",     // 可选：心情变化的原因。如因为 UserA 的夸赞
+      "mood_intensity": 0.8,    // 可选：心情强度，0-1 之间的浮点数，1.0 为最强。
       "favorability_judge": {{  // 可选：评价用户行为，会引起你与目标用户的好感度的变动。
         "target": "UserA",      // 目标用户昵称
         "score": 1,             // -2 到 2
@@ -844,6 +845,7 @@ prompt_link_parser: |
   你的回复中不能出现除了该页面的简介以外的任何内容。
 fetcher:
   parse_failed: "[异常] 解析输出失败，请检查你的输出内容并尝试重新输出。错误信息：{}"
+  sticker_recommendation: "基于上下文的表情包推荐:"
 proactive_message:
   prompt: |
     你被授权在私聊中发起一次"主动消息"。你的回复必须完全符合你的人格设定，并严格遵守所有的输出规则。
@@ -859,6 +861,8 @@ parser:
   video: '[视频({}): {}]'
   file: '[文件({}): {}]'
   other: '[特殊消息: {}]'
+  image_failed: '[图片: 获取失败]'
+  image_without_desc: '[图片({})]'
   poke: '[戳一戳]'
   forward:
     not_supported: '[合并转发：获取信息失败（不支持）]'
