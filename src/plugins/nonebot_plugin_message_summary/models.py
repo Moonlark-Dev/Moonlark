@@ -9,7 +9,7 @@ class GroupMessage(Model):
     id_: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     message: Mapped[str] = mapped_column(Text())
     sender_nickname: Mapped[str] = mapped_column(String(128))
-    user_id: Mapped[str] = mapped_column(String(128))
+    user_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
     group_id: Mapped[str] = mapped_column(String(128))
     timestamp: Mapped[datetime] = mapped_column(default=datetime.now)
 
