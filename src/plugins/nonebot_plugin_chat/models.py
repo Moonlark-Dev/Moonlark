@@ -129,29 +129,9 @@ class ModelResponse(BaseModel):
     ]
     mood_reason: Optional[str] = None
     favorability_judge: Optional[JudgeData] = None
-    messages: list[MessageData] = []
     interest: Optional[float] = Field(None, ge=0.0, le=1.0)
-    interaction_deal: Optional[InteractionDealData] = None
-    reaction: Optional[Reaction] = None
-
-    poke: Optional[str] = None
-    leave_for_a_while: Optional[bool] = None
-    remove_note: Optional[int] = None
-    search_sticker: Optional[str] = None
-    get_sticker_recommend: Optional[bool] = None
-    send_sticker: Optional[int] = None
-    calculate_luck_value: Optional[str] = None
-
-    push_note: Optional[NotePushRequest] = None
-    query_image: Optional[ImageQueryRequest] = None
-    set_timer: Optional[TimerCreateRequest] = None
-    save_sticker: Optional[str] = None
-    ask_ai: Optional[str] = None
-    describe_bilibili_video: Optional[str] = None
-    search_abbreviation: Optional[str] = None
-    request_wolfram_alpha: Optional[str] = None
-    web_search: Optional[str] = None
-    browse_webpage: Optional[str] = None
+    thought: Optional[str] = None
+    
 
 
 class PrivateChatSession(Model):

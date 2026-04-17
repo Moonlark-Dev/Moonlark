@@ -3,7 +3,6 @@ import traceback
 from typing import TYPE_CHECKING, Optional
 from nonebot.compat import type_validate_python
 from nonebot.log import logger
-from nonebot_plugin_chat.core.tools import ToolExecutor
 
 # from nonebot_plugin_chat.utils.emoji import QQ_EMOJI_MAP
 from nonebot_plugin_chat.utils.role import get_role
@@ -144,6 +143,7 @@ class MessageQueue:
             messages,
             False,
             identify="Chat",
+            functions=await self.processor.tool_manager.select_tools("group"),
             reasoning_effort="medium",
         )
         retry_count = 0
@@ -166,30 +166,29 @@ class MessageQueue:
                 if analysis.mood:
                     res = await self.processor.tool_manager.set_mood(analysis.mood, analysis.mood_reason)
                     logger.info(f"Set mood: {res}")
-                if analysis.favorability_judge:
-                    res = await self.processor.judge_user_behavior(
-                        analysis.favorability_judge.target,
-                        analysis.favorability_judge.score,
-                        analysis.favorability_judge.reason,
-                    )
-                    logger.info(f"Judge user behavior: {res}")
+                # if analysis.favorability_judge:
+                #     res = await self.processor.judge_user_behavior(
+                #         analysis.favorability_judge.target,
+                #         analysis.favorability_judge.score,
+                #         analysis.favorability_judge.reason,
+                #     )
+                #     logger.info(f"Judge user behavior: {res}")
                 if analysis.interest is not None:
                     self.processor.session.set_interest(analysis.interest)
                     logger.debug(f"Cached interest: {analysis.interest:.2f}")
-                last_reply_id = None
-                for msg in analysis.messages:
-                    reply_id = msg.reply_message_id
-                    if reply_id == last_reply_id and last_reply_id is not None:
-                        reply_id = None
-                    await self.processor.send_message(msg.message_content, reply_id)
-                    last_reply_id = msg.reply_message_id
-                    await asyncio.sleep(0.5)
-                if deal_data := analysis.interaction_deal:
-                    if deal_data.deal_type != "enjoy":
-                        await self.processor.refuse_interaction_request(deal_data.interaction_id, deal_data.deal_type)
-                    else:
-                        await self.processor.accept_interaction_request(deal_data.interaction_id)
-                await ToolExecutor(self.processor, fetcher, analysis).execute()
+                # last_reply_id = None
+                # for msg in analysis.messages:
+                #     reply_id = msg.reply_message_id
+                #     if reply_id == last_reply_id and last_reply_id is not None:
+                #         reply_id = None
+                #     await self.processor.send_message(msg.message_content, reply_id)
+                #     last_reply_id = msg.reply_message_id
+                #     await asyncio.sleep(0.5)
+                # if deal_data := analysis.interaction_deal:
+                #     if deal_data.deal_type != "enjoy":
+                #         await self.processor.refuse_interaction_request(deal_data.interaction_id, deal_data.deal_type)
+                #     else:
+                #         await self.processor.accept_interaction_request(deal_data.interaction_id)
                 if self.continuous_response:
                     fetcher.session.insert_messages(self.messages)
                     self.messages.clear()
