@@ -283,15 +283,6 @@ class ToolManager:
                 )
             )
 
-            # leave_for_a_while
-            tools.append(
-                AsyncFunction(
-                    func=self.get_image,
-                    description=await self.text("tools_desc.leave_for_a_while.desc"),
-                    parameters={},
-                )
-            )
-
             # get_note_poster
             tools.append(
                 AsyncFunction(
@@ -516,3 +507,4 @@ class ToolManager:
         keywords = note_check_result["keywords"]
         expire_hours = note_check_result["expire_hours"]
         await note_manager.create_note(content=text, keywords=keywords or "", expire_hours=expire_hours or 87600)
+
