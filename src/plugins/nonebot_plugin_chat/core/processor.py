@@ -33,7 +33,6 @@ from ..utils.message import MessageParser, generate_message_string
 from ..utils import parse_message_to_string
 from ..utils.ai_agent import AskAISession
 from ..utils.emoji import QQ_EMOJI_MAP
-from ..utils.image import query_image_content
 from ..utils.note_manager import get_context_notes
 from ..utils.sticker_manager import get_sticker_manager
 from ..utils.tool_manager import ToolManager
@@ -60,8 +59,6 @@ class MessageProcessor:
         self.functions = []
         self.loop_task = None
 
-    async def query_image(self, image_id: str, query_prompt: str) -> str:
-        return await query_image_content(image_id, query_prompt, self.session.lang_str)
 
     async def setup(self) -> None:
         self.functions = await self.tool_manager.select_tools("group")

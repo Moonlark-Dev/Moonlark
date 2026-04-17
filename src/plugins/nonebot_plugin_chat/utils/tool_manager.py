@@ -275,13 +275,21 @@ class ToolManager:
         # # === Group 模式特有工具 ===
         if mode == "group":
             # leave_for_a_while
-            tools.insert(
-                2,
+            tools.append(
                 AsyncFunction(
                     func=processor.leave_for_a_while,
                     description=await self.text("tools_desc.leave_for_a_while.desc"),
                     parameters={},
-                ),
+                )
+            )
+
+            # leave_for_a_while
+            tools.append(
+                AsyncFunction(
+                    func=self.get_image,
+                    description=await self.text("tools_desc.leave_for_a_while.desc"),
+                    parameters={},
+                )
             )
 
             # get_note_poster
