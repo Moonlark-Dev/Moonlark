@@ -288,8 +288,8 @@ class ToolManager:
                             type="integer",
                             description=await self.text("tools_desc.send_message.reply_message_id"),
                             required=False,
-                        )
-                    }
+                        ),
+                    },
                 )
             )
 
