@@ -59,7 +59,6 @@ class MessageProcessor:
         self.functions = []
         self.loop_task = None
 
-
     async def setup(self) -> None:
         self.functions = await self.tool_manager.select_tools("group")
         await self.ai_agent.setup()
