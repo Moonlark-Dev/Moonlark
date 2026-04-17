@@ -332,15 +332,16 @@ class MessageProcessor:
         await self.append_tool_call_history(text)
         return call_id, name, param
 
-    async def send_message(self, message_content: str, reply_message_id: str | None = None) -> None:
+    async def send_message(self, message_content: str, reply_message_id: str | None = None) -> str:
         # 增加连续发送消息计数
         self.session.last_activate = datetime.now()
         message = await self.session.format_message(message_content)
         if reply_message_id:
             message = message.reply(reply_message_id)
-        await message.send(target=self.session.target, bot=self.session.bot)
+        receipt = await message.send(target=self.session.target, bot=self.session.bot)
         # 记录回应用时（使用 reply_message_id 查找对应的原消息）
         self._record_reply_timing(reply_message_id)
+        return receipt.msg_ids[0]
 
     def _record_reply_timing(self, reply_message_id: str | None = None) -> None:
         """记录回应用时（从 reply_message_id 对应的消息到发送回复的时间）"""
@@ -543,7 +544,6 @@ class MessageProcessor:
                 "prompt_group.default",
                 await get_prompt_text("identity"),
                 await get_prompt_text("rule"),
-                "/".join([i for i in QQ_EMOJI_MAP.values()]),
                 await get_prompt_text("interaction", fav_rule),
                 await self.generate_additional_prompt(),
             ),
