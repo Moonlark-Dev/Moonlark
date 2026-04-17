@@ -1,7 +1,82 @@
 from datetime import datetime, timedelta
-from typing import Optional
+import math
+from typing import Optional, TypedDict
 
 from nonebot_plugin_chat.enums import MoodEnum
+
+class EmotionData(TypedDict):
+    name: str
+    included_labels: list[str]
+    # PAD 中心
+    center: tuple[float, float, float]
+    mood_enum: MoodEnum
+
+EMOTION_LIST = [
+    EmotionData(
+        name="joy",
+        included_labels=["joy", "anticipation"],
+        center=(0.7, 0.5, 0.4),
+        mood_enum=MoodEnum.JOY,
+    ),
+    EmotionData(
+        name="sadness",
+        included_labels=["sadness", "tired"],
+        center=(-0.5, -0.4, -0.3),
+        mood_enum=MoodEnum.SADNESS,
+    ),
+    EmotionData(
+        name="anger",
+        included_labels=["anger", "disgust"],
+        center=(-0.6, 0.6, 0.3),
+        mood_enum=MoodEnum.ANGER,
+    ),
+    EmotionData(
+        name="fear",
+        included_labels=["fear", "shy"],
+        center=(-0.4, 0.4, -0.6),
+        mood_enum=MoodEnum.FEAR,
+    ),
+    EmotionData(
+        name="surprise",
+        included_labels=["surprise"],
+        center=(0.4, 0.8, 0.0),
+        mood_enum=MoodEnum.SURPRISE,
+    ),
+    EmotionData(
+        name="calm",
+        included_labels=["calm", "trust"],
+        center=(0.6, -0.4, 0.4),
+        mood_enum=MoodEnum.CALM,
+    ),
+    EmotionData(
+        name="bored",
+        included_labels=["bored"],
+        center=(-0.2, -0.5, -0.2),
+        mood_enum=MoodEnum.BORED,
+    ),
+    EmotionData(
+        name="confused",
+        included_labels=["confused"],
+        center=(-0.1, 0.2, -0.5),
+        mood_enum=MoodEnum.CONFUSED,
+    ),
+]
+
+MOOD_DELTA_PAD: dict[str, tuple[float, float, float]] = {
+    "joy": (0.4, 0.3, 0.2),
+    "sadness": (-0.4, -0.2, -0.3),
+    "anger": (-0.3, 0.4, 0.3),
+    "fear": (-0.3, 0.4, -0.4),
+    "surprise": (0.2, 0.5, 0.0),
+    "disgust": (-0.4, 0.2, 0.1),
+    "trust": (0.3, -0.1, 0.2),
+    "anticipation": (0.2, 0.3, 0.1),
+    "calm": (0.2, -0.4, 0.1),
+    "bored": (-0.2, -0.4, -0.2),
+    "confused": (-0.1, 0.2, -0.3),
+    "tired": (-0.1, -0.5, -0.2),
+    "shy": (-0.1, 0.1, -0.4),
+}
 
 
 class StatusManager:
@@ -16,43 +91,36 @@ class StatusManager:
     def __init__(self):
         if self._initialized:
             return
-        self._mood: MoodEnum = MoodEnum.CALM
-        self._mood_reason: Optional[str] = None
-        self._last_mood_update: datetime = datetime.now()
-        self.mood_retention_rate: float = 1.0
         self._initialized = True
+        self.pad_pos = (0.0, 0.0, 0.0)
+
+        # self._mood: MoodEnum = MoodEnum.CALM
+        self._mood_reason: Optional[str] = None
+        # self._last_mood_update: datetime = datetime.now()
+        # self.mood_retention_rate: float = 1.0
+        
 
     def get_mood_retention(self) -> float:
-        return 4 ** -(self.mood_retention_rate * (datetime.now() - self._last_mood_update).total_seconds() / 60)
-
-    def set_mood(self, mood: MoodEnum, reason: Optional[str] = None) -> tuple[bool, str]:
-        """
-        设置心情
-        :param mood: 心情枚举
-        :param reason: 心情原因
-        :return: (是否成功, 提示信息)
-        """
-        dt = datetime.now()
-        mood_retention = self.get_mood_retention()
-        if mood_retention >= 0.3 and self._mood not in [MoodEnum.CALM, MoodEnum.BORED]:
-            self._last_mood_update -= timedelta(seconds=10)
-            return False, "status.mood_set"
-        elif mood_retention >= 0.1:
-            self.mood_retention_rate = 2
-        else:
-            self.mood_retention_rate = 1
-        self._mood = mood
+        mood_type = self.get_mood_type()
+        mood_data = [e for e in EMOTION_LIST if e["mood_enum"] == mood_type][0]
+        return max(0, 1 - math.sqrt((mood_data["center"][0] - self.pad_pos[0]) ** 2 + (mood_data["center"][1] - self.pad_pos[1]) ** 2 + (mood_data["center"][2] - self.pad_pos[2]) ** 2) / 1.5)
+    
+    def set_mood(self, mood: MoodEnum, reason: Optional[str] = None, intensity: float = 0.5) -> None:
+        mood_id = mood.value
+        mood_pad = MOOD_DELTA_PAD[mood_id]
+        self.pad_pos = (
+            max(min(self.pad_pos[0] + mood_pad[0] * intensity, -1), 1),
+            max(min(self.pad_pos[1] + mood_pad[1] * intensity, -1), 1),
+            max(min(self.pad_pos[2] + mood_pad[2] * intensity, -1), 1)
+        )
         self._mood_reason = reason
-        self._last_mood_update = dt
-        return True, "status.mood_set"
 
     def get_status(self) -> tuple[MoodEnum, Optional[str]]:
-        """
-        获取状态信息
-        :return: (心情, 心情原因)
-        """
-        return self._mood, self._mood_reason
+        return self.get_mood_type(), self._mood_reason
 
+    def get_mood_type(self) -> MoodEnum:
+        return sorted(EMOTION_LIST, key=lambda x: math.sqrt((x["center"][0] - self.pad_pos[0]) ** 2 + (x["center"][1] - self.pad_pos[1]) ** 2 + (x["center"][2] - self.pad_pos[2]) ** 2))[0]["mood_enum"]
+        
 
 def get_status_manager() -> StatusManager:
     return StatusManager()
