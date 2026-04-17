@@ -280,6 +280,7 @@ class MessageProcessor:
             or (len(self.openai_messages.messages) < 5 and not important)
             or (recent_message_count > 12 and not important)
         ):
+            logger.info("规则检查不通过，跳过 ...")
             return
         self.cold_until = datetime.now() + timedelta(seconds=3)
 
