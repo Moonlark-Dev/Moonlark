@@ -335,7 +335,6 @@ async def handle_mvp_ranking(
 
     ranked_data = []
     for record in mvp_records:
-        user = await get_user(record.user_id)
         ranked_data.append(
             {
                 "user_id": record.user_id,
