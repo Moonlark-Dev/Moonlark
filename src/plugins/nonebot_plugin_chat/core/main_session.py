@@ -58,6 +58,7 @@ class MainSession:
         self.status_manager = StatusManager()
         self.lang_str = lang_str
         self.state_until = datetime.now()
+        scheduler.scheduled_job("interval", minutes=5)(self.process_timer)
 
     def is_boredom(self) -> bool:
         dt = datetime.now()
@@ -202,6 +203,8 @@ class MainSession:
                         await self.request_think("task_finished", action[1].information)
                         break
             self.state = StateEnum.ACTIVATE
+        if self.is_boredom():
+            await self.request_think("boredom_thresold", None)
 
 
     async def format_note(self, note: Note) -> str:
