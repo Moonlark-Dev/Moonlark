@@ -114,7 +114,7 @@ class StatusManager:
         # 计算 PAD_POS 在 EMOTION PAD CENTER 方向上的投影向量的长度
         mood_pad_length = math.sqrt(self.pad_pos[0] ** 2 + self.pad_pos[1] ** 2 + self.pad_pos[2] ** 2)
         projection_length = (self.pad_pos[0] * mood_data["center"][0] + self.pad_pos[1] * mood_data["center"][1] + self.pad_pos[2] * mood_data["center"][2]) / mood_pad_length
-        return min(0, max(1, projection_length / (mood_pad_length * 1.2)))
+        return min(1, max(0, projection_length / (mood_pad_length * 1.2)))
         
         
 
@@ -122,9 +122,9 @@ class StatusManager:
         mood_id = mood.value
         mood_pad = MOOD_DELTA_PAD[mood_id]
         self.pad_pos = (
-            max(min(self.pad_pos[0] + mood_pad[0] * intensity, -1), 1),
-            max(min(self.pad_pos[1] + mood_pad[1] * intensity, -1), 1),
-            max(min(self.pad_pos[2] + mood_pad[2] * intensity, -1), 1),
+            max(min(self.pad_pos[0] + mood_pad[0] * intensity, 1), -1),
+            max(min(self.pad_pos[1] + mood_pad[1] * intensity, 1), -1),
+            max(min(self.pad_pos[2] + mood_pad[2] * intensity, 1), -1),
         )
         self._mood_reason = reason
 
