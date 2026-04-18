@@ -61,17 +61,39 @@ class MainSession:
 
     def is_boredom(self) -> bool:
         dt = datetime.now()
-        inactive_group_count = len([group for group in groups.values() if group.cached_messages and (dt - group.cached_messages[-1]["send_time"]) >= timedelta(minutes=10)])
+        inactive_group_count = len(
+            [
+                group
+                for group in groups.values()
+                if group.cached_messages and (dt - group.cached_messages[-1]["send_time"]) >= timedelta(minutes=10)
+            ]
+        )
         group_count = len(groups)
-        return (((group_count >= 3 and inactive_group_count >= 3)
-                or (group_count < 3 and inactive_group_count >= group_count * 0.3))
-                and (self.state_until is None or dt >= self.state_until))
-    
-    async def generate_user_prompt(self, trigger_reason: Literal["boredom_thresold", "task_finished", "chat_request"], request_text: Optional[str] = None, trigger_from: Optional[str] = None) -> str:
-        event_text = await lang.text(f"main_session.latest_event.{trigger_reason}", self.lang_str, trigger_from=trigger_from, request_text=request_text)
+        return (
+            (group_count >= 3 and inactive_group_count >= 3)
+            or (group_count < 3 and inactive_group_count >= group_count * 0.3)
+        ) and (self.state_until is None or dt >= self.state_until)
+
+    async def generate_user_prompt(
+        self,
+        trigger_reason: Literal["boredom_thresold", "task_finished", "chat_request"],
+        request_text: Optional[str] = None,
+        trigger_from: Optional[str] = None,
+    ) -> str:
+        event_text = await lang.text(
+            f"main_session.latest_event.{trigger_reason}",
+            self.lang_str,
+            trigger_from=trigger_from,
+            request_text=request_text,
+        )
         return await lang.text("main_session.prompt_user", self.lang_str, event_text)
 
-    async def request_think(self, trigger_reason: Literal["boredom_thresold", "task_finished", "chat_request"], request_text: Optional[str] = None, trigger_from: Optional[str] = None) -> None:
+    async def request_think(
+        self,
+        trigger_reason: Literal["boredom_thresold", "task_finished", "chat_request"],
+        request_text: Optional[str] = None,
+        trigger_from: Optional[str] = None,
+    ) -> None:
         dt = datetime.now()
         if self.state == StateEnum.SLEEPING:
             return
@@ -81,7 +103,9 @@ class MainSession:
             fetcher = await MessageFetcher.create(
                 [
                     generate_message(await self.generate_system_prompt(), "system"),
-                    generate_message(await self.generate_user_prompt(trigger_reason, request_text, trigger_from), "user"),
+                    generate_message(
+                        await self.generate_user_prompt(trigger_reason, request_text, trigger_from), "user"
+                    ),
                 ],
                 identify="Chat - Main Session Think",
                 reasoning_effort="medium",
@@ -98,10 +122,9 @@ class MainSession:
                     fetcher.session.insert_message(generate_message(traceback.format_exc(), "user"))
                     continue
 
-    
-
-
-    async def get_action_str(self, action: BoredAction, start_time: datetime, stop_time: Optional[datetime]) -> Optional[str]:
+    async def get_action_str(
+        self, action: BoredAction, start_time: datetime, stop_time: Optional[datetime]
+    ) -> Optional[str]:
         match action.type:
             case "send_private_message":
                 if stop_time is not None:
@@ -123,7 +146,9 @@ class MainSession:
                     )
             case "sleep":
                 if stop_time is None:
-                    actual_minutes = min(datetime.now() - start_time, timedelta(minutes=action.time)).total_seconds() / 60
+                    actual_minutes = (
+                        min(datetime.now() - start_time, timedelta(minutes=action.time)).total_seconds() / 60
+                    )
                 else:
                     actual_minutes = min(stop_time - start_time, timedelta(minutes=action.time)).total_seconds() / 60
                 return await lang.text(
@@ -134,9 +159,7 @@ class MainSession:
                     "main_session.history.do", self.lang_str, action.information, action.estimated_time
                 )
             case "write_blog":
-                return await lang.text(
-                    "main_session.history.write_blog", self.lang_str, action.title
-                )
+                return await lang.text("main_session.history.write_blog", self.lang_str, action.title)
 
     async def generate_system_prompt(self) -> str:
         mood = self.status_manager.get_status()
@@ -182,7 +205,7 @@ class MainSession:
             ),
             await self.get_recent_actions_text(self.lang_str),
         )
-    
+
     async def get_recent_actions_text(self, lang_str: str) -> str:
         return "\n".join(
             [
@@ -202,7 +225,6 @@ class MainSession:
                         await self.request_think("task_finished", action[1].information)
                         break
             self.state = StateEnum.ACTIVATE
-
 
     async def format_note(self, note: Note) -> str:
         created_time = datetime.fromtimestamp(note.created_time).strftime("%y-%m-%d")
@@ -266,7 +288,13 @@ class MainSession:
                 self.action_history[-index] = (start_time, action, dt)
                 interrupted = True
                 if interrupted and session is not None:
-                    result = await lang.text("main_session.wake_up.interrupted", self.lang_str, dt.strftime("%H:%M:%S"), action.time, (dt - start_time).total_seconds() / 60)
+                    result = await lang.text(
+                        "main_session.wake_up.interrupted",
+                        self.lang_str,
+                        dt.strftime("%H:%M:%S"),
+                        action.time,
+                        (dt - start_time).total_seconds() / 60,
+                    )
                 break
         else:
             interrupted = False
@@ -275,14 +303,12 @@ class MainSession:
         if interrupted and result and session:
             session.processor.openai_messages.append_user_message(result)
 
-
     def update_send_private_message_state(self, user_id: str) -> None:
         for index in range(len(self.action_history)):
             start_time, action, stop_time = self.action_history[index]
             if action.type == "send_private_message" and stop_time is None:
                 self.action_history[index] = (start_time, action, datetime.now())
                 break
-    
 
     async def get_friends(self) -> str:
         friend_list = []

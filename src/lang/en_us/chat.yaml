@@ -1094,20 +1094,23 @@ main_session:
     ## 执行记录
 
     {}
-  prompt_user: 现在，请根据上述内容，输出 JSON。
+  prompt_user: |
+    ## 最近事件
+
+    {}
+
+    ## 动作
+
+    请根据以上要求，输出 JSON。
   history:
     send_private_message:
       default: "你向 {} 发送了私聊，主题为“{}”"
       replied: "你向 {} 发送了私聊（主题为“{}”），TA 于 {} 回复了你"
       no_reply: "你向 {} 发送了私聊（主题为“{}”），但 TA 没有回复"
     sleep:
-      default: "你睡了 {} 分钟。"
       completed: "你计划睡 {} 分钟，实际睡了 {} 分钟。"
-      interrupted: "你计划睡 {} 分钟，但只睡了 {} 分钟就被唤醒了。"
     do: "你 {}，持续 {} 分钟。"
   wake_up:
-    completed_prompt: |
-      [{}]: 你睡醒了，感觉精神饱满。
     interrupted_prompt: |
       [{}]: 你计划睡 {} 分钟，但是被叫醒了，实际睡了 {} 分钟。
   friend: |
@@ -1131,6 +1134,10 @@ main_session:
     no_messages: 无消息记录
   write_blog:
     success: 你写了一篇博客「{}」，已将内容保存。
+  latest_event:
+    boredom_thresold: 你感到有些无聊，需要做一些事情来保持活力。
+    task_finish: 你刚刚结束了一个任务（{request_text}），你可以继续观望群聊（`skip`）或决定下一步的行动。
+    chat_request: 会话 {trigger_from} 请求进行 {request_text} 任务。你可以查看该会话最近的聊天记录获取详细的信息。
 recall_fetch_failed: "消息内容获取失败"
 message_truncate_check:
   system: |
