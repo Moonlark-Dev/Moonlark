@@ -448,7 +448,7 @@ rua:
   action_list_item: "[{}] {}"
   rank_title: rua 次数排行榜
   rank_no_data: 暂无 rua 数据。
-  refusable_hint: "（该动作可被拒绝，交互 ID: {}。如果你不喜欢，可以通过 `refuse_interaction_request` 工具躲开。）"
+  refusable_hint: "（该动作可被拒绝，交互 ID: {}。如果你不喜欢，可以通过 `deal_interaction_request` 工具躲开。）"
   bite_msg: "*Moonlark 躲开了你的手，并咬了一口"
   bite_prompt: "你躲开了 {} 的互动，并咬了 TA 一口。"
   actions:
@@ -890,6 +890,7 @@ prompt_link_parser: |
 fetcher:
   parse_failed: "[异常] 解析输出失败，请检查你的输出内容并尝试重新输出。错误信息：{}"
   sticker_recommendation: "基于上下文的表情包推荐:"
+  reply_required: "[警告] 你标记了一个“需要回复”，但是没有输出任何的工具调用。请确保你的输出中包含一个有效的 `send_message` 工具调用。"
 
 proactive_message:
   prompt: |
