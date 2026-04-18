@@ -106,7 +106,7 @@ class StatusManager:
         self._initialized = True
         self.pad_pos = (0.0, 0.0, 0.0)
         self._mood_reason: Optional[str] = None
-        scheduler.scheduled_job("interval", seconds=15, id="status_manager_process_timer")(self.process_timer)
+        # scheduler.scheduled_job("interval", seconds=15, id="status_manager_process_timer")(self.process_timer)
 
     def get_mood_retention(self) -> float:
         mood_type = self.get_mood_type()
