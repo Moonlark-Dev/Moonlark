@@ -1190,7 +1190,7 @@ main_session:
     success: 你写了一篇博客「{}」，已将内容保存。
   latest_event:
     boredom_thresold: 你感到有些无聊，需要做一些事情来保持活力。
-    task_finish: 你刚刚结束了一个任务（{request_text}），你可以继续观望群聊（`skip`）或决定下一步的行动。
+    task_finished: 你刚刚结束了一个任务（{request_text}），你可以继续观望群聊（`skip`）或决定下一步的行动。
     chat_request: 会话 {trigger_from} 请求进行 {request_text} 任务。你可以查看该会话最近的聊天记录获取详细的信息。
 
 
