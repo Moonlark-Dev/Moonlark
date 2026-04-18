@@ -96,8 +96,9 @@ class MessageQueue:
 
     async def get_messages(self) -> list[OpenAIMessage]:
         self.clean_special_message()
-        self.messages = self.messages[-self.max_message_count :]
         messages = copy.deepcopy(self.messages)
+        while len([message for message in messages if get_role(message) == "user"]) > self.max_message_count:
+            messages.pop(0)
         messages.insert(0, await self.processor.generate_system_prompt())
         return messages
 
