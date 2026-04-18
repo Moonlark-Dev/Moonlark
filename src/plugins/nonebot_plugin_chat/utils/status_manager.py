@@ -124,6 +124,7 @@ class StatusManager:
             max(min(self.pad_pos[1] + mood_pad[1] * intensity, 1), -1),
             max(min(self.pad_pos[2] + mood_pad[2] * intensity, 1), -1),
         )
+        logger.debug(f"Pad position updated to {self.pad_pos}")
         self._mood_reason = reason
 
     def get_status(self) -> tuple[MoodEnum, Optional[str]]:
