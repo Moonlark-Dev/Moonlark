@@ -54,13 +54,13 @@ EMOTION_LIST = [
     EmotionData(
         name="bored",
         included_labels=["bored"],
-        center=(-0.2, 0.1, -0.4),
+        center=(-0.2, -0.5, -0.2),
         mood_enum=MoodEnum.BORED,
     ),
     EmotionData(
         name="confused",
         included_labels=["confused"],
-        center=(-0.1, 0.2, -0.5),
+        center=(-0.3, 0.1, -0.4),
         mood_enum=MoodEnum.CONFUSED,
     ),
 ]
