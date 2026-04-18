@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 import math
 from typing import Optional, TypedDict
 
+from nonebot_plugin_apscheduler import scheduler
 from nonebot_plugin_chat.enums import MoodEnum
 
 
@@ -89,17 +90,22 @@ class StatusManager:
             cls._instance = super(StatusManager, cls).__new__(cls)
             cls._instance._initialized = False
         return cls._instance
+    
+    async def process_timer(self) -> None:
+        factor = math.exp(- 15 * math.log(2) / 10 * 60)
+        self.pad_pos = (
+            self.pad_pos[0] * factor,
+            self.pad_pos[1] * factor,
+            self.pad_pos[2] * factor,
+        )
 
     def __init__(self):
         if self._initialized:
             return
         self._initialized = True
         self.pad_pos = (0.0, 0.0, 0.0)
-
-        # self._mood: MoodEnum = MoodEnum.CALM
         self._mood_reason: Optional[str] = None
-        # self._last_mood_update: datetime = datetime.now()
-        # self.mood_retention_rate: float = 1.0
+        scheduler.scheduled_job("interval", seconds=15, id="status_manager_process_timer")(self.process_timer)
 
     def get_mood_retention(self) -> float:
         mood_type = self.get_mood_type()
