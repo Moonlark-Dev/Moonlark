@@ -308,7 +308,6 @@ class MessageProcessor:
             if not important:
                 return
             await main_session.wake_up(session=self.session)
-        main_session.record_activate(important)
 
         logger.info(f"Generating reply ({important=})...")
         self.session.accumulated_text_length = 0
