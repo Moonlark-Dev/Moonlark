@@ -48,8 +48,8 @@ async def _init_file_server():
     app.mount("/chat/files", StaticFiles(directory=FILE_DIR), name="chat_files")
 
 
-# @driver.on_startup
-# async def _init_main_session():
-#     from .core.main_session import init_main_session
+@driver.on_startup
+async def _init_main_session():
+    from .core.main_session import init_main_session
 
-#     await init_main_session()
+    await init_main_session()
