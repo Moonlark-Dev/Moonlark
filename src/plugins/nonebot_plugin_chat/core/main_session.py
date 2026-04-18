@@ -177,12 +177,12 @@ class MainSession:
             await self.get_friends(),
             await lang.text("prompt_group.time", self.lang_str, datetime.now().isoformat()),
             state_str,
-            instant_mem,
             (
                 "\n".join([await self.format_note(note) for note in notes])
                 if notes
                 else await lang.text("prompt.note.none", self.lang_str)
             ),
+            instant_mem,
             await self.get_recent_actions_text(self.lang_str),
         )
     
