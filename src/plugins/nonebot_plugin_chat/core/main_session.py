@@ -66,7 +66,9 @@ class MainSession:
         group_count = len(groups)
         return (((group_count >= 3 and inactive_group_count >= 3)
                 or (group_count < 3 and inactive_group_count >= group_count * 0.3))
-                and (self.state_until is None or dt >= self.state_until))
+                and (self.state_until is None or dt >= self.state_until)
+                and (self.action_history == [] or dt >= self.action_history[-1][0] + timedelta(minutes=20)))
+
     
     async def generate_user_prompt(self, trigger_reason: Literal["boredom_thresold", "task_finished", "chat_request"], request_text: Optional[str] = None, trigger_from: Optional[str] = None) -> str:
         event_text = await lang.text(f"main_session.latest_event.{trigger_reason}", self.lang_str, trigger_from=trigger_from, request_text=request_text)
