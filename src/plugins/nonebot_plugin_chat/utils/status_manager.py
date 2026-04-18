@@ -132,6 +132,7 @@ class StatusManager:
         return self.get_mood_type(), self._mood_reason
 
     def get_mood_type(self) -> MoodEnum:
+        logger.debug(f"Pad position: {self.pad_pos}")
         return sorted(
             EMOTION_LIST,
             key=lambda x: math.sqrt(
