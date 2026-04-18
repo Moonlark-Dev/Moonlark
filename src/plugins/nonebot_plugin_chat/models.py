@@ -77,7 +77,7 @@ class JudgeData(BaseModel):
     reason: str
 
 
-class ModelResponse(BaseModel):
+class ModelResponse(BaseModel, extra='forbid'):
     reply_required: bool
     mood: Optional[
         Literal[
