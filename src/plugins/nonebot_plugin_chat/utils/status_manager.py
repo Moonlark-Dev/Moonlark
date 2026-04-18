@@ -112,11 +112,9 @@ class StatusManager:
         mood_data = [e for e in EMOTION_LIST if e["mood_enum"] == mood_type][0]
         
         # 计算 PAD_POS 在 EMOTION PAD CENTER 方向上的投影向量的长度
-        mood_pad_length = math.sqrt(self.pad_pos[0] ** 2 + self.pad_pos[1] ** 2 + self.pad_pos[2] ** 2)
+        mood_pad_length = math.sqrt(mood_data["center"][0] ** 2 + mood_data["center"][1] ** 2 + mood_data["center"][2] ** 2)
         projection_length = (self.pad_pos[0] * mood_data["center"][0] + self.pad_pos[1] * mood_data["center"][1] + self.pad_pos[2] * mood_data["center"][2]) / mood_pad_length
         return min(1, max(0, projection_length / (mood_pad_length * 1.2)))
-        
-        
 
     def set_mood(self, mood: MoodEnum, reason: Optional[str] = None, intensity: float = 0.5) -> None:
         mood_id = mood.value
