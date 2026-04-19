@@ -182,10 +182,7 @@ class MessageQueue:
                         fetcher.session.insert_message(
                             generate_message(await self.processor.session.text("fetcher.reply_required"), "user")
                         )
-                if self.continuous_response or (
-                    isinstance(fetcher.session.messages[-1], ChatCompletionMessage)
-                    and fetcher.session.messages[-1].tool_calls
-                ):
+                if self.continuous_response:
                     fetcher.session.insert_messages(self.messages)
                     self.messages.clear()
             self.messages = fetcher.get_messages() + self.messages
