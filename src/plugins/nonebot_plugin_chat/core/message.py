@@ -162,7 +162,9 @@ class MessageQueue:
                     logger.warning(f"Failed to parse message: {message}")
                     analysis = None
                 except ValidationError as e:
-                    fetcher.session.insert_message(generate_message(await self.processor.session.text("fetcher.parse_failed", str(e)), "user"))
+                    fetcher.session.insert_message(
+                        generate_message(await self.processor.session.text("fetcher.parse_failed", str(e)), "user")
+                    )
                     continue
                 if analysis is not None:
                     if analysis.mood:
@@ -172,9 +174,18 @@ class MessageQueue:
                     if analysis.interest is not None:
                         self.processor.session.set_interest(analysis.interest)
                         logger.debug(f"Cached interest: {analysis.interest:.2f}")
-                    if analysis.reply_required and isinstance(fetcher.session.messages[-1], ChatCompletionMessage) and not fetcher.session.messages[-1].tool_calls:
-                        fetcher.session.insert_message(generate_message(await self.processor.session.text("fetcher.reply_required"), "user"))
-                if self.continuous_response or (isinstance(fetcher.session.messages[-1], ChatCompletionMessage) and fetcher.session.messages[-1].tool_calls):
+                    if (
+                        analysis.reply_required
+                        and isinstance(fetcher.session.messages[-1], ChatCompletionMessage)
+                        and not fetcher.session.messages[-1].tool_calls
+                    ):
+                        fetcher.session.insert_message(
+                            generate_message(await self.processor.session.text("fetcher.reply_required"), "user")
+                        )
+                if self.continuous_response or (
+                    isinstance(fetcher.session.messages[-1], ChatCompletionMessage)
+                    and fetcher.session.messages[-1].tool_calls
+                ):
                     fetcher.session.insert_messages(self.messages)
                     self.messages.clear()
             self.messages = fetcher.get_messages() + self.messages
