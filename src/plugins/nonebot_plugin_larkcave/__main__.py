@@ -4,7 +4,7 @@ from nonebot_plugin_alconna import Alconna, Args, Image, MultiVar, Option, Refer
 alc = Alconna(
     "cave",
     Subcommand(
-        "add-node",
+        "n|node",
         Args["node_msg", Reference],
     ),
     Subcommand(

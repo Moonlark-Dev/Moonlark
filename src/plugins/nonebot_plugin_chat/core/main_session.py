@@ -15,9 +15,9 @@ from nonebot_plugin_chat.models import (
     BoredAction,
     BoredActionResponse,
     CustomAction,
+    MainSessionActionHistory,
     Note,
     PrivateChatSession,
-    MainSessionData,
     RestAction,
     SendPrivateMsgAction,
     SkipAction,
@@ -29,7 +29,7 @@ from nonebot_plugin_chat.utils.note_manager import get_context_notes
 from nonebot_plugin_chat.utils.prompt import get_prompt_text
 from nonebot_plugin_larkuser.utils.user import get_user
 from nonebot_plugin_orm import get_session
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from ..lang import lang
 from nonebot_plugin_chat.enums import MoodEnum
 from nonebot_plugin_chat.utils.status_manager import StatusManager
@@ -58,6 +58,7 @@ class MainSession:
         self.status_manager = StatusManager()
         self.lang_str = lang_str
         self.state_until = datetime.now()
+        scheduler.scheduled_job("interval", minutes=5)(self.process_timer)
 
     def is_boredom(self) -> bool:
         dt = datetime.now()
@@ -197,12 +198,12 @@ class MainSession:
             await self.get_friends(),
             await lang.text("prompt_group.time", self.lang_str, datetime.now().isoformat()),
             state_str,
-            instant_mem,
             (
                 "\n".join([await self.format_note(note) for note in notes])
                 if notes
                 else await lang.text("prompt.note.none", self.lang_str)
             ),
+            instant_mem,
             await self.get_recent_actions_text(self.lang_str),
         )
 
@@ -225,6 +226,29 @@ class MainSession:
                         await self.request_think("task_finished", action[1].information)
                         break
             self.state = StateEnum.ACTIVATE
+        if self.is_boredom():
+            await self.request_think("boredom_thresold", None)
+        await self.save_action_history()
+
+    async def load_action_history(self) -> None:
+        async with get_session() as session:
+            for item in await session.scalars(select(MainSessionActionHistory).order_by(MainSessionActionHistory.id_.desc()).limit(20).order_by(MainSessionActionHistory.id_)):
+                self.action_history.append((
+                    item.start_time,
+                    type_validate_python(BoredActionResponse, {"response": item.action}).response,
+                    item.end_time
+                ))
+    
+    async def save_action_history(self) -> None:
+        async with get_session() as session:
+            await session.execute(delete(MainSessionActionHistory))
+            for action in self.action_history:
+                session.add(MainSessionActionHistory(
+                    start_time=action[0],
+                    action=action[1].model_dump(),
+                    end_time=action[2]
+                ))
+            await session.commit()
 
     async def format_note(self, note: Note) -> str:
         created_time = datetime.fromtimestamp(note.created_time).strftime("%y-%m-%d")
@@ -341,6 +365,6 @@ class MainSession:
 main_session = MainSession()
 
 
-# async def init_main_session() -> None:
-#     """初始化 main_session，从数据库加载数据"""
-#     await main_session.load_from_database()
+async def init_main_session() -> None:
+    """初始化 main_session，从数据库加载数据"""
+    await main_session.load_action_history()

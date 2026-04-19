@@ -1,7 +1,9 @@
 from datetime import datetime, timedelta
+from nonebot.log import logger
 import math
 from typing import Optional, TypedDict
 
+from nonebot_plugin_apscheduler import scheduler
 from nonebot_plugin_chat.enums import MoodEnum
 
 
@@ -47,7 +49,7 @@ EMOTION_LIST = [
     EmotionData(
         name="calm",
         included_labels=["calm", "trust"],
-        center=(0.6, -0.4, 0.4),
+        center=(0.3, -0.3, 0.2),
         mood_enum=MoodEnum.CALM,
     ),
     EmotionData(
@@ -59,7 +61,7 @@ EMOTION_LIST = [
     EmotionData(
         name="confused",
         included_labels=["confused"],
-        center=(-0.1, 0.2, -0.5),
+        center=(-0.3, 0.1, -0.4),
         mood_enum=MoodEnum.CONFUSED,
     ),
 ]
@@ -89,46 +91,48 @@ class StatusManager:
             cls._instance = super(StatusManager, cls).__new__(cls)
             cls._instance._initialized = False
         return cls._instance
+    
+    async def process_timer(self) -> None:
+        factor = math.exp(- 15 * math.log(2) / 10 * 60)
+        self.pad_pos = (
+            self.pad_pos[0] * factor,
+            self.pad_pos[1] * factor,
+            self.pad_pos[2] * factor,
+        )
 
     def __init__(self):
         if self._initialized:
             return
         self._initialized = True
         self.pad_pos = (0.0, 0.0, 0.0)
-
-        # self._mood: MoodEnum = MoodEnum.CALM
         self._mood_reason: Optional[str] = None
-        # self._last_mood_update: datetime = datetime.now()
-        # self.mood_retention_rate: float = 1.0
+        # scheduler.scheduled_job("interval", seconds=15, id="status_manager_process_timer")(self.process_timer)
 
     def get_mood_retention(self) -> float:
         mood_type = self.get_mood_type()
         mood_data = [e for e in EMOTION_LIST if e["mood_enum"] == mood_type][0]
-        return max(
-            0,
-            1
-            - math.sqrt(
-                (mood_data["center"][0] - self.pad_pos[0]) ** 2
-                + (mood_data["center"][1] - self.pad_pos[1]) ** 2
-                + (mood_data["center"][2] - self.pad_pos[2]) ** 2
-            )
-            / 1.5,
-        )
+        
+        # 计算 PAD_POS 在 EMOTION PAD CENTER 方向上的投影向量的长度
+        mood_pad_length = math.sqrt(mood_data["center"][0] ** 2 + mood_data["center"][1] ** 2 + mood_data["center"][2] ** 2)
+        projection_length = (self.pad_pos[0] * mood_data["center"][0] + self.pad_pos[1] * mood_data["center"][1] + self.pad_pos[2] * mood_data["center"][2]) / mood_pad_length
+        return min(1, max(0, projection_length / (mood_pad_length * 1.2)))
 
     def set_mood(self, mood: MoodEnum, reason: Optional[str] = None, intensity: float = 0.5) -> None:
         mood_id = mood.value
         mood_pad = MOOD_DELTA_PAD[mood_id]
         self.pad_pos = (
-            max(min(self.pad_pos[0] + mood_pad[0] * intensity, -1), 1),
-            max(min(self.pad_pos[1] + mood_pad[1] * intensity, -1), 1),
-            max(min(self.pad_pos[2] + mood_pad[2] * intensity, -1), 1),
+            max(min(self.pad_pos[0] + mood_pad[0] * intensity, 1), -1),
+            max(min(self.pad_pos[1] + mood_pad[1] * intensity, 1), -1),
+            max(min(self.pad_pos[2] + mood_pad[2] * intensity, 1), -1),
         )
+        logger.debug(f"Pad position updated to {self.pad_pos}")
         self._mood_reason = reason
 
     def get_status(self) -> tuple[MoodEnum, Optional[str]]:
         return self.get_mood_type(), self._mood_reason
 
     def get_mood_type(self) -> MoodEnum:
+        logger.debug(f"Pad position: {self.pad_pos}")
         return sorted(
             EMOTION_LIST,
             key=lambda x: math.sqrt(
