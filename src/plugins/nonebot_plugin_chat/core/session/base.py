@@ -1,3 +1,5 @@
+import asyncio
+
 from nonebot.adapters import Bot, Event
 from nonebot.adapters.onebot.v11.event import PokeNotifyEvent
 from nonebot.log import logger
@@ -292,6 +294,54 @@ class BaseSession(ABC):
 
         # 向会话发送事件，强制触发回复
         await self.post_event(event_prompt, "all")
+
+    async def change_sleep_status(
+        self,
+        deal_type: Literal["ready", "delay"],
+        delay_minutes: Optional[int] = None,
+        reason: Optional[str] = None
+    ) -> str:
+        """
+        修改睡觉状态
+
+        Args:
+            deal_type: 决策类型，"ready"表示准备睡觉，"delay"表示延迟
+            delay_minutes: 延迟的分钟数（仅当deal_type为"delay"时有效）
+            reason: 延迟的原因（仅当deal_type为"delay"时有效）
+
+        Returns:
+            工具调用的结果（会等待main_session统一处理）
+        """
+        from ..main_session import main_session
+
+        # 验证参数
+        if deal_type == "delay":
+            if delay_minutes is None:
+                delay_minutes = 0
+            if delay_minutes > 30:
+                delay_minutes = 30
+            if delay_minutes < 0:
+                delay_minutes = 0
+
+        # 创建一个Future用于等待main_session的处理结果
+        # 这里使用异步等待挂起响应
+        result_future = asyncio.get_event_loop().create_future()
+
+        # 提交决策到main_session
+        await main_session.submit_sleep_decision(
+            session_id=self.session_id,
+            deal_type=deal_type,
+            delay_minutes=delay_minutes,
+            reason=reason,
+            future=result_future
+        )
+        
+        # 等待main_session的处理结果
+        try:
+            result = await asyncio.wait_for(result_future, timeout=120)  # 最多等待2分钟
+            return result
+        except asyncio.TimeoutError:
+            return await self.text("sleep_decision.timeout")
 
     async def process_timer(self) -> None:
         dt = datetime.now()

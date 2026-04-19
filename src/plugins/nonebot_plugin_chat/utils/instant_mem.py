@@ -218,3 +218,13 @@ def _is_memory_valid(memory: InstantMemory) -> bool:
     adjusted_expire_time = min(adjusted_expire_time, max_expire_time)
 
     return datetime.now() - create_time < adjusted_expire_time
+
+
+def delete_sleep_memory() -> None:
+    """删除所有关于睡觉的记忆"""
+    global instant_memories
+    instant_memories = [
+        mem for mem in instant_memories
+        if not (mem["category"] == "myself" and "睡觉" in mem["content"])
+    ]
+    logger.info("[InstantMemory] 已删除睡觉相关记忆")
