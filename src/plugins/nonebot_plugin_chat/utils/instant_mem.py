@@ -224,7 +224,6 @@ def delete_sleep_memory() -> None:
     """删除所有关于睡觉的记忆"""
     global instant_memories
     instant_memories = [
-        mem for mem in instant_memories
-        if not (mem["category"] == "myself" and "睡觉" in mem["content"])
+        mem for mem in instant_memories if not (mem["category"] == "myself" and "睡觉" in mem["content"])
     ]
     logger.info("[InstantMemory] 已删除睡觉相关记忆")

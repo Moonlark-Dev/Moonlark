@@ -100,16 +100,11 @@ class ToolManager:
         return await self.text("tools_desc.calculate_luck_value.result", nickname, luck_value)
 
     async def change_sleep_status(
-        self,
-        deal_type: Literal["ready", "delay"],
-        delay_minutes: Optional[int] = None,
-        reason: Optional[str] = None
+        self, deal_type: Literal["ready", "delay"], delay_minutes: Optional[int] = None, reason: Optional[str] = None
     ) -> str:
         """修改睡觉状态，委托给session处理"""
         return await self.processor.session.change_sleep_status(
-            deal_type=deal_type,
-            delay_minutes=delay_minutes,
-            reason=reason
+            deal_type=deal_type, delay_minutes=delay_minutes, reason=reason
         )
 
     async def select_tools(self, mode: Literal["group", "agent"]) -> list[AsyncFunction]:

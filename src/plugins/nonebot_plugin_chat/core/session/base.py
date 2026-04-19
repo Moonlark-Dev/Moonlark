@@ -296,10 +296,7 @@ class BaseSession(ABC):
         await self.post_event(event_prompt, "all")
 
     async def change_sleep_status(
-        self,
-        deal_type: Literal["ready", "delay"],
-        delay_minutes: Optional[int] = None,
-        reason: Optional[str] = None
+        self, deal_type: Literal["ready", "delay"], delay_minutes: Optional[int] = None, reason: Optional[str] = None
     ) -> str:
         """
         修改睡觉状态
@@ -333,9 +330,9 @@ class BaseSession(ABC):
             deal_type=deal_type,
             delay_minutes=delay_minutes,
             reason=reason,
-            future=result_future
+            future=result_future,
         )
-        
+
         # 等待main_session的处理结果
         try:
             result = await asyncio.wait_for(result_future, timeout=120)  # 最多等待2分钟

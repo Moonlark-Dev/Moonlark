@@ -77,17 +77,35 @@ class MainSession:
             ]
         )
         group_count = len(groups)
-        return (((group_count >= 3 and inactive_group_count >= 3)
-                or (group_count < 3 and inactive_group_count >= group_count * 0.3))
-                and (self.state_until is None or dt >= self.state_until)
-                and (self.action_history == [] or dt >= self.action_history[-1][0] + timedelta(minutes=20)))
+        return (
+            (
+                (group_count >= 3 and inactive_group_count >= 3)
+                or (group_count < 3 and inactive_group_count >= group_count * 0.3)
+            )
+            and (self.state_until is None or dt >= self.state_until)
+            and (self.action_history == [] or dt >= self.action_history[-1][0] + timedelta(minutes=20))
+        )
 
-    
-    async def generate_user_prompt(self, trigger_reason: Literal["boredom_thresold", "task_finished", "chat_request", "ready_sleep"], request_text: Optional[str] = None, trigger_from: Optional[str] = None) -> str:
-        event_text = await lang.text(f"main_session.latest_event.{trigger_reason}", self.lang_str, trigger_from=trigger_from, request_text=request_text)
+    async def generate_user_prompt(
+        self,
+        trigger_reason: Literal["boredom_thresold", "task_finished", "chat_request", "ready_sleep"],
+        request_text: Optional[str] = None,
+        trigger_from: Optional[str] = None,
+    ) -> str:
+        event_text = await lang.text(
+            f"main_session.latest_event.{trigger_reason}",
+            self.lang_str,
+            trigger_from=trigger_from,
+            request_text=request_text,
+        )
         return await lang.text("main_session.prompt_user", self.lang_str, event_text)
 
-    async def request_think(self, trigger_reason: Literal["boredom_thresold", "task_finished", "chat_request", "ready_sleep"], request_text: Optional[str] = None, trigger_from: Optional[str] = None) -> None:
+    async def request_think(
+        self,
+        trigger_reason: Literal["boredom_thresold", "task_finished", "chat_request", "ready_sleep"],
+        request_text: Optional[str] = None,
+        trigger_from: Optional[str] = None,
+    ) -> None:
         dt = datetime.now()
         if self.state == StateEnum.SLEEPING:
             return
@@ -97,7 +115,9 @@ class MainSession:
             fetcher = await MessageFetcher.create(
                 [
                     generate_message(await self.generate_system_prompt(trigger_reason == "ready_sleep"), "system"),
-                    generate_message(await self.generate_user_prompt(trigger_reason, request_text, trigger_from), "user"),
+                    generate_message(
+                        await self.generate_user_prompt(trigger_reason, request_text, trigger_from), "user"
+                    ),
                 ],
                 identify="Chat - Main Session Think",
                 reasoning_effort="medium",
@@ -109,7 +129,9 @@ class MainSession:
                     action = response.response
                     # 如果是 ready_sleep，只允许 sleep 动作
                     if trigger_reason == "ready_sleep" and action.type != "sleep":
-                        fetcher.session.insert_message(generate_message("错误：在准备睡觉时只能选择 sleep 动作", "user"))
+                        fetcher.session.insert_message(
+                            generate_message("错误：在准备睡觉时只能选择 sleep 动作", "user")
+                        )
                         continue
                     if action.type in ["send_private_message", "do", "sleep", "write_blog"]:
                         self.action_history.append((datetime.now(), action, None))
@@ -195,9 +217,8 @@ class MainSession:
                 if notes
                 else await lang.text("prompt.note.none", self.lang_str)
             ),
-            instant_mem
+            instant_mem,
         )
-
 
     async def generate_system_prompt(self, sleep_action_only: bool = False) -> str:
         return await lang.text(
@@ -228,7 +249,7 @@ class MainSession:
             self.lang_str,
             await get_prompt_text("identity"),
             await self.get_additional_prompt(),
-            await self.get_recent_actions_text(self.lang_str)
+            await self.get_recent_actions_text(self.lang_str),
         )
         user_prompt = await lang.text("main_session.sleep_time_prompt.user", self.lang_str)
 
@@ -359,7 +380,6 @@ class MainSession:
         result = await lang.text("main_session.write_blog.success", self.lang_str, title)
         fetcher.session.insert_message(generate_message(result, "user"))
 
-
     async def ask_sleep(self) -> None:
         dt = datetime.now()
         # 开始决策流程
@@ -383,8 +403,7 @@ class MainSession:
         await asyncio.sleep(90)
         # 检查是否有delay
         delay_decisions = [
-            (sid, dec) for sid, dec in self.pending_sleep_decisions.items()
-            if dec["deal_type"] == "delay"
+            (sid, dec) for sid, dec in self.pending_sleep_decisions.items() if dec["deal_type"] == "delay"
         ]
         if delay_decisions:
             # 计算平均延迟时间
@@ -395,18 +414,11 @@ class MainSession:
 
             # 更新睡觉时间
             new_sleep_time = sleep_time + timedelta(minutes=avg_delay)
-            scheduler.add_job(
-                self.ask_sleep,
-                "date",
-                run_date=new_sleep_time
-            )
+            scheduler.add_job(self.ask_sleep, "date", run_date=new_sleep_time)
 
             # 向所有调用了工具的session推送结果
             result_text = await lang.text(
-                "main_session.sleep_decision.delay",
-                self.lang_str,
-                reason_text,
-                new_sleep_time.strftime("%H:%M")
+                "main_session.sleep_decision.delay", self.lang_str, reason_text, new_sleep_time.strftime("%H:%M")
             )
             for session_id, decision in self.pending_sleep_decisions.items():
                 if session_id in groups:
