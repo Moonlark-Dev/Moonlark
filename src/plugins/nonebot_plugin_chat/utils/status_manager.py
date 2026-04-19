@@ -91,9 +91,9 @@ class StatusManager:
             cls._instance = super(StatusManager, cls).__new__(cls)
             cls._instance._initialized = False
         return cls._instance
-    
+
     async def process_timer(self) -> None:
-        factor = math.exp(- 15 * math.log(2) / 10 * 60)
+        factor = math.exp(-15 * math.log(2) / 10 * 60)
         self.pad_pos = (
             self.pad_pos[0] * factor,
             self.pad_pos[1] * factor,
@@ -111,10 +111,16 @@ class StatusManager:
     def get_mood_retention(self) -> float:
         mood_type = self.get_mood_type()
         mood_data = [e for e in EMOTION_LIST if e["mood_enum"] == mood_type][0]
-        
+
         # 计算 PAD_POS 在 EMOTION PAD CENTER 方向上的投影向量的长度
-        mood_pad_length = math.sqrt(mood_data["center"][0] ** 2 + mood_data["center"][1] ** 2 + mood_data["center"][2] ** 2)
-        projection_length = (self.pad_pos[0] * mood_data["center"][0] + self.pad_pos[1] * mood_data["center"][1] + self.pad_pos[2] * mood_data["center"][2]) / mood_pad_length
+        mood_pad_length = math.sqrt(
+            mood_data["center"][0] ** 2 + mood_data["center"][1] ** 2 + mood_data["center"][2] ** 2
+        )
+        projection_length = (
+            self.pad_pos[0] * mood_data["center"][0]
+            + self.pad_pos[1] * mood_data["center"][1]
+            + self.pad_pos[2] * mood_data["center"][2]
+        ) / mood_pad_length
         return min(1, max(0, projection_length / (mood_pad_length * 1.2)))
 
     def set_mood(self, mood: MoodEnum, reason: Optional[str] = None, intensity: float = 0.5) -> None:

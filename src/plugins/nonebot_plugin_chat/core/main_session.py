@@ -232,22 +232,27 @@ class MainSession:
 
     async def load_action_history(self) -> None:
         async with get_session() as session:
-            for item in await session.scalars(select(MainSessionActionHistory).order_by(MainSessionActionHistory.id_.desc()).limit(20).order_by(MainSessionActionHistory.id_)):
-                self.action_history.append((
-                    item.start_time,
-                    type_validate_python(BoredActionResponse, {"response": item.action}).response,
-                    item.end_time
-                ))
-    
+            for item in await session.scalars(
+                select(MainSessionActionHistory)
+                .order_by(MainSessionActionHistory.id_.desc())
+                .limit(20)
+                .order_by(MainSessionActionHistory.id_)
+            ):
+                self.action_history.append(
+                    (
+                        item.start_time,
+                        type_validate_python(BoredActionResponse, {"response": item.action}).response,
+                        item.end_time,
+                    )
+                )
+
     async def save_action_history(self) -> None:
         async with get_session() as session:
             await session.execute(delete(MainSessionActionHistory))
             for action in self.action_history:
-                session.add(MainSessionActionHistory(
-                    start_time=action[0],
-                    action=action[1].model_dump(),
-                    end_time=action[2]
-                ))
+                session.add(
+                    MainSessionActionHistory(start_time=action[0], action=action[1].model_dump(), end_time=action[2])
+                )
             await session.commit()
 
     async def format_note(self, note: Note) -> str:
