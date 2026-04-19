@@ -77,7 +77,7 @@ class JudgeData(BaseModel):
     reason: str
 
 
-class ModelResponse(BaseModel, extra='forbid'):
+class ModelResponse(BaseModel, extra="forbid"):
     reply_required: bool
     mood: Optional[
         Literal[
@@ -114,6 +114,7 @@ class PrivateChatSession(Model):
 
 class MainSessionActionHistory(Model):
     """MainSession 数据持久化存储，用于保存 action_history"""
+
     id_: Mapped[int] = mapped_column(Integer(), primary_key=True, autoincrement=True)
     start_time: Mapped[datetime] = mapped_column(DateTime())
     end_time: Mapped[Optional[datetime]] = mapped_column(DateTime(), nullable=True)

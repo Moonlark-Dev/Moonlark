@@ -3,6 +3,7 @@ prompt_group:
     你是 Moonlark，是一只猫娘。你将在一个 QQ 群中与其他群友进行交流。
     Moonlark 除了外观和口癖外和正常少女没有任何区别。
     Moonlark 会不断地学习新的知识，我明白你的知识库有限，所以你拥有一些帮助你回答问题的工具。
+    **Moonlark 的所有消息都要通过 `send_message` 工具发送**
 
     ## 核心任务
 
@@ -53,12 +54,12 @@ prompt_group:
     {{
       "reply_required": true,   // 必要：是否需要回复用户。如果你认为不需要回复（例如话题已结束或无意义），请设为 false。
       "interest": 0.5,          // 必要：你对当前话题的兴趣程度，0-1 之间的浮点数。0 表示完全没兴趣，1 表示非常感兴趣。这会影响你后续回复的触发概率。
-      "mood": "happy",          // 必要：当前心情 (只能从 joy/sadness/anger/fear/surprise/disgust/trust/anticipation/calm/bored/confused/tired/shy 中选取)，为 null 则维持原状
+      "mood": "happy",          // 必要：当前心情 (只能从 joy/sadness/anger/fear/surprise/disgust/trust/anticipation/calm/bored/confused/tired/shy 中选取)，为 null 则维持原状。这代表了 Moonlark 的心情变动的方向，不完全代表当前的心情。
       "mood_reason": "...",     // 可选：心情变化的原因。如因为 UserA 的夸赞
-      "mood_intensity": 0.8,    // 可选：心情强度，0-1 之间的浮点数，1.0 为最强。
+      "mood_intensity": 0.8,    // 可选：心情强度，0.5-1.2 之间的浮点数，1.2 为最强。
       "favorability_judge": {{  // 可选：评价用户行为，会引起你与目标用户的好感度的变动。
         "target": "UserA",      // 目标用户昵称
-        "score": 1,             // -2 到 2
+        "score": 1,             // -2 到 2 之间的整数
         "reason": "..."
       }},
       "thought": "..."          // Moonlark 当前的所思所想。
@@ -437,7 +438,7 @@ rua:
   action_list_item: "[{}] {}"
   rank_title: rua 次数排行榜
   rank_no_data: 暂无 rua 数据。
-  refusable_hint: "（该动作可被拒绝，交互 ID: {}。如果你不喜欢，可以通过 `refuse_interaction_request` 工具躲开。）"
+  refusable_hint: "（该动作可被拒绝，交互 ID: {}。如果你不喜欢，可以通过 `deal_interaction_request` 工具躲开。）"
   bite_msg: "*Moonlark 躲开了你的手，并咬了一口"
   bite_prompt: "你躲开了 {} 的互动，并咬了 TA 一口。"
   actions:
@@ -477,7 +478,10 @@ poke:
 message:
   deleted: "消息已撤回。"
   delete_failed: "当前平台不支持撤回消息。"
-  sent: "消息发送成功(消息ID: {})。\n"
+  sent: |
+    消息发送成功(消息ID: {})。
+    本条消息字数: {}/50
+    已连续发送消息数: {}/2 (最大 5)
   stop_response: "[错误] 你已连续发送 {} 条消息，超过系统限制，本次发送已被阻止。请等待用户回复后再继续发言。"
   reaction_success: "已发送回应：{}"
   reaction_failed: "失败：当前平台不支持发送回应。"
@@ -846,6 +850,7 @@ prompt_link_parser: |
 fetcher:
   parse_failed: "[异常] 解析输出失败，请检查你的输出内容并尝试重新输出。错误信息：{}"
   sticker_recommendation: "基于上下文的表情包推荐:"
+  reply_required: "[警告] 你标记了一个“需要回复”，但是没有输出任何的工具调用。请确保你的输出中包含一个有效的 `send_message` 工具调用。"
 proactive_message:
   prompt: |
     你被授权在私聊中发起一次"主动消息"。你的回复必须完全符合你的人格设定，并严格遵守所有的输出规则。
@@ -1094,20 +1099,23 @@ main_session:
     ## 执行记录
 
     {}
-  prompt_user: 现在，请根据上述内容，输出 JSON。
+  prompt_user: |
+    ## 最近事件
+
+    {}
+
+    ## 动作
+
+    请根据以上要求，输出 JSON。
   history:
     send_private_message:
       default: "你向 {} 发送了私聊，主题为“{}”"
       replied: "你向 {} 发送了私聊（主题为“{}”），TA 于 {} 回复了你"
       no_reply: "你向 {} 发送了私聊（主题为“{}”），但 TA 没有回复"
     sleep:
-      default: "你睡了 {} 分钟。"
       completed: "你计划睡 {} 分钟，实际睡了 {} 分钟。"
-      interrupted: "你计划睡 {} 分钟，但只睡了 {} 分钟就被唤醒了。"
     do: "你 {}，持续 {} 分钟。"
   wake_up:
-    completed_prompt: |
-      [{}]: 你睡醒了，感觉精神饱满。
     interrupted_prompt: |
       [{}]: 你计划睡 {} 分钟，但是被叫醒了，实际睡了 {} 分钟。
   friend: |
@@ -1131,6 +1139,10 @@ main_session:
     no_messages: 无消息记录
   write_blog:
     success: 你写了一篇博客「{}」，已将内容保存。
+  latest_event:
+    boredom_thresold: 你感到有些无聊，需要做一些事情来保持活力。
+    task_finished: 你刚刚结束了一个任务（{request_text}），你可以继续观望群聊（`skip`）或决定下一步的行动。
+    chat_request: 会话 {trigger_from} 请求进行 {request_text} 任务。你可以查看该会话最近的聊天记录获取详细的信息。
 recall_fetch_failed: "消息内容获取失败"
 message_truncate_check:
   system: |
