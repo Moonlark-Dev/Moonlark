@@ -50,6 +50,6 @@ async def _init_file_server():
 
 @driver.on_startup
 async def _init_main_session():
-    from .core.main_session import init_main_session
+    from .core.ego.main_session import init_main_session
 
     await init_main_session()

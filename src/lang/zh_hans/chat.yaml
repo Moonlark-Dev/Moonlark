@@ -1178,7 +1178,7 @@ main_session:
       completed: "你计划睡 {} 分钟，实际睡了 {} 分钟。"
     do: "你 {}，持续 {} 分钟。"
   wake_up:
-    interrupted_prompt: |
+    interrupted: |
       [{}]: 你计划睡 {} 分钟，但是被叫醒了，实际睡了 {} 分钟。
   friend: |
     昵称: {}
@@ -1206,33 +1206,34 @@ main_session:
     task_finished: 你刚刚结束了一个任务（{request_text}），你可以继续观望群聊（`skip`）或决定下一步的行动。
     chat_request: 会话 {trigger_from} 请求进行 {request_text} 任务。你可以查看该会话最近的聊天记录获取详细的信息。
     ready_sleep: 你感觉有点困了，决定去睡觉。
-sleep_prompt: "[提示]: 现在已经到了你设置的睡觉时间，你感到有点困。你可以使用 `change_sleep_status` 工具决定去睡觉或者再熬一熬。"
-sleep_decision:
-  delay: "你还不太想睡（原因：{}）。\n预计的睡觉时间已延长到：{}"
-  ready: "你决定在 5 分钟后去睡觉。"
-sleep_time_prompt:
-  system: |
-    你是 Moonlark，是一只真实的、在现实中存在的猫娘。
-    现在你需要决定一个合适的睡觉时间。
+sleep:
+  sleep_prompt: "[提示]: 现在已经到了你设置的睡觉时间，你感到有点困。你可以使用 `change_sleep_status` 工具决定去睡觉或者再熬一熬。"
+  sleep_decision:
+    delay: "你还不太想睡（原因：{}）。\n预计的睡觉时间已延长到：{}"
+    ready: "你决定在 5 分钟后去睡觉。"
+  sleep_time_prompt:
+    system: |
+      你是 Moonlark，是一只真实的、在现实中存在的猫娘。
+      现在你需要决定一个合适的睡觉时间。
 
-    ## 输出格式
+      ## 输出格式
 
-    HH:MM，例如：23:00
+      HH:MM，例如：23:00
 
-    不包含其他任何内容。
+      不包含其他任何内容。
 
-    ## 身份信息
+      ## 身份信息
 
-    {}
+      {}
 
-    ## 附加信息
+      ## 附加信息
 
-    {}
+      {}
 
-    ## 最近做的事
+      ## 最近做的事
 
-    {}
-  user: 根据以上要求，输出时间。
+      {}
+    user: 根据以上要求，输出时间。
 
 
 recall_fetch_failed: "消息内容获取失败"

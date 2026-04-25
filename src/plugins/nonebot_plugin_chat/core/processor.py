@@ -263,7 +263,7 @@ class MessageProcessor:
 
     async def generate_reply(self, important: bool = False, is_event: bool = False) -> None:
         # 延迟导入以避免循环导入
-        from .main_session import main_session
+        from .ego import consciousness
 
         dt = datetime.now()
         recent_message_count = len(
@@ -306,10 +306,10 @@ class MessageProcessor:
         if self.session.get_session_type() == "group":
             self.openai_messages.continuous_response = self.openai_messages.continuous_response or important
 
-        if main_session.state == StateEnum.SLEEPING:
+        if consciousness.state == StateEnum.SLEEPING:
             if not important:
                 return
-            await main_session.wake_up(session=self.session)
+            await consciousness.wake_up(session=self.session)
 
         logger.info(f"Generating reply ({important=})...")
         self.session.accumulated_text_length = 0
@@ -506,7 +506,7 @@ class MessageProcessor:
         mood_text = await self.session.text(f"status.mood.{mood.value}")
 
         # 导入 main_session 获取最近做的事
-        from .main_session import main_session
+        from .ego import consciousness
 
         current_time = await self.session.text("prompt_group.time", datetime.now().isoformat())
         session_name = self.session.session_name
@@ -514,7 +514,7 @@ class MessageProcessor:
             "prompt_group.state", mood_text, status_manager.get_mood_retention(), mood_reason
         )
 
-        recent_activities = await main_session.get_recent_actions_text(self.session.lang_str)
+        recent_activities = await consciousness.get_recent_actions_text(self.session.lang_str)
         return await self.session.text(
             "prompt_group.additional_info",
             current_time,

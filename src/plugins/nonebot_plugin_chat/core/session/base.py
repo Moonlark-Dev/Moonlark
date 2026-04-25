@@ -309,7 +309,7 @@ class BaseSession(ABC):
         Returns:
             工具调用的结果（会等待main_session统一处理）
         """
-        from ..main_session import main_session
+        from ..ego import consciousness
 
         # 验证参数
         if deal_type == "delay":
@@ -325,7 +325,7 @@ class BaseSession(ABC):
         result_future = asyncio.get_event_loop().create_future()
 
         # 提交决策到main_session
-        await main_session.submit_sleep_decision(
+        await consciousness.submit_sleep_decision(
             session_id=self.session_id,
             deal_type=deal_type,
             delay_minutes=delay_minutes,
