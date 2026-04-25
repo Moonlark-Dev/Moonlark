@@ -1,4 +1,3 @@
-
 import asyncio
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Literal, Optional
@@ -16,6 +15,7 @@ if TYPE_CHECKING:
 
 from ...utils.prompt import get_prompt_text
 from ...lang import lang
+
 
 class SleepController:
     """控制与睡眠决策相关的所有功能"""
@@ -113,7 +113,10 @@ class SleepController:
 
             # 向所有调用了工具的session推送结果
             result_text = await lang.text(
-                "main_session.sleep_decision.delay", self.main_session.lang_str, reason_text, new_sleep_time.strftime("%H:%M")
+                "main_session.sleep_decision.delay",
+                self.main_session.lang_str,
+                reason_text,
+                new_sleep_time.strftime("%H:%M"),
             )
             for session_id, decision in self.pending_sleep_decisions.items():
                 if session_id in groups:
