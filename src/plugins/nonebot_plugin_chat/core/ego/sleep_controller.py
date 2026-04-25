@@ -23,7 +23,7 @@ class SleepController:
     def __init__(self, main_session: "MainSession"):
         self.main_session = main_session
         self.pending_sleep_decisions: dict[str, dict] = {}
-        scheduler.scheduled_job("cron", hour=8, minute=30)(main_session.sleep_controller.generate_sleep_time)
+        scheduler.scheduled_job("cron", hour=8, minute=30)(self.generate_sleep_time)
 
     async def generate_sleep_time(self) -> None:
         """每天8:30执行的定时任务，决定今天的睡觉时间"""
