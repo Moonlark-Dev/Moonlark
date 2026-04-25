@@ -1,10 +1,13 @@
 import json
-from typing import Sequence
+import re
 from datetime import datetime, timedelta, timezone
+from typing import Sequence
+
 from nonebot import logger
 from nonebot_plugin_openai import fetch_message, generate_message
+
 from .lang import lang
-from .models import GroupMessage, CatGirlScore, DebateAnalysis
+from .models import CatGirlScore, DebateAnalysis, GroupMessage
 
 
 async def generate_message_string(result: list[GroupMessage] | Sequence[GroupMessage], style: str) -> str:
@@ -138,3 +141,15 @@ async def analyze_history(payload: str, history: list[GroupMessage], user_id: st
     except json.JSONDecodeError as e:
         logger.exception(e)
         return None
+
+
+async def extract_mvp_from_summary(summary_string: str) -> tuple[str, str] | None:
+    """Extract MVP nickname and comment from daily summary"""
+    mvp_pattern = r"##\s*群聊\s*MVP\s*\n?\s*-\s*(.+?)\n?\s*(.+?)(?=\n##|\Z)"
+    match = re.search(mvp_pattern, summary_string, re.DOTALL)
+
+    if match:
+        nickname = match.group(1).strip()
+        comment = match.group(2).strip()
+        return nickname, comment
+    return None
