@@ -6,6 +6,7 @@ from nonebot.typing import T_State
 from nonebot.adapters.onebot.v11 import Bot as OB11Bot
 from nonebot_plugin_alconna import UniMessage
 from nonebot_plugin_chat.utils.group import LinkParser
+from nonebot_plugin_chat.utils.token_bucket import TokenBucket
 from ..enums import StateEnum
 from nonebot_plugin_chat.utils.prompt import get_prompt_text
 from ..config import config
@@ -59,6 +60,8 @@ class MessageProcessor:
         self.functions = []
         self.loop_task = None
         self.consecutive_message_count = 0
+        # Token bucket 相关属性
+        self.token_bucket = TokenBucket(5, -2)
 
     async def setup(self) -> None:
         self.functions = await self.tool_manager.select_tools("group")
@@ -210,6 +213,14 @@ class MessageProcessor:
         msg_str = await parser.parse()
         return (await LinkParser(msg_str, self.session.lang_str).parse()), parser.images
 
+    async def should_ignore_mention(self, user_id: str) -> bool:
+        async with get_session() as db_session:
+            group_config = await db_session.get(ChatGroup, {"group_id": self.session.session_id})
+            if group_config:
+                ignore_mention_list = json.loads(group_config.ignore_mention_user)
+                return user_id in ignore_mention_list
+        return False
+
     async def get_message(self) -> None:
         if not self.session.message_queue:
             await asyncio.sleep(3)
@@ -226,10 +237,13 @@ class MessageProcessor:
                 "prompt.event_template", datetime.now().strftime("%H:%M:%S"), event_prompt
             )
             self.openai_messages.append_user_message(content)
+            self.token_bucket.add(0.2)
 
         elif item[0] == "message":
             # 处理消息类型队列项
             message, event, state, user_id, nickname, dt, mentioned, message_id = item[1]
+            mentioned = mentioned and not await self.should_ignore_mention(user_id, event)
+
             text, images = await self.parse_message(message, event, state)
             logger.debug(f"{text=}")
             if not text:
@@ -249,7 +263,10 @@ class MessageProcessor:
             self.session.cached_messages.append(msg_dict)
             await self.session.on_cache_posted()
             trigger_mode = "probability" if not mentioned else "all"
+            self.token_bucket.add(0.5 if len(text) >= 50 else 0.2)
         logger.debug(f"{trigger_mode=} {self.blocked=}")
+        if trigger_mode == "all":
+            self.token_bucket.add(0.5)
         if (
             trigger_mode == "all" or (trigger_mode == "probability" and not self.session.message_queue)
         ) and not self.blocked:
@@ -283,6 +300,7 @@ class MessageProcessor:
             or (not self.openai_messages.is_last_message_from_user())
             or (len(self.openai_messages.messages) < 5 and not important)
             or (recent_message_count > 12 and not important)
+            or self.token_bucket.get() <= 0
         ):
             logger.info("规则检查不通过，跳过 ...")
             return
@@ -339,6 +357,20 @@ class MessageProcessor:
         return call_id, name, param
 
     async def send_message(self, message_content: str, reply_message_id: str | None = None) -> str:
+        # 仅在群聊中启用 token bucket 功能
+        if self.session.get_session_type() == "group":
+            # 检查 token 是否为负数
+            if self.token_bucket.get() < 0 and self.session.get_session_type() == "group":
+                return await self.session.text("message.token_insufficient", self.token_bucket)
+
+            # 计算需要扣除的 token 数量（每 10 个字计入 1 token，不足 10 个字的部分按 10 个字算）
+            text_length = len(message_content)
+            token_cost = (text_length + 9) // 10  # 向上取整
+        else:
+            token_cost = 0
+        # 扣除 token
+        self.token_bucket.consume(token_cost)
+
         self.session.last_activate = datetime.now()
         self.consecutive_message_count += 1
         message = await self.session.format_message(message_content)
@@ -348,21 +380,16 @@ class MessageProcessor:
         # 记录回应用时（使用 reply_message_id 查找对应的原消息）
         self._record_reply_timing(reply_message_id)
 
-        self.session.cached_messages.append(
-            CachedMessage(
-                message_id=str(receipt.msg_ids[0].get("message_id")),
-                nickname="Moonlark",
-                user_id="-1",
-                send_time=datetime.now(),
-                images=[],
-                self=True,
-                content=message_content,
-            )
-        )
-        asyncio.create_task(self.session.on_cache_posted())
-
         return await self.session.text(
-            "message.sent", receipt.msg_ids[0].get("message_id"), len(message_content), self.consecutive_message_count
+            "message.sent",
+            receipt.msg_ids[0].get("message_id"),
+            len(message_content),
+            self.consecutive_message_count,
+            (
+                await self.session.text("message.token", self.token_bucket.get(), token_cost)
+                if self.session.get_session_type() == "group"
+                else ""
+            ),
         )
 
     def _record_reply_timing(self, reply_message_id: str | None = None) -> None:
@@ -567,6 +594,11 @@ class MessageProcessor:
                 "prompt_group.default",
                 await get_prompt_text("identity"),
                 await get_prompt_text("rule"),
+                (
+                    await self.session.text("prompt_group.token_bucket_rule", self.token_bucket.get())
+                    if self.session.get_session_type() == "group"
+                    else ""
+                ),
                 await get_prompt_text("interaction", fav_rule),
                 await self.generate_additional_prompt(),
             ),
