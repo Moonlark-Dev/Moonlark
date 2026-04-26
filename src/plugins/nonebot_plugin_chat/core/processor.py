@@ -347,6 +347,19 @@ class MessageProcessor:
         receipt = await message.send(target=self.session.target, bot=self.session.bot)
         # 记录回应用时（使用 reply_message_id 查找对应的原消息）
         self._record_reply_timing(reply_message_id)
+
+        self.session.cached_messages.append(
+            CachedMessage(
+                message_id=str(receipt.msg_ids[0].get("message_id")),
+                nickname="Moonlark",
+                user_id="-1",
+                send_time=datetime.now(),
+                images=[],
+                self=True,
+                content=message_content,
+            )
+        )
+
         return await self.session.text(
             "message.sent", receipt.msg_ids[0].get("message_id"), len(message_content), self.consecutive_message_count
         )
