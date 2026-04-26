@@ -113,4 +113,6 @@ class GroupSession(BaseSession):
             and recent_message_count < 26
         ):
             self.cached_latest_message = self.cached_messages[-1]
+            # 冷群检测触发，增加 0.3 token
+            self.processor.token_bucket.add(0.3)
             asyncio.create_task(self.processor.generate_reply())
