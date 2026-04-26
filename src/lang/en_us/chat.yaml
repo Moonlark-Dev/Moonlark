@@ -29,6 +29,8 @@ prompt_group:
     - 将要被连续发送的消息的数量是否合理？**被连续发送的消息不能超过 2 条。**
     - 此时群友更需要情感支持还是具体的帮助，亦或者是需要一个情趣相关的玩笑？
 
+    {}
+
     ## 用户输入
 
     群聊内事件遵循格式：[时间(时:分:秒)]: 事件
@@ -72,6 +74,18 @@ prompt_group:
     ## 附加信息
 
     {}
+  token_bucket_rule: |
+    ## 消息 Token
+
+    你有一个消息 Token 池，用于控制发言频率。规则如下：
+    - Token 池初始值 5，最大值 5，最小值 -2
+    - 发送消息时，每 10 字消耗 1 Token（不足 10 字按 1 Token 计）
+    - 收到非消息事件时，每个事件增加 0.2 Token
+    - 收到消息时：字数 > 50 增加 0.5 Token，字数 ≤ 50 增加 0.2 Token
+    - 当收到的消息或事件中 @ 你时，额外增加 0.5 Token
+    - 冷群检测触发时，增加 0.3 Token
+    - Token 为负数时，无法发送消息，直到恢复至 ≥ 0
+    - 当前剩余 Token：{}
   additional_info: |
     {}
     群聊名称：{}
@@ -222,6 +236,14 @@ command:
       list: |
         屏蔽关键词列表:
         {}
+  ignore_mention:
+    added: 已将用户 {} 添加到提及屏蔽列表。
+    exists: 用户 {} 已在提及屏蔽列表中。
+    removed: 已将用户 {} 从提及屏蔽列表中移除。
+    not_found: 用户 {} 不在提及屏蔽列表中。
+    list: |
+      提及屏蔽用户列表:
+      {}
   switch:
     enabled: 已启用
     disabled: 已禁用
@@ -269,9 +291,10 @@ help:
   usage10: chat block user <add|remove|list> [用户ID] (管理屏蔽用户)
   usage11: chat block keyword <add|remove|list> [关键词] (管理屏蔽关键词)
   usage12: chat block list (查看所有屏蔽项)
-  usage13: chat reset (清除当前会话所有历史消息并重置会话状态)
-  usage14: chat stop (强制停止当前正在生成的响应)
-  usage15: chat stats (查看时间统计数据)
+  usage13: chat ignore-mention <add|remove|list> [用户ID] (管理提及屏蔽用户)
+  usage14: chat reset (清除当前会话所有历史消息并重置会话状态)
+  usage15: chat stop (强制停止当前正在生成的响应)
+  usage16: chat stats (查看时间统计数据)
 help_rua:
   description: 互动
   details: 通过 rua 指令与 Moonlark 进行亲密互动（如戳一戳、摸头、拥抱等）。不同的互动动作需要不同的好感度才能解锁。
@@ -478,10 +501,11 @@ poke:
 message:
   deleted: "消息已撤回。"
   delete_failed: "当前平台不支持撤回消息。"
+  token: "\nToken 剩余: {} (-{})"
   sent: |
     消息发送成功(消息ID: {})。
     本条消息字数: {}/50
-    已连续发送消息数: {}/2 (最大 5)
+    已连续发送消息数: {}/2 (最大 5){}
   stop_response: "[错误] 你已连续发送 {} 条消息，超过系统限制，本次发送已被阻止。请等待用户回复后再继续发言。"
   reaction_success: "已发送回应：{}"
   reaction_failed: "失败：当前平台不支持发送回应。"
@@ -1107,7 +1131,7 @@ main_session:
 
     {{
         "type": "do",
-        "information": "XXX",         // 尽量详细的事件描述，例如：和主人一起吃中午饭（小鱼干）。该字段必须是一件具体的事，不能是“玩一会游戏或者看看番剧”这样模糊的表达。
+        "information": "XXX",         // 尽量详细的事件描述，例如：吃中午饭（小鱼干）。该字段必须是一件具体的事，不能是“玩一会游戏或者看看番剧”这样模糊的表达。
         "estimated_time": 20          // 这个事件预计持续的时间单位为分钟。
     }}
 
