@@ -29,13 +29,13 @@ class SleepController:
         """每天8:30执行的定时任务，决定今天的睡觉时间"""
         # 生成睡觉时间决策的prompt
         system_prompt = await lang.text(
-            "main_session.sleep_time_prompt.system",
+            "sleep.sleep_time_prompt.system",
             self.main_session.lang_str,
             await get_prompt_text("identity"),
             await self.main_session.get_additional_prompt(),
             await self.main_session.get_recent_actions_text(self.main_session.lang_str),
         )
-        user_prompt = await lang.text("main_session.sleep_time_prompt.user", self.main_session.lang_str)
+        user_prompt = await lang.text("sleep.sleep_time_prompt.user", self.main_session.lang_str)
 
         try:
             messages = [
@@ -83,7 +83,7 @@ class SleepController:
             if group.cached_messages and (dt - group.cached_messages[-1]["send_time"]) < timedelta(minutes=5):
                 active_sessions.append(group)
         # 向这些session发送睡觉提示
-        sleep_prompt = await lang.text("main_session.sleep_prompt", self.main_session.lang_str)
+        sleep_prompt = await lang.text("sleep.sleep_prompt", self.main_session.lang_str)
         for session in active_sessions:
             await session.add_event(sleep_prompt, "all")
         # 启动决策收集任务
@@ -113,7 +113,7 @@ class SleepController:
 
             # 向所有调用了工具的session推送结果
             result_text = await lang.text(
-                "main_session.sleep_decision.delay",
+                "sleep.sleep_decision.delay",
                 self.main_session.lang_str,
                 reason_text,
                 new_sleep_time.strftime("%H:%M"),
@@ -127,7 +127,7 @@ class SleepController:
                         await groups[session_id].add_event(result_text, "all")
         else:
             # 全部ready，5分钟后睡觉
-            result_text = await lang.text("main_session.sleep_decision.ready", self.main_session.lang_str)
+            result_text = await lang.text("sleep.sleep_decision.ready", self.main_session.lang_str)
             for session_id, decision in self.pending_sleep_decisions.items():
                 if session_id in groups:
                     # 设置Future结果
