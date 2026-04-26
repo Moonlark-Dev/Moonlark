@@ -53,8 +53,6 @@ from .sleep_controller import SleepController
 EFFECTIVE_ACTIONS = ["send_private_message", "do", "sleep", "write_blog"]
 
 
-
-
 class MainSession:
 
     def __init__(self, lang_str: str = "zh_hans") -> None:
@@ -335,7 +333,6 @@ class MainSession:
         result = await lang.text("main_session.write_blog.success", self.lang_str, title)
         fetcher.session.insert_message(generate_message(result, "user"))
 
-
     async def submit_sleep_decision(
         self,
         session_id: str,
@@ -414,4 +411,4 @@ async def init_main_session() -> None:
     """初始化 main_session，从数据库加载数据"""
     await main_session.load_action_history()
     # 注册每天8:30的睡觉时间决策任务
-    # 
+    #
