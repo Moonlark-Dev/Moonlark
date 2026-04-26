@@ -44,6 +44,7 @@ from ..utils.timing_stats import timing_stats_manager
 if TYPE_CHECKING:
     from nonebot_plugin_chat.core.session.base import BaseSession
 
+
 class MessageProcessor:
     def __init__(self, session: "BaseSession"):
         self.openai_messages = MessageQueue(self, 50)
@@ -368,13 +369,17 @@ class MessageProcessor:
         receipt = await message.send(target=self.session.target, bot=self.session.bot)
         # 记录回应用时（使用 reply_message_id 查找对应的原消息）
         self._record_reply_timing(reply_message_id)
-        
+
         return await self.session.text(
-            "message.sent", 
-            receipt.msg_ids[0].get("message_id"), 
-            len(message_content), 
+            "message.sent",
+            receipt.msg_ids[0].get("message_id"),
+            len(message_content),
             self.consecutive_message_count,
-            await self.session.text("message.token", self.token_bucket.get(), token_cost) if self.session.get_session_type() == "group" else ""
+            (
+                await self.session.text("message.token", self.token_bucket.get(), token_cost)
+                if self.session.get_session_type() == "group"
+                else ""
+            ),
         )
 
     def _record_reply_timing(self, reply_message_id: str | None = None) -> None:
@@ -579,7 +584,11 @@ class MessageProcessor:
                 "prompt_group.default",
                 await get_prompt_text("identity"),
                 await get_prompt_text("rule"),
-                await self.session.text("prompt_group.token_bucket_rule", self.token_bucket.get()) if self.session.get_session_type() == "group" else "",
+                (
+                    await self.session.text("prompt_group.token_bucket_rule", self.token_bucket.get())
+                    if self.session.get_session_type() == "group"
+                    else ""
+                ),
                 await get_prompt_text("interaction", fav_rule),
                 await self.generate_additional_prompt(),
             ),
