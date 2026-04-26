@@ -359,6 +359,7 @@ class MessageProcessor:
                 content=message_content,
             )
         )
+        asyncio.create_task(self.session.on_cache_posted())
 
         return await self.session.text(
             "message.sent", receipt.msg_ids[0].get("message_id"), len(message_content), self.consecutive_message_count
