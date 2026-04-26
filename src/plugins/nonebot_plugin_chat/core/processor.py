@@ -675,7 +675,7 @@ class MessageProcessor:
             logger.exception(e)
 
     async def check_message_truncated(self) -> bool:
-        chat_history = await self.session.get_cached_messages_string()
+        chat_history = await self.session.get_cached_messages_string(length=10, include_self_message=False)
         try:
             model_response = await fetch_message(
                 [
