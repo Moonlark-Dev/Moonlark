@@ -237,12 +237,12 @@ class MessageProcessor:
                 "prompt.event_template", datetime.now().strftime("%H:%M:%S"), event_prompt
             )
             self.openai_messages.append_user_message(content)
-            self.token_bucket.add(0.2)
+            self.token_bucket.add(0.5)
 
         elif item[0] == "message":
             # 处理消息类型队列项
             message, event, state, user_id, nickname, dt, mentioned, message_id = item[1]
-            mentioned = mentioned and not await self.should_ignore_mention(user_id, event)
+            mentioned = mentioned and not await self.should_ignore_mention(user_id)
 
             text, images = await self.parse_message(message, event, state)
             logger.debug(f"{text=}")
@@ -263,7 +263,7 @@ class MessageProcessor:
             self.session.cached_messages.append(msg_dict)
             await self.session.on_cache_posted()
             trigger_mode = "probability" if not mentioned else "all"
-            self.token_bucket.add(0.5 if len(text) >= 50 else 0.2)
+            self.token_bucket.add(1 if len(text) >= 50 else 0.5)
         logger.debug(f"{trigger_mode=} {self.blocked=}")
         if trigger_mode == "all":
             self.token_bucket.add(0.5)
