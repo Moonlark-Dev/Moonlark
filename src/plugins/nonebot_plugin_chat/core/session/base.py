@@ -356,13 +356,17 @@ class BaseSession(ABC):
 
         await self.processor.openai_messages.save_to_db()
 
-    async def get_cached_messages_string(self) -> str:
+    async def get_cached_messages_string(self, length: int = 50, include_self_message: bool = False) -> str:
         messages = []
         for message in self.cached_messages:
+            # 根据 include_self_message 参数决定是否包含自己的消息
+            if not include_self_message and message.get("self", False):
+                continue
             messages.append(
                 f"[{message['send_time'].strftime('%H:%M:%S')}][{message['nickname']}]: {message['content']}"
             )
-        return "\n".join(messages)
+        # 只返回最近的 length 条消息
+        return "\n".join(messages[-length:])
 
     async def handle_recall(self, message_id: str) -> None:
         for message in self.cached_messages:
