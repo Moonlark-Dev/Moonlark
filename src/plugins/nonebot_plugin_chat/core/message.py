@@ -177,15 +177,15 @@ class MessageQueue:
                         logger.debug(f"Cached interest: {analysis.interest:.2f}")
                     if (judge := analysis.favorability_judge) is not None:
                         await self.processor.judge_user_behavior(judge.target, judge.score, judge.reason)
-                    if (
-                        analysis.reply_required
-                        and isinstance(fetcher.session.messages[-1], ChatCompletionMessage)
-                        and not fetcher.session.messages[-1].tool_calls
-                    ):
-                        fetcher.session.insert_message(
-                            generate_message(await self.processor.session.text("fetcher.reply_required"), "user")
-                        )
-                        retry_count += 1
+                    # if (
+                    #     analysis.reply_required
+                    #     and isinstance(fetcher.session.messages[-1], ChatCompletionMessage)
+                    #     and not fetcher.session.messages[-1].tool_calls
+                    # ):
+                    #     fetcher.session.insert_message(
+                    #         generate_message(await self.processor.session.text("fetcher.reply_required"), "user")
+                    #     )
+                    #     retry_count += 1
                 if self.continuous_response:
                     fetcher.session.insert_messages(self.messages)
                     self.messages.clear()

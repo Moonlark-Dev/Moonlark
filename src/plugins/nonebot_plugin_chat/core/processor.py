@@ -61,7 +61,7 @@ class MessageProcessor:
         self.loop_task = None
         self.consecutive_message_count = 0
         # Token bucket 相关属性
-        self.token_bucket = TokenBucket(5, -2)
+        self.token_bucket = TokenBucket(10, -2)
 
     async def setup(self) -> None:
         self.functions = await self.tool_manager.select_tools("group")
@@ -365,7 +365,7 @@ class MessageProcessor:
 
             # 计算需要扣除的 token 数量（每 10 个字计入 1 token，不足 10 个字的部分按 10 个字算）
             text_length = len(message_content)
-            token_cost = (text_length + 9) // 15  # 向上取整
+            token_cost = (text_length + 9) // 18  # 向上取整
         else:
             token_cost = 0
         # 扣除 token
