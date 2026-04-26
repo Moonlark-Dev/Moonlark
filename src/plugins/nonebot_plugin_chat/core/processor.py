@@ -237,12 +237,12 @@ class MessageProcessor:
                 "prompt.event_template", datetime.now().strftime("%H:%M:%S"), event_prompt
             )
             self.openai_messages.append_user_message(content)
-            self.token_bucket.add(0.2)
+            self.token_bucket.add(0.6)
 
         elif item[0] == "message":
             # 处理消息类型队列项
             message, event, state, user_id, nickname, dt, mentioned, message_id = item[1]
-            mentioned = mentioned and not await self.should_ignore_mention(user_id, event)
+            mentioned = mentioned and not await self.should_ignore_mention(user_id)
 
             text, images = await self.parse_message(message, event, state)
             logger.debug(f"{text=}")
@@ -263,10 +263,10 @@ class MessageProcessor:
             self.session.cached_messages.append(msg_dict)
             await self.session.on_cache_posted()
             trigger_mode = "probability" if not mentioned else "all"
-            self.token_bucket.add(0.5 if len(text) >= 50 else 0.2)
+            self.token_bucket.add(1 if len(text) >= 30 else 0.8)
         logger.debug(f"{trigger_mode=} {self.blocked=}")
         if trigger_mode == "all":
-            self.token_bucket.add(0.5)
+            self.token_bucket.add(1)
         if (
             trigger_mode == "all" or (trigger_mode == "probability" and not self.session.message_queue)
         ) and not self.blocked:
@@ -361,11 +361,11 @@ class MessageProcessor:
         if self.session.get_session_type() == "group":
             # 检查 token 是否为负数
             if self.token_bucket.get() < 0 and self.session.get_session_type() == "group":
-                return await self.session.text("message.token_insufficient", self.token_bucket)
+                return await self.session.text("message.token_insufficient", self.token_bucket.get())
 
             # 计算需要扣除的 token 数量（每 10 个字计入 1 token，不足 10 个字的部分按 10 个字算）
             text_length = len(message_content)
-            token_cost = (text_length + 9) // 10  # 向上取整
+            token_cost = (text_length + 9) // 15  # 向上取整
         else:
             token_cost = 0
         # 扣除 token

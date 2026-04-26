@@ -54,7 +54,7 @@ prompt_group:
 
     JSON 格式：
     {{
-      "reply_required": true,   // 必要：是否需要回复用户。如果你认为不需要回复（例如话题已结束或无意义），请设为 false。
+      "reply_required": true,   // 必要：是否需要回复用户。如果你认为不需要回复（例如话题已结束或无意义），请设为 false，该选项为 true 时，如果你在后续没有使用 send_message 工具会收到提示。
       "interest": 0.5,          // 必要：你对当前话题的兴趣程度，0-1 之间的浮点数。0 表示完全没兴趣，1 表示非常感兴趣。这会影响你后续回复的触发概率。
       "mood": "happy",          // 必要：当前心情 (只能从 joy/sadness/anger/fear/surprise/disgust/trust/anticipation/calm/bored/confused/tired/shy 中选取)，为 null 则维持原状。这代表了 Moonlark 的心情变动的方向，不完全代表当前的心情。
       "mood_reason": "...",     // 可选：心情变化的原因。如因为 UserA 的夸赞
@@ -79,12 +79,8 @@ prompt_group:
 
     你有一个消息 Token 池，用于控制发言频率。规则如下：
     - Token 池初始值 5，最大值 5，最小值 -2
-    - 发送消息时，每 10 字消耗 1 Token（不足 10 字按 1 Token 计）
-    - 收到非消息事件时，每个事件增加 0.2 Token
-    - 收到消息时：字数 > 50 增加 0.5 Token，字数 ≤ 50 增加 0.2 Token
-    - 当收到的消息或事件中 @ 你时，额外增加 0.5 Token
-    - 冷群检测触发时，增加 0.3 Token
-    - Token 为负数时，无法发送消息，直到恢复至 ≥ 0
+    - 发送消息时，每 15 字消耗 1 Token（不足 15 字按 1 Token 计）
+    - Token 为负数时，你将无法发送消息，直到恢复至 ≥ 0
     - 当前剩余 Token：{} 
   additional_info: |
     {}
@@ -521,6 +517,7 @@ message:
     已连续发送消息数: {}/2 (最大 5){}
   stop_response: "[错误] 你已连续发送 {} 条消息，超过系统限制，本次发送已被阻止。请等待用户回复后再继续发言。"
   reaction_success: "已发送回应：{}"
+  token_insufficient: 发送这条消息所需的 Token 不足，请等待用户回复后再继续发言。
   reaction_failed: "失败：当前平台不支持发送回应。"
 
 interaction:
@@ -926,7 +923,7 @@ prompt_link_parser: |
 fetcher:
   parse_failed: "[异常] 解析输出失败，请检查你的输出内容并尝试重新输出。错误信息：{}"
   sticker_recommendation: "基于上下文的表情包推荐:"
-  reply_required: "[警告] 你标记了一个“需要回复”，但是没有输出任何的工具调用。请确保你的输出中包含一个有效的 `send_message` 工具调用。"
+  reply_required: "[提示] 你标记了一个“需要回复”，但是没有输出任何的工具调用。请确保你的输出中包含一个有效的 `send_message` 工具调用。"
 
 proactive_message:
   prompt: |
