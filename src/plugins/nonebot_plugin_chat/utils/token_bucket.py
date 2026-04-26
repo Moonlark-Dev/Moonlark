@@ -3,7 +3,7 @@ class TokenBucket:
     def __init__(self, max_token: int, min_token: int) -> None:
         self.max_token = max_token
         self.min_token = min_token
-        self.token = max_token * 1/5
+        self.token = max_token * 1 / 5
 
     def add(self, token: float) -> None:
         self.token = min(self.token + token, self.max_token)
