@@ -210,6 +210,14 @@ class MessageProcessor:
         msg_str = await parser.parse()
         return (await LinkParser(msg_str, self.session.lang_str).parse()), parser.images
 
+    async def should_ignore_mention(self, user_id: str) -> bool:
+        async with get_session() as db_session:
+            group_config = await db_session.get(ChatGroup, {"group_id": self.session.session_id})
+            if group_config:
+                ignore_mention_list = json.loads(group_config.ignore_mention_user)
+                return user_id in ignore_mention_list
+        return False
+
     async def get_message(self) -> None:
         if not self.session.message_queue:
             await asyncio.sleep(3)
@@ -230,6 +238,8 @@ class MessageProcessor:
         elif item[0] == "message":
             # 处理消息类型队列项
             message, event, state, user_id, nickname, dt, mentioned, message_id = item[1]
+            mentioned = mentioned and not await self.should_ignore_mention(user_id, event)
+
             text, images = await self.parse_message(message, event, state)
             logger.debug(f"{text=}")
             if not text:

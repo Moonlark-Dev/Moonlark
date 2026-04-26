@@ -219,6 +219,37 @@ class CommandHandler:
         else:
             await lang.finish("command.no_argv", self.user_id)
 
+    async def handle_ignore_mention(self) -> None:
+        if len(self.argv) < 3:
+            await lang.finish("command.no_argv", self.user_id)
+
+        action = self.argv[2]
+        ignore_list = json.loads(self.group_config.ignore_mention_user)
+
+        if action == "list":
+            await lang.finish("command.ignore_mention.list", self.user_id, ", ".join(ignore_list))
+
+        if len(self.argv) < 4:
+            await lang.finish("command.no_argv", self.user_id)
+        target_id = self.argv[3]
+
+        if action == "add":
+            if target_id not in ignore_list:
+                ignore_list.append(target_id)
+                self.group_config.ignore_mention_user = json.dumps(ignore_list)
+                await self.merge_group_config()
+                await lang.finish("command.ignore_mention.added", self.user_id, target_id)
+            else:
+                await lang.finish("command.ignore_mention.exists", self.user_id, target_id)
+        elif action == "remove":
+            if target_id in ignore_list:
+                ignore_list.remove(target_id)
+                self.group_config.ignore_mention_user = json.dumps(ignore_list)
+                await self.merge_group_config()
+                await lang.finish("command.ignore_mention.removed", self.user_id, target_id)
+            else:
+                await lang.finish("command.ignore_mention.not_found", self.user_id, target_id)
+
     async def handle(self) -> None:
         match self.argv[0]:
             case "switch":
@@ -237,6 +268,8 @@ class CommandHandler:
                 await self.handle_off()
             case "block":
                 await self.handle_block()
+            case "ignore-mention":
+                await self.handle_ignore_mention()
             case "reset":
                 await self.handle_reset()
             case "stop":
