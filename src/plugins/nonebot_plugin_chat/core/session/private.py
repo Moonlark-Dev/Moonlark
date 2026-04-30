@@ -24,10 +24,10 @@ class PrivateSession(BaseSession):
 
     async def setup(self) -> None:
         await super().setup()
-        await self.setup_session_name()
+        await self.get_session_name()
         self.processor.openai_messages.continuous_response = True
 
-    async def setup_session_name(self) -> None:
+    async def get_session_name(self) -> str:
         ml_user = await get_user(self.session_id)
         if isinstance(self.bot, OB11Bot):
             user_info = await self.bot.get_stranger_info(user_id=int(self.session_id))
@@ -42,7 +42,7 @@ class PrivateSession(BaseSession):
             self.nickname = ml_user.get_nickname()
             self.user_info = AdapterUserInfo(nickname=self.nickname, sex="unknown", role="user", join_time=0, card=None)
         self.call = ml_user.get_config_key("call", self.nickname)
-        self.session_name = f"与 {self.nickname} 的私聊"
+        return await self.text("prompt_group.private_session", self.nickname)
 
     async def format_message(self, origin_message: str) -> UniMessage:
         return UniMessage().text(text=origin_message.replace(f"@{self.nickname}", self.call))
