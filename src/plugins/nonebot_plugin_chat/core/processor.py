@@ -210,7 +210,9 @@ class MessageProcessor:
             return await self.session.text("poke.not_found")
 
     async def parse_message(self, message: UniMessage, event: Event, state: T_State) -> tuple[str, list[bytes]]:
-        parser = MessageParser(message, event, self.session.bot, state, self.session.lang_str, not self.ENABLE_EMBEDDED_IMAGE)
+        parser = MessageParser(
+            message, event, self.session.bot, state, self.session.lang_str, not self.ENABLE_EMBEDDED_IMAGE
+        )
         msg_str = await parser.parse()
         return (await LinkParser(msg_str, self.session.lang_str).parse()), parser.images
 
@@ -526,11 +528,7 @@ class MessageProcessor:
 
         note_lines = [await format_note(note) for note in notes]
         note_lines = await self.filter_info_lines(note_lines)
-        return (
-            "\n".join(note_lines)
-            if notes
-            else await self.session.text("prompt.note.none")
-        )
+        return "\n".join(note_lines) if notes else await self.session.text("prompt.note.none")
 
     async def generate_additional_prompt(self, message_str: str, sender_id: str) -> str:
         note_manager = await get_context_notes(self.session.session_id)
@@ -544,15 +542,24 @@ class MessageProcessor:
         mood, mood_reason = status_manager.get_status()
         mood_text = await self.session.text(f"status.mood.{mood.value}")
         from .ego import consciousness
+
         current_time = await self.session.text("prompt_group.time", datetime.now().isoformat())
         state = await self.session.text(
             "prompt_group.state",
             mood_text,
-            status_manager.get_mood_retention(), 
-            mood_reason if not self.is_additional_info_line_showed(str(mood_reason)) else await self.session.text("prompt_group.showed"),
+            status_manager.get_mood_retention(),
+            (
+                mood_reason
+                if not self.is_additional_info_line_showed(str(mood_reason))
+                else await self.session.text("prompt_group.showed")
+            ),
         )
 
-        recent_activities = "\n".join(await self.filter_info_lines((await consciousness.get_recent_actions_text(self.session.lang_str)).splitlines()))
+        recent_activities = "\n".join(
+            await self.filter_info_lines(
+                (await consciousness.get_recent_actions_text(self.session.lang_str)).splitlines()
+            )
+        )
         return await self.session.text(
             "prompt_group.chat_additional_info",
             datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -566,10 +573,10 @@ class MessageProcessor:
             await self.filter_instant_mem(message_str),
             state,
         )
-    
+
     async def filter_info_lines(self, lines: list[str]) -> list[str]:
         return [line for line in lines if not await self.is_additional_info_line_showed(line)]
-    
+
     async def is_additional_info_line_showed(self, line: str) -> bool:
         async with self.openai_messages.fetcher_lock:
             for message in self.openai_messages.messages:
@@ -607,7 +614,11 @@ class MessageProcessor:
                     if self.session.get_session_type() == "group"
                     else ""
                 ),
-                await self.session.text("prompt_group.simple_image") if self.ENABLE_EMBEDDED_IMAGE else await self.session.text("prompt_group.image_placeholder"),
+                (
+                    await self.session.text("prompt_group.simple_image")
+                    if self.ENABLE_EMBEDDED_IMAGE
+                    else await self.session.text("prompt_group.image_placeholder")
+                ),
                 await get_prompt_text("interaction", fav_rule),
             ),
             "system",

@@ -144,7 +144,7 @@ class MainSession:
                     continue
 
     async def trigger_sleep(self, time: int) -> None:
-        await asyncio.sleep(time * 60 // 5)     # 防止马上被叫起来
+        await asyncio.sleep(time * 60 // 5)  # 防止马上被叫起来
         for group in groups.values():
             await group.processor.generate_instant_memory()
             await group.processor.openai_messages.reset_chat_history()

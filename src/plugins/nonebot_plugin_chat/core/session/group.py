@@ -76,7 +76,7 @@ class GroupSession(BaseSession):
     async def get_session_name(self) -> str:
         if isinstance(self.bot, OB11Bot):
             return (await self.bot.get_group_info(group_id=int(self.adapter_group_id)))["group_name"]
-        return (await self.text("prompt_group.unknown_session_name"))
+        return await self.text("prompt_group.unknown_session_name")
 
     async def format_message(self, origin_message: str) -> UniMessage:
         message = re.sub(r"\[\d\d:\d\d:\d\d]\[Moonlark]\(\d+\): ?", "", origin_message)

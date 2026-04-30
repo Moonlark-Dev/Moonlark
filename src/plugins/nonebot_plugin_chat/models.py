@@ -65,6 +65,7 @@ class Sticker(Model):
 
 class MessageQueueCache(Model):
     """消息队列缓存，用于持久化 OpenAI 消息历史以便重启后恢复"""
+
     message_id: Mapped[int] = mapped_column(Integer(), primary_key=True, autoincrement=True)
     group_id: Mapped[str] = mapped_column(String(128))
     # MySQL 使用 MEDIUMTEXT (16MB)，SQLite 使用 Text（无大小限制）

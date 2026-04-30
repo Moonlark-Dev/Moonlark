@@ -73,9 +73,13 @@ class MessageQueue:
             group_id = self.processor.session.session_id
             earliest_time = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
             async with get_session() as session:
-                cache = await session.scalars(select(MessageQueueCache).where(MessageQueueCache.updated_time >= earliest_time, MessageQueueCache.group_id == group_id).order_by(MessageQueueCache.message_id))
+                cache = await session.scalars(
+                    select(MessageQueueCache)
+                    .where(MessageQueueCache.updated_time >= earliest_time, MessageQueueCache.group_id == group_id)
+                    .order_by(MessageQueueCache.message_id)
+                )
                 self.messages = [json.loads(msg.message_json) for msg in cache]
-                
+
                 logger.info(f"已从数据库恢复群 {group_id} 的消息队列，共 {len(self.messages)} 条消息")
         except Exception as e:
             logger.warning(f"从数据库恢复消息队列失败: {e}")
@@ -85,7 +89,11 @@ class MessageQueue:
         earliest_time = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
         group_id = self.processor.session.session_id
         async with get_session() as session:
-            await session.execute(delete(MessageQueueCache).where(MessageQueueCache.group_id == group_id, MessageQueueCache.updated_time < earliest_time))
+            await session.execute(
+                delete(MessageQueueCache).where(
+                    MessageQueueCache.group_id == group_id, MessageQueueCache.updated_time < earliest_time
+                )
+            )
             await session.commit()
 
     async def save_to_db(self) -> None:
@@ -96,7 +104,9 @@ class MessageQueue:
                 async with get_session() as session:
                     for msg in self._serialize_messages():
                         sha256 = hashlib.sha256(msg.encode())
-                        result = await session.scalar(select(MessageQueueCache).where(MessageQueueCache.message_hash == sha256.digest()))
+                        result = await session.scalar(
+                            select(MessageQueueCache).where(MessageQueueCache.message_hash == sha256.digest())
+                        )
                         if result is not None:
                             continue
                         cache = MessageQueueCache(
