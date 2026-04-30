@@ -537,7 +537,7 @@ class MessageProcessor:
         notes.extend(notes_from_other_group)
         sender_profile = sender.get_config_key("chat_profile")
         if self.is_additional_info_line_showed(sender_profile):
-            sender_profile = await self.session.text("prompt.showed")
+            sender_profile = await self.session.text("prompt_group.showed")
         status_manager = get_status_manager()
         mood, mood_reason = status_manager.get_status()
         mood_text = await self.session.text(f"status.mood.{mood.value}")
