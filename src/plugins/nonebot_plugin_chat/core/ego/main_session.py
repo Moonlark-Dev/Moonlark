@@ -134,8 +134,6 @@ class MainSession:
                             generate_message("错误：在准备睡觉时只能选择 sleep 动作", "user")
                         )
                         continue
-                    if action.type == "sleep":
-                        await self.trigger_sleep(action.time)
                     if action.type in ["send_private_message", "do", "sleep", "write_blog"]:
                         self.action_history.append((datetime.now(), action, None))
                     await self.handle_action(action, fetcher)
@@ -143,8 +141,8 @@ class MainSession:
                     fetcher.session.insert_message(generate_message(traceback.format_exc(), "user"))
                     continue
 
-    async def trigger_sleep(self, time: int) -> None:
-        await asyncio.sleep(time * 60 // 5)  # 防止马上被叫起来
+    async def trigger_sleep(self) -> None:
+        await asyncio.sleep(60)  # 防止马上被叫起来
         for group in groups.values():
             await group.processor.generate_instant_memory()
             await group.processor.openai_messages.reset_chat_history()
@@ -302,6 +300,7 @@ class MainSession:
                 sleep_start = datetime.now()
                 sleep_end = sleep_start + timedelta(minutes=action.time)
                 self.state_until = sleep_end
+                await self.trigger_sleep()
             case "do":
                 self.state = StateEnum.BUSY
                 self.state_until = datetime.now() + timedelta(minutes=action.estimated_time)
