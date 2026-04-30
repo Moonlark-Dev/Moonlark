@@ -1,3 +1,4 @@
+import hashlib
 import re
 import traceback
 from typing import TYPE_CHECKING, Optional
@@ -18,6 +19,8 @@ import asyncio
 import copy
 import json
 from datetime import datetime
+
+from sqlalchemy import delete, select
 
 from ..utils.timing_stats import timing_stats_manager
 
@@ -59,22 +62,31 @@ class MessageQueue:
         else:
             return {"content": str(message), "role": "user"}
 
-    def _serialize_messages(self) -> str:
+    def _serialize_messages(self) -> list[str]:
         """将消息列表序列化为 JSON 字符串"""
         serialized = [self._serialize_message(msg) for msg in self.messages]
-        return json.dumps(serialized, ensure_ascii=False)
+        return [json.dumps(msg, ensure_ascii=False) for msg in serialized]
 
     async def restore_from_db(self) -> None:
         """从数据库恢复消息队列"""
         try:
             group_id = self.processor.session.session_id
+            earliest_time = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
             async with get_session() as session:
-                cache = await session.get(MessageQueueCache, {"group_id": group_id})
-                if cache:
-                    self.messages = json.loads(cache.messages_json)
-                    logger.info(f"已从数据库恢复群 {group_id} 的消息队列，共 {len(self.messages)} 条消息")
+                cache = await session.scalars(select(MessageQueueCache).where(MessageQueueCache.updated_time >= earliest_time, MessageQueueCache.group_id == group_id).order_by(MessageQueueCache.message_id))
+                self.messages = [json.loads(msg.message_json) for msg in cache]
+                
+                logger.info(f"已从数据库恢复群 {group_id} 的消息队列，共 {len(self.messages)} 条消息")
         except Exception as e:
             logger.warning(f"从数据库恢复消息队列失败: {e}")
+
+    async def clear_cache(self) -> None:
+        """清空消息队列缓存"""
+        earliest_time = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        group_id = self.processor.session.session_id
+        async with get_session() as session:
+            await session.execute(delete(MessageQueueCache).where(MessageQueueCache.group_id == group_id, MessageQueueCache.updated_time < earliest_time))
+            await session.commit()
 
     async def save_to_db(self) -> None:
         """将消息队列保存到数据库"""
@@ -82,12 +94,17 @@ class MessageQueue:
             async with self.fetcher_lock:
                 group_id = self.processor.session.session_id
                 async with get_session() as session:
-                    cache = MessageQueueCache(
-                        group_id=group_id,
-                        messages_json=self._serialize_messages(),
-                        updated_time=datetime.now().timestamp(),
-                    )
-                    await session.merge(cache)
+                    for msg in self._serialize_messages():
+                        sha256 = hashlib.sha256(msg.encode())
+                        result = await session.scalar(select(MessageQueueCache).where(MessageQueueCache.message_hash == sha256.digest()))
+                        if result is not None:
+                            continue
+                        cache = MessageQueueCache(
+                            group_id=group_id,
+                            messages_json=msg,
+                            message_hash=sha256.digest(),
+                        )
+                        session.add(cache)
                     await session.commit()
         except Exception as e:
             logger.exception(e)
