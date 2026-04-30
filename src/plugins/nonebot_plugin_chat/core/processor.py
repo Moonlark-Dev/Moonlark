@@ -535,9 +535,6 @@ class MessageProcessor:
         sender = await get_user(sender_id)
         notes, notes_from_other_group = await note_manager.filter_note(message_str)
         notes.extend(notes_from_other_group)
-        sender_profile = sender.get_config_key("chat_profile")
-        if self.is_additional_info_line_showed(sender_profile):
-            sender_profile = await self.session.text("prompt_group.showed")
         status_manager = get_status_manager()
         mood, mood_reason = status_manager.get_status()
         mood_text = await self.session.text(f"status.mood.{mood.value}")
@@ -567,7 +564,6 @@ class MessageProcessor:
             sender.get_nickname(),
             sender.get_fav(),
             await sender.get_fav_level(),
-            sender_profile,
             await self.generate_note_text(notes),
             recent_activities or None,
             await self.filter_instant_mem(message_str),

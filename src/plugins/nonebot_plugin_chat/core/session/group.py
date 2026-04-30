@@ -27,7 +27,12 @@ class GroupSession(BaseSession):
             member_info = await self.bot.get_group_member_info(
                 group_id=int(self.adapter_group_id), user_id=int(user_id)
             )
-            return AdapterUserInfo(**member_info)
+            adapter_nickname = member_info["nickname"]
+            user = await get_user(user_id)
+            return AdapterUserInfo(
+                **member_info,
+                nickname=adapter_nickname if not user.has_nickname() else user.get_nickname(),
+            )
         cached_users = await self.get_users()
         if user_id in cached_users.values():
             for nickname, uid in cached_users.items():
@@ -43,7 +48,10 @@ class GroupSession(BaseSession):
             if isinstance(self.bot, OB11Bot):
                 self.group_users.clear()
                 for user in await self.bot.get_group_member_list(group_id=int(self.adapter_group_id)):
-                    self.group_users[user["nickname"]] = str(user["user_id"])
+                    adapter_nickname = user["nickname"]
+                    ml_user = await get_user(user["user_id"])
+                    nickname = adapter_nickname if not ml_user.has_nickname() else ml_user.get_nickname()
+                    self.group_users[nickname] = str(user["user_id"])
             else:
                 self.group_users = cached_users
         return self.group_users
