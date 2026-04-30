@@ -111,7 +111,7 @@ class MessageQueue:
                             continue
                         cache = MessageQueueCache(
                             group_id=group_id,
-                            messages_json=msg,
+                            message_json=msg,
                             message_hash=sha256.digest(),
                         )
                         session.add(cache)
