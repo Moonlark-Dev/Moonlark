@@ -1,6 +1,9 @@
-# LarkLang - 本地化 `nonebot_plugin_larklang` 是 Moonlark 中的本地化插件，用于处理多语言支持。
+# LarkLang - 本地化
 
-::: tip "为了保证一致性，任何可以接入的地方都应该接入本地化。" ——xxtg666 :::
+`nonebot_plugin_larklang` 是 Moonlark 中的本地化插件，用于处理多语言支持。
+
+::: tip "为了保证一致性，任何可以接入的地方都应该接入本地化。" ——xxtg666
+:::
 
 ## 语言操作类 `LangHelper`
 
@@ -19,7 +22,9 @@ def __init__(self, name: str = "") -> None:
 #### 异常
 - `nonebot_plugin_larklang.exceptions.InvalidPluginNameException`: 获取插件名失败，且 `name` 参数为空。
 
-::: tip `InvalidPluginNameException` 异常很少出现，一般来说不用处理，必要时手动传入 `name` 参数就可以了。 :::
+::: tip
+`InvalidPluginNameException` 异常很少出现，一般来说不用处理，必要时手动传入 `name` 参数就可以了。
+:::
 
 ### `text`
 ```python
@@ -27,7 +32,9 @@ async def text(self, key: str, user_id: str | int, *args, **kwargs) -> str:
 ```
 获取指定键的本地化文本。
 
-::: tip YAML 支持多行字符串，尽量不要在代码中按行进行拆分或拼接。 :::
+::: tip
+YAML 支持多行字符串，尽量不要在代码中按行进行拆分或拼接。
+:::
 
 #### 参数
 - `key`: 键名，为 `xxx2.xxx3` 格式的字符串。
@@ -56,13 +63,15 @@ async def send(self, key: str, user_id: str | int, *args, matcher: Matcher = Mat
 ```
 向当前事件响应会话发送文本。
 
-::: tip 假设 `matcher` 是一个 `Matcher`，`lang` 是一个 `LangHelper`，`user_id` 为一个用户 ID 字符串，那么此时：
+::: tip
+假设 `matcher` 是一个 `Matcher`，`lang` 是一个 `LangHelper`，`user_id` 为一个用户 ID 字符串，那么此时：
 ```python
 await matcher.send(await lang.text("aaa.bbb", user_id), at_sender=True)
 ```
 和 ```python
 await lang.send("aaa.bbb", user_id)
-``` 等效。 :::
+``` 等效。
+:::
 
 #### 参数
 - `key`: 本地化键名，为 `xxx2.xxx3` 格式的字符串。
@@ -84,15 +93,19 @@ async def finish(self, key: str, user_id: str | int, *args, matcher: Matcher = M
 ```
 发送一条本地化消息并结束事件响应器。
 
-::: tip 假设 `matcher` 是一个 `Matcher`，`lang` 是一个 `LangHelper`，`user_id` 为一个用户 ID 字符串，那么此时：
+::: tip
+假设 `matcher` 是一个 `Matcher`，`lang` 是一个 `LangHelper`，`user_id` 为一个用户 ID 字符串，那么此时：
 ```python
 await matcher.finish(await lang.text("aaa.bbb", user_id), at_sender=True)
 ```
 和 ```python
 await lang.finish("aaa.bbb", user_id)
-``` 等效。 :::
+``` 等效。
+:::
 
-::: warning 此方法会抛出 `FinishedException` 并结束当前事件响应。 :::
+::: warning
+此方法会抛出 `FinishedException` 并结束当前事件响应。
+:::
 
 #### 参数
 与 `LangHelper().send` 相同。
@@ -109,13 +122,15 @@ async def reply(self, key: str, user_id: str | int, *args, **kwargs) -> None:
 ```
 回复消息。
 
-::: tip 假设 `lang` 为 `LangHelper`，`user_id` 为用户 ID，那么：
+::: tip
+假设 `lang` 为 `LangHelper`，`user_id` 为用户 ID，那么：
 ```python
 await lang.send("xxx2.xxx3", user_id, reply_message=True, at_sender=False)
 ```
 和 ```python
 await lang.reply()
-``` 等效。 :::
+``` 等效。
+:::
 
 #### 参数
 与 `LangHelper().text` 相同。
