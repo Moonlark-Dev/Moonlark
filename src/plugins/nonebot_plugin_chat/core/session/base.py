@@ -46,7 +46,6 @@ class BaseSession(ABC):
         self.last_activate = datetime.now()
         self.mute_until: Optional[datetime] = None
         self.group_users: dict[str, str] = {}
-        self.session_name = "未命名会话"
         self.llm_timers = []  # 定时器列表
         self.pending_interactions: dict[str, PendingInteraction] = {}  # 待处理的交互请求
         self.last_interest: Optional[float] = None  # 缓存的 interest 值
@@ -168,15 +167,13 @@ class BaseSession(ABC):
         self.message_cache_counter += 1
         await self.calculate_ghot_coefficient()
         self.clean_cached_message()
-        if self.message_cache_counter % 50 == 0:
-            await self.setup_session_name()
         self.last_activate = datetime.now()
 
     async def mute(self) -> None:
         self.mute_until = datetime.now() + timedelta(minutes=15)
 
     @abstractmethod
-    async def setup_session_name(self) -> None:
+    async def get_session_name(self) -> str:
         pass
 
     async def handle_message(
