@@ -436,6 +436,7 @@ class MessageProcessor:
 
             if not self.blocked:
                 msg_str = generate_message_string(msg_dict)
+                msg_str += await self.generate_additional_prompt(msg_str, msg_dict["user_id"])
                 self.append_user_message(msg_str, msg_dict["images"])
             if not self.blocked and not msg_dict["self"]:
                 content = msg_dict.get("content", "")
@@ -522,53 +523,58 @@ class MessageProcessor:
             created_time = datetime.fromtimestamp(note.created_time).strftime("%y-%m-%d")
             return await self.session.text("prompt.note.format", note.content, note.id, created_time)
 
+        note_lines = [await format_note(note) for note in notes]
+        note_lines = await self.filter_info_lines(note_lines)
         return (
-            "\n".join([await format_note(note) for note in notes])
+            "\n".join(note_lines)
             if notes
             else await self.session.text("prompt.note.none")
         )
 
-    async def generate_additional_prompt(self) -> str:
-        chat_history = "\n".join(self.get_message_content_list())
-        # 获取相关笔记
+    async def generate_additional_prompt(self, message_str: str, sender_id: str) -> str:
         note_manager = await get_context_notes(self.session.session_id)
-        notes, notes_from_other_group = await note_manager.filter_note(chat_history)
-
-        # 获取用户 profile 信息
-        user_profiles = await self._get_user_profiles()
-
-        # 格式化 profile 信息
-        if user_profiles:
-            profiles_text = "\n".join(user_profiles)
-        else:
-            profiles_text = await self.session.text("prompt.profile.none")
-
+        sender = await get_user(sender_id)
+        notes, notes_from_other_group = await note_manager.filter_note(message_str)
+        notes.extend(notes_from_other_group)
+        sender_profile = sender.get_config_key("chat_profile")
+        if self.is_additional_info_line_showed(sender_profile):
+            sender_profile = await self.session.text("prompt.showed")
         status_manager = get_status_manager()
         mood, mood_reason = status_manager.get_status()
-
         mood_text = await self.session.text(f"status.mood.{mood.value}")
-
-        # 导入 main_session 获取最近做的事
         from .ego import consciousness
-
         current_time = await self.session.text("prompt_group.time", datetime.now().isoformat())
-        session_name = self.session.session_name
         state = await self.session.text(
-            "prompt_group.state", mood_text, status_manager.get_mood_retention(), mood_reason
+            "prompt_group.state",
+            mood_text,
+            status_manager.get_mood_retention(), 
+            mood_reason if not self.is_additional_info_line_showed(str(mood_reason)) else await self.session.text("prompt_group.showed"),
         )
 
-        recent_activities = await consciousness.get_recent_actions_text(self.session.lang_str)
+        recent_activities = "\n".join(await self.filter_info_lines((await consciousness.get_recent_actions_text(self.session.lang_str)).splitlines()))
         return await self.session.text(
-            "prompt_group.additional_info",
-            current_time,
-            session_name,
+            "prompt_group.chat_additional_info",
+            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            round(self.token_bucket.get(), 2),
+            sender.get_nickname(),
+            sender.get_fav(),
+            await sender.get_fav_level(),
+            sender_profile,
             await self.generate_note_text(notes),
-            await self.generate_note_text(notes_from_other_group),
-            recent_activities,
-            profiles_text,
-            await self.filter_instant_mem(chat_history),
+            recent_activities or None,
+            await self.filter_instant_mem(message_str),
             state,
         )
+    
+    async def filter_info_lines(self, lines: list[str]) -> list[str]:
+        return [line for line in lines if not await self.is_additional_info_line_showed(line)]
+    
+    async def is_additional_info_line_showed(self, line: str) -> bool:
+        async with self.openai_messages.fetcher_lock:
+            for message in self.openai_messages.messages:
+                if line in str(message):
+                    return True
+        return False
 
     async def filter_instant_mem(self, chat_history: str) -> str:
         return "\n".join(
@@ -592,15 +598,15 @@ class MessageProcessor:
         return generate_message(
             await self.session.text(
                 "prompt_group.default",
+                await self.session.get_session_name(),
                 await get_prompt_text("identity"),
                 await get_prompt_text("rule"),
                 (
-                    await self.session.text("prompt_group.token_bucket_rule", self.token_bucket.get())
+                    await self.session.text("prompt_group.token_bucket_rule")
                     if self.session.get_session_type() == "group"
                     else ""
                 ),
                 await get_prompt_text("interaction", fav_rule),
-                await self.generate_additional_prompt(),
             ),
             "system",
         )

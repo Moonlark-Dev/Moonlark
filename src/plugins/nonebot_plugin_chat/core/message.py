@@ -30,7 +30,7 @@ class MessageQueue:
     def __init__(
         self,
         processor: "MessageProcessor",
-        max_message_count: int = 50,
+        max_message_count: int = -1,
     ) -> None:
         self.processor = processor
         self.instant_memory_generator_lock = asyncio.Lock()
@@ -41,6 +41,11 @@ class MessageQueue:
         self.fetcher_task = None
         # 在初始化时从数据库恢复消息队列
         self.inserted_messages = []
+
+    async def reset_chat_history(self) -> list[OpenAIMessage]:
+        messages = copy.deepcopy(self.messages)
+        self.messages = []
+        return messages
 
     def _serialize_message(self, message: OpenAIMessage) -> dict:
         """将 OpenAIMessage 序列化为可 JSON 化的字典"""
@@ -97,9 +102,11 @@ class MessageQueue:
     async def get_messages(self) -> list[OpenAIMessage]:
         self.clean_special_message()
         messages = copy.deepcopy(self.messages)
-        while len([message for message in messages if get_role(message) == "user"]) > self.max_message_count:
-            messages.pop(0)
-        messages.insert(0, await self.processor.generate_system_prompt())
+        if self.max_message_count > 0:
+            while len([message for message in messages if get_role(message) == "user"]) > self.max_message_count:
+                messages.pop(0)
+        if len(self.messages) > 0 and get_role(self.messages[0]) != "system":
+            messages.insert(0, await self.processor.generate_system_prompt())
         return messages
 
     async def fetch_reply(self) -> None:

@@ -56,7 +56,6 @@ class GroupSession(BaseSession):
 
     async def setup(self) -> None:
         await super().setup()
-        await self.setup_session_name()
         await self.calculate_ghot_coefficient()
 
     async def send_poke(self, target_id: str) -> None:
@@ -74,9 +73,10 @@ class GroupSession(BaseSession):
         if len(cached_users) <= 1:
             self.ghot_coefficient *= 0.75
 
-    async def setup_session_name(self) -> None:
+    async def get_session_name(self) -> str:
         if isinstance(self.bot, OB11Bot):
-            self.session_name = (await self.bot.get_group_info(group_id=int(self.adapter_group_id)))["group_name"]
+            return (await self.bot.get_group_info(group_id=int(self.adapter_group_id)))["group_name"]
+        return (await self.text("prompt_group.unknown_session_name"))
 
     async def format_message(self, origin_message: str) -> UniMessage:
         message = re.sub(r"\[\d\d:\d\d:\d\d]\[Moonlark]\(\d+\): ?", "", origin_message)
