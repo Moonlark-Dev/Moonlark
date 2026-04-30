@@ -125,7 +125,7 @@ prompt_group:
     {}
     </additional_info>
   showed: 已展示过。
-  private_message:  "与 {} 的私聊"
+  private_session:  "与 {} 的私聊"
   
   time: |
     现在的时间为：{}
