@@ -608,16 +608,16 @@ class MessageProcessor:
                 "prompt_group.default",
                 await self.session.get_session_name(),
                 await get_prompt_text("identity"),
+                (
+                    await self.session.text("prompt_group.simple_image")
+                    if self.ENABLE_EMBEDDED_IMAGE
+                    else await self.session.text("prompt_group.image_placeholder")
+                ),
                 await get_prompt_text("rule"),
                 (
                     await self.session.text("prompt_group.token_bucket_rule")
                     if self.session.get_session_type() == "group"
                     else ""
-                ),
-                (
-                    await self.session.text("prompt_group.simple_image")
-                    if self.ENABLE_EMBEDDED_IMAGE
-                    else await self.session.text("prompt_group.image_placeholder")
                 ),
                 await get_prompt_text("interaction", fav_rule),
             ),
