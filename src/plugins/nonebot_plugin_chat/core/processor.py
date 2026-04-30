@@ -47,6 +47,7 @@ if TYPE_CHECKING:
 
 class MessageProcessor:
     def __init__(self, session: "BaseSession"):
+        self.ENABLE_EMBEDDED_IMAGE = False
         self.openai_messages = MessageQueue(self, 50)
         self.session = session
         self.enabled = True
@@ -209,7 +210,7 @@ class MessageProcessor:
             return await self.session.text("poke.not_found")
 
     async def parse_message(self, message: UniMessage, event: Event, state: T_State) -> tuple[str, list[bytes]]:
-        parser = MessageParser(message, event, self.session.bot, state, self.session.lang_str, False)
+        parser = MessageParser(message, event, self.session.bot, state, self.session.lang_str, not self.ENABLE_EMBEDDED_IMAGE)
         msg_str = await parser.parse()
         return (await LinkParser(msg_str, self.session.lang_str).parse()), parser.images
 
@@ -606,6 +607,7 @@ class MessageProcessor:
                     if self.session.get_session_type() == "group"
                     else ""
                 ),
+                await self.session.text("prompt_group.simple_image") if self.ENABLE_EMBEDDED_IMAGE else await self.session.text("prompt_group.image_placeholder"),
                 await get_prompt_text("interaction", fav_rule),
             ),
             "system",
