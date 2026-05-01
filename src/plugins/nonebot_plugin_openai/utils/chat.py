@@ -13,7 +13,7 @@ import inspect
 from openai.types.chat.chat_completion_message_function_tool_call import ChatCompletionMessageFunctionToolCall
 
 import json
-from typing import Optional, Any, AsyncGenerator, Callable, TypeVar, cast
+from typing import Generic, Optional, Any, AsyncGenerator, Callable, TypeVar, cast
 from nonebot import logger
 import openai
 from openai.types.shared_params import FunctionDefinition
@@ -52,9 +52,10 @@ def generate_function_list(func_index: dict[str, AsyncFunction]) -> list[ChatCom
 
 
 T = TypeVar("T")
+T2 = TypeVar("T2", bound=BaseModel)
 
 
-class LLMRequestSession:
+class LLMRequestSession(Generic[T2]):
 
     def __init__(
         self,
@@ -70,7 +71,7 @@ class LLMRequestSession:
         timeout: Optional[int] = None,
         timeout_strategy: Optional[TimeoutStrategy] = None,
         reasoning_effort: Optional[ReasoningEffort] = None,
-        response_format: Optional[type[BaseModel]] = None,
+        response_format: Optional[type[T2]] = None,
     ) -> None:
         self.messages: Messages = messages
         self.identify = identify
@@ -91,7 +92,7 @@ class LLMRequestSession:
         self.timeout_strategy = timeout_strategy
         self.insert_message_queue = []
 
-    async def fetch_llm_response(self) -> AsyncGenerator[str, None]:
+    async def fetch_llm_response(self) -> AsyncGenerator[T2 | str, None]:
         retry_count = 0
         while not self.stop:
             is_success = False
@@ -107,27 +108,45 @@ class LLMRequestSession:
                 retry_count = 0
         await report_openai_history(self.messages, self.identify, self.model)
 
-    async def request(self) -> AsyncGenerator[str, None]:
+    async def create_completion(self) -> ChatCompletion:
+        if not self.response_format:
+            completion = await client.chat.completions.create(
+                messages=self.messages,     # type: ignore
+                model=self.model,
+                tools=self.func_list,
+                tool_choice="auto" if self.func_list else "none",
+                extra_headers={
+                    config.openai_thread_header: (t := f"{config.identify_prefix} - {self.identify}"),
+                    config.openai_trace_header: self.trace_id,
+                    "HTTP-Referer": f"https://{hashlib.sha256(t.encode()).hexdigest()}.moonlark.itcdt.top",
+                },
+                timeout=self.timeout_per_request,
+                reasoning_effort=self.reasoning_effort or openai.omit,  # type: ignore
+                **self.kwargs,
+            )
+        else:
+            completion = await client.chat.completions.parse(
+                messages=self.messages,     # type: ignore
+                model=self.model,
+                tools=self.func_list,
+                tool_choice="auto" if self.func_list else "none",
+                extra_headers={
+                    config.openai_thread_header: (t := f"{config.identify_prefix} - {self.identify}"),
+                    config.openai_trace_header: self.trace_id,
+                    "HTTP-Referer": f"https://{hashlib.sha256(t.encode()).hexdigest()}.moonlark.itcdt.top",
+                },
+                timeout=self.timeout_per_request,
+                reasoning_effort=self.reasoning_effort or openai.omit,  # type: ignore
+                response_format=self.response_format,
+                **self.kwargs,
+            )
+        return completion
+
+
+    async def request(self) -> AsyncGenerator[T2 | str, None]:
         try:
             logger.info(f"[{self.identify}] 正在请求模型 {self.model} ...")
-            completion = cast(
-                ChatCompletion,
-                await client.chat.completions.create(
-                    messages=self.messages,
-                    model=self.model,
-                    tools=self.func_list,
-                    tool_choice="auto" if self.func_list else "none",
-                    extra_headers={
-                        config.openai_thread_header: (t := f"{config.identify_prefix} - {self.identify}"),
-                        config.openai_trace_header: self.trace_id,
-                        "HTTP-Referer": f"https://{hashlib.sha256(t.encode()).hexdigest()}.moonlark.itcdt.top",
-                    },
-                    timeout=self.timeout_per_request,
-                    reasoning_effort=self.reasoning_effort,
-                    response_format=self.response_format,
-                    **self.kwargs,
-                ),
-            )
+            completion = await self.create_completion()
             logger.debug(f"{completion.choices=}")
             response = completion.choices[0]
         except openai.APITimeoutError as e:
@@ -141,14 +160,15 @@ class LLMRequestSession:
         logger.debug(f"{response=}")
         self.messages.append(response.message)
         if response.message.content:
-            yield response.message.content
+            if self.response_format and hasattr(response.message, "parsed"):
+                yield response.message.parsed # type: ignore
+            else:
+                yield response.message.content
         if response.message.tool_calls:
             for request in response.message.tool_calls:
                 if isinstance(request, ChatCompletionMessageFunctionToolCall):
                     await self.call_function(request.id, request.function.name, json.loads(request.function.arguments))
         elif not self.insert_message_queue:
-            # FUCK YOU OPENAI
-            # 我操你妈逼谷歌
             self.stop = True
         self.messages.extend(self.insert_message_queue)
         self.insert_message_queue.clear()
@@ -186,7 +206,7 @@ class LLMRequestSession:
         self.messages.append(msg)
 
 
-class MessageFetcher:
+class MessageFetcher(Generic[T2]):
 
     def __init__(
         self,
@@ -200,7 +220,7 @@ class MessageFetcher:
         timeout: Optional[int] = None,
         timeout_strategy: Optional[TimeoutStrategy] = None,
         reasoning_effort: Optional[ReasoningEffort] = None,
-        response_format: Optional[type[BaseModel]] = None,
+        response_format: Optional[type[T2]] = None,
         **kwargs,
     ) -> None:
         logger.debug(f"{identify=}")
@@ -240,7 +260,7 @@ class MessageFetcher:
         timeout: Optional[int] = None,
         timeout_strategy: Optional[TimeoutStrategy] = None,
         reasoning_effort: Optional[ReasoningEffort] = None,
-        response_format: Optional[type[BaseModel]] = None,
+        response_format: Optional[type[T2]] = None,
         **kwargs,
     ) -> "MessageFetcher":
         """异步创建 MessageFetcher 实例，正确处理模型配置获取"""
@@ -268,11 +288,11 @@ class MessageFetcher:
             **kwargs,
         )
 
-    async def fetch_last_message(self) -> str:
+    async def fetch_last_message(self) -> T2 | str:
         # return (await self.fetch_messages())[-1]
         return [msg async for msg in self.session.fetch_llm_response()][-1]
 
-    async def fetch_message_stream(self) -> AsyncGenerator[str, None]:
+    async def fetch_message_stream(self) -> AsyncGenerator[T2 | str, None]:
         async for msg in self.session.fetch_llm_response():
             yield msg
 

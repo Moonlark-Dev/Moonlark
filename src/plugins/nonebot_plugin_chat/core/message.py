@@ -1,7 +1,7 @@
 import hashlib
 import re
 import traceback
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Optional, cast
 from nonebot.compat import type_validate_python
 from nonebot.log import logger
 
@@ -189,19 +189,7 @@ class MessageQueue:
                     raise Exception("Failed to fetch message")
                 if not message:
                     continue
-                try:
-                    analysis = type_validate_python(
-                        ModelResponse, json.loads(re.sub(r"`{1,3}([a-zA-Z0-9]+)?", "", message))
-                    )
-                except json.JSONDecodeError:
-                    logger.warning(f"Failed to parse message: {message}")
-                    analysis = None
-                except ValidationError as e:
-                    fetcher.session.insert_message(
-                        generate_message(await self.processor.session.text("fetcher.parse_failed", str(e)), "user")
-                    )
-                    retry_count += 1
-                    continue
+                analysis = cast(ModelResponse, message)
                 if analysis is not None:
                     if analysis.mood:
                         await self.processor.tool_manager.set_mood(
