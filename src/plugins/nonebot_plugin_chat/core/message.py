@@ -2,7 +2,7 @@ import hashlib
 import re
 import traceback
 from typing import TYPE_CHECKING, Optional, cast
-from nonebot.compat import type_validate_python
+from nonebot.compat import type_validate_json
 from nonebot.log import logger
 
 from nonebot_plugin_chat.utils.role import get_role
@@ -180,7 +180,7 @@ class MessageQueue:
             identify="Chat",
             functions=await self.processor.tool_manager.select_tools("group"),
             reasoning_effort="medium",
-            response_format=ModelResponse
+            # response_format=ModelResponse
         )
         retry_count = 0
         try:
@@ -189,7 +189,15 @@ class MessageQueue:
                     raise Exception("Failed to fetch message")
                 if not message:
                     continue
-                analysis = cast(ModelResponse, message)
+                try:
+                    analysis = type_validate_json(ModelResponse, message)
+                except Exception as e:
+                    fetcher.session.insert_message(generate_message(
+                        await self.processor.session.text("fetcher.parse_failed", str(e)),
+                        "system"
+                    ))
+                    retry_count += 2
+                    continue
                 if analysis is not None:
                     if analysis.mood:
                         await self.processor.tool_manager.set_mood(
@@ -206,7 +214,7 @@ class MessageQueue:
                         and not fetcher.session.messages[-1].tool_calls
                     ):
                         fetcher.session.insert_message(
-                            generate_message(await self.processor.session.text("fetcher.reply_required"), "user")
+                            generate_message(await self.processor.session.text("fetcher.reply_required"), "system")
                         )
                         retry_count += 1
                 if self.continuous_response:
