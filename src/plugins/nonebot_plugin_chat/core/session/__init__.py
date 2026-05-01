@@ -6,6 +6,7 @@ from nonebot.adapters import Bot
 from nonebot_plugin_alconna import Target
 from nonebot_plugin_larklang.__main__ import get_group_language
 from nonebot_plugin_orm import get_session
+from sqlalchemy import delete
 from ...models import MessageQueueCache
 from .base import BaseSession
 from .group import GroupSession
@@ -101,10 +102,8 @@ async def reset_session(session_id: str) -> bool:
 
     # 删除数据库中的缓存
     async with get_session() as db_session:
-        cache = await db_session.get(MessageQueueCache, {"group_id": session_id})
-        if cache:
-            await db_session.delete(cache)
-            await db_session.commit()
+        await db_session.execute(delete(MessageQueueCache).where(MessageQueueCache.group_id == session_id))
+        await db_session.commit()
 
     logger.info(f"Session {session_id} has been reset.")
     return True
