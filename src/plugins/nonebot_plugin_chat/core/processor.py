@@ -606,7 +606,7 @@ class MessageProcessor:
                 await get_prompt_text("identity"),
                 (
                     await self.session.text("prompt_group.simple_image")
-                    if self.ENABLE_EMBEDDED_IMAGE
+                    if not self.ENABLE_EMBEDDED_IMAGE
                     else await self.session.text("prompt_group.image_placeholder")
                 ),
                 await get_prompt_text("rule"),
