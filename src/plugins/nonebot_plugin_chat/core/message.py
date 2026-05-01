@@ -193,7 +193,7 @@ class MessageQueue:
                     analysis = type_validate_json(ModelResponse, message)
                 except Exception as e:
                     fetcher.session.insert_message(
-                        generate_message(await self.processor.session.text("fetcher.parse_failed", str(e)), "system")
+                        generate_message(await self.processor.session.text("fetcher.parse_failed", str(e)), "user")
                     )
                     retry_count += 2
                     continue
@@ -213,7 +213,7 @@ class MessageQueue:
                         and not fetcher.session.messages[-1].tool_calls
                     ):
                         fetcher.session.insert_message(
-                            generate_message(await self.processor.session.text("fetcher.reply_required"), "system")
+                            generate_message(await self.processor.session.text("fetcher.reply_required"), "user")
                         )
                         retry_count += 1
                 if self.continuous_response:
