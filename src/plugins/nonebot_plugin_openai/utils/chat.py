@@ -19,6 +19,7 @@ import openai
 from openai.types.shared_params import FunctionDefinition
 from openai.types.chat import ChatCompletionToolMessageParam, ChatCompletionFunctionToolParam
 from nonebot_plugin_status_report import report_openai_history
+from pydantic import BaseModel
 
 from ..types import Messages, AsyncFunction, Message as OpenaiMessage
 
@@ -69,6 +70,7 @@ class LLMRequestSession:
         timeout: Optional[int] = None,
         timeout_strategy: Optional[TimeoutStrategy] = None,
         reasoning_effort: Optional[ReasoningEffort] = None,
+        response_format: Optional[type[BaseModel]] = None,
     ) -> None:
         self.messages: Messages = messages
         self.identify = identify
@@ -84,6 +86,7 @@ class LLMRequestSession:
         }
         self.reasoning_effort = reasoning_effort
         self.has_tool_calls: bool = False
+        self.response_format = response_format
         self.timeout_per_request = timeout
         self.timeout_strategy = timeout_strategy
         self.insert_message_queue = []
@@ -121,6 +124,7 @@ class LLMRequestSession:
                     },
                     timeout=self.timeout_per_request,
                     reasoning_effort=self.reasoning_effort,
+                    response_format=self.response_format,
                     **self.kwargs,
                 ),
             )
@@ -196,6 +200,7 @@ class MessageFetcher:
         timeout: Optional[int] = None,
         timeout_strategy: Optional[TimeoutStrategy] = None,
         reasoning_effort: Optional[ReasoningEffort] = None,
+        response_format: Optional[type[BaseModel]] = None,
         **kwargs,
     ) -> None:
         logger.debug(f"{identify=}")
@@ -217,6 +222,7 @@ class MessageFetcher:
             timeout,
             timeout_strategy,
             reasoning_effort,
+            response_format,
         )
 
     @classmethod
@@ -234,6 +240,7 @@ class MessageFetcher:
         timeout: Optional[int] = None,
         timeout_strategy: Optional[TimeoutStrategy] = None,
         reasoning_effort: Optional[ReasoningEffort] = None,
+        response_format: Optional[type[BaseModel]] = None,
         **kwargs,
     ) -> "MessageFetcher":
         """异步创建 MessageFetcher 实例，正确处理模型配置获取"""
@@ -257,6 +264,7 @@ class MessageFetcher:
             timeout,
             timeout_strategy,
             reasoning_effort,
+            response_format,
             **kwargs,
         )
 
