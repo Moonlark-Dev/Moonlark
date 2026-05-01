@@ -33,7 +33,10 @@ def generate_function_list(func_index: dict[str, AsyncFunction]) -> list[ChatCom
     func_list = []
     for name, data in func_index.items():
         func_info = FunctionDefinition(
-            name=name, description=data["description"], parameters={"type": "object", "properties": {}, "required": []}, strict=True
+            name=name,
+            description=data["description"],
+            parameters={"type": "object", "properties": {}, "required": []},
+            strict=True,
         )
         for p_name, p_data in data["parameters"].items():
             param_info: dict[str, Any] = {"type": p_data["type"], "description": p_data["description"]}
@@ -111,7 +114,7 @@ class LLMRequestSession(Generic[T2]):
     async def create_completion(self) -> ChatCompletion:
         if not self.response_format:
             completion = await client.chat.completions.create(
-                messages=self.messages,     # type: ignore
+                messages=self.messages,  # type: ignore
                 model=self.model,
                 tools=self.func_list,
                 tool_choice="auto" if self.func_list else "none",
@@ -126,7 +129,7 @@ class LLMRequestSession(Generic[T2]):
             )
         else:
             completion = await client.chat.completions.parse(
-                messages=self.messages,     # type: ignore
+                messages=self.messages,  # type: ignore
                 model=self.model,
                 tools=self.func_list,
                 tool_choice="auto" if self.func_list else "none",
@@ -141,7 +144,6 @@ class LLMRequestSession(Generic[T2]):
                 **self.kwargs,
             )
         return completion
-
 
     async def request(self) -> AsyncGenerator[T2 | str, None]:
         try:
@@ -161,7 +163,7 @@ class LLMRequestSession(Generic[T2]):
         self.messages.append(response.message)
         if response.message.content:
             if self.response_format and hasattr(response.message, "parsed"):
-                yield response.message.parsed # type: ignore
+                yield response.message.parsed  # type: ignore
             else:
                 yield response.message.content
         if response.message.tool_calls:
