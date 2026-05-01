@@ -220,7 +220,7 @@ class MessageProcessor:
         async with get_session() as db_session:
             group_config = await db_session.get(ChatGroup, {"group_id": self.session.session_id})
             if group_config:
-                ignore_mention_list = json.loads(group_config.ignore_mention_user)
+                ignore_mention_list = json.loads(group_config.ignore_mention_user or "[]")
                 return user_id in ignore_mention_list
         return False
 

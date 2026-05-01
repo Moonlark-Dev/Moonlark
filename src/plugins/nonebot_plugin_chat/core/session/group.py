@@ -49,7 +49,7 @@ class GroupSession(BaseSession):
                 self.group_users.clear()
                 for user in await self.bot.get_group_member_list(group_id=int(self.adapter_group_id)):
                     adapter_nickname = user["nickname"]
-                    ml_user = await get_user(user["user_id"])
+                    ml_user = await get_user(str(user["user_id"]))
                     nickname = adapter_nickname if not ml_user.has_nickname() else ml_user.get_nickname()
                     self.group_users[nickname] = str(user["user_id"])
             else:
