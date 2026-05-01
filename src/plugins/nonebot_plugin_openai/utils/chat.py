@@ -33,7 +33,7 @@ def generate_function_list(func_index: dict[str, AsyncFunction]) -> list[ChatCom
     func_list = []
     for name, data in func_index.items():
         func_info = FunctionDefinition(
-            name=name, description=data["description"], parameters={"type": "object", "properties": {}, "required": []}
+            name=name, description=data["description"], parameters={"type": "object", "properties": {}, "required": []}, strict=True
         )
         for p_name, p_data in data["parameters"].items():
             param_info: dict[str, Any] = {"type": p_data["type"], "description": p_data["description"]}
