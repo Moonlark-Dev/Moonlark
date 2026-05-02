@@ -104,9 +104,7 @@ class MessageQueue:
         self.messages = []
         self.inserted_messages = []
         async with get_session() as session:
-            await session.execute(
-                delete(MessageQueueCache).where(MessageQueueCache.group_id == group_id)
-            )
+            await session.execute(delete(MessageQueueCache).where(MessageQueueCache.group_id == group_id))
             await session.commit()
         logger.info(f"已清空群 {group_id} 的消息队列缓存")
 
