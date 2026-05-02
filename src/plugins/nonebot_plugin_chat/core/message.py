@@ -149,6 +149,7 @@ class MessageQueue:
             self.messages.pop(0)
 
     async def get_messages(self) -> list[OpenAIMessage]:
+        print(self.messages)
         messages = copy.deepcopy(self.messages)
         if len(self.messages) > 0 and get_role(self.messages[0]) != "system":
             messages = [await self.processor.generate_system_prompt()]
