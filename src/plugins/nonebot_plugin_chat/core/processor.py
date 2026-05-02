@@ -685,6 +685,8 @@ class MessageProcessor:
                     [k.strip() for k in mem["keywords"].split(",")],
                     expire_level,
                     self.session.lang_str,
+                    ctx_id=self.session.session_id,
+                    name=await self.session.get_session_name(),
                 )
         except Exception as e:
             logger.exception(e)
