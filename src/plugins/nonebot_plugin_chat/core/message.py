@@ -157,6 +157,7 @@ class MessageQueue:
                 messages.pop(0)
         if len(self.messages) > 0 and get_role(self.messages[0]) != "system":
             messages = [await self.processor.generate_system_prompt()]
+            raise ValueError("No message")
         return messages
 
     async def fetch_reply(self) -> None:
