@@ -338,8 +338,10 @@ async def fetch_message(
     )
     return await fetcher.fetch_last_message()
 
+
 T3 = TypeVar("T3", bound=BaseModel)
 from nonebot.compat import type_validate_json
+
 
 async def fetch_json(
     messages: Messages,
@@ -371,7 +373,7 @@ async def fetch_json(
         reasoning_effort,
         **kwargs,
     )
-    
+
     retry_count = 0
     async for message in fetcher.fetch_message_stream():
         try:

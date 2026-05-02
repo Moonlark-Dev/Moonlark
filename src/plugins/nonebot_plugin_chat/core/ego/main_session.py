@@ -400,31 +400,28 @@ class MainSession:
                 session_info = await groups[session_id].get_session_name()
 
             if session_id in groups:
-                cached_messages = await groups[session_id].get_cached_messages_string(length=10, include_self_message=True)
+                cached_messages = await groups[session_id].get_cached_messages_string(
+                    length=10, include_self_message=True
+                )
             if not cached_messages:
                 cached_messages = await lang.text("main_session.fetch_chat_history.no_messages", self.lang_str)
 
-            result = await self.request_action_decision(
-                do,
-                session_info,
-                cached_messages,
-                duration
-            )
+            result = await self.request_action_decision(do, session_info, cached_messages, duration)
 
             approved = result.approved
             allocated_time = result.allocated_time
 
             if approved and allocated_time > 0:
-                await self.handle_action(CustomAction(
-                    type="do",
-                    information=do,
-                    estimated_time=allocated_time
-                ))
+                await self.handle_action(CustomAction(type="do", information=do, estimated_time=allocated_time))
 
             if future and not future.done():
                 future.set_result(
                     await lang.text(
-                        "main_session.action_request.result_approved" if approved else "main_session.action_request.result_denied",
+                        (
+                            "main_session.action_request.result_approved"
+                            if approved
+                            else "main_session.action_request.result_denied"
+                        ),
                         self.lang_str,
                         do,
                         allocated_time,
@@ -454,15 +451,11 @@ class MainSession:
             cached_messages,
         )
         return await fetch_json(
-            [
-                generate_message(system_prompt, "system"),
-                generate_message(user_prompt, "user")
-            ],
+            [generate_message(system_prompt, "system"), generate_message(user_prompt, "user")],
             SleepDecisionResponse,
             reasoning_effort="low",
             identify="Main Session - Sleep Request Decision",
         )
-
 
     async def submit_sleep_request(
         self,
@@ -475,10 +468,11 @@ class MainSession:
             if session_id in groups:
                 session_info = await groups[session_id].get_session_name()
 
-            
             cached_messages = ""
             if session_id in groups:
-                cached_messages = await groups[session_id].get_cached_messages_string(length=10, include_self_message=True)
+                cached_messages = await groups[session_id].get_cached_messages_string(
+                    length=10, include_self_message=True
+                )
             if not cached_messages:
                 cached_messages = await lang.text("main_session.fetch_chat_history.no_messages", self.lang_str)
 
@@ -491,7 +485,11 @@ class MainSession:
             if future and not future.done():
                 future.set_result(
                     await lang.text(
-                        "main_session.sleep_request.result_approved" if approved else "main_session.sleep_request.result_denied",
+                        (
+                            "main_session.sleep_request.result_approved"
+                            if approved
+                            else "main_session.sleep_request.result_denied"
+                        ),
                         self.lang_str,
                     )
                 )

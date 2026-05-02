@@ -26,8 +26,10 @@ class ActionDecisionResponse(BaseModel):
     approved: bool
     allocated_time: int
 
+
 class SleepDecisionResponse(BaseModel):
     approved: bool
+
 
 class Note(Model):
     """Note model for storing user-generated notes with optional expiration and keywords"""
