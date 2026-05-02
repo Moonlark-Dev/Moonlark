@@ -4,7 +4,7 @@ import aiofiles
 from nonebot.adapters import Event
 from nonebot.typing import T_State
 from nonebot.adapters.onebot.v11 import Bot as OB11Bot
-from nonebot_plugin_alconna import UniMessage
+from nonebot_plugin_alconna import At, UniMessage
 from nonebot_plugin_chat.utils.group import LinkParser
 from nonebot_plugin_chat.utils.token_bucket import TokenBucket
 from ..enums import StateEnum
@@ -252,7 +252,9 @@ class MessageProcessor:
             if not text:
                 return
             if "@Moonlark" not in text and mentioned:
-                text = f"@Moonlark {text}"
+                if self.session.get_session_type() == "group":
+                    text = f"@Moonlark {text}"
+                
             msg_dict: CachedMessage = {
                 "content": text,
                 "nickname": nickname,
@@ -265,7 +267,7 @@ class MessageProcessor:
             await self.process_messages(msg_dict)
             self.session.cached_messages.append(msg_dict)
             await self.session.on_cache_posted()
-            trigger_mode = "probability" if not mentioned else "all"
+            trigger_mode = "all" if mentioned else "none"
             self.token_bucket.add(1 if len(text) >= 30 else 0.8)
         logger.debug(f"{trigger_mode=} {self.blocked=}")
         if trigger_mode == "all":

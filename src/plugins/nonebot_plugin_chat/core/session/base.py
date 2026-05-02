@@ -64,7 +64,8 @@ class BaseSession(ABC):
             index = self.cached_messages.index(self.last_message_for_instant_memory_generation)
             self.last_message_for_instant_memory_generation = self.cached_messages[-1]
             return self.cached_messages[index + 1 :]
-        self.last_message_for_instant_memory_generation = self.cached_messages[-1]
+        if self.cached_messages:
+            self.last_message_for_instant_memory_generation = self.cached_messages[-1]
         return self.cached_messages
 
     @abstractmethod
