@@ -19,7 +19,7 @@ import openai
 from openai.types.shared_params import FunctionDefinition
 from openai.types.chat import ChatCompletionToolMessageParam, ChatCompletionFunctionToolParam
 from nonebot_plugin_status_report import report_openai_history
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from ..types import Messages, AsyncFunction, Message as OpenaiMessage
 
@@ -337,3 +337,50 @@ async def fetch_message(
         **kwargs,
     )
     return await fetcher.fetch_last_message()
+
+
+T3 = TypeVar("T3", bound=BaseModel)
+from nonebot.compat import type_validate_json
+
+
+async def fetch_json(
+    messages: Messages,
+    response_format: type[T3],
+    use_default_message: bool = False,
+    model: Optional[str] = None,
+    functions: Optional[list[AsyncFunction]] = None,
+    identify: Optional[str] = None,
+    pre_function_call: Optional[
+        Callable[[str, str, dict[str, Any]], Awaitable[tuple[str, str, dict[str, Any]]]]
+    ] = None,
+    post_function_call: Optional[Callable[[T], Awaitable[T]]] = None,
+    timeout: Optional[int] = None,
+    timeout_strategy: Optional[TimeoutStrategy] = None,
+    reasoning_effort: Optional[ReasoningEffort] = None,
+    formatter_max_retry: int = 3,
+    **kwargs,
+) -> T3:
+    fetcher = await MessageFetcher.create(
+        messages,
+        use_default_message,
+        model,
+        functions,
+        identify,
+        pre_function_call,
+        post_function_call,
+        timeout,
+        timeout_strategy,
+        reasoning_effort,
+        **kwargs,
+    )
+
+    retry_count = 0
+    async for message in fetcher.fetch_message_stream():
+        try:
+            return type_validate_json(response_format, message)
+        except ValidationError as e:
+            if retry_count >= formatter_max_retry:
+                raise e
+            retry_count += 1
+            fetcher.session.insert_message(generate_message(str(e), "user"))
+    raise ValueError("No valid response found")

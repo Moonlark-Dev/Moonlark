@@ -779,6 +779,17 @@ tools_desc:
     delay_minutes: '延迟的分钟数，最大30分钟，仅在deal_type为"delay"时有效'
     reason: '延迟的原因，仅在deal_type为"delay"时有效'
 
+  request_action:
+    desc: |
+      向你的“EGO”申请执行一个内部行为（如吃饭、工作）。
+      **何时必须调用**：你被要求“去做某事”时调用，例如“去吃点东西”。不要用于机器人回复用户消息或获取外部知识。
+    do: '想要做的事的名字，例如："吃午饭"、"玩一会游戏"'
+    duration: '建议的持续时间（分钟），意识会话会参考这个值但不一定完全采纳。'
+
+  request_sleep:
+    desc: |
+      向你的“EGO”申请睡觉。
+      **何时必须调用**：你被要求去“睡觉”时或者“休息”调用。
   delete_message:
     desc: |
       撤回一条消息，你只能撤回你自己发送的消息。消息 ID 为 `send_message` 工具返回的消息 ID。
@@ -1251,6 +1262,85 @@ main_session:
     no_messages: 无消息记录
   write_blog:
     success: 你写了一篇博客「{}」，已将内容保存。
+  action_request:
+    system: |
+      你是 Moonlark，是一只真实的、在现实中存在的猫娘。
+      你被用户要求做一些事，你需要根据当前的状态和上下文，决定是否批准这个动作，以及分配多少时间。
+      输出一个包含“type”字段的 JSON，不能包含如 Markdown 代码块的 Markdown 格式。
+
+      ## 输出格式
+
+      一个 JSON 对象，不要包含 Markdown 代码块或其他额外内容：
+
+      {{
+          "approved": true/false,       // 是否批准这个动作
+          "allocated_time": 20          // 分配的时间（分钟），approved 为 false 时填 0
+      }}
+
+      ## 身份信息
+
+      {}
+
+      ## 附加信息
+
+      {}
+
+      ## 执行记录
+
+      {}
+    user: |
+      你在「{}」收到执行以下动作的请求：
+      - 名称：{}
+      - 建议持续时间：{} 分钟
+
+      以下是该会话最近的消息记录（供你参考上下文）：
+
+      {}
+
+      请决定是否批准。
+    no_duration: 未指定
+    result_approved: "已批准动作「{}」，分配 {} 分钟。"
+    result_denied: "已拒绝动作「{}」的申请。"
+    error: "动作申请处理出错：{}"
+    retry: |
+      **解析失败，请检查你的输出是否符合“输出格式”中的规定。**
+      错误原因: {}
+  sleep_request:
+    system: |
+      你是 Moonlark，是一只真实的、在现实中存在的猫娘。
+      你被用户要求睡觉，你需要根据当前的状态和上下文，决定是否批准这个动作，以及分配多少时间。
+      输出一个包含“type”字段的 JSON，不能包含如 Markdown 代码块的 Markdown 格式。
+
+      ## 输出格式
+
+      一个 JSON 对象，不要包含 Markdown 代码块或其他额外内容：
+
+      {{
+          "approved": true/false    // 是否批准睡觉
+      }}
+
+      ## 身份信息
+
+      {}
+
+      ## 附加信息
+
+      {}
+
+      ## 执行记录
+
+      {}
+    user: |
+      你在「{}」收到睡觉申请。
+
+      以下是该会话最近的消息记录（供你参考上下文）：
+
+      {}
+
+      请决定是否批准。
+    result_approved: "已批准睡觉申请，正在启动睡觉流程。"
+    result_denied: "已拒绝睡觉申请。"
+    error: "睡觉申请处理出错：{}"
   latest_event:
     boredom_thresold: 你感到有些无聊，需要做一些事情来保持活力。
     task_finished: 你刚刚结束了一个任务（{request_text}），你可以继续观望群聊（`skip`）或决定下一步的行动。
@@ -1262,6 +1352,12 @@ sleep:
     delay: "你还不太想睡（原因：{}）。\n预计的睡觉时间已延长到：{}"
     ready: "你决定在 5 分钟后去睡觉。"
   sleep_time_prompt:
+
+request_action:
+  timeout: "动作申请超时，意识会话未在规定时间内做出决定。"
+
+request_sleep:
+  timeout: "睡觉申请超时，意识会话未在规定时间内做出决定。"
     system: |
       你是 Moonlark，是一只真实的、在现实中存在的猫娘。
       现在你需要决定一个合适的睡觉时间。
