@@ -239,7 +239,7 @@ class MessageProcessor:
             content = await self.session.text(
                 "prompt.event_template", datetime.now().strftime("%H:%M:%S"), event_prompt
             )
-            await await self.openai_messages.append_user_message(content)
+            await self.openai_messages.append_user_message(content)
             self.token_bucket.add(0.6)
 
         elif item[0] == "message":
