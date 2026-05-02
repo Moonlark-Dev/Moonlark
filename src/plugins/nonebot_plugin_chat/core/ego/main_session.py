@@ -521,7 +521,7 @@ class MainSession:
             result = None
         self.state = StateEnum.ACTIVATE
         if interrupted and result and session:
-            session.processor.openai_messages.append_user_message(result)
+            await session.processor.openai_messages.append_user_message(result)
 
     def update_send_private_message_state(self, user_id: str) -> None:
         for index in range(len(self.action_history)):
