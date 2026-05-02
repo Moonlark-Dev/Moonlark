@@ -254,7 +254,7 @@ class MessageProcessor:
             if "@Moonlark" not in text and mentioned:
                 if self.session.get_session_type() == "group":
                     text = f"@Moonlark {text}"
-                
+
             msg_dict: CachedMessage = {
                 "content": text,
                 "nickname": nickname,

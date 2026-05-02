@@ -8,7 +8,19 @@ from nonebot_plugin_chat.lang import lang
 from nonebot_plugin_chat.types import CachedMessage
 from nonebot_plugin_larkuser.utils.nickname import get_nickname
 from nonebot_plugin_userinfo import get_user_info
-from nonebot_plugin_alconna import Image, Other, Segment, UniMessage, Text, At, Reply, Reference, File, image_fetch, get_message_id
+from nonebot_plugin_alconna import (
+    Image,
+    Other,
+    Segment,
+    UniMessage,
+    Text,
+    At,
+    Reply,
+    Reference,
+    File,
+    image_fetch,
+    get_message_id,
+)
 from nonebot_plugin_larkuser import get_user
 from nonebot.exception import ActionFailed
 from nonebot.adapters import Message, MessageSegment
