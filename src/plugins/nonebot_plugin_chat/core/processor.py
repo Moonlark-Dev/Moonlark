@@ -48,7 +48,7 @@ if TYPE_CHECKING:
 class MessageProcessor:
     def __init__(self, session: "BaseSession"):
         self.ENABLE_EMBEDDED_IMAGE = False
-        self.openai_messages = MessageQueue(self, 50)
+        self.openai_messages = MessageQueue(self)
         self.session = session
         self.enabled = True
         self.tool_manager = ToolManager(self)

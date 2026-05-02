@@ -33,11 +33,9 @@ class MessageQueue:
     def __init__(
         self,
         processor: "MessageProcessor",
-        max_message_count: int = -1,
     ) -> None:
         self.processor = processor
         self.instant_memory_generator_lock = asyncio.Lock()
-        self.max_message_count = max_message_count
         self.messages: list[OpenAIMessage] = []
         self.fetcher_lock = asyncio.Lock()
         self.continuous_response = False
@@ -152,9 +150,6 @@ class MessageQueue:
 
     async def get_messages(self) -> list[OpenAIMessage]:
         messages = copy.deepcopy(self.messages)
-        if self.max_message_count > 0:
-            while len([message for message in messages if get_role(message) == "user"]) > self.max_message_count:
-                messages.pop(0)
         if len(self.messages) > 0 and get_role(self.messages[0]) != "system":
             messages = [await self.processor.generate_system_prompt()]
             raise ValueError("No message")
