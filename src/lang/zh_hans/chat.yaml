@@ -325,7 +325,10 @@ help_rua:
   usage1: rua (使用当前选中的动作与 Moonlark 互动)
   usage2: rua action (查看可用的互动动作列表)
   usage3: rua action <编号> (切换当前使用的互动动作)
-  usage4: rua rank (查看 rua 次数排行榜)
+  usage4: rua action <编号> --switch-only|-s (仅切换动作，不触发互动)
+  usage5: rua action <编号> --rua-only|-r (仅触发互动，不切换动作)
+  usage6: rua <编号> (使用指定动作与 Moonlark 互动)
+  usage7: rua rank (查看 rua 次数排行榜)
 
 prompt:
   warning:
