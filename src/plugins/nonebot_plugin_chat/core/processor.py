@@ -581,8 +581,13 @@ class MessageProcessor:
         return False
 
     async def filter_instant_mem(self, chat_history: str) -> str:
-        return "\n".join(
-            [
+        now = datetime.now()
+        today = now.date()
+        result = []
+        for mem in filter_instant_memory(chat_history):
+            if mem["ctx_id"] == self.session.session_id and mem["create_time"].date() == today:
+                continue
+            result.append(
                 await self.session.text(
                     "prompt_group.instant_mem",
                     mem["category"],
@@ -592,9 +597,8 @@ class MessageProcessor:
                     mem["ctx_id"],
                     mem["content"],
                 )
-                for mem in filter_instant_memory(chat_history)
-            ]
-        )
+            )
+        return "\n".join(result)
 
     async def generate_system_prompt(self) -> OpenAIMessage:
         fav_rule = await get_prompt_text("favorability")
