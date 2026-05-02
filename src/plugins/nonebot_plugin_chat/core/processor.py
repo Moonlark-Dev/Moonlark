@@ -267,7 +267,7 @@ class MessageProcessor:
             await self.process_messages(msg_dict)
             self.session.cached_messages.append(msg_dict)
             await self.session.on_cache_posted()
-            trigger_mode = "all" if mentioned else "none"
+            trigger_mode = "all" if mentioned else "probability"
             self.token_bucket.add(1 if len(text) >= 30 else 0.8)
         logger.debug(f"{trigger_mode=} {self.blocked=}")
         if trigger_mode == "all":
