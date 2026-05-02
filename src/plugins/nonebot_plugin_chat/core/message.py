@@ -149,11 +149,9 @@ class MessageQueue:
             self.messages.pop(0)
 
     async def get_messages(self) -> list[OpenAIMessage]:
-        print(self.messages)
         messages = copy.deepcopy(self.messages)
-        if len(self.messages) > 0 and get_role(self.messages[0]) != "system":
-            messages = [await self.processor.generate_system_prompt()]
-            raise ValueError("No message")
+        if len(messages) <= 1:
+            raise ValueError("messages must be more than 1")
         return messages
 
     async def fetch_reply(self) -> None:
@@ -248,7 +246,12 @@ class MessageQueue:
             state = FetchStatus.FAILED
         return state
 
-    def append_user_message(self, message: str) -> None:
+    async def check_system_prompt(self) -> None:
+        if len(self.messages) == 0 or get_role(self.messages[0]) != "system":
+            self.messages = [await self.processor.generate_system_prompt()]
+
+    async def append_user_message(self, message: str) -> None:
+        await self.check_system_prompt()
         self.messages.append(generate_message(message, "user"))
 
     def is_last_message_from_user(self) -> bool:
