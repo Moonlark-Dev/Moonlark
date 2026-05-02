@@ -443,7 +443,7 @@ class MessageProcessor:
                 msg_str = generate_message_string(msg_dict)
                 msg_str += await self.generate_additional_prompt(msg_str, msg_dict["user_id"])
                 self.append_user_message(msg_str, msg_dict["images"])
-                print(self.openai_messages.messages)
+                # print(self.openai_messages.messages)
             if not self.blocked and not msg_dict["self"]:
                 content = msg_dict.get("content", "")
                 if isinstance(content, str) and content:
