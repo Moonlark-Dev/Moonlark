@@ -68,7 +68,7 @@ class MessageQueue:
         return [json.dumps(msg, ensure_ascii=False) for msg in serialized]
 
     async def restore_from_db(self) -> None:
-        """从数据库恢复消息队列"""
+        """从数据库恢复消息队列，并验证 system prompt 的有效性"""
         try:
             group_id = self.processor.session.session_id
             earliest_time = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
@@ -81,8 +81,34 @@ class MessageQueue:
                 self.messages = [json.loads(msg.message_json) for msg in cache]
 
                 logger.info(f"已从数据库恢复群 {group_id} 的消息队列，共 {len(self.messages)} 条消息")
+
+            if self.messages:
+                expected_prompt: dict = await self.processor.generate_system_prompt()
+                expected_content = expected_prompt.get("content", "")
+
+                if get_role(self.messages[0]) != "system":
+                    logger.warning(f"群 {group_id} 恢复的消息队列缺少 system prompt，重置上下文")
+                    await self._reset_and_clear_db(group_id)
+                else:
+                    actual_content = self.messages[0].get("content", "")
+                    if actual_content != expected_content:
+                        logger.warning(f"群 {group_id} 的 system prompt 与当前配置不一致，重置上下文")
+                        await self._reset_and_clear_db(group_id)
+                    else:
+                        logger.info(f"群 {group_id} 的 system prompt 验证通过")
         except Exception as e:
             logger.warning(f"从数据库恢复消息队列失败: {e}")
+
+    async def _reset_and_clear_db(self, group_id: str) -> None:
+        """重置消息队列并清空数据库缓存"""
+        self.messages = []
+        self.inserted_messages = []
+        async with get_session() as session:
+            await session.execute(
+                delete(MessageQueueCache).where(MessageQueueCache.group_id == group_id)
+            )
+            await session.commit()
+        logger.info(f"已清空群 {group_id} 的消息队列缓存")
 
     async def clear_cache(self) -> None:
         """清空消息队列缓存"""
@@ -133,7 +159,7 @@ class MessageQueue:
             while len([message for message in messages if get_role(message) == "user"]) > self.max_message_count:
                 messages.pop(0)
         if len(self.messages) > 0 and get_role(self.messages[0]) != "system":
-            messages.insert(0, await self.processor.generate_system_prompt())
+            messages = [await self.processor.generate_system_prompt()]
         return messages
 
     async def fetch_reply(self) -> None:

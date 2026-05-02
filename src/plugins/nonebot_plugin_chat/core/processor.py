@@ -4,7 +4,7 @@ import aiofiles
 from nonebot.adapters import Event
 from nonebot.typing import T_State
 from nonebot.adapters.onebot.v11 import Bot as OB11Bot
-from nonebot_plugin_alconna import UniMessage
+from nonebot_plugin_alconna import At, UniMessage
 from nonebot_plugin_chat.utils.group import LinkParser
 from nonebot_plugin_chat.utils.token_bucket import TokenBucket
 from ..enums import StateEnum
@@ -252,7 +252,9 @@ class MessageProcessor:
             if not text:
                 return
             if "@Moonlark" not in text and mentioned:
-                text = f"@Moonlark {text}"
+                if self.session.get_session_type() == "group":
+                    text = f"@Moonlark {text}"
+
             msg_dict: CachedMessage = {
                 "content": text,
                 "nickname": nickname,
@@ -265,7 +267,7 @@ class MessageProcessor:
             await self.process_messages(msg_dict)
             self.session.cached_messages.append(msg_dict)
             await self.session.on_cache_posted()
-            trigger_mode = "probability" if not mentioned else "all"
+            trigger_mode = "all" if mentioned else "none"
             self.token_bucket.add(1 if len(text) >= 30 else 0.8)
         logger.debug(f"{trigger_mode=} {self.blocked=}")
         if trigger_mode == "all":
@@ -581,8 +583,13 @@ class MessageProcessor:
         return False
 
     async def filter_instant_mem(self, chat_history: str) -> str:
-        return "\n".join(
-            [
+        now = datetime.now()
+        today = now.date()
+        result = []
+        for mem in filter_instant_memory(chat_history):
+            if mem["ctx_id"] == self.session.session_id and mem["create_time"].date() == today:
+                continue
+            result.append(
                 await self.session.text(
                     "prompt_group.instant_mem",
                     mem["category"],
@@ -592,9 +599,8 @@ class MessageProcessor:
                     mem["ctx_id"],
                     mem["content"],
                 )
-                for mem in filter_instant_memory(chat_history)
-            ]
-        )
+            )
+        return "\n".join(result)
 
     async def generate_system_prompt(self) -> OpenAIMessage:
         fav_rule = await get_prompt_text("favorability")
@@ -685,6 +691,8 @@ class MessageProcessor:
                     [k.strip() for k in mem["keywords"].split(",")],
                     expire_level,
                     self.session.lang_str,
+                    ctx_id=self.session.session_id,
+                    name=await self.session.get_session_name(),
                 )
         except Exception as e:
             logger.exception(e)
