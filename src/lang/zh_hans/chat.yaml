@@ -309,15 +309,13 @@ help:
   usage5: chat mute (临时禁用水群功能 15 分钟)
   usage6: chat unmute (取消临时禁用)
   usage7: chat calls (查看最近的工具调用记录)
-  usage8: chat profile (查看自己的 profile)
-  usage9: chat profile set <内容> (设置自己的 profile)
-  usage10: chat block user <add|remove|list> [用户ID] (管理屏蔽用户)
-  usage11: chat block keyword <add|remove|list> [关键词] (管理屏蔽关键词)
-  usage12: chat block list (查看所有屏蔽项)
-  usage13: chat ignore-mention <add|remove|list> [用户ID] (管理提及屏蔽用户)
-  usage14: chat reset (清除当前会话所有历史消息并重置会话状态)
-  usage15: chat stop (强制停止当前正在生成的响应)
-  usage16: chat stats (查看时间统计数据)
+  usage8: chat block user <add|remove|list> [用户ID] (管理屏蔽用户)
+  usage9: chat block keyword <add|remove|list> [关键词] (管理屏蔽关键词)
+  usage10: chat block list (查看所有屏蔽项)
+  usage11: chat ignore-mention <add|remove|list> [用户ID] (管理提及屏蔽用户)
+  usage12: chat reset (清除当前会话所有历史消息并重置会话状态)
+  usage13: chat stop (强制停止当前正在生成的响应)
+  usage14: chat stats (查看时间统计数据)
 
 help_rua:
   description: 互动
