@@ -107,6 +107,14 @@ class ToolManager:
             deal_type=deal_type, delay_minutes=delay_minutes, reason=reason
         )
 
+    async def request_action(self, do: str, duration: Optional[int] = None) -> str:
+        """向意识会话申请执行一个动作"""
+        return await self.processor.session.request_action(do=do, duration=duration)
+
+    async def request_sleep(self) -> str:
+        """向意识会话申请睡觉"""
+        return await self.processor.session.request_sleep()
+
     async def select_tools(self, mode: Literal["group", "agent"]) -> list[AsyncFunction]:
         tools = []
         processor = self.processor
@@ -489,6 +497,35 @@ class ToolManager:
                             required=False,
                         ),
                     },
+                )
+            )
+
+            # request_action
+            tools.append(
+                AsyncFunction(
+                    func=self.request_action,
+                    description=await self.text("tools_desc.request_action.desc"),
+                    parameters={
+                        "do": FunctionParameter(
+                            type="string",
+                            description=await self.text("tools_desc.request_action.do"),
+                            required=True,
+                        ),
+                        "duration": FunctionParameter(
+                            type="integer",
+                            description=await self.text("tools_desc.request_action.duration"),
+                            required=False,
+                        ),
+                    },
+                )
+            )
+
+            # request_sleep
+            tools.append(
+                AsyncFunction(
+                    func=self.request_sleep,
+                    description=await self.text("tools_desc.request_sleep.desc"),
+                    parameters={},
                 )
             )
 

@@ -337,6 +337,56 @@ class BaseSession(ABC):
         except asyncio.TimeoutError:
             return await self.text("sleep_decision.timeout")
 
+    async def request_action(self, do: str, duration: Optional[int] = None) -> str:
+        """
+        向意识会话申请执行一个动作
+
+        Args:
+            do: 想要做的事的名字
+            duration: 建议的持续时间（分钟），可选
+
+        Returns:
+            意识会话的决定结果
+        """
+        from ..ego import consciousness
+
+        result_future = asyncio.get_event_loop().create_future()
+
+        await consciousness.submit_action_decision(
+            session_id=self.session_id,
+            do=do,
+            duration=duration,
+            future=result_future,
+        )
+
+        try:
+            result = await asyncio.wait_for(result_future, timeout=120)
+            return result
+        except asyncio.TimeoutError:
+            return await self.text("request_action.timeout")
+
+    async def request_sleep(self) -> str:
+        """
+        向意识会话申请睡觉
+
+        Returns:
+            意识会话的决定结果
+        """
+        from ..ego import consciousness
+
+        result_future = asyncio.get_event_loop().create_future()
+
+        await consciousness.submit_sleep_request(
+            session_id=self.session_id,
+            future=result_future,
+        )
+
+        try:
+            result = await asyncio.wait_for(result_future, timeout=120)
+            return result
+        except asyncio.TimeoutError:
+            return await self.text("request_sleep.timeout")
+
     async def process_timer(self) -> None:
         dt = datetime.now()
         if self.mute_until and dt > self.mute_until:
