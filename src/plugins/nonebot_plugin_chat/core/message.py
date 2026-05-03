@@ -150,6 +150,7 @@ class MessageQueue:
 
     async def get_messages(self) -> list[OpenAIMessage]:
         messages = copy.deepcopy(self.messages)
+        logger.debug(messages)
         if len(messages) <= 1:
             raise ValueError("messages must be more than 1")
 
