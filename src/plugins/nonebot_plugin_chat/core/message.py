@@ -152,6 +152,38 @@ class MessageQueue:
         messages = copy.deepcopy(self.messages)
         if len(messages) <= 1:
             raise ValueError("messages must be more than 1")
+
+        tool_call_ids: set[str] = set()
+        for msg in messages:
+            role = get_role(msg)
+            if role == "tool":
+                if isinstance(msg, dict):
+                    tcid = msg.get("tool_call_id")
+                else:
+                    tcid = getattr(msg, "tool_call_id", None)
+                if tcid:
+                    tool_call_ids.add(tcid)
+
+        for msg in messages:
+            role = get_role(msg)
+            if role == "assistant":
+                if isinstance(msg, dict):
+                    tc = msg.get("tool_calls")
+                    if tc:
+                        valid = [t for t in tc if t["id"] in tool_call_ids]
+                        if valid:
+                            msg["tool_calls"] = valid
+                        else:
+                            del msg["tool_calls"]
+                else:
+                    tc = getattr(msg, "tool_calls", None)
+                    if tc:
+                        valid = [t for t in tc if t.id in tool_call_ids]
+                        if valid:
+                            msg.tool_calls = valid
+                        else:
+                            msg.tool_calls = None
+
         return messages
 
     async def fetch_reply(self) -> None:
