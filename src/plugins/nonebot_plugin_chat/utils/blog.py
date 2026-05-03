@@ -50,7 +50,12 @@ async def get_blog_posts(page: int = 1, page_size: int = 10) -> dict:
 
     return {
         "items": [
-            {"id": p.id, "title": p.title, "content": p.content, "create_at": p.create_at.isoformat() if p.create_at else None}
+            {
+                "id": p.id,
+                "title": p.title,
+                "content": p.content,
+                "create_at": p.create_at.isoformat() if p.create_at else None,
+            }
             for p in posts
         ],
         "total": total,

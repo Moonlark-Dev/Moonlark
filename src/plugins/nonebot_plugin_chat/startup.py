@@ -54,6 +54,7 @@ from .utils.blog import get_blog_posts
 
 app = nonebot.get_app()
 
+
 @app.get("/chat/blog")
 async def blog_list(
     page: int = Query(1, ge=1, description="Page number"),
