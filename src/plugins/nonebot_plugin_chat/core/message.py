@@ -151,8 +151,16 @@ class MessageQueue:
     async def get_messages(self) -> list[OpenAIMessage]:
         messages = copy.deepcopy(self.messages)
         logger.debug(messages)
-        if len(messages) <= 1:
+        system_prompt = await self.processor.generate_system_prompt()
+        if len(messages) <= 0:
             raise ValueError("messages must be more than 1")
+        elif len([msg for msg in messages if get_role(msg) == "user"]) <= 0:
+            raise ValueError("no user input")
+        elif get_role(messages[0]) != "system":
+            messages.insert(0, system_prompt)
+        elif messages[0] != system_prompt:
+            messages = [system_prompt]
+            raise ValueError("system prompt modified")
 
         tool_call_ids: set[str] = set()
         for msg in messages:
