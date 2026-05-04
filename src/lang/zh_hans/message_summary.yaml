@@ -406,3 +406,24 @@ check_history:
 mvp_ranking:
   title: MVP 排行榜
   no_data: 暂无数据
+  extract_prompt: |
+    # Role: 信息提取器
+
+    ## Goal
+    从一段群聊每日总结文本中，提取"群聊 MVP"的昵称和评语。
+
+    ## Input
+    一段包含"## 群聊 MVP"章节的 Markdown 格式群聊总结文本。
+
+    ## Logic
+    1. 在输入文本中找到"群聊 MVP"相关的章节。
+    2. 提取 MVP 群员的昵称（仅昵称，不含任何括号、ID 或装饰符号）。
+    3. 提取对 MVP 的评语。
+    4. 如果文本中没有 MVP 相关内容，将 found 设为 false。
+
+    ## Output Format
+    请返回严格的 JSON 格式（不要包含 Markdown 代码块）：
+    {{"found": true, "nickname": "MVP昵称", "comment": "评语内容"}}
+
+    如果未找到 MVP：
+    {{"found": false, "nickname": "", "comment": ""}}

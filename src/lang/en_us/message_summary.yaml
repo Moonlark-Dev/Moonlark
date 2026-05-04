@@ -400,3 +400,27 @@ check_history:
 
     如果未找到匹配项，请仅返回字符串：
     NO_MATCH_FOUND
+mvp_ranking:
+  title: MVP 排行榜
+  no_data: 暂无数据
+  extract_prompt: |
+    # Role: Information Extractor
+
+    ## Goal
+    Extract the "Group Chat MVP" nickname and comment from a daily group chat summary text.
+
+    ## Input
+    A Markdown-formatted group chat summary text containing a "群聊 MVP" section.
+
+    ## Logic
+    1. Find the "群聊 MVP" section in the input text.
+    2. Extract the MVP member's nickname (nickname only, no brackets, IDs, or decorative symbols).
+    3. Extract the comment about the MVP.
+    4. If there is no MVP-related content in the text, set found to false.
+
+    ## Output Format
+    Return strict JSON format (no Markdown code blocks):
+    {{"found": true, "nickname": "MVP nickname", "comment": "comment content"}}
+
+    If no MVP is found:
+    {{"found": false, "nickname": "", "comment": ""}}
