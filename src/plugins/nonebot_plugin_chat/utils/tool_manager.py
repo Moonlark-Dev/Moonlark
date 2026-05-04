@@ -76,18 +76,13 @@ class ToolManager:
     async def vm_stop_task(self, task_id: str) -> str:
         return await vm_stop_task(task_id, self.text)
 
-    async def set_mood(self, mood: str, reason: Optional[str] = None) -> str:
+    async def set_mood(self, mood: str, reason: Optional[str] = None, intensity: float = 0.5) -> None:
         try:
             mood_enum = MoodEnum(mood)
         except ValueError:
-            return await self.text("status.invalid_mood", mood)
+            return
 
-        success, message_key = self.status_manager.set_mood(mood_enum, reason)
-        if success:
-            mood_text = await self.text(f"status.mood.{mood_enum.value}")
-            return await self.text(message_key, mood_text, reason or await self.text("status.no_reason"))
-        else:
-            return await self.text(message_key)
+        self.status_manager.set_mood(mood_enum, reason, intensity)
 
     async def calculate_luck_value(self, nickname: str) -> str:
         """计算用户的人品值
@@ -103,6 +98,22 @@ class ToolManager:
             return await self.text("tools_desc.calculate_luck_value.user_not_found", nickname)
         luck_value = await get_luck_value(user_id)
         return await self.text("tools_desc.calculate_luck_value.result", nickname, luck_value)
+
+    async def change_sleep_status(
+        self, deal_type: Literal["ready", "delay"], delay_minutes: Optional[int] = None, reason: Optional[str] = None
+    ) -> str:
+        """修改睡觉状态，委托给session处理"""
+        return await self.processor.session.change_sleep_status(
+            deal_type=deal_type, delay_minutes=delay_minutes, reason=reason
+        )
+
+    async def request_action(self, do: str, duration: Optional[int] = None) -> str:
+        """向意识会话申请执行一个动作"""
+        return await self.processor.session.request_action(do=do, duration=duration)
+
+    async def request_sleep(self) -> str:
+        """向意识会话申请睡觉"""
+        return await self.processor.session.request_sleep()
 
     async def select_tools(self, mode: Literal["group", "agent"]) -> list[AsyncFunction]:
         tools = []
@@ -274,33 +285,32 @@ class ToolManager:
 
         # # === Group 模式特有工具 ===
         if mode == "group":
-            # query_image
             tools.append(
                 AsyncFunction(
-                    func=processor.query_image,
-                    description=await self.text("tools_desc.query_image.desc"),
+                    func=processor.send_message,
+                    description=await self.text("tools_desc.send_message.desc"),
                     parameters={
-                        "image_id": FunctionParameter(
+                        "message_content": FunctionParameter(
                             type="string",
-                            description=await self.text("tools_desc.query_image.image_id"),
+                            description=await self.text("tools_desc.send_message.message_content"),
                             required=True,
                         ),
-                        "query_prompt": FunctionParameter(
-                            type="string",
-                            description=await self.text("tools_desc.query_image.query_prompt"),
-                            required=True,
+                        "reply_message_id": FunctionParameter(
+                            type="integer",
+                            description=await self.text("tools_desc.send_message.reply_message_id"),
+                            required=False,
                         ),
                     },
                 )
             )
+
             # leave_for_a_while
-            tools.insert(
-                2,
+            tools.append(
                 AsyncFunction(
                     func=processor.leave_for_a_while,
                     description=await self.text("tools_desc.leave_for_a_while.desc"),
                     parameters={},
-                ),
+                )
             )
 
             # get_note_poster
@@ -459,6 +469,63 @@ class ToolManager:
                             required=True,
                         ),
                     },
+                )
+            )
+
+            # change_sleep_status (仅在睡觉决策流程中可用)
+            # from ..core.main_session import main_session
+            # if main_session.is_sleep_decision_active():
+            tools.append(
+                AsyncFunction(
+                    func=self.change_sleep_status,
+                    description=await self.text("tools_desc.change_sleep_status.desc"),
+                    parameters={
+                        "deal_type": FunctionParameterWithEnum(
+                            type="string",
+                            description=await self.text("tools_desc.change_sleep_status.deal_type"),
+                            required=True,
+                            enum={"ready", "delay"},
+                        ),
+                        "delay_minutes": FunctionParameter(
+                            type="integer",
+                            description=await self.text("tools_desc.change_sleep_status.delay_minutes"),
+                            required=False,
+                        ),
+                        "reason": FunctionParameter(
+                            type="string",
+                            description=await self.text("tools_desc.change_sleep_status.reason"),
+                            required=False,
+                        ),
+                    },
+                )
+            )
+
+            # request_action
+            tools.append(
+                AsyncFunction(
+                    func=self.request_action,
+                    description=await self.text("tools_desc.request_action.desc"),
+                    parameters={
+                        "do": FunctionParameter(
+                            type="string",
+                            description=await self.text("tools_desc.request_action.do"),
+                            required=True,
+                        ),
+                        "duration": FunctionParameter(
+                            type="integer",
+                            description=await self.text("tools_desc.request_action.duration"),
+                            required=False,
+                        ),
+                    },
+                )
+            )
+
+            # request_sleep
+            tools.append(
+                AsyncFunction(
+                    func=self.request_sleep,
+                    description=await self.text("tools_desc.request_sleep.desc"),
+                    parameters={},
                 )
             )
 

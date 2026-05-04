@@ -48,8 +48,23 @@ async def _init_file_server():
     app.mount("/chat/files", StaticFiles(directory=FILE_DIR), name="chat_files")
 
 
+import nonebot
+from fastapi import Query
+from .utils.blog import get_blog_posts
+
+app = nonebot.get_app()
+
+
+@app.get("/chat/blog")
+async def blog_list(
+    page: int = Query(1, ge=1, description="Page number"),
+    page_size: int = Query(10, ge=1, le=100, description="Items per page"),
+):
+    return await get_blog_posts(page=page, page_size=page_size)
+
+
 @driver.on_startup
 async def _init_main_session():
-    from .core.main_session import init_main_session
+    from .core.ego.main_session import init_main_session
 
     await init_main_session()

@@ -27,7 +27,12 @@ class GroupSession(BaseSession):
             member_info = await self.bot.get_group_member_info(
                 group_id=int(self.adapter_group_id), user_id=int(user_id)
             )
-            return AdapterUserInfo(**member_info)
+            adapter_nickname = member_info["nickname"]
+            user = await get_user(user_id)
+            return AdapterUserInfo(
+                **member_info,
+                nickname=adapter_nickname if not user.has_nickname() else user.get_nickname(),
+            )
         cached_users = await self.get_users()
         if user_id in cached_users.values():
             for nickname, uid in cached_users.items():
@@ -43,7 +48,10 @@ class GroupSession(BaseSession):
             if isinstance(self.bot, OB11Bot):
                 self.group_users.clear()
                 for user in await self.bot.get_group_member_list(group_id=int(self.adapter_group_id)):
-                    self.group_users[user["nickname"]] = str(user["user_id"])
+                    adapter_nickname = user["nickname"]
+                    ml_user = await get_user(str(user["user_id"]))
+                    nickname = adapter_nickname if not ml_user.has_nickname() else ml_user.get_nickname()
+                    self.group_users[nickname] = str(user["user_id"])
             else:
                 self.group_users = cached_users
         return self.group_users
@@ -56,7 +64,6 @@ class GroupSession(BaseSession):
 
     async def setup(self) -> None:
         await super().setup()
-        await self.setup_session_name()
         await self.calculate_ghot_coefficient()
 
     async def send_poke(self, target_id: str) -> None:
@@ -74,9 +81,10 @@ class GroupSession(BaseSession):
         if len(cached_users) <= 1:
             self.ghot_coefficient *= 0.75
 
-    async def setup_session_name(self) -> None:
+    async def get_session_name(self) -> str:
         if isinstance(self.bot, OB11Bot):
-            self.session_name = (await self.bot.get_group_info(group_id=int(self.adapter_group_id)))["group_name"]
+            return (await self.bot.get_group_info(group_id=int(self.adapter_group_id)))["group_name"]
+        return await self.text("prompt_group.unknown_session_name")
 
     async def format_message(self, origin_message: str) -> UniMessage:
         message = re.sub(r"\[\d\d:\d\d:\d\d]\[Moonlark]\(\d+\): ?", "", origin_message)
@@ -113,4 +121,6 @@ class GroupSession(BaseSession):
             and recent_message_count < 26
         ):
             self.cached_latest_message = self.cached_messages[-1]
+            # 冷群检测触发，增加 0.3 token
+            self.processor.token_bucket.add(1)
             asyncio.create_task(self.processor.generate_reply())

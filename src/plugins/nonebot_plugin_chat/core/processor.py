@@ -1,5 +1,12 @@
+import base64
+
 import aiofiles
+from nonebot.adapters import Event
+from nonebot.typing import T_State
 from nonebot.adapters.onebot.v11 import Bot as OB11Bot
+from nonebot_plugin_alconna import At, UniMessage
+from nonebot_plugin_chat.utils.group import LinkParser
+from nonebot_plugin_chat.utils.token_bucket import TokenBucket
 from ..enums import StateEnum
 from nonebot_plugin_chat.utils.prompt import get_prompt_text
 from ..config import config
@@ -23,11 +30,10 @@ from .message import MessageQueue
 from ..models import ChatGroup, Sticker, UserProfile
 from ..types import CachedMessage
 
-from ..utils.message import generate_message_string
+from ..utils.message import MessageParser, generate_message_string
 from ..utils import parse_message_to_string
 from ..utils.ai_agent import AskAISession
 from ..utils.emoji import QQ_EMOJI_MAP
-from ..utils.image import query_image_content
 from ..utils.note_manager import get_context_notes
 from ..utils.sticker_manager import get_sticker_manager
 from ..utils.tool_manager import ToolManager
@@ -41,7 +47,8 @@ if TYPE_CHECKING:
 
 class MessageProcessor:
     def __init__(self, session: "BaseSession"):
-        self.openai_messages = MessageQueue(self, 50)
+        self.ENABLE_EMBEDDED_IMAGE = False
+        self.openai_messages = MessageQueue(self)
         self.session = session
         self.enabled = True
         self.tool_manager = ToolManager(self)
@@ -53,9 +60,9 @@ class MessageProcessor:
         self.sticker_tools = StickerTools(self.session)
         self.functions = []
         self.loop_task = None
-
-    async def query_image(self, image_id: str, query_prompt: str) -> str:
-        return await query_image_content(image_id, query_prompt, self.session.lang_str)
+        self.consecutive_message_count = 0
+        # Token bucket 相关属性
+        self.token_bucket = TokenBucket(10, -2)
 
     async def setup(self) -> None:
         self.functions = await self.tool_manager.select_tools("group")
@@ -151,38 +158,40 @@ class MessageProcessor:
         await user.set_config_key("chat_fav_judge_cache", [dt.timestamp(), daily_score + delta])
         await user.add_fav(delta)
         logger.info(f"AI judged user {user_id} ({nickname}): {score} ({reason}), delta={delta}")
-
-        # 添加 reaction
-        if self.session.is_napcat_bot():
-            user_messages = [msg for msg in self.session.cached_messages if msg.get("user_id") == user_id]
-            if user_messages:
-                messages_text = "\n".join(
-                    f"ID: {msg.get('message_id')}, Time: {msg.get('send_time').strftime('%H:%M:%S')}, Content: {msg.get('content')}"
-                    for msg in user_messages[-10:]
-                )
-                if score > 0:
-                    reaction_id = config.judge_reaction_config.add
-                else:
-                    reaction_id = config.judge_reaction_config.sub
-                try:
-                    system_prompt = await self.session.text("judge.message_analysis_system", reason)
-                    target_message_id = await fetch_message(
-                        [
-                            generate_message(system_prompt, "system"),
-                            generate_message(messages_text, "user"),
-                        ],
-                        reasoning_effort="low",
-                        identify="Judge Analysis",
-                    )
-                    target_message_id = target_message_id.strip()
-                    if target_message_id != await self.session.text("judge.not_found"):
-                        if any([msg.get("message_id") == target_message_id for msg in user_messages]):
-                            await self.send_reaction(target_message_id, reaction_id)
-                            logger.info(f"Judged reaction sent to message {target_message_id}")
-                except Exception as e:
-                    logger.exception(e)
-
+        asyncio.create_task(self.send_judge_response(score, reason, user_id))
         return await self.session.text("judge.success", nickname, reason)
+
+    async def send_judge_response(self, score: int, reason: str, user_id: str) -> None:
+        # 添加 reaction
+        if not self.session.is_napcat_bot():
+            return
+        user_messages = [msg for msg in self.session.cached_messages if msg.get("user_id") == user_id]
+        if user_messages:
+            messages_text = "\n".join(
+                f"ID: {msg.get('message_id')}, Time: {msg.get('send_time').strftime('%H:%M:%S')}, Content: {msg.get('content')}"
+                for msg in user_messages[-10:]
+            )
+            if score > 0:
+                reaction_id = config.judge_reaction_config.add
+            else:
+                reaction_id = config.judge_reaction_config.sub
+            try:
+                system_prompt = await self.session.text("judge.message_analysis_system", reason)
+                target_message_id = await fetch_message(
+                    [
+                        generate_message(system_prompt, "system"),
+                        generate_message(messages_text, "user"),
+                    ],
+                    reasoning_effort="low",
+                    identify="Judge Analysis",
+                )
+                target_message_id = target_message_id.strip()
+                if target_message_id != await self.session.text("judge.not_found"):
+                    if any([msg.get("message_id") == target_message_id for msg in user_messages]):
+                        await self.send_reaction(target_message_id, reaction_id)
+                        logger.info(f"Judged reaction sent to message {target_message_id}")
+            except Exception as e:
+                logger.exception(e)
 
     async def loop(self) -> None:
         await self.openai_messages.restore_from_db()
@@ -200,11 +209,27 @@ class MessageProcessor:
         else:
             return await self.session.text("poke.not_found")
 
+    async def parse_message(self, message: UniMessage, event: Event, state: T_State) -> tuple[str, list[bytes]]:
+        parser = MessageParser(
+            message, event, self.session.bot, state, self.session.lang_str, not self.ENABLE_EMBEDDED_IMAGE
+        )
+        msg_str = await parser.parse()
+        return (await LinkParser(msg_str, self.session.lang_str).parse()), parser.images
+
+    async def should_ignore_mention(self, user_id: str) -> bool:
+        async with get_session() as db_session:
+            group_config = await db_session.get(ChatGroup, {"group_id": self.session.session_id})
+            if group_config:
+                ignore_mention_list = json.loads(group_config.ignore_mention_user or "[]")
+                return user_id in ignore_mention_list
+        return False
+
     async def get_message(self) -> None:
         if not self.session.message_queue:
             await asyncio.sleep(3)
             return
         trigger_mode: Literal["none", "probability", "all"] = "none"
+        self.consecutive_message_count = 0
 
         item = self.session.message_queue.pop(0)
 
@@ -214,16 +239,22 @@ class MessageProcessor:
             content = await self.session.text(
                 "prompt.event_template", datetime.now().strftime("%H:%M:%S"), event_prompt
             )
-            self.openai_messages.append_user_message(content)
+            await self.openai_messages.append_user_message(content)
+            self.token_bucket.add(0.6)
 
         elif item[0] == "message":
             # 处理消息类型队列项
             message, event, state, user_id, nickname, dt, mentioned, message_id = item[1]
-            text = await parse_message_to_string(message, event, self.session.bot, state, self.session.lang_str)
+            mentioned = mentioned and not await self.should_ignore_mention(user_id)
+
+            text, images = await self.parse_message(message, event, state)
+            logger.debug(f"{text=}")
             if not text:
                 return
             if "@Moonlark" not in text and mentioned:
-                text = f"@Moonlark {text}"
+                if self.session.get_session_type() == "group":
+                    text = f"@Moonlark {text}"
+
             msg_dict: CachedMessage = {
                 "content": text,
                 "nickname": nickname,
@@ -231,11 +262,16 @@ class MessageProcessor:
                 "user_id": user_id,
                 "self": False,
                 "message_id": message_id,
+                "images": images,
             }
             await self.process_messages(msg_dict)
             self.session.cached_messages.append(msg_dict)
             await self.session.on_cache_posted()
-            trigger_mode = "probability" if not mentioned else "all"
+            trigger_mode = "all" if mentioned else "probability"
+            self.token_bucket.add(1 if len(text) >= 30 else 0.8)
+        logger.debug(f"{trigger_mode=} {self.blocked=}")
+        if trigger_mode == "all":
+            self.token_bucket.add(1)
         if (
             trigger_mode == "all" or (trigger_mode == "probability" and not self.session.message_queue)
         ) and not self.blocked:
@@ -251,7 +287,7 @@ class MessageProcessor:
 
     async def generate_reply(self, important: bool = False, is_event: bool = False) -> None:
         # 延迟导入以避免循环导入
-        from .main_session import main_session
+        from .ego import consciousness
 
         dt = datetime.now()
         recent_message_count = len(
@@ -269,7 +305,9 @@ class MessageProcessor:
             or (not self.openai_messages.is_last_message_from_user())
             or (len(self.openai_messages.messages) < 5 and not important)
             or (recent_message_count > 12 and not important)
+            or self.token_bucket.get() <= 0
         ):
+            logger.info("规则检查不通过，跳过 ...")
             return
         self.cold_until = datetime.now() + timedelta(seconds=3)
 
@@ -293,11 +331,10 @@ class MessageProcessor:
         if self.session.get_session_type() == "group":
             self.openai_messages.continuous_response = self.openai_messages.continuous_response or important
 
-        if main_session.state == StateEnum.SLEEPING:
+        if consciousness.state == StateEnum.SLEEPING:
             if not important:
                 return
-            await main_session.wake_up(session=self.session)
-        main_session.record_activate(important)
+            await consciousness.wake_up(session=self.session)
 
         logger.info(f"Generating reply ({important=})...")
         self.session.accumulated_text_length = 0
@@ -324,15 +361,41 @@ class MessageProcessor:
         await self.append_tool_call_history(text)
         return call_id, name, param
 
-    async def send_message(self, message_content: str, reply_message_id: str | None = None) -> None:
-        # 增加连续发送消息计数
+    async def send_message(self, message_content: str, reply_message_id: str | None = None) -> str:
+        # 仅在群聊中启用 token bucket 功能
+        if self.session.get_session_type() == "group":
+            # 检查 token 是否为负数
+            if self.token_bucket.get() < 0 and self.session.get_session_type() == "group":
+                return await self.session.text("message.token_insufficient", self.token_bucket.get())
+
+            # 计算需要扣除的 token 数量（每 10 个字计入 1 token，不足 10 个字的部分按 10 个字算）
+            text_length = len(message_content)
+            token_cost = (text_length + 9) // 18  # 向上取整
+        else:
+            token_cost = 0
+        # 扣除 token
+        self.token_bucket.consume(token_cost)
+
         self.session.last_activate = datetime.now()
+        self.consecutive_message_count += 1
         message = await self.session.format_message(message_content)
         if reply_message_id:
             message = message.reply(reply_message_id)
-        await message.send(target=self.session.target, bot=self.session.bot)
+        receipt = await message.send(target=self.session.target, bot=self.session.bot)
         # 记录回应用时（使用 reply_message_id 查找对应的原消息）
         self._record_reply_timing(reply_message_id)
+
+        return await self.session.text(
+            "message.sent",
+            receipt.msg_ids[0].get("message_id"),
+            len(message_content),
+            self.consecutive_message_count,
+            (
+                await self.session.text("message.token", self.token_bucket.get(), token_cost)
+                if self.session.get_session_type() == "group"
+                else ""
+            ),
+        )
 
     def _record_reply_timing(self, reply_message_id: str | None = None) -> None:
         """记录回应用时（从 reply_message_id 对应的消息到发送回复的时间）"""
@@ -346,8 +409,15 @@ class MessageProcessor:
                         timing_stats_manager.record_reply_time(self.session.session_id, reply_time_ms)
                     return
 
-    def append_user_message(self, msg_str: str) -> None:
-        self.openai_messages.append_user_message(msg_str)
+    def append_user_message(self, msg_str: str, images: list[bytes]) -> None:
+        content: list = [
+            {"type": "text", "text": msg_str},
+        ]
+        for img in images:
+            image_base64 = base64.b64encode(img).decode("utf-8")
+            content.append({"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_base64}"}})
+        message = generate_message(content, "user")
+        self.openai_messages.messages.append(message)
 
     async def process_messages(self, msg_dict: CachedMessage) -> None:
         async with get_session() as session:
@@ -371,7 +441,9 @@ class MessageProcessor:
 
             if not self.blocked:
                 msg_str = generate_message_string(msg_dict)
-                self.append_user_message(msg_str)
+                msg_str += await self.generate_additional_prompt(msg_str, msg_dict["user_id"])
+                self.append_user_message(msg_str, msg_dict["images"])
+                # print(self.openai_messages.messages)
             if not self.blocked and not msg_dict["self"]:
                 content = msg_dict.get("content", "")
                 if isinstance(content, str) and content:
@@ -457,57 +529,69 @@ class MessageProcessor:
             created_time = datetime.fromtimestamp(note.created_time).strftime("%y-%m-%d")
             return await self.session.text("prompt.note.format", note.content, note.id, created_time)
 
-        return (
-            "\n".join([await format_note(note) for note in notes])
-            if notes
-            else await self.session.text("prompt.note.none")
-        )
+        note_lines = [await format_note(note) for note in notes]
+        note_lines = await self.filter_info_lines(note_lines)
+        return "\n".join(note_lines) if notes else await self.session.text("prompt.note.none")
 
-    async def generate_additional_prompt(self) -> str:
-        chat_history = "\n".join(self.get_message_content_list())
-        # 获取相关笔记
+    async def generate_additional_prompt(self, message_str: str, sender_id: str) -> str:
         note_manager = await get_context_notes(self.session.session_id)
-        notes, notes_from_other_group = await note_manager.filter_note(chat_history)
-
-        # 获取用户 profile 信息
-        user_profiles = await self._get_user_profiles()
-
-        # 格式化 profile 信息
-        if user_profiles:
-            profiles_text = "\n".join(user_profiles)
-        else:
-            profiles_text = await self.session.text("prompt.profile.none")
-
+        sender = await get_user(sender_id)
+        notes, notes_from_other_group = await note_manager.filter_note(message_str)
+        notes.extend(notes_from_other_group)
         status_manager = get_status_manager()
         mood, mood_reason = status_manager.get_status()
-
         mood_text = await self.session.text(f"status.mood.{mood.value}")
-
-        # 导入 main_session 获取最近做的事
-        from .main_session import main_session
+        from .ego import consciousness
 
         current_time = await self.session.text("prompt_group.time", datetime.now().isoformat())
-        session_name = self.session.session_name
+        mood_reason_text = (
+            mood_reason
+            if not await self.is_additional_info_line_showed(str(mood_reason))
+            else await self.session.text("prompt_group.showed")
+        )
         state = await self.session.text(
-            "prompt_group.state", mood_text, status_manager.get_mood_retention(), mood_reason
+            "prompt_group.state",
+            mood_text,
+            status_manager.get_mood_retention(),
+            mood_reason_text,
         )
 
-        recent_activities = await main_session.get_recent_actions_text(self.session.lang_str)
+        recent_activities = "\n".join(
+            await self.filter_info_lines(
+                (await consciousness.get_recent_actions_text(self.session.lang_str)).splitlines()
+            )
+        )
         return await self.session.text(
-            "prompt_group.additional_info",
-            current_time,
-            session_name,
+            "prompt_group.chat_additional_info",
+            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            round(self.token_bucket.get(), 2),
+            sender.get_nickname(),
+            sender.get_fav(),
+            await sender.get_fav_level(),
             await self.generate_note_text(notes),
-            await self.generate_note_text(notes_from_other_group),
-            recent_activities,
-            profiles_text,
-            await self.filter_instant_mem(chat_history),
+            recent_activities or None,
+            await self.filter_instant_mem(message_str),
             state,
         )
 
+    async def filter_info_lines(self, lines: list[str]) -> list[str]:
+        return [line for line in lines if not await self.is_additional_info_line_showed(line)]
+
+    async def is_additional_info_line_showed(self, line: str) -> bool:
+        async with self.openai_messages.fetcher_lock:
+            for message in self.openai_messages.messages:
+                if line in str(message):
+                    return True
+        return False
+
     async def filter_instant_mem(self, chat_history: str) -> str:
-        return "\n".join(
-            [
+        now = datetime.now()
+        today = now.date()
+        result = []
+        for mem in filter_instant_memory(chat_history):
+            if mem["ctx_id"] == self.session.session_id and mem["create_time"].date() == today:
+                continue
+            result.append(
                 await self.session.text(
                     "prompt_group.instant_mem",
                     mem["category"],
@@ -517,9 +601,8 @@ class MessageProcessor:
                     mem["ctx_id"],
                     mem["content"],
                 )
-                for mem in filter_instant_memory(chat_history)
-            ]
-        )
+            )
+        return "\n".join(result)
 
     async def generate_system_prompt(self) -> OpenAIMessage:
         fav_rule = await get_prompt_text("favorability")
@@ -527,11 +610,20 @@ class MessageProcessor:
         return generate_message(
             await self.session.text(
                 "prompt_group.default",
+                await self.session.get_session_name(),
                 await get_prompt_text("identity"),
+                (
+                    await self.session.text("prompt_group.simple_image")
+                    if not self.ENABLE_EMBEDDED_IMAGE
+                    else await self.session.text("prompt_group.image_placeholder")
+                ),
                 await get_prompt_text("rule"),
-                "/".join([i for i in QQ_EMOJI_MAP.values()]),
+                (
+                    await self.session.text("prompt_group.token_bucket_rule")
+                    if self.session.get_session_type() == "group"
+                    else ""
+                ),
                 await get_prompt_text("interaction", fav_rule),
-                await self.generate_additional_prompt(),
             ),
             "system",
         )
@@ -601,12 +693,14 @@ class MessageProcessor:
                     [k.strip() for k in mem["keywords"].split(",")],
                     expire_level,
                     self.session.lang_str,
+                    ctx_id=self.session.session_id,
+                    name=await self.session.get_session_name(),
                 )
         except Exception as e:
             logger.exception(e)
 
     async def check_message_truncated(self) -> bool:
-        chat_history = await self.session.get_cached_messages_string()
+        chat_history = await self.session.get_cached_messages_string(length=10, include_self_message=False)
         try:
             model_response = await fetch_message(
                 [

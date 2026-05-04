@@ -1,10 +1,10 @@
 from datetime import datetime
-from typing import Literal, Optional, TypedDict, Union
+from typing import Any, Literal, Optional, TypedDict, Union
 
 from nonebot_plugin_orm import Model
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy import LargeBinary, String, Text, Float, Integer
+from sqlalchemy import BLOB, JSON, DateTime, LargeBinary, String, Text, Float, Integer, BINARY
 from sqlalchemy.dialects.mysql import MEDIUMBLOB, MEDIUMTEXT
 
 # 创建跨数据库兼容的二进制类型：MySQL 使用 MEDIUMBLOB (16MB)，其他数据库使用 LargeBinary
@@ -18,7 +18,17 @@ class ChatGroup(Model):
     group_id: Mapped[str] = mapped_column(String(128), primary_key=True)
     blocked_user: Mapped[str] = mapped_column(Text(), default="[]")
     blocked_keyword: Mapped[str] = mapped_column(Text(), default="[]")
+    ignore_mention_user: Mapped[str] = mapped_column(Text(), default="[]")
     enabled: Mapped[bool]
+
+
+class ActionDecisionResponse(BaseModel):
+    approved: bool
+    allocated_time: int
+
+
+class SleepDecisionResponse(BaseModel):
+    approved: bool
 
 
 class Note(Model):
@@ -65,10 +75,12 @@ class Sticker(Model):
 class MessageQueueCache(Model):
     """消息队列缓存，用于持久化 OpenAI 消息历史以便重启后恢复"""
 
-    group_id: Mapped[str] = mapped_column(String(128), primary_key=True)  # 群组 ID，主键确保每个群组只有一条记录
+    message_id: Mapped[int] = mapped_column(Integer(), primary_key=True, autoincrement=True)
+    group_id: Mapped[str] = mapped_column(String(128))
     # MySQL 使用 MEDIUMTEXT (16MB)，SQLite 使用 Text（无大小限制）
-    messages_json: Mapped[str] = mapped_column(CompatibleMediumText)  # JSON 序列化的消息列表
-    updated_time: Mapped[float] = mapped_column(Float())  # 最后更新时间戳
+    message_json: Mapped[str] = mapped_column(CompatibleMediumText)  # JSON 序列化的消息列表
+    updated_time: Mapped[datetime] = mapped_column(DateTime(), default=datetime.now)  # 最后更新时间戳
+    message_hash: Mapped[bytes] = mapped_column(BINARY(32))  # 消息哈希，用于去重
 
 
 class JudgeData(BaseModel):
@@ -77,38 +89,7 @@ class JudgeData(BaseModel):
     reason: str
 
 
-class MessageData(BaseModel):
-    message_content: str
-    reply_message_id: Optional[str] = None
-
-
-class ImageQueryRequest(BaseModel):
-    image_id: str
-    query_prompt: str
-
-
-class NotePushRequest(BaseModel):
-    text: str
-    expire_hours: Optional[int] = None
-    keywords: Optional[str] = None
-
-
-class TimerCreateRequest(BaseModel):
-    delay: int
-    description: str
-
-
-class InteractionDealData(BaseModel):
-    interaction_id: str
-    deal_type: Literal["dodge", "bite", "enjoy"]
-
-
-class Reaction(BaseModel):
-    message_id: str
-    reaction: str
-
-
-class ModelResponse(BaseModel):
+class ModelResponse(BaseModel, extra="forbid"):
     reply_required: bool
     mood: Optional[
         Literal[
@@ -127,6 +108,7 @@ class ModelResponse(BaseModel):
             "shy",
         ]
     ]
+    mood_intensity: float = Field(0.8, ge=0.5, le=1.2)
     mood_reason: Optional[str] = None
     favorability_judge: Optional[JudgeData] = None
     interest: Optional[float] = Field(None, ge=0.0, le=1.0)
@@ -142,13 +124,13 @@ class PrivateChatSession(Model):
     last_proactive_message_time: Mapped[Optional[float]] = mapped_column(Float(), nullable=True)  # 最后主动消息时间戳
 
 
-class MainSessionData(Model):
+class MainSessionActionHistory(Model):
     """MainSession 数据持久化存储，用于保存 action_history"""
 
-    key: Mapped[str] = mapped_column(String(64), primary_key=True)  # 数据键名
-    # MySQL 使用 MEDIUMTEXT，其他数据库使用 Text
-    data_json: Mapped[str] = mapped_column(CompatibleMediumText)  # JSON 序列化的数据
-    updated_time: Mapped[float] = mapped_column(Float())  # 最后更新时间戳
+    id_: Mapped[int] = mapped_column(Integer(), primary_key=True, autoincrement=True)
+    start_time: Mapped[datetime] = mapped_column(DateTime())
+    end_time: Mapped[Optional[datetime]] = mapped_column(DateTime(), nullable=True)
+    action: Mapped[dict[str, Any]] = mapped_column(JSON())
 
 
 class BlogPost(Model):

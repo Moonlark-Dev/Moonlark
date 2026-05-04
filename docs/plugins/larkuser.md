@@ -188,6 +188,7 @@ Moonlark 用户操作基类，定义了用户相关的各种操作方法。
 - `get_experience`: 获取用户经验值。
 - `get_register_time`: 获取用户注册时间。
 - `get_level`: 获取用户等级。
+- `get_fav_level`: 获取本地化后的好感等级名称。
 - `is_registered`: 检查用户是否已注册。
 - `set_data`: 设置用户数据。
 - `add_fav`: 增加用户好感度。

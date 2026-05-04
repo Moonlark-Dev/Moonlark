@@ -45,7 +45,7 @@ from nonebot.adapters.onebot.v11.message import MessageSegment as OB11Segment
 from nonebot.adapters.onebot.v11.message import Message as OB11Message
 
 
-@cave.assign("add-node.node_msg")
+@cave.assign("node.node_msg")
 async def _(
     session: async_scoped_session,
     node_msg: Reference,
