@@ -1,7 +1,7 @@
 from datetime import datetime
 from nonebot_plugin_orm import Model
 from sqlalchemy.orm import mapped_column, Mapped
-from sqlalchemy import String, Text, Integer
+from sqlalchemy import String, Text, Integer, DateTime
 from typing import TypedDict
 
 
@@ -12,6 +12,12 @@ class GroupMessage(Model):
     user_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
     group_id: Mapped[str] = mapped_column(String(128))
     timestamp: Mapped[datetime] = mapped_column(default=datetime.now)
+
+
+class GroupDailySummary(Model):
+    group_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    date: Mapped[datetime] = mapped_column(DateTime, primary_key=True)
+    summary: Mapped[str] = mapped_column(Text())
 
 
 class MVPRecord(Model):

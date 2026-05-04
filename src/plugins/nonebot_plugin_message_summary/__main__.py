@@ -13,7 +13,7 @@ from sqlalchemy import select
 
 from .ai_utils import extract_mvp_from_summary, generate_message_string
 from .lang import lang
-from .models import GroupMessage, MVPRecord
+from .models import GroupMessage, GroupDailySummary, MVPRecord
 
 # This file is kept for backward compatibility and scheduler tasks
 # Most logic has been moved to matcher.py, ai_utils.py, render_utils.py
@@ -22,6 +22,14 @@ from .models import GroupMessage, MVPRecord
 def get_everyday_summary_config() -> FileManager:
     """Get the config file for everyday summary feature"""
     return open_file("everyday_summary_config.json", FileType.CONFIG, [])
+
+
+async def get_cached_daily_summary(group_id: str) -> str | None:
+    """Get cached daily summary for a group if it exists for today"""
+    today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    async with get_session() as session:
+        record = await session.get(GroupDailySummary, {"group_id": group_id, "date": today})
+        return record.summary if record else None
 
 
 async def send_daily_summary_to_group(group_id: str) -> None:
@@ -59,6 +67,15 @@ async def send_daily_summary_to_group(group_id: str) -> None:
         ],
         identify="Message Summary (Daily)",
     )
+
+    today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    async with get_session() as session:
+        existing = await session.get(GroupDailySummary, {"group_id": group_id, "date": today})
+        if existing:
+            existing.summary = summary_string
+        else:
+            session.add(GroupDailySummary(group_id=group_id, date=today, summary=summary_string))
+        await session.commit()
 
     try:
         image_bytes = await md_to_pic(summary_string)

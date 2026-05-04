@@ -17,9 +17,11 @@ from nonebot_plugin_ranking import generate_image
 from nonebot_plugin_chat.utils.group import parse_message_to_string
 from nonebot_plugin_chat.models import ChatGroup
 from nonebot_plugin_broadcast import get_available_groups
+from nonebot_plugin_htmlrender import md_to_pic
 
-from .models import GroupMessage, MVPRecord
+from .models import GroupMessage, GroupDailySummary, MVPRecord
 from .lang import lang
+from .__main__ import get_cached_daily_summary, send_daily_summary_to_group
 from .ai_utils import (
     fetch_broadcast_summary,
     fetch_default_summary,
@@ -55,6 +57,7 @@ neko_finder = on_alconna(Alconna("neko-finder"))
 debate_helper = on_alconna(Alconna("debate-helper", Args["limit", int, 200]))
 check_history = on_command("check-history", aliases={"发过了吗"})
 mvp_ranking = on_alconna(Alconna("mvp-rank"))
+group_daily = on_alconna(Alconna("group-daily"))
 
 
 # --- Config Helpers ---
@@ -345,3 +348,23 @@ async def handle_mvp_ranking(
 
     image = await generate_image(ranked_data, user_id, await lang.text("mvp_ranking.title", user_id))
     await mvp_ranking.finish(UniMessage().image(raw=image))
+
+
+@group_daily.handle()
+async def handle_group_daily(
+    bot: Bot,
+    user_id: str = get_user_id(),
+    group_id: str = get_group_id(),
+) -> None:
+    """处理 .group-daily 指令，发送当日群聊总结"""
+    async with get_config() as conf:
+        if group_id in conf.data:
+            await lang.finish("disabled", user_id)
+
+    cached = await get_cached_daily_summary(group_id)
+    if cached:
+        image_bytes = await md_to_pic(cached)
+        await group_daily.finish(UniMessage().image(raw=image_bytes))
+    else:
+        await send_daily_summary_to_group(group_id)
+        await group_daily.finish()
