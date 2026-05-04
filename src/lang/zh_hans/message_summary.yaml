@@ -403,3 +403,6 @@ check_history:
 
     如果未找到匹配项，请仅返回字符串：
     NO_MATCH_FOUND
+mvp_ranking:
+  title: MVP 排行榜
+  no_data: 暂无数据
