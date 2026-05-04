@@ -1,7 +1,7 @@
 import hashlib
 import re
 import traceback
-from typing import TYPE_CHECKING, Optional, cast
+from typing import TYPE_CHECKING, Any, Optional, cast
 from nonebot.compat import type_validate_json
 from nonebot.log import logger
 
@@ -81,14 +81,16 @@ class MessageQueue:
                 logger.info(f"已从数据库恢复群 {group_id} 的消息队列，共 {len(self.messages)} 条消息")
 
             if self.messages:
-                expected_prompt: dict = await self.processor.generate_system_prompt()
-                expected_content = expected_prompt.get("content", "")
+                expected_prompt = await self.processor.generate_system_prompt()
+                # 统一提取 content：兼容 dict（TypedDict 的 content 可能为可选键）和 Pydantic 模型
+                expected_content = expected_prompt.get("content", "") if isinstance(expected_prompt, dict) else getattr(expected_prompt, "content", "")
 
                 if get_role(self.messages[0]) != "system":
                     logger.warning(f"群 {group_id} 恢复的消息队列缺少 system prompt，重置上下文")
                     await self._reset_and_clear_db(group_id)
                 else:
-                    actual_content = self.messages[0].get("content", "")
+                    first_msg = self.messages[0]
+                    actual_content = first_msg.get("content", "") if isinstance(first_msg, dict) else getattr(first_msg, "content", "")
                     if actual_content != expected_content:
                         logger.warning(f"群 {group_id} 的 system prompt 与当前配置不一致，重置上下文")
                         await self._reset_and_clear_db(group_id)
@@ -177,13 +179,15 @@ class MessageQueue:
             role = get_role(msg)
             if role == "assistant":
                 if isinstance(msg, dict):
-                    tc = msg.get("tool_calls")
+                    # 使用 dict[str, Any] 断言，绕过 TypedDict 对 tool_calls 键的限制
+                    msg_dict = cast(dict[str, Any], msg)
+                    tc = msg_dict.get("tool_calls")
                     if tc:
                         valid = [t for t in tc if t["id"] in tool_call_ids]
                         if valid:
-                            msg["tool_calls"] = valid
+                            msg_dict["tool_calls"] = valid
                         else:
-                            del msg["tool_calls"]
+                            del msg_dict["tool_calls"]
                 else:
                     tc = getattr(msg, "tool_calls", None)
                     if tc:
