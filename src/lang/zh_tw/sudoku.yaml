@@ -34,4 +34,4 @@ help:
     reset: sudoku reset (重置数独为初始状态)
     answer: sudoku answer (展示答案)
     undo: sudoku undo (撤销操作)
-    redo: sudoku redo (撤销操作)
+    redo: sudoku redo (重做操作)

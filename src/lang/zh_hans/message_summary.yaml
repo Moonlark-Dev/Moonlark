@@ -207,7 +207,7 @@ help:
   usage5: summary --everyday-summary <on/off> (每日总结开关)
 help_neko:
   description: 找猫娘
-  details: 根据进 2 天的消息对群友的“猫娘指数”进行打分。
+  details: 根据近 2 天的消息对群友的“猫娘指数”进行打分。
   usage1: neko-finder
 help_debate:
   description: 辩论助手
@@ -347,6 +347,10 @@ help_check_history:
   details: 检查最近 48 小时内是否已经讨论过某个话题或发送过某条消息。
   usage1: check-history [内容]
   usage2: check-history (回复某条消息)
+help_group_daily:
+  description: 每日群聊总结
+  details: 获取当日群聊的总结报告，需要先启用群消息总结功能。
+  usage1: group-daily (获取当日群聊总结)
 check_history:
   no_content: 请提供要查询的内容，或回复一条消息。
   no_history: 最近 48 小时内没有聊天记录。
