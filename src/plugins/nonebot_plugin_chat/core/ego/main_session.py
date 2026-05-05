@@ -176,15 +176,23 @@ class MainSession:
                     actual_minutes = (
                         min(datetime.now() - start_time, timedelta(minutes=action.time)).total_seconds() / 60
                     )
+                    return await lang.text(
+                        "main_session.history.sleep.in_progress", self.lang_str, actual_minutes, action.time
+                    )
                 else:
                     actual_minutes = min(stop_time - start_time, timedelta(minutes=action.time)).total_seconds() / 60
-                return await lang.text(
-                    "main_session.history.sleep.completed", self.lang_str, action.time, actual_minutes
-                )
+                    return await lang.text(
+                        "main_session.history.sleep.completed", self.lang_str, action.time, actual_minutes
+                    )
             case "do":
-                return await lang.text(
-                    "main_session.history.do", self.lang_str, action.information, action.estimated_time
-                )
+                if stop_time is None:
+                    return await lang.text(
+                        "main_session.history.do.in_progress", self.lang_str, action.information, action.estimated_time
+                    )
+                else:
+                    return await lang.text(
+                        "main_session.history.do.completed", self.lang_str, action.information, action.estimated_time
+                    )
             case "write_blog":
                 return await lang.text("main_session.history.write_blog", self.lang_str, action.title)
 
