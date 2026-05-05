@@ -1,13 +1,19 @@
 import json
-import re
 from datetime import datetime, timedelta, timezone
 from typing import Sequence
 
 from nonebot import logger
-from nonebot_plugin_openai import fetch_message, generate_message
+from nonebot_plugin_openai import fetch_message, fetch_json, generate_message
+from pydantic import BaseModel
 
 from .lang import lang
 from .models import CatGirlScore, DebateAnalysis, GroupMessage
+
+
+class MVPResult(BaseModel):
+    found: bool
+    nickname: str = ""
+    comment: str = ""
 
 
 async def generate_message_string(result: list[GroupMessage] | Sequence[GroupMessage], style: str) -> str:
@@ -143,13 +149,21 @@ async def analyze_history(payload: str, history: list[GroupMessage], user_id: st
         return None
 
 
-async def extract_mvp_from_summary(summary_string: str) -> tuple[str, str] | None:
-    """Extract MVP nickname and comment from daily summary"""
-    mvp_pattern = r"##\s*群聊\s*MVP\s*\n?\s*-\s*(.+?)\n?\s*(.+?)(?=\n##|\Z)"
-    match = re.search(mvp_pattern, summary_string, re.DOTALL)
+async def extract_mvp_from_summary(summary_string: str, user_id: str = "") -> tuple[str, str] | None:
+    """Extract MVP nickname and comment from daily summary using LLM"""
+    try:
+        result = await fetch_json(
+            [
+                generate_message(await lang.text("mvp_ranking.extract_prompt", user_id), "system"),
+                generate_message(summary_string, "user"),
+            ],
+            response_format=MVPResult,
+            identify="Message Summary (MVP Extract)",
+        )
+    except Exception as e:
+        logger.exception(e)
+        return None
 
-    if match:
-        nickname = match.group(1).strip()
-        comment = match.group(2).strip()
-        return nickname, comment
+    if result.found and result.nickname:
+        return result.nickname, result.comment
     return None

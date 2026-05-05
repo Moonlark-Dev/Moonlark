@@ -19,3 +19,5 @@ error:
 help:
   details: "记录并查询用户最后上线时间，支持全局和当前会话两种范围"
   description: "查询最后上线时间"
+  usage1: "lastseen (查看自己最后上线时间)"
+  usage2: "lastseen @用户 (查看指定用户最后上线时间)"
