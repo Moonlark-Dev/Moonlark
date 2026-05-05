@@ -83,14 +83,22 @@ class MessageQueue:
             if self.messages:
                 expected_prompt = await self.processor.generate_system_prompt()
                 # 统一提取 content：兼容 dict（TypedDict 的 content 可能为可选键）和 Pydantic 模型
-                expected_content = expected_prompt.get("content", "") if isinstance(expected_prompt, dict) else getattr(expected_prompt, "content", "")
+                expected_content = (
+                    expected_prompt.get("content", "")
+                    if isinstance(expected_prompt, dict)
+                    else getattr(expected_prompt, "content", "")
+                )
 
                 if get_role(self.messages[0]) != "system":
                     logger.warning(f"群 {group_id} 恢复的消息队列缺少 system prompt，重置上下文")
                     await self._reset_and_clear_db(group_id)
                 else:
                     first_msg = self.messages[0]
-                    actual_content = first_msg.get("content", "") if isinstance(first_msg, dict) else getattr(first_msg, "content", "")
+                    actual_content = (
+                        first_msg.get("content", "")
+                        if isinstance(first_msg, dict)
+                        else getattr(first_msg, "content", "")
+                    )
                     if actual_content != expected_content:
                         logger.warning(f"群 {group_id} 的 system prompt 与当前配置不一致，重置上下文")
                         await self._reset_and_clear_db(group_id)

@@ -7,4 +7,4 @@ template:
 help:
   description: Epic 免费游戏查询
   details: 查询 Epic Games Store 当前和即将到来的免费游戏。
-  usage: epic-free (查询免费游戏)
+  usage1: epic-free (查询免费游戏)

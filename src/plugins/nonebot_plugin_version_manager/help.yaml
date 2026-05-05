@@ -1,4 +1,4 @@
-plugin: version
+plugin: version_manager
 commands:
   version:
     description: help.description

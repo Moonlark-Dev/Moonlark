@@ -1,6 +1,6 @@
 plugin: minigame_api
 commands:
-  minigame:
+  minigame-rank:
     description: help.ds
     details: help.dt
     usages:
