@@ -1237,8 +1237,11 @@ main_session:
       no_reply: "你向 {} 发送了私聊（主题为“{}”），但 TA 没有回复"
     sleep:
       completed: "你计划睡 {} 分钟，实际睡了 {} 分钟。"
+      in_progress: "你正在睡觉（已睡 {} 分钟，计划睡 {} 分钟）。"
     write_blog: "你写了一篇博客，标题为“{}”。"
-    do: "你 {}，持续 {} 分钟。"
+    do:
+      completed: "你 {}，持续了 {} 分钟。"
+      in_progress: "你正在{}（预计 {} 分钟）。"
   wake_up:
     interrupted: |
       [{}]: 你计划睡 {} 分钟，但是被叫醒了，实际睡了 {} 分钟。
