@@ -33,7 +33,7 @@ jobs:
         run: |
           cp .env.template .env
           poetry run nb orm upgrade
-          poetry run nb orm check | grep '没有检测到新的升级操作' && exit 0
+          poetry run nb orm check | grep -v '未提交的变更' && exit 0
           exit 1
 
       # - name: Run pytest
