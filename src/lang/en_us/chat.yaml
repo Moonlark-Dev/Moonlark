@@ -1180,9 +1180,9 @@ main_session:
     }}
   history:
     send_private_message:
-      default: "你向 {} 发送了私聊，主题为"{}""
-      replied: "你向 {} 发送了私聊（主题为"{}""），TA 于 {} 回复了你"
-      no_reply: "你向 {} 发送了私聊（主题为"{}""），但 TA 没有回复"
+      default: "你向 {} 发送了私聊，主题为\"{}\""
+      replied: "你向 {} 发送了私聊（主题为\"{}\"），TA 于 {} 回复了你"
+      no_reply: "你向 {} 发送了私聊（主题为\"{}\"），但 TA 没有回复"
     sleep:
       completed: "你计划睡 {} 分钟，实际睡了 {} 分钟。"
       in_progress: "你正在睡觉（已睡 {} 分钟，计划睡 {} 分钟）。"
