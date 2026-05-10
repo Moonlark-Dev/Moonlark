@@ -57,13 +57,14 @@ async def _(
     _: Request,
     max_image_count: Optional[int] = Query(default=None),
     max_line_count: Optional[int] = Query(default=None),
+    image_only: bool = Query(default=False),
 ) -> RandomCaveResponse:
-    statement = select(CaveData)
+    statement = select(CaveData).where(CaveData.public)
+    if image_only:
+        image_subquery = select(ImageData.belong).distinct()
+        statement = statement.where(CaveData.id.in_(image_subquery))
     if max_image_count is not None:
-        statement = statement.where(
-            func.char_length(CaveData.content) - func.char_length(func.replace(CaveData.content, "[[Img:", "")) / 6
-            <= max_image_count
-        )
+        statement = statement.where(func.count(ImageData.id).filter(ImageData.belong == CaveData.id) <= max_image_count)
     if max_line_count is not None:
         statement = statement.where(
             func.char_length(CaveData.content) - func.char_length(func.replace(CaveData.content, "\n", "")) + 1
