@@ -16,15 +16,16 @@
 # ##############################################################################
 
 import base64
-from fastapi import Request, status, Response
+import random
+from fastapi import Query, Request, status, Response
 import traceback
 
 from fastapi import HTTPException
 from nonebot.log import logger
 from nonebot import get_app
 from nonebot_plugin_orm import get_session, get_scoped_session
-from sqlalchemy import select
-from typing import AsyncGenerator
+from sqlalchemy import func, select
+from typing import AsyncGenerator, Optional
 
 from .types import RandomCaveResponse, Image
 from .utils.cave import get_cave
@@ -44,7 +45,7 @@ async def get_image_data(cave_id: int) -> AsyncGenerator[Image, None]:
     session = get_scoped_session()
     for image in await session.scalars(select(ImageData).where(ImageData.belong == cave_id)):
         try:
-            data = await get_image(image.id, session)
+            data = await get_image(str(image.id), session)
             yield Image(id=float(image.id), name=str(image.name), data=base64.b64encode(data.data).decode())
         except Exception as e:
             logger.error(f"获取 CAVE 图片信息失败 ({image.id=}, {e=}): {traceback.format_exc()}")
@@ -52,9 +53,28 @@ async def get_image_data(cave_id: int) -> AsyncGenerator[Image, None]:
 
 
 @app.get("/api/cave/random")
-async def _() -> RandomCaveResponse:
+async def _(
+    _: Request,
+    max_image_count: Optional[int] = Query(default=None),
+    max_line_count: Optional[int] = Query(default=None),
+) -> RandomCaveResponse:
+    statement = select(CaveData)
+    if max_image_count is not None:
+        statement = statement.where(
+            func.char_length(CaveData.content) - func.char_length(func.replace(CaveData.content, "[[Img:", "")) / 6
+            <= max_image_count
+        )
+    if max_line_count is not None:
+        statement = statement.where(
+            func.char_length(CaveData.content) - func.char_length(func.replace(CaveData.content, "\n", "")) + 1
+            <= max_line_count
+        )
     async with get_session() as session:
-        cave = await get_cave(session)
+        result = await session.scalars(statement)
+        cave_list = [cave for cave in result]
+        if not cave_list:
+            raise HTTPException(status_code=404, detail="没有符合条件的 CAVE")
+        cave = random.choice(cave_list)
         return {
             "id": int(cave.id),
             "content": str(cave.content),
@@ -91,24 +111,24 @@ async def get_images() -> AsyncGenerator[ImageData, None]:
     await session.close()
 
 
-@app.get("/api/cave/images")
-async def _() -> dict[str, str]:
-    response = {}
-    async for image in get_images():
-        file_name = f"{image.id}.{image.name.split('.')[-1]}"
-        response[file_name] = f"{config.moonlark_api_base}/api/cave/images/{file_name}"
-    return response
+# @app.get("/api/cave/images")
+# async def _() -> dict[str, str]:
+#     response = {}
+#     async for image in get_images():
+#         file_name = f"{image.id}.{image.name.split('.')[-1]}"
+#         response[file_name] = f"{config.moonlark_api_base}/api/cave/images/{file_name}"
+#     return response
 
 
-@app.get("/api/cave/images/{file_name}")
-async def _(file_name: str) -> Response:
-    session = get_scoped_session()
-    image_id = ".".join(file_name.split(".")[:-1])
-    if (image_data := await session.get(ImageData, {"id": image_id})) is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND)
-    try:
-        image = await get_image(str(image_data.id), session)
-    except Exception:
-        raise HTTPException(status.HTTP_404_NOT_FOUND)
-    await session.close()
-    return Response(image.data)
+# @app.get("/api/cave/images/{file_name}")
+# async def _(file_name: str) -> Response:
+#     session = get_scoped_session()
+#     image_id = ".".join(file_name.split(".")[:-1])
+#     if (image_data := await session.get(ImageData, {"id": image_id})) is None:
+#         raise HTTPException(status.HTTP_404_NOT_FOUND)
+#     try:
+#         image = await get_image(str(image_data.id), session)
+#     except Exception:
+#         raise HTTPException(status.HTTP_404_NOT_FOUND)
+#     await session.close()
+#     return Response(image.data)

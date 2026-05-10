@@ -17,7 +17,7 @@
 
 import random
 
-from nonebot_plugin_orm import async_scoped_session
+from nonebot_plugin_orm import AsyncSession, async_scoped_session
 from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
 
@@ -28,7 +28,7 @@ from .cool_down import on_use
 from .decoder import decode_cave
 
 
-async def get_cave(session: async_scoped_session) -> CaveData:
+async def get_cave(session: async_scoped_session | AsyncSession) -> CaveData:
     cave_id_list = (await session.scalars(select(CaveData.id).where(CaveData.public))).all()
     cave_id = random.choice(cave_id_list)
     return await session.get_one(CaveData, {"id": cave_id})
