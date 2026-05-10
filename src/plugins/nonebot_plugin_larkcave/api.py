@@ -61,8 +61,7 @@ async def _(
 ) -> RandomCaveResponse:
     statement = select(CaveData).where(CaveData.public)
     if image_only:
-        image_subquery = select(ImageData.belong).distinct()
-        statement = statement.where(CaveData.id.in_(image_subquery))
+        statement = statement.where(CaveData.content.regexp_match(r"^(\[\[Img:[+-]?[0-9]+(\.[0-9]+)?\]\])+$'"))
     if max_image_count is not None:
         statement = statement.where(func.count(ImageData.id).filter(ImageData.belong == CaveData.id) <= max_image_count)
     if max_line_count is not None:
