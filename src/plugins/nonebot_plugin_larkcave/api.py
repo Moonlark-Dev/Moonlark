@@ -61,7 +61,7 @@ async def _(
 ) -> RandomCaveResponse:
     statement = select(CaveData).where(CaveData.public == 1)
     if image_only:
-        statement = statement.where(CaveData.content.regexp_match(r"^(\[\[Img:[+-]?[0-9]+(\.[0-9]+)?\]\]\])+$'"))
+        statement = statement.where(CaveData.content.regexp_match(r"^(\[\[Img:[0-9]+(\.[0-9]+)?\]\]\])+$'"))
     if max_image_count is not None:
         # 方法1: 使用标量子查询（推荐，性能较好）
         subq = select(func.count()).where(ImageData.belong == CaveData.id).scalar_subquery()
