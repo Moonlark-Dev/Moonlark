@@ -66,12 +66,11 @@ async def _(
             func.char_length(CaveData.content) - func.char_length(func.replace(CaveData.content, "\n", "")) + 1
             <= max_line_count
         )
+    statement = statement.order_by(func.random()).limit(1)
     async with get_session() as session:
-        result = await session.scalars(statement)
-        cave_list = [cave for cave in result]
-        if not cave_list:
+        cave = await session.scalar(statement)
+        if not cave:
             raise HTTPException(status_code=404, detail="没有符合条件的 CAVE")
-        cave = random.choice(cave_list)
         return {
             "id": int(cave.id),
             "content": str(cave.content),
