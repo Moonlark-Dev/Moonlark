@@ -2,111 +2,78 @@
 
 `nonebot_plugin_larklang` 是 Moonlark 中的本地化插件，用于处理多语言支持。
 
-::: tip
-
-"为了保证一致性，任何可以接入的地方都应该接入本地化。"
-
-——xxtg666
-
+::: tip "为了保证一致性，任何可以接入的地方都应该接入本地化。" ——xxtg666
 :::
 
 ## 语言操作类 `LangHelper`
 
 ### `__init__`
-
 ```python
 def __init__(self, name: str = "") -> None:
 ```
-
 初始化一个 `LangHelper` 对象。
 
 #### 参数
-
 - `name`: 插件名，对应 LarkLang 三级键中的第一级，为空时将自动从插件名获取（为插件名去掉 `nonebot_plugin_` 前缀）。
 
 #### 返回
-
 `None`
 
 #### 异常
-
 - `nonebot_plugin_larklang.exceptions.InvalidPluginNameException`: 获取插件名失败，且 `name` 参数为空。
 
 ::: tip
-
 `InvalidPluginNameException` 异常很少出现，一般来说不用处理，必要时手动传入 `name` 参数就可以了。
-
 :::
 
 ### `text`
-
 ```python
 async def text(self, key: str, user_id: str | int, *args, **kwargs) -> str:
 ```
-
 获取指定键的本地化文本。
 
 ::: tip
-
 YAML 支持多行字符串，尽量不要在代码中按行进行拆分或拼接。
-
 :::
 
 #### 参数
-
 - `key`: 键名，为 `xxx2.xxx3` 格式的字符串。
 - `user_id`: 触发事件用户的 ID，未知时可填 `-1`。
 - `args` 和 `kwargs`: 会直接被解包入 `format` 函数中。
 
 #### 返回
-
 `str` - 经过本地化的文本。
 
 ### `is_key_exists`
-
 ```python
 async def is_key_exists(self, key: str, user_id: str | int) -> bool:
 ```
-
 检查当前语言库中是否能够获取指定键。
 
 #### 参数
-
 - `key`: 键名，为 `xxx2.xxx3` 格式的字符串。
 - `user_id`: 用户 ID。
 
 #### 返回
-
 `bool` - 如果键存在则返回 `True`，否则返回 `False`。
 
 ### `send`
-
 ```python
 async def send(self, key: str, user_id: str | int, *args, matcher: Matcher = Matcher(), at_sender: bool = True, reply_message: bool = False, **kwargs) -> None:
 ```
-
 向当前事件响应会话发送文本。
 
 ::: tip
-
 假设 `matcher` 是一个 `Matcher`，`lang` 是一个 `LangHelper`，`user_id` 为一个用户 ID 字符串，那么此时：
-
 ```python
 await matcher.send(await lang.text("aaa.bbb", user_id), at_sender=True)
 ```
-
-和
-
-```python
+和 ```python
 await lang.send("aaa.bbb", user_id)
-```
-
-等效。
-
+``` 等效。
 :::
 
 #### 参数
-
 - `key`: 本地化键名，为 `xxx2.xxx3` 格式的字符串。
 - `user_id`: 用户 ID。
 - `matcher`: 对应事件的事件响应器。
@@ -115,94 +82,107 @@ await lang.send("aaa.bbb", user_id)
 - `args` 和 `kwargs`: 参数会被解包到 `lang.text` 中。
 
 #### 返回
-
 `None`
 
 #### 异常
-
 与 `Matcher().send` 可能出现的异常相同（`ActionFailed` 或 `NetworkError`）。
 
 ### `finish`
-
 ```python
 async def finish(self, key: str, user_id: str | int, *args, matcher: Matcher = Matcher(), at_sender: bool = True, reply_message: bool = False, **kwargs) -> None:
 ```
-
 发送一条本地化消息并结束事件响应器。
 
 ::: tip
-
 假设 `matcher` 是一个 `Matcher`，`lang` 是一个 `LangHelper`，`user_id` 为一个用户 ID 字符串，那么此时：
-
 ```python
 await matcher.finish(await lang.text("aaa.bbb", user_id), at_sender=True)
 ```
-
-和
-
-```python
+和 ```python
 await lang.finish("aaa.bbb", user_id)
-```
-
-等效。
-
+``` 等效。
 :::
 
 ::: warning
-
 此方法会抛出 `FinishedException` 并结束当前事件响应。
-
 :::
 
 #### 参数
-
 与 `LangHelper().send` 相同。
 
 #### 返回
-
 `None`
 
 #### 异常
-
 除 `Matcher().send` 可能出现的异常外，正常执行时将抛出 `FinishedException`。
 
 ### `reply`
-
 ```python
 async def reply(self, key: str, user_id: str | int, *args, **kwargs) -> None:
 ```
-
 回复消息。
 
 ::: tip
-
 假设 `lang` 为 `LangHelper`，`user_id` 为用户 ID，那么：
-
 ```python
 await lang.send("xxx2.xxx3", user_id, reply_message=True, at_sender=False)
 ```
-
-和
-
-```python
+和 ```python
 await lang.reply()
-```
-
-等效。
-
+``` 等效。
 :::
 
 #### 参数
-
 与 `LangHelper().text` 相同。
 
 #### 返回
-
 `None`
 
 #### 异常
-
 与 `LangHelper().send` 相同。
+
+### `get_command_helper`
+```python
+def get_command_helper(self, base_key: Optional[str] = None, **preformated_keys) -> Any:
+```
+创建一个 `CommandLangHelper` 依赖注入对象，用于在命令处理函数中简化键名路径。
+
+#### 参数
+- `base_key`: 基础键名（前缀），如果提供，后续调用 `text` 时会自动拼接在该前缀之后。
+- `**preformated_keys`: 预设的格式化参数，在调用 `text` 时会自动传入。
+
+#### 返回
+`Any` - 一个 `Depends` 依赖注入对象。
+
+## 命令语言辅助类 `CommandLangHelper`
+
+`CommandLangHelper` 是 `LangHelper` 的子类，专门用于简化命令中的本地化操作。
+
+### `get_key`
+```python
+def get_key(self, key: str) -> str:
+```
+根据 `base_key` 拼接最终的键名。
+
+#### 参数
+- `key`: 相对键名。
+
+#### 返回
+`str` - 完整的本地化键名。
+
+### `text`
+```python
+async def text(self, key: str, user_id: str | int, *args, **kwargs) -> str:
+```
+获取本地化文本，并自动应用 `base_key` 和 `preformated_keys`。
+
+#### 参数
+- `key`: 相对键名。
+- `user_id`: 用户 ID。
+- `*args` 和 `**kwargs`: 额外的格式化参数。
+
+#### 返回
+`str` - 本地化文本。
 
 ## 键
 
@@ -267,3 +247,4 @@ description="Moonlark 默认语言，简体中文"
 作者: Moonlark-Dev
 版本: latest
 Moonlark 默认语言，简体中文
+```

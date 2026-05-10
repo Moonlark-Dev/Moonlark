@@ -204,7 +204,7 @@ help:
   usage5: summary --everyday-summary <on/off> (每日总结开关)
 help_neko:
   description: 找猫娘
-  details: 根据进 2 天的消息对群友的“猫娘指数”进行打分。
+  details: 根据近 2 天的消息对群友的“猫娘指数”进行打分。
   usage1: neko-finder
 help_debate:
   description: 辩论助手
@@ -344,6 +344,10 @@ help_check_history:
   details: 检查最近 48 小时内是否已经讨论过某个话题或发送过某条消息。
   usage1: check-history [内容]
   usage2: check-history (回复某条消息)
+help_group_daily:
+  description: 每日群聊总结
+  details: 获取当日群聊的总结报告，需要先启用群消息总结功能。
+  usage1: group-daily (获取当日群聊总结)
 check_history:
   no_content: 请提供要查询的内容，或回复一条消息。
   no_history: 最近 48 小时内没有聊天记录。
@@ -400,3 +404,27 @@ check_history:
 
     如果未找到匹配项，请仅返回字符串：
     NO_MATCH_FOUND
+mvp_ranking:
+  title: MVP 排行榜
+  no_data: 暂无数据
+  extract_prompt: |
+    # Role: 信息提取器
+
+    ## Goal
+    从一段群聊每日总结文本中，提取"群聊 MVP"的昵称和评语。
+
+    ## Input
+    一段包含"## 群聊 MVP"章节的 Markdown 格式群聊总结文本。
+
+    ## Logic
+    1. 在输入文本中找到"群聊 MVP"相关的章节。
+    2. 提取 MVP 群员的昵称（仅昵称，不含任何括号、ID 或装饰符号）。
+    3. 提取对 MVP 的评语。
+    4. 如果文本中没有 MVP 相关内容，将 found 设为 false。
+
+    ## Output Format
+    请返回严格的 JSON 格式（不要包含 Markdown 代码块）：
+    {{"found": true, "nickname": "MVP昵称", "comment": "评语内容"}}
+
+    如果未找到 MVP：
+    {{"found": false, "nickname": "", "comment": ""}}

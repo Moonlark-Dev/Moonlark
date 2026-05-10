@@ -2,13 +2,13 @@ import asyncio
 
 from nonebot_plugin_chat.utils.instant_mem import delete_sleep_memory
 
-from nonebot_plugin_openai.utils.chat import fetch_message
+from nonebot_plugin_openai.utils.chat import fetch_json, fetch_message
 from nonebot_plugin_chat.utils.instant_mem import post_instant_memory
 import json
 import re
 import traceback
 from nonebot import get_bot, logger
-from nonebot.compat import type_validate_python
+from nonebot.compat import type_validate_json, type_validate_python
 from datetime import datetime, timedelta
 from enum import Enum
 from typing import TYPE_CHECKING, Literal, Optional, Union, TypedDict
@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING, Literal, Optional, Union, TypedDict
 from nonebot_plugin_apscheduler import scheduler
 from nonebot_plugin_chat.core.proactive_chat import send_proactive_private_message
 from nonebot_plugin_chat.models import (
+    ActionDecisionResponse,
     ActionState,
     BoredAction,
     BoredActionResponse,
@@ -26,6 +27,7 @@ from nonebot_plugin_chat.models import (
     RestAction,
     SendPrivateMsgAction,
     SkipAction,
+    SleepDecisionResponse,
     WriteBlogAction,
 )
 from ...enums import StateEnum
@@ -141,6 +143,12 @@ class MainSession:
                     fetcher.session.insert_message(generate_message(traceback.format_exc(), "user"))
                     continue
 
+    async def trigger_sleep(self) -> None:
+        await asyncio.sleep(60)  # 防止马上被叫起来
+        for group in groups.values():
+            await group.processor.generate_instant_memory()
+            await group.processor.openai_messages.reset_chat_history()
+
     async def get_action_str(
         self, action: BoredAction, start_time: datetime, stop_time: Optional[datetime]
     ) -> Optional[str]:
@@ -168,15 +176,23 @@ class MainSession:
                     actual_minutes = (
                         min(datetime.now() - start_time, timedelta(minutes=action.time)).total_seconds() / 60
                     )
+                    return await lang.text(
+                        "main_session.history.sleep.in_progress", self.lang_str, actual_minutes, action.time
+                    )
                 else:
                     actual_minutes = min(stop_time - start_time, timedelta(minutes=action.time)).total_seconds() / 60
-                return await lang.text(
-                    "main_session.history.sleep.completed", self.lang_str, action.time, actual_minutes
-                )
+                    return await lang.text(
+                        "main_session.history.sleep.completed", self.lang_str, action.time, actual_minutes
+                    )
             case "do":
-                return await lang.text(
-                    "main_session.history.do", self.lang_str, action.information, action.estimated_time
-                )
+                if stop_time is None:
+                    return await lang.text(
+                        "main_session.history.do.in_progress", self.lang_str, action.information, action.estimated_time
+                    )
+                else:
+                    return await lang.text(
+                        "main_session.history.do.completed", self.lang_str, action.information, action.estimated_time
+                    )
             case "write_blog":
                 return await lang.text("main_session.history.write_blog", self.lang_str, action.title)
 
@@ -285,7 +301,7 @@ class MainSession:
         created_time = datetime.fromtimestamp(note.created_time).strftime("%y-%m-%d")
         return await lang.text("prompt.note.format", self.lang_str, note.content, note.id, created_time)
 
-    async def handle_action(self, action: BoredAction, fetcher: MessageFetcher) -> None:
+    async def handle_action(self, action: BoredAction, fetcher: Optional[MessageFetcher] = None) -> None:
         match action.type:
             case "send_private_message":
                 await self.send_private_message(action.target_nickname, action.subject)
@@ -294,12 +310,17 @@ class MainSession:
                 sleep_start = datetime.now()
                 sleep_end = sleep_start + timedelta(minutes=action.time)
                 self.state_until = sleep_end
+                await self.trigger_sleep()
             case "do":
                 self.state = StateEnum.BUSY
                 self.state_until = datetime.now() + timedelta(minutes=action.estimated_time)
             case "fetch_chat_history":
+                if fetcher is None:
+                    raise ValueError("fetcher is None")
                 await self.fetch_chat_history(action.context_id, fetcher)
             case "write_blog":
+                if fetcher is None:
+                    raise ValueError("fetcher is None")
                 await self.write_blog(action.title, action.content, fetcher)
 
     async def fetch_chat_history(self, context_id: str, fetcher: MessageFetcher) -> None:
@@ -344,6 +365,147 @@ class MainSession:
         """提交睡觉决策，委托给 SleepController 处理"""
         await self.sleep_controller.submit_sleep_decision(session_id, deal_type, delay_minutes, reason, future)
 
+    async def request_action_decision(
+        self,
+        do: str,
+        session_info: str,
+        cached_messages: str,
+        duration: Optional[int] = None,
+    ) -> ActionDecisionResponse:
+        system_prompt = await lang.text(
+            "main_session.action_request.system",
+            self.lang_str,
+            await get_prompt_text("identity"),
+            await self.get_additional_prompt(),
+            await self.get_recent_actions_text(self.lang_str),
+        )
+        user_prompt = await lang.text(
+            "main_session.action_request.user",
+            self.lang_str,
+            session_info,
+            do,
+            str(duration) if duration else await lang.text("main_session.action_request.no_duration", self.lang_str),
+            cached_messages,
+        )
+        return await fetch_json(
+            [generate_message(system_prompt, "system"), generate_message(user_prompt, "user")],
+            ActionDecisionResponse,
+            identify="Chat - Action Request Decision",
+            reasoning_effort="low",
+        )
+
+    async def submit_action_decision(
+        self,
+        session_id: str,
+        do: str,
+        duration: Optional[int] = None,
+        future: Optional[asyncio.Future] = None,
+    ) -> None:
+        """处理来自子会话的动作执行申请"""
+        try:
+            session_info = f"会话ID: {session_id}"
+            if session_id in groups:
+                session_info = await groups[session_id].get_session_name()
+
+            if session_id in groups:
+                cached_messages = await groups[session_id].get_cached_messages_string(
+                    length=10, include_self_message=True
+                )
+            if not cached_messages:
+                cached_messages = await lang.text("main_session.fetch_chat_history.no_messages", self.lang_str)
+
+            result = await self.request_action_decision(do, session_info, cached_messages, duration)
+
+            approved = result.approved
+            allocated_time = result.allocated_time
+
+            if approved and allocated_time > 0:
+                await self.handle_action(CustomAction(type="do", information=do, estimated_time=allocated_time))
+
+            if future and not future.done():
+                future.set_result(
+                    await lang.text(
+                        (
+                            "main_session.action_request.result_approved"
+                            if approved
+                            else "main_session.action_request.result_denied"
+                        ),
+                        self.lang_str,
+                        do,
+                        allocated_time,
+                    )
+                )
+        except Exception as e:
+            logger.exception(e)
+            if future and not future.done():
+                future.set_result(await lang.text("main_session.action_request.error", self.lang_str, str(e)))
+
+    async def request_sleep_decision(
+        self,
+        session_info: str,
+        cached_messages: str,
+    ) -> SleepDecisionResponse:
+        system_prompt = await lang.text(
+            "main_session.sleep_request.system",
+            self.lang_str,
+            await get_prompt_text("identity"),
+            await self.get_additional_prompt(),
+            await self.get_recent_actions_text(self.lang_str),
+        )
+        user_prompt = await lang.text(
+            "main_session.sleep_request.user",
+            self.lang_str,
+            session_info,
+            cached_messages,
+        )
+        return await fetch_json(
+            [generate_message(system_prompt, "system"), generate_message(user_prompt, "user")],
+            SleepDecisionResponse,
+            reasoning_effort="low",
+            identify="Main Session - Sleep Request Decision",
+        )
+
+    async def submit_sleep_request(
+        self,
+        session_id: str,
+        future: Optional[asyncio.Future] = None,
+    ) -> None:
+        """处理来自子会话的睡觉申请"""
+        try:
+            session_info = f"会话ID: {session_id}"
+            if session_id in groups:
+                session_info = await groups[session_id].get_session_name()
+
+            cached_messages = ""
+            if session_id in groups:
+                cached_messages = await groups[session_id].get_cached_messages_string(
+                    length=10, include_self_message=True
+                )
+            if not cached_messages:
+                cached_messages = await lang.text("main_session.fetch_chat_history.no_messages", self.lang_str)
+
+            result = await self.request_sleep_decision(session_info, cached_messages)
+            approved = result.approved
+
+            if approved:
+                asyncio.create_task(self.sleep_controller.ask_sleep())
+
+            if future and not future.done():
+                future.set_result(
+                    await lang.text(
+                        (
+                            "main_session.sleep_request.result_approved"
+                            if approved
+                            else "main_session.sleep_request.result_denied"
+                        ),
+                        self.lang_str,
+                    )
+                )
+        except Exception as e:
+            logger.exception(e)
+            if future and not future.done():
+                future.set_result(await lang.text("main_session.sleep_request.error", self.lang_str, str(e)))
+
     async def wake_up(self, session: Optional["BaseSession"] = None) -> None:
         if self.state != StateEnum.SLEEPING:
             return
@@ -367,7 +529,7 @@ class MainSession:
             result = None
         self.state = StateEnum.ACTIVATE
         if interrupted and result and session:
-            session.processor.openai_messages.append_user_message(result)
+            await session.processor.openai_messages.append_user_message(result)
 
     def update_send_private_message_state(self, user_id: str) -> None:
         for index in range(len(self.action_history)):

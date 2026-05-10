@@ -16,5 +16,6 @@
 # ##############################################################################
 
 from . import chat
-from . import profile
+
+# from . import profile
 from . import rua

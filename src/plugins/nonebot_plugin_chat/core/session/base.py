@@ -46,7 +46,6 @@ class BaseSession(ABC):
         self.last_activate = datetime.now()
         self.mute_until: Optional[datetime] = None
         self.group_users: dict[str, str] = {}
-        self.session_name = "未命名会话"
         self.llm_timers = []  # 定时器列表
         self.pending_interactions: dict[str, PendingInteraction] = {}  # 待处理的交互请求
         self.last_interest: Optional[float] = None  # 缓存的 interest 值
@@ -65,7 +64,8 @@ class BaseSession(ABC):
             index = self.cached_messages.index(self.last_message_for_instant_memory_generation)
             self.last_message_for_instant_memory_generation = self.cached_messages[-1]
             return self.cached_messages[index + 1 :]
-        self.last_message_for_instant_memory_generation = self.cached_messages[-1]
+        if self.cached_messages:
+            self.last_message_for_instant_memory_generation = self.cached_messages[-1]
         return self.cached_messages
 
     @abstractmethod
@@ -168,15 +168,13 @@ class BaseSession(ABC):
         self.message_cache_counter += 1
         await self.calculate_ghot_coefficient()
         self.clean_cached_message()
-        if self.message_cache_counter % 50 == 0:
-            await self.setup_session_name()
         self.last_activate = datetime.now()
 
     async def mute(self) -> None:
         self.mute_until = datetime.now() + timedelta(minutes=15)
 
     @abstractmethod
-    async def setup_session_name(self) -> None:
+    async def get_session_name(self) -> str:
         pass
 
     async def handle_message(
@@ -339,6 +337,56 @@ class BaseSession(ABC):
             return result
         except asyncio.TimeoutError:
             return await self.text("sleep_decision.timeout")
+
+    async def request_action(self, do: str, duration: Optional[int] = None) -> str:
+        """
+        向意识会话申请执行一个动作
+
+        Args:
+            do: 想要做的事的名字
+            duration: 建议的持续时间（分钟），可选
+
+        Returns:
+            意识会话的决定结果
+        """
+        from ..ego import consciousness
+
+        result_future = asyncio.get_event_loop().create_future()
+
+        await consciousness.submit_action_decision(
+            session_id=self.session_id,
+            do=do,
+            duration=duration,
+            future=result_future,
+        )
+
+        try:
+            result = await asyncio.wait_for(result_future, timeout=120)
+            return result
+        except asyncio.TimeoutError:
+            return await self.text("request_action.timeout")
+
+    async def request_sleep(self) -> str:
+        """
+        向意识会话申请睡觉
+
+        Returns:
+            意识会话的决定结果
+        """
+        from ..ego import consciousness
+
+        result_future = asyncio.get_event_loop().create_future()
+
+        await consciousness.submit_sleep_request(
+            session_id=self.session_id,
+            future=result_future,
+        )
+
+        try:
+            result = await asyncio.wait_for(result_future, timeout=120)
+            return result
+        except asyncio.TimeoutError:
+            return await self.text("request_sleep.timeout")
 
     async def process_timer(self) -> None:
         dt = datetime.now()

@@ -1,7 +1,8 @@
+import hashlib
 import re
 import traceback
-from typing import TYPE_CHECKING, Optional
-from nonebot.compat import type_validate_python
+from typing import TYPE_CHECKING, Any, Optional, cast
+from nonebot.compat import type_validate_json
 from nonebot.log import logger
 
 from nonebot_plugin_chat.utils.role import get_role
@@ -19,6 +20,8 @@ import copy
 import json
 from datetime import datetime
 
+from sqlalchemy import delete, select
+
 from ..utils.timing_stats import timing_stats_manager
 
 if TYPE_CHECKING:
@@ -30,17 +33,20 @@ class MessageQueue:
     def __init__(
         self,
         processor: "MessageProcessor",
-        max_message_count: int = 50,
     ) -> None:
         self.processor = processor
         self.instant_memory_generator_lock = asyncio.Lock()
-        self.max_message_count = max_message_count
         self.messages: list[OpenAIMessage] = []
         self.fetcher_lock = asyncio.Lock()
         self.continuous_response = False
         self.fetcher_task = None
         # 在初始化时从数据库恢复消息队列
         self.inserted_messages = []
+
+    async def reset_chat_history(self) -> list[OpenAIMessage]:
+        messages = copy.deepcopy(self.messages)
+        self.messages = []
+        return messages
 
     def _serialize_message(self, message: OpenAIMessage) -> dict:
         """将 OpenAIMessage 序列化为可 JSON 化的字典"""
@@ -54,22 +60,73 @@ class MessageQueue:
         else:
             return {"content": str(message), "role": "user"}
 
-    def _serialize_messages(self) -> str:
+    def _serialize_messages(self) -> list[str]:
         """将消息列表序列化为 JSON 字符串"""
         serialized = [self._serialize_message(msg) for msg in self.messages]
-        return json.dumps(serialized, ensure_ascii=False)
+        return [json.dumps(msg, ensure_ascii=False) for msg in serialized]
 
     async def restore_from_db(self) -> None:
-        """从数据库恢复消息队列"""
+        """从数据库恢复消息队列，并验证 system prompt 的有效性"""
         try:
             group_id = self.processor.session.session_id
+            earliest_time = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
             async with get_session() as session:
-                cache = await session.get(MessageQueueCache, {"group_id": group_id})
-                if cache:
-                    self.messages = json.loads(cache.messages_json)
-                    logger.info(f"已从数据库恢复群 {group_id} 的消息队列，共 {len(self.messages)} 条消息")
+                cache = await session.scalars(
+                    select(MessageQueueCache)
+                    .where(MessageQueueCache.updated_time >= earliest_time, MessageQueueCache.group_id == group_id)
+                    .order_by(MessageQueueCache.message_id)
+                )
+                self.messages = [json.loads(msg.message_json) for msg in cache]
+
+                logger.info(f"已从数据库恢复群 {group_id} 的消息队列，共 {len(self.messages)} 条消息")
+
+            if self.messages:
+                expected_prompt = await self.processor.generate_system_prompt()
+                # 统一提取 content：兼容 dict（TypedDict 的 content 可能为可选键）和 Pydantic 模型
+                expected_content = (
+                    expected_prompt.get("content", "")
+                    if isinstance(expected_prompt, dict)
+                    else getattr(expected_prompt, "content", "")
+                )
+
+                if get_role(self.messages[0]) != "system":
+                    logger.warning(f"群 {group_id} 恢复的消息队列缺少 system prompt，重置上下文")
+                    await self._reset_and_clear_db(group_id)
+                else:
+                    first_msg = self.messages[0]
+                    actual_content = (
+                        first_msg.get("content", "")
+                        if isinstance(first_msg, dict)
+                        else getattr(first_msg, "content", "")
+                    )
+                    if actual_content != expected_content:
+                        logger.warning(f"群 {group_id} 的 system prompt 与当前配置不一致，重置上下文")
+                        await self._reset_and_clear_db(group_id)
+                    else:
+                        logger.info(f"群 {group_id} 的 system prompt 验证通过")
         except Exception as e:
             logger.warning(f"从数据库恢复消息队列失败: {e}")
+
+    async def _reset_and_clear_db(self, group_id: str) -> None:
+        """重置消息队列并清空数据库缓存"""
+        self.messages = []
+        self.inserted_messages = []
+        async with get_session() as session:
+            await session.execute(delete(MessageQueueCache).where(MessageQueueCache.group_id == group_id))
+            await session.commit()
+        logger.info(f"已清空群 {group_id} 的消息队列缓存")
+
+    async def clear_cache(self) -> None:
+        """清空消息队列缓存"""
+        earliest_time = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        group_id = self.processor.session.session_id
+        async with get_session() as session:
+            await session.execute(
+                delete(MessageQueueCache).where(
+                    MessageQueueCache.group_id == group_id, MessageQueueCache.updated_time < earliest_time
+                )
+            )
+            await session.commit()
 
     async def save_to_db(self) -> None:
         """将消息队列保存到数据库"""
@@ -77,12 +134,19 @@ class MessageQueue:
             async with self.fetcher_lock:
                 group_id = self.processor.session.session_id
                 async with get_session() as session:
-                    cache = MessageQueueCache(
-                        group_id=group_id,
-                        messages_json=self._serialize_messages(),
-                        updated_time=datetime.now().timestamp(),
-                    )
-                    await session.merge(cache)
+                    for msg in self._serialize_messages():
+                        sha256 = hashlib.sha256(msg.encode())
+                        result = await session.scalar(
+                            select(MessageQueueCache).where(MessageQueueCache.message_hash == sha256.digest())
+                        )
+                        if result is not None:
+                            continue
+                        cache = MessageQueueCache(
+                            group_id=group_id,
+                            message_json=msg,
+                            message_hash=sha256.digest(),
+                        )
+                        session.add(cache)
                     await session.commit()
         except Exception as e:
             logger.exception(e)
@@ -95,11 +159,52 @@ class MessageQueue:
             self.messages.pop(0)
 
     async def get_messages(self) -> list[OpenAIMessage]:
-        self.clean_special_message()
         messages = copy.deepcopy(self.messages)
-        while len([message for message in messages if get_role(message) == "user"]) > self.max_message_count:
-            messages.pop(0)
-        messages.insert(0, await self.processor.generate_system_prompt())
+        logger.debug(messages)
+        system_prompt = await self.processor.generate_system_prompt()
+        if len(messages) <= 0:
+            raise ValueError("messages must be more than 1")
+        elif len([msg for msg in messages if get_role(msg) == "user"]) <= 0:
+            raise ValueError("no user input")
+        elif get_role(messages[0]) != "system":
+            messages.insert(0, system_prompt)
+        elif messages[0] != system_prompt:
+            messages = [system_prompt]
+            raise ValueError("system prompt modified")
+
+        tool_call_ids: set[str] = set()
+        for msg in messages:
+            role = get_role(msg)
+            if role == "tool":
+                if isinstance(msg, dict):
+                    tcid = msg.get("tool_call_id")
+                else:
+                    tcid = getattr(msg, "tool_call_id", None)
+                if tcid:
+                    tool_call_ids.add(tcid)
+
+        for msg in messages:
+            role = get_role(msg)
+            if role == "assistant":
+                if isinstance(msg, dict):
+                    # 使用 dict[str, Any] 断言，绕过 TypedDict 对 tool_calls 键的限制
+                    msg_dict = cast(dict[str, Any], msg)
+                    tc = msg_dict.get("tool_calls")
+                    if tc:
+                        valid = [t for t in tc if t["id"] in tool_call_ids]
+                        if valid:
+                            msg_dict["tool_calls"] = valid
+                        else:
+                            del msg_dict["tool_calls"]
+                else:
+                    tc = getattr(msg, "tool_calls", None)
+                    if tc:
+                        valid = [t for t in tc if t.id in tool_call_ids]
+                        if valid:
+                            msg.tool_calls = valid
+                        else:
+                            msg.tool_calls = None
+
         return messages
 
     async def fetch_reply(self) -> None:
@@ -146,6 +251,7 @@ class MessageQueue:
             identify="Chat",
             functions=await self.processor.tool_manager.select_tools("group"),
             reasoning_effort="medium",
+            # response_format=ModelResponse
         )
         retry_count = 0
         try:
@@ -155,17 +261,12 @@ class MessageQueue:
                 if not message:
                     continue
                 try:
-                    analysis = type_validate_python(
-                        ModelResponse, json.loads(re.sub(r"`{1,3}([a-zA-Z0-9]+)?", "", message))
-                    )
-                except json.JSONDecodeError:
-                    logger.warning(f"Failed to parse message: {message}")
-                    analysis = None
-                except ValidationError as e:
+                    analysis = type_validate_json(ModelResponse, message)
+                except Exception as e:
                     fetcher.session.insert_message(
                         generate_message(await self.processor.session.text("fetcher.parse_failed", str(e)), "user")
                     )
-                    retry_count += 1
+                    retry_count += 2
                     continue
                 if analysis is not None:
                     if analysis.mood:
@@ -177,15 +278,15 @@ class MessageQueue:
                         logger.debug(f"Cached interest: {analysis.interest:.2f}")
                     if (judge := analysis.favorability_judge) is not None:
                         await self.processor.judge_user_behavior(judge.target, judge.score, judge.reason)
-                    # if (
-                    #     analysis.reply_required
-                    #     and isinstance(fetcher.session.messages[-1], ChatCompletionMessage)
-                    #     and not fetcher.session.messages[-1].tool_calls
-                    # ):
-                    #     fetcher.session.insert_message(
-                    #         generate_message(await self.processor.session.text("fetcher.reply_required"), "user")
-                    #     )
-                    #     retry_count += 1
+                    if (
+                        analysis.reply_required
+                        and isinstance(fetcher.session.messages[-1], ChatCompletionMessage)
+                        and not fetcher.session.messages[-1].tool_calls
+                    ):
+                        fetcher.session.insert_message(
+                            generate_message(await self.processor.session.text("fetcher.reply_required"), "user")
+                        )
+                        retry_count += 1
                 if self.continuous_response:
                     fetcher.session.insert_messages(self.messages)
                     self.messages.clear()
@@ -198,7 +299,12 @@ class MessageQueue:
             state = FetchStatus.FAILED
         return state
 
-    def append_user_message(self, message: str) -> None:
+    async def check_system_prompt(self) -> None:
+        if len(self.messages) == 0 or get_role(self.messages[0]) != "system":
+            self.messages = [await self.processor.generate_system_prompt()]
+
+    async def append_user_message(self, message: str) -> None:
+        await self.check_system_prompt()
         self.messages.append(generate_message(message, "user"))
 
     def is_last_message_from_user(self) -> bool:

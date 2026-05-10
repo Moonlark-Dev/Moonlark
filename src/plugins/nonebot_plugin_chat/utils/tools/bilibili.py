@@ -4,6 +4,9 @@ from ...config import config
 import httpx
 from nonebot_plugin_openai import fetch_message
 from nonebot import logger, require
+
+require("nonebot_plugin_apscheduler")
+from nonebot_plugin_apscheduler import scheduler
 import asyncio
 import os
 from pathlib import Path
@@ -165,3 +168,28 @@ async def describe_bilibili_video(bv_id: str, get_text: GetTextFunc) -> str:
         logger.exception(e)
         _cleanup_cache_files()
         raise e
+
+
+@scheduler.scheduled_job("cron", hour=2, minute=5, id="cleanup_bilibili_video_cache")
+async def _cleanup_bilibili_video_cache() -> None:
+    from ...core.session import groups
+
+    for session in groups.values():
+        if session.processor.openai_messages.fetcher_lock.locked():
+            logger.debug("跳过清理 bilibili 视频缓存：有会话正在处理")
+            return
+
+    if not VIDEO_DIR.exists():
+        return
+
+    count = 0
+    for file in VIDEO_DIR.iterdir():
+        if file.is_file():
+            try:
+                os.remove(file)
+                count += 1
+            except OSError as e:
+                logger.warning(f"清理 {file} 时出现错误")
+                logger.exception(e)
+
+    logger.info(f"已清理 {count} 个 bilibili 视频缓存文件")

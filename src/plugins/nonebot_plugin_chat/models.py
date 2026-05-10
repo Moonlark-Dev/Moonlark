@@ -4,7 +4,7 @@ from typing import Any, Literal, Optional, TypedDict, Union
 from nonebot_plugin_orm import Model
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy import JSON, DateTime, LargeBinary, String, Text, Float, Integer
+from sqlalchemy import BLOB, JSON, DateTime, LargeBinary, String, Text, Float, Integer, BINARY
 from sqlalchemy.dialects.mysql import MEDIUMBLOB, MEDIUMTEXT
 
 # 创建跨数据库兼容的二进制类型：MySQL 使用 MEDIUMBLOB (16MB)，其他数据库使用 LargeBinary
@@ -20,6 +20,15 @@ class ChatGroup(Model):
     blocked_keyword: Mapped[str] = mapped_column(Text(), default="[]")
     ignore_mention_user: Mapped[str] = mapped_column(Text(), default="[]")
     enabled: Mapped[bool]
+
+
+class ActionDecisionResponse(BaseModel):
+    approved: bool
+    allocated_time: int
+
+
+class SleepDecisionResponse(BaseModel):
+    approved: bool
 
 
 class Note(Model):
@@ -66,10 +75,12 @@ class Sticker(Model):
 class MessageQueueCache(Model):
     """消息队列缓存，用于持久化 OpenAI 消息历史以便重启后恢复"""
 
-    group_id: Mapped[str] = mapped_column(String(128), primary_key=True)  # 群组 ID，主键确保每个群组只有一条记录
+    message_id: Mapped[int] = mapped_column(Integer(), primary_key=True, autoincrement=True)
+    group_id: Mapped[str] = mapped_column(String(128))
     # MySQL 使用 MEDIUMTEXT (16MB)，SQLite 使用 Text（无大小限制）
-    messages_json: Mapped[str] = mapped_column(CompatibleMediumText)  # JSON 序列化的消息列表
-    updated_time: Mapped[float] = mapped_column(Float())  # 最后更新时间戳
+    message_json: Mapped[str] = mapped_column(CompatibleMediumText)  # JSON 序列化的消息列表
+    updated_time: Mapped[datetime] = mapped_column(DateTime(), default=datetime.now)  # 最后更新时间戳
+    message_hash: Mapped[bytes] = mapped_column(BINARY(32))  # 消息哈希，用于去重
 
 
 class JudgeData(BaseModel):

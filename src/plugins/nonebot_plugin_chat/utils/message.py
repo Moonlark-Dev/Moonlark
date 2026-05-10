@@ -8,7 +8,19 @@ from nonebot_plugin_chat.lang import lang
 from nonebot_plugin_chat.types import CachedMessage
 from nonebot_plugin_larkuser.utils.nickname import get_nickname
 from nonebot_plugin_userinfo import get_user_info
-from nonebot_plugin_alconna import Image, Other, Segment, UniMessage, Text, At, Reply, Reference, File, image_fetch
+from nonebot_plugin_alconna import (
+    Image,
+    Other,
+    Segment,
+    UniMessage,
+    Text,
+    At,
+    Reply,
+    Reference,
+    File,
+    image_fetch,
+    get_message_id,
+)
 from nonebot_plugin_larkuser import get_user
 from nonebot.exception import ActionFailed
 from nonebot.adapters import Message, MessageSegment
@@ -117,15 +129,25 @@ class MessageParser:
             nickname = user.get_nickname()
         return f"@{nickname}"
 
+    async def parse_replied_message(self, msg: UniMessage) -> str:
+        if msg == self.message:
+            return ""
+        return await parse_message_to_string(msg, self.event, self.bot, self.state, self.user_id)
+
     async def parse_reply(self, segment: Reply) -> str:
         logger.info(f"Reply: {segment=} {segment.msg=} {segment.id=}")
         if isinstance(segment.msg, UniMessage):
-            msg = await parse_message_to_string(segment.msg, self.event, self.bot, self.state, self.user_id)
-            return await lang.text("parser.reply", self.user_id, msg)
+            if msg := await self.parse_replied_message(segment.msg):
+                return await lang.text("parser.reply", self.user_id, msg)
+            else:
+                return ""
         elif isinstance(segment.msg, Message):
             message = UniMessage.of(message=segment.msg, bot=self.bot)
             logger.info(f"Reply UniMessage: {message=}")
-            msg = await parse_message_to_string(message, self.event, self.bot, self.state, self.user_id)
+            if msg_str := await self.parse_replied_message(message):
+                return await lang.text("parser.reply", self.user_id, msg_str)
+            else:
+                return ""
             return await lang.text("parser.reply", self.user_id, msg)
         elif segment.msg is not None:
             return await lang.text("parser.reply", self.user_id, segment.msg)
@@ -161,4 +183,4 @@ async def parse_message_to_string(message: UniMessage, event: Event, bot: Bot, s
 
 
 def generate_message_string(message: CachedMessage) -> str:
-    return f"[{message['send_time'].strftime('%H:%M:%S')}][{message['nickname']}]({message['message_id']}): {message['content']}\n"
+    return f"[{message['nickname']}]({message['message_id']}): {message['content']}\n"

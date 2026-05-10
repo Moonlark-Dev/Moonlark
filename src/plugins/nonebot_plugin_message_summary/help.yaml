@@ -4,3 +4,4 @@ commands:
   neko-finder: help_neko;1;community
   debate-helper: help_debate;1;tools
   check-history: help_check_history;2;tools
+  group-daily: help_group_daily;1;tools
