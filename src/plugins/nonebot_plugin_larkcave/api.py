@@ -53,16 +53,24 @@ async def get_image_data(cave_id: int) -> AsyncGenerator[Image, None]:
 
 
 @app.get("/api/cave/random")
-async def _(_: Request, max_image_count: Optional[int] = Query(default=None), max_line_count: Optional[int] = Query(default=None)) -> RandomCaveResponse:
+async def _(
+    _: Request,
+    max_image_count: Optional[int] = Query(default=None),
+    max_line_count: Optional[int] = Query(default=None),
+) -> RandomCaveResponse:
     statement = select(CaveData)
     if max_image_count is not None:
-        statement = statement.where(func.char_length(CaveData.content) - func.char_length(func.replace(CaveData.content, "[[Img:", "")) / 6 <= max_image_count)
-    if max_line_count is not None:
-        statement = statement.where(func.char_length(CaveData.content) - func.char_length(func.replace(CaveData.content, "\n", "")) + 1 <= max_line_count)
-    async with get_session() as session:
-        result = await session.scalars(
-            statement
+        statement = statement.where(
+            func.char_length(CaveData.content) - func.char_length(func.replace(CaveData.content, "[[Img:", "")) / 6
+            <= max_image_count
         )
+    if max_line_count is not None:
+        statement = statement.where(
+            func.char_length(CaveData.content) - func.char_length(func.replace(CaveData.content, "\n", "")) + 1
+            <= max_line_count
+        )
+    async with get_session() as session:
+        result = await session.scalars(statement)
         cave_list = [cave for cave in result]
         if not cave_list:
             raise HTTPException(status_code=404, detail="没有符合条件的 CAVE")
