@@ -59,11 +59,13 @@ async def _(
     max_line_count: Optional[int] = Query(default=None),
     image_only: bool = Query(default=False),
 ) -> RandomCaveResponse:
-    statement = select(CaveData).where(CaveData.public)
+    statement = select(CaveData).where(CaveData.public == 1)
     if image_only:
-        statement = statement.where(CaveData.content.regexp_match(r"^(\[\[Img:[+-]?[0-9]+(\.[0-9]+)?\]\])+$'"))
+        statement = statement.where(CaveData.content.regexp_match(r"^(\[\[Img:[+-]?[0-9]+(\.[0-9]+)?\]\]\])+$'"))
     if max_image_count is not None:
-        statement = statement.where(func.count(ImageData.id).filter(ImageData.belong == CaveData.id) <= max_image_count)
+        # 方法1: 使用标量子查询（推荐，性能较好）
+        subq = select(func.count()).where(ImageData.belong == CaveData.id).scalar_subquery()
+        statement = statement.where(subq <= max_image_count)
     if max_line_count is not None:
         statement = statement.where(
             func.char_length(CaveData.content) - func.char_length(func.replace(CaveData.content, "\n", "")) + 1
