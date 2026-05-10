@@ -1,7 +1,6 @@
 from nonebot import require
 from nonebot.plugin import PluginMetadata
 
-
 __plugin_meta__ = PluginMetadata(
     name="nonebot-plugin-market",
     description="玩家间物品交易市场",

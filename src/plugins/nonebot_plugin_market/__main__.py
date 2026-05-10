@@ -11,7 +11,6 @@ from nonebot_plugin_orm import get_session, AsyncSession
 from .models import MarketItem, SellLog
 from sqlalchemy import select
 
-
 lang = LangHelper()
 matcher = on_alconna(
     Alconna(
@@ -145,6 +144,8 @@ async def _(page: int, user_id: str = get_user_id()) -> None:
         for idx, market_item in enumerate(page_items, start=start + 1):
             item = await get_market_item(user_id, market_item)
             name = await item.getName()
-            lines.append(await lang.text("list.item_line", user_id, idx, name, market_item.remain_count, market_item.price))
+            lines.append(
+                await lang.text("list.item_line", user_id, idx, name, market_item.remain_count, market_item.price)
+            )
         items_text = "\n".join(lines)
     await lang.finish("list.header", user_id, page, total_pages, total, items_text)
