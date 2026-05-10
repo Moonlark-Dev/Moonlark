@@ -18,6 +18,7 @@ matcher = on_alconna(
         "market",
         Subcommand("sell", Args["bag_index", int], Args["count", int, 0], Args["price_diff", str, ""]),
         Subcommand("buy", Args["name", str], Args["count", int, 1]),
+        Subcommand("list", Args["page", int, 1]),
     )
 )
 
@@ -120,3 +121,30 @@ async def _(name: str, count: int, user_id: str = get_user_id()) -> None:
                 used_vimcoin += p
         await session.commit()
     await lang.finish("buy.finish", user_id, p, bought_count, name)
+
+
+ITEMS_PER_PAGE = 10
+
+
+@matcher.assign("list")
+async def _(page: int, user_id: str = get_user_id()) -> None:
+    if page < 1:
+        page = 1
+    async with get_session() as session:
+        query = select(MarketItem).where(MarketItem.remain_count > 0).order_by(MarketItem.item_id.desc())
+        all_items = (await session.scalars(query)).all()
+        total = len(all_items)
+        if total == 0:
+            await lang.finish("list.empty", user_id)
+        total_pages = (total + ITEMS_PER_PAGE - 1) // ITEMS_PER_PAGE
+        if page > total_pages:
+            page = total_pages
+        start = (page - 1) * ITEMS_PER_PAGE
+        page_items = all_items[start : start + ITEMS_PER_PAGE]
+        lines = []
+        for idx, market_item in enumerate(page_items, start=start + 1):
+            item = await get_market_item(user_id, market_item)
+            name = await item.getName()
+            lines.append(await lang.text("list.item_line", user_id, idx, name, market_item.remain_count, market_item.price))
+        items_text = "\n".join(lines)
+    await lang.finish("list.header", user_id, page, total_pages, total, items_text)

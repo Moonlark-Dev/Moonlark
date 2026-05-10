@@ -4,8 +4,8 @@ from nonebot.plugin import PluginMetadata
 
 __plugin_meta__ = PluginMetadata(
     name="nonebot-plugin-market",
-    description="",
-    usage="",
+    description="玩家间物品交易市场",
+    usage="market [list [page]] | market sell <bag_index> [count] [price_diff] | market buy <name> [count]",
     config=None,
 )
 

@@ -1,9 +1,19 @@
 help:
   description: 全球市场
-  details: 玩家间物品交易市场：可以将自己背包中的物品上架出售，也可以购买其他玩家出售的物品
-  usage1: market
-  usage2: market sell <bag_index> [count] [price_diff]
-  usage3: market buy <name> [count]
+  details: |
+    玩家间物品交易市场：可以将自己背包中的物品上架出售，也可以购买其他玩家出售的物品。
+    所有交易收取 1% 手续费。
+  usage1: market — 查看市场商品总数
+  usage2: market list [page] — 浏览市场中出售的物品（每页 10 件）
+  usage3: market sell <bag_index> [count] [price_diff] — 上架物品
+  usage4: market buy <name> [count] — 购买物品
+  usage5: |
+    price_diff 说明（基于该物品的平均成交价浮动）：
+      留空 = 按均价上架
+      +    = 高于均价 1%（每多一个 + 再加 1%，最多 +5%）
+      -    = 低于均价 1%（每多一个 - 再减 1%，最多 -5%）
+      +++  = 高于均价 3%
+      --   = 低于均价 2%
 main:
   info: 当前市场上有 {} 件商品正在出售
 sell:
@@ -14,3 +24,7 @@ sell:
   done: 完成！已将 {} 个「{}」以单价 {} VimCoin 的价格上架至全球市场
 buy:
   finish: 完成！购买了 {} 个「{}」，总共花费了 {} VimCoin
+list:
+  empty: 市场上暂时没有商品在出售
+  header: "📦 全球市场（第 {}/{} 页，共 {} 件）\n{}\n提示：使用 market list <页码> 翻页"
+  item_line: "{}. {} ×{} — {} VimCoin"
