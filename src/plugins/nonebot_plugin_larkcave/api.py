@@ -60,7 +60,7 @@ async def _(
 ) -> RandomCaveResponse:
     statement = select(CaveData).where(CaveData.public == 1)
     if single_image_only:
-        statement = statement.where(CaveData.content.regexp_match(r"^(\[\[Img:[0-9]+(\.[0-9]+)?\]\]\])$'"))
+        statement = statement.where(CaveData.content.regexp_match(r"^(\[\[Img:[0-9]+(\.[0-9]+)?\]\]\])$"))
     if max_line_count is not None:
         statement = statement.where(
             func.char_length(CaveData.content) - func.char_length(func.replace(CaveData.content, "\n", "")) + 1
