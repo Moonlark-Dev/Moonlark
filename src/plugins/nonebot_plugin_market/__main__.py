@@ -33,14 +33,14 @@ async def get_average_price(item_data: ItemStack, session: AsyncSession) -> floa
 
 
 @matcher.assign("$main")
-async def _(user_id: str = get_user_id()) -> None:
+async def handle_market_main(user_id: str = get_user_id()) -> None:
     async with get_session() as session:
         count = len((await session.scalars(select(MarketItem).where(MarketItem.remain_count > 0))).all())
     await lang.finish("main.info", user_id, count)
 
 
 @matcher.assign("sell")
-async def _(bag_index: int, count: int, price_diff: str, user_id: str = get_user_id()) -> None:
+async def handle_market_sell(bag_index: int, count: int, price_diff: str, user_id: str = get_user_id()) -> None:
     try:
         item = await get_bag_item(user_id, bag_index)
     except IndexError:
@@ -73,7 +73,7 @@ async def _(bag_index: int, count: int, price_diff: str, user_id: str = get_user
         )
         await session.commit()
     item.stack.count -= count
-    await lang.finish("sell.done", user_id, item.stack.getName(), count, price)
+    await lang.finish("sell.done", user_id, count, item.stack.getName(), price)
 
 
 async def get_market_item(user_id: str, data: MarketItem) -> ItemStack:
@@ -97,7 +97,7 @@ async def give_market_item(count: int, item_data: MarketItem, user_id: str) -> N
 
 
 @matcher.assign("buy")
-async def _(name: str, count: int, user_id: str = get_user_id()) -> None:
+async def handle_market_buy(name: str, count: int, user_id: str = get_user_id()) -> None:
     bought_count = 0
     used_vimcoin = 0
     user = await get_user(user_id)
@@ -112,7 +112,7 @@ async def _(name: str, count: int, user_id: str = get_user_id()) -> None:
                 item.remain_count -= c
                 used_vimcoin += p
                 break
-            elif user.has_vimcoin(p := item.price * item.remain_count):
+            elif await user.has_vimcoin(p := item.price * item.remain_count):
                 bought_count += item.remain_count
                 await user.use_vimcoin(p, True)
                 await (await get_user(item.user_id)).add_vimcoin(p * 0.99)
@@ -120,14 +120,14 @@ async def _(name: str, count: int, user_id: str = get_user_id()) -> None:
                 await session.delete(item)
                 used_vimcoin += p
         await session.commit()
-    await lang.finish("buy.finish", user_id, p, bought_count, name)
+    await lang.finish("buy.finish", user_id, bought_count, name, used_vimcoin)
 
 
 ITEMS_PER_PAGE = 10
 
 
 @matcher.assign("list")
-async def _(page: int, user_id: str = get_user_id()) -> None:
+async def handle_market_list(page: int, user_id: str = get_user_id()) -> None:
     if page < 1:
         page = 1
     async with get_session() as session:
