@@ -45,12 +45,12 @@ async def handle_market_sell(bag_index: int, count: int, price_diff: str, user_i
         item = await get_bag_item(user_id, bag_index)
     except IndexError:
         await lang.finish("sell.index_error", user_id)
-    if count > 0 and item.stack.count < count:
-        await lang.finish("sell.item_not_enough", user_id, item.stack.count)
-    elif count < 0:
+    if count < 0:
         await lang.finish("sell.wrong_count", user_id)
     elif count == 0:
         count = item.stack.count
+    elif count > item.stack.count:
+        await lang.finish("sell.item_not_enough", user_id, item.stack.count)
     async with get_session() as session:
         try:
             avg_price = await get_average_price(item.stack, session)
