@@ -18,14 +18,14 @@
 import json
 
 from nonebot import on_command
+from nonebot.adapters import Message
+from nonebot.params import CommandArg
 from nonebot_plugin_orm import get_session
 
 from nonebot_plugin_larkutils import get_user_id, review_text
 
 from ..utils.matcher import patch_matcher
 from ..utils.user import get_user
-from ..utils.waiter import prompt
-from ..exceptions import PromptTimeout
 from ..models import UserData
 from ..lang import lang
 
@@ -34,41 +34,36 @@ setnick = patch_matcher(on_command("setnick"))
 
 @setnick.handle()
 async def _(
+    args: Message = CommandArg(),
     user_id: str = get_user_id(),
 ) -> None:
+    new_nick = args.extract_plain_text().strip()
+
+    if not new_nick:
+        await lang.finish("setnick.usage", user_id)
+
+    if len(new_nick) > 27:
+        await lang.finish("setnick.too_long", user_id)
+
     current_user = await get_user(user_id)
     current_nick = current_user.get_nickname()
 
-    await lang.send("setnick.current", user_id, current_nick)
+    if new_nick == current_nick:
+        await lang.finish("setnick.same", user_id)
 
-    prompt_text = await lang.text("setnick.input", user_id)
+    review_result = await review_text(new_nick)
+    if not review_result["conclusion"]:
+        await lang.finish("setnick.review_failed", user_id, review_result["message"])
 
-    for i in range(3):
-        try:
-            new_nick = await prompt(
-                prompt_text, user_id, checker=lambda msg: len(msg) <= 27, ignore_error_details=False
-            )
-        except PromptTimeout:
-            await lang.finish("setnick.timeout", user_id)
+    async with get_session() as session:
+        user = await session.get(UserData, user_id)
+        if user is None:
+            await lang.finish("setnick.failed", user_id)
+            return
+        user.nickname = new_nick
+        config = json.loads(user.config)
+        config["lock_nickname"] = True
+        user.config = json.dumps(config)
+        await session.commit()
 
-        if new_nick == current_nick:
-            await lang.finish("setnick.same", user_id)
-
-        review_result = await review_text(new_nick)
-        if review_result["conclusion"]:
-            async with get_session() as session:
-                user = await session.get(UserData, user_id)
-                if user is None:
-                    await lang.finish("setnick.failed", user_id)
-                    return
-                user.nickname = new_nick
-                config = json.loads(user.config)
-                config["lock_nickname"] = True
-                user.config = json.dumps(config)
-                await session.commit()
-
-            await lang.finish("setnick.success", user_id, new_nick)
-
-        prompt_text = await lang.text("setnick.review_failed", user_id, review_result["message"])
-
-    await lang.finish("setnick.failed", user_id)
+    await lang.finish("setnick.success", user_id, new_nick)

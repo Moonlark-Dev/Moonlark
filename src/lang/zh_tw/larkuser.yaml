@@ -88,17 +88,17 @@ welcome:
   - 注册成功。很高兴认识你，{}！
   - 注册成功。你好喵~，{}！
 setnick:
+  usage: "用法：setnick <暱稱>"
+  too_long: "暱稱過長，不能超過27個字元。"
   current: "當前暱稱: {}"
-  input: "請輸入新暱稱（不超過27個字元）："
   success: "暱稱修改成功！新暱稱: {}"
-  same: "新暱稱與當前暱稱相同，已取消。"
-  timeout: "讀取輸入失敗：已超時！"
-  review_failed: "暱稱審查不通過：{}\n請重新輸入。"
-  failed: "暱稱修改失敗，已達最大重試次數。"
+  same: "新暱稱與當前暱稱相同。"
+  review_failed: "暱稱審查不通過：{}"
+  failed: "暱稱修改失敗。"
 help_setnick:
   description: 修改暱稱
   details: 修改自己在 Moonlark 中的暱稱
-  usage: setnick (修改暱稱)
+  usage: "setnick <暱稱> (修改暱稱)"
 input:
   user_nickname: |
     Moonlark 没有办法读取您的展示名称（昵称）。请发送您的展示名称，也可以发送“q”留空。
