@@ -12,3 +12,9 @@ commands:
     usages:
       - help_whoami.usage
     category: setting
+  setnick:
+    description: help_setnick.description
+    details: help_setnick.details
+    usages:
+      - help_setnick.usage
+    category: setting

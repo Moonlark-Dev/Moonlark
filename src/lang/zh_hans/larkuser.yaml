@@ -91,6 +91,19 @@ welcome:
   - 注册成功。你就是我的 Master 吗，{}？
   - 注册成功。很高兴认识你，{}！
   - 注册成功。你好喵~，{}！
+setnick:
+  usage: "用法：setnick <昵称>（不带参数则解锁昵称锁定）"
+  too_long: "昵称过长，不能超过27个字符。"
+  unlocked: "昵称锁定已解除。"
+  current: "当前昵称: {}"
+  success: "昵称修改成功！新昵称: {}"
+  same: "新昵称与当前昵称相同。"
+  review_failed: "昵称审查不通过：{}"
+  failed: "昵称修改失败。"
+help_setnick:
+  description: 修改昵称
+  details: "修改自己在 Moonlark 中的昵称，不带参数则解锁昵称锁定"
+  usage: "setnick <昵称> (修改昵称，不带参数解锁锁定)"
 input:
   user_nickname: |
     Moonlark 没有办法读取您的展示名称（昵称）。请发送您的展示名称，也可以发送“q”留空。
