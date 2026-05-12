@@ -39,8 +39,18 @@ async def _(
 ) -> None:
     new_nick = args.extract_plain_text().strip()
 
+    # No argument: unlock nickname
     if not new_nick:
-        await lang.finish("setnick.usage", user_id)
+        async with get_session() as session:
+            user = await session.get(UserData, user_id)
+            if user is None:
+                await lang.finish("setnick.failed", user_id)
+                return
+            config = json.loads(user.config)
+            config["lock_nickname"] = False
+            user.config = json.dumps(config)
+            await session.commit()
+        await lang.finish("setnick.unlocked", user_id)
 
     if len(new_nick) > 27:
         await lang.finish("setnick.too_long", user_id)
