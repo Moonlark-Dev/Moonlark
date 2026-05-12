@@ -87,6 +87,18 @@ welcome:
   - 注册成功。你就是我的 Master 吗，{}？
   - 注册成功。很高兴认识你，{}！
   - 注册成功。你好喵~，{}！
+setnick:
+  current: "Current nickname: {}"
+  input: "Please enter a new nickname (max 27 characters):"
+  success: "Nickname changed successfully! New nickname: {}"
+  same: "New nickname is the same as the current one, cancelled."
+  timeout: "Failed to read input: timeout!"
+  review_failed: "Nickname review failed: {}\nPlease try again."
+  failed: "Nickname change failed: max retries exceeded."
+help_setnick:
+  description: Change Nickname
+  details: Change your nickname on Moonlark
+  usage: setnick (change nickname)
 input:
   user_nickname: |
     Moonlark 没有办法读取您的展示名称（昵称）。请发送您的展示名称，也可以发送“q”留空。

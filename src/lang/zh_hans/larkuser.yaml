@@ -91,6 +91,18 @@ welcome:
   - 注册成功。你就是我的 Master 吗，{}？
   - 注册成功。很高兴认识你，{}！
   - 注册成功。你好喵~，{}！
+setnick:
+  current: "当前昵称: {}"
+  input: "请输入新昵称（不超过27个字符）："
+  success: "昵称修改成功！新昵称: {}"
+  same: "新昵称与当前昵称相同，已取消。"
+  timeout: "读取输入失败：已超时！"
+  review_failed: "昵称审查不通过：{}\n请重新输入。"
+  failed: "昵称修改失败，已达最大重试次数。"
+help_setnick:
+  description: 修改昵称
+  details: 修改自己在 Moonlark 中的昵称
+  usage: setnick (修改昵称)
 input:
   user_nickname: |
     Moonlark 没有办法读取您的展示名称（昵称）。请发送您的展示名称，也可以发送“q”留空。
