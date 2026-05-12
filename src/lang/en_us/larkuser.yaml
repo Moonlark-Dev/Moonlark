@@ -87,6 +87,19 @@ welcome:
   - 注册成功。你就是我的 Master 吗，{}？
   - 注册成功。很高兴认识你，{}！
   - 注册成功。你好喵~，{}！
+setnick:
+  usage: "Usage: setnick <nickname> (without argument to unlock nickname)"
+  too_long: "Nickname is too long, max 27 characters."
+  unlocked: "Nickname lock has been removed."
+  current: "Current nickname: {}"
+  success: "Nickname changed successfully! New nickname: {}"
+  same: "New nickname is the same as the current one."
+  review_failed: "Nickname review failed: {}"
+  failed: "Nickname change failed."
+help_setnick:
+  description: Change Nickname
+  details: "Change your nickname on Moonlark, or unlock nickname lock without argument"
+  usage: "setnick <nickname> (change nickname, unlock without argument)"
 input:
   user_nickname: |
     Moonlark 没有办法读取您的展示名称（昵称）。请发送您的展示名称，也可以发送“q”留空。
