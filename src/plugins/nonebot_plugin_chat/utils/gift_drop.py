@@ -9,7 +9,6 @@ from nonebot_plugin_items.utils.get import get_item
 from nonebot_plugin_items.registry.registry import ResourceLocation
 from nonebot_plugin_bag.utils.bag import give_item
 
-
 # 礼物掉落权重配置
 GIFT_DROP_TABLE: list[tuple[str, float]] = [
     ("moonlark:dried_fish", 0.30),
