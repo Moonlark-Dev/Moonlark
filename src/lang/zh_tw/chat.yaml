@@ -263,9 +263,12 @@ command:
       提及屏蔽用户列表:
       {}
   switch:
-    enabled: 已启用
-    disabled: 已禁用
-  no_argv: 无效参数，请使用 {__prefix__}help chat 获取该命令的使用方法！
+    enabled: 已啟用
+    disabled: 已停用
+  dropping:
+    enabled: 已啟用禮物掉落
+    disabled: 已停用禮物掉落
+  no_argv: 無效參數，請使用 {__prefix__}help chat 獲取該命令的使用方法！
   desire:
     get: |
       消息触发概率: {}%
@@ -307,6 +310,7 @@ help:
   usage8: chat block user <add|remove|list> [用户ID] (管理屏蔽用户)
   usage9: chat block keyword <add|remove|list> [关键词] (管理屏蔽关键词)
   usage10: chat block list (查看所有屏蔽项)
+  usage15: chat dropping <on|off> (開關禮物掉落功能)
   usage11: chat ignore-mention <add|remove|list> [用户ID] (管理提及屏蔽用户)
   usage12: chat reset (清除当前会话所有历史消息并重置会话状态)
   usage13: chat stop (强制停止当前正在生成的响应)

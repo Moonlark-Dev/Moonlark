@@ -82,6 +82,10 @@ class MoonlarkUser(ABC):
     def get_fav(self) -> float:
         return self.fav
 
+    def get_display_fav(self) -> int:
+        """返回好感度乘以 1000 后取整，用于展示"""
+        return round(self.get_fav() * 1000)
+
     def _get_fav_level_key(self) -> str:
         """
         根据好感度值确定好感等级的语言键

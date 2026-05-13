@@ -481,7 +481,7 @@ class MessageProcessor:
                 else:
                     member_info = None
                 user = await get_user(user_id)
-                fav = user.get_fav()
+                fav = user.get_display_fav()
                 fav_level = await user.get_fav_level()
                 if member_info:
                     profiles.append(
@@ -566,7 +566,7 @@ class MessageProcessor:
             datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             round(self.token_bucket.get(), 2),
             sender.get_nickname(),
-            sender.get_fav(),
+            sender.get_display_fav(),
             await sender.get_fav_level(),
             await self.generate_note_text(notes),
             recent_activities or None,

@@ -26,6 +26,7 @@ from .session import create_group_session, create_private_session, get_session_d
 from .ego import consciousness
 
 from ..utils.group import enabled_group, parse_message_to_string
+from ..utils.gift_drop import handle_gift_drop
 from ..config import config
 from ..models import PrivateChatSession
 
@@ -68,6 +69,12 @@ async def _(
     message = await UniMessage.of(message=platform_message, bot=bot).attach_reply(event, bot)
     nickname = await get_nickname(user_id, bot, event)
     await session.handle_message(message, user_id, event, state, nickname, event.is_tome())
+
+    # 礼物掉落检测
+    try:
+        await handle_gift_drop(bot, event, user_id, session_id, session.is_napcat_bot())
+    except Exception as e:
+        logger.debug(f"Gift drop check failed: {e}")
 
 
 @on_message(priority=50, rule=private_message, block=False).handle()
