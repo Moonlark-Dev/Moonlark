@@ -28,17 +28,17 @@ class GiftDropManager:
     """全局礼物掉落管理器"""
 
     _instance: Optional["GiftDropManager"] = None
+    _initialized: bool = False
 
     def __new__(cls) -> "GiftDropManager":
         if cls._instance is None:
             cls._instance = super().__new__(cls)
-            cls._instance._initialized = False
         return cls._instance
 
     def __init__(self):
-        if self._initialized:
+        if GiftDropManager._initialized:
             return
-        self._initialized = True
+        GiftDropManager._initialized = True
         self.drop_timestamps: deque[float] = deque()
 
     def _cleanup_old_timestamps(self) -> None:
