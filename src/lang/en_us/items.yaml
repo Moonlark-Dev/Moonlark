@@ -27,24 +27,23 @@ fav:
   name: Moonlark 的好感
 gifts:
   dried_fish:
-    name: Dried Fish
-    description: "Crunchy and crispy, a cat girl's favorite!"
+    name: 小鱼干
+    description: "嘎嘣脆，猫娘最爱！"
   yarn_ball:
-    name: Yarn Ball
-    description: "Pink and rolls around~"
+    name: 毛线球
+    description: "粉色的，滚来滚去~"
   bell_collar:
-    name: Bell Collar
-    description: "Jingles with every move"
+    name: 铃铛项圈
+    description: "戴上会叮叮当当作响"
   catnip_pouch:
-    name: Catnip Pouch
-    description: "One sniff and eyes go squinty"
+    name: 猫薄荷包
+    description: "闻一闻就眯起眼睛"
   cat_teaser:
-    name: Cat Teaser
-    description: "Feather style, super bouncy"
+    name: 逗猫棒
+    description: "羽毛款，超有弹性"
   cat_can:
-    name: Cat Can
-    description: "Tuna flavor, meow the moment it opens"
-
+    name: 猫罐罐
+    description: "金枪鱼口味，打开就喵呜"
 gift:
   prompt: "{} 送给你 {}"
   prompt_with_description: "{} 送给你 {}：{}"
