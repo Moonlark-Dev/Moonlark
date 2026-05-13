@@ -316,7 +316,7 @@ help:
   usage8: chat block user <add|remove|list> [用户ID] (管理屏蔽用户)
   usage9: chat block keyword <add|remove|list> [关键词] (管理屏蔽关键词)
   usage10: chat block list (查看所有屏蔽项)
-  usage11: chat dropping <on|off> (开关礼物掉落功能)
+  usage15: chat dropping <on|off> (开关礼物掉落功能)
   usage11: chat ignore-mention <add|remove|list> [用户ID] (管理提及屏蔽用户)
   usage12: chat reset (清除当前会话所有历史消息并重置会话状态)
   usage13: chat stop (强制停止当前正在生成的响应)
