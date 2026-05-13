@@ -277,9 +277,7 @@ class MessageProcessor:
             asyncio.create_task(self.generate_reply(trigger_mode == "all", item[0] == "event"))
 
     async def handle_timer(self, description: str) -> None:
-        await self.session.add_event(
-            await self.session.text("prompt.timer_triggered", description), "all"
-        )
+        await self.session.add_event(await self.session.text("prompt.timer_triggered", description), "all")
 
     async def leave_for_a_while(self) -> None:
         await self.session.mute()
@@ -671,9 +669,7 @@ class MessageProcessor:
 
     async def handle_poke(self, operator_name: str, target_name: str, to_me: bool) -> None:
         if to_me:
-            await self.session.add_event(
-                await self.session.text("prompt.poke.to_me", operator_name), "all"
-            )
+            await self.session.add_event(await self.session.text("prompt.poke.to_me", operator_name), "all")
             # 注意：由于现在事件是异步处理的，blocked 标志不再需要在 poke 中设置
             # 事件会在 get_message 中被处理并直接生成回复
         else:
