@@ -8,6 +8,8 @@ from ...lang import lang
 
 class YarnBall(GiftItem):
 
+    fav_value: float = 0.00015
+
     def setupLang(self) -> None:
         self.lang = lang
 
