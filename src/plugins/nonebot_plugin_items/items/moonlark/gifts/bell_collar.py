@@ -3,7 +3,7 @@ from nonebot_plugin_items.base.stack import ItemStack
 from nonebot_plugin_items.registry.registry import ResourceLocation
 from nonebot_plugin_items.registry import ITEMS
 from nonebot_plugin_items.base.gift import GiftItem
-from ...lang import lang
+from ....lang import lang
 
 
 class BellCollar(GiftItem):
