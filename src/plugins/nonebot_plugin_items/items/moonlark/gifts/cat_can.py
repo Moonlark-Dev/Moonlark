@@ -19,9 +19,9 @@ class CatCan(GiftItem):
     async def getDescription(self, stack: ItemStack) -> str:
         return await self.getText("gifts.cat_can.description", stack.user_id)
 
-
     async def on_gift_used(self, stack, *args, **kwargs):
         pass
+
 
 LOCATION = ResourceLocation("moonlark", "cat_can")
 
