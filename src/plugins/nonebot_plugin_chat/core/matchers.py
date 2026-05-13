@@ -71,20 +71,10 @@ async def _(
     await session.handle_message(message, user_id, event, state, nickname, event.is_tome())
 
     # 礼物掉落检测
-    if session.is_napcat_bot():
-        try:
-            from nonebot_plugin_larkuser import get_user as get_moonlark_user
-
-            user = await get_moonlark_user(user_id)
-            is_registered = user.register_time is not None
-            msg_id = getattr(event, "message_id", None)
-
-            async def _send_reaction(mid: str, emoji_id: str):
-                await bot.call_api("set_msg_emoji_like", message_id=mid, emoji_id=emoji_id, set=True)
-
-            await handle_gift_drop(user_id, session_id, msg_id, is_registered, _send_reaction)
-        except Exception as e:
-            logger.debug(f"Gift drop check failed: {e}")
+    try:
+        await handle_gift_drop(bot, event, user_id, session_id, session.is_napcat_bot())
+    except Exception as e:
+        logger.debug(f"Gift drop check failed: {e}")
 
 
 @on_message(priority=50, rule=private_message, block=False).handle()

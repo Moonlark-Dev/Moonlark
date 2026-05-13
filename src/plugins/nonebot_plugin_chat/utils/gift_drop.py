@@ -4,9 +4,11 @@ from collections import deque
 from typing import Optional
 
 from nonebot import logger
+from nonebot.adapters import Bot, Event
 from nonebot_plugin_items.registry.registry import ResourceLocation
 from nonebot_plugin_items.utils.get import get_item
 from nonebot_plugin_bag.utils.bag import give_item
+
 
 # 礼物掉落权重配置
 GIFT_DROP_TABLE: list[tuple[str, float]] = [
@@ -97,35 +99,50 @@ def get_gift_drop_manager() -> GiftDropManager:
     return GiftDropManager()
 
 
-async def handle_gift_drop(
-    user_id: str,
-    group_id: str,
-    message_id: Optional[str],
-    is_registered: bool,
-    send_reaction,
-) -> None:
+async def handle_gift_drop(bot: Bot, event: Event, user_id: str, group_id: str, is_napcat_bot: bool) -> None:
     """
     处理礼物掉落逻辑
 
     Args:
+        bot: Bot 实例
+        event: 消息事件
         user_id: 用户 ID
         group_id: 群组 ID
-        message_id: 消息 ID（用于添加 reaction）
-        is_registered: 用户是否已注册
-        send_reaction: 发送 reaction 的回调函数，接受 (message_id, emoji_id) 参数
+        is_napcat_bot: 是否为 napcat bot
     """
-    if not is_registered:
+    if not is_napcat_bot:
         return
 
     from ..models import ChatGroup
     from nonebot_plugin_orm import get_session as get_db_session
+    from nonebot_plugin_larkuser import get_user
 
+    # 检查用户是否已注册
+    user = await get_user(user_id)
+    if user.register_time is None:
+        return
+
+    # 检查群组是否启用掉落
     async with get_db_session() as db_session:
         group_config = await db_session.get(ChatGroup, {"group_id": group_id})
         if not group_config or not group_config.dropping_enabled:
             return
 
+    # 尝试掉落
     drop_manager = get_gift_drop_manager()
     gift_id = await drop_manager.try_drop(user_id)
-    if gift_id and message_id:
-        await send_reaction(message_id, DROP_REACTION_EMOJI_ID)
+    if not gift_id:
+        return
+
+    # 添加 reaction
+    message_id = getattr(event, "message_id", None)
+    if message_id:
+        try:
+            await bot.call_api(
+                "set_msg_emoji_like",
+                message_id=str(message_id),
+                emoji_id=DROP_REACTION_EMOJI_ID,
+                set=True,
+            )
+        except Exception as e:
+            logger.debug(f"Gift drop reaction failed: {e}")
