@@ -26,8 +26,9 @@ from .session import create_group_session, create_private_session, get_session_d
 from .ego import consciousness
 
 from ..utils.group import enabled_group, parse_message_to_string
+from ..utils.gift_drop import get_gift_drop_manager, DROP_REACTION_EMOJI_ID
 from ..config import config
-from ..models import PrivateChatSession
+from ..models import ChatGroup, PrivateChatSession
 
 
 async def record_private_chat_session(user_id: str, bot_id: str) -> None:
@@ -68,6 +69,33 @@ async def _(
     message = await UniMessage.of(message=platform_message, bot=bot).attach_reply(event, bot)
     nickname = await get_nickname(user_id, bot, event)
     await session.handle_message(message, user_id, event, state, nickname, event.is_tome())
+
+    # 礼物掉落检测
+    if session.is_napcat_bot():
+        try:
+            from nonebot_plugin_orm import get_session as get_db_session
+            from nonebot_plugin_larkuser import get_user as get_moonlark_user
+
+            async with get_db_session() as db_session:
+                group_config = await db_session.get(ChatGroup, {"group_id": session_id})
+                if group_config and group_config.dropping_enabled:
+                    # 检查用户是否已注册
+                    user = await get_moonlark_user(user_id)
+                    if user.register_time is not None:
+                        drop_manager = get_gift_drop_manager()
+                        gift_id = await drop_manager.try_drop(user_id)
+                        if gift_id:
+                            # 获取 message_id 并添加 reaction
+                            message_id = getattr(event, "message_id", None)
+                            if message_id:
+                                await bot.call_api(
+                                    "set_msg_emoji_like",
+                                    message_id=str(message_id),
+                                    emoji_id=DROP_REACTION_EMOJI_ID,
+                                    set=True,
+                                )
+        except Exception as e:
+            logger.debug(f"Gift drop check failed: {e}")
 
 
 @on_message(priority=50, rule=private_message, block=False).handle()
