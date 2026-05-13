@@ -236,9 +236,8 @@ class MessageProcessor:
         if item[0] == "event":
             # 处理事件类型队列项
             event_prompt, trigger_mode = item[1]  # type: ignore
-            content = await self.session.text(
-                "prompt.event_template", datetime.now().strftime("%H:%M:%S"), event_prompt
-            )
+            content = await self.session.text("prompt.event_template", event_prompt)
+            content += await self.generate_event_additional_prompt()
             await self.openai_messages.append_user_message(content)
             self.token_bucket.add(0.6)
 
@@ -279,7 +278,7 @@ class MessageProcessor:
 
     async def handle_timer(self, description: str) -> None:
         await self.session.add_event(
-            await self.session.text("prompt.timer_triggered", datetime.now().strftime("%H:%M:%S"), description), "all"
+            await self.session.text("prompt.timer_triggered", description), "all"
         )
 
     async def leave_for_a_while(self) -> None:
@@ -577,6 +576,38 @@ class MessageProcessor:
     async def filter_info_lines(self, lines: list[str]) -> list[str]:
         return [line for line in lines if not await self.is_additional_info_line_showed(line)]
 
+    async def generate_event_additional_prompt(self) -> str:
+        """生成事件的附加信息（不含发送者信息）"""
+        from .ego import consciousness
+
+        status_manager = get_status_manager()
+        mood, mood_reason = status_manager.get_status()
+        mood_text = await self.session.text(f"status.mood.{mood.value}")
+        mood_reason_text = (
+            mood_reason
+            if not await self.is_additional_info_line_showed(str(mood_reason))
+            else await self.session.text("prompt_group.showed")
+        )
+        state = await self.session.text(
+            "prompt_group.state",
+            mood_text,
+            status_manager.get_mood_retention(),
+            mood_reason_text,
+        )
+
+        recent_activities = "\n".join(
+            await self.filter_info_lines(
+                (await consciousness.get_recent_actions_text(self.session.lang_str)).splitlines()
+            )
+        )
+        return await self.session.text(
+            "prompt.event_additional_info",
+            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            round(self.token_bucket.get(), 2),
+            recent_activities or None,
+            state,
+        )
+
     async def is_additional_info_line_showed(self, line: str) -> bool:
         async with self.openai_messages.fetcher_lock:
             for message in self.openai_messages.messages:
@@ -632,7 +663,6 @@ class MessageProcessor:
         await self.session.add_event(
             await self.session.text(
                 "prompt.recall",
-                datetime.now().strftime("%H:%M:%S"),
                 message_id,
                 message_content,
             ),
@@ -642,7 +672,7 @@ class MessageProcessor:
     async def handle_poke(self, operator_name: str, target_name: str, to_me: bool) -> None:
         if to_me:
             await self.session.add_event(
-                await self.session.text("prompt.poke.to_me", datetime.now().strftime("%H:%M:%S"), operator_name), "all"
+                await self.session.text("prompt.poke.to_me", operator_name), "all"
             )
             # 注意：由于现在事件是异步处理的，blocked 标志不再需要在 poke 中设置
             # 事件会在 get_message 中被处理并直接生成回复
@@ -650,7 +680,6 @@ class MessageProcessor:
             await self.session.add_event(
                 await self.session.text(
                     "prompt.poke.to_other",
-                    datetime.now().strftime("%H:%M:%S"),
                     operator_name,
                     target_name,
                 ),
@@ -661,7 +690,6 @@ class MessageProcessor:
         await self.session.add_event(
             await self.session.text(
                 "prompt.reaction",
-                datetime.now().strftime("%H:%M:%S"),
                 operator_name,
                 message_string,
                 QQ_EMOJI_MAP[emoji_id],
