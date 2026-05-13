@@ -20,6 +20,9 @@ class DriedFish(GiftItem):
         return await self.getText("gifts.dried_fish.description", stack.user_id)
 
 
+    async def on_gift_used(self, stack, *args, **kwargs):
+        pass
+
 LOCATION = ResourceLocation("moonlark", "dried_fish")
 
 

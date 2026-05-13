@@ -20,6 +20,9 @@ class YarnBall(GiftItem):
         return await self.getText("gifts.yarn_ball.description", stack.user_id)
 
 
+    async def on_gift_used(self, stack, *args, **kwargs):
+        pass
+
 LOCATION = ResourceLocation("moonlark", "yarn_ball")
 
 
