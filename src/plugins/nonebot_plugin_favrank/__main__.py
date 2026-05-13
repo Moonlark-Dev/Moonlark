@@ -29,7 +29,7 @@ async def _(user_id: str = get_user_id()) -> None:
         await fav_rank.finish(await lang.text("fav_rank.no_data", user_id))
 
     image = await generate_image(
-        [{"user_id": data.user_id, "info": None, "data": data.favorability} for data in ranked_data],
+        [{"user_id": data.user_id, "info": None, "data": round(data.favorability * 1000)} for data in ranked_data],
         user_id,
         await lang.text("fav_rank.title", user_id),
     )

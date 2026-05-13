@@ -112,13 +112,13 @@ async def get_sign_vim(user_data: MoonlarkUser, sign_data: SignData) -> SignClai
 
 
 async def get_sign_fav(user_data: MoonlarkUser) -> SignClaimData:
-    origin = user_data.get_fav()
+    origin = user_data.get_display_fav()
     fav = 0.001
     await user_data.add_fav(fav)
     return {
         "text": await lang.text("image.fav", user_data.user_id),
-        "add": fav,
-        "now": user_data.get_fav(),
+        "add": round(fav * 1000),
+        "now": user_data.get_display_fav(),
         "origin": origin,
     }
 
