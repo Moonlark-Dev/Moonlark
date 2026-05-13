@@ -25,6 +25,26 @@ dice:
       _3: 大失败
 fav:
   name: Moonlark 的好感
+gifts:
+  dried_fish:
+    name: Dried Fish
+    description: "Crunchy and crispy, a cat girl's favorite!"
+  yarn_ball:
+    name: Yarn Ball
+    description: "Pink and rolls around~"
+  bell_collar:
+    name: Bell Collar
+    description: "Jingles with every move"
+  catnip_pouch:
+    name: Catnip Pouch
+    description: "One sniff and eyes go squinty"
+  cat_teaser:
+    name: Cat Teaser
+    description: "Feather style, super bouncy"
+  cat_can:
+    name: Cat Can
+    description: "Tuna flavor, meow the moment it opens"
+
 gift:
   prompt: "{} 送给你 {}"
   prompt_with_description: "{} 送给你 {}：{}"

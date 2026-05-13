@@ -25,6 +25,26 @@ dice:
       _3: 大失败
 fav:
   name: Moonlark 的好感
+gifts:
+  dried_fish:
+    name: 小魚乾
+    description: "嘎嘣脆，貓娘最愛！"
+  yarn_ball:
+    name: 毛線球
+    description: "粉色的，滾來滾去~"
+  bell_collar:
+    name: 鈴鐺項圈
+    description: "戴上會叮叮噹噹作響"
+  catnip_pouch:
+    name: 貓薄荷包
+    description: "聞一聞就瞇起眼睛"
+  cat_teaser:
+    name: 逗貓棒
+    description: "羽毛款，超有彈性"
+  cat_can:
+    name: 貓罐罐
+    description: "金槍魚口味，打開就喵嗚"
+
 gift:
   prompt: "{} 送给你 {}"
   prompt_with_description: "{} 送给你 {}：{}"
