@@ -328,12 +328,12 @@ help_rua:
 prompt:
   warning:
     excessive_messages: "[系统警告]: 你已连续发送 {} 条消息，请等待用户回复后再继续发言，避免刷屏。"
-  timer_triggered: "[{}]: 计时器 {} 已触发。"
-  recall: "[{}]: 消息 {} ({}) 被撤回。"
+  timer_triggered: "计时器 {} 已触发。"
+  recall: "消息 {} ({}) 被撤回。"
   poke:
-    to_me: "[{}]: {} 戳了戳你。"
-    to_other: "[{}]: {} 戳了戳 {}。"
-  reaction: "[{}]: {} 回应了你的消息“{}”: {}"
+    to_me: "{} 戳了戳你。"
+    to_other: "{} 戳了戳 {}。"
+  reaction: "{} 回应了你的消息“{}”: {}"
   event_template: "[{}]: {}"
   note:
     format: "- {} (#{}，创建于 {})"
