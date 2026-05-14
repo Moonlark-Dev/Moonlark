@@ -45,7 +45,13 @@ async def get_cave_id(session: async_scoped_session) -> int:
 
 
 async def post_cave(
-    content: list[Image | Text], user_id: str, event: Event, bot: Bot, state: T_State, session: async_scoped_session
+    content: list[Image | Text],
+    user_id: str,
+    event: Event,
+    bot: Bot,
+    state: T_State,
+    session: async_scoped_session,
+    group_id: str | None = None,
 ) -> NoReturn:
     await lang.send("add.checking", user_id)
     try:
@@ -78,4 +84,21 @@ async def post_cave(
         )
         session.add(CaveData(id=cave_id, author=user_id, time=datetime.now(), content=parsed_content))
         await session.commit()
+
+    # 投稿成功后，向 chat 插件发送事件
+    if group_id:
+        try:
+            from nonebot_plugin_chat.core.session import post_group_event
+            from nonebot_plugin_chat.utils.message import parse_message_to_string
+            from nonebot_plugin_larkuser import get_nickname
+
+            uni_message = UniMessage(content)
+            content_str = await parse_message_to_string(uni_message, event, bot, state, user_id)
+            nickname = await get_nickname(user_id, bot, event)
+            event_prompt = await lang.text("add.event_prompt", user_id, nickname, cave_id, content_str)
+            await post_group_event(group_id, event_prompt, "probability")
+        except Exception as e:
+            from nonebot import logger
+            logger.warning(f"Failed to post cave event to chat: {e}")
+
     await lang.finish("add.posted", user_id, cave_id, reply_message=True)

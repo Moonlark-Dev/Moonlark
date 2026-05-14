@@ -23,21 +23,21 @@ from nonebot.typing import T_State
 from nonebot_plugin_orm import async_scoped_session
 
 from nonebot_plugin_larkcave.__main__ import cave
-from nonebot_plugin_larkutils import get_user_id
+from nonebot_plugin_larkutils import get_user_id, get_group_id
 from nonebot_plugin_larkcave.lang import lang
 from nonebot_plugin_larkcave.utils.post import post_cave
 
 
 @cave.assign("add.content")
 async def _(
-    session: async_scoped_session, event: Event, bot: Bot, state: T_State, result: Arparma, user_id: str = get_user_id()
+    session: async_scoped_session, event: Event, bot: Bot, state: T_State, result: Arparma, user_id: str = get_user_id(), group_id: str = get_group_id()
 ) -> None:
     try:
         content = cast(list[Image | Text], list(result.subcommands["add"].args["content"]))
     except KeyError:
         await lang.finish("add.empty", user_id)
         return
-    await post_cave(content, user_id, event, bot, state, session)
+    await post_cave(content, user_id, event, bot, state, session, group_id=group_id)
 
 
 from nonebot.adapters.onebot.v11 import Bot as OB11Bot
@@ -53,6 +53,7 @@ async def _(
     bot: Bot,
     state: T_State,
     user_id: str = get_user_id(),
+    group_id: str = get_group_id(),
 ) -> None:
     content = []
     if node_msg.id is None or not isinstance(bot, OB11Bot):
@@ -77,4 +78,4 @@ async def _(
         content.append(uni_msg)
         content.append(Text("\n"))
     content.pop(-1)
-    await post_cave(content, user_id, event, bot, state, session)
+    await post_cave(content, user_id, event, bot, state, session, group_id=group_id)
