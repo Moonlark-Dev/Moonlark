@@ -99,6 +99,7 @@ async def post_cave(
             await post_group_event(group_id, event_prompt, "probability")
         except Exception as e:
             from nonebot import logger
+
             logger.warning(f"Failed to post cave event to chat: {e}")
 
     await lang.finish("add.posted", user_id, cave_id, reply_message=True)

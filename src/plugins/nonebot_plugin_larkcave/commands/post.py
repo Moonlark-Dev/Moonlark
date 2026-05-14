@@ -30,7 +30,13 @@ from nonebot_plugin_larkcave.utils.post import post_cave
 
 @cave.assign("add.content")
 async def _(
-    session: async_scoped_session, event: Event, bot: Bot, state: T_State, result: Arparma, user_id: str = get_user_id(), group_id: str = get_group_id()
+    session: async_scoped_session,
+    event: Event,
+    bot: Bot,
+    state: T_State,
+    result: Arparma,
+    user_id: str = get_user_id(),
+    group_id: str = get_group_id(),
 ) -> None:
     try:
         content = cast(list[Image | Text], list(result.subcommands["add"].args["content"]))
