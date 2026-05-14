@@ -239,14 +239,6 @@ class MessageProcessor:
             content = await self.session.text(
                 "prompt.event_template", datetime.now().strftime("%H:%M:%S"), event_prompt
             )
-            # 为事件添加附加信息
-            event_user_id = self.session.session_id
-            if self.session.get_session_type() == "group" and self.session.cached_messages:
-                for msg in reversed(self.session.cached_messages):
-                    if not msg["self"]:
-                        event_user_id = msg["user_id"]
-                        break
-            content += await self.generate_additional_prompt(content, event_user_id)
             await self.openai_messages.append_user_message(content)
             self.token_bucket.add(0.6)
 
