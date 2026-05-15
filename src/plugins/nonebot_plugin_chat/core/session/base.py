@@ -276,9 +276,12 @@ class BaseSession(ABC):
 
         action_name = action["name"]
 
-        # 生成事件提示，包含供回复的消息 ID
+        # 生成事件提示
         event_prompt = await lang.text(f"rua.actions.{action_name}.prompt", self.lang_str, nickname)
-        event_prompt = f"{event_prompt}\n[供回复的消息ID: {message_id}]"
+
+        # 添加供回复的消息 ID
+        reply_hint = await lang.text("rua.reply_hint", self.lang_str, message_id)
+        event_prompt = f"{event_prompt}\n{reply_hint}"
 
         # 如果该动作可以被拒绝，生成交互 ID 并添加拒绝提示
         if action["refusable"]:

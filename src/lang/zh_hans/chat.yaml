@@ -498,6 +498,7 @@ rua:
   rank_title: rua 次数排行榜
   rank_no_data: 暂无 rua 数据。
   refusable_hint: "（该动作可被拒绝，交互 ID: {}。如果你不喜欢，可以通过 `deal_interaction_request` 工具躲开。）"
+  reply_hint: "[供回复的消息ID: {}]"
   bite_msg: "*Moonlark 躲开了你的手，并咬了一口"
   bite_prompt: "你躲开了 {} 的互动，并咬了 TA 一口。"
   actions:
