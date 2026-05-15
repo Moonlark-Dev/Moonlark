@@ -269,7 +269,7 @@ class BaseSession(ABC):
             nickname: 发起互动的用户昵称
             user_id: 发起互动的用户 ID
             action: 选择的 rua 动作
-            message_id: 触发 rua 命令的消息 ID，用于 reaction
+            message_id: 触发 rua 命令的消息 ID，用于 reaction 和回复
         """
         import random
         import asyncio
@@ -278,6 +278,10 @@ class BaseSession(ABC):
 
         # 生成事件提示
         event_prompt = await lang.text(f"rua.actions.{action_name}.prompt", self.lang_str, nickname)
+
+        # 添加供回复的消息 ID
+        reply_hint = await lang.text("rua.reply_hint", self.lang_str, message_id)
+        event_prompt = f"{event_prompt}\n{reply_hint}"
 
         # 如果该动作可以被拒绝，生成交互 ID 并添加拒绝提示
         if action["refusable"]:
