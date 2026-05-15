@@ -49,6 +49,7 @@ class BaseSession(ABC):
         self.llm_timers = []  # 定时器列表
         self.pending_interactions: dict[str, PendingInteraction] = {}  # 待处理的交互请求
         self.last_interest: Optional[float] = None  # 缓存的 interest 值
+        self.rua_reply_message_id: Optional[str] = None  # rua 事件中需要回复的消息 ID
         self.processor = MessageProcessor(self)
 
     def set_target(self, target: Target, bot: Bot) -> None:
@@ -269,12 +270,15 @@ class BaseSession(ABC):
             nickname: 发起互动的用户昵称
             user_id: 发起互动的用户 ID
             action: 选择的 rua 动作
-            message_id: 触发 rua 命令的消息 ID，用于 reaction
+            message_id: 触发 rua 命令的消息 ID，用于 reaction 和回复
         """
         import random
         import asyncio
 
         action_name = action["name"]
+
+        # 存储 rua 事件的 message_id，供回复使用
+        self.rua_reply_message_id = message_id
 
         # 生成事件提示
         event_prompt = await lang.text(f"rua.actions.{action_name}.prompt", self.lang_str, nickname)
