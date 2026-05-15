@@ -245,12 +245,6 @@ class MessageQueue:
             return FetchStatus.SKIP
         self.messages.clear()
         self.inserted_messages.clear()
-
-        # 获取 rua 事件的 reply_message_id
-        rua_reply_message_id = self.processor.session.rua_reply_message_id
-        # 清除已使用的 rua_reply_message_id
-        self.processor.session.rua_reply_message_id = None
-
         fetcher = await MessageFetcher.create(
             messages,
             False,
@@ -303,14 +297,6 @@ class MessageQueue:
             self.messages = messages + self.inserted_messages
             self.inserted_messages.clear()
             state = FetchStatus.FAILED
-
-        # 如果有 rua_reply_message_id，确保 AI 的回复会引用原消息
-        if rua_reply_message_id and state == FetchStatus.SUCCESS:
-            # 在消息列表末尾添加提示，让 AI 知道需要回复特定消息
-            self.messages.append(
-                generate_message(f"[系统提示] 请使用 send_message 工具回复消息 ID: {rua_reply_message_id}", "user")
-            )
-
         return state
 
     async def check_system_prompt(self) -> None:

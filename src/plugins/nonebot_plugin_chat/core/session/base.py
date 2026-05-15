@@ -49,7 +49,6 @@ class BaseSession(ABC):
         self.llm_timers = []  # 定时器列表
         self.pending_interactions: dict[str, PendingInteraction] = {}  # 待处理的交互请求
         self.last_interest: Optional[float] = None  # 缓存的 interest 值
-        self.rua_reply_message_id: Optional[str] = None  # rua 事件中需要回复的消息 ID
         self.processor = MessageProcessor(self)
 
     def set_target(self, target: Target, bot: Bot) -> None:
@@ -277,11 +276,9 @@ class BaseSession(ABC):
 
         action_name = action["name"]
 
-        # 存储 rua 事件的 message_id，供回复使用
-        self.rua_reply_message_id = message_id
-
-        # 生成事件提示
+        # 生成事件提示，包含供回复的消息 ID
         event_prompt = await lang.text(f"rua.actions.{action_name}.prompt", self.lang_str, nickname)
+        event_prompt = f"{event_prompt}\n[供回复的消息ID: {message_id}]"
 
         # 如果该动作可以被拒绝，生成交互 ID 并添加拒绝提示
         if action["refusable"]:
