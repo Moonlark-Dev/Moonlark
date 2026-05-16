@@ -74,7 +74,7 @@ async def _(
     try:
         await handle_gift_drop(bot, event, user_id, session_id, session.is_napcat_bot())
     except Exception as e:
-        logger.debug(f"Gift drop check failed: {e}")
+        logger.exception(e)
 
 
 @on_message(priority=50, rule=private_message, block=False).handle()
