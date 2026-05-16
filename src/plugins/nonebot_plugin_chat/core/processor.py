@@ -581,7 +581,6 @@ class MessageProcessor:
                     return True
         return False
 
-
     async def generate_system_prompt(self) -> OpenAIMessage:
         fav_rule = await get_prompt_text("favorability")
 

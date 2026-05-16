@@ -224,6 +224,7 @@ class MessageQueue:
 
         # 记录抓取结束时间
         timing_stats_manager.record_fetch_end(session_id)
+
     async def stop_fetcher(self) -> None:
         if self.fetcher_task:
             self.fetcher_task.cancel()

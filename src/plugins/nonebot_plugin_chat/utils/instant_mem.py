@@ -40,7 +40,8 @@ def get_memories_for_display(current_session_id: str) -> list[InstantMemory]:
     now = datetime.now()
     today = now.date()
     return [
-        mem for mem in instant_memories
+        mem
+        for mem in instant_memories
         if not (mem["ctx_id"] == current_session_id and mem["create_time"].date() == today)
     ]
 
