@@ -482,9 +482,7 @@ class MainSession:
                 sleep_start = datetime.now()
                 sleep_end = sleep_start + timedelta(minutes=sleep_minutes)
                 self.state_until = sleep_end
-                self.action_history.append(
-                    (sleep_start, RestAction(type="sleep", time=sleep_minutes), None)
-                )
+                self.action_history.append((sleep_start, RestAction(type="sleep", time=sleep_minutes), None))
                 await self.trigger_sleep()
 
             if future and not future.done():

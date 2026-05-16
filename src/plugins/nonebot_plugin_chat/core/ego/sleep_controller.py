@@ -12,7 +12,6 @@ if TYPE_CHECKING:
 
 from ...lang import lang
 
-
 EXPECTED_AWAKE_HOURS = 16
 MIN_AWAKE_HOURS = 14
 MAX_AWAKE_HOURS = 18
