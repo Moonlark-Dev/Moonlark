@@ -36,6 +36,7 @@ from .tools import (
 from ..utils.emoji import QQ_EMOJI_MAP
 from .note_manager import check_note, get_context_notes
 from .status_manager import get_status_manager
+from .instant_mem import get_memories_for_display
 
 if TYPE_CHECKING:
     from ..core.processor import MessageProcessor
@@ -529,6 +530,15 @@ class ToolManager:
                 )
             )
 
+            # query_history_message
+            tools.append(
+                AsyncFunction(
+                    func=self.query_history_message,
+                    description=await self.text("tools_desc.query_history_message.desc"),
+                    parameters={},
+                )
+            )
+
             # Conditional tools
             if processor.session.is_napcat_bot():
                 tools.append(
@@ -594,3 +604,32 @@ class ToolManager:
         keywords = note_check_result["keywords"]
         expire_hours = note_check_result["expire_hours"]
         await note_manager.create_note(content=text, keywords=keywords or "", expire_hours=expire_hours or 87600)
+
+    async def query_history_message(self) -> str:
+        from ..core.session import groups
+
+        # 触发所有会话的即时记忆生成
+        for group in groups.values():
+            await group.processor.generate_instant_memory()
+
+        result_parts = []
+
+        # 展示非当前群聊的即时记忆
+        current_session_id = self.processor.session.session_id
+        memories = get_memories_for_display(current_session_id)
+        if memories:
+            mem_lines = []
+            for mem in memories:
+                mem_lines.append(
+                    await self.text(
+                        "prompt_group.instant_mem",
+                        mem["expire_time"].strftime("%Y-%m-%d %H:%M:%S"),
+                        mem["name"],
+                        mem["content"],
+                    )
+                )
+            result_parts.append("即时记忆:\n" + "\n".join(mem_lines))
+        else:
+            result_parts.append("即时记忆: (无)")
+
+        return "\n\n".join(result_parts)
