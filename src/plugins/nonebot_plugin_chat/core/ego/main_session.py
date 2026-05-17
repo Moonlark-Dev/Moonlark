@@ -1,9 +1,6 @@
 import asyncio
 
-from nonebot_plugin_chat.utils.instant_mem import delete_sleep_memory
-
-from nonebot_plugin_openai.utils.chat import fetch_json, fetch_message
-from nonebot_plugin_chat.utils.instant_mem import post_instant_memory
+from nonebot_plugin_openai.utils.chat import fetch_json
 import json
 import re
 import traceback
@@ -115,6 +112,10 @@ class MainSession:
         if dt < self.thinking_cold_until or self.thinking_lock.locked():
             return
         async with self.thinking_lock:
+            # 触发所有会话的即时记忆生成
+            for group in groups.values():
+                await group.processor.generate_instant_memory()
+
             fetcher = await MessageFetcher.create(
                 [
                     generate_message(await self.generate_system_prompt(trigger_reason == "ready_sleep"), "system"),
@@ -205,21 +206,19 @@ class MainSession:
             self.status_manager.get_mood_retention(),
             mood[1],
         )
-        instant_mem = "\n".join(
-            [
+        # 即时记忆：汇总所有全局即时记忆
+        instant_mem_lines = []
+        for mem in get_instant_memories():
+            instant_mem_lines.append(
                 await lang.text(
                     "prompt_group.instant_mem",
                     self.lang_str,
-                    mem["category"],
-                    mem["expire_level"],
-                    mem["create_time"].strftime("%Y-%m-%d %H:%M:%S"),
+                    mem["expire_time"].strftime("%Y-%m-%d %H:%M:%S"),
                     mem["name"],
-                    mem["ctx_id"],
                     mem["content"],
                 )
-                for mem in get_instant_memories()
-            ],
-        )
+            )
+        instant_mem = "\n".join(instant_mem_lines)
 
         note_manager = await get_context_notes("main_")
         notes = await note_manager.filter_note(instant_mem)
@@ -261,6 +260,7 @@ class MainSession:
     async def process_timer(self):
         dt = datetime.now()
         if self.state_until and dt > self.state_until:
+            was_sleeping = self.state == StateEnum.SLEEPING
             self.state_until = None
             if self.state == StateEnum.BUSY:
                 for action in self.action_history[::-1]:
@@ -268,6 +268,8 @@ class MainSession:
                         await self.request_think("task_finished", action[1].information)
                         break
             self.state = StateEnum.ACTIVATE
+            if was_sleeping:
+                self.sleep_controller.on_wake_up()
         if self.is_boredom():
             await self.request_think("boredom_thresold", None)
         await self.save_action_history()
@@ -353,17 +355,6 @@ class MainSession:
         await create_blog_post(title, content)
         result = await lang.text("main_session.write_blog.success", self.lang_str, title)
         fetcher.session.insert_message(generate_message(result, "user"))
-
-    async def submit_sleep_decision(
-        self,
-        session_id: str,
-        deal_type: Literal["ready", "delay"],
-        delay_minutes: Optional[int] = None,
-        reason: Optional[str] = None,
-        future: Optional[asyncio.Future] = None,
-    ) -> None:
-        """提交睡觉决策，委托给 SleepController 处理"""
-        await self.sleep_controller.submit_sleep_decision(session_id, deal_type, delay_minutes, reason, future)
 
     async def request_action_decision(
         self,
@@ -488,7 +479,13 @@ class MainSession:
             approved = result.approved
 
             if approved:
-                asyncio.create_task(self.sleep_controller.ask_sleep())
+                self.state = StateEnum.SLEEPING
+                sleep_minutes = 20
+                sleep_start = datetime.now()
+                sleep_end = sleep_start + timedelta(minutes=sleep_minutes)
+                self.state_until = sleep_end
+                self.action_history.append((sleep_start, RestAction(type="sleep", time=sleep_minutes), None))
+                await self.trigger_sleep()
 
             if future and not future.done():
                 future.set_result(
@@ -528,6 +525,7 @@ class MainSession:
             interrupted = False
             result = None
         self.state = StateEnum.ACTIVATE
+        self.sleep_controller.on_wake_up()
         if interrupted and result and session:
             await session.processor.openai_messages.append_user_message(result)
 

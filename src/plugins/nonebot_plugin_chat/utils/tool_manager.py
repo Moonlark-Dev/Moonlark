@@ -36,6 +36,7 @@ from .tools import (
 from ..utils.emoji import QQ_EMOJI_MAP
 from .note_manager import check_note, get_context_notes
 from .status_manager import get_status_manager
+from .instant_mem import get_memories_for_display
 
 if TYPE_CHECKING:
     from ..core.processor import MessageProcessor
@@ -98,14 +99,6 @@ class ToolManager:
             return await self.text("tools_desc.calculate_luck_value.user_not_found", nickname)
         luck_value = await get_luck_value(user_id)
         return await self.text("tools_desc.calculate_luck_value.result", nickname, luck_value)
-
-    async def change_sleep_status(
-        self, deal_type: Literal["ready", "delay"], delay_minutes: Optional[int] = None, reason: Optional[str] = None
-    ) -> str:
-        """修改睡觉状态，委托给session处理"""
-        return await self.processor.session.change_sleep_status(
-            deal_type=deal_type, delay_minutes=delay_minutes, reason=reason
-        )
 
     async def request_action(self, do: str, duration: Optional[int] = None) -> str:
         """向意识会话申请执行一个动作"""
@@ -472,34 +465,6 @@ class ToolManager:
                 )
             )
 
-            # change_sleep_status (仅在睡觉决策流程中可用)
-            # from ..core.main_session import main_session
-            # if main_session.is_sleep_decision_active():
-            tools.append(
-                AsyncFunction(
-                    func=self.change_sleep_status,
-                    description=await self.text("tools_desc.change_sleep_status.desc"),
-                    parameters={
-                        "deal_type": FunctionParameterWithEnum(
-                            type="string",
-                            description=await self.text("tools_desc.change_sleep_status.deal_type"),
-                            required=True,
-                            enum={"ready", "delay"},
-                        ),
-                        "delay_minutes": FunctionParameter(
-                            type="integer",
-                            description=await self.text("tools_desc.change_sleep_status.delay_minutes"),
-                            required=False,
-                        ),
-                        "reason": FunctionParameter(
-                            type="string",
-                            description=await self.text("tools_desc.change_sleep_status.reason"),
-                            required=False,
-                        ),
-                    },
-                )
-            )
-
             # request_action
             tools.append(
                 AsyncFunction(
@@ -525,6 +490,15 @@ class ToolManager:
                 AsyncFunction(
                     func=self.request_sleep,
                     description=await self.text("tools_desc.request_sleep.desc"),
+                    parameters={},
+                )
+            )
+
+            # query_history_message
+            tools.append(
+                AsyncFunction(
+                    func=self.query_history_message,
+                    description=await self.text("tools_desc.query_history_message.desc"),
                     parameters={},
                 )
             )
@@ -594,3 +568,32 @@ class ToolManager:
         keywords = note_check_result["keywords"]
         expire_hours = note_check_result["expire_hours"]
         await note_manager.create_note(content=text, keywords=keywords or "", expire_hours=expire_hours or 87600)
+
+    async def query_history_message(self) -> str:
+        from ..core.session import groups
+
+        # 触发所有会话的即时记忆生成
+        for group in groups.values():
+            await group.processor.generate_instant_memory()
+
+        result_parts = []
+
+        # 展示非当前群聊的即时记忆
+        current_session_id = self.processor.session.session_id
+        memories = get_memories_for_display(current_session_id)
+        if memories:
+            mem_lines = []
+            for mem in memories:
+                mem_lines.append(
+                    await self.text(
+                        "prompt_group.instant_mem",
+                        mem["expire_time"].strftime("%Y-%m-%d %H:%M:%S"),
+                        mem["name"],
+                        mem["content"],
+                    )
+                )
+            result_parts.append("即时记忆:\n" + "\n".join(mem_lines))
+        else:
+            result_parts.append("即时记忆: (无)")
+
+        return "\n\n".join(result_parts)
