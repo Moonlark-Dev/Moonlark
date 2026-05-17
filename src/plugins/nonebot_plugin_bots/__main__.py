@@ -92,14 +92,12 @@ class ToMeProcessor:
 
     def process_to_me_event(self) -> None:
         if self.event.is_tome():
-            assign_session(self.session_id, self.bot.self_id)
             return
         if (msg := self.get_event_message()) is not None:
             self.process_message_event(msg)
         elif isinstance(self.event, PokeNotifyEvent):
             self.process_poke()
         if self.to_me:
-            assign_session(self.session_id, self.bot.self_id)
             self.event.is_tome = lambda _: True  # type: ignore
 
     def get_event_message(self) -> Optional[Message]:
