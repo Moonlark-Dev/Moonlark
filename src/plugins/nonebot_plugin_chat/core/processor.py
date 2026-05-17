@@ -10,7 +10,6 @@ from nonebot_plugin_chat.utils.token_bucket import TokenBucket
 from ..enums import StateEnum
 from nonebot_plugin_chat.utils.prompt import get_prompt_text
 from ..config import config
-from nonebot_plugin_chat.utils.instant_mem import filter_instant_memory, post_instant_memory
 from nonebot_plugin_openai.types import Message as OpenAIMessage
 from nonebot.log import logger
 from nonebot_plugin_larkuser import get_user
@@ -40,6 +39,7 @@ from ..utils.tool_manager import ToolManager
 from ..utils.tools.sticker import StickerTools
 from ..utils.status_manager import get_status_manager
 from ..utils.timing_stats import timing_stats_manager
+from ..utils.instant_mem import get_memories_for_display
 
 if TYPE_CHECKING:
     from nonebot_plugin_chat.core.session.base import BaseSession
@@ -542,16 +542,11 @@ class MessageProcessor:
         from .ego import consciousness
 
         current_time = await self.session.text("prompt_group.time", datetime.now().isoformat())
-        mood_reason_text = (
-            mood_reason
-            if not await self.is_additional_info_line_showed(str(mood_reason))
-            else await self.session.text("prompt_group.showed")
-        )
         state = await self.session.text(
             "prompt_group.state",
             mood_text,
             status_manager.get_mood_retention(),
-            mood_reason_text,
+            mood_reason,
         )
 
         recent_activities = "\n".join(
@@ -568,7 +563,6 @@ class MessageProcessor:
             await sender.get_fav_level(),
             await self.generate_note_text(notes),
             recent_activities or None,
-            await self.filter_instant_mem(message_str),
             state,
         )
 
@@ -581,26 +575,6 @@ class MessageProcessor:
                 if line in str(message):
                     return True
         return False
-
-    async def filter_instant_mem(self, chat_history: str) -> str:
-        now = datetime.now()
-        today = now.date()
-        result = []
-        for mem in filter_instant_memory(chat_history):
-            if mem["ctx_id"] == self.session.session_id and mem["create_time"].date() == today:
-                continue
-            result.append(
-                await self.session.text(
-                    "prompt_group.instant_mem",
-                    mem["category"],
-                    mem["expire_level"],
-                    mem["create_time"].strftime("%Y-%m-%d %H:%M:%S"),
-                    mem["name"],
-                    mem["ctx_id"],
-                    mem["content"],
-                )
-            )
-        return "\n".join(result)
 
     async def generate_system_prompt(self) -> OpenAIMessage:
         fav_rule = await get_prompt_text("favorability")
@@ -663,34 +637,21 @@ class MessageProcessor:
         )
 
     async def generate_instant_memory(self) -> None:
+        manager = self.session.instant_memory_manager
+
         messages = [
             f"[{msg['send_time'].strftime('%H:%M:%S')}][{msg['nickname']}]({msg['message_id']}): {msg['content']}"
             for msg in self.session.get_message_for_instant_memory()
         ]
-        try:
-            model_response = await fetch_message(
-                [
-                    generate_message(
-                        await self.session.text("memory_cache.creator", datetime.now().isoformat()), "system"
-                    ),
-                    generate_message("\n".join(messages), "user"),
-                ],
-                reasoning_effort="medium",
-            )
-            memory_list = json.loads(re.sub(r"`{1,3}([a-zA-Z0-9]+)?", "", model_response))
-            for mem in memory_list:
-                expire_level = mem.get("expire_level", 3)
-                await post_instant_memory(
-                    mem["category"],
-                    mem["content"],
-                    [k.strip() for k in mem["keywords"].split(",")],
-                    expire_level,
-                    self.session.lang_str,
-                    ctx_id=self.session.session_id,
-                    name=await self.session.get_session_name(),
-                )
-        except Exception as e:
-            logger.exception(e)
+
+        if not messages:
+            return
+
+        manager.add_messages_to_cache(messages)
+        manager.cursor = len(self.session.cached_messages)
+
+        if manager.should_generate():
+            await manager.generate()
 
     async def check_message_truncated(self) -> bool:
         chat_history = await self.session.get_cached_messages_string(length=10, include_self_message=False)

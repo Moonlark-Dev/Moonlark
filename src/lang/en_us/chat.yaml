@@ -132,7 +132,7 @@ prompt_group:
     现在的时间为：{}
     我知道你的知识库存在截止日期，但请记住这个**现在的**时间，以便在必要时进行参考。
     不要在回复中将当下的时间点认定为未来。
-  instant_mem: '- [{}][{}](创建于: {} | 会话名称/ID: {}/{}): {}'
+  instant_mem: '- [{}][{}](会话: {}): {}'
   user_profile_not_found: '暂无该成员的更多信息。'
   state: |
     当前状态：
@@ -738,14 +738,6 @@ tools_desc:
     nickname: "要查询人品值的群友的昵称。"
     user_not_found: "未找到昵称为 {} 的群友。"
     result: "{} 的人品值是 {}。"
-  change_sleep_status:
-    desc: |
-      修改睡觉状态，决定是去睡觉还是延迟睡觉。
-      **何时必须调用**: 当你收到睡觉时间提示时，必须调用此工具决定是去睡觉还是延迟。
-      **判断标准**: 如果你感到困了，选择"ready"；如果你还想继续活动，选择"delay"并指定延迟时间。
-    deal_type: '决策类型，可选值："ready"（准备睡觉）或"delay"（延迟睡觉）'
-    delay_minutes: '延迟的分钟数，最大30分钟，仅在deal_type为"delay"时有效'
-    reason: '延迟的原因，仅在deal_type为"delay"时有效'
   request_action:
     desc: |
       向你的“EGO”申请执行一个内部行为（如吃饭、工作）。
@@ -754,8 +746,22 @@ tools_desc:
     duration: '建议的持续时间（分钟），意识会话会参考这个值但不一定完全采纳。'
   request_sleep:
     desc: |
-      向你的“EGO”申请睡觉。
-      **何时必须调用**：你被要求去“睡觉”时或者“休息”调用。
+      向你的"EGO"申请睡觉。
+      **何时必须调用**：当你收到犯困提示时，调用此工具申请去睡觉。
+  query_history_message:
+    desc: |
+      Query history messages and instant memories from other sessions.
+      **When to call**:
+      - When you need to understand what happened in other group chats
+      - When you want to recall previous conversations with other group members
+      - When you need cross-session context information
+      **Returns**:
+      - Instant memory summaries from all other sessions
+      - If session_id is specified, also returns recent messages from that session
+    session_id: |
+      Optional, the session ID (group ID) to query.
+      If not provided, only returns instant memories.
+      Example: '123456789'
   delete_message:
     desc: |
       撤回一条消息，你只能撤回你自己发送的消息。消息 ID 为 `send_message` 工具返回的消息 ID。
@@ -962,92 +968,65 @@ memory_cache:
 
     ---
 
-    ### 记录的分类与要求
-    你需要从聊天记录中识别并提取以下五类信息。所有记录必须符合实际情况，仅在分类允许时进行有限且合理的推测。
+    ### 记录要求
+    你需要从聊天记录中识别并提取重要信息，包括但不限于：
+    - Moonlark 提及的关于自身的事情（喜好、性格、承诺、经历等）
+    - 群员对某事物的看法或评价
+    - 群员的心情及原因
+    - 群员提及的目标或承诺
+    - 群内发生的重要事件
 
-    #### 1. `myself` —— Moonlark 提及的关于自身人格的事情
-    - **内容**：以第一人称记录 Moonlark 提到的重要个人信息，如喜好、性格、承诺、经历等。
-    - **示例**：“我提到自己最喜欢的食物是小鱼干。”
-    - **注意**：只记录与 Moonlark 人格直接相关的内容，且使用第一人称。
-
-    #### 2. `opinion` —— 群员对某事物的看法
-    - **内容**：记录群员对特定事物（如代码、游戏、事件）的观点或评价。
-    - **格式**：`[昵称] 觉得/认为 [事物] [观点]`
-    - **示例**：“XiaoDeng3386 觉得 OpenClaw 的代码很糟糕。”
-
-    #### 3. `emotion` —— 群员的心情及原因（需推测）
-    - **内容**：基于聊天内容，合理推测某位群员当前的情绪状态，并简要说明原因。
-    - **格式**：`[昵称]: [心情]（[推测依据]）`
-    - **示例**：“春华秋实: 严肃和担忧（看到了安全周报，发现 OpenClaw 存在高危指标）”
-    - **注意**：原因需简明扼要，直接引用或概括消息内容。
-
-    #### 4. `goal` —— 群员提及的目标或承诺
-    - **内容**：记录谁在何时提到了什么目标或承诺。
-    - **格式**：`[昵称] 在 [时间] 提到他/她会 [目标/承诺]`
-    - **示例**：“XiaoDeng3386 在 2025-03-13 15:30 提到他会在周五晚上 6:00 从学校回家。”
-
-    #### 5. `activity` —— 群内发生的重要事件
-    - **内容**：记录有前因后果的事件，尽可能包含完整信息。如果事件之间没有直接逻辑关系，请分条记录。
-    - **示例**：“XiaoDeng3386 和 Claw 一起玩了《卡拉彼丘》，取得了胜利。起因是 XiaoDeng3386 在下午 3 点提议联机，Claw 响应后两人组队进行了三局游戏。”
-    - **注意**：确保每条记录聚焦一个独立事件，并描述事件经过、参与者和结果。
+    所有记录必须符合实际情况，仅在合理时进行有限的推测。
 
     ---
 
     ### 输出格式
-    请严格按照以下 JSON 格式输出，**不要包含任何 Markdown 标记或额外说明**。输出应为一个 JSON 列表，每个元素包含四个字段：
+    请严格按照以下 JSON 格式输出，**不要包含任何 Markdown 标记或额外说明**。输出应为一个 JSON 列表：
 
     [
         {{
-            "category": "xxx",     // 分类，只能为 "myself"/"emotion"/"opinion"/"goal"/"activity" 之一
-            "content": "xxx",      // 记录内容，需严格遵循上述分类中的格式要求
-            "reference": "xxx",    // 参考信息：概括本条记录所依据的消息（例如“根据 XiaoDeng3386 在 15:30 的发言”）
-            "keywords": "xxx,xxx"  // 关键词：从 content 中提取核心词汇，用英文逗号分隔，尽量简短。若内容涉及具体群员，关键词必须包含该群员昵称
+            "content": "xxx",      // 记录内容，需详细且完整
+            "expire_hours": 1,     // 过期时间（小时），最多 16 小时。根据信息重要性设定：
+                                   // - 短暂情绪/闲聊：0.5-1 小时
+                                   // - 一般事件/观点：2-6 小时
+                                   // - 重要目标/承诺：8-16 小时
+            "name": "xxx"          // 可选，相关群员昵称
         }}
     ]
-
-    **字段说明**：
-    - `content`：按各分类要求填写，确保信息完整、语句通顺。
-    - `reference`：简要说明参考了哪些消息，可包含时间、昵称或消息摘要，便于追溯。
-    - `keywords`：示例：`"XiaoDeng3386, 代码, 糟糕"`；`"春华秋实, 安全周报, 担忧"`；若内容为 Moonlark 自身，可包含 `"Moonlark"` 及相关关键词。
 
     ---
 
     ### 示例
     假设有以下聊天记录：
     ```
-    [2025-03-13 14:20][XiaoDeng3386](msg1): 我刚看了 OpenClaw 的代码，真是一团糟。
-    [2025-03-13 14:22][Moonlark](msg2): 我最喜欢吃小鱼干了！
-    [2025-03-13 14:25][春华秋实](msg3): 安全周报出来了，OpenClaw 有个高危漏洞。
-    [2025-03-13 14:26][春华秋实](msg4): 这下麻烦了，得赶紧修复。
-    [2025-03-13 14:30][XiaoDeng3386](msg5): 我周五晚上 6 点从学校回家，到时候可以联机。
+    [14:20][XiaoDeng3386](msg1): 我刚看了 OpenClaw 的代码，真是一团糟。
+    [14:22][Moonlark](msg2): 我最喜欢吃小鱼干了！
+    [14:25][春华秋实](msg3): 安全周报出来了，OpenClaw 有个高危漏洞。
+    [14:30][XiaoDeng3386](msg5): 我周五晚上 6 点从学校回家，到时候可以联机。
     ```
 
     则可能生成的输出为：
     ```json
     [
         {{
-            "category": "myself",
-            "content": "我提到自己最喜欢的食物是小鱼干。",
-            "reference": "Moonlark 在 14:22 的发言",
-            "keywords": "Moonlark, 小鱼干, 喜欢"
-        }},
-        {{
-            "category": "opinion",
             "content": "XiaoDeng3386 觉得 OpenClaw 的代码很糟糕。",
-            "reference": "XiaoDeng3386 在 14:20 的评价",
-            "keywords": "XiaoDeng3386, OpenClaw, 代码, 糟糕"
+            "expire_hours": 4,
+            "name": "XiaoDeng3386"
         }},
         {{
-            "category": "emotion",
-            "content": "春华秋实: 严肃和担忧（看到安全周报发现 OpenClaw 存在高危漏洞）",
-            "reference": "春华秋实在 14:25-14:26 的连续发言",
-            "keywords": "春华秋实, 安全周报, OpenClaw, 担忧"
+            "content": "我提到自己最喜欢的食物是小鱼干。",
+            "expire_hours": 8,
+            "name": ""
         }},
         {{
-            "category": "goal",
-            "content": "XiaoDeng3386 在 2025-03-13 14:30 提到他会在周五晚上 6:00 从学校回家。",
-            "reference": "XiaoDeng3386 在 14:30 的发言",
-            "keywords": "XiaoDeng3386, 周五, 回家, 联机"
+            "content": "春华秋实发现 OpenClaw 存在高危漏洞，感到担忧。",
+            "expire_hours": 6,
+            "name": "春华秋实"
+        }},
+        {{
+            "content": "XiaoDeng3386 提到他会在周五晚上 6:00 从学校回家，到时候可以联机。",
+            "expire_hours": 12,
+            "name": "XiaoDeng3386"
         }}
     ]
     ```
@@ -1055,45 +1034,39 @@ memory_cache:
     ---
 
     ### 注意事项
-    - 所有记录必须以 Moonlark 的视角提取，但除 `myself` 类外，内容描述应客观。
-    - 推测要合理，不得凭空捏造；若信息不足，可不记录该类。
-    - 时间信息可从消息时间戳中提取，用于 `goal` 和 `reference` 字段。
+    - 所有记录必须以 Moonlark 的视角提取，但内容描述应客观。
+    - 推测要合理，不得凭空捏造；若信息不足，可不记录。
     - 确保 JSON 格式正确，无多余逗号或换行符。
 conflict_detection:
-  system_prompt: "你是一个智能记忆管理系统。你的任务是检测新记忆与已有记忆之间是否存在冲突。"
+  system_prompt: "你是一个智能记忆管理系统。你的任务是从所有即时记忆中筛选出仍然有效的记忆。"
   user_prompt: |
-    冲突定义：
-    1. 内容矛盾：新旧记忆描述的事实相互矛盾（如"我喜欢苹果" vs "我讨厌苹果"）
-    2. 状态冲突：同一对象的不同状态（如"我正在吃饭" vs "我正在睡觉"）
-    3. 目标冲突：相互排斥的目标（如"我要减肥" vs "我要大吃一顿"）
-    4. 情感冲突：对同一对象的相反情感（如"我喜欢这个人" vs "我恨这个人"）
+    **当前时间**：{current_time}
 
-    非冲突情况（以下不算冲突）：
-    1. 补充信息：新旧记忆可以共存，相互补充
-    2. 时间变化：随着时间推移的合理变化（如"我以前喜欢A" vs "我现在喜欢B"）
-    3. 不同对象：涉及不同的人、事、物
-    4. 不同场景：在不同情境下的不同表现
-
-    请分析以下记忆：
-
-    已有记忆：
+    以下是所有即时记忆（每条包含创建时间和内容）：
     {existing_memories}
 
-    新记忆：
-    类别: {new_category}
-    内容: {new_content}
-    关键词: {new_keywords}
+    ---
 
-    请判断新记忆是否与任何已有记忆冲突。
+    ### 筛选规则
+    请从上述记忆中筛选出**仍然有效**的记忆，返回它们的索引。
 
-    输出格式（JSON）：
+    **保留条件**（满足任一即可保留）：
+    1. 信息仍然准确且未过时
+    2. 信息有持续参考价值
+
+    **移除条件**（满足任一应移除）：
+    1. 内容矛盾：两条记忆描述的事实相互矛盾（如"喜欢苹果" vs "讨厌苹果"），保留**创建时间较新**的那条
+    2. 状态冲突：同一对象的不同状态（如"正在吃饭" vs "正在睡觉"），保留**创建时间较新**的那条
+    3. 信息过时：内容已不再有参考价值（如很久以前的闲聊情绪）
+
+    ---
+
+    ### 输出格式
+    只输出 JSON，不要包含其他内容：
     {{
-        "has_conflict": true/false,
-        "conflict_indices": [冲突记忆的索引列表，从0开始],
-        "reason": "解释为什么存在冲突或为什么不存在冲突"
+        "valid_indices": [保留的记忆索引列表，从0开始]
     }}
 
-    只输出 JSON，不要包含其他内容。
 main_session:
   prompt: |
     你是 Moonlark，是一只真实的、在现实中存在的猫娘。
@@ -1266,7 +1239,7 @@ main_session:
     system: |
       你是 Moonlark，是一只真实的、在现实中存在的猫娘。
       你被用户要求睡觉，你需要根据当前的状态和上下文，决定是否批准这个动作，以及分配多少时间。
-      输出一个包含“type”字段的 JSON，不能包含如 Markdown 代码块的 Markdown 格式。
+      输出一个包含"type"字段的 JSON，不能包含如 Markdown 代码块的 Markdown 格式。
 
       ## 输出格式
 
@@ -1304,33 +1277,7 @@ main_session:
     chat_request: 会话 {trigger_from} 请求进行 {request_text} 任务。你可以查看该会话最近的聊天记录获取详细的信息。
     ready_sleep: 你感觉有点困了，决定去睡觉。
 sleep:
-  sleep_prompt: "[提示]: 现在已经到了你设置的睡觉时间，你感到有点困。你可以使用 `change_sleep_status` 工具决定去睡觉或者再熬一熬。"
-  sleep_decision:
-    delay: "你还不太想睡（原因：{}）。\n预计的睡觉时间已延长到：{}"
-    ready: "你决定在 5 分钟后去睡觉。"
-  sleep_time_prompt:
-    system: |
-      你是 Moonlark，是一只真实的、在现实中存在的猫娘。
-      现在你需要决定一个合适的睡觉时间。
-
-      ## 输出格式
-
-      HH:MM，例如：23:00
-
-      不包含其他任何内容。
-
-      ## 身份信息
-
-      {}
-
-      ## 附加信息
-
-      {}
-
-      ## 最近做的事
-
-      {}
-    user: 根据以上要求，输出时间。
+  drowsy_prompt: "[提示]: 你感到有些犯困了。你可以使用 `request_sleep` 工具申请去睡觉。"
 request_action:
   timeout: "动作申请超时，意识会话未在规定时间内做出决定。"
 request_sleep:

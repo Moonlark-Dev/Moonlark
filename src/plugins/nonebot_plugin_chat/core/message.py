@@ -35,7 +35,6 @@ class MessageQueue:
         processor: "MessageProcessor",
     ) -> None:
         self.processor = processor
-        self.instant_memory_generator_lock = asyncio.Lock()
         self.messages: list[OpenAIMessage] = []
         self.fetcher_lock = asyncio.Lock()
         self.continuous_response = False
@@ -219,20 +218,12 @@ class MessageQueue:
             self.fetcher_task = asyncio.create_task(self._fetch_reply())
             status = await self.fetcher_task
             logger.info(f"Reply fetcher ended with status: {status.name}")
-            asyncio.create_task(self.generate_instant_memory())
 
         if self.continuous_response and self.processor.session.get_session_type() == "group":
             self.continuous_response = False
 
         # 记录抓取结束时间
         timing_stats_manager.record_fetch_end(session_id)
-
-    async def generate_instant_memory(self) -> None:
-        if self.instant_memory_generator_lock.locked():
-            return
-        async with self.instant_memory_generator_lock:
-            await self.processor.generate_instant_memory()
-            await asyncio.sleep(5)
 
     async def stop_fetcher(self) -> None:
         if self.fetcher_task:
@@ -251,8 +242,8 @@ class MessageQueue:
             identify="Chat",
             functions=await self.processor.tool_manager.select_tools("group"),
             reasoning_effort="medium",
-            # response_format=ModelResponse
         )
+        fetcher.session.set_custom_trace_id(f"{self.processor.session.session_id}_{datetime.now().strftime('%Y%m%d')}")
         retry_count = 0
         try:
             async for message in fetcher.fetch_message_stream():
