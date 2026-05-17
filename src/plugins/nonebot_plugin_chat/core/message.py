@@ -1,6 +1,7 @@
 import hashlib
 import re
 import traceback
+import uuid
 from typing import TYPE_CHECKING, Any, Optional, cast
 from nonebot.compat import type_validate_json
 from nonebot.log import logger
@@ -41,6 +42,7 @@ class MessageQueue:
         self.fetcher_task = None
         # 在初始化时从数据库恢复消息队列
         self.inserted_messages = []
+        self.trace_id: str = uuid.uuid4().hex
 
     async def reset_chat_history(self) -> list[OpenAIMessage]:
         messages = copy.deepcopy(self.messages)
@@ -75,7 +77,15 @@ class MessageQueue:
                     .where(MessageQueueCache.updated_time >= earliest_time, MessageQueueCache.group_id == group_id)
                     .order_by(MessageQueueCache.message_id)
                 )
-                self.messages = [json.loads(msg.message_json) for msg in cache]
+                cache_list = list(cache)
+                self.messages = [json.loads(msg.message_json) for msg in cache_list]
+
+                # 恢复 trace_id（从第一条有 trace_id 的记录中获取）
+                for msg in cache_list:
+                    if msg.trace_id:
+                        self.trace_id = msg.trace_id
+                        logger.info(f"已从数据库恢复群 {group_id} 的 trace_id: {self.trace_id}")
+                        break
 
                 logger.info(f"已从数据库恢复群 {group_id} 的消息队列，共 {len(self.messages)} 条消息")
 
@@ -138,9 +148,12 @@ class MessageQueue:
                             select(MessageQueueCache).where(MessageQueueCache.message_hash == sha256.digest())
                         )
                         if result is not None:
+                            # 更新已有记录的 trace_id
+                            result.trace_id = self.trace_id
                             continue
                         cache = MessageQueueCache(
                             group_id=group_id,
+                            trace_id=self.trace_id,
                             message_json=msg,
                             message_hash=sha256.digest(),
                         )
@@ -244,7 +257,7 @@ class MessageQueue:
             functions=await self.processor.tool_manager.select_tools("group"),
             reasoning_effort="medium",
         )
-        fetcher.session.set_custom_trace_id(f"{self.processor.session.session_id}_{datetime.now().strftime('%Y%m%d')}")
+        fetcher.session.set_custom_trace_id(self.trace_id)
         retry_count = 0
         try:
             async for message in fetcher.fetch_message_stream():
