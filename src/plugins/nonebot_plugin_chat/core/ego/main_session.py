@@ -112,6 +112,10 @@ class MainSession:
         if dt < self.thinking_cold_until or self.thinking_lock.locked():
             return
         async with self.thinking_lock:
+            # 触发所有会话的即时记忆生成
+            for group in groups.values():
+                await group.processor.generate_instant_memory()
+
             fetcher = await MessageFetcher.create(
                 [
                     generate_message(await self.generate_system_prompt(trigger_reason == "ready_sleep"), "system"),
@@ -202,21 +206,19 @@ class MainSession:
             self.status_manager.get_mood_retention(),
             mood[1],
         )
-        instant_mem = "\n".join(
-            [
+        # 即时记忆：汇总所有全局即时记忆
+        instant_mem_lines = []
+        for mem in get_instant_memories():
+            instant_mem_lines.append(
                 await lang.text(
                     "prompt_group.instant_mem",
                     self.lang_str,
-                    mem["category"],
-                    mem["expire_level"],
-                    mem["create_time"].strftime("%Y-%m-%d %H:%M:%S"),
+                    mem["expire_time"].strftime("%Y-%m-%d %H:%M:%S"),
                     mem["name"],
-                    mem["ctx_id"],
                     mem["content"],
                 )
-                for mem in get_instant_memories()
-            ],
-        )
+            )
+        instant_mem = "\n".join(instant_mem_lines)
 
         note_manager = await get_context_notes("main_")
         notes = await note_manager.filter_note(instant_mem)

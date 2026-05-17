@@ -9,6 +9,7 @@ from nonebot_plugin_chat.utils.trigger import calculate_trigger_probability
 from nonebot_plugin_chat.lang import lang
 from nonebot_plugin_chat.types import AdapterUserInfo, CachedMessage, PendingInteraction, RuaAction
 from nonebot_plugin_larkuser import get_nickname, get_user
+from nonebot_plugin_chat.utils.instant_mem import InstantMemoryManager
 
 
 import math
@@ -50,6 +51,7 @@ class BaseSession(ABC):
         self.pending_interactions: dict[str, PendingInteraction] = {}  # 待处理的交互请求
         self.last_interest: Optional[float] = None  # 缓存的 interest 值
         self.processor = MessageProcessor(self)
+        self.instant_memory_manager = InstantMemoryManager(session_id, lang_str)
 
     def set_target(self, target: Target, bot: Bot) -> None:
         self.target = target
@@ -162,7 +164,28 @@ class BaseSession(ABC):
 
     def clean_cached_message(self) -> None:
         if len(self.cached_messages) > 50:
-            self.cached_messages = self.cached_messages[-50:]
+            removed_count = len(self.cached_messages) - 50
+            removed_messages = self.cached_messages[:removed_count]
+            self.cached_messages = self.cached_messages[removed_count:]
+
+            cursor = self.instant_memory_manager.cursor
+            if cursor <= removed_count:
+                # 游标指向的消息已被移除，说明被移除的消息中包含未总结的部分
+                # 将游标之后的被移除消息加入缓存
+                start = max(cursor, 0)
+                unsummarized = removed_messages[start:]
+                if unsummarized:
+                    cache_messages = [
+                        f"[{msg['send_time'].strftime('%H:%M:%S')}][{msg['nickname']}]: {msg['content']}"
+                        for msg in unsummarized
+                    ]
+                    self.instant_memory_manager.add_messages_to_cache(cache_messages)
+                # 游标已失效，重置为0
+                self.instant_memory_manager.cursor = 0
+            else:
+                # 游标指向的消息仍在 cached_messages 中，被移除的消息已经过总结位置
+                # 更新游标索引
+                self.instant_memory_manager.cursor = cursor - removed_count
 
     async def on_cache_posted(self) -> None:
         self.message_cache_counter += 1
