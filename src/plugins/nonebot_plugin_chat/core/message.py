@@ -80,18 +80,17 @@ class MessageQueue:
                 logger.info(f"已从数据库恢复群 {group_id} 的消息队列，共 {len(self.messages)} 条消息")
 
             if self.messages:
-                expected_prompt = await self.processor.generate_system_prompt()
-                # 统一提取 content：兼容 dict（TypedDict 的 content 可能为可选键）和 Pydantic 模型
-                expected_content = (
-                    expected_prompt.get("content", "")
-                    if isinstance(expected_prompt, dict)
-                    else getattr(expected_prompt, "content", "")
-                )
-
                 if get_role(self.messages[0]) != "system":
                     logger.warning(f"群 {group_id} 恢复的消息队列缺少 system prompt，重置上下文")
                     await self._reset_and_clear_db(group_id)
                 else:
+                    # 检查 system prompt 内容是否与当前配置一致
+                    expected_prompt = await self.processor.generate_system_prompt()
+                    expected_content = (
+                        expected_prompt.get("content", "")
+                        if isinstance(expected_prompt, dict)
+                        else getattr(expected_prompt, "content", "")
+                    )
                     first_msg = self.messages[0]
                     actual_content = (
                         first_msg.get("content", "")
@@ -234,6 +233,8 @@ class MessageQueue:
         messages = await self.get_messages()
         if get_role(messages[-1]) == "assistant":
             return FetchStatus.SKIP
+        # 保存 system prompt，确保后续重组时不会丢失
+        system_prompt = messages[0]
         self.messages.clear()
         self.inserted_messages.clear()
         fetcher = await MessageFetcher.create(
@@ -281,7 +282,12 @@ class MessageQueue:
                 if self.continuous_response:
                     fetcher.session.insert_messages(self.messages)
                     self.messages.clear()
-            self.messages = fetcher.get_messages() + self.messages
+            # 确保 system prompt 始终在首位
+            fetcher_messages = fetcher.get_messages()
+            if fetcher_messages and get_role(fetcher_messages[0]) == "system":
+                self.messages = fetcher_messages
+            else:
+                self.messages = [system_prompt] + fetcher_messages
         except Exception as e:
             logger.exception(e)
             # 恢复 Message
@@ -290,12 +296,19 @@ class MessageQueue:
             state = FetchStatus.FAILED
         return state
 
-    async def check_system_prompt(self) -> None:
-        if len(self.messages) == 0 or get_role(self.messages[0]) != "system":
-            self.messages = [await self.processor.generate_system_prompt()]
+    async def _ensure_system_prompt(self) -> None:
+        """确保 messages[0] 存在且是 system 消息，且不存在多余的 system 消息。
+
+        不保证内容与当前配置一致——内容变动由 get_messages() 检测并触发清空重置。
+        """
+        if not self.messages or get_role(self.messages[0]) != "system":
+            self.messages.insert(0, await self.processor.generate_system_prompt())
+
+        # 清理 messages[1:] 中多余的 system 消息（只保留第一条）
+        self.messages = [self.messages[0]] + [msg for msg in self.messages[1:] if get_role(msg) != "system"]
 
     async def append_user_message(self, message: str) -> None:
-        await self.check_system_prompt()
+        await self._ensure_system_prompt()
         self.messages.append(generate_message(message, "user"))
 
     def is_last_message_from_user(self) -> bool:
