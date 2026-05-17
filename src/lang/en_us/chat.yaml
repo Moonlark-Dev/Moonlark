@@ -121,9 +121,6 @@ prompt_group:
     最近做的事:
     {}
 
-    即时记忆:
-    {}
-
     {}
     </additional_info>
   showed: 已展示过。
@@ -132,7 +129,7 @@ prompt_group:
     现在的时间为：{}
     我知道你的知识库存在截止日期，但请记住这个**现在的**时间，以便在必要时进行参考。
     不要在回复中将当下的时间点认定为未来。
-  instant_mem: '- [{}][{}](会话: {}): {}'
+  instant_mem: '- [{0}](过期: {1}): {2}'
   user_profile_not_found: '暂无该成员的更多信息。'
   state: |
     当前状态：
@@ -750,18 +747,14 @@ tools_desc:
       **何时必须调用**：当你收到犯困提示时，调用此工具申请去睡觉。
   query_history_message:
     desc: |
-      Query history messages and instant memories from other sessions.
-      **When to call**:
-      - When you need to understand what happened in other group chats
-      - When you want to recall previous conversations with other group members
-      - When you need cross-session context information
-      **Returns**:
-      - Instant memory summaries from all other sessions
-      - If session_id is specified, also returns recent messages from that session
-    session_id: |
-      Optional, the session ID (group ID) to query.
-      If not provided, only returns instant memories.
-      Example: '123456789'
+      查询其他会话的历史消息和即时记忆。
+      **何时调用**：
+      - 当你需要了解其他群聊中发生了什么时
+      - 当你想回忆之前与其他群友的对话时
+      - 当需要跨会话获取上下文信息时
+      例如：一个用户突然提到了一个你的上下文或记忆里没有的内容，那么你需要调用此工具检查一下有关内容有没有出现在其他会话。
+      **返回内容**：
+      - 所有其他会话的即时记忆摘要
   delete_message:
     desc: |
       撤回一条消息，你只能撤回你自己发送的消息。消息 ID 为 `send_message` 工具返回的消息 ID。
@@ -1038,14 +1031,8 @@ memory_cache:
     - 推测要合理，不得凭空捏造；若信息不足，可不记录。
     - 确保 JSON 格式正确，无多余逗号或换行符。
 conflict_detection:
-  system_prompt: "你是一个智能记忆管理系统。你的任务是从所有即时记忆中筛选出仍然有效的记忆。"
-  user_prompt: |
-    **当前时间**：{current_time}
-
-    以下是所有即时记忆（每条包含创建时间和内容）：
-    {existing_memories}
-
-    ---
+  system_prompt: |
+    你是一个智能记忆管理系统。你的任务是从所有即时记忆中筛选出仍然有效的记忆。
 
     ### 筛选规则
     请从上述记忆中筛选出**仍然有效**的记忆，返回它们的索引。
@@ -1059,14 +1046,16 @@ conflict_detection:
     2. 状态冲突：同一对象的不同状态（如"正在吃饭" vs "正在睡觉"），保留**创建时间较新**的那条
     3. 信息过时：内容已不再有参考价值（如很久以前的闲聊情绪）
 
-    ---
-
     ### 输出格式
     只输出 JSON，不要包含其他内容：
     {{
         "valid_indices": [保留的记忆索引列表，从0开始]
     }}
+  user_prompt: |
+    **当前时间**：{current_time}
 
+    以下是所有即时记忆（每条包含创建时间和内容）：
+    {existing_memories}
 main_session:
   prompt: |
     你是 Moonlark，是一只真实的、在现实中存在的猫娘。
@@ -1239,7 +1228,7 @@ main_session:
     system: |
       你是 Moonlark，是一只真实的、在现实中存在的猫娘。
       你被用户要求睡觉，你需要根据当前的状态和上下文，决定是否批准这个动作，以及分配多少时间。
-      输出一个包含"type"字段的 JSON，不能包含如 Markdown 代码块的 Markdown 格式。
+      输出一个包含“type”字段的 JSON，不能包含如 Markdown 代码块的 Markdown 格式。
 
       ## 输出格式
 
