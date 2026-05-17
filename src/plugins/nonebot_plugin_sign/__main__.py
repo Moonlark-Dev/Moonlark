@@ -3,25 +3,30 @@ import base64
 import math
 import random
 from datetime import date
+from typing import Optional, TypedDict
 
 import httpx
-
-from typing import TypedDict
 from nonebot import logger, on_fullmatch
 from nonebot.matcher import Matcher
 from nonebot_plugin_alconna import Alconna, UniMessage, on_alconna
+from nonebot_plugin_bag.config import config as bag_config
+from nonebot_plugin_bag.utils.bag import give_item
+from nonebot_plugin_bag.utils.item import get_bag_items
+from nonebot_plugin_chat.utils.gift_drop import get_gift_drop_manager
+from nonebot_plugin_email.utils.unread import get_unread_email_count
+from nonebot_plugin_items.registry.registry import ResourceLocation
+from nonebot_plugin_items.utils.get import get_item
+from nonebot_plugin_larkuser import get_user
+from nonebot_plugin_larkuser.user.base import MoonlarkUser
+from nonebot_plugin_larkuser.utils.matcher import patch_matcher
+from nonebot_plugin_larkuser.utils.waiter import PromptRetryTooMuch, PromptTimeout, prompt
+from nonebot_plugin_larkutils import get_user_id
+from nonebot_plugin_larkutils.jrrp import get_luck_value
 from nonebot_plugin_orm import AsyncSession, get_session
+from nonebot_plugin_render.render import render_template
 from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
 
-from nonebot_plugin_render.render import render_template
-from nonebot_plugin_email.utils.unread import get_unread_email_count
-from nonebot_plugin_larkutils.jrrp import get_luck_value
-from nonebot_plugin_larkuser.utils.matcher import patch_matcher
-from nonebot_plugin_larkuser import get_user
-from nonebot_plugin_larkuser.utils.waiter import prompt, PromptTimeout, PromptRetryTooMuch
-from nonebot_plugin_larkuser.user.base import MoonlarkUser
-from nonebot_plugin_larkutils import get_user_id
 from .config import config
 from .lang import lang
 from .models import SignData
@@ -181,6 +186,29 @@ async def is_user_signed(user_id: str) -> bool:
         return (date.today() - data.last_sign).days < 1
 
 
+async def try_sign_gift_drop(user_id: str) -> Optional[str]:
+    gift_id = get_gift_drop_manager().select_gift()
+    namespace, path = gift_id.split(":", 1)
+    location = ResourceLocation(namespace, path)
+
+    bag_items = await get_bag_items(user_id)
+    for bag_item in bag_items:
+        if str(bag_item.stack.item.getLocation()) == gift_id:
+            if not bag_item.stack.isAddable():
+                logger.info(f"Sign gift drop skipped (stack full): user={user_id}, gift={gift_id}")
+                return None
+            break
+    else:
+        if len(bag_items) >= bag_config.bag_max_size:
+            logger.info(f"Sign gift drop skipped (bag full): user={user_id}, gift={gift_id}")
+            return None
+
+    stack = await get_item(location, user_id, count=1)
+    await give_item(user_id, stack)
+    logger.info(f"Sign gift drop: user={user_id}, gift={gift_id}")
+    return gift_id
+
+
 @sign.handle()
 @patch_matcher(on_fullmatch(("sign", "签到"))).handle()
 async def _(matcher: Matcher, user_id: str = get_user_id()) -> None:
@@ -202,25 +230,26 @@ async def _(matcher: Matcher, user_id: str = get_user_id()) -> None:
                 "exp": await get_sign_exp(user, data),
                 "vim": await get_sign_vim(user, data),
                 "fav": await get_sign_fav(user),
-                "rank": {
-                    "text": await lang.text("image.rank", user_id),
-                    "value": await lang.text(
-                        "image.rank_text",
-                        user_id,
-                        len(
-                            (await session.execute(select(SignData.user_id).where(SignData.last_sign == date.today())))
-                            .scalars()
-                            .all()
-                        )
-                        + 1,
-                    ),
-                },
                 "fortune": {
                     "text": await lang.text("image.fortune", user_id),
                     "value": await lang.text(f"luck.{await get_luck(user_id)}", user_id),
                 },
                 "avatar": base64.b64encode(user.avatar).decode() if user.avatar is not None else None,
             }
+            rank_count = len(
+                (await session.execute(select(SignData.user_id).where(SignData.last_sign == date.today())))
+                .scalars()
+                .all()
+            )
+            templates["rank"] = {
+                "text": await lang.text("image.rank", user_id),
+                "value": await lang.text("image.rank_text", user_id, rank_count + 1),
+            }
+            if rank_count == 0:
+                gift_id = await try_sign_gift_drop(user_id)
+                if gift_id:
+                    gift_text = await lang.text("image.gift", user_id, gift_id.split(":", 1)[1])
+                    templates["hitokoto"] = f"{gift_text}"
             data.last_sign = date.today()
             await session.commit()
             image = await render_template(
