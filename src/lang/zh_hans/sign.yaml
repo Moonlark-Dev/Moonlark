@@ -10,6 +10,7 @@ image:
   uid: 'UID: {}'
   fortune: 运势
   fav: 好感
+  gift: '获得签到礼物: {}'
   hitokoto: 剑阁峥嵘而崔嵬，一夫当关，万夫莫开。
   email_unread: 您有 {} 封未读邮件，请使用 {__prefix__}email 查看。
 sign:
