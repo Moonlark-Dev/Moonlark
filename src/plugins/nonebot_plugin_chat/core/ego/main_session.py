@@ -546,7 +546,7 @@ class MainSession:
                         "main_session.friend",
                         self.lang_str,
                         user.get_nickname(),
-                        user.get_fav(),
+                        user.get_display_fav(),
                         await user.get_fav_level(),
                         datetime.fromtimestamp(friend_record.last_message_time).isoformat(),
                         (
