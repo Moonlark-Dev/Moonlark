@@ -78,6 +78,7 @@ class MessageQueueCache(Model):
 
     message_id: Mapped[int] = mapped_column(Integer(), primary_key=True, autoincrement=True)
     group_id: Mapped[str] = mapped_column(String(128))
+    trace_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)  # 上下文 trace ID，用于重启后恢复
     # MySQL 使用 MEDIUMTEXT (16MB)，SQLite 使用 Text（无大小限制）
     message_json: Mapped[str] = mapped_column(CompatibleMediumText)  # JSON 序列化的消息列表
     updated_time: Mapped[datetime] = mapped_column(DateTime(), default=datetime.now)  # 最后更新时间戳
