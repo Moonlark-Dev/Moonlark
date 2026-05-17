@@ -251,8 +251,8 @@ class MessageQueue:
             identify="Chat",
             functions=await self.processor.tool_manager.select_tools("group"),
             reasoning_effort="medium",
-            # response_format=ModelResponse
         )
+        fetcher.session.set_custom_trace_id(f"{self.processor.session.session_id}_{datetime.now().strftime('%Y%m%d')}")
         retry_count = 0
         try:
             async for message in fetcher.fetch_message_stream():

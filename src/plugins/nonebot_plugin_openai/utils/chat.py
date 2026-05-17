@@ -95,6 +95,9 @@ class LLMRequestSession(Generic[T2]):
         self.timeout_strategy = timeout_strategy
         self.insert_message_queue = []
 
+    def set_custom_trace_id(self, trace_id: str) -> None:
+        self.trace_id = trace_id
+
     async def fetch_llm_response(self) -> AsyncGenerator[T2 | str, None]:
         retry_count = 0
         while not self.stop:
