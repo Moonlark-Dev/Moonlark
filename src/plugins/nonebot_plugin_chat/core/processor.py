@@ -542,16 +542,11 @@ class MessageProcessor:
         from .ego import consciousness
 
         current_time = await self.session.text("prompt_group.time", datetime.now().isoformat())
-        mood_reason_text = (
-            mood_reason
-            if not await self.is_additional_info_line_showed(str(mood_reason))
-            else await self.session.text("prompt_group.showed")
-        )
         state = await self.session.text(
             "prompt_group.state",
             mood_text,
             status_manager.get_mood_retention(),
-            mood_reason_text,
+            mood_reason,
         )
 
         recent_activities = "\n".join(
