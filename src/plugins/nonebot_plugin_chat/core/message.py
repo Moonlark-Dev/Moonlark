@@ -297,12 +297,15 @@ class MessageQueue:
         return state
 
     async def _ensure_system_prompt(self) -> None:
-        """确保 messages[0] 存在且是 system 消息。
+        """确保 messages[0] 存在且是 system 消息，且不存在多余的 system 消息。
 
         不保证内容与当前配置一致——内容变动由 get_messages() 检测并触发清空重置。
         """
         if not self.messages or get_role(self.messages[0]) != "system":
             self.messages.insert(0, await self.processor.generate_system_prompt())
+
+        # 清理 messages[1:] 中多余的 system 消息（只保留第一条）
+        self.messages = [self.messages[0]] + [msg for msg in self.messages[1:] if get_role(msg) != "system"]
 
     async def append_user_message(self, message: str) -> None:
         await self._ensure_system_prompt()
