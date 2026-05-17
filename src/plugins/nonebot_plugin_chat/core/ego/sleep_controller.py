@@ -54,10 +54,8 @@ class SleepController:
 
                 # 写入instant_mem
                 await post_instant_memory(
-                    category="myself",
                     content=f"你在决定于 {time_str} 睡觉。",
-                    keywords=["睡觉", "睡眠", "休息"],
-                    expire_level=4,
+                    expire_hours=12,
                     lang_str=self.main_session.lang_str,
                     ctx_id="main_",
                     name="main_session",
