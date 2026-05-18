@@ -219,10 +219,7 @@ class InstantMemoryManager:
         if len(self.message_cache) < min_messages:
             return []
 
-        if (
-            self.last_generate_time is not None
-            and (now - self.last_generate_time).total_seconds() < cooldown_seconds
-        ):
+        if self.last_generate_time is not None and (now - self.last_generate_time).total_seconds() < cooldown_seconds:
             return []
 
         return await self.generate()
