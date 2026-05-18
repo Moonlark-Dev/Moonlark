@@ -450,6 +450,10 @@ class MessageProcessor:
                     self.session.accumulated_text_length += len(cleaned)
                 logger.debug(f"Accumulated text length: {self.session.accumulated_text_length}")
 
+            # 消息入队后异步检查是否需要生成即时记忆
+            if not self.blocked:
+                asyncio.create_task(self._maybe_generate_instant_memory())
+
     def get_message_content_list(self) -> list[str]:
         l = []
         for msg in self.openai_messages.messages:
@@ -652,6 +656,29 @@ class MessageProcessor:
 
         if manager.should_generate():
             await manager.generate()
+
+    async def _maybe_generate_instant_memory(self) -> None:
+        """在消息处理流程中条件触发即时记忆生成。
+
+        复用 InstantMemoryManager 的缓存和锁机制，
+        避免与 generate_instant_memory() 重复处理消息。
+        """
+        manager = self.session.instant_memory_manager
+
+        messages = [
+            f"[{msg['send_time'].strftime('%H:%M:%S')}][{msg['nickname']}]({msg['message_id']}): {msg['content']}"
+            for msg in self.session.get_message_for_instant_memory()
+        ]
+
+        if not messages:
+            # 没有新消息，直接尝试用已有缓存触发
+            await manager.maybe_generate(min_messages=5, cooldown_seconds=600)
+            return
+
+        manager.add_messages_to_cache(messages)
+        manager.cursor = len(self.session.cached_messages)
+
+        await manager.maybe_generate(min_messages=5, cooldown_seconds=600)
 
     async def check_message_truncated(self) -> bool:
         chat_history = await self.session.get_cached_messages_string(length=10, include_self_message=False)
