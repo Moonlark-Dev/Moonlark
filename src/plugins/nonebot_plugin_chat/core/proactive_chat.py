@@ -109,12 +109,13 @@ async def send_proactive_private_message(bot: Bot, user_id: str, subject: str) -
         bot: Bot 实例
         user_id: 用户 ID
     """
-    # 创建 Target
+    # 创建 Target（adapter_name 用于消息发送）
     adapter_name = bot.adapter.get_name()
     target = Target.user(user_id, adapter=adapter_name)
 
-    # 构造带 platform 前缀的 session key（与 get_session_user_id() 格式一致）
-    session_key = f"{adapter_name}_{user_id}"
+    # 构造 session key：platform_user_id 格式（与 get_group_id() 在私聊中的返回值一致）
+    # nonebot_plugin_session 对 QQ 相关 adapter 统一返回 platform="qq"
+    session_key = f"qq_{user_id}"
 
     # 创建或获取 PrivateSession
     session = await create_private_session(session_key, target, bot)

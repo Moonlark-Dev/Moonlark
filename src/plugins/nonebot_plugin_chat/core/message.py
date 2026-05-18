@@ -94,10 +94,6 @@ class MessageQueue:
                             logger.info(
                                 f"私聊会话 {session_id} 使用旧格式 {gid} 恢复了 {len(cache_list)} 条消息"
                             )
-                            # 将旧格式数据迁移到新格式
-                            for msg in cache_list:
-                                msg.group_id = session_id
-                            await db_session.commit()
                         break
 
             self.messages = [json.loads(msg.message_json) for msg in cache_list]

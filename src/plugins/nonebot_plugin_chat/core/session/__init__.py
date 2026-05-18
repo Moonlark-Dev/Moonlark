@@ -6,7 +6,7 @@ from nonebot.adapters import Bot
 from nonebot_plugin_alconna import Target
 from nonebot_plugin_larklang.__main__ import get_group_language
 from nonebot_plugin_orm import get_session
-from sqlalchemy import delete, select
+from sqlalchemy import delete
 from ...models import MessageQueueCache
 from .base import BaseSession
 from .group import GroupSession
@@ -17,7 +17,7 @@ groups: dict[str, BaseSession] = {}
 
 def get_session_directly(session_id: str) -> BaseSession:
     """
-    获取指定 Session 对象
+    获取指定会话对象
 
     Args:
         session_id: 会话 ID
@@ -26,25 +26,9 @@ def get_session_directly(session_id: str) -> BaseSession:
         BaseSession 对象
 
     Raises:
-        KeyError: 当 Session 不存在时
+        KeyError: 当会话不存在时
     """
     return groups[session_id]
-
-
-def _resolve_private_session_key(user_id: str) -> str:
-    """将旧格式的 raw user_id 解析为带 platform 前缀的 session key。
-
-    遍历 groups 字典查找匹配的 PrivateSession，用于向后兼容。
-    """
-    for session_id, session in groups.items():
-        if isinstance(session, PrivateSession) and session.session_id == session_id:
-            # 尝试匹配旧格式：session_id 等于 raw user_id
-            if session_id == user_id:
-                return session_id
-            # 尝试匹配新格式：session_id 以 user_id 结尾
-            if session_id.endswith(f"_{user_id}"):
-                return session_id
-    return user_id  # fallback
 
 
 async def post_group_event(
@@ -76,7 +60,7 @@ async def get_private_session(session_key: str, target: Target, bot: Bot) -> Pri
     """获取或创建私聊会话。
 
     Args:
-        session_key: 私聊 session key（应使用 get_session_user_id() 获取带 platform 前缀的格式）
+        session_key: 私聊 session key（应使用 get_group_id() 获取，它在私聊中返回带 platform 前缀的 user ID）
         target: 消息目标
         bot: Bot 实例
     """
@@ -123,7 +107,7 @@ async def reset_session(session_id: str) -> bool:
     session.processor.openai_messages.messages.clear()
     session.processor.openai_messages.inserted_messages.clear()
 
-    # 删除数据库中的缓存（同时删除新旧格式的缓存）
+    # 删除数据库中的缓存
     async with get_session() as db_session:
         await db_session.execute(delete(MessageQueueCache).where(MessageQueueCache.group_id == session_id))
         await db_session.commit()
@@ -145,7 +129,7 @@ async def create_private_session(session_key: str, target: Target, bot: Bot) -> 
     """创建私聊会话。
 
     Args:
-        session_key: 私聊 session key（应使用 get_session_user_id() 获取带 platform 前缀的格式）
+        session_key: 私聊 session key（应使用 get_group_id() 获取，它在私聊中返回带 platform 前缀的 user ID）
         target: 消息目标
         bot: Bot 实例
     """

@@ -36,7 +36,7 @@ async def get_or_create_session(session_id: str, bot: Any, event: Any) -> "BaseS
     如果 session 已存在则返回，否则根据群聊/私聊场景创建新 session。
 
     Args:
-        session_id: 会话 ID（群聊为 group_id，私聊为 user_id）
+        session_id: 会话 ID
         bot: Bot 实例
         event: Event 实例
 
@@ -51,29 +51,20 @@ async def get_or_create_session(session_id: str, bot: Any, event: Any) -> "BaseS
         )
         from nonebot_plugin_alconna import Target
 
-        is_group = hasattr(event, "group_id") and event.group_id
-
-        if not is_group:
-            # 私聊场景：构造带 platform 前缀的 session key
-            adapter_name = bot.adapter.get_name()
-            session_key = f"{adapter_name}_{session_id}"
-        else:
-            session_key = session_id
-
         # 尝试获取已存在的 session
         try:
-            return get_session_directly(session_key)
+            return get_session_directly(session_id)
         except KeyError:
             pass
 
         # Session 不存在，需要创建
         target = Target(event)
-        if is_group:
+        if hasattr(event, "group_id") and event.group_id:
             # 群聊场景
-            return await get_group_session_forced(session_key, target, bot)
+            return await get_group_session_forced(session_id, target, bot)
         else:
             # 私聊场景
-            return await get_private_session(session_key, target, bot)
+            return await get_private_session(session_id, target, bot)
 
     except Exception as e:
         logger.warning(f"获取或创建 session 失败: {e}")
