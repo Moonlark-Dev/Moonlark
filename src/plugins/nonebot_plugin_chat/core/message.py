@@ -91,10 +91,12 @@ class MessageQueue:
 
             logger.info(f"已从数据库恢复群 {session_id} 的消息队列，共 {len(self.messages)} 条消息")
 
+            context_reset = False
             if self.messages:
                 if get_role(self.messages[0]) != "system":
                     logger.warning(f"群 {session_id} 恢复的消息队列缺少 system prompt，重置上下文")
                     await self._reset_and_clear_db(session_id)
+                    context_reset = True
                 else:
                     # 检查 system prompt 内容是否与当前配置一致
                     expected_prompt = await self.processor.generate_system_prompt()
@@ -112,10 +114,35 @@ class MessageQueue:
                     if actual_content != expected_content:
                         logger.warning(f"群 {session_id} 的 system prompt 与当前配置不一致，重置上下文")
                         await self._reset_and_clear_db(session_id)
+                        context_reset = True
                     else:
                         logger.info(f"群 {session_id} 的 system prompt 验证通过")
+            else:
+                context_reset = True
+
+            # 当历史为空或上下文被重置时，注入 instant memory
+            if context_reset:
+                await self._inject_instant_memories(session_id)
         except Exception as e:
             logger.warning(f"从数据库恢复消息队列失败: {e}")
+
+    async def _inject_instant_memories(self, session_id: str) -> None:
+        """当历史为空或上下文重置时，将当前会话的 instant memory 注入为第一条 user message"""
+        from ..utils.instant_mem import get_memories_for_session, format_memories_for_injection
+
+        memories = get_memories_for_session(session_id)
+        if not memories:
+            return
+
+        injected_text = format_memories_for_injection(memories)
+        if not injected_text:
+            return
+
+        # 确保 system prompt 存在
+        await self._ensure_system_prompt()
+        # 在 system prompt 后插入 instant memory 作为第一条 user message
+        self.messages.insert(1, generate_message(injected_text, "user"))
+        logger.info(f"[InstantMemory] 已注入 {len(memories)} 条即时记忆到 {session_id}")
 
     async def _reset_and_clear_db(self, group_id: str) -> None:
         """重置消息队列并清空数据库缓存"""

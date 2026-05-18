@@ -127,6 +127,17 @@ class PrivateChatSession(Model):
     last_proactive_message_time: Mapped[Optional[float]] = mapped_column(Float(), nullable=True)  # 最后主动消息时间戳
 
 
+class InstantMemoryCache(Model):
+    """即时记忆持久化缓存"""
+
+    id: Mapped[int] = mapped_column(Integer(), primary_key=True, autoincrement=True)
+    session_id: Mapped[str] = mapped_column(String(128), index=True)  # 会话 ID
+    content: Mapped[str] = mapped_column(Text())  # 记忆内容
+    name: Mapped[str] = mapped_column(String(128), default="")  # 记忆名称
+    created_time: Mapped[datetime] = mapped_column(DateTime(), default=datetime.now)  # 创建时间
+    expire_time: Mapped[datetime] = mapped_column(DateTime())  # 过期时间
+
+
 class MainSessionActionHistory(Model):
     """MainSession 数据持久化存储，用于保存 action_history"""
 

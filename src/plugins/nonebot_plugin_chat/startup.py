@@ -68,3 +68,11 @@ async def _init_main_session():
     from .core.ego.main_session import init_main_session
 
     await init_main_session()
+
+
+@driver.on_startup
+async def _init_instant_memories():
+    from .utils.instant_mem import load_memories_from_db, _cleanup_expired_db
+
+    await _cleanup_expired_db()
+    await load_memories_from_db()
