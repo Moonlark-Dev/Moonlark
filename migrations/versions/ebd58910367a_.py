@@ -28,15 +28,9 @@ def upgrade(name: str = "") -> None:
         batch_op.drop_index(batch_op.f('ix_instantmemorycache_session_id'))
         batch_op.create_index(batch_op.f('ix_nonebot_plugin_chat_instantmemorycache_session_id'), ['session_id'], unique=False)
 
-    # 填充旧数据中 session_key 为 NULL 的行，使用 user_id 作为兜底值
+    # 清空旧数据（session_key 格式已变更，旧数据无意义）
     conn = op.get_bind()
-    conn.execute(
-        sa.text(
-            "UPDATE nonebot_plugin_chat_privatechatsession "
-            "SET session_key = user_id "
-            "WHERE session_key IS NULL"
-        )
-    )
+    conn.execute(sa.text("DELETE FROM nonebot_plugin_chat_privatechatsession"))
 
     with op.batch_alter_table('nonebot_plugin_chat_privatechatsession', schema=None) as batch_op:
         batch_op.alter_column('session_key',
