@@ -218,6 +218,7 @@ class InstantMemoryManager:
         self.message_cache: list[str] = []
         self.cursor: int = 0
         self._generate_lock = asyncio.Lock()
+        self.last_generate_time: Optional[datetime] = None
 
     def add_messages_to_cache(self, messages: list[str]) -> None:
         self.message_cache.extend(messages)
@@ -270,6 +271,7 @@ class InstantMemoryManager:
                     await _save_memory_to_db(memory)
 
                 instant_memories.extend(new_memories)
+                self.last_generate_time = datetime.now()
                 logger.info(f"[InstantMemory:{self.session_id}] 生成了 {len(new_memories)} 条即时记忆")
 
                 await _deduplicate(self.lang_str)
@@ -279,3 +281,32 @@ class InstantMemoryManager:
             except Exception as e:
                 logger.exception(f"[InstantMemory:{self.session_id}] 生成即时记忆失败: {e}")
                 return []
+
+    async def maybe_generate(
+        self,
+        min_messages: int = 5,
+        cooldown_seconds: int = 600,
+    ) -> list[InstantMemory]:
+        """条件触发即时记忆生成。
+
+        在消息处理流程中调用，避免每次消息都触发 LLM 调用。
+
+        Args:
+            min_messages: 缓存中最少消息数才触发生成
+            cooldown_seconds: 距上次生成的最短间隔（秒）
+
+        Returns:
+            生成的新记忆列表，未触发时返回空列表
+        """
+        now = datetime.now()
+
+        if self._generate_lock.locked():
+            return []
+
+        if len(self.message_cache) < min_messages:
+            return []
+
+        if self.last_generate_time is not None and (now - self.last_generate_time).total_seconds() < cooldown_seconds:
+            return []
+
+        return await self.generate()

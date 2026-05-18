@@ -186,7 +186,7 @@ async def is_user_signed(user_id: str) -> bool:
         return (date.today() - data.last_sign).days < 1
 
 
-async def try_sign_gift_drop(user_id: str) -> Optional[str]:
+async def try_sign_gift_drop(user_id: str) -> Optional[tuple[str, str]]:
     gift_id = get_gift_drop_manager().select_gift()
     namespace, path = gift_id.split(":", 1)
     location = ResourceLocation(namespace, path)
@@ -205,8 +205,9 @@ async def try_sign_gift_drop(user_id: str) -> Optional[str]:
 
     stack = await get_item(location, user_id, count=1)
     await give_item(user_id, stack)
+    item_name = await stack.getName()
     logger.info(f"Sign gift drop: user={user_id}, gift={gift_id}")
-    return gift_id
+    return gift_id, item_name
 
 
 @sign.handle()
@@ -246,9 +247,10 @@ async def _(matcher: Matcher, user_id: str = get_user_id()) -> None:
                 "value": await lang.text("image.rank_text", user_id, rank_count + 1),
             }
             if rank_count == 0:
-                gift_id = await try_sign_gift_drop(user_id)
-                if gift_id:
-                    gift_text = await lang.text("image.gift", user_id, gift_id.split(":", 1)[1])
+                gift_drop = await try_sign_gift_drop(user_id)
+                if gift_drop:
+                    _, item_name = gift_drop
+                    gift_text = await lang.text("image.gift", user_id, item_name)
                     templates["hitokoto"] = f"{gift_text}"
             data.last_sign = date.today()
             await session.commit()
