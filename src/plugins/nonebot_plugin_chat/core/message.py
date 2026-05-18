@@ -70,31 +70,15 @@ class MessageQueue:
         """从数据库恢复消息队列，并验证 system prompt 的有效性"""
         try:
             session_id = self.processor.session.session_id
-            session_type = self.processor.session.get_session_type()
             earliest_time = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
 
-            # 对于私聊会话，尝试新旧两种 key 格式加载数据
-            candidate_ids = [session_id]
-            if session_type == "private" and "_" in session_id:
-                # 新格式: qq_USERID → 旧格式: USERID（去掉 platform 前缀）
-                legacy_id = session_id.split("_", 1)[1]
-                candidate_ids.append(legacy_id)
-
-            cache_list: list[MessageQueueCache] = []
             async with get_session() as db_session:
-                for gid in candidate_ids:
-                    result = await db_session.scalars(
-                        select(MessageQueueCache)
-                        .where(MessageQueueCache.updated_time >= earliest_time, MessageQueueCache.group_id == gid)
-                        .order_by(MessageQueueCache.message_id)
-                    )
-                    cache_list = list(result)
-                    if cache_list:
-                        if gid != session_id:
-                            logger.info(
-                                f"私聊会话 {session_id} 使用旧格式 {gid} 恢复了 {len(cache_list)} 条消息"
-                            )
-                        break
+                cache = await db_session.scalars(
+                    select(MessageQueueCache)
+                    .where(MessageQueueCache.updated_time >= earliest_time, MessageQueueCache.group_id == session_id)
+                    .order_by(MessageQueueCache.message_id)
+                )
+                cache_list = list(cache)
 
             self.messages = [json.loads(msg.message_json) for msg in cache_list]
 
