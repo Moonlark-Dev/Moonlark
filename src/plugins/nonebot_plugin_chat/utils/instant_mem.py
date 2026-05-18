@@ -62,9 +62,7 @@ async def load_memories_from_db() -> None:
     try:
         now = datetime.now()
         async with get_session() as db_session:
-            records = await db_session.scalars(
-                select(InstantMemoryCache).where(InstantMemoryCache.expire_time > now)
-            )
+            records = await db_session.scalars(select(InstantMemoryCache).where(InstantMemoryCache.expire_time > now))
             loaded = [
                 InstantMemory(
                     content=r.content,
@@ -108,9 +106,7 @@ async def _cleanup_expired_db() -> None:
     try:
         now = datetime.now()
         async with get_session() as db_session:
-            await db_session.execute(
-                delete(InstantMemoryCache).where(InstantMemoryCache.expire_time <= now)
-            )
+            await db_session.execute(delete(InstantMemoryCache).where(InstantMemoryCache.expire_time <= now))
             await db_session.commit()
     except Exception as e:
         logger.warning(f"[InstantMemory] 清理过期记忆失败: {e}")
