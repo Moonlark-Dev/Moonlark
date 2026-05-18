@@ -31,16 +31,18 @@ from ..config import config
 from ..models import PrivateChatSession
 
 
-async def record_private_chat_session(user_id: str, bot_id: str) -> None:
+async def record_private_chat_session(user_id: str, session_key: str, bot_id: str) -> None:
     """记录用户私聊会话信息
 
     Args:
         user_id: 用户 ID
+        session_key: 带 platform 前缀的 session key
         bot_id: Bot ID
     """
     async with get_session() as session:
         chat_session = PrivateChatSession(
             user_id=user_id,
+            session_key=session_key,
             bot_id=bot_id,
             last_message_time=datetime.now().timestamp(),
         )
@@ -90,7 +92,7 @@ async def _(
         await matcher.finish()
 
     # 记录私聊会话信息（用于主动消息时获取正确的 bot）
-    await record_private_chat_session(user_id, bot.self_id)
+    await record_private_chat_session(user_id, session_key, bot.self_id)
 
     # 检查是否是主动私聊的回复
     consciousness.update_send_private_message_state(user_id)
