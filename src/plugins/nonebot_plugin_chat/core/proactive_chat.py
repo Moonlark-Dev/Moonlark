@@ -109,11 +109,20 @@ async def send_proactive_private_message(bot: Bot, user_id: str, subject: str) -
         bot: Bot 实例
         user_id: 用户 ID
     """
-    # 创建 Target
-    target = Target.user(user_id, adapter=bot.adapter.get_name())
+    # 从数据库获取 session_key
+    async with get_session() as db_session:
+        result = await db_session.execute(select(PrivateChatSession).where(PrivateChatSession.user_id == user_id))
+        chat_session = result.scalar_one_or_none()
+    if not chat_session or not chat_session.session_key:
+        logger.warning(f"用户 {user_id} 无私聊会话记录，无法发送主动消息")
+        return
+
+    # 创建 Target（adapter_name 用于消息发送）
+    adapter_name = bot.adapter.get_name()
+    target = Target.user(user_id, adapter=adapter_name)
 
     # 创建或获取 PrivateSession
-    session = await create_private_session(user_id, target, bot)
+    session = await create_private_session(chat_session.session_key, target, bot)
 
     # 获取提示语
     prompt = await lang.text("proactive_message.prompt", user_id, subject)
