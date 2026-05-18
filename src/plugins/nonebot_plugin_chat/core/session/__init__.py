@@ -6,7 +6,7 @@ from nonebot.adapters import Bot
 from nonebot_plugin_alconna import Target
 from nonebot_plugin_larklang.__main__ import get_group_language
 from nonebot_plugin_orm import get_session
-from sqlalchemy import delete
+from sqlalchemy import delete, select
 from ...models import MessageQueueCache
 from .base import BaseSession
 from .group import GroupSession
@@ -15,30 +15,46 @@ from .private import PrivateSession
 groups: dict[str, BaseSession] = {}
 
 
-def get_session_directly(group_id: str) -> BaseSession:
+def get_session_directly(session_id: str) -> BaseSession:
     """
-    获取指定群组的 GroupSession 对象
+    获取指定 Session 对象
 
     Args:
-        group_id: 群组 ID
+        session_id: 会话 ID
 
     Returns:
-        GroupSession 对象
+        BaseSession 对象
 
     Raises:
-        KeyError: 当群组 Session 不存在时
+        KeyError: 当 Session 不存在时
     """
-    return groups[group_id]
+    return groups[session_id]
+
+
+def _resolve_private_session_key(user_id: str) -> str:
+    """将旧格式的 raw user_id 解析为带 platform 前缀的 session key。
+
+    遍历 groups 字典查找匹配的 PrivateSession，用于向后兼容。
+    """
+    for session_id, session in groups.items():
+        if isinstance(session, PrivateSession) and session.session_id == session_id:
+            # 尝试匹配旧格式：session_id 等于 raw user_id
+            if session_id == user_id:
+                return session_id
+            # 尝试匹配新格式：session_id 以 user_id 结尾
+            if session_id.endswith(f"_{user_id}"):
+                return session_id
+    return user_id  # fallback
 
 
 async def post_group_event(
-    group_id: str, event_prompt: str, trigger_mode: Literal["none", "probability", "all"]
+    session_id: str, event_prompt: str, trigger_mode: Literal["none", "probability", "all"]
 ) -> bool:
     """
-    向指定群组发送事件
+    向指定会话发送事件
 
     Args:
-        group_id: 群组 ID
+        session_id: 会话 ID（群组 session key 或用户 session key）
         event_prompt: 事件的描述文本
         trigger_mode: 触发模式
             - "none": 不触发回复
@@ -49,18 +65,25 @@ async def post_group_event(
         bool: 是否成功执行
     """
     try:
-        session = get_session_directly(group_id)
+        session = get_session_directly(session_id)
         await session.post_event(event_prompt, trigger_mode)
         return True
     except KeyError:
         return False
 
 
-async def get_private_session(user_id: str, target: Target, bot: Bot) -> PrivateSession:
-    if user_id not in groups:
-        groups[user_id] = PrivateSession(user_id, bot, target)
-        await groups[user_id].setup()
-    return cast(PrivateSession, groups[user_id])
+async def get_private_session(session_key: str, target: Target, bot: Bot) -> PrivateSession:
+    """获取或创建私聊会话。
+
+    Args:
+        session_key: 私聊 session key（应使用 get_session_user_id() 获取带 platform 前缀的格式）
+        target: 消息目标
+        bot: Bot 实例
+    """
+    if session_key not in groups:
+        groups[session_key] = PrivateSession(session_key, bot, target)
+        await groups[session_key].setup()
+    return cast(PrivateSession, groups[session_key])
 
 
 async def get_group_session_forced(group_id: str, target: Target, bot: Bot) -> GroupSession:
@@ -100,7 +123,7 @@ async def reset_session(session_id: str) -> bool:
     session.processor.openai_messages.messages.clear()
     session.processor.openai_messages.inserted_messages.clear()
 
-    # 删除数据库中的缓存
+    # 删除数据库中的缓存（同时删除新旧格式的缓存）
     async with get_session() as db_session:
         await db_session.execute(delete(MessageQueueCache).where(MessageQueueCache.group_id == session_id))
         await db_session.commit()
@@ -118,11 +141,18 @@ async def create_group_session(group_id: str, target: Target, bot: Bot) -> Group
     return cast(GroupSession, groups[group_id])
 
 
-async def create_private_session(user_id: str, target: Target, bot: Bot) -> PrivateSession:
-    if user_id not in groups:
-        groups[user_id] = PrivateSession(user_id, bot, target)
-        await groups[user_id].setup()
-    return cast(PrivateSession, groups[user_id])
+async def create_private_session(session_key: str, target: Target, bot: Bot) -> PrivateSession:
+    """创建私聊会话。
+
+    Args:
+        session_key: 私聊 session key（应使用 get_session_user_id() 获取带 platform 前缀的格式）
+        target: 消息目标
+        bot: Bot 实例
+    """
+    if session_key not in groups:
+        groups[session_key] = PrivateSession(session_key, bot, target)
+        await groups[session_key].setup()
+    return cast(PrivateSession, groups[session_key])
 
 
 @scheduler.scheduled_job("cron", minute="*", id="trigger_group")

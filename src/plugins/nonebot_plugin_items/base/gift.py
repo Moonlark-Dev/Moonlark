@@ -89,8 +89,9 @@ class GiftItem(UseableItem, ABC):
 
             # 根据 is_private 确定实际使用的 session_id
             if is_private:
-                # 私聊场景：使用 user_id 作为 session_id
-                actual_session_id = stack.user_id
+                # 私聊场景：构造带 platform 前缀的 session key
+                adapter_name = bot.adapter.get_name()
+                actual_session_id = f"{adapter_name}_{stack.user_id}"
             else:
                 # 群聊场景：使用传入的 session_id（即 group_id）
                 actual_session_id = session_id

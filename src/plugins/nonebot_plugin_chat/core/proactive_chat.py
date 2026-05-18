@@ -110,10 +110,14 @@ async def send_proactive_private_message(bot: Bot, user_id: str, subject: str) -
         user_id: 用户 ID
     """
     # 创建 Target
-    target = Target.user(user_id, adapter=bot.adapter.get_name())
+    adapter_name = bot.adapter.get_name()
+    target = Target.user(user_id, adapter=adapter_name)
+
+    # 构造带 platform 前缀的 session key（与 get_session_user_id() 格式一致）
+    session_key = f"{adapter_name}_{user_id}"
 
     # 创建或获取 PrivateSession
-    session = await create_private_session(user_id, target, bot)
+    session = await create_private_session(session_key, target, bot)
 
     # 获取提示语
     prompt = await lang.text("proactive_message.prompt", user_id, subject)

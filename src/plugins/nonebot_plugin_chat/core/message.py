@@ -69,30 +69,52 @@ class MessageQueue:
     async def restore_from_db(self) -> None:
         """从数据库恢复消息队列，并验证 system prompt 的有效性"""
         try:
-            group_id = self.processor.session.session_id
+            session_id = self.processor.session.session_id
+            session_type = self.processor.session.get_session_type()
             earliest_time = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-            async with get_session() as session:
-                cache = await session.scalars(
-                    select(MessageQueueCache)
-                    .where(MessageQueueCache.updated_time >= earliest_time, MessageQueueCache.group_id == group_id)
-                    .order_by(MessageQueueCache.message_id)
-                )
-                cache_list = list(cache)
-                self.messages = [json.loads(msg.message_json) for msg in cache_list]
 
-                # 恢复 trace_id（从第一条有 trace_id 的记录中获取）
-                for msg in cache_list:
-                    if msg.trace_id:
-                        self.trace_id = msg.trace_id
-                        logger.info(f"已从数据库恢复群 {group_id} 的 trace_id: {self.trace_id}")
+            # 对于私聊会话，尝试新旧两种 key 格式加载数据
+            candidate_ids = [session_id]
+            if session_type == "private" and "_" in session_id:
+                # 新格式: qq_USERID → 旧格式: USERID（去掉 platform 前缀）
+                legacy_id = session_id.split("_", 1)[1]
+                candidate_ids.append(legacy_id)
+
+            cache_list: list[MessageQueueCache] = []
+            async with get_session() as db_session:
+                for gid in candidate_ids:
+                    result = await db_session.scalars(
+                        select(MessageQueueCache)
+                        .where(MessageQueueCache.updated_time >= earliest_time, MessageQueueCache.group_id == gid)
+                        .order_by(MessageQueueCache.message_id)
+                    )
+                    cache_list = list(result)
+                    if cache_list:
+                        if gid != session_id:
+                            logger.info(
+                                f"私聊会话 {session_id} 使用旧格式 {gid} 恢复了 {len(cache_list)} 条消息"
+                            )
+                            # 将旧格式数据迁移到新格式
+                            for msg in cache_list:
+                                msg.group_id = session_id
+                            await db_session.commit()
                         break
 
-                logger.info(f"已从数据库恢复群 {group_id} 的消息队列，共 {len(self.messages)} 条消息")
+            self.messages = [json.loads(msg.message_json) for msg in cache_list]
+
+            # 恢复 trace_id（从第一条有 trace_id 的记录中获取）
+            for msg in cache_list:
+                if msg.trace_id:
+                    self.trace_id = msg.trace_id
+                    logger.info(f"已从数据库恢复群 {session_id} 的 trace_id: {self.trace_id}")
+                    break
+
+            logger.info(f"已从数据库恢复群 {session_id} 的消息队列，共 {len(self.messages)} 条消息")
 
             if self.messages:
                 if get_role(self.messages[0]) != "system":
-                    logger.warning(f"群 {group_id} 恢复的消息队列缺少 system prompt，重置上下文")
-                    await self._reset_and_clear_db(group_id)
+                    logger.warning(f"群 {session_id} 恢复的消息队列缺少 system prompt，重置上下文")
+                    await self._reset_and_clear_db(session_id)
                 else:
                     # 检查 system prompt 内容是否与当前配置一致
                     expected_prompt = await self.processor.generate_system_prompt()
@@ -108,10 +130,10 @@ class MessageQueue:
                         else getattr(first_msg, "content", "")
                     )
                     if actual_content != expected_content:
-                        logger.warning(f"群 {group_id} 的 system prompt 与当前配置不一致，重置上下文")
-                        await self._reset_and_clear_db(group_id)
+                        logger.warning(f"群 {session_id} 的 system prompt 与当前配置不一致，重置上下文")
+                        await self._reset_and_clear_db(session_id)
                     else:
-                        logger.info(f"群 {group_id} 的 system prompt 验证通过")
+                        logger.info(f"群 {session_id} 的 system prompt 验证通过")
         except Exception as e:
             logger.warning(f"从数据库恢复消息队列失败: {e}")
 

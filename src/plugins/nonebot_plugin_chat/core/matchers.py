@@ -15,7 +15,7 @@ from nonebot import on_message, on_notice
 from nonebot.adapters.onebot.v11 import Bot as OB11Bot
 from nonebot.adapters import Event, Bot
 from nonebot.adapters.onebot.v11.event import PokeNotifyEvent
-from nonebot_plugin_larkutils import get_user_id, get_group_id
+from nonebot_plugin_larkutils import get_user_id, get_group_id, get_session_user_id
 from nonebot_plugin_larkutils.subaccount import get_main_account
 from nonebot_plugin_larkutils.user import private_message
 from nonebot.log import logger
@@ -84,6 +84,7 @@ async def _(
     bot: Bot,
     state: T_State,
     user_id: str = get_user_id(),
+    session_key: str = get_session_user_id(),
 ) -> None:
     if isinstance(bot, BotQQ):
         await matcher.finish()
@@ -94,7 +95,7 @@ async def _(
     # 检查是否是主动私聊的回复
     consciousness.update_send_private_message_state(user_id)
 
-    session = await create_private_session(user_id, get_target(event), bot)
+    session = await create_private_session(session_key, get_target(event), bot)
     if session.mute_until is not None:
         await matcher.finish()
     plaintext = event.get_plaintext().strip()
@@ -159,7 +160,7 @@ async def _(event: NoticeEvent, bot: OB11Bot, platform_id: str = get_group_id())
 
 
 @on_notice(block=False).handle()
-async def _(bot: Bot, event: FriendRecallNoticeEvent, user_id: str = get_user_id()) -> None:
+async def _(bot: Bot, event: FriendRecallNoticeEvent, user_id: str = get_user_id(), session_key: str = get_session_user_id()) -> None:
     message_id = str(event.message_id)
-    session = await create_private_session(user_id, get_target(event), bot)
+    session = await create_private_session(session_key, get_target(event), bot)
     await session.handle_recall(message_id)
