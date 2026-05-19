@@ -271,6 +271,10 @@ class MessageQueue:
             self.fetcher_task.cancel()
 
     async def _fetch_reply(self) -> FetchStatus:
+        from .ego.main_session import main_session
+
+        main_session.consecutive_replies += 1
+
         state = FetchStatus.SUCCESS
         messages = await self.get_messages()
         if get_role(messages[-1]) == "assistant":
