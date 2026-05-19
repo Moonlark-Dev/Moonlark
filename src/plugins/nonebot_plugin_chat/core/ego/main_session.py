@@ -63,28 +63,39 @@ class MainSession:
         self.status_manager = StatusManager()
         self.lang_str = lang_str
         self.state_until = datetime.now()
+        self.consecutive_replies: int = 0  # 连续对话轮数
         scheduler.scheduled_job("interval", minutes=5)(self.process_timer)
         # 初始化睡眠控制器
         self.sleep_controller = SleepController(self)
 
-    def is_boredom(self) -> bool:
+    def get_minutes_since_last_group_message(self) -> float:
+        """获取距离最近一次群内发言的分钟数"""
         dt = datetime.now()
-        inactive_group_count = len(
-            [
-                group
-                for group in groups.values()
-                if group.cached_messages and (dt - group.cached_messages[-1]["send_time"]) >= timedelta(minutes=10)
-            ]
-        )
-        group_count = len(groups)
-        return (
-            (
-                (group_count >= 3 and inactive_group_count >= 3)
-                or (group_count < 3 and inactive_group_count >= group_count * 0.3)
-            )
-            and (self.state_until is None or dt >= self.state_until)
-            and (self.action_history == [] or dt >= self.action_history[-1][0] + timedelta(minutes=20))
-        )
+        last_msg_time = None
+        for group in groups.values():
+            if group.cached_messages:
+                msg_time = group.cached_messages[-1]["send_time"]
+                if last_msg_time is None or msg_time > last_msg_time:
+                    last_msg_time = msg_time
+        if last_msg_time is None:
+            return 60.0  # 无消息时默认 60 分钟
+        return (dt - last_msg_time).total_seconds() / 60.0
+
+    def is_boredom(self) -> bool:
+        """使用困倦值公式判断是否需要触发 think"""
+        if self.state_until is not None and datetime.now() < self.state_until:
+            return False
+        if self.action_history and datetime.now() < self.action_history[-1][0] + timedelta(minutes=20):
+            return False
+
+        minutes_since_last = self.get_minutes_since_last_group_message()
+        result = self.sleep_controller.check_drowsiness(self.consecutive_replies, minutes_since_last)
+
+        if result == "sleep":
+            return True  # 强制触发，request_think 中会强制选择 sleep
+        elif result == "drowsy":
+            return True  # 触发犯困提示
+        return False
 
     async def generate_user_prompt(
         self,
@@ -270,8 +281,17 @@ class MainSession:
             self.state = StateEnum.ACTIVATE
             if was_sleeping:
                 self.sleep_controller.on_wake_up()
-        if self.is_boredom():
-            await self.request_think("boredom_thresold", None)
+
+        # 困倦值检查
+        if self.state_until is None or dt >= self.state_until:
+            if not self.action_history or dt >= self.action_history[-1][0] + timedelta(minutes=20):
+                minutes_since_last = self.get_minutes_since_last_group_message()
+                drowsiness_result = self.sleep_controller.check_drowsiness(self.consecutive_replies, minutes_since_last)
+                if drowsiness_result == "sleep":
+                    await self.request_think("ready_sleep", None)
+                elif drowsiness_result == "drowsy":
+                    await self.request_think("boredom_thresold", None)
+
         await self.save_action_history()
 
     async def load_action_history(self) -> None:
