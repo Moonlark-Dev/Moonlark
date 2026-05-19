@@ -19,7 +19,7 @@ class CatTeaser(GiftItem):
     async def getDescription(self, stack: ItemStack) -> str:
         return await self.getText("gifts.cat_teaser.description", stack.user_id)
 
-    async def on_gift_used(self, stack, *args, **kwargs):
+    async def on_gift_used(self, stack, **kwargs):
         pass
 
 

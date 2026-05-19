@@ -1,5 +1,5 @@
 from typing import Any
-from nonebot_plugin_alconna import Alconna, Args, MultiVar, Option, Subcommand, on_alconna
+from nonebot_plugin_alconna import Alconna, Args, Option, Subcommand, on_alconna
 
 from nonebot_plugin_larklang.__main__ import LangHelper
 
@@ -21,7 +21,6 @@ alc = Alconna(
         "use",
         Args["index", int],
         Option("--count|-c", Args["count", int, 1]),
-        Args["argv", MultiVar(Any), []],  # type: ignore
     ),
 )
 bag = on_alconna(alc)
