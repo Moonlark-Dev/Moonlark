@@ -214,8 +214,8 @@ class MainSession:
                 await lang.text(
                     "prompt_group.instant_mem",
                     self.lang_str,
+                    mem["create_time"].strftime("%Y-%m-%d %H:%M:%S"),
                     mem["expire_time"].strftime("%Y-%m-%d %H:%M:%S"),
-                    mem["name"],
                     mem["content"],
                 )
             )
