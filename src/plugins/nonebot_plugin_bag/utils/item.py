@@ -46,7 +46,7 @@ async def get_bag_items(user_id: str, ignore_lock: bool = False, ignore_locked_i
         list[BagItem]: 物品列表
     """
     async with get_session() as session:
-        result = await session.scalars(select(Bag.bag_index).where(Bag.user_id == user_id))
+        result = await session.scalars(select(Bag.bag_index).where(Bag.user_id == user_id).order_by(Bag.bag_index))
         item_list = []
         logger.debug(f"Getting bag items of user {user_id}")
         for index in result:
