@@ -46,6 +46,7 @@ from pydantic import BaseModel
 if TYPE_CHECKING:
     from nonebot_plugin_chat.core.session.base import BaseSession
 
+from nonebot_plugin_ghot.function import get_group_hot_score
 from nonebot_plugin_chat.core.session import groups
 from .sleep_controller import SleepController
 
@@ -268,8 +269,33 @@ class MainSession:
             ]
         )
 
+    async def _has_active_session(self) -> bool:
+        """检查是否存在活跃会话（用于暂停 do action 计时）
+
+        活跃会话定义：
+        - 群聊：ghot（群聊热度分数）>= 10 且 last_interest >= 0.5
+        - 私聊：最近 5 分钟内有消息
+        """
+        dt = datetime.now()
+        for session in groups.values():
+            if session.get_session_type() == "group":
+                if session.last_interest is not None and session.last_interest >= 0.5:
+                    ghot_score = (await get_group_hot_score(session.session_id))[2]
+                    if ghot_score >= 10:
+                        return True
+            elif session.get_session_type() == "private":
+                if session.cached_messages and (dt - session.cached_messages[-1]["send_time"]) <= timedelta(minutes=5):
+                    return True
+        return False
+
     async def process_timer(self):
         dt = datetime.now()
+        # 活跃会话存在时，延长 do action 的计时
+        if self.state == StateEnum.BUSY and self.state_until and dt < self.state_until:
+            if await self._has_active_session():
+                self.state_until += timedelta(minutes=5)
+                logger.debug(f"[MainSession] 检测到活跃会话，延长 state_until 至 {self.state_until}")
+                return
         if self.state_until and dt > self.state_until:
             was_sleeping = self.state == StateEnum.SLEEPING
             self.state_until = None
