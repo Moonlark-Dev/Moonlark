@@ -286,9 +286,7 @@ class MainSession:
         if self.state_until is None or dt >= self.state_until:
             if not self.action_history or dt >= self.action_history[-1][0] + timedelta(minutes=20):
                 minutes_since_last = self.get_minutes_since_last_group_message()
-                drowsiness_result = self.sleep_controller.check_drowsiness(
-                    self.consecutive_replies, minutes_since_last
-                )
+                drowsiness_result = self.sleep_controller.check_drowsiness(self.consecutive_replies, minutes_since_last)
                 if drowsiness_result == "sleep":
                     await self.request_think("ready_sleep", None)
                 elif drowsiness_result == "drowsy":
