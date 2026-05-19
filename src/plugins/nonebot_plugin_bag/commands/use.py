@@ -29,8 +29,7 @@ async def _(
         await lang.finish("use.not_useable", user_id)
 
     ret = await item.stack.use(
-        count=count, bot=bot, event=event,
-        user_id=user_id, group_id=group_id, is_private=is_private
+        count=count, bot=bot, event=event, user_id=user_id, group_id=group_id, is_private=is_private
     )
     if isinstance(ret, str) or isinstance(ret, UniMessage):
         await bag.finish(ret)
