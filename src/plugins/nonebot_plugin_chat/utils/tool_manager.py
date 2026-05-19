@@ -587,8 +587,8 @@ class ToolManager:
                 mem_lines.append(
                     await self.text(
                         "prompt_group.instant_mem",
+                        mem["create_time"].strftime("%Y-%m-%d %H:%M:%S"),
                         mem["expire_time"].strftime("%Y-%m-%d %H:%M:%S"),
-                        mem["name"],
                         mem["content"],
                     )
                 )
