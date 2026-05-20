@@ -288,6 +288,7 @@ class MessageQueue:
             False,
             identify="Chat",
             functions=await self.processor.tool_manager.select_tools("group"),
+            pre_function_call=self.processor.send_function_call_feedback,
             reasoning_effort="medium",
         )
         fetcher.session.set_custom_trace_id(self.trace_id)
