@@ -236,8 +236,9 @@ class MessageProcessor:
         if item[0] == "event":
             # 处理事件类型队列项
             event_prompt, trigger_mode = item[1]  # type: ignore
+            additional_info = await self.generate_event_additional_info()
             content = await self.session.text(
-                "prompt.event_template", datetime.now().strftime("%H:%M:%S"), event_prompt
+                "prompt.event_template", datetime.now().strftime("%H:%M:%S"), event_prompt, additional_info
             )
             await self.openai_messages.append_user_message(content)
             self.token_bucket.add(0.6)
@@ -579,6 +580,35 @@ class MessageProcessor:
                 if line in str(message):
                     return True
         return False
+
+    async def generate_event_additional_info(self) -> str:
+        """生成事件的 additional_info，包含 token、当前状态和正在做的事"""
+        from .ego import consciousness
+
+        status_manager = get_status_manager()
+        mood, mood_reason = status_manager.get_status()
+        mood_text = await self.session.text(f"status.mood.{mood.value}")
+
+        state = await self.session.text(
+            "prompt_group.state",
+            mood_text,
+            status_manager.get_mood_retention(),
+            mood_reason,
+        )
+
+        # 获取正在做的事（查重）
+        recent_activities = "\n".join(
+            await self.filter_info_lines(
+                (await consciousness.get_recent_actions_text(self.session.lang_str)).splitlines()
+            )
+        )
+
+        return await self.session.text(
+            "prompt.event_additional_info",
+            round(self.token_bucket.get(), 2),
+            state,
+            recent_activities or await self.session.text("prompt.event_additional_info.no_activity"),
+        )
 
     async def generate_system_prompt(self) -> OpenAIMessage:
         fav_rule = await get_prompt_text("favorability")
