@@ -574,9 +574,7 @@ class MainSession:
                 await self.trigger_sleep()
 
                 if future and not future.done():
-                    future.set_result(
-                        await lang.text("main_session.sleep_decision.ready_approved", self.lang_str)
-                    )
+                    future.set_result(await lang.text("main_session.sleep_decision.ready_approved", self.lang_str))
             else:
                 # 延迟睡觉
                 delay = min(delay_minutes or 5, 30)  # 默认5分钟，最大30分钟
