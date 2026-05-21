@@ -100,6 +100,14 @@ class ToolManager:
         luck_value = await get_luck_value(user_id)
         return await self.text("tools_desc.calculate_luck_value.result", nickname, luck_value)
 
+    async def change_sleep_status(
+        self, deal_type: Literal["ready", "delay"], delay_minutes: Optional[int] = None, reason: Optional[str] = None
+    ) -> str:
+        """修改睡觉状态，委托给session处理"""
+        return await self.processor.session.change_sleep_status(
+            deal_type=deal_type, delay_minutes=delay_minutes, reason=reason
+        )
+
     async def request_action(self, do: str, duration: Optional[int] = None) -> str:
         """向意识会话申请执行一个动作"""
         return await self.processor.session.request_action(do=do, duration=duration)
@@ -479,6 +487,32 @@ class ToolManager:
                         "duration": FunctionParameter(
                             type="integer",
                             description=await self.text("tools_desc.request_action.duration"),
+                            required=False,
+                        ),
+                    },
+                )
+            )
+
+            # change_sleep_status
+            tools.append(
+                AsyncFunction(
+                    func=self.change_sleep_status,
+                    description=await self.text("tools_desc.change_sleep_status.desc"),
+                    parameters={
+                        "deal_type": FunctionParameterWithEnum(
+                            type="string",
+                            description=await self.text("tools_desc.change_sleep_status.deal_type"),
+                            required=True,
+                            enum={"ready", "delay"},
+                        ),
+                        "delay_minutes": FunctionParameter(
+                            type="integer",
+                            description=await self.text("tools_desc.change_sleep_status.delay_minutes"),
+                            required=False,
+                        ),
+                        "reason": FunctionParameter(
+                            type="string",
+                            description=await self.text("tools_desc.change_sleep_status.reason"),
                             required=False,
                         ),
                     },
