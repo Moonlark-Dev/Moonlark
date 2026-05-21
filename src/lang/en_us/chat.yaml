@@ -331,7 +331,18 @@ prompt:
     to_me: "{} 戳了戳你。"
     to_other: "{} 戳了戳 {}。"
   reaction: "{} 回应了你的消息“{}”: {}"
-  event_template: "[{}]: {}"
+  event_template: |
+    [{}]: {}
+
+    {}
+  event_additional_info: |
+    <additional_info>
+    Current Token: {}
+    {}
+    Recent activities:
+    {}
+    </additional_info>
+  event_additional_info.no_activity: "None"
   note:
     format: "- {} (#{}，创建于 {})"
     none: "暂无"
