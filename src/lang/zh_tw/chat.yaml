@@ -752,10 +752,20 @@ tools_desc:
       **何时必须调用**：你被要求“去做某事”时调用，例如“去吃点东西”。不要用于机器人回复用户消息或获取外部知识。
     do: '想要做的事的名字，例如："吃午饭"、"玩一会游戏"'
     duration: '建议的持续时间（分钟），意识会话会参考这个值但不一定完全采纳。'
+  change_sleep_status:
+    desc: |
+      處理犯困提示，決定是否準備睡覺。
+      **何時必須調用**：當你收到犯困提示時，使用此工具來確認你是否準備睡覺。
+      - 選擇 `ready`：確認準備去睡覺
+      - 選擇 `delay`：延遲一段時間再考慮睡覺，可以指定延遲的分鐘數和原因
+    deal_type: "決策類型：'ready' 表示準備睡覺，'delay' 表示延遲。"
+    delay_minutes: "延遲的分鐘數（僅當 deal_type 為 'delay' 時有效），最大 30 分鐘。"
+    reason: "延遲的原因（僅當 deal_type 為 'delay' 時可選）。"
+
   request_sleep:
     desc: |
-      向你的"EGO"申请睡觉。
-      **何时必须调用**：当你收到犯困提示时，调用此工具申请去睡觉。
+      向你的"EGO"申請睡覺。
+      **何時必須調用**：當你收到犯困提示時，調用此工具申請去睡覺。
   query_history_message:
     desc: |
       查询其他会话的历史消息和即时记忆。
@@ -1268,20 +1278,27 @@ main_session:
       {}
 
       请决定是否批准。
-    result_approved: "已批准睡觉申请，正在启动睡觉流程。"
-    result_denied: "已拒绝睡觉申请。"
-    error: "睡觉申请处理出错：{}"
+    result_approved: "已批准睡覺申請，正在啟動睡覺流程。"
+    result_denied: "已拒絕睡覺申請。"
+    error: "睡覺申請處理出錯：{}"
+  sleep_decision:
+    ready_approved: "已確認準備睡覺，正在啟動睡覺流程。"
+    delay_approved: "已延遲 {} 分鐘再考慮睡覺。原因：{}"
+    no_reason: "未指定原因"
+    error: "睡眠決策處理出錯：{}"
   latest_event:
     boredom_thresold: 你感到有些无聊，需要做一些事情来保持活力。
     task_finished: 你刚刚结束了一个任务（{request_text}），你可以继续观望群聊（`skip`）或决定下一步的行动。
     chat_request: 会话 {trigger_from} 请求进行 {request_text} 任务。你可以查看该会话最近的聊天记录获取详细的信息。
     ready_sleep: 你感觉有点困了，决定去睡觉。
 sleep:
-  drowsy_prompt: "[提示]: 你感到有些犯困了。你可以使用 `request_sleep` 工具申请去睡觉。"
+  drowsy_prompt: "[提示]: 你感到有些犯困了。请使用 `change_sleep_status` 工具来决定是否准备睡觉。"
 request_action:
-  timeout: "动作申请超时，意识会话未在规定时间内做出决定。"
+  timeout: "動作申請超時，意識會話未在規定時間內做出決定。"
 request_sleep:
-  timeout: "睡觉申请超时，意识会话未在规定时间内做出决定。"
+  timeout: "睡覺申請超時，意識會話未在規定時間內做出決定。"
+sleep_decision:
+  timeout: "睡眠決策超時，意識會話未在規定時間內做出決定。"
 recall_fetch_failed: "消息内容获取失败"
 message_truncate_check:
   system: |
