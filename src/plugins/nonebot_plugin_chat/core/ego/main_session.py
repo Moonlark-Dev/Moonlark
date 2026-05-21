@@ -94,8 +94,7 @@ class MainSession:
 
         if result == "sleep":
             return True  # 强制触发，request_think 中会强制选择 sleep
-        elif result == "drowsy":
-            return True  # 触发犯困提示
+        # drowsy 状态现在通过事件提示处理，不在这里触发
         return False
 
     async def generate_user_prompt(
@@ -316,7 +315,12 @@ class MainSession:
                 if drowsiness_result == "sleep":
                     await self.request_think("ready_sleep", None)
                 elif drowsiness_result == "drowsy":
-                    await self.request_think("boredom_thresold", None)
+                    # 向群聊会话发送犯困提示事件，让 LLM 调用 change_sleep_status 工具
+                    drowsy_prompt = await lang.text("sleep.drowsy_prompt", self.lang_str)
+                    for group in groups.values():
+                        if group.get_session_type() == "group":
+                            await group.add_event(drowsy_prompt, "probability")
+                            break
 
         await self.save_action_history()
 
@@ -548,6 +552,49 @@ class MainSession:
             logger.exception(e)
             if future and not future.done():
                 future.set_result(await lang.text("main_session.sleep_request.error", self.lang_str, str(e)))
+
+    async def submit_sleep_decision(
+        self,
+        session_id: str,
+        deal_type: Literal["ready", "delay"],
+        delay_minutes: Optional[int] = None,
+        reason: Optional[str] = None,
+        future: Optional[asyncio.Future] = None,
+    ) -> None:
+        """处理来自子会话的睡眠决策（change_sleep_status 工具调用）"""
+        try:
+            if deal_type == "ready":
+                # 准备睡觉
+                self.state = StateEnum.SLEEPING
+                sleep_minutes = 20
+                sleep_start = datetime.now()
+                sleep_end = sleep_start + timedelta(minutes=sleep_minutes)
+                self.state_until = sleep_end
+                self.action_history.append((sleep_start, RestAction(type="sleep", time=sleep_minutes), None))
+                await self.trigger_sleep()
+
+                if future and not future.done():
+                    future.set_result(
+                        await lang.text("main_session.sleep_decision.ready_approved", self.lang_str)
+                    )
+            else:
+                # 延迟睡觉
+                delay = min(delay_minutes or 5, 30)  # 默认5分钟，最大30分钟
+                self.state_until = datetime.now() + timedelta(minutes=delay)
+
+                if future and not future.done():
+                    future.set_result(
+                        await lang.text(
+                            "main_session.sleep_decision.delay_approved",
+                            self.lang_str,
+                            delay,
+                            reason or await lang.text("main_session.sleep_decision.no_reason", self.lang_str),
+                        )
+                    )
+        except Exception as e:
+            logger.exception(e)
+            if future and not future.done():
+                future.set_result(await lang.text("main_session.sleep_decision.error", self.lang_str, str(e)))
 
     async def wake_up(self, session: Optional["BaseSession"] = None) -> None:
         if self.state != StateEnum.SLEEPING:
