@@ -15,30 +15,30 @@ from .private import PrivateSession
 groups: dict[str, BaseSession] = {}
 
 
-def get_session_directly(group_id: str) -> BaseSession:
+def get_session_directly(session_id: str) -> BaseSession:
     """
-    获取指定群组的 GroupSession 对象
+    获取指定会话对象
 
     Args:
-        group_id: 群组 ID
+        session_id: 会话 ID
 
     Returns:
-        GroupSession 对象
+        BaseSession 对象
 
     Raises:
-        KeyError: 当群组 Session 不存在时
+        KeyError: 当会话不存在时
     """
-    return groups[group_id]
+    return groups[session_id]
 
 
 async def post_group_event(
-    group_id: str, event_prompt: str, trigger_mode: Literal["none", "probability", "all"]
+    session_id: str, event_prompt: str, trigger_mode: Literal["none", "probability", "all"]
 ) -> bool:
     """
-    向指定群组发送事件
+    向指定会话发送事件
 
     Args:
-        group_id: 群组 ID
+        session_id: 会话 ID（群组 session key 或用户 session key）
         event_prompt: 事件的描述文本
         trigger_mode: 触发模式
             - "none": 不触发回复
@@ -49,18 +49,25 @@ async def post_group_event(
         bool: 是否成功执行
     """
     try:
-        session = get_session_directly(group_id)
+        session = get_session_directly(session_id)
         await session.post_event(event_prompt, trigger_mode)
         return True
     except KeyError:
         return False
 
 
-async def get_private_session(user_id: str, target: Target, bot: Bot) -> PrivateSession:
-    if user_id not in groups:
-        groups[user_id] = PrivateSession(user_id, bot, target)
-        await groups[user_id].setup()
-    return cast(PrivateSession, groups[user_id])
+async def get_private_session(session_key: str, target: Target, bot: Bot) -> PrivateSession:
+    """获取或创建私聊会话。
+
+    Args:
+        session_key: 私聊 session key（应使用 get_group_id() 获取，它在私聊中返回带 platform 前缀的 user ID）
+        target: 消息目标
+        bot: Bot 实例
+    """
+    if session_key not in groups:
+        groups[session_key] = PrivateSession(session_key, bot, target)
+        await groups[session_key].setup()
+    return cast(PrivateSession, groups[session_key])
 
 
 async def get_group_session_forced(group_id: str, target: Target, bot: Bot) -> GroupSession:
@@ -118,11 +125,18 @@ async def create_group_session(group_id: str, target: Target, bot: Bot) -> Group
     return cast(GroupSession, groups[group_id])
 
 
-async def create_private_session(user_id: str, target: Target, bot: Bot) -> PrivateSession:
-    if user_id not in groups:
-        groups[user_id] = PrivateSession(user_id, bot, target)
-        await groups[user_id].setup()
-    return cast(PrivateSession, groups[user_id])
+async def create_private_session(session_key: str, target: Target, bot: Bot) -> PrivateSession:
+    """创建私聊会话。
+
+    Args:
+        session_key: 私聊 session key（应使用 get_group_id() 获取，它在私聊中返回带 platform 前缀的 user ID）
+        target: 消息目标
+        bot: Bot 实例
+    """
+    if session_key not in groups:
+        groups[session_key] = PrivateSession(session_key, bot, target)
+        await groups[session_key].setup()
+    return cast(PrivateSession, groups[session_key])
 
 
 @scheduler.scheduled_job("cron", minute="*", id="trigger_group")

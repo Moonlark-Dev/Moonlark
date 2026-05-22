@@ -21,6 +21,7 @@ class PrivateSession(BaseSession):
         self.nickname = ""
         self.call = "你"
         self.user_info: AdapterUserInfo
+        self.adapter_user_id = target.id  # adapter 原始 user_id（无 platform 前缀）
 
     async def setup(self) -> None:
         await super().setup()
@@ -28,9 +29,9 @@ class PrivateSession(BaseSession):
         self.processor.openai_messages.continuous_response = True
 
     async def get_session_name(self) -> str:
-        ml_user = await get_user(self.session_id)
+        ml_user = await get_user(self.adapter_user_id)
         if isinstance(self.bot, OB11Bot):
-            user_info = await self.bot.get_stranger_info(user_id=int(self.session_id))
+            user_info = await self.bot.get_stranger_info(user_id=int(self.adapter_user_id))
             if ml_user.has_nickname():
                 self.nickname = ml_user.get_nickname()
             else:
@@ -52,7 +53,7 @@ class PrivateSession(BaseSession):
 
     async def send_poke(self, _: str) -> None:
         if isinstance(self.bot, OB11Bot):
-            await self.bot.call_api("friend_poke", user_id=self.session_id)
+            await self.bot.call_api("friend_poke", user_id=self.adapter_user_id)
 
     async def calculate_ghot_coefficient(self) -> int:
         self.ghot_coefficient = 100
@@ -62,4 +63,4 @@ class PrivateSession(BaseSession):
         return self.user_info
 
     async def get_users(self) -> dict[str, str]:
-        return {self.nickname: self.session_id}
+        return {self.nickname: self.adapter_user_id}

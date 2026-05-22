@@ -1,6 +1,7 @@
 import hashlib
 import re
 import traceback
+import uuid
 from typing import TYPE_CHECKING, Any, Optional, cast
 from nonebot.compat import type_validate_json
 from nonebot.log import logger
@@ -41,6 +42,7 @@ class MessageQueue:
         self.fetcher_task = None
         # 在初始化时从数据库恢复消息队列
         self.inserted_messages = []
+        self.trace_id: str = uuid.uuid4().hex
 
     async def reset_chat_history(self) -> list[OpenAIMessage]:
         messages = copy.deepcopy(self.messages)
@@ -67,31 +69,42 @@ class MessageQueue:
     async def restore_from_db(self) -> None:
         """从数据库恢复消息队列，并验证 system prompt 的有效性"""
         try:
-            group_id = self.processor.session.session_id
+            session_id = self.processor.session.session_id
             earliest_time = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-            async with get_session() as session:
-                cache = await session.scalars(
+
+            async with get_session() as db_session:
+                cache = await db_session.scalars(
                     select(MessageQueueCache)
-                    .where(MessageQueueCache.updated_time >= earliest_time, MessageQueueCache.group_id == group_id)
+                    .where(MessageQueueCache.updated_time >= earliest_time, MessageQueueCache.group_id == session_id)
                     .order_by(MessageQueueCache.message_id)
                 )
-                self.messages = [json.loads(msg.message_json) for msg in cache]
+                cache_list = list(cache)
 
-                logger.info(f"已从数据库恢复群 {group_id} 的消息队列，共 {len(self.messages)} 条消息")
+            self.messages = [json.loads(msg.message_json) for msg in cache_list]
 
+            # 恢复 trace_id（从第一条有 trace_id 的记录中获取）
+            for msg in cache_list:
+                if msg.trace_id:
+                    self.trace_id = msg.trace_id
+                    logger.info(f"已从数据库恢复群 {session_id} 的 trace_id: {self.trace_id}")
+                    break
+
+            logger.info(f"已从数据库恢复群 {session_id} 的消息队列，共 {len(self.messages)} 条消息")
+
+            context_reset = False
             if self.messages:
-                expected_prompt = await self.processor.generate_system_prompt()
-                # 统一提取 content：兼容 dict（TypedDict 的 content 可能为可选键）和 Pydantic 模型
-                expected_content = (
-                    expected_prompt.get("content", "")
-                    if isinstance(expected_prompt, dict)
-                    else getattr(expected_prompt, "content", "")
-                )
-
                 if get_role(self.messages[0]) != "system":
-                    logger.warning(f"群 {group_id} 恢复的消息队列缺少 system prompt，重置上下文")
-                    await self._reset_and_clear_db(group_id)
+                    logger.warning(f"群 {session_id} 恢复的消息队列缺少 system prompt，重置上下文")
+                    await self._reset_and_clear_db(session_id)
+                    context_reset = True
                 else:
+                    # 检查 system prompt 内容是否与当前配置一致
+                    expected_prompt = await self.processor.generate_system_prompt()
+                    expected_content = (
+                        expected_prompt.get("content", "")
+                        if isinstance(expected_prompt, dict)
+                        else getattr(expected_prompt, "content", "")
+                    )
                     first_msg = self.messages[0]
                     actual_content = (
                         first_msg.get("content", "")
@@ -99,12 +112,37 @@ class MessageQueue:
                         else getattr(first_msg, "content", "")
                     )
                     if actual_content != expected_content:
-                        logger.warning(f"群 {group_id} 的 system prompt 与当前配置不一致，重置上下文")
-                        await self._reset_and_clear_db(group_id)
+                        logger.warning(f"群 {session_id} 的 system prompt 与当前配置不一致，重置上下文")
+                        await self._reset_and_clear_db(session_id)
+                        context_reset = True
                     else:
-                        logger.info(f"群 {group_id} 的 system prompt 验证通过")
+                        logger.info(f"群 {session_id} 的 system prompt 验证通过")
+            else:
+                context_reset = True
+
+            # 当历史为空或上下文被重置时，注入 instant memory
+            if context_reset:
+                await self._inject_instant_memories(session_id)
         except Exception as e:
             logger.warning(f"从数据库恢复消息队列失败: {e}")
+
+    async def _inject_instant_memories(self, session_id: str) -> None:
+        """当历史为空或上下文重置时，将当前会话的 instant memory 注入为第一条 user message"""
+        from ..utils.instant_mem import get_memories_for_session, format_memories_for_injection
+
+        memories = get_memories_for_session(session_id)
+        if not memories:
+            return
+
+        injected_text = format_memories_for_injection(memories)
+        if not injected_text:
+            return
+
+        # 确保 system prompt 存在
+        await self._ensure_system_prompt()
+        # 在 system prompt 后插入 instant memory 作为第一条 user message
+        self.messages.insert(1, generate_message(injected_text, "user"))
+        logger.info(f"[InstantMemory] 已注入 {len(memories)} 条即时记忆到 {session_id}")
 
     async def _reset_and_clear_db(self, group_id: str) -> None:
         """重置消息队列并清空数据库缓存"""
@@ -139,9 +177,12 @@ class MessageQueue:
                             select(MessageQueueCache).where(MessageQueueCache.message_hash == sha256.digest())
                         )
                         if result is not None:
+                            # 更新已有记录的 trace_id
+                            result.trace_id = self.trace_id
                             continue
                         cache = MessageQueueCache(
                             group_id=group_id,
+                            trace_id=self.trace_id,
                             message_json=msg,
                             message_hash=sha256.digest(),
                         )
@@ -230,10 +271,16 @@ class MessageQueue:
             self.fetcher_task.cancel()
 
     async def _fetch_reply(self) -> FetchStatus:
+        from .ego.main_session import main_session
+
+        main_session.consecutive_replies += 1
+
         state = FetchStatus.SUCCESS
         messages = await self.get_messages()
         if get_role(messages[-1]) == "assistant":
             return FetchStatus.SKIP
+        # 保存 system prompt，确保后续重组时不会丢失
+        system_prompt = messages[0]
         self.messages.clear()
         self.inserted_messages.clear()
         fetcher = await MessageFetcher.create(
@@ -241,9 +288,10 @@ class MessageQueue:
             False,
             identify="Chat",
             functions=await self.processor.tool_manager.select_tools("group"),
+            pre_function_call=self.processor.send_function_call_feedback,
             reasoning_effort="medium",
         )
-        fetcher.session.set_custom_trace_id(f"{self.processor.session.session_id}_{datetime.now().strftime('%Y%m%d')}")
+        fetcher.session.set_custom_trace_id(self.trace_id)
         retry_count = 0
         try:
             async for message in fetcher.fetch_message_stream():
@@ -281,7 +329,12 @@ class MessageQueue:
                 if self.continuous_response:
                     fetcher.session.insert_messages(self.messages)
                     self.messages.clear()
-            self.messages = fetcher.get_messages() + self.messages
+            # 确保 system prompt 始终在首位
+            fetcher_messages = fetcher.get_messages()
+            if fetcher_messages and get_role(fetcher_messages[0]) == "system":
+                self.messages = fetcher_messages
+            else:
+                self.messages = [system_prompt] + fetcher_messages
         except Exception as e:
             logger.exception(e)
             # 恢复 Message
@@ -290,12 +343,19 @@ class MessageQueue:
             state = FetchStatus.FAILED
         return state
 
-    async def check_system_prompt(self) -> None:
-        if len(self.messages) == 0 or get_role(self.messages[0]) != "system":
-            self.messages = [await self.processor.generate_system_prompt()]
+    async def _ensure_system_prompt(self) -> None:
+        """确保 messages[0] 存在且是 system 消息，且不存在多余的 system 消息。
+
+        不保证内容与当前配置一致——内容变动由 get_messages() 检测并触发清空重置。
+        """
+        if not self.messages or get_role(self.messages[0]) != "system":
+            self.messages.insert(0, await self.processor.generate_system_prompt())
+
+        # 清理 messages[1:] 中多余的 system 消息（只保留第一条）
+        self.messages = [self.messages[0]] + [msg for msg in self.messages[1:] if get_role(msg) != "system"]
 
     async def append_user_message(self, message: str) -> None:
-        await self.check_system_prompt()
+        await self._ensure_system_prompt()
         self.messages.append(generate_message(message, "user"))
 
     def is_last_message_from_user(self) -> bool:

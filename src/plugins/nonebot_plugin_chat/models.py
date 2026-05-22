@@ -78,6 +78,7 @@ class MessageQueueCache(Model):
 
     message_id: Mapped[int] = mapped_column(Integer(), primary_key=True, autoincrement=True)
     group_id: Mapped[str] = mapped_column(String(128))
+    trace_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)  # 上下文 trace ID，用于重启后恢复
     # MySQL 使用 MEDIUMTEXT (16MB)，SQLite 使用 Text（无大小限制）
     message_json: Mapped[str] = mapped_column(CompatibleMediumText)  # JSON 序列化的消息列表
     updated_time: Mapped[datetime] = mapped_column(DateTime(), default=datetime.now)  # 最后更新时间戳
@@ -120,9 +121,21 @@ class PrivateChatSession(Model):
     """记录用户私聊会话信息，用于主动消息时获取正确的 bot"""
 
     user_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    session_key: Mapped[str] = mapped_column(String(256))  # 带 platform 前缀的 session key（如 qq_USERID）
     bot_id: Mapped[str] = mapped_column(String(128))  # 用户最后使用的 bot ID
     last_message_time: Mapped[float] = mapped_column(Float())  # 最后消息时间戳
     last_proactive_message_time: Mapped[Optional[float]] = mapped_column(Float(), nullable=True)  # 最后主动消息时间戳
+
+
+class InstantMemoryCache(Model):
+    """即时记忆持久化缓存"""
+
+    id: Mapped[int] = mapped_column(Integer(), primary_key=True, autoincrement=True)
+    session_id: Mapped[str] = mapped_column(String(128), index=True)  # 会话 ID
+    content: Mapped[str] = mapped_column(Text())  # 记忆内容
+    name: Mapped[str] = mapped_column(String(128), default="")  # 记忆名称
+    created_time: Mapped[datetime] = mapped_column(DateTime(), default=datetime.now)  # 创建时间
+    expire_time: Mapped[datetime] = mapped_column(DateTime())  # 过期时间
 
 
 class MainSessionActionHistory(Model):

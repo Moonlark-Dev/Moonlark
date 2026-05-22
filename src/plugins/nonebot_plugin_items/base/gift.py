@@ -6,9 +6,9 @@ from nonebot import logger
 
 
 from nonebot_plugin_chat.core.session import (
+    create_private_session,
     get_session_directly,
     get_group_session_forced,
-    get_private_session,
 )
 from nonebot_plugin_alconna import get_target
 
@@ -46,32 +46,34 @@ class GiftItem(UseableItem, ABC):
             stack: 物品堆叠
             bot: Bot 实例（从 kwargs 获取）
             event: Event 实例（从 kwargs 获取）
-            session_id: 会话 ID（从 kwargs 获取）
+            group_id: 会话 ID（从 kwargs 获取）
             is_private: 是否为私聊场景（从 kwargs 获取）
+            count: 实际使用数量（从 kwargs 获取，默认 1）
 
         Returns:
             使用结果
         """
-        # 1. 增加好感度
+        # 1. 增加好感度（使用实际数量而非 stack.count）
         user = await get_user(stack.user_id)
-        total_fav = self.fav_value * stack.count
+        count = kwargs.get("count", 1)
+        total_fav = self.fav_value * count
         await user.add_fav(total_fav)
-        logger.info(f"用户 {stack.user_id} 使用礼物 {self.getLocation()}, 好感度 +{total_fav}")
+        logger.info(f"用户 {stack.user_id} 使用礼物 {self.getLocation()} x{count}, 好感度 +{total_fav}")
 
         # 2. 尝试触发 AI 回复
         bot = kwargs.get("bot")
         event = kwargs.get("event")
-        session_id = kwargs.get("session_id")
+        group_id = kwargs.get("group_id")
         is_private = kwargs.get("is_private")
 
-        if bot is not None and event is not None and session_id is not None and is_private is not None:
-            await self._trigger_gift_response(stack, bot, event, session_id, is_private)
+        if bot is not None and event is not None and group_id is not None and is_private is not None:
+            await self._trigger_gift_response(stack, bot, event, group_id, is_private)
 
         # 3. 调用子类自定义逻辑
-        return await self.on_gift_used(stack, *args, **kwargs)
+        return await self.on_gift_used(stack, **kwargs)
 
     async def _trigger_gift_response(
-        self, stack: "ItemStack", bot: Any, event: Any, session_id: str, is_private: bool
+        self, stack: "ItemStack", bot: Any, event: Any, group_id: str, is_private: bool
     ) -> None:
         """
         触发礼物回复
@@ -82,31 +84,19 @@ class GiftItem(UseableItem, ABC):
             stack: 物品堆叠
             bot: Bot 实例
             event: Event 实例
-            session_id: 会话 ID（群聊为 group_id，私聊时需使用 user_id）
+            group_id: 会话 ID（私聊和群聊均由调用方传入 get_group_id()）
             is_private: 是否为私聊场景
         """
         try:
-
-            # 根据 is_private 确定实际使用的 session_id
-            if is_private:
-                # 私聊场景：使用 user_id 作为 session_id
-                actual_session_id = stack.user_id
-            else:
-                # 群聊场景：使用传入的 session_id（即 group_id）
-                actual_session_id = session_id
-
-            # 尝试获取已存在的 session
+            # group_id 在私聊和群聊中都是正确的 session key
             try:
-                session = get_session_directly(actual_session_id)
+                session = get_session_directly(group_id)
             except KeyError:
-                # Session 不存在，需要创建
                 target = get_target(event)
                 if is_private:
-                    # 私聊场景
-                    session = await get_private_session(actual_session_id, target, bot)
+                    session = await create_private_session(group_id, target, bot)
                 else:
-                    # 群聊场景
-                    session = await get_group_session_forced(actual_session_id, target, bot)
+                    session = await get_group_session_forced(group_id, target, bot)
 
             nickname = await get_nickname(stack.user_id, bot, event)
 
@@ -119,7 +109,7 @@ class GiftItem(UseableItem, ABC):
             logger.warning(f"触发礼物回复失败: {e}")
 
     @abstractmethod
-    async def on_gift_used(self, stack: "ItemStack", *args: Any, **kwargs: Any) -> Any:
+    async def on_gift_used(self, stack: "ItemStack", **kwargs: Any) -> Any:
         """
         当礼物被使用时的回调
 
@@ -127,7 +117,6 @@ class GiftItem(UseableItem, ABC):
 
         Args:
             stack: 物品堆叠
-            *args: 额外位置参数
             **kwargs: 额外关键字参数
 
         Returns:

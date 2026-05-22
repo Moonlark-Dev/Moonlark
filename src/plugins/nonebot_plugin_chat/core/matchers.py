@@ -31,16 +31,18 @@ from ..config import config
 from ..models import PrivateChatSession
 
 
-async def record_private_chat_session(user_id: str, bot_id: str) -> None:
+async def record_private_chat_session(user_id: str, session_key: str, bot_id: str) -> None:
     """记录用户私聊会话信息
 
     Args:
         user_id: 用户 ID
+        session_key: 带 platform 前缀的 session key
         bot_id: Bot ID
     """
     async with get_session() as session:
         chat_session = PrivateChatSession(
             user_id=user_id,
+            session_key=session_key,
             bot_id=bot_id,
             last_message_time=datetime.now().timestamp(),
         )
@@ -84,17 +86,18 @@ async def _(
     bot: Bot,
     state: T_State,
     user_id: str = get_user_id(),
+    session_key: str = get_group_id(),
 ) -> None:
     if isinstance(bot, BotQQ):
         await matcher.finish()
 
     # 记录私聊会话信息（用于主动消息时获取正确的 bot）
-    await record_private_chat_session(user_id, bot.self_id)
+    await record_private_chat_session(user_id, session_key, bot.self_id)
 
     # 检查是否是主动私聊的回复
     consciousness.update_send_private_message_state(user_id)
 
-    session = await create_private_session(user_id, get_target(event), bot)
+    session = await create_private_session(session_key, get_target(event), bot)
     if session.mute_until is not None:
         await matcher.finish()
     plaintext = event.get_plaintext().strip()
@@ -159,7 +162,9 @@ async def _(event: NoticeEvent, bot: OB11Bot, platform_id: str = get_group_id())
 
 
 @on_notice(block=False).handle()
-async def _(bot: Bot, event: FriendRecallNoticeEvent, user_id: str = get_user_id()) -> None:
+async def _(
+    bot: Bot, event: FriendRecallNoticeEvent, user_id: str = get_user_id(), session_key: str = get_group_id()
+) -> None:
     message_id = str(event.message_id)
-    session = await create_private_session(user_id, get_target(event), bot)
+    session = await create_private_session(session_key, get_target(event), bot)
     await session.handle_recall(message_id)

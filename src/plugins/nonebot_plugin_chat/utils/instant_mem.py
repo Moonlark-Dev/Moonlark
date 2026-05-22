@@ -1,14 +1,17 @@
 from datetime import datetime, timedelta
-from typing import Generator, TypedDict
+from typing import TypedDict
 
 from nonebot_plugin_openai.utils.chat import fetch_message
 from nonebot_plugin_openai.utils.message import generate_message
 from nonebot.log import logger
+from nonebot_plugin_orm import get_session
+from sqlalchemy import select, delete
 import json
 import re
 import asyncio
 
 from ..lang import lang
+from ..models import InstantMemoryCache
 
 
 class InstantMemory(TypedDict):
@@ -36,6 +39,7 @@ def get_instant_memories() -> list[InstantMemory]:
 
 
 def get_memories_for_display(current_session_id: str) -> list[InstantMemory]:
+    """获取用于跨会话展示的记忆（排除当前会话今天的记忆）"""
     _clear_expired()
     now = datetime.now()
     today = now.date()
@@ -44,6 +48,81 @@ def get_memories_for_display(current_session_id: str) -> list[InstantMemory]:
         for mem in instant_memories
         if not (mem["ctx_id"] == current_session_id and mem["create_time"].date() == today)
     ]
+
+
+def get_memories_for_session(session_id: str) -> list[InstantMemory]:
+    """获取指定会话的所有未过期记忆（用于上下文重置时注入）"""
+    _clear_expired()
+    return [mem for mem in instant_memories if mem["ctx_id"] == session_id]
+
+
+async def load_memories_from_db() -> None:
+    """从数据库加载所有未过期的即时记忆到内存"""
+    global instant_memories
+    try:
+        now = datetime.now()
+        async with get_session() as db_session:
+            records = await db_session.scalars(select(InstantMemoryCache).where(InstantMemoryCache.expire_time > now))
+            loaded = [
+                InstantMemory(
+                    content=r.content,
+                    create_time=r.created_time,
+                    expire_time=r.expire_time,
+                    ctx_id=r.session_id,
+                    name=r.name,
+                )
+                for r in records
+            ]
+
+        # 合并：内存中已有的不覆盖，只补充 DB 中有但内存中没有的
+        existing_keys = {(m["content"], m["ctx_id"]) for m in instant_memories}
+        new_from_db = [m for m in loaded if (m["content"], m["ctx_id"]) not in existing_keys]
+        instant_memories.extend(new_from_db)
+
+        logger.info(f"[InstantMemory] 从数据库加载了 {len(new_from_db)} 条记忆（内存中共 {len(instant_memories)} 条）")
+    except Exception as e:
+        logger.warning(f"[InstantMemory] 从数据库加载记忆失败: {e}")
+
+
+async def _save_memory_to_db(memory: InstantMemory) -> None:
+    """将单条记忆保存到数据库"""
+    try:
+        async with get_session() as db_session:
+            cache = InstantMemoryCache(
+                session_id=memory["ctx_id"],
+                content=memory["content"],
+                name=memory.get("name", ""),
+                created_time=memory["create_time"],
+                expire_time=memory["expire_time"],
+            )
+            db_session.add(cache)
+            await db_session.commit()
+    except Exception as e:
+        logger.warning(f"[InstantMemory] 保存记忆到数据库失败: {e}")
+
+
+async def _cleanup_expired_db() -> None:
+    """清理数据库中过期的记忆"""
+    try:
+        now = datetime.now()
+        async with get_session() as db_session:
+            await db_session.execute(delete(InstantMemoryCache).where(InstantMemoryCache.expire_time <= now))
+            await db_session.commit()
+    except Exception as e:
+        logger.warning(f"[InstantMemory] 清理过期记忆失败: {e}")
+
+
+def format_memories_for_injection(memories: list[InstantMemory]) -> str:
+    """将记忆列表格式化为注入消息队列的文本"""
+    if not memories:
+        return ""
+
+    lines = ["以下是此前的即时记忆，帮助你了解之前发生的事情："]
+    for mem in memories:
+        time_str = mem["create_time"].strftime("%H:%M")
+        name_part = f"[{mem['name']}] " if mem.get("name") else ""
+        lines.append(f"- ({time_str}) {name_part}{mem['content']}")
+    return "\n".join(lines)
 
 
 async def post_instant_memory(
@@ -57,15 +136,17 @@ async def post_instant_memory(
 
     expire_hours = min(16, max(0.1, expire_hours))
 
-    instant_memories.append(
-        {
-            "content": content,
-            "create_time": datetime.now(),
-            "expire_time": datetime.now() + timedelta(hours=expire_hours),
-            "ctx_id": ctx_id,
-            "name": name,
-        }
-    )
+    memory: InstantMemory = {
+        "content": content,
+        "create_time": datetime.now(),
+        "expire_time": datetime.now() + timedelta(hours=expire_hours),
+        "ctx_id": ctx_id,
+        "name": name,
+    }
+    instant_memories.append(memory)
+
+    # 持久化到数据库
+    await _save_memory_to_db(memory)
 
     logger.info(f"[InstantMemory] 添加新记忆: {content[:50]}...")
 
@@ -133,6 +214,7 @@ class InstantMemoryManager:
         self.message_cache: list[str] = []
         self.cursor: int = 0
         self._generate_lock = asyncio.Lock()
+        self.last_generate_time: Optional[datetime] = None
 
     def add_messages_to_cache(self, messages: list[str]) -> None:
         self.message_cache.extend(messages)
@@ -181,8 +263,11 @@ class InstantMemoryManager:
                         "name": mem.get("name", ""),
                     }
                     new_memories.append(memory)
+                    # 持久化每条记忆
+                    await _save_memory_to_db(memory)
 
                 instant_memories.extend(new_memories)
+                self.last_generate_time = datetime.now()
                 logger.info(f"[InstantMemory:{self.session_id}] 生成了 {len(new_memories)} 条即时记忆")
 
                 await _deduplicate(self.lang_str)
@@ -192,3 +277,32 @@ class InstantMemoryManager:
             except Exception as e:
                 logger.exception(f"[InstantMemory:{self.session_id}] 生成即时记忆失败: {e}")
                 return []
+
+    async def maybe_generate(
+        self,
+        min_messages: int = 5,
+        cooldown_seconds: int = 600,
+    ) -> list[InstantMemory]:
+        """条件触发即时记忆生成。
+
+        在消息处理流程中调用，避免每次消息都触发 LLM 调用。
+
+        Args:
+            min_messages: 缓存中最少消息数才触发生成
+            cooldown_seconds: 距上次生成的最短间隔（秒）
+
+        Returns:
+            生成的新记忆列表，未触发时返回空列表
+        """
+        now = datetime.now()
+
+        if self._generate_lock.locked():
+            return []
+
+        if len(self.message_cache) < min_messages:
+            return []
+
+        if self.last_generate_time is not None and (now - self.last_generate_time).total_seconds() < cooldown_seconds:
+            return []
+
+        return await self.generate()

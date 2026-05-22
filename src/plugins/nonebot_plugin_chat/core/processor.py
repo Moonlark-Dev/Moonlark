@@ -236,8 +236,9 @@ class MessageProcessor:
         if item[0] == "event":
             # 处理事件类型队列项
             event_prompt, trigger_mode = item[1]  # type: ignore
+            additional_info = await self.generate_event_additional_info()
             content = await self.session.text(
-                "prompt.event_template", datetime.now().strftime("%H:%M:%S"), event_prompt
+                "prompt.event_template", datetime.now().strftime("%H:%M:%S"), event_prompt, additional_info
             )
             await self.openai_messages.append_user_message(content)
             self.token_bucket.add(0.6)
@@ -450,6 +451,10 @@ class MessageProcessor:
                     self.session.accumulated_text_length += len(cleaned)
                 logger.debug(f"Accumulated text length: {self.session.accumulated_text_length}")
 
+            # 消息入队后异步检查是否需要生成即时记忆
+            if not self.blocked:
+                asyncio.create_task(self._maybe_generate_instant_memory())
+
     def get_message_content_list(self) -> list[str]:
         l = []
         for msg in self.openai_messages.messages:
@@ -576,6 +581,35 @@ class MessageProcessor:
                     return True
         return False
 
+    async def generate_event_additional_info(self) -> str:
+        """生成事件的 additional_info，包含 token、当前状态和正在做的事"""
+        from .ego import consciousness
+
+        status_manager = get_status_manager()
+        mood, mood_reason = status_manager.get_status()
+        mood_text = await self.session.text(f"status.mood.{mood.value}")
+
+        state = await self.session.text(
+            "prompt_group.state",
+            mood_text,
+            status_manager.get_mood_retention(),
+            mood_reason,
+        )
+
+        # 获取正在做的事（查重）
+        recent_activities = "\n".join(
+            await self.filter_info_lines(
+                (await consciousness.get_recent_actions_text(self.session.lang_str)).splitlines()
+            )
+        )
+
+        return await self.session.text(
+            "prompt.event_additional_info",
+            round(self.token_bucket.get(), 2),
+            state,
+            recent_activities or await self.session.text("prompt.event_additional_info.no_activity"),
+        )
+
     async def generate_system_prompt(self) -> OpenAIMessage:
         fav_rule = await get_prompt_text("favorability")
 
@@ -652,6 +686,29 @@ class MessageProcessor:
 
         if manager.should_generate():
             await manager.generate()
+
+    async def _maybe_generate_instant_memory(self) -> None:
+        """在消息处理流程中条件触发即时记忆生成。
+
+        复用 InstantMemoryManager 的缓存和锁机制，
+        避免与 generate_instant_memory() 重复处理消息。
+        """
+        manager = self.session.instant_memory_manager
+
+        messages = [
+            f"[{msg['send_time'].strftime('%H:%M:%S')}][{msg['nickname']}]({msg['message_id']}): {msg['content']}"
+            for msg in self.session.get_message_for_instant_memory()
+        ]
+
+        if not messages:
+            # 没有新消息，直接尝试用已有缓存触发
+            await manager.maybe_generate(min_messages=5, cooldown_seconds=600)
+            return
+
+        manager.add_messages_to_cache(messages)
+        manager.cursor = len(self.session.cached_messages)
+
+        await manager.maybe_generate(min_messages=5, cooldown_seconds=600)
 
     async def check_message_truncated(self) -> bool:
         chat_history = await self.session.get_cached_messages_string(length=10, include_self_message=False)

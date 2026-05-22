@@ -106,6 +106,8 @@ class GroupSession(BaseSession):
 
     async def process_timer(self) -> None:
         await super().process_timer()
+        # 定期确保 system prompt 存在（防止意外丢失）
+        await self.processor.openai_messages._ensure_system_prompt()
         dt = datetime.now()
         if self.message_queue or self.processor.blocked or not self.cached_messages:
             return

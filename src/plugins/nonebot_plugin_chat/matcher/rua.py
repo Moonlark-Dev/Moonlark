@@ -13,13 +13,13 @@ from nonebot_plugin_alconna import (
     on_alconna,
 )
 from nonebot_plugin_chat.config import config
-from nonebot_plugin_chat.core.session import get_group_session_forced, get_private_session
+from nonebot_plugin_chat.core.session import create_private_session, get_group_session_forced, get_session_directly
 from nonebot_plugin_chat.models import RuaData
 from nonebot_plugin_chat.types import RuaAction
 from nonebot_plugin_larkuser.utils.nickname import get_nickname
 from nonebot_plugin_larkuser.utils.user import get_user
 from nonebot_plugin_larkutils.group import get_group_id
-from nonebot_plugin_larkutils.user import get_user_id
+from nonebot_plugin_larkutils.user import get_user_id, is_private_message
 from nonebot_plugin_orm import get_session
 from nonebot_plugin_ranking import generate_image
 from nonebot_plugin_ranking.types import RankingData
@@ -80,12 +80,16 @@ async def execute_rua(
     group_id: str,
     user_id: str,
     action: RuaAction,
+    is_private: bool = False,
 ) -> None:
     nickname = await get_nickname(user_id, bot, event)
     message_id = get_message_id(event)
 
-    if event.get_session_id() == user_id:
-        session = await get_private_session(user_id, target, bot)
+    if is_private:
+        try:
+            session = get_session_directly(group_id)
+        except KeyError:
+            session = await create_private_session(group_id, target, bot)
     else:
         session = await get_group_session_forced(group_id, target, bot)
 
@@ -109,6 +113,7 @@ async def _(
     target: Target = Depends(_get_target),
     group_id: str = get_group_id(),
     user_id: str = get_user_id(),
+    is_private: bool = is_private_message(),
 ) -> None:
     user = await get_user(user_id)
     try:
@@ -135,7 +140,7 @@ async def _(
         await lang.send("rua.success", user_id, await lang.text(f"rua.actions.{target_action['name']}.name", user_id))
 
     if not switch_only:
-        await execute_rua(bot, event, target, group_id, user_id, target_action)
+        await execute_rua(bot, event, target, group_id, user_id, target_action, is_private)
 
 
 @matcher.assign("action")
@@ -191,6 +196,7 @@ async def _(
     target: Target = Depends(_get_target),
     group_id: str = get_group_id(),
     user_id: str = get_user_id(),
+    is_private: bool = is_private_message(),
 ) -> None:
     user = await get_user(user_id)
     try:
@@ -200,7 +206,7 @@ async def _(
     if user.get_fav() < target_action["unlock_favorability"]:
         await lang.finish("rua.favorability_error", user_id, target_action["unlock_favorability"], user.get_fav())
 
-    await execute_rua(bot, event, target, group_id, user_id, target_action)
+    await execute_rua(bot, event, target, group_id, user_id, target_action, is_private)
 
 
 @matcher.assign("$main")
@@ -210,6 +216,7 @@ async def _(
     target: Target = Depends(_get_target),
     group_id: str = get_group_id(),
     user_id: str = get_user_id(),
+    is_private: bool = is_private_message(),
 ) -> None:
     selected_action = await get_selected_action(user_id)
-    await execute_rua(bot, event, target, group_id, user_id, selected_action)
+    await execute_rua(bot, event, target, group_id, user_id, selected_action, is_private)

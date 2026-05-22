@@ -129,7 +129,7 @@ prompt_group:
     现在的时间为：{}
     我知道你的知识库存在截止日期，但请记住这个**现在的**时间，以便在必要时进行参考。
     不要在回复中将当下的时间点认定为未来。
-  instant_mem: '- [{0}](过期于 {1}): {2}'
+  instant_mem: '- [{0}](expires {1}): {2}'
   user_profile_not_found: '暂无该成员的更多信息。'
   state: |
     当前状态：
@@ -337,12 +337,12 @@ prompt:
     {}
   event_additional_info: |
     <additional_info>
-    当前 Token: {}
+    Current Token: {}
     {}
-    最近做的事:
+    Recent activities:
     {}
     </additional_info>
-  event_additional_info.no_activity: "暂无"
+  event_additional_info.no_activity: "None"
   note:
     format: "- {} (#{}，创建于 {})"
     none: "暂无"
@@ -761,6 +761,7 @@ tools_desc:
     deal_type: "决策类型：'ready' 表示准备睡觉，'delay' 表示延迟。"
     delay_minutes: "延迟的分钟数（仅当 deal_type 为 'delay' 时有效），最大 30 分钟。"
     reason: "延迟的原因（仅当 deal_type 为 'delay' 时可选）。"
+
   request_sleep:
     desc: |
       向你的"EGO"申请睡觉。
