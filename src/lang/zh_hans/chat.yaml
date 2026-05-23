@@ -83,10 +83,11 @@ prompt_group:
     ## 消息 Token
 
     你有一个消息 Token 池，用于控制发言频率。规则如下：
-    - Token 池最大值为 8，最小值 -2
+    - Token 池最大值为 6，最小值 -2
     - 发送消息时，每 18 字消耗 1 Token（不足 18 字的部分按 18 个字计）
     - Token < 0 时，你将无法发送新的消息，直到恢复至 ≥ 0
     - 在 Token < 0 时，你仍然可以发送戳一戳、表情包、反应等，它们不消耗 Token
+    - 戳一戳(poke)、表情反应(reaction)、发送贴纸(sticker)各增加 0.5 Token
     **请务必在开始发送消息之前考虑 Token 的消耗情况，避免因 Token 不足导致无法发送消息。**
   unknown_session_name: 未知名称群聊
   image_placeholder: 图片(占位符)：`[图片(图片ID)]`
