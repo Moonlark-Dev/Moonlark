@@ -38,9 +38,20 @@ move:
   ok: 已移动 {} 个 {} 到位置 {}
   target_item_error: 只有同类物品可以堆叠
 use:
+  invalid_count: 使用数量必须大于 0
   not_enough: 您没有足够的物品，当前持有数量：{}
   unsupported_count: 此物品不支持 --count 参数
   not_useable: 此物品不可使用
+  gift_deprecated: 礼物物品暂不再通过 /bag use 使用，请改用 /present 赠送。
+  success: 物品使用成功。
+  failed: 物品使用失败，请稍后重试。
+present:
+  invalid_count: 赠送数量必须大于 0
+  not_enough: 您没有足够的礼物，当前持有数量：{}
+  not_gift: 这个物品不是礼物，不能通过 /present 赠送。
+  not_useable: 这个礼物暂时无法赠送。
+  success: 已赠送 {} 个 {}。
+  failed: 礼物赠送失败，请稍后重试。
 help:
   description: 背包
   details: 查看，处理，使用背包中的物品
@@ -52,7 +63,8 @@ help:
   usage6: bag drop <INDEX> [count] (丢弃物品)
   usage7: bag tidy (整理背包)
   usage8: bag move <from> <to> (移动物品)
-  usage9: bag use <INDEX> [-c|--count <count>] [argv...] (使用物品)
+  usage9: bag use <INDEX> [-c|--count <count>] (兼容旧物品使用入口，不支持礼物)
+  usage10: present <INDEX> [-c|--count <count>] (赠送礼物)
 overflow_list:
   title_protect: 保护中的物品
   title_getable: 可获取的物品

@@ -13,4 +13,11 @@ commands:
       - help.usage7
       - help.usage8
       - help.usage9
+      - help.usage10
+    category: setting
+  present:
+    description: help.description
+    details: help.details
+    usages:
+      - help.usage10
     category: setting
