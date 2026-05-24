@@ -724,7 +724,6 @@ class MessageProcessor:
                     generate_message(await self.session.text("message_truncate_check.system"), "system"),
                     generate_message(chat_history, "user"),
                 ],
-                reasoning_effort="low",
                 identify="Truncate Check",
             )
             result = model_response.strip().lower()

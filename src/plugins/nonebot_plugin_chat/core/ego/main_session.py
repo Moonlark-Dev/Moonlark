@@ -305,6 +305,11 @@ class MainSession:
                         break
             self.state = StateEnum.ACTIVATE
             if was_sleeping:
+                for index in range(len(self.action_history)):
+                    start_time, action, stop_time = self.action_history[-(index + 1)]
+                    if action.type == "sleep" and stop_time is None:
+                        self.action_history[-(index + 1)] = (start_time, action, dt)
+                        break
                 self.sleep_controller.on_wake_up()
 
         # 困倦值检查
@@ -598,12 +603,14 @@ class MainSession:
         if self.state != StateEnum.SLEEPING:
             return
         dt = datetime.now()
+        interrupted = False
+        result = None
         for index in range(len(self.action_history)):
-            start_time, action, stop_time = self.action_history[-index]
-            if action.type == "sleep" and stop_time is None and start_time + timedelta(minutes=action.time) > dt:
-                self.action_history[-index] = (start_time, action, dt)
-                interrupted = True
-                if interrupted and session is not None:
+            start_time, action, stop_time = self.action_history[-(index + 1)]
+            if action.type == "sleep" and stop_time is None:
+                self.action_history[-(index + 1)] = (start_time, action, dt)
+                if start_time + timedelta(minutes=action.time) > dt:
+                    interrupted = True
                     result = await lang.text(
                         "main_session.wake_up.interrupted",
                         self.lang_str,
@@ -612,9 +619,6 @@ class MainSession:
                         (dt - start_time).total_seconds() / 60,
                     )
                 break
-        else:
-            interrupted = False
-            result = None
         self.state = StateEnum.ACTIVATE
         self.sleep_controller.on_wake_up()
         if interrupted and result and session:
