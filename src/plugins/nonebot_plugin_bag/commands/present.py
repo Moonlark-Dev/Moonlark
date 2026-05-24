@@ -52,7 +52,7 @@ async def _trigger_gift_response(
         )
 
         nickname = await get_nickname(user_id, bot, event)
-        mock_stack = SimpleNamespace(user_id=user_id, count=1)
+        mock_stack = SimpleNamespace(user_id=user_id, count=1, data={})
         gift_prompt = await gift_item.getGiftPrompt(mock_stack, nickname)
 
         # 私聊：直接在当前会话推送事件
@@ -74,7 +74,7 @@ async def _trigger_gift_response(
         await _send_proactive_gift(bot, user_id, nickname, item_name)
 
     except Exception as e:
-        logger.warning(f"触发礼物回复失败: {e}")
+        logger.exception("触发礼物回复失败")
 
 
 async def _send_proactive_gift(bot: Bot, user_id: str, nickname: str, item_name: str) -> None:
