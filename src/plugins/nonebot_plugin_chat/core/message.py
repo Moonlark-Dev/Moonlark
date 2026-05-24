@@ -43,6 +43,7 @@ class MessageQueue:
         # 在初始化时从数据库恢复消息队列
         self.inserted_messages = []
         self.trace_id: str = uuid.uuid4().hex
+        self.created_at: datetime = datetime.now()
 
     async def reset_chat_history(self) -> list[OpenAIMessage]:
         messages = copy.deepcopy(self.messages)
@@ -148,6 +149,7 @@ class MessageQueue:
         """重置消息队列并清空数据库缓存"""
         self.messages = []
         self.inserted_messages = []
+        self.created_at = datetime.now()
         async with get_session() as session:
             await session.execute(delete(MessageQueueCache).where(MessageQueueCache.group_id == group_id))
             await session.commit()
@@ -185,6 +187,7 @@ class MessageQueue:
                             trace_id=self.trace_id,
                             message_json=msg,
                             message_hash=sha256.digest(),
+                            updated_time=self.created_at
                         )
                         session.add(cache)
                     await session.commit()
