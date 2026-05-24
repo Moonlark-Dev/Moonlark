@@ -3,9 +3,7 @@ from ..base.stack import ItemStack
 from ..registry import ITEMS, ResourceLocation
 
 
-async def get_item(
-    location: ResourceLocation, user_id: str, count: int = 1, data: dict[str, Any] = {}
-) -> ItemStack:
+async def get_item(location: ResourceLocation, user_id: str, count: int = 1, data: dict[str, Any] = {}) -> ItemStack:
     """通过 location 获取物品
 
     Args:
