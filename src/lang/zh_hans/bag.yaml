@@ -64,7 +64,10 @@ help:
   usage7: bag tidy (整理背包)
   usage8: bag move <from> <to> (移动物品)
   usage9: bag use <INDEX> [-c|--count <count>] (兼容旧物品使用入口，不支持礼物)
-  usage10: present <INDEX> [-c|--count <count>] (赠送礼物)
+present_help:
+  description: 赠送礼物
+  details: 将背包中的礼物赠送给他人
+  usage1: present <INDEX> [-c|--count <count>] (赠送礼物)
 overflow_list:
   title_protect: 保护中的物品
   title_getable: 可获取的物品
