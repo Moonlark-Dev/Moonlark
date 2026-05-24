@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Optional
 from nonebot_plugin_orm import Model
 from sqlalchemy import String, DateTime
 from sqlalchemy.orm import Mapped, mapped_column
@@ -15,5 +16,6 @@ class LastSeenRecord(Model):
     user_id: Mapped[str] = mapped_column(String(128), primary_key=True)
     session_id: Mapped[str] = mapped_column(String(128), primary_key=True)
     last_seen: Mapped[datetime] = mapped_column(DateTime)
+    previous_last_seen: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, default=None)
 
     __table_args__ = {"extend_existing": True}
