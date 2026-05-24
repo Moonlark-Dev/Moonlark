@@ -82,9 +82,7 @@ async def _send_proactive_gift(bot: Bot, user_id: str, nickname: str, item_name:
     from sqlalchemy import select
 
     async with get_session() as db_session:
-        result = await db_session.execute(
-            select(PrivateChatSession).where(PrivateChatSession.user_id == user_id)
-        )
+        result = await db_session.execute(select(PrivateChatSession).where(PrivateChatSession.user_id == user_id))
         chat_session = result.scalar_one_or_none()
 
     if not chat_session or not chat_session.session_key:
