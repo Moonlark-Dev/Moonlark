@@ -104,17 +104,46 @@ async def execute_rua(
     await session.handle_rua(nickname, user_id, action, message_id)
 
 
-@matcher.assign("action.target_index")
+@matcher.assign("action")
 async def _(
     bot: Bot,
     event: Event,
-    target_index: int,
     arp: Arparma,
+    target_index: int | None = None,
     target: Target = Depends(_get_target),
     group_id: str = get_group_id(),
     user_id: str = get_user_id(),
     is_private: bool = is_private_message(),
 ) -> None:
+    # 无参数：显示动作列表
+    if target_index is None:
+        user = await get_user(user_id)
+        selected_action = await get_selected_action(user_id)
+        actions = []
+        for action_id, action in RUA_ACTIONS.items():
+            if user.get_fav() < action["unlock_favorability"]:
+                continue
+            if action["name"] == selected_action["name"]:
+                actions.append(
+                    await lang.text(
+                        "rua.action_list_item",
+                        user_id,
+                        "*",
+                        await lang.text(f"rua.actions.{action['name']}.name", user_id),
+                    )
+                )
+            else:
+                actions.append(
+                    await lang.text(
+                        "rua.action_list_item",
+                        user_id,
+                        action_id,
+                        await lang.text(f"rua.actions.{action['name']}.name", user_id),
+                    )
+                )
+        await lang.finish("rua.action_list", user_id, "\n".join(actions))
+
+    # 有参数：切换/执行动作
     user = await get_user(user_id)
     try:
         target_action = RUA_ACTIONS[target_index]
@@ -143,32 +172,6 @@ async def _(
         await execute_rua(bot, event, target, group_id, user_id, target_action, is_private)
 
 
-@matcher.assign("action")
-async def _(user_id: str = get_user_id()) -> None:
-    user = await get_user(user_id)
-    selected_action = await get_selected_action(user_id)
-    actions = []
-    for action_id, action in RUA_ACTIONS.items():
-        if user.get_fav() < action["unlock_favorability"]:
-            continue
-        if action["name"] == selected_action["name"]:
-            actions.append(
-                await lang.text(
-                    "rua.action_list_item", user_id, "*", await lang.text(f"rua.actions.{action['name']}.name", user_id)
-                )
-            )
-        else:
-            actions.append(
-                await lang.text(
-                    "rua.action_list_item",
-                    user_id,
-                    action_id,
-                    await lang.text(f"rua.actions.{action['name']}.name", user_id),
-                )
-            )
-    await lang.finish("rua.action_list", user_id, "\n".join(actions))
-
-
 @matcher.assign("rank")
 async def _(user_id: str = get_user_id()) -> None:
     async with get_session() as session:
@@ -188,35 +191,25 @@ async def _(user_id: str = get_user_id()) -> None:
     await matcher.finish(UniMessage().image(raw=image, name="image.png"))
 
 
-@matcher.assign("target_index")
-async def _(
-    bot: Bot,
-    event: Event,
-    target_index: int,
-    target: Target = Depends(_get_target),
-    group_id: str = get_group_id(),
-    user_id: str = get_user_id(),
-    is_private: bool = is_private_message(),
-) -> None:
-    user = await get_user(user_id)
-    try:
-        target_action = RUA_ACTIONS[target_index]
-    except KeyError:
-        await lang.finish("rua.index_error", user_id)
-    if user.get_fav() < target_action["unlock_favorability"]:
-        await lang.finish("rua.favorability_error", user_id, target_action["unlock_favorability"], user.get_fav())
-
-    await execute_rua(bot, event, target, group_id, user_id, target_action, is_private)
-
-
 @matcher.assign("$main")
 async def _(
     bot: Bot,
     event: Event,
+    target_index: int | None = None,
     target: Target = Depends(_get_target),
     group_id: str = get_group_id(),
     user_id: str = get_user_id(),
     is_private: bool = is_private_message(),
 ) -> None:
-    selected_action = await get_selected_action(user_id)
-    await execute_rua(bot, event, target, group_id, user_id, selected_action, is_private)
+    if target_index is not None:
+        user = await get_user(user_id)
+        try:
+            target_action = RUA_ACTIONS[target_index]
+        except KeyError:
+            await lang.finish("rua.index_error", user_id)
+        if user.get_fav() < target_action["unlock_favorability"]:
+            await lang.finish("rua.favorability_error", user_id, target_action["unlock_favorability"], user.get_fav())
+        await execute_rua(bot, event, target, group_id, user_id, target_action, is_private)
+    else:
+        selected_action = await get_selected_action(user_id)
+        await execute_rua(bot, event, target, group_id, user_id, selected_action, is_private)
