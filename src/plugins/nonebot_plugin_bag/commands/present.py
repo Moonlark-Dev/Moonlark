@@ -53,22 +53,24 @@ async def _trigger_gift_response(
 
         nickname = await get_nickname(user_id, bot, event)
         mock_stack = SimpleNamespace(user_id=user_id, count=1)
+        gift_prompt = await gift_item.getGiftPrompt(mock_stack, nickname)
 
+        # 私聊：直接在当前会话推送事件
+        if is_private:
+            target = get_target(event, bot)
+            session = await create_private_session(group_id, target, bot)
+            await session.add_event(gift_prompt, trigger_mode="all")
+            return
+
+        # 群聊且已启用 chat：直接在当前会话推送事件
         try:
             session = get_session_directly(group_id)
-            gift_prompt = await gift_item.getGiftPrompt(mock_stack, nickname)
             await session.add_event(gift_prompt, trigger_mode="all")
             return
         except KeyError:
             pass
 
-        if is_private:
-            target = get_target(event, bot)
-            session = await create_private_session(group_id, target, bot)
-            gift_prompt = await gift_item.getGiftPrompt(mock_stack, nickname)
-            await session.add_event(gift_prompt, trigger_mode="all")
-            return
-
+        # 群聊且未启用 chat：发起主动私聊
         await _send_proactive_gift(bot, user_id, nickname, item_name)
 
     except Exception as e:
