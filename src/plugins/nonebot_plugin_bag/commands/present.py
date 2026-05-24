@@ -108,21 +108,19 @@ async def _send_proactive_gift(bot: Bot, user_id: str, nickname: str, item_name:
         logger.info(f"礼物主动私聊触发回复: user={user_id}, gift={item_name}")
 
 
-@present.assign("$main")
-async def _list(user_id: str = get_user_id()) -> None:
-    await _list_gifts(user_id)
-
-
-@present.assign("index")
+@present.handle()
 async def _(
     bot: Bot,
     event: Event,
-    index: int,
+    index: int | None = None,
     count: int = 1,
     user_id: str = get_user_id(),
     is_private: bool = is_private_message(),
     group_id: str = get_group_id(),
 ) -> None:
+    if index is None:
+        await _list_gifts(user_id)
+        return
     if count <= 0:
         await lang.finish("present.invalid_count", user_id)
 
