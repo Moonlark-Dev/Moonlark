@@ -3,7 +3,7 @@ from types import SimpleNamespace
 
 from nonebot import logger
 from nonebot.adapters import Bot, Event
-from nonebot_plugin_alconna import Alconna, Args, Option, Target, UniMessage, on_alconna
+from nonebot_plugin_alconna import Alconna, Args, Option, Target, UniMessage, get_target, on_alconna
 from nonebot_plugin_items.base.gift import GiftItem
 from nonebot_plugin_larkuser import get_nickname, get_user, patch_matcher
 from nonebot_plugin_larkutils.group import get_group_id
@@ -63,7 +63,7 @@ async def _trigger_gift_response(
             pass
 
         if is_private:
-            target = Target(event)
+            target = get_target(event, bot)
             session = await create_private_session(group_id, target, bot)
             gift_prompt = await gift_item.getGiftPrompt(mock_stack, nickname)
             await session.add_event(gift_prompt, trigger_mode="all")
