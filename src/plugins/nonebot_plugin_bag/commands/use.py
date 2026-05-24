@@ -1,7 +1,6 @@
 from nonebot import logger
 from nonebot.adapters import Bot, Event
 from nonebot_plugin_alconna import UniMessage
-from nonebot_plugin_items.base.gift import GiftItem
 from nonebot_plugin_items.exceptions import NotUseableError
 
 from ..utils.use import get_item
@@ -28,9 +27,6 @@ async def _(
     if count > item.stack.count:
         await item.unlock_item()
         await lang.finish("use.not_enough", user_id, item.stack.count)
-    if isinstance(item.stack.item, GiftItem):
-        await item.unlock_item()
-        await lang.finish("use.gift_deprecated", user_id)
     if not item.stack.item.getProperties()["multi_use"] and count != 1:
         await item.unlock_item()
         await lang.finish("use.unsupported_count", user_id)

@@ -42,16 +42,18 @@ use:
   not_enough: 您没有足够的物品，当前持有数量：{}
   unsupported_count: 此物品不支持 --count 参数
   not_useable: 此物品不可使用
-  gift_deprecated: 礼物物品暂不再通过 /bag use 使用，请改用 /present 赠送。
   success: 物品使用成功。
   failed: 物品使用失败，请稍后重试。
 present:
+  list_title: "【礼物列表】"
+  list_empty: 背包中没有礼物。
+  list_item: "[{}] {} x{}"
   invalid_count: 赠送数量必须大于 0
   not_enough: 您没有足够的礼物，当前持有数量：{}
   not_gift: 这个物品不是礼物，不能通过 /present 赠送。
-  not_useable: 这个礼物暂时无法赠送。
-  success: 已赠送 {} 个 {}。
+  success: "你送给了 Moonlark {} x{}！\n好感度上升了 {}"
   failed: 礼物赠送失败，请稍后重试。
+  proactive_cooldown: 礼物已送出，Moonlark 稍后会感谢你的~
 help:
   description: 背包
   details: 查看，处理，使用背包中的物品
@@ -66,7 +68,8 @@ help:
   usage9: bag use <INDEX> [-c|--count <count>] (兼容旧物品使用入口，不支持礼物)
 present_help:
   description: 赠送礼物
-  details: 将背包中的礼物赠送给他人
+  details: 将背包中的礼物赠送给 Moonlark
+  usage0: present (查看礼物列表)
   usage1: present <INDEX> [-c|--count <count>] (赠送礼物)
 overflow_list:
   title_protect: 保护中的物品
