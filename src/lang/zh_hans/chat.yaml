@@ -83,10 +83,16 @@ prompt_group:
     ## 消息 Token
 
     你有一个消息 Token 池，用于控制发言频率。规则如下：
-    - Token 池最大值为 8，最小值 -2
+    - Token 池最大值为 6，最小值 -2
     - 发送消息时，每 18 字消耗 1 Token（不足 18 字的部分按 18 个字计）
     - Token < 0 时，你将无法发送新的消息，直到恢复至 ≥ 0
     - 在 Token < 0 时，你仍然可以发送戳一戳、表情包、反应等，它们不消耗 Token
+    - 收到普通消息增加 0.8 Token（消息 ≥ 30 字时增加 1 Token）
+    - 收到事件增加 0.6 Token
+    - 被 @ 提及时额外增加 1 Token
+    - 被戳一戳(poke，需对方戳你)增加 0.5 Token
+    - 收到表情反应(reaction)增加 0.5 Token
+    - 发送贴纸(sticker)增加 0.5 Token
     **请务必在开始发送消息之前考虑 Token 的消耗情况，避免因 Token 不足导致无法发送消息。**
   unknown_session_name: 未知名称群聊
   image_placeholder: 图片(占位符)：`[图片(图片ID)]`
@@ -164,6 +170,29 @@ prompt_group:
   image_describe_user: |
     # Action
     请基于上述规则，描述提供的图片：
+
+  image_query_system: |
+    # Role
+    你是一位精通视觉信息提取与语义转译的专家。你的任务是根据用户的查询指令，从图片中提取特定的信息。
+
+    # Objective
+    请根据用户的查询指令，从图片中提取相关信息并进行回答。回答必须客观、准确，直接针对用户的查询。
+
+    # Constraints & Guidelines
+    1.  **专注查询**：只回答用户查询的内容，不要描述图片中与查询无关的部分。
+    2.  **准确性**：确保提取的信息准确无误，特别是文字、数字等细节。
+    3.  **无信息处理**：如果图片中不包含用户查询的信息，请明确告知"图片中未找到相关信息"。
+    4.  **语气风格**：使用客观、陈述性的语言。
+
+    # Additional Information
+    当前时间: {}
+
+  image_query_user: |
+    # Query
+    {}
+
+    # Action
+    请基于上述规则，根据查询指令从提供的图片中提取信息：
 
 
 note:
@@ -339,7 +368,18 @@ prompt:
     to_me: "{} 戳了戳你。"
     to_other: "{} 戳了戳 {}。"
   reaction: "{} 回应了你的消息“{}”: {}"
-  event_template: "[{}]: {}"
+  event_template: |
+    [{}]: {}
+
+    {}
+  event_additional_info: |
+    <additional_info>
+    当前 Token: {}
+    {}
+    最近做的事:
+    {}
+    </additional_info>
+  event_additional_info.no_activity: "暂无"
   note:
     format: "- {} (#{}，创建于 {})"
     none: "暂无"
@@ -620,7 +660,14 @@ tools_desc:
       - 任务状态将变为 stopped
     task_id: "要停止的任务的 ID"
 
- 
+  query_image:
+    desc: |
+      对聊天中已出现的某张图片进行针对性的内容查询。
+      **使用场景**: 已有的图片描述信息不足以做出回复（例如你想要知道图片中某个特定细节）
+      例如：用户 XiaoDeng3386 发送了一个战绩截图，但是这张截图的描述并没有包含 XiaoDeng3386 的战绩，可以调用此工具，并在 `query_prompt` 中输入"XiaoDeng3386 的战绩"获取有关信息。
+    image_id: "目标图片的唯一标识 ID，格式如 'img_1'，从你收到的消息中的 [图片(ID:xxx): 描述] 中获取。"
+    query_prompt: "自然语言形式的查询指令，描述本次需要从图片中提取的具体信息。"
+
   send_message:
     desc: "作为 Moonlark 发送一条消息到群聊中。"
     message_content: "要发送的消息内容，可以使用 @群友的昵称 来提及某位群友。"
@@ -780,6 +827,16 @@ tools_desc:
       **何时必须调用**：你被要求“去做某事”时调用，例如“去吃点东西”。不要用于机器人回复用户消息或获取外部知识。
     do: '想要做的事的名字，例如："吃午饭"、"玩一会游戏"'
     duration: '建议的持续时间（分钟），意识会话会参考这个值但不一定完全采纳。'
+
+  change_sleep_status:
+    desc: |
+      处理犯困提示，决定是否准备睡觉。
+      **何时必须调用**：当你收到犯困提示时，使用此工具来确认你是否准备睡觉。
+      - 选择 `ready`：确认准备去睡觉
+      - 选择 `delay`：延迟一段时间再考虑睡觉，可以指定延迟的分钟数和原因
+    deal_type: "决策类型：'ready' 表示准备睡觉，'delay' 表示延迟。"
+    delay_minutes: "延迟的分钟数（仅当 deal_type 为 'delay' 时有效），最大 30 分钟。"
+    reason: "延迟的原因（仅当 deal_type 为 'delay' 时可选）。"
 
   request_sleep:
     desc: |
@@ -1159,7 +1216,7 @@ main_session:
 
     {{
         "type": "sleep",
-        "time": 20,       // 休息的时间，单位为分钟。
+        "time": 420,       // 休息的时间，单位为分钟。
     }}
   action_list: |
     ### 向用户发送私聊
@@ -1185,7 +1242,7 @@ main_session:
     {{
         "type": "do",
         "information": "XXX",         // 尽量详细的事件描述，例如：吃中午饭（小鱼干）。该字段必须是一件具体的事，不能是“玩一会游戏或者看看番剧”这样模糊的表达。
-        "estimated_time": 20          // 这个事件预计持续的时间单位为分钟。
+        "estimated_time": 60          // 这个事件预计持续的时间单位为分钟。
     }}
 
     ### 写博客
@@ -1313,19 +1370,27 @@ main_session:
     result_approved: "已批准睡觉申请，正在启动睡觉流程。"
     result_denied: "已拒绝睡觉申请。"
     error: "睡觉申请处理出错：{}"
+  sleep_decision:
+    ready_approved: "已确认准备睡觉，正在启动睡觉流程。"
+    delay_approved: "已延迟 {} 分钟再考虑睡觉。原因：{}"
+    no_reason: "未指定原因"
+    error: "睡眠决策处理出错：{}"
   latest_event:
     boredom_thresold: 你感到有些无聊，需要做一些事情来保持活力。
     task_finished: 你刚刚结束了一个任务（{request_text}），你可以继续观望群聊（`skip`）或决定下一步的行动。
     chat_request: 会话 {trigger_from} 请求进行 {request_text} 任务。你可以查看该会话最近的聊天记录获取详细的信息。
     ready_sleep: 你感觉有点困了，决定去睡觉。
 sleep:
-  drowsy_prompt: "[提示]: 你感到有些犯困了。你可以使用 `request_sleep` 工具申请去睡觉。"
+  drowsy_prompt: "[提示]: 你感到有些犯困了。请使用 `change_sleep_status` 工具来决定是否准备睡觉。"
 
 request_action:
   timeout: "动作申请超时，意识会话未在规定时间内做出决定。"
 
 request_sleep:
   timeout: "睡觉申请超时，意识会话未在规定时间内做出决定。"
+
+sleep_decision:
+  timeout: "睡眠决策超时，意识会话未在规定时间内做出决定。"
 
 recall_fetch_failed: "消息内容获取失败"
 
@@ -1384,3 +1449,4 @@ message_truncate_check:
     **输入：**  
     `[10:28] Frank: 等一下`  
     **输出：** `true`（暗示后面还有话）
+

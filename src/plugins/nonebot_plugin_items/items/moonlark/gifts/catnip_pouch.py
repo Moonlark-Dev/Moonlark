@@ -19,7 +19,7 @@ class CatnipPouch(GiftItem):
     async def getDescription(self, stack: ItemStack) -> str:
         return await self.getText("gifts.catnip_pouch.description", stack.user_id)
 
-    async def on_gift_used(self, stack, *args, **kwargs):
+    async def on_gift_used(self, stack, **kwargs):
         pass
 
 
@@ -30,4 +30,4 @@ def get_location() -> ResourceLocation:
     return LOCATION
 
 
-ITEMS.registry(LOCATION, CatnipPouch(get_properties(True, 3, 99)))
+ITEMS.registry(LOCATION, CatnipPouch(get_properties(star=3, max_stack=99)))

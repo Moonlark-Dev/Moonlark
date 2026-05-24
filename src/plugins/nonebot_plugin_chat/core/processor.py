@@ -29,6 +29,7 @@ from .message import MessageQueue
 from ..models import ChatGroup, Sticker, UserProfile
 from ..types import CachedMessage
 
+from ..utils.image import query_image_content
 from ..utils.message import MessageParser, generate_message_string
 from ..utils import parse_message_to_string
 from ..utils.ai_agent import AskAISession
@@ -62,7 +63,10 @@ class MessageProcessor:
         self.loop_task = None
         self.consecutive_message_count = 0
         # Token bucket 相关属性
-        self.token_bucket = TokenBucket(10, -2)
+        self.token_bucket = TokenBucket(6, -2)
+
+    async def query_image(self, image_id: str, query_prompt: str) -> str:
+        return await query_image_content(image_id, query_prompt, self.session.lang_str)
 
     async def setup(self) -> None:
         self.functions = await self.tool_manager.select_tools("group")
@@ -236,8 +240,9 @@ class MessageProcessor:
         if item[0] == "event":
             # 处理事件类型队列项
             event_prompt, trigger_mode = item[1]  # type: ignore
+            additional_info = await self.generate_event_additional_info()
             content = await self.session.text(
-                "prompt.event_template", datetime.now().strftime("%H:%M:%S"), event_prompt
+                "prompt.event_template", datetime.now().strftime("%H:%M:%S"), event_prompt, additional_info
             )
             await self.openai_messages.append_user_message(content)
             self.token_bucket.add(0.6)
@@ -580,6 +585,35 @@ class MessageProcessor:
                     return True
         return False
 
+    async def generate_event_additional_info(self) -> str:
+        """生成事件的 additional_info，包含 token、当前状态和正在做的事"""
+        from .ego import consciousness
+
+        status_manager = get_status_manager()
+        mood, mood_reason = status_manager.get_status()
+        mood_text = await self.session.text(f"status.mood.{mood.value}")
+
+        state = await self.session.text(
+            "prompt_group.state",
+            mood_text,
+            status_manager.get_mood_retention(),
+            mood_reason,
+        )
+
+        # 获取正在做的事（查重）
+        recent_activities = "\n".join(
+            await self.filter_info_lines(
+                (await consciousness.get_recent_actions_text(self.session.lang_str)).splitlines()
+            )
+        )
+
+        return await self.session.text(
+            "prompt.event_additional_info",
+            round(self.token_bucket.get(), 2),
+            state,
+            recent_activities or await self.session.text("prompt.event_additional_info.no_activity"),
+        )
+
     async def generate_system_prompt(self) -> OpenAIMessage:
         fav_rule = await get_prompt_text("favorability")
 
@@ -617,6 +651,7 @@ class MessageProcessor:
     async def handle_poke(self, operator_name: str, target_name: str, to_me: bool) -> None:
         if to_me:
             await self.session.add_event(await self.session.text("prompt.poke.to_me", operator_name), "all")
+            self.token_bucket.add(0.5)
             # 注意：由于现在事件是异步处理的，blocked 标志不再需要在 poke 中设置
             # 事件会在 get_message 中被处理并直接生成回复
         else:
@@ -630,6 +665,7 @@ class MessageProcessor:
             )
 
     async def handle_reaction(self, message_string: str, operator_name: str, emoji_id: str) -> None:
+        self.token_bucket.add(0.5)
         await self.session.add_event(
             await self.session.text(
                 "prompt.reaction",
@@ -688,7 +724,6 @@ class MessageProcessor:
                     generate_message(await self.session.text("message_truncate_check.system"), "system"),
                     generate_message(chat_history, "user"),
                 ],
-                reasoning_effort="low",
                 identify="Truncate Check",
             )
             result = model_response.strip().lower()

@@ -43,6 +43,7 @@ class MessageQueue:
         # 在初始化时从数据库恢复消息队列
         self.inserted_messages = []
         self.trace_id: str = uuid.uuid4().hex
+        self.created_at: datetime = datetime.now()
 
     async def reset_chat_history(self) -> list[OpenAIMessage]:
         messages = copy.deepcopy(self.messages)
@@ -148,6 +149,7 @@ class MessageQueue:
         """重置消息队列并清空数据库缓存"""
         self.messages = []
         self.inserted_messages = []
+        self.created_at = datetime.now()
         async with get_session() as session:
             await session.execute(delete(MessageQueueCache).where(MessageQueueCache.group_id == group_id))
             await session.commit()
@@ -185,6 +187,7 @@ class MessageQueue:
                             trace_id=self.trace_id,
                             message_json=msg,
                             message_hash=sha256.digest(),
+                            updated_time=self.created_at,
                         )
                         session.add(cache)
                     await session.commit()
@@ -271,6 +274,10 @@ class MessageQueue:
             self.fetcher_task.cancel()
 
     async def _fetch_reply(self) -> FetchStatus:
+        from .ego.main_session import main_session
+
+        main_session.consecutive_replies += 1
+
         state = FetchStatus.SUCCESS
         messages = await self.get_messages()
         if get_role(messages[-1]) == "assistant":
@@ -284,6 +291,7 @@ class MessageQueue:
             False,
             identify="Chat",
             functions=await self.processor.tool_manager.select_tools("group"),
+            pre_function_call=self.processor.send_function_call_feedback,
             reasoning_effort="medium",
         )
         fetcher.session.set_custom_trace_id(self.trace_id)
