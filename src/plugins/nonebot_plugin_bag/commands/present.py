@@ -113,7 +113,7 @@ async def _list(user_id: str = get_user_id()) -> None:
     await _list_gifts(user_id)
 
 
-@present.handle()
+@present.assign("index")
 async def _(
     bot: Bot,
     event: Event,
