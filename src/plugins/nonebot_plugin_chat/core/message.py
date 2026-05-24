@@ -187,7 +187,7 @@ class MessageQueue:
                             trace_id=self.trace_id,
                             message_json=msg,
                             message_hash=sha256.digest(),
-                            updated_time=self.created_at
+                            updated_time=self.created_at,
                         )
                         session.add(cache)
                     await session.commit()
