@@ -112,7 +112,7 @@ async def _send_proactive_gift(bot: Bot, user_id: str, nickname: str, item_name:
 async def _(
     bot: Bot,
     event: Event,
-    index: int | None,
+    index: int | None = None,
     count: int = 1,
     user_id: str = get_user_id(),
     is_private: bool = is_private_message(),
