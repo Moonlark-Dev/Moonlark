@@ -29,6 +29,7 @@ from .message import MessageQueue
 from ..models import ChatGroup, Sticker, UserProfile
 from ..types import CachedMessage
 
+from ..utils.image import query_image_content
 from ..utils.message import MessageParser, generate_message_string
 from ..utils import parse_message_to_string
 from ..utils.ai_agent import AskAISession
@@ -62,7 +63,10 @@ class MessageProcessor:
         self.loop_task = None
         self.consecutive_message_count = 0
         # Token bucket 相关属性
-        self.token_bucket = TokenBucket(10, -2)
+        self.token_bucket = TokenBucket(6, -2)
+
+    async def query_image(self, image_id: str, query_prompt: str) -> str:
+        return await query_image_content(image_id, query_prompt, self.session.lang_str)
 
     async def setup(self) -> None:
         self.functions = await self.tool_manager.select_tools("group")
@@ -647,6 +651,7 @@ class MessageProcessor:
     async def handle_poke(self, operator_name: str, target_name: str, to_me: bool) -> None:
         if to_me:
             await self.session.add_event(await self.session.text("prompt.poke.to_me", operator_name), "all")
+            self.token_bucket.add(0.5)
             # 注意：由于现在事件是异步处理的，blocked 标志不再需要在 poke 中设置
             # 事件会在 get_message 中被处理并直接生成回复
         else:
@@ -660,6 +665,7 @@ class MessageProcessor:
             )
 
     async def handle_reaction(self, message_string: str, operator_name: str, emoji_id: str) -> None:
+        self.token_bucket.add(0.5)
         await self.session.add_event(
             await self.session.text(
                 "prompt.reaction",
