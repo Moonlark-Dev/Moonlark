@@ -151,4 +151,4 @@ async def _(
 
     await _trigger_gift_response(bot, event, user_id, group_id, is_private, gift_item, item_name)
 
-    await lang.finish("present.success", user_id, item_name, count, round(fav_increase, 6))
+    await lang.finish("present.success", user_id, item_name, count, round(fav_increase * 1000))
