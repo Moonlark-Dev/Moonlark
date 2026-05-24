@@ -125,3 +125,6 @@ class StickerTools:
 
         message = UniMessage.image(raw=sticker.raw)
         await message.send(target=self.session.target, bot=self.session.bot)
+
+        # 发送贴纸增加 token
+        self.session.processor.token_bucket.add(0.5)
