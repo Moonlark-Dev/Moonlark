@@ -25,8 +25,7 @@ class GiftItem(Item, ABC):
         return False
 
     @abstractmethod
-    async def on_gift_used(self, stack: "ItemStack", **kwargs: Any) -> Any:
-        ...
+    async def on_gift_used(self, stack: "ItemStack", **kwargs: Any) -> Any: ...
 
     async def getGiftPrompt(self, stack: "ItemStack", user_nickname: str) -> str:
         item_name = await self.getName(stack)
