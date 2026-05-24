@@ -29,6 +29,7 @@ from .message import MessageQueue
 from ..models import ChatGroup, Sticker, UserProfile
 from ..types import CachedMessage
 
+from ..utils.image import query_image_content
 from ..utils.message import MessageParser, generate_message_string
 from ..utils import parse_message_to_string
 from ..utils.ai_agent import AskAISession
@@ -63,6 +64,9 @@ class MessageProcessor:
         self.consecutive_message_count = 0
         # Token bucket 相关属性
         self.token_bucket = TokenBucket(6, -2)
+
+    async def query_image(self, image_id: str, query_prompt: str) -> str:
+        return await query_image_content(image_id, query_prompt, self.session.lang_str)
 
     async def setup(self) -> None:
         self.functions = await self.tool_manager.select_tools("group")
