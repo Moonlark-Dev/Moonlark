@@ -30,4 +30,4 @@ def get_location() -> ResourceLocation:
     return LOCATION
 
 
-ITEMS.registry(LOCATION, CatCan(get_properties(True, 3, 99)))
+ITEMS.registry(LOCATION, CatCan(get_properties(star=3, max_stack=99)))
