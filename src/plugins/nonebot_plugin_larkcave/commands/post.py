@@ -75,7 +75,7 @@ async def _(
         await lang.finish("node.check_failed_1", user_id)
     for msg in node_messages:
         message = OB11Message()
-        for segment in node_messages["message"]:
+        for segment in msg["message"]:
             segment = OB11Segment(**segment)
             message.append(segment)
         uni_msg = UniMessage.generate_without_reply(message=message)
