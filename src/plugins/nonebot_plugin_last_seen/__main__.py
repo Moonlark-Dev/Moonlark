@@ -29,8 +29,9 @@ async def update_last_seen(user_id: str, session_id: str) -> None:
         current_time = datetime.now()
 
         if record:
-            # 更新现有记录，保存旧值
-            record.previous_last_seen = record.last_seen
+            # 更新现有记录，仅当时间差大于 5 分钟时才更新上次上线时间
+            if (current_time - record.last_seen).total_seconds() >= 300:
+                record.previous_last_seen = record.last_seen
             record.last_seen = current_time
         else:
             # 创建新记录
