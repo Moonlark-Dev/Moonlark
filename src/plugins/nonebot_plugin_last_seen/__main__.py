@@ -29,7 +29,9 @@ async def update_last_seen(user_id: str, session_id: str) -> None:
         current_time = datetime.now()
 
         if record:
-            # 更新现有记录
+            # 更新现有记录，仅当时间差大于 5 分钟时才更新上次上线时间
+            if (current_time - record.last_seen).total_seconds() >= 300:
+                record.previous_last_seen = record.last_seen
             record.last_seen = current_time
         else:
             # 创建新记录
@@ -40,13 +42,25 @@ async def update_last_seen(user_id: str, session_id: str) -> None:
 
 
 async def get_last_seen(user_id: str, session_id: str) -> Optional[datetime]:
-    """获取用户的最后上线时间"""
+    """获取用户的最后上线时间
+
+    如果用户当前在线（5分钟内有消息），返回上一次下线时间。
+    否则返回最后上线时间。
+    """
     async with get_session() as session:
         result = await session.execute(
             select(LastSeenRecord).where(LastSeenRecord.user_id == user_id, LastSeenRecord.session_id == session_id)
         )
         record = result.scalar_one_or_none()
-        return record.last_seen if record else None
+        if not record:
+            return None
+
+        # 如果5分钟内有消息且有上一次记录，返回上一次下线时间
+        now = datetime.now()
+        if (now - record.last_seen).total_seconds() < 300 and record.previous_last_seen:
+            return record.previous_last_seen
+
+        return record.last_seen
 
 
 # Message handler to track last seen time
