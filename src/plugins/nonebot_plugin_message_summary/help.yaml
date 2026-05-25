@@ -5,3 +5,4 @@ commands:
   debate-helper: help_debate;1;tools
   check-history: help_check_history;2;tools
   group-daily: help_group_daily;1;tools
+  decision: help_decision;2;fun

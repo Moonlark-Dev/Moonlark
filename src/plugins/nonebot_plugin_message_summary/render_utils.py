@@ -4,6 +4,7 @@ from nonebot_plugin_alconna import UniMessage
 from .lang import lang
 from .chart import render_horizontal_bar_chart
 from .models import CatGirlScore, DebateAnalysis
+from .ai_utils import DecisionResult
 
 
 async def render_summary_result(summary_string: str, style: str) -> UniMessage:
@@ -45,5 +46,41 @@ async def render_history_check_result(result: dict, user_id: str) -> UniMessage:
         user_id,
         {"result": result},
         keys=keys,
+    )
+    return UniMessage().image(raw=image)
+
+
+async def render_decision_notice(
+    decision_data: DecisionResult,
+    target_nickname: str,
+    group_name: str,
+    user_id: str,
+) -> UniMessage:
+    """渲染处分通知图片"""
+    from datetime import datetime
+
+    # 生成文档编号（基于当前年份和随机数）
+    current_year = datetime.now().year
+    doc_number = f"{datetime.now().strftime('%m%d')}{datetime.now().second:02d}"
+
+    # 渲染模板数据
+    template_data = {
+        "group_name": group_name,
+        "year": current_year,
+        "doc_number": doc_number,
+        "target_nickname": target_nickname,
+        "violation_time": datetime.now().strftime("%Y年%m月%d日"),
+        "violation_background": decision_data.background,
+        "violation_details": decision_data.violations,
+        "punishment": decision_data.punishment,
+        "rectification_requirements": decision_data.rectification,
+        "date": datetime.now().strftime("%Y年%m月%d日"),
+    }
+
+    image = await render_template(
+        "decision.html.jinja",
+        "处分决定",
+        user_id,
+        template_data,
     )
     return UniMessage().image(raw=image)

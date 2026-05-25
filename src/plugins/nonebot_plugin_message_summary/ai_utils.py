@@ -167,3 +167,37 @@ async def extract_mvp_from_summary(summary_string: str, user_id: str = "") -> tu
     if result.found and result.nickname:
         return result.nickname, result.comment
     return None
+
+
+class DecisionResult(BaseModel):
+    """处分通知 AI 生成结果"""
+    background: str
+    violations: list[str]
+    punishment: str
+    rectification: list[str]
+
+
+async def generate_decision_content(
+    messages: str,
+    target_nickname: str,
+    group_name: str,
+    user_id: str,
+) -> DecisionResult | None:
+    """生成处分通知内容"""
+    prompt = await lang.text("decision.prompt", user_id)
+    try:
+        result = await fetch_json(
+            [
+                generate_message(prompt, "system"),
+                generate_message(
+                    f"目标群员昵称：{target_nickname}\n群名称：{group_name}\n\n聊天记录：\n{messages}",
+                    "user",
+                ),
+            ],
+            response_format=DecisionResult,
+            identify="Message Summary (Decision)",
+        )
+        return result
+    except Exception as e:
+        logger.exception(e)
+        return None

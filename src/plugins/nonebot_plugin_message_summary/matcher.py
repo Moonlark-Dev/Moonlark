@@ -31,12 +31,14 @@ from .ai_utils import (
     generate_message_string,
     generate_semantic_search_payload,
     analyze_history,
+    generate_decision_content,
 )
 from .render_utils import (
     render_summary_result,
     render_neko_result,
     render_debate_result,
     render_history_check_result,
+    render_decision_notice,
 )
 
 # --- Matchers ---
@@ -58,6 +60,13 @@ debate_helper = on_alconna(Alconna("debate-helper", Args["limit", int, 200]))
 check_history = on_command("check-history", aliases={"发过了吗"})
 mvp_ranking = on_alconna(Alconna("mvp-rank"))
 group_daily = on_alconna(Alconna("group-daily"))
+decision = on_alconna(
+    Alconna(
+        "decision",
+        Args["target", str],
+        Args["reason", str, ""],
+    )
+)
 
 
 # --- Config Helpers ---
@@ -368,3 +377,72 @@ async def handle_group_daily(
     else:
         await send_daily_summary_to_group(group_id)
         await group_daily.finish()
+
+
+@decision.handle()
+async def handle_decision(
+    target: str,
+    reason: str,
+    session: async_scoped_session,
+    bot: Bot,
+    event: Event,
+    user_id: str = get_user_id(),
+    group_id: str = get_group_id(),
+) -> None:
+    """处理 .decision 指令，生成虚假处分通知"""
+    async with get_config() as conf:
+        if group_id in conf.data:
+            await lang.finish("disabled", user_id)
+
+    # 获取群名称
+    group_name = "群"
+    try:
+        if isinstance(bot, Bot_QQ):
+            # QQ 机器人获取群名称的逻辑
+            group_info = await bot.get_group_info(group_id=group_id)
+            group_name = group_info.get("group_name", "群")
+    except Exception:
+        pass
+
+    # 解析目标用户昵称
+    target_nickname = target
+    if target.startswith("@"):
+        target_nickname = target[1:]
+
+    # 获取最近 300 条消息
+    result = (
+        await session.scalars(
+            select(GroupMessage)
+            .where(GroupMessage.group_id == group_id)
+            .order_by(GroupMessage.id_.desc())
+            .limit(300)
+            .order_by(GroupMessage.id_)
+        )
+    ).all()
+
+    if not result:
+        await lang.finish("decision.no_messages", user_id)
+
+    # 生成消息字符串
+    messages = await generate_message_string(result, "broadcast")
+
+    # 调用 AI 生成处分内容
+    decision_data = await generate_decision_content(
+        messages=messages,
+        target_nickname=target_nickname,
+        group_name=group_name,
+        user_id=user_id,
+    )
+
+    if not decision_data:
+        await lang.finish("decision.generate_failed", user_id)
+
+    # 渲染处分通知图片
+    msg = await render_decision_notice(
+        decision_data=decision_data,
+        target_nickname=target_nickname,
+        group_name=group_name,
+        user_id=user_id,
+    )
+
+    await decision.finish(msg)
