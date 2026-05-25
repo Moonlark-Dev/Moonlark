@@ -171,6 +171,7 @@ async def extract_mvp_from_summary(summary_string: str, user_id: str = "") -> tu
 
 class DecisionResult(BaseModel):
     """处分通知 AI 生成结果"""
+
     background: str
     violations: list[str]
     punishment: str
