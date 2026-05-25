@@ -441,7 +441,7 @@ async def handle_decision(
     )
 
     if not decision_data:
-        await lang.finish("decision.generate_failed", user_id)
+        raise Exception("生成处分通知失败")
 
     # 渲染处分通知图片
     msg = await render_decision_notice(
