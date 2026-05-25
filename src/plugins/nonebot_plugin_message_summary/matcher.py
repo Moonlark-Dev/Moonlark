@@ -409,6 +409,11 @@ async def handle_decision(
     if target.startswith("@"):
         target_nickname = target[1:]
 
+    # 处分内容（第二个参数）
+    punishment = reason
+    if not punishment:
+        await lang.finish("decision.no_punishment", user_id)
+
     # 获取最近 300 条消息
     result = (
         await session.scalars(
@@ -431,6 +436,7 @@ async def handle_decision(
         messages=messages,
         target_nickname=target_nickname,
         group_name=group_name,
+        punishment=punishment,
         user_id=user_id,
     )
 
@@ -442,6 +448,7 @@ async def handle_decision(
         decision_data=decision_data,
         target_nickname=target_nickname,
         group_name=group_name,
+        punishment=punishment,
         user_id=user_id,
     )
 

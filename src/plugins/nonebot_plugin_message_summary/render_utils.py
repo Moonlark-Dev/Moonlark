@@ -54,9 +54,18 @@ async def render_decision_notice(
     decision_data: DecisionResult,
     target_nickname: str,
     group_name: str,
+    punishment: str,
     user_id: str,
 ) -> UniMessage:
-    """渲染处分通知图片"""
+    """渲染处分通知图片
+
+    Args:
+        decision_data: AI 生成的处分内容
+        target_nickname: 目标群员昵称
+        group_name: 群名称
+        punishment: 处分内容（如"女装"）
+        user_id: 用户ID
+    """
     from datetime import datetime
 
     # 生成文档编号（基于当前年份和随机数）
@@ -72,7 +81,7 @@ async def render_decision_notice(
         "violation_time": datetime.now().strftime("%Y年%m月%d日"),
         "violation_background": decision_data.background,
         "violation_details": decision_data.violations,
-        "punishment": decision_data.punishment,
+        "punishment": punishment,
         "rectification_requirements": decision_data.rectification,
         "date": datetime.now().strftime("%Y年%m月%d日"),
     }

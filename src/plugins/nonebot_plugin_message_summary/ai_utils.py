@@ -174,7 +174,6 @@ class DecisionResult(BaseModel):
 
     background: str
     violations: list[str]
-    punishment: str
     rectification: list[str]
 
 
@@ -182,16 +181,25 @@ async def generate_decision_content(
     messages: str,
     target_nickname: str,
     group_name: str,
+    punishment: str,
     user_id: str,
 ) -> DecisionResult | None:
-    """生成处分通知内容"""
+    """生成处分通知内容
+
+    Args:
+        messages: 聊天记录
+        target_nickname: 目标群员昵称
+        group_name: 群名称
+        punishment: 处分内容（如"女装"）
+        user_id: 用户ID
+    """
     prompt = await lang.text("decision.prompt", user_id)
     try:
         result = await fetch_json(
             [
                 generate_message(prompt, "system"),
                 generate_message(
-                    f"目标群员昵称：{target_nickname}\n群名称：{group_name}\n\n聊天记录：\n{messages}",
+                    f"目标群员昵称：{target_nickname}\n群名称：{group_name}\n处分内容：{punishment}\n\n聊天记录：\n{messages}",
                     "user",
                 ),
             ],
