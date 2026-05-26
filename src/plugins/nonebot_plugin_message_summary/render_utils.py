@@ -86,7 +86,7 @@ async def render_decision_notice(
         "violation_time": datetime.now().strftime("%Y年%m月%d日"),
         "violation_background": decision_data.background,
         "violation_details": decision_data.violations,
-        "punishment": punishment,
+        "punishment": decision_data.punishment,
         "rectification_requirements": decision_data.rectification,
         "date": datetime.now().strftime("%Y年%m月%d日"),
     }

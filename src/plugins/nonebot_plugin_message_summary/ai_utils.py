@@ -174,6 +174,7 @@ class DecisionResult(BaseModel):
 
     background: str
     violations: list[str]
+    punishment: str
     rectification: list[str]
 
 
