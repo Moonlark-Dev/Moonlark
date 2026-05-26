@@ -398,14 +398,11 @@ async def handle_decision(
     # 获取群名称
     group_name = "群"
     try:
-        if isinstance(bot, Bot_QQ):
-            # QQ 机器人获取群名称的逻辑
-            group_info = await bot.get_group_info(group_id=group_id)
-            group_name = group_info.get("group_name", "群")
-        elif isinstance(bot, Bot_OneBotV11):
+        if isinstance(bot, Bot_OneBotV11):
             # OneBot v11 适配器获取群名称的逻辑
             group_info = await bot.get_group_info(group_id=int(group_id))
             group_name = group_info.get("group_name", "群")
+        # QQ 适配器没有直接获取群名称的 API，使用默认值
     except Exception:
         pass
 
