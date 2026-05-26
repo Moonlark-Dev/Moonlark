@@ -212,10 +212,17 @@
             right: 26mm;
             font-size: 10pt;
             color: var(--text-secondary);
-            border-top: 1px solid #999;
-            padding-top: 3mm;
-            display: flex;
-            justify-content: space-between;
+        }
+
+        .colophon-line {
+            width: 100%;
+            height: 1px;
+            background: #999;
+            margin: 2mm 0;
+        }
+
+        .colophon-content {
+            padding: 1mm 0;
         }
     </style>
 </head>
@@ -281,10 +288,16 @@
             <div class="date">{{ date }}</div>
         </div>
 
-        <!-- 版记（可选） -->
+        <!-- 版记 -->
         <div class="colophon">
-            <span>抄送：{{ group_name }}群管理小组办公室</span>
-            <span>{{ group_name }}群管理小组</span>
+            <div class="colophon-line"></div>
+            <div class="colophon-content">
+                <span>抄送：{{ group_name }}群管理小组办公室</span>
+            </div>
+            <div class="colophon-line"></div>
+            <div class="colophon-content">
+                <span>{{ group_name }}群管理小组</span>
+            </div>
         </div>
     </div>
 </body>
