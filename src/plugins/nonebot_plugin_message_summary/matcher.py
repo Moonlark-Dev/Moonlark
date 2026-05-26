@@ -406,16 +406,9 @@ async def handle_decision(
     except Exception:
         pass
 
-    # 获取目标用户的昵称
+    # 获取目标用户的昵称（与 recorder 一致的方法）
     target_user_id = target.target
-    target_nickname = target_user_id  # 默认使用用户 ID
-    try:
-        # 尝试从数据库中获取用户昵称
-        target_user = await get_user(target_user_id)
-        if target_user:
-            target_nickname = target_user.get_nickname()
-    except Exception:
-        pass
+    target_nickname = (await get_user(target_user_id)).get_nickname()
 
     # 处分内容（第二个参数）
     punishment = reason
