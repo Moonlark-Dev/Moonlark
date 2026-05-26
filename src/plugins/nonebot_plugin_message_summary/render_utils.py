@@ -96,6 +96,7 @@ async def render_decision_notice(
         "处分决定",
         user_id,
         template_data,
+        viewport={"width": 1200, "height": 800},
     )
     return UniMessage().image(raw=image)
 
