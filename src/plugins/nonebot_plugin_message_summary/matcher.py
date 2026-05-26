@@ -3,6 +3,7 @@ from nonebot.typing import T_State
 from nonebot.adapters import Event, Bot, Message
 from nonebot.adapters.qq import Bot as Bot_QQ
 from nonebot.adapters.onebot.v11 import GroupMessageEvent
+from nonebot.adapters.onebot.v11 import Bot as Bot_OneBotV11
 from nonebot.params import CommandArg
 from nonebot_plugin_alconna import on_alconna, Alconna, Subcommand, Args, UniMessage, Reply
 from nonebot_plugin_orm import async_scoped_session, get_session
@@ -400,6 +401,10 @@ async def handle_decision(
         if isinstance(bot, Bot_QQ):
             # QQ 机器人获取群名称的逻辑
             group_info = await bot.get_group_info(group_id=group_id)
+            group_name = group_info.get("group_name", "群")
+        elif isinstance(bot, Bot_OneBotV11):
+            # OneBot v11 适配器获取群名称的逻辑
+            group_info = await bot.get_group_info(group_id=int(group_id))
             group_name = group_info.get("group_name", "群")
     except Exception:
         pass
