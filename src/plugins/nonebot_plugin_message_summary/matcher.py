@@ -3,8 +3,9 @@ from nonebot.typing import T_State
 from nonebot.adapters import Event, Bot, Message
 from nonebot.adapters.qq import Bot as Bot_QQ
 from nonebot.adapters.onebot.v11 import GroupMessageEvent
+from nonebot.adapters.onebot.v11 import Bot as Bot_OneBotV11
 from nonebot.params import CommandArg
-from nonebot_plugin_alconna import on_alconna, Alconna, Subcommand, Args, UniMessage, Reply
+from nonebot_plugin_alconna import on_alconna, Alconna, Subcommand, Args, UniMessage, Reply, At
 from nonebot_plugin_orm import async_scoped_session, get_session
 from sqlalchemy import select
 from typing import Literal, Sequence
@@ -31,12 +32,14 @@ from .ai_utils import (
     generate_message_string,
     generate_semantic_search_payload,
     analyze_history,
+    generate_decision_content,
 )
 from .render_utils import (
     render_summary_result,
     render_neko_result,
     render_debate_result,
     render_history_check_result,
+    render_decision_notice,
 )
 
 # --- Matchers ---
@@ -58,6 +61,13 @@ debate_helper = on_alconna(Alconna("debate-helper", Args["limit", int, 200]))
 check_history = on_command("check-history", aliases={"发过了吗"})
 mvp_ranking = on_alconna(Alconna("mvp-rank"))
 group_daily = on_alconna(Alconna("group-daily"))
+decision = on_alconna(
+    Alconna(
+        "decision",
+        Args["target", At],
+        Args["reason", str, ""],
+    )
+)
 
 
 # --- Config Helpers ---
@@ -368,3 +378,80 @@ async def handle_group_daily(
     else:
         await send_daily_summary_to_group(group_id)
         await group_daily.finish()
+
+
+@decision.handle()
+async def handle_decision(
+    target: At,
+    reason: str,
+    session: async_scoped_session,
+    bot: Bot,
+    event: Event,
+    user_id: str = get_user_id(),
+    group_id: str = get_group_id(),
+) -> None:
+    """处理 .decision 指令，生成虚假处分通知"""
+    async with get_config() as conf:
+        if group_id in conf.data:
+            await lang.finish("disabled", user_id)
+
+    # 获取群名称
+    group_name = "群"
+    try:
+        if isinstance(bot, Bot_OneBotV11):
+            # OneBot v11 适配器获取群名称的逻辑
+            group_info = await bot.get_group_info(group_id=int(group_id))
+            group_name = group_info.get("group_name", "群")
+        # QQ 适配器没有直接获取群名称的 API，使用默认值
+    except Exception:
+        pass
+
+    # 获取目标用户的昵称（与 recorder 一致的方法）
+    target_user_id = target.target
+    target_nickname = (await get_user(target_user_id)).get_nickname()
+
+    # 处分内容（第二个参数）
+    punishment = reason
+    if not punishment:
+        await lang.finish("decision.no_punishment", user_id)
+
+    # 获取最近 300 条消息
+    result = (
+        await session.scalars(
+            select(GroupMessage)
+            .where(GroupMessage.group_id == group_id)
+            .order_by(GroupMessage.id_.desc())
+            .limit(300)
+            .order_by(GroupMessage.id_)
+        )
+    ).all()
+
+    if not result:
+        await lang.finish("decision.no_messages", user_id)
+
+    # 生成消息字符串
+    messages = await generate_message_string(result, "broadcast")
+
+    # 调用 AI 生成处分内容
+    decision_data = await generate_decision_content(
+        messages=messages,
+        target_nickname=target_nickname,
+        group_name=group_name,
+        punishment=punishment,
+        user_id=user_id,
+    )
+
+    if not decision_data:
+        raise Exception("生成处分通知失败")
+
+    # 渲染处分通知图片
+    msg = await render_decision_notice(
+        decision_data=decision_data,
+        target_nickname=target_nickname,
+        group_name=group_name,
+        punishment=punishment,
+        user_id=user_id,
+        group_id=group_id,
+    )
+
+    await decision.finish(msg)
