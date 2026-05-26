@@ -451,6 +451,7 @@ async def handle_decision(
         group_name=group_name,
         punishment=punishment,
         user_id=user_id,
+        group_id=group_id,
     )
 
     await decision.finish(msg)
