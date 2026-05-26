@@ -5,7 +5,7 @@ from nonebot.adapters.qq import Bot as Bot_QQ
 from nonebot.adapters.onebot.v11 import GroupMessageEvent
 from nonebot.adapters.onebot.v11 import Bot as Bot_OneBotV11
 from nonebot.params import CommandArg
-from nonebot_plugin_alconna import on_alconna, Alconna, Subcommand, Args, UniMessage, Reply
+from nonebot_plugin_alconna import on_alconna, Alconna, Subcommand, Args, UniMessage, Reply, At
 from nonebot_plugin_orm import async_scoped_session, get_session
 from sqlalchemy import select
 from typing import Literal, Sequence
@@ -64,7 +64,7 @@ group_daily = on_alconna(Alconna("group-daily"))
 decision = on_alconna(
     Alconna(
         "decision",
-        Args["target", str],
+        Args["target", At],
         Args["reason", str, ""],
     )
 )
@@ -382,7 +382,7 @@ async def handle_group_daily(
 
 @decision.handle()
 async def handle_decision(
-    target: str,
+    target: At,
     reason: str,
     session: async_scoped_session,
     bot: Bot,
@@ -409,10 +409,16 @@ async def handle_decision(
     except Exception:
         pass
 
-    # 解析目标用户昵称
-    target_nickname = target
-    if target.startswith("@"):
-        target_nickname = target[1:]
+    # 获取目标用户的昵称
+    target_user_id = target.target
+    target_nickname = target_user_id  # 默认使用用户 ID
+    try:
+        # 尝试从数据库中获取用户昵称
+        target_user = await get_user(target_user_id)
+        if target_user:
+            target_nickname = target_user.get_nickname()
+    except Exception:
+        pass
 
     # 处分内容（第二个参数）
     punishment = reason
