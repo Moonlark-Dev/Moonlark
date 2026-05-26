@@ -154,6 +154,7 @@
             margin: 3mm 0 3mm 2em;
             padding: 0;
             list-style: none;
+            counter-reset: item;
         }
 
         .violation-list li {
@@ -164,9 +165,10 @@
         }
 
         .violation-list li::before {
-            content: '（{{ loop.index }}）';
+            content: counter(item) "、";
             position: absolute;
             left: 0;
+            counter-increment: item;
         }
 
         /* 处分内容 */
