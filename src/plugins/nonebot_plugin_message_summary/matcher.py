@@ -400,7 +400,9 @@ async def handle_decision(
     try:
         if isinstance(bot, OB11Bot):
             # OneBot v11 适配器获取群名称的逻辑
-            group_info = await bot.get_group_info(group_id=int(group_id))
+            # 提取 group_id 中的数字部分（如 "qq_598443695" -> 598443695）
+            numeric_group_id = int(group_id.split("_")[-1]) if "_" in group_id else int(group_id)
+            group_info = await bot.get_group_info(group_id=numeric_group_id)
             group_name = group_info.get("group_name", "群")
         # QQ 适配器没有直接获取群名称的 API，使用默认值
     except Exception as e:
