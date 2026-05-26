@@ -3,7 +3,7 @@ from nonebot.typing import T_State
 from nonebot.adapters import Event, Bot, Message
 from nonebot.adapters.qq import Bot as Bot_QQ
 from nonebot.adapters.onebot.v11 import GroupMessageEvent
-from nonebot.adapters.onebot.v11 import Bot as Bot_OneBotV11
+from nonebot.adapters.onebot.v11 import Bot as OB11Bot
 from nonebot.params import CommandArg
 from nonebot_plugin_alconna import on_alconna, Alconna, Subcommand, Args, UniMessage, Reply, At
 from nonebot_plugin_orm import async_scoped_session, get_session
@@ -398,13 +398,13 @@ async def handle_decision(
     # 获取群名称
     group_name = "群"
     try:
-        if isinstance(bot, Bot_OneBotV11):
+        if isinstance(bot, OB11Bot):
             # OneBot v11 适配器获取群名称的逻辑
             group_info = await bot.get_group_info(group_id=int(group_id))
             group_name = group_info.get("group_name", "群")
         # QQ 适配器没有直接获取群名称的 API，使用默认值
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(f"获取群名称失败: {e}")
 
     # 获取目标用户的昵称（与 recorder 一致的方法）
     target_user_id = target.target
