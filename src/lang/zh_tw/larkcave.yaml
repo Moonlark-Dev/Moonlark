@@ -29,6 +29,7 @@ help:
   u4: cave-s <ID> (恢复 7 天内删除的条目)
   u5: cave-g <ID> (查看自己投稿的条目)
   u6: cave-s (统计投稿者)
+  u7: cave-n <回复合并转发> (投稿合并转发消息)
 remove:
   no_result: 回声洞不存在或已删除！
   no_permission: 权限不足！
