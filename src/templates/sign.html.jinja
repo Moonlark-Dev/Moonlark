@@ -20,19 +20,17 @@
             padding: 20px;
         }
 
-        .sign-card {
-            background: rgba(255, 255, 255, 0.92);
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        .sign-wrapper {
             width: 100%;
             max-width: 480px;
+            overflow: hidden;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
         }
 
         .sign-header-img {
             width: 100%;
-            height: 200px;
-            object-fit: cover;
+            height: auto;
             display: block;
         }
 
@@ -81,6 +79,7 @@
 
         .sign-body {
             padding: 16px 20px;
+            background: rgba(255, 255, 255, 0.92);
         }
 
         .sign-hitokoto {
@@ -171,7 +170,7 @@
 </head>
 
 <body>
-    <div class="sign-card">
+    <div class="sign-wrapper">
         {# 头图 #}
         <img src="{{ background_url }}" class="sign-header-img" alt="header" />
 
