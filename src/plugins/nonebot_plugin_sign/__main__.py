@@ -274,6 +274,7 @@ async def _(matcher: Matcher, user_id: str = get_user_id()) -> None:
                 await lang.text("image.title", user_id),
                 user_id,
                 templates,
+                viewport={"width": 380, "height": 10},
                 **bg_kwargs,
             )
             msg = UniMessage().image(raw=image)
