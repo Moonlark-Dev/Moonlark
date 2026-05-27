@@ -33,9 +33,9 @@ async def check_cave(
             text += f"{segment.text}"
         else:
             _img = await image_fetch(event, bot, state, segment)
-            image = _img.__bytes__() if hasattr(_img, "__bytes__") else b""
-            if not image:
+            if not isinstance(_img, bytes):
                 raise EmptyImage
+            image = _img
             data = await check_image(image, session, segment.name)
             if data["passed"] == False:
                 raise DuplicateCave(data["similar_cave"], data["similarity"])
