@@ -16,6 +16,7 @@ from nonebot_plugin_chat.utils.gift_drop import get_gift_drop_manager
 from nonebot_plugin_email.utils.unread import get_unread_email_count
 from nonebot_plugin_items.registry.registry import ResourceLocation
 from nonebot_plugin_items.utils.get import get_item
+from nonebot_plugin_larksetu import get_image
 from nonebot_plugin_larkuser import get_user
 from nonebot_plugin_larkuser.user.base import MoonlarkUser
 from nonebot_plugin_larkuser.utils.matcher import patch_matcher
@@ -221,6 +222,7 @@ async def _(matcher: Matcher, user_id: str = get_user_id()) -> None:
             if (date.today() - data.last_sign).days < 1:
                 await lang.finish("sign.signed", user_id)
             templates = {
+                "date": date.today().strftime("%d"),
                 "signdays": {
                     "text": await lang.text("image.signdays", user_id),
                     "value": await lang.text("image.signdays_text", user_id, await get_sign_days(data, user)),
@@ -254,8 +256,18 @@ async def _(matcher: Matcher, user_id: str = get_user_id()) -> None:
                     templates["hitokoto"] = f"{gift_text}"
             data.last_sign = date.today()
             await session.commit()
+            # 获取 setu 图片作为背景
+            bg_kwargs = {}
+            try:
+                setu_img = await get_image()
+                b64 = base64.b64encode(setu_img["image"]).decode()
+                ext = setu_img["data"].ext
+                mime = "image/png" if ext == "png" else "image/jpeg"
+                bg_kwargs["background_url"] = f"data:{mime};base64,{b64}"
+            except Exception as e:
+                logger.warning(f"获取 setu 背景图失败，使用默认背景: {e}")
             image = await render_template(
-                "sign.html.jinja", await lang.text("image.title", user_id), user_id, templates
+                "sign.html.jinja", await lang.text("image.title", user_id), user_id, templates, **bg_kwargs,
             )
             msg = UniMessage().image(raw=image)
             _user_locks.pop(user_id, None)
