@@ -17,34 +17,10 @@
             background: #f5f5f5;
         }
 
-        /* 横图布局（默认）：图在上，内容在下 */
-        .sign-container {
-            display: flex;
-            flex-direction: column;
-        }
-
         .sign-header-img {
             width: 100%;
             height: auto;
             display: block;
-        }
-
-        /* 竖图布局：图在左，内容在右 */
-        .sign-container.portrait {
-            flex-direction: row;
-            align-items: flex-start;
-        }
-
-        .sign-container.portrait .sign-header-img {
-            width: auto;
-            object-fit: cover;
-        }
-
-        .sign-container.portrait .sign-content {
-            flex: 1;
-            min-width: 0;
-            display: flex;
-            flex-direction: column;
         }
 
         .sign-divider {
@@ -93,7 +69,6 @@
         .sign-body {
             padding: 16px 20px;
             background: rgba(255, 255, 255, 0.92);
-            flex: 1;
         }
 
         .sign-hitokoto {
@@ -184,97 +159,74 @@
 </head>
 
 <body>
-    <div class="sign-container" id="signContainer">
-        {# 头图 #}
-        <img src="{{ background_url }}" class="sign-header-img" id="headerImg" alt="header" />
+    {# 头图 #}
+    <img src="{{ background_url }}" class="sign-header-img" alt="header" />
 
-        {# 内容区（包含分割栏 + 正文） #}
-        <div class="sign-content">
-            {# 头图与正文之间的分割线：头像 + 标题行 #}
-            <div class="sign-divider">
-                {% if avatar %}
-                <img src="data:image;base64,{{ avatar }}" class="sign-avatar" alt="avatar" />
-                {% endif %}
-                <div class="sign-title-bar">
-                    <span class="sign-title-left">签到成功</span>
-                    <span class="sign-title-right">{{ date }}</span>
-                </div>
-            </div>
-
-            {# 正文 #}
-            <div class="sign-body">
-                {# 一言 #}
-                <div class="sign-hitokoto">{{ hitokoto }}</div>
-
-                {# 数据变动表格 #}
-                <table class="sign-table">
-                    <tr>
-                        <td class="col-label">{{ vim.text }}</td>
-                        <td class="col-old">{{ vim.origin }}</td>
-                        <td class="col-arrow">-></td>
-                        <td class="col-new">{{ vim.now }}</td>
-                        <td class="col-diff">(+{{ vim.add }})</td>
-                    </tr>
-                    <tr>
-                        <td class="col-label">{{ exp.text }}</td>
-                        <td class="col-old">{{ exp.origin }}</td>
-                        <td class="col-arrow">-></td>
-                        <td class="col-new">{{ exp.now }}</td>
-                        <td class="col-diff">(+{{ exp.add }})</td>
-                    </tr>
-                    <tr>
-                        <td class="col-label">{{ fav.text }}</td>
-                        <td class="col-old">{{ fav.origin }}</td>
-                        <td class="col-arrow">-></td>
-                        <td class="col-new">{{ fav.now }}</td>
-                        <td class="col-diff">(+{{ fav.add }})</td>
-                    </tr>
-                </table>
-
-                {# 分割线 #}
-                <hr class="sign-sep" />
-
-                {# 排名与运势 #}
-                <div class="sign-footer-row">
-                    <span class="sign-rank">{{ rank.text }}：{{ rank.value }}</span>
-                    {% set fortune_text = fortune.value %}
-                    {% if fortune_text == '大吉' %}
-                        <span class="sign-fortune-badge fortune-warning">{{ fortune.text }}：{{ fortune_text }}</span>
-                    {% elif fortune_text == '吉' %}
-                        <span class="sign-fortune-badge fortune-success">{{ fortune.text }}：{{ fortune_text }}</span>
-                    {% elif fortune_text == '小吉' %}
-                        <span class="sign-fortune-badge fortune-teal">{{ fortune.text }}：{{ fortune_text }}</span>
-                    {% elif fortune_text == '末吉' %}
-                        <span class="sign-fortune-badge fortune-secondary">{{ fortune.text }}：{{ fortune_text }}</span>
-                    {% elif fortune_text == '凶' %}
-                        <span class="sign-fortune-badge fortune-orange">{{ fortune.text }}：{{ fortune_text }}</span>
-                    {% elif fortune_text == '大凶' %}
-                        <span class="sign-fortune-badge fortune-danger">{{ fortune.text }}：{{ fortune_text }}</span>
-                    {% else %}
-                        <span class="sign-fortune-badge fortune-secondary">{{ fortune.text }}：{{ fortune_text }}</span>
-                    {% endif %}
-                </div>
-            </div>
+    {# 头图与正文之间的分割线：头像 + 标题行 #}
+    <div class="sign-divider">
+        {% if avatar %}
+        <img src="data:image;base64,{{ avatar }}" class="sign-avatar" alt="avatar" />
+        {% endif %}
+        <div class="sign-title-bar">
+            <span class="sign-title-left">签到成功</span>
+            <span class="sign-title-right">{{ date }}</span>
         </div>
     </div>
 
-    <script>
-        const img = document.getElementById('headerImg');
-        const container = document.getElementById('signContainer');
-        function checkOrientation() {
-            if (img.naturalHeight > img.naturalWidth) {
-                container.classList.add('portrait');
-                // 量出正文自然高度，固定到图片上
-                const content = container.querySelector('.sign-content');
-                img.style.height = content.offsetHeight + 'px';
-            }
-        }
-        if (img.complete) {
-            checkOrientation();
-        } else {
-            img.addEventListener('load', checkOrientation);
-        }
-    </script>
+    {# 正文 #}
+    <div class="sign-body">
+        {# 一言 #}
+        <div class="sign-hitokoto">{{ hitokoto }}</div>
+
+        {# 数据变动表格 #}
+        <table class="sign-table">
+            <tr>
+                <td class="col-label">{{ vim.text }}</td>
+                <td class="col-old">{{ vim.origin }}</td>
+                <td class="col-arrow">-></td>
+                <td class="col-new">{{ vim.now }}</td>
+                <td class="col-diff">(+{{ vim.add }})</td>
+            </tr>
+            <tr>
+                <td class="col-label">{{ exp.text }}</td>
+                <td class="col-old">{{ exp.origin }}</td>
+                <td class="col-arrow">-></td>
+                <td class="col-new">{{ exp.now }}</td>
+                <td class="col-diff">(+{{ exp.add }})</td>
+            </tr>
+            <tr>
+                <td class="col-label">{{ fav.text }}</td>
+                <td class="col-old">{{ fav.origin }}</td>
+                <td class="col-arrow">-></td>
+                <td class="col-new">{{ fav.now }}</td>
+                <td class="col-diff">(+{{ fav.add }})</td>
+            </tr>
+        </table>
+
+        {# 分割线 #}
+        <hr class="sign-sep" />
+
+        {# 排名与运势 #}
+        <div class="sign-footer-row">
+            <span class="sign-rank">{{ rank.text }}：{{ rank.value }}</span>
+            {% set fortune_text = fortune.value %}
+            {% if fortune_text == '大吉' %}
+                <span class="sign-fortune-badge fortune-warning">{{ fortune.text }}：{{ fortune_text }}</span>
+            {% elif fortune_text == '吉' %}
+                <span class="sign-fortune-badge fortune-success">{{ fortune.text }}：{{ fortune_text }}</span>
+            {% elif fortune_text == '小吉' %}
+                <span class="sign-fortune-badge fortune-teal">{{ fortune.text }}：{{ fortune_text }}</span>
+            {% elif fortune_text == '末吉' %}
+                <span class="sign-fortune-badge fortune-secondary">{{ fortune.text }}：{{ fortune_text }}</span>
+            {% elif fortune_text == '凶' %}
+                <span class="sign-fortune-badge fortune-orange">{{ fortune.text }}：{{ fortune_text }}</span>
+            {% elif fortune_text == '大凶' %}
+                <span class="sign-fortune-badge fortune-danger">{{ fortune.text }}：{{ fortune_text }}</span>
+            {% else %}
+                <span class="sign-fortune-badge fortune-secondary">{{ fortune.text }}：{{ fortune_text }}</span>
+            {% endif %}
+        </div>
+    </div>
 </body>
 
 </html>
