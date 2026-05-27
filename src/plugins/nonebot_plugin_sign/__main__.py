@@ -267,7 +267,11 @@ async def _(matcher: Matcher, user_id: str = get_user_id()) -> None:
             except Exception as e:
                 logger.warning(f"获取 setu 背景图失败，使用默认背景: {e}")
             image = await render_template(
-                "sign.html.jinja", await lang.text("image.title", user_id), user_id, templates, **bg_kwargs,
+                "sign.html.jinja",
+                await lang.text("image.title", user_id),
+                user_id,
+                templates,
+                **bg_kwargs,
             )
             msg = UniMessage().image(raw=image)
             _user_locks.pop(user_id, None)
