@@ -16,7 +16,7 @@
 # ##############################################################################
 
 from ..exceptions import ReviewFailed, DuplicateCave, EmptyImage
-from nonebot_plugin_alconna import Image, Text, image_fetch
+from nonebot_plugin_alconna import Image, Text, UniMessage, image_fetch
 from nonebot_plugin_larkutils import review_image, review_text
 from nonebot.typing import T_State
 from .similarity import check_text_content, check_image
@@ -24,9 +24,21 @@ from nonebot_plugin_orm import async_scoped_session
 from nonebot.adapters import Event, Bot
 
 
+def _flatten_content(content: list[Image | Text]) -> list[Image | Text]:
+    """展开嵌套的 UniMessage 对象"""
+    result: list[Image | Text] = []
+    for seg in content:
+        if isinstance(seg, UniMessage):
+            result.extend(seg)
+        else:
+            result.append(seg)
+    return result
+
+
 async def check_cave(
     content: list[Image | Text], event: Event, bot: Bot, state: T_State, session: async_scoped_session
 ) -> None:
+    content = _flatten_content(content)
     text = ""
     for segment in content:
         if isinstance(segment, Text):
