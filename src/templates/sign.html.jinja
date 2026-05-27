@@ -37,13 +37,14 @@
 
         .sign-container.portrait .sign-header-img {
             width: auto;
-            height: 100%;
-            max-height: 100vh;
+            height: auto;
+            align-self: stretch;
             object-fit: cover;
         }
 
         .sign-container.portrait .sign-content {
             flex: 1;
+            min-width: 0;
             display: flex;
             flex-direction: column;
         }
