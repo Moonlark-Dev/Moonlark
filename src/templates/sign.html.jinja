@@ -32,13 +32,11 @@
         /* 竖图布局：图在左，内容在右 */
         .sign-container.portrait {
             flex-direction: row;
-            align-items: stretch;
+            align-items: flex-start;
         }
 
         .sign-container.portrait .sign-header-img {
             width: auto;
-            height: auto;
-            align-self: stretch;
             object-fit: cover;
         }
 
@@ -266,6 +264,9 @@
         function checkOrientation() {
             if (img.naturalHeight > img.naturalWidth) {
                 container.classList.add('portrait');
+                // 量出正文自然高度，固定到图片上
+                const content = container.querySelector('.sign-content');
+                img.style.height = content.offsetHeight + 'px';
             }
         }
         if (img.complete) {
