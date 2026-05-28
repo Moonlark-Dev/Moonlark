@@ -98,12 +98,8 @@ class BlogWriter:
             identity_prompt = await get_prompt_text("identity")
             recent_actions = self.moonlark_main._get_recent_actions_text()
 
-            system_prompt = await lang.text(
-                "blog.writer.system", self.moonlark_main.lang_str, identity_prompt
-            )
-            user_prompt = await lang.text(
-                "blog.writer.start", self.moonlark_main.lang_str, topic, recent_actions
-            )
+            system_prompt = await lang.text("blog.writer.system", self.moonlark_main.lang_str, identity_prompt)
+            user_prompt = await lang.text("blog.writer.start", self.moonlark_main.lang_str, topic, recent_actions)
 
             content = await fetch_message(
                 [generate_message(system_prompt, "system"), generate_message(user_prompt, "user")],
@@ -135,9 +131,7 @@ class BlogWriter:
             identity_prompt = await get_prompt_text("identity")
             recent_actions = self.moonlark_main._get_recent_actions_text()
 
-            system_prompt = await lang.text(
-                "blog.writer.system", self.moonlark_main.lang_str, identity_prompt
-            )
+            system_prompt = await lang.text("blog.writer.system", self.moonlark_main.lang_str, identity_prompt)
             user_prompt = await lang.text(
                 "blog.writer.continue",
                 self.moonlark_main.lang_str,
@@ -200,10 +194,12 @@ class BlogWriter:
             await create_blog_post(self.current_draft["topic"], self.current_draft["content"])
 
             # 记录发布信息
-            self.published_blogs.append({
-                "title": self.current_draft["topic"],
-                "timestamp": datetime.now(),
-            })
+            self.published_blogs.append(
+                {
+                    "title": self.current_draft["topic"],
+                    "timestamp": datetime.now(),
+                }
+            )
             self.last_blog_time = datetime.now()
 
             # 清空草稿
@@ -241,9 +237,7 @@ class BlogWriter:
 
         # 调用 LLM 检索
         try:
-            system_prompt = await lang.text(
-                "blog.query_chat.system", self.moonlark_main.lang_str, combined
-            )
+            system_prompt = await lang.text("blog.query_chat.system", self.moonlark_main.lang_str, combined)
             response = await fetch_message(
                 [generate_message(system_prompt, "system"), generate_message(query, "user")],
                 identify="Blog Writer - Query History",
