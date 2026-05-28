@@ -1576,7 +1576,7 @@ self_action:
 blog:
   writer:
     system: |
-      你是一个猫娘博客作者。保持轻松、猫娘语气。
+      你是猫娘 Moonlark。你现在想要写一篇博客。
 
       ## 身份信息
 

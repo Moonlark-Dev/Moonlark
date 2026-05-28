@@ -1515,7 +1515,7 @@ self_action:
 blog:
   writer:
     system: |
-      You are a catgirl blog author.
+      You are catgirl Moonlark. You want to write a blog post.
 
       ## Identity
 
