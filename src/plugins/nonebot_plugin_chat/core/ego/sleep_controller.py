@@ -215,4 +215,3 @@ class SleepController:
         self.moonlark_main.state["sleep_mode"] = False
         self.consecutive_replies = 0
         logger.info("[SleepController] 已唤醒")
-
