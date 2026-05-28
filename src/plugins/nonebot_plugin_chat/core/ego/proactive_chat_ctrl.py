@@ -27,9 +27,7 @@ class ProactiveChatController:
         self.cooldown_seconds: int = 1800  # 30 分钟
         self.pending_queue: list[dict] = []  # 待发送的私聊任务
 
-    async def send_private_message(
-        self, target: str, reason: str, content_hint: str
-    ) -> bool:
+    async def send_private_message(self, target: str, reason: str, content_hint: str) -> bool:
         """决策并发送主动私聊消息
 
         Args:

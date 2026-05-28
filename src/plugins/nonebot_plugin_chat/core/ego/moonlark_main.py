@@ -142,9 +142,7 @@ class MoonlarkMain:
             suggestions = self.action_advisor.get_suggestions(state, summary)
 
             # 生成系统提示
-            system_prompt = await self.generate_system_prompt(
-                trigger_reason == "ready_sleep", suggestions
-            )
+            system_prompt = await self.generate_system_prompt(trigger_reason == "ready_sleep", suggestions)
             user_prompt = await self.generate_user_prompt(trigger_reason, request_text, trigger_from)
 
             fetcher = await MessageFetcher.create(
@@ -226,9 +224,7 @@ class MoonlarkMain:
             await group.processor.generate_instant_memory()
             await group.processor.openai_messages.reset_chat_history()
 
-    async def get_action_str(
-        self, action, start_time: datetime, stop_time: Optional[datetime]
-    ) -> Optional[str]:
+    async def get_action_str(self, action, start_time: datetime, stop_time: Optional[datetime]) -> Optional[str]:
         """格式化动作历史文本"""
         match action.type:
             case "send_private_message":
@@ -317,7 +313,7 @@ class MoonlarkMain:
         notes = notes[0] + notes[1]
 
         # 博客状态
-        blog_status_text = self.blog_writer.get_status_text() if hasattr(self.blog_writer, 'get_status_text') else ""
+        blog_status_text = self.blog_writer.get_status_text() if hasattr(self.blog_writer, "get_status_text") else ""
 
         # 自主活动状态
         self_action_text = self.self_action_ctrl.get_status_text()
@@ -337,9 +333,7 @@ class MoonlarkMain:
             self_action_text,
         )
 
-    async def generate_system_prompt(
-        self, sleep_action_only: bool = False, suggestions: str = ""
-    ) -> str:
+    async def generate_system_prompt(self, sleep_action_only: bool = False, suggestions: str = "") -> str:
         """生成系统提示"""
         return await lang.text(
             "moonlark_main.prompt",
@@ -411,9 +405,7 @@ class MoonlarkMain:
         if self.state_until is None or dt >= self.state_until:
             if not self.action_history or dt >= self.action_history[-1][0] + timedelta(minutes=20):
                 minutes_since_last = self.get_minutes_since_last_group_message()
-                drowsiness_result = self.sleep_controller.check_drowsiness(
-                    self.consecutive_replies, minutes_since_last
-                )
+                drowsiness_result = self.sleep_controller.check_drowsiness(self.consecutive_replies, minutes_since_last)
                 if drowsiness_result == "sleep":
                     await self.request_think("ready_sleep", None)
                 elif drowsiness_result == "drowsy":
@@ -504,6 +496,7 @@ class MoonlarkMain:
         async with get_session() as session:
             for friend_record in await session.scalars(select(PrivateChatSession)):
                 from ...utils.larkuser import get_user
+
                 user = await get_user(friend_record.user_id)
                 if user.nickname == target_nickname:
                     bot_id = friend_record.bot_id
@@ -609,9 +602,7 @@ class MoonlarkMain:
             identify="MoonlarkMain - Sleep Request Decision",
         )
 
-    async def submit_sleep_request(
-        self, session_id: str, future: Optional[asyncio.Future] = None
-    ) -> None:
+    async def submit_sleep_request(self, session_id: str, future: Optional[asyncio.Future] = None) -> None:
         """处理来自子会话的睡觉申请"""
         try:
             session_info = f"会话ID: {session_id}"
@@ -674,9 +665,7 @@ class MoonlarkMain:
                 await self.trigger_sleep()
 
                 if future and not future.done():
-                    future.set_result(
-                        await lang.text("moonlark_main.sleep_decision.ready_approved", self.lang_str)
-                    )
+                    future.set_result(await lang.text("moonlark_main.sleep_decision.ready_approved", self.lang_str))
             else:
                 delay = min(delay_minutes or 5, 30)
                 self.state_until = datetime.now() + timedelta(minutes=delay)
@@ -732,6 +721,7 @@ class MoonlarkMain:
         async with get_session() as session:
             for friend_record in await session.scalars(select(PrivateChatSession)):
                 from ...utils.larkuser import get_user
+
                 user = await get_user(friend_record.user_id)
                 friend_list.append(
                     await lang.text(
