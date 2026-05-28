@@ -1,48 +1,108 @@
 """自主活动控制器
 
-管理 Moonlark 的自主活动（如学习CSS、做拉伸等）。
-提供活动计时和自动结束功能。
+按设计文档实现：
+- 管理当前正在进行的自主活动（如"学习CSS"、"做拉伸"）
+- 提供活动计时和自动结束功能
+- 维护活动历史记录
+- duration 由单独请求 LLM 生成
 """
 
+from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Optional
 
 from nonebot import logger
 from nonebot_plugin_apscheduler import scheduler
+from nonebot_plugin_openai.utils.chat import fetch_json
+from nonebot_plugin_openai.utils.message import generate_message
+from ...lang import lang
 
 if TYPE_CHECKING:
     from .moonlark_main import MoonlarkMain
 
 
 class SelfActionController:
-    """自主活动控制器"""
+    """自主活动控制器
+
+    按设计文档属性：
+    - current_activity: Optional[str]
+    - activity_start_time: Optional[datetime]
+    - activity_duration: int (秒，0=无限)
+    - activity_history: list
+    """
 
     def __init__(self, moonlark_main: "MoonlarkMain") -> None:
         self.moonlark_main = moonlark_main
         self.current_activity: Optional[str] = None
         self.activity_start_time: Optional[datetime] = None
-        self.activity_duration: int = 0  # 计划持续时间（秒），0 表示无限
-        self.activity_history: list[dict] = []  # 最近完成的活动
+        self.activity_duration: int = 0
+        self.activity_history: list[dict] = []
 
         # 注册定时器，每分钟检查活动超时
         scheduler.scheduled_job("interval", minutes=1, id="self_action_tick")(self.tick)
 
-    async def start_activity(self, activity: str, duration_seconds: int = 300) -> None:
+    async def start_activity(self, activity: str, duration_seconds: int = 0) -> None:
         """开始一项新活动
+
+        按设计文档：
+        1. 若已有活动在进行，打断并记录
+        2. 若未提供 duration，调用 LLM 生成
+        3. 记录开始时间和持续时间
 
         Args:
             activity: 活动描述（如"学习CSS"、"做拉伸"）
-            duration_seconds: 计划持续时间（秒），默认5分钟，0表示无限
+            duration_seconds: 计划持续时间（秒），0 表示由 LLM 生成
         """
         # 若已有活动在进行，打断并记录
         if self.current_activity:
             logger.info(f"[SelfAction] 打断当前活动: {self.current_activity}")
             await self.finish_activity(completed=False)
 
+        # 若未提供 duration，调用 LLM 生成
+        if duration_seconds <= 0:
+            duration_seconds = await self._generate_duration(activity)
+
         self.current_activity = activity
         self.activity_start_time = datetime.now()
         self.activity_duration = duration_seconds
 
         logger.info(f"[SelfAction] 开始活动: {activity}，计划时长: {duration_seconds}秒")
+
+    async def _generate_duration(self, activity: str) -> int:
+        """调用 LLM 生成活动持续时间（秒）
+
+        Args:
+            activity: 活动描述
+
+        Returns:
+            持续时间（秒），默认 300 秒（5分钟）
+        """
+        try:
+            system_prompt = await lang.text(
+                "self_action.duration.system",
+                self.moonlark_main.lang_str,
+            )
+            user_prompt = await lang.text(
+                "self_action.duration.user",
+                self.moonlark_main.lang_str,
+                activity,
+            )
+
+            result = await fetch_json(
+                [
+                    generate_message(system_prompt, "system"),
+                    generate_message(user_prompt, "user"),
+                ],
+                identify="SelfAction - Generate Duration",
+                reasoning_effort="low",
+            )
+
+            # 解析结果，期望 {"duration_seconds": int}
+            duration = result.get("duration_seconds", 300)
+            return max(60, min(3600, int(duration)))  # 限制在 1分钟 ~ 1小时
+
+        except Exception as e:
+            logger.exception(f"[SelfAction] 生成 duration 失败: {e}")
+            return 300  # 默认 5分钟
 
     async def tick(self) -> None:
         """检查当前活动是否超时，由定时器每分钟调用"""
@@ -67,15 +127,13 @@ class SelfActionController:
         elapsed = (end_time - self.activity_start_time).total_seconds()
 
         # 记录到历史
-        self.activity_history.append(
-            {
-                "activity": self.current_activity,
-                "start_time": self.activity_start_time,
-                "end_time": end_time,
-                "duration": elapsed,
-                "completed": completed,
-            }
-        )
+        self.activity_history.append({
+            "activity": self.current_activity,
+            "start_time": self.activity_start_time,
+            "end_time": end_time,
+            "duration": elapsed,
+            "completed": completed,
+        })
         # 只保留最近 20 条
         self.activity_history = self.activity_history[-20:]
 
