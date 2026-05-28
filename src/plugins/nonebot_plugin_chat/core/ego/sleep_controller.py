@@ -29,6 +29,8 @@ class SleepController:
         self.last_message_time: datetime = datetime.now()
         self.last_reply_time: datetime = datetime.now()
         self.consecutive_replies: int = 0
+        self.sleep_think_count: int = 0  # 睡眠后定时决策计数器
+        self.context_cleared: bool = False  # 是否已清除过上下文
 
         # 定时器：清醒时每10分钟检查困倦度
         scheduler.scheduled_job("interval", minutes=10, id="sleep_controller_process_timer")(self.process_timer)
@@ -77,15 +79,17 @@ class SleepController:
     # ========================================================================
 
     async def request_think(self) -> None:
-        """睡眠状态下的定时决策（每30分钟由 MoonlarkMain 调用）
+        """睡眠状态下的定时决策（每10分钟由 MoonlarkMain 调用）
 
         内部处理 wake_up，不返回值。
+        入睡后首次决策继续睡时（入睡到决策 >20分钟），重置所有会话上下文。
         """
         from nonebot_plugin_openai.utils.chat import fetch_json
         from nonebot_plugin_openai.utils.message import generate_message
         from ...lang import lang
         from ...models import SleepThinkResponse
 
+        self.sleep_think_count += 1
         now = datetime.now()
         sleep_duration = 0
         if self.sleep_begin_time:
@@ -113,9 +117,42 @@ class SleepController:
             if result.sleep_decision == "wake_up":
                 await self.wake_up()
                 self.moonlark_main._update_decision_history("wake_up")
+            else:
+                # 决定继续睡：检查是否需要清除上下文
+                await self._maybe_clear_context(sleep_duration)
 
         except Exception as e:
             logger.exception(f"[SleepController] 睡眠决策失败: {e}")
+
+    async def _maybe_clear_context(self, sleep_duration: float) -> None:
+        """入睡后首次决策继续睡时，重置所有会话上下文。
+
+        条件：入睡到决策时间 > 20 分钟，且未清除过。
+        """
+        if self.context_cleared:
+            return
+
+        if sleep_duration < 20:
+            logger.info(f"[SleepController] 入睡 {int(sleep_duration)} 分钟，不足20分钟，暂不重置上下文")
+            return
+
+        # 满足条件，重置所有会话上下文
+        logger.info("[SleepController] 入睡后首次继续睡决策，重置所有会话上下文")
+        await self._reset_all_sessions()
+        self.context_cleared = True
+
+    async def _reset_all_sessions(self) -> None:
+        """重置所有会话的上下文（内存 + 数据库）"""
+        from ..session import groups
+        from ..session import reset_session
+
+        session_ids = list(groups.keys())
+        for session_id in session_ids:
+            try:
+                await reset_session(session_id)
+                logger.info(f"[SleepController] 已重置会话: {session_id}")
+            except Exception as e:
+                logger.exception(f"[SleepController] 重置会话 {session_id} 失败: {e}")
 
     async def handle_mention(self, chat_context: list) -> bool:
         """当被提及时调用。返回 True 表示已唤醒，应正常回复。
@@ -188,7 +225,9 @@ class SleepController:
         elif sleep_decision == "wake_up" and self.moonlark_main.state["sleep_mode"]:
             await self.wake_up()
 
-    async def submit_sleep_decision(self, deal_type: str, delay_minutes: int = 5, reason: str = "") -> str:
+    async def submit_sleep_decision(
+        self, deal_type: str, delay_minutes: int = 5, reason: str = ""
+    ) -> str:
         """处理来自子会话的睡眠决策"""
         if deal_type == "ready":
             await self.handle_tired()
@@ -202,5 +241,7 @@ class SleepController:
         self.sleep_begin_time = None
         self.tiredness = 0.0
         self.consecutive_replies = 0
+        self.sleep_think_count = 0
+        self.context_cleared = False
         self.moonlark_main.state["sleep_mode"] = False
         logger.info("[SleepController] 已唤醒")
