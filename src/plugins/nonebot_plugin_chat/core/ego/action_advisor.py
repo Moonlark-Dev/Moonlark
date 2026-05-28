@@ -117,9 +117,7 @@ class ActionAdvisor:
                     last_chat = info.get("last_chat")
                     if last_chat:
                         minutes_ago = (datetime.now() - last_chat).total_seconds() // 60
-                        suggestions.append(
-                            f"用户 {user_id} 在 {int(minutes_ago)} 分钟前收到私聊但未回复。"
-                        )
+                        suggestions.append(f"用户 {user_id} 在 {int(minutes_ago)} 分钟前收到私聊但未回复。")
 
         return "\n".join(suggestions)
 

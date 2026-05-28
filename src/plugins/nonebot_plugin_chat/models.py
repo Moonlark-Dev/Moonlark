@@ -212,8 +212,10 @@ class ActionState(TypedDict, total=False):
 # EGO 决策相关模型
 # ========================================================================
 
+
 class PrivateChatDecision(BaseModel):
     """主动私聊决策"""
+
     target: str
     reason: str
     content_hint: str
@@ -221,6 +223,7 @@ class PrivateChatDecision(BaseModel):
 
 class EgoDecisionResponse(BaseModel):
     """MoonlarkMain request_think 的 LLM 返回格式"""
+
     sleep_decision: Optional[Literal["go_to_sleep", "wake_up"]] = None
     blog_action: Optional[str] = None  # "skip" | "continue_draft" | "abort_draft"
     start_new_topic: Optional[str] = None  # 博客主题，不为 None 时开始新博客
@@ -230,9 +233,11 @@ class EgoDecisionResponse(BaseModel):
 
 class SleepThinkResponse(BaseModel):
     """SleepController request_think 的 LLM 返回格式"""
+
     sleep_decision: Literal["stay_sleep", "wake_up"]
 
 
 class SelfActionDurationResponse(BaseModel):
     """SelfActionController _generate_duration 的 LLM 返回格式"""
+
     duration_seconds: int = 300
