@@ -1,3 +1,11 @@
+"""睡眠控制器
+
+基于困倦值公式的睡眠管理：
+- 困倦度计算（生物钟 + 静默因子 + 疲劳因子 + 门控系数 + 噪声）
+- 睡眠状态管理
+- @ 唤醒判断
+"""
+
 import math
 import random
 from datetime import datetime
@@ -6,7 +14,7 @@ from typing import TYPE_CHECKING
 from nonebot import logger
 
 if TYPE_CHECKING:
-    from .main_session import MainSession
+    from .moonlark_main import MoonlarkMain
 
 DROWSY_THRESHOLD = 0.8
 SLEEP_THRESHOLD = 0.95
@@ -24,8 +32,8 @@ class SleepController:
     ε = 随机噪声 uniform(-0.05, 0.05)
     """
 
-    def __init__(self, main_session: "MainSession"):
-        self.main_session = main_session
+    def __init__(self, moonlark_main: "MoonlarkMain"):
+        self.moonlark_main = moonlark_main
 
     @staticmethod
     def circadian(hour: float) -> float:
@@ -102,4 +110,4 @@ class SleepController:
 
     def on_wake_up(self) -> None:
         """醒来时重置连续回复计数"""
-        self.main_session.consecutive_replies = 0
+        self.moonlark_main.consecutive_replies = 0

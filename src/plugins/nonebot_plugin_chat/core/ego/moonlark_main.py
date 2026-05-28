@@ -1,73 +1,81 @@
-import asyncio
+"""Moonlark 意识主模块
 
-from nonebot_plugin_openai.utils.chat import fetch_json
+EGO 模块的核心，负责：
+- 维护全局状态（睡眠/心情/活动等）
+- 周期性执行 request_think 生成动作决策
+- 调用子控制器执行具体动作
+- 提供 summary_instant_memory 汇总即时记忆
+"""
+
+import asyncio
 import json
 import re
 import traceback
-from nonebot import get_bot, logger
-from nonebot.compat import type_validate_json, type_validate_python
 from datetime import datetime, timedelta
-from enum import Enum
-from typing import TYPE_CHECKING, Literal, Optional, Union, TypedDict
+from typing import TYPE_CHECKING, Literal, Optional
 
+from nonebot import get_bot, logger
+from nonebot.compat import type_validate_python
 from nonebot_plugin_apscheduler import scheduler
-from nonebot_plugin_chat.core.proactive_chat import send_proactive_private_message
-from nonebot_plugin_chat.models import (
+from nonebot_plugin_openai.utils.chat import fetch_json, MessageFetcher
+from nonebot_plugin_openai.utils.message import generate_message
+from nonebot_plugin_orm import get_session
+from sqlalchemy import delete, select
+
+from ...enums import StateEnum
+from ...lang import lang
+from ...models import (
     ActionDecisionResponse,
-    ActionState,
-    BoredAction,
     BoredActionResponse,
     CustomAction,
     MainSessionActionHistory,
     Note,
     PrivateChatSession,
     RestAction,
-    SendPrivateMsgAction,
-    SkipAction,
     SleepDecisionResponse,
-    WriteBlogAction,
 )
-from ...enums import StateEnum
-from nonebot_plugin_chat.utils.instant_mem import get_instant_memories
-from nonebot_plugin_chat.utils.note_manager import get_context_notes
-from nonebot_plugin_chat.utils.prompt import get_prompt_text
-from nonebot_plugin_larkuser.utils.user import get_user
-from nonebot_plugin_orm import get_session
-from sqlalchemy import delete, select
-from ...lang import lang
-from nonebot_plugin_chat.enums import MoodEnum
-from nonebot_plugin_chat.utils.status_manager import StatusManager
-from nonebot_plugin_openai.utils.chat import MessageFetcher
-from nonebot_plugin_openai.utils.message import generate_message
-from nonebot_plugin_chat.utils import parse_message_to_string
-from nonebot_plugin_chat.utils.blog import create_blog_post
-from pydantic import BaseModel
+from ...utils.instant_mem import get_instant_memories
+from ...utils.note_manager import get_context_notes
+from ...utils.prompt import get_prompt_text
+from ...utils.status_manager import StatusManager
+from ...utils import parse_message_to_string
+from ...utils.blog import create_blog_post
+from ..session import groups
+from ..proactive_chat import send_proactive_private_message
+from .sleep_controller import SleepController
+from .blog_writer import BlogWriter
+from .proactive_chat_ctrl import ProactiveChatController
+from .self_action_ctrl import SelfActionController
+from .action_advisor import ActionAdvisor
 
 if TYPE_CHECKING:
-    from nonebot_plugin_chat.core.session.base import BaseSession
-
-from nonebot_plugin_ghot.function import get_group_hot_score
-from nonebot_plugin_chat.core.session import groups
-from .sleep_controller import SleepController
+    from ..session.base import BaseSession
 
 EFFECTIVE_ACTIONS = ["send_private_message", "do", "sleep", "write_blog"]
 
 
-class MainSession:
+class MoonlarkMain:
+    """Moonlark 意识主模块"""
 
     def __init__(self, lang_str: str = "zh_hans") -> None:
+        self.lang_str = lang_str
         self.state = StateEnum.ACTIVATE
-        # 开始时间，详细信息，结束时间
-        self.action_history: list[tuple[datetime, BoredAction, Optional[datetime]]] = []
+        self.action_history: list[tuple[datetime, object, Optional[datetime]]] = []
         self.thinking_cold_until = datetime.now() - timedelta(minutes=5)
         self.thinking_lock = asyncio.Lock()
         self.status_manager = StatusManager()
-        self.lang_str = lang_str
         self.state_until = datetime.now()
-        self.consecutive_replies: int = 0  # 连续对话轮数
-        scheduler.scheduled_job("interval", minutes=5)(self.process_timer)
-        # 初始化睡眠控制器
+        self.consecutive_replies: int = 0
+
+        # 子控制器
         self.sleep_controller = SleepController(self)
+        self.blog_writer = BlogWriter(self)
+        self.proactive_chat_ctrl = ProactiveChatController(self)
+        self.self_action_ctrl = SelfActionController(self)
+        self.action_advisor = ActionAdvisor(self)
+
+        # 定时器注册（每5分钟）
+        scheduler.scheduled_job("interval", minutes=5, id="moonlark_main_process_timer")(self.process_timer)
 
     def get_minutes_since_last_group_message(self) -> float:
         """获取距离最近一次群内发言的分钟数"""
@@ -94,7 +102,6 @@ class MainSession:
 
         if result == "sleep":
             return True  # 强制触发，request_think 中会强制选择 sleep
-        # drowsy 状态现在通过事件提示处理，不在这里触发
         return False
 
     async def generate_user_prompt(
@@ -104,12 +111,12 @@ class MainSession:
         trigger_from: Optional[str] = None,
     ) -> str:
         event_text = await lang.text(
-            f"main_session.latest_event.{trigger_reason}",
+            f"moonlark_main.latest_event.{trigger_reason}",
             self.lang_str,
             trigger_from=trigger_from,
             request_text=request_text,
         )
-        return await lang.text("main_session.prompt_user", self.lang_str, event_text)
+        return await lang.text("moonlark_main.prompt_user", self.lang_str, event_text)
 
     async def request_think(
         self,
@@ -117,60 +124,118 @@ class MainSession:
         request_text: Optional[str] = None,
         trigger_from: Optional[str] = None,
     ) -> None:
+        """核心决策方法"""
         dt = datetime.now()
         if self.state == StateEnum.SLEEPING:
             return
         if dt < self.thinking_cold_until or self.thinking_lock.locked():
             return
+
         async with self.thinking_lock:
             # 触发所有会话的即时记忆生成
             for group in groups.values():
                 await group.processor.generate_instant_memory()
 
+            # 获取 ActionAdvisor 建议
+            state = self._collect_state()
+            summary = await self.summary_instant_memory()
+            suggestions = self.action_advisor.get_suggestions(state, summary)
+
+            # 生成系统提示
+            system_prompt = await self.generate_system_prompt(
+                trigger_reason == "ready_sleep", suggestions
+            )
+            user_prompt = await self.generate_user_prompt(trigger_reason, request_text, trigger_from)
+
             fetcher = await MessageFetcher.create(
-                [
-                    generate_message(await self.generate_system_prompt(trigger_reason == "ready_sleep"), "system"),
-                    generate_message(
-                        await self.generate_user_prompt(trigger_reason, request_text, trigger_from), "user"
-                    ),
-                ],
-                identify="Chat - Main Session Think",
+                [generate_message(system_prompt, "system"), generate_message(user_prompt, "user")],
+                identify="Chat - MoonlarkMain Think",
                 reasoning_effort="medium",
             )
+
             async for msg in fetcher.fetch_message_stream():
                 message = re.sub(r"`{1,3}([a-zA-Z0-9]+)?", "", msg)
                 try:
                     response = type_validate_python(BoredActionResponse, {"response": json.loads(message)})
                     action = response.response
+
                     # 如果是 ready_sleep，只允许 sleep 动作
                     if trigger_reason == "ready_sleep" and action.type != "sleep":
                         fetcher.session.insert_message(
                             generate_message("错误：在准备睡觉时只能选择 sleep 动作", "user")
                         )
                         continue
+
                     if action.type in ["send_private_message", "do", "sleep", "write_blog"]:
                         self.action_history.append((datetime.now(), action, None))
+
                     await self.handle_action(action, fetcher)
                 except Exception:
                     fetcher.session.insert_message(generate_message(traceback.format_exc(), "user"))
                     continue
 
+    def _collect_state(self) -> dict:
+        """收集当前状态供 ActionAdvisor 使用"""
+        mood = self.status_manager.get_status()
+        blog_status = self.blog_writer.get_status()
+
+        return {
+            "sleep_mode": self.state == StateEnum.SLEEPING,
+            "blog_status": blog_status["status"],
+            "draft": blog_status["draft"],
+            "cooldown_remaining": blog_status["cooldown_remaining"],
+            "last_blog_time": blog_status["last_blog_time"],
+            "proactive_info": self.proactive_chat_ctrl.get_cooldown_info(),
+            "current_activity": self.self_action_ctrl.current_activity,
+            "mood": {
+                "emotion": mood[0].value,
+                "intensity": 0.5,
+                "reason": mood[1],
+            },
+        }
+
+    async def summary_instant_memory(self) -> str:
+        """汇总所有活跃会话的即时记忆，生成全局总结"""
+        memories = get_instant_memories()
+        if not memories:
+            return "暂无群聊记忆。"
+
+        # 格式化记忆
+        memory_lines = []
+        for mem in memories:
+            time_str = mem["create_time"].strftime("%H:%M")
+            ctx = mem.get("name", mem.get("ctx_id", ""))
+            memory_lines.append(f"[{time_str}][{ctx}] {mem['content']}")
+
+        # 调用 LLM 生成总结（限 200 token）
+        try:
+            summary = await lang.text(
+                "moonlark_main.summarize_memories",
+                self.lang_str,
+                "\n".join(memory_lines),
+            )
+            return summary
+        except Exception as e:
+            logger.exception(f"[MoonlarkMain] 汇总即时记忆失败: {e}")
+            return "记忆汇总失败。"
+
     async def trigger_sleep(self) -> None:
+        """触发睡眠，重置会话"""
         await asyncio.sleep(60)  # 防止马上被叫起来
         for group in groups.values():
             await group.processor.generate_instant_memory()
             await group.processor.openai_messages.reset_chat_history()
 
     async def get_action_str(
-        self, action: BoredAction, start_time: datetime, stop_time: Optional[datetime]
+        self, action, start_time: datetime, stop_time: Optional[datetime]
     ) -> Optional[str]:
+        """格式化动作历史文本"""
         match action.type:
             case "send_private_message":
                 if stop_time is not None:
-                    reply_time = stop_time
-                    time_str = reply_time.strftime("%H:%M") if reply_time else ""
+                    time_str = stop_time.strftime("%H:%M") if stop_time else ""
                     return await lang.text(
-                        "main_session.history.send_private_message.replied",
+                        "moonlark_main.history.send_private_message.replied",
                         self.lang_str,
                         action.target_nickname,
                         action.subject,
@@ -178,7 +243,7 @@ class MainSession:
                     )
                 else:
                     return await lang.text(
-                        "main_session.history.send_private_message.no_reply",
+                        "moonlark_main.history.send_private_message.no_reply",
                         self.lang_str,
                         action.target_nickname,
                         action.subject,
@@ -189,26 +254,40 @@ class MainSession:
                         min(datetime.now() - start_time, timedelta(minutes=action.time)).total_seconds() / 60
                     )
                     return await lang.text(
-                        "main_session.history.sleep.in_progress", self.lang_str, actual_minutes, action.time
+                        "moonlark_main.history.sleep.in_progress",
+                        self.lang_str,
+                        actual_minutes,
+                        action.time,
                     )
                 else:
                     actual_minutes = min(stop_time - start_time, timedelta(minutes=action.time)).total_seconds() / 60
                     return await lang.text(
-                        "main_session.history.sleep.completed", self.lang_str, action.time, actual_minutes
+                        "moonlark_main.history.sleep.completed",
+                        self.lang_str,
+                        action.time,
+                        actual_minutes,
                     )
             case "do":
                 if stop_time is None:
                     return await lang.text(
-                        "main_session.history.do.in_progress", self.lang_str, action.information, action.estimated_time
+                        "moonlark_main.history.do.in_progress",
+                        self.lang_str,
+                        action.information,
+                        action.estimated_time,
                     )
                 else:
                     return await lang.text(
-                        "main_session.history.do.completed", self.lang_str, action.information, action.estimated_time
+                        "moonlark_main.history.do.completed",
+                        self.lang_str,
+                        action.information,
+                        action.estimated_time,
                     )
             case "write_blog":
-                return await lang.text("main_session.history.write_blog", self.lang_str, action.title)
+                return await lang.text("moonlark_main.history.write_blog", self.lang_str, action.title)
+        return None
 
     async def get_additional_prompt(self) -> str:
+        """生成额外提示信息（心情、即时记忆、笔记等）"""
         mood = self.status_manager.get_status()
         state_str = await lang.text(
             "prompt_group.state",
@@ -217,7 +296,8 @@ class MainSession:
             self.status_manager.get_mood_retention(),
             mood[1],
         )
-        # 即时记忆：汇总所有全局即时记忆
+
+        # 即时记忆
         instant_mem_lines = []
         for mem in get_instant_memories():
             instant_mem_lines.append(
@@ -231,11 +311,19 @@ class MainSession:
             )
         instant_mem = "\n".join(instant_mem_lines)
 
+        # 笔记
         note_manager = await get_context_notes("main_")
         notes = await note_manager.filter_note(instant_mem)
         notes = notes[0] + notes[1]
+
+        # 博客状态
+        blog_status_text = self.blog_writer.get_status_text() if hasattr(self.blog_writer, 'get_status_text') else ""
+
+        # 自主活动状态
+        self_action_text = self.self_action_ctrl.get_status_text()
+
         return await lang.text(
-            "main_session.additional_info",
+            "moonlark_main.additional_info",
             self.lang_str,
             await lang.text("prompt_group.time", self.lang_str, datetime.now().isoformat()),
             state_str,
@@ -245,21 +333,28 @@ class MainSession:
                 else await lang.text("prompt.note.none", self.lang_str)
             ),
             instant_mem,
+            blog_status_text,
+            self_action_text,
         )
 
-    async def generate_system_prompt(self, sleep_action_only: bool = False) -> str:
+    async def generate_system_prompt(
+        self, sleep_action_only: bool = False, suggestions: str = ""
+    ) -> str:
+        """生成系统提示"""
         return await lang.text(
-            "main_session.prompt",
+            "moonlark_main.prompt",
             self.lang_str,
-            await lang.text("main_session.action_sleep", self.lang_str),
-            "" if sleep_action_only else await lang.text("main_session.action_list", self.lang_str),
+            await lang.text("moonlark_main.action_sleep", self.lang_str),
+            "" if sleep_action_only else await lang.text("moonlark_main.action_list", self.lang_str),
             await get_prompt_text("identity"),
             await self.get_friends(),
             await self.get_additional_prompt(),
             await self.get_recent_actions_text(self.lang_str),
+            suggestions,
         )
 
     async def get_recent_actions_text(self, lang_str: str) -> str:
+        """获取最近动作历史文本"""
         return "\n".join(
             [
                 f"[{start_time.strftime('%Y-%m-%d %H:%M:%S')}] {s}"
@@ -269,12 +364,9 @@ class MainSession:
         )
 
     async def _has_active_session(self) -> bool:
-        """检查是否存在活跃会话（用于暂停 do action 计时）
+        """检查是否存在活跃会话"""
+        from ...utils.group import get_group_hot_score
 
-        活跃会话定义：
-        - 群聊：ghot（群聊热度分数）>= 10 且 last_interest >= 0.5
-        - 私聊：最近 5 分钟内有消息
-        """
         dt = datetime.now()
         for session in groups.values():
             if session.get_session_type() == "group":
@@ -287,14 +379,17 @@ class MainSession:
                     return True
         return False
 
-    async def process_timer(self):
+    async def process_timer(self) -> None:
+        """定时器处理（每5分钟）"""
         dt = datetime.now()
+
         # 活跃会话存在时，延长 do action 的计时
         if self.state == StateEnum.BUSY and self.state_until and dt < self.state_until:
             if await self._has_active_session():
                 self.state_until += timedelta(minutes=5)
-                logger.debug(f"[MainSession] 检测到活跃会话，延长 state_until 至 {self.state_until}")
+                logger.debug(f"[MoonlarkMain] 检测到活跃会话，延长 state_until 至 {self.state_until}")
                 return
+
         if self.state_until and dt > self.state_until:
             was_sleeping = self.state == StateEnum.SLEEPING
             self.state_until = None
@@ -316,20 +411,25 @@ class MainSession:
         if self.state_until is None or dt >= self.state_until:
             if not self.action_history or dt >= self.action_history[-1][0] + timedelta(minutes=20):
                 minutes_since_last = self.get_minutes_since_last_group_message()
-                drowsiness_result = self.sleep_controller.check_drowsiness(self.consecutive_replies, minutes_since_last)
+                drowsiness_result = self.sleep_controller.check_drowsiness(
+                    self.consecutive_replies, minutes_since_last
+                )
                 if drowsiness_result == "sleep":
                     await self.request_think("ready_sleep", None)
                 elif drowsiness_result == "drowsy":
-                    # 向群聊会话发送犯困提示事件，让 LLM 调用 change_sleep_status 工具
                     drowsy_prompt = await lang.text("sleep.drowsy_prompt", self.lang_str)
                     for group in groups.values():
                         if group.get_session_type() == "group":
                             await group.add_event(drowsy_prompt, "probability")
                             break
 
+        # 自主活动超时检查
+        await self.self_action_ctrl.tick()
+
         await self.save_action_history()
 
     async def load_action_history(self) -> None:
+        """从数据库加载动作历史"""
         async with get_session() as session:
             for item in await session.scalars(
                 select(MainSessionActionHistory)
@@ -346,11 +446,16 @@ class MainSession:
                 )
 
     async def save_action_history(self) -> None:
+        """保存动作历史到数据库"""
         async with get_session() as session:
             await session.execute(delete(MainSessionActionHistory))
             for action in self.action_history:
                 session.add(
-                    MainSessionActionHistory(start_time=action[0], action=action[1].model_dump(), end_time=action[2])
+                    MainSessionActionHistory(
+                        start_time=action[0],
+                        action=action[1].model_dump(),
+                        end_time=action[2],
+                    )
                 )
             await session.commit()
 
@@ -358,7 +463,8 @@ class MainSession:
         created_time = datetime.fromtimestamp(note.created_time).strftime("%y-%m-%d")
         return await lang.text("prompt.note.format", self.lang_str, note.content, note.id, created_time)
 
-    async def handle_action(self, action: BoredAction, fetcher: Optional[MessageFetcher] = None) -> None:
+    async def handle_action(self, action, fetcher: Optional[MessageFetcher] = None) -> None:
+        """分发动作到子控制器"""
         match action.type:
             case "send_private_message":
                 await self.send_private_message(action.target_nickname, action.subject)
@@ -384,16 +490,20 @@ class MainSession:
         if context_id in groups:
             session = groups[context_id]
             result = await session.get_cached_messages_string()
-            result = result or await lang.text("main_session.fetch_chat_history.no_messages", self.lang_str)
+            result = result or await lang.text("moonlark_main.fetch_chat_history.no_messages", self.lang_str)
             fetcher.session.insert_message(generate_message(result, "user"))
         else:
             fetcher.session.insert_message(
-                generate_message(await lang.text("main_session.fetch_chat_history.not_found", self.lang_str), "user")
+                generate_message(
+                    await lang.text("moonlark_main.fetch_chat_history.not_found", self.lang_str),
+                    "user",
+                )
             )
 
     async def send_private_message(self, target_nickname: str, subject: str) -> None:
         async with get_session() as session:
             for friend_record in await session.scalars(select(PrivateChatSession)):
+                from ...utils.larkuser import get_user
                 user = await get_user(friend_record.user_id)
                 if user.nickname == target_nickname:
                     bot_id = friend_record.bot_id
@@ -401,36 +511,32 @@ class MainSession:
                     break
             else:
                 raise ValueError("No such friend")
-        # 记录用户ID，用于后续检查是否回复
+
         self._current_action_send_private_user_id = user_id
         bot = get_bot(bot_id)
         await send_proactive_private_message(bot, user_id, subject)
 
     async def write_blog(self, title: str, content: str, fetcher: MessageFetcher) -> None:
         await create_blog_post(title, content)
-        result = await lang.text("main_session.write_blog.success", self.lang_str, title)
+        result = await lang.text("moonlark_main.write_blog.success", self.lang_str, title)
         fetcher.session.insert_message(generate_message(result, "user"))
 
     async def request_action_decision(
-        self,
-        do: str,
-        session_info: str,
-        cached_messages: str,
-        duration: Optional[int] = None,
+        self, do: str, session_info: str, cached_messages: str, duration: Optional[int] = None
     ) -> ActionDecisionResponse:
         system_prompt = await lang.text(
-            "main_session.action_request.system",
+            "moonlark_main.action_request.system",
             self.lang_str,
             await get_prompt_text("identity"),
             await self.get_additional_prompt(),
             await self.get_recent_actions_text(self.lang_str),
         )
         user_prompt = await lang.text(
-            "main_session.action_request.user",
+            "moonlark_main.action_request.user",
             self.lang_str,
             session_info,
             do,
-            str(duration) if duration else await lang.text("main_session.action_request.no_duration", self.lang_str),
+            str(duration) if duration else await lang.text("moonlark_main.action_request.no_duration", self.lang_str),
             cached_messages,
         )
         return await fetch_json(
@@ -441,11 +547,7 @@ class MainSession:
         )
 
     async def submit_action_decision(
-        self,
-        session_id: str,
-        do: str,
-        duration: Optional[int] = None,
-        future: Optional[asyncio.Future] = None,
+        self, session_id: str, do: str, duration: Optional[int] = None, future: Optional[asyncio.Future] = None
     ) -> None:
         """处理来自子会话的动作执行申请"""
         try:
@@ -453,15 +555,15 @@ class MainSession:
             if session_id in groups:
                 session_info = await groups[session_id].get_session_name()
 
+            cached_messages = ""
             if session_id in groups:
                 cached_messages = await groups[session_id].get_cached_messages_string(
                     length=10, include_self_message=True
                 )
             if not cached_messages:
-                cached_messages = await lang.text("main_session.fetch_chat_history.no_messages", self.lang_str)
+                cached_messages = await lang.text("moonlark_main.fetch_chat_history.no_messages", self.lang_str)
 
             result = await self.request_action_decision(do, session_info, cached_messages, duration)
-
             approved = result.approved
             allocated_time = result.allocated_time
 
@@ -472,9 +574,9 @@ class MainSession:
                 future.set_result(
                     await lang.text(
                         (
-                            "main_session.action_request.result_approved"
+                            "moonlark_main.action_request.result_approved"
                             if approved
-                            else "main_session.action_request.result_denied"
+                            else "moonlark_main.action_request.result_denied"
                         ),
                         self.lang_str,
                         do,
@@ -484,22 +586,18 @@ class MainSession:
         except Exception as e:
             logger.exception(e)
             if future and not future.done():
-                future.set_result(await lang.text("main_session.action_request.error", self.lang_str, str(e)))
+                future.set_result(await lang.text("moonlark_main.action_request.error", self.lang_str, str(e)))
 
-    async def request_sleep_decision(
-        self,
-        session_info: str,
-        cached_messages: str,
-    ) -> SleepDecisionResponse:
+    async def request_sleep_decision(self, session_info: str, cached_messages: str) -> SleepDecisionResponse:
         system_prompt = await lang.text(
-            "main_session.sleep_request.system",
+            "moonlark_main.sleep_request.system",
             self.lang_str,
             await get_prompt_text("identity"),
             await self.get_additional_prompt(),
             await self.get_recent_actions_text(self.lang_str),
         )
         user_prompt = await lang.text(
-            "main_session.sleep_request.user",
+            "moonlark_main.sleep_request.user",
             self.lang_str,
             session_info,
             cached_messages,
@@ -508,13 +606,11 @@ class MainSession:
             [generate_message(system_prompt, "system"), generate_message(user_prompt, "user")],
             SleepDecisionResponse,
             reasoning_effort="low",
-            identify="Main Session - Sleep Request Decision",
+            identify="MoonlarkMain - Sleep Request Decision",
         )
 
     async def submit_sleep_request(
-        self,
-        session_id: str,
-        future: Optional[asyncio.Future] = None,
+        self, session_id: str, future: Optional[asyncio.Future] = None
     ) -> None:
         """处理来自子会话的睡觉申请"""
         try:
@@ -528,7 +624,7 @@ class MainSession:
                     length=10, include_self_message=True
                 )
             if not cached_messages:
-                cached_messages = await lang.text("main_session.fetch_chat_history.no_messages", self.lang_str)
+                cached_messages = await lang.text("moonlark_main.fetch_chat_history.no_messages", self.lang_str)
 
             result = await self.request_sleep_decision(session_info, cached_messages)
             approved = result.approved
@@ -546,9 +642,9 @@ class MainSession:
                 future.set_result(
                     await lang.text(
                         (
-                            "main_session.sleep_request.result_approved"
+                            "moonlark_main.sleep_request.result_approved"
                             if approved
-                            else "main_session.sleep_request.result_denied"
+                            else "moonlark_main.sleep_request.result_denied"
                         ),
                         self.lang_str,
                     )
@@ -556,7 +652,7 @@ class MainSession:
         except Exception as e:
             logger.exception(e)
             if future and not future.done():
-                future.set_result(await lang.text("main_session.sleep_request.error", self.lang_str, str(e)))
+                future.set_result(await lang.text("moonlark_main.sleep_request.error", self.lang_str, str(e)))
 
     async def submit_sleep_decision(
         self,
@@ -566,10 +662,9 @@ class MainSession:
         reason: Optional[str] = None,
         future: Optional[asyncio.Future] = None,
     ) -> None:
-        """处理来自子会话的睡眠决策（change_sleep_status 工具调用）"""
+        """处理来自子会话的睡眠决策"""
         try:
             if deal_type == "ready":
-                # 准备睡觉
                 self.state = StateEnum.SLEEPING
                 sleep_minutes = 20
                 sleep_start = datetime.now()
@@ -579,25 +674,26 @@ class MainSession:
                 await self.trigger_sleep()
 
                 if future and not future.done():
-                    future.set_result(await lang.text("main_session.sleep_decision.ready_approved", self.lang_str))
+                    future.set_result(
+                        await lang.text("moonlark_main.sleep_decision.ready_approved", self.lang_str)
+                    )
             else:
-                # 延迟睡觉
-                delay = min(delay_minutes or 5, 30)  # 默认5分钟，最大30分钟
+                delay = min(delay_minutes or 5, 30)
                 self.state_until = datetime.now() + timedelta(minutes=delay)
 
                 if future and not future.done():
                     future.set_result(
                         await lang.text(
-                            "main_session.sleep_decision.delay_approved",
+                            "moonlark_main.sleep_decision.delay_approved",
                             self.lang_str,
                             delay,
-                            reason or await lang.text("main_session.sleep_decision.no_reason", self.lang_str),
+                            reason or await lang.text("moonlark_main.sleep_decision.no_reason", self.lang_str),
                         )
                     )
         except Exception as e:
             logger.exception(e)
             if future and not future.done():
-                future.set_result(await lang.text("main_session.sleep_decision.error", self.lang_str, str(e)))
+                future.set_result(await lang.text("moonlark_main.sleep_decision.error", self.lang_str, str(e)))
 
     async def wake_up(self, session: Optional["BaseSession"] = None) -> None:
         if self.state != StateEnum.SLEEPING:
@@ -612,7 +708,7 @@ class MainSession:
                 if start_time + timedelta(minutes=action.time) > dt:
                     interrupted = True
                     result = await lang.text(
-                        "main_session.wake_up.interrupted",
+                        "moonlark_main.wake_up.interrupted",
                         self.lang_str,
                         dt.strftime("%H:%M:%S"),
                         action.time,
@@ -635,10 +731,11 @@ class MainSession:
         friend_list = []
         async with get_session() as session:
             for friend_record in await session.scalars(select(PrivateChatSession)):
+                from ...utils.larkuser import get_user
                 user = await get_user(friend_record.user_id)
                 friend_list.append(
                     await lang.text(
-                        "main_session.friend",
+                        "moonlark_main.friend",
                         self.lang_str,
                         user.get_nickname(),
                         user.get_display_fav(),
@@ -647,23 +744,21 @@ class MainSession:
                         (
                             datetime.fromtimestamp(friend_record.last_proactive_message_time).isoformat()
                             if friend_record.last_proactive_message_time
-                            else await lang.text("main_session.not_chatted_private", self.lang_str)
+                            else await lang.text("moonlark_main.not_chatted_private", self.lang_str)
                         ),
                     )
                 )
         return await lang.text(
-            "main_session.friends",
+            "moonlark_main.friends",
             self.lang_str,
             "\n".join(friend_list),
             await get_prompt_text("favorability"),
         )
 
 
-main_session = MainSession()
+moonlark_main = MoonlarkMain()
 
 
-async def init_main_session() -> None:
-    """初始化 main_session，从数据库加载数据"""
-    await main_session.load_action_history()
-    # 注册每天8:30的睡觉时间决策任务
-    #
+async def init_moonlark_main() -> None:
+    """初始化 moonlark_main，从数据库加载数据"""
+    await moonlark_main.load_action_history()
