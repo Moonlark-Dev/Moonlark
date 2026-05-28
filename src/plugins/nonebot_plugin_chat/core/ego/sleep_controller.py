@@ -43,6 +43,7 @@ class SleepController:
         self.tiredness: float = 0.0
         self.last_message_time: datetime = datetime.now()
         self.last_reply_time: datetime = datetime.now()
+        self.consecutive_replies: int = 0
 
     # ========================================================================
     # 困倦度计算（保持原有算法）
@@ -76,7 +77,7 @@ class SleepController:
 
         b = self.circadian(hour)
         s = self.silence_factor(minutes_since_last)
-        f = self.fatigue_factor(self.moonlark_main.consecutive_replies)
+        f = self.fatigue_factor(self.consecutive_replies)
         g = self.gating(b)
         epsilon = random.uniform(-0.05, 0.05)
 
@@ -177,8 +178,9 @@ class SleepController:
         self.calculate_sleepiness_index()
 
     def handle_reply(self) -> None:
-        """每次发送回复时调用，更新 last_reply_time 并重新计算困倦度"""
+        """每次发送回复时调用，更新 last_reply_time，递增 consecutive_replies 并重新计算困倦度"""
         self.last_reply_time = datetime.now()
+        self.consecutive_replies += 1
         self.calculate_sleepiness_index()
 
     async def handle_tired(self) -> None:
@@ -211,22 +213,6 @@ class SleepController:
         self.sleep_begin_time = None
         self.tiredness = 0.0
         self.moonlark_main.state["sleep_mode"] = False
-        self.moonlark_main.consecutive_replies = 0
+        self.consecutive_replies = 0
         logger.info("[SleepController] 已唤醒")
 
-    def on_wake_up(self) -> None:
-        """兼容旧代码：唤醒回调"""
-        self.moonlark_main.consecutive_replies = 0
-
-    # ========================================================================
-    # 兼容旧接口
-    # ========================================================================
-
-    def check_drowsiness(self, consecutive_replies: int, minutes_since_last_msg: float) -> str:
-        """兼容旧代码：检查困倦值"""
-        tiredness = self.calculate_sleepiness_index()
-        if tiredness >= SLEEP_THRESHOLD:
-            return "sleep"
-        elif tiredness >= DROWSY_THRESHOLD:
-            return "drowsy"
-        return "normal"

@@ -463,6 +463,10 @@ class MessageProcessor:
                     self.session.accumulated_text_length += len(cleaned)
                 logger.debug(f"Accumulated text length: {self.session.accumulated_text_length}")
 
+                # 通知 MoonlarkMain 收到消息（更新 SleepController 的 last_message_time）
+                from .ego.moonlark_main import moonlark_main
+                moonlark_main.on_message_received()
+
             # 消息入队后异步检查是否需要生成即时记忆
             if not self.blocked:
                 asyncio.create_task(self._maybe_generate_instant_memory())
@@ -568,7 +572,7 @@ class MessageProcessor:
 
         recent_activities = "\n".join(
             await self.filter_info_lines(
-                (await moonlark_main.get_recent_actions_text(self.session.lang_str)).splitlines()
+                moonlark_main._get_recent_actions_text().splitlines()
             )
         )
         return await self.session.text(
@@ -611,7 +615,7 @@ class MessageProcessor:
         # 获取正在做的事（查重）
         recent_activities = "\n".join(
             await self.filter_info_lines(
-                (await moonlark_main.get_recent_actions_text(self.session.lang_str)).splitlines()
+                moonlark_main._get_recent_actions_text().splitlines()
             )
         )
 
