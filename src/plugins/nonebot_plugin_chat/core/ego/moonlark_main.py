@@ -76,13 +76,13 @@ class MoonlarkMain:
             "sleep_mode": False,
             "mood": {"emotion": "neutral", "intensity": 0.5, "reason": ""},
             "last_decision_time": None,
-            "decision_history": [],       # 最近5次决策记录
+            "decision_history": [],  # 最近5次决策记录
             "instant_memory_summary": "",  # 当前群聊总结
         }
 
         # 配置（按设计文档）
-        self.decision_interval_normal = 600   # 10分钟
-        self.decision_interval_sleep = 1800   # 30分钟
+        self.decision_interval_normal = 600  # 10分钟
+        self.decision_interval_sleep = 1800  # 30分钟
 
         # 状态管理器（心情系统）
         self.status_manager = StatusManager()
@@ -280,15 +280,15 @@ class MoonlarkMain:
 
     def _update_decision_history(self, action_desc: str) -> None:
         """更新决策历史（保留最近5次）"""
-        self.state["decision_history"].append({
-            "time": datetime.now().isoformat(),
-            "action": action_desc,
-        })
+        self.state["decision_history"].append(
+            {
+                "time": datetime.now().isoformat(),
+                "action": action_desc,
+            }
+        )
         self.state["decision_history"] = self.state["decision_history"][-5:]
 
-    async def _generate_system_prompt(
-        self, summary: str, state_info: dict, suggestions: str
-    ) -> str:
+    async def _generate_system_prompt(self, summary: str, state_info: dict, suggestions: str) -> str:
         """生成 request_think 的系统提示（按设计文档模板）"""
         identity_prompt = await get_prompt_text("identity")
 
@@ -420,11 +420,7 @@ class MoonlarkMain:
         now = datetime.now()
 
         # 根据 sleep_mode 决定实际间隔
-        interval = (
-            self.decision_interval_sleep
-            if self.state["sleep_mode"]
-            else self.decision_interval_normal
-        )
+        interval = self.decision_interval_sleep if self.state["sleep_mode"] else self.decision_interval_normal
 
         last = self.state["last_decision_time"]
         if last is None or (now - last).total_seconds() >= interval:
@@ -448,9 +444,7 @@ class MoonlarkMain:
         await self.sleep_controller.wake_up()
         self.state["sleep_mode"] = False
         if session:
-            await session.processor.openai_messages.append_user_message(
-                "Moonlark 已被唤醒。"
-            )
+            await session.processor.openai_messages.append_user_message("Moonlark 已被唤醒。")
 
     def update_send_private_message_state(self, user_id: str) -> None:
         """兼容旧代码：更新私聊回复状态"""
@@ -514,6 +508,7 @@ class MoonlarkMain:
         async with get_session() as session:
             for friend_record in await session.scalars(select(PrivateChatSession)):
                 from ...utils.larkuser import get_user
+
                 user = await get_user(friend_record.user_id)
                 friend_list.append(
                     await lang.text(
@@ -590,7 +585,11 @@ class MoonlarkMain:
             if future and not future.done():
                 future.set_result(
                     await lang.text(
-                        "moonlark_main.action_request.result_approved" if approved else "moonlark_main.action_request.result_denied",
+                        (
+                            "moonlark_main.action_request.result_approved"
+                            if approved
+                            else "moonlark_main.action_request.result_denied"
+                        ),
                         self.lang_str,
                         do,
                         allocated_time,
@@ -601,9 +600,7 @@ class MoonlarkMain:
             if future and not future.done():
                 future.set_result(f"决策失败: {e}")
 
-    async def submit_sleep_request(
-        self, session_id: str, future: Optional[asyncio.Future] = None
-    ) -> None:
+    async def submit_sleep_request(self, session_id: str, future: Optional[asyncio.Future] = None) -> None:
         """处理来自子会话的睡觉申请"""
         try:
             if future and not future.done():
