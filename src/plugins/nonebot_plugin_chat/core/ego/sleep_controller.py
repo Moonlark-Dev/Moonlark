@@ -188,9 +188,7 @@ class SleepController:
         elif sleep_decision == "wake_up" and self.moonlark_main.state["sleep_mode"]:
             await self.wake_up()
 
-    async def submit_sleep_decision(
-        self, deal_type: str, delay_minutes: int = 5, reason: str = ""
-    ) -> str:
+    async def submit_sleep_decision(self, deal_type: str, delay_minutes: int = 5, reason: str = "") -> str:
         """处理来自子会话的睡眠决策"""
         if deal_type == "ready":
             await self.handle_tired()
