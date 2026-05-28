@@ -1,12 +1,6 @@
 """睡眠控制器
 
-按设计文档实现：
-- 管理睡眠状态（sleep_state、sleep_begin_time）
-- 计算困倦度（calculate_sleepiness_index）
-- 处理睡眠时的定时决策和 mention 唤醒
-- handle_message / handle_reply 更新时间
-- handle_tired 触发睡眠
-- process_timer 定时检查困倦度
+按设计文档实现，不兼容旧代码。
 """
 
 import math
@@ -15,6 +9,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Optional
 
 from nonebot import logger
+from nonebot_plugin_apscheduler import scheduler
 
 if TYPE_CHECKING:
     from .moonlark_main import MoonlarkMain
@@ -24,20 +19,10 @@ SLEEP_THRESHOLD = 0.95
 
 
 class SleepController:
-    """睡眠控制器
-
-    按设计文档属性：
-    - sleep_state: bool
-    - sleep_begin_time: Optional[datetime]
-    - tiredness: float (0..1)
-    - last_message_time: datetime
-    - last_reply_time: datetime
-    """
 
     def __init__(self, moonlark_main: "MoonlarkMain"):
         self.moonlark_main = moonlark_main
 
-        # 按设计文档的属性
         self.sleep_state: bool = False
         self.sleep_begin_time: Optional[datetime] = None
         self.tiredness: float = 0.0
@@ -45,32 +30,30 @@ class SleepController:
         self.last_reply_time: datetime = datetime.now()
         self.consecutive_replies: int = 0
 
+        # 定时器：清醒时每10分钟检查困倦度
+        scheduler.scheduled_job("interval", minutes=10, id="sleep_controller_process_timer")(self.process_timer)
+
     # ========================================================================
-    # 困倦度计算（保持原有算法）
+    # 困倦度计算
     # ========================================================================
 
     @staticmethod
     def circadian(hour: float) -> float:
-        """生物钟困倦度 B(hour)，0~1"""
         return 0.5 + 0.3 * math.cos(2 * math.pi * (hour - 4) / 24) + 0.1 * math.cos(2 * math.pi * (hour - 14) / 12)
 
     @staticmethod
     def silence_factor(minutes_since_last_msg: float) -> float:
-        """静默因子 S(t)，0~1"""
         return min(1.0, minutes_since_last_msg / 45.0)
 
     @staticmethod
     def fatigue_factor(consecutive_replies: int) -> float:
-        """疲劳因子 F(n)，0~1"""
         return min(1.0, consecutive_replies / 15.0)
 
     @staticmethod
     def gating(circadian: float) -> float:
-        """门控系数 G(B)"""
         return max(0.0, min(1.0, (circadian - 0.4) / 0.4))
 
     def calculate_sleepiness_index(self) -> float:
-        """计算当前困倦度（按设计文档命名）"""
         now = datetime.now()
         hour = now.hour + now.minute / 60.0
         minutes_since_last = (now - self.last_message_time).total_seconds() / 60.0
@@ -90,17 +73,15 @@ class SleepController:
         return self.tiredness
 
     # ========================================================================
-    # 按设计文档的核心方法
+    # 核心方法
     # ========================================================================
 
     async def request_think(self) -> Optional[dict]:
-        """在睡眠状态下由 MoonlarkMain 调用（每 30 分钟）
-
-        输出 {"sleep_decision": "stay_sleep" 或 "wake_up"}
-        """
+        """睡眠状态下的定时决策（每30分钟由 MoonlarkMain 调用）"""
         from nonebot_plugin_openai.utils.chat import fetch_json
         from nonebot_plugin_openai.utils.message import generate_message
         from ...lang import lang
+        from ...models import SleepThinkResponse
 
         now = datetime.now()
         sleep_duration = 0
@@ -120,23 +101,20 @@ class SleepController:
             )
 
             result = await fetch_json(
-                [
-                    generate_message(system_prompt, "system"),
-                    generate_message(user_prompt, "user"),
-                ],
+                [generate_message(system_prompt, "system"), generate_message(user_prompt, "user")],
+                SleepThinkResponse,
                 identify="SleepController - Sleep Think",
                 reasoning_effort="low",
             )
-            return result
+            return {"sleep_decision": result.sleep_decision}
         except Exception as e:
             logger.exception(f"[SleepController] 睡眠决策失败: {e}")
             return None
 
     async def handle_mention(self, chat_context: list) -> bool:
-        """当被提及时调用，输入最近消息上下文
+        """当被提及时调用。返回 True 表示已唤醒，应正常回复。
 
-        使用专用 Prompt 判断是否值得醒来。
-        返回 True 表示唤醒。
+        内部处理 wake_up 和状态更新。
         """
         from nonebot_plugin_openai.utils.chat import fetch_message
         from nonebot_plugin_openai.utils.message import generate_message
@@ -156,49 +134,39 @@ class SleepController:
             )
 
             response = await fetch_message(
-                [
-                    generate_message(system_prompt, "system"),
-                    generate_message(user_prompt, "user"),
-                ],
+                [generate_message(system_prompt, "system"), generate_message(user_prompt, "user")],
                 identify="SleepController - Handle Mention",
                 reasoning_effort="low",
             )
-            return response.strip().lower() == "wake_up"
+            should_wake = response.strip().lower() == "wake_up"
+
+            if should_wake:
+                await self.wake_up()
+                return True
+            return False
+
         except Exception as e:
             logger.exception(f"[SleepController] mention 判断失败: {e}")
             return False
 
-    def get_sleep_state(self) -> bool:
-        """获取睡眠状态"""
-        return self.sleep_state
-
     def handle_message(self) -> None:
-        """每次收到消息时调用，更新 last_message_time 并重新计算困倦度"""
         self.last_message_time = datetime.now()
         self.calculate_sleepiness_index()
 
     def handle_reply(self) -> None:
-        """每次发送回复时调用，更新 last_reply_time，递增 consecutive_replies 并重新计算困倦度"""
         self.last_reply_time = datetime.now()
         self.consecutive_replies += 1
         self.calculate_sleepiness_index()
 
     async def handle_tired(self) -> None:
-        """困倦度达标时触发
-
-        设置 sleep_state=True，记录 sleep_begin_time，
-        通知 MoonlarkMain 切换为睡眠模式（定时器改为 30 分钟）
-        """
+        """困倦度达标，进入睡眠"""
         self.sleep_state = True
         self.sleep_begin_time = datetime.now()
         self.moonlark_main.state["sleep_mode"] = True
         logger.info("[SleepController] 进入睡眠模式")
 
     async def process_timer(self) -> None:
-        """由 MoonlarkMain 的定时器在清醒时每 10 分钟调用一次
-
-        重新计算困倦度，若超过阈值则调用 handle_tired()
-        """
+        """定时检查困倦度（自己的定时器，每10分钟）"""
         if self.sleep_state:
             return
 
@@ -208,10 +176,9 @@ class SleepController:
             await self.handle_tired()
 
     async def wake_up(self) -> None:
-        """唤醒：重置睡眠状态"""
         self.sleep_state = False
         self.sleep_begin_time = None
         self.tiredness = 0.0
-        self.moonlark_main.state["sleep_mode"] = False
         self.consecutive_replies = 0
+        self.moonlark_main.state["sleep_mode"] = False
         logger.info("[SleepController] 已唤醒")

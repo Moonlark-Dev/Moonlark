@@ -15,6 +15,7 @@ from nonebot_plugin_apscheduler import scheduler
 from nonebot_plugin_openai.utils.chat import fetch_json
 from nonebot_plugin_openai.utils.message import generate_message
 from ...lang import lang
+from ...models import SelfActionDurationResponse
 
 if TYPE_CHECKING:
     from .moonlark_main import MoonlarkMain
@@ -92,13 +93,12 @@ class SelfActionController:
                     generate_message(system_prompt, "system"),
                     generate_message(user_prompt, "user"),
                 ],
+                SelfActionDurationResponse,
                 identify="SelfAction - Generate Duration",
                 reasoning_effort="low",
             )
 
-            # 解析结果，期望 {"duration_seconds": int}
-            duration = result.get("duration_seconds", 300)
-            return max(60, min(3600, int(duration)))  # 限制在 1分钟 ~ 1小时
+            return max(60, min(3600, result.duration_seconds))
 
         except Exception as e:
             logger.exception(f"[SelfAction] 生成 duration 失败: {e}")
@@ -127,15 +127,13 @@ class SelfActionController:
         elapsed = (end_time - self.activity_start_time).total_seconds()
 
         # 记录到历史
-        self.activity_history.append(
-            {
-                "activity": self.current_activity,
-                "start_time": self.activity_start_time,
-                "end_time": end_time,
-                "duration": elapsed,
-                "completed": completed,
-            }
-        )
+        self.activity_history.append({
+            "activity": self.current_activity,
+            "start_time": self.activity_start_time,
+            "end_time": end_time,
+            "duration": elapsed,
+            "completed": completed,
+        })
         # 只保留最近 20 条
         self.activity_history = self.activity_history[-20:]
 
