@@ -127,15 +127,13 @@ class SelfActionController:
         elapsed = (end_time - self.activity_start_time).total_seconds()
 
         # 记录到历史
-        self.activity_history.append(
-            {
-                "activity": self.current_activity,
-                "start_time": self.activity_start_time,
-                "end_time": end_time,
-                "duration": elapsed,
-                "completed": completed,
-            }
-        )
+        self.activity_history.append({
+            "activity": self.current_activity,
+            "start_time": self.activity_start_time,
+            "end_time": end_time,
+            "duration": elapsed,
+            "completed": completed,
+        })
         # 只保留最近 20 条
         self.activity_history = self.activity_history[-20:]
 
@@ -168,3 +166,12 @@ class SelfActionController:
     def get_recent_activities(self, limit: int = 5) -> list[dict]:
         """获取最近完成的活动"""
         return self.activity_history[-limit:]
+
+    def get_activity_remaining(self) -> int:
+        """获取当前活动剩余秒数"""
+        if not self.current_activity or not self.activity_start_time:
+            return 0
+        if self.activity_duration == 0:
+            return -1  # 无限
+        elapsed = (datetime.now() - self.activity_start_time).total_seconds()
+        return max(0, int(self.activity_duration - elapsed))
