@@ -76,8 +76,11 @@ class SleepController:
     # 核心方法
     # ========================================================================
 
-    async def request_think(self) -> Optional[dict]:
-        """睡眠状态下的定时决策（每30分钟由 MoonlarkMain 调用）"""
+    async def request_think(self) -> None:
+        """睡眠状态下的定时决策（每30分钟由 MoonlarkMain 调用）
+
+        内部处理 wake_up，不返回值。
+        """
         from nonebot_plugin_openai.utils.chat import fetch_json
         from nonebot_plugin_openai.utils.message import generate_message
         from ...lang import lang
@@ -106,10 +109,13 @@ class SleepController:
                 identify="SleepController - Sleep Think",
                 reasoning_effort="low",
             )
-            return {"sleep_decision": result.sleep_decision}
+
+            if result.sleep_decision == "wake_up":
+                await self.wake_up()
+                self.moonlark_main._update_decision_history("wake_up")
+
         except Exception as e:
             logger.exception(f"[SleepController] 睡眠决策失败: {e}")
-            return None
 
     async def handle_mention(self, chat_context: list) -> bool:
         """当被提及时调用。返回 True 表示已唤醒，应正常回复。
@@ -174,6 +180,24 @@ class SleepController:
         if tiredness >= SLEEP_THRESHOLD:
             logger.info(f"[SleepController] 困倦度 {tiredness:.3f} >= {SLEEP_THRESHOLD}，触发睡眠")
             await self.handle_tired()
+
+    async def handle_decision(self, sleep_decision: str) -> None:
+        """处理来自 MoonlarkMain 的 sleep_decision 决策"""
+        if sleep_decision == "go_to_sleep":
+            await self.handle_tired()
+        elif sleep_decision == "wake_up" and self.moonlark_main.state["sleep_mode"]:
+            await self.wake_up()
+
+    async def submit_sleep_decision(
+        self, deal_type: str, delay_minutes: int = 5, reason: str = ""
+    ) -> str:
+        """处理来自子会话的睡眠决策"""
+        if deal_type == "ready":
+            await self.handle_tired()
+            return "已进入睡眠模式。"
+        else:
+            delay = min(delay_minutes, 30)
+            return f"已延迟 {delay} 分钟睡觉。" + (f"原因: {reason}" if reason else "")
 
     async def wake_up(self) -> None:
         self.sleep_state = False
