@@ -1411,13 +1411,18 @@ moonlark_main:
 
       {12}
 
+      ## 好友列表
+
+      {13}
+
       ## 输出格式和动作要求
 
       请输出 JSON 格式决策（只输出 JSON，可选择其中一个或多个字段，缺失表示不动作）：
 
       {{
         "sleep_decision": "go_to_sleep" | "wake_up",
-        "blog_action": "skip" | "start_new_topic: <主题>" | "continue_draft" | "abort_draft",
+        "blog_action": "skip" | "continue_draft" | "abort_draft",
+        "start_new_topic": "主题内容",
         "private_chat": {{"target": "用户ID", "reason": "理由", "content_hint": "聊什么"}},
         "self_action": "具体活动描述"
       }}
@@ -1425,6 +1430,7 @@ moonlark_main:
       要求：
       - 避免连续两次以上做完全相同的动作组合。
       - 若输出空 JSON {{}}，则维持当前状态不变。
+      - start_new_topic 和 blog_action 是独立字段，start_new_topic 不为空时表示开始新博客。
     user: |
       触发原因：{0}
       附加信息：{1}

@@ -1424,13 +1424,18 @@ moonlark_main:
 
       {12}
 
+      ## Friends
+
+      {13}
+
       ## Output Format
 
       Output a JSON decision (only JSON, include one or more fields, missing means no action):
 
       {{
         "sleep_decision": "go_to_sleep" | "wake_up",
-        "blog_action": "skip" | "start_new_topic: <topic>" | "continue_draft" | "abort_draft",
+        "blog_action": "skip" | "continue_draft" | "abort_draft",
+        "start_new_topic": "topic content",
         "private_chat": {{"target": "user_id", "reason": "reason", "content_hint": "what to chat"}},
         "self_action": "activity description"
       }}
@@ -1438,6 +1443,7 @@ moonlark_main:
       Requirements:
       - Avoid repeating the exact same action combination more than twice.
       - If outputting empty JSON {{}}, maintain current state.
+      - start_new_topic and blog_action are separate fields. start_new_topic not empty means start new blog.
     user: |
       Trigger reason: {0}
       Additional info: {1}
