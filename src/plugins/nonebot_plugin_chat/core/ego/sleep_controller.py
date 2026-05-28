@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Optional
 
 from nonebot import logger
 from nonebot_plugin_apscheduler import scheduler
+from ...utils.prompt import get_prompt_text
 
 if TYPE_CHECKING:
     from .moonlark_main import MoonlarkMain
@@ -96,11 +97,16 @@ class SleepController:
             sleep_duration = (now - self.sleep_begin_time).total_seconds() / 60
 
         try:
+            identity_prompt = await get_prompt_text("identity")
+            summary = self.moonlark_main.state.get("instant_memory_summary", "暂无群聊记忆。")
+
             system_prompt = await lang.text(
                 "moonlark_main.sleep_think.system",
                 self.moonlark_main.lang_str,
                 now.strftime("%Y-%m-%d %H:%M:%S"),
                 str(int(sleep_duration)),
+                identity_prompt,
+                summary,
             )
             user_prompt = await lang.text(
                 "moonlark_main.sleep_think.user",
@@ -166,9 +172,14 @@ class SleepController:
         context_text = "\n".join(chat_context[-5:]) if chat_context else ""
 
         try:
+            identity_prompt = await get_prompt_text("identity")
+            summary = self.moonlark_main.state.get("instant_memory_summary", "暂无群聊记忆。")
+
             system_prompt = await lang.text(
                 "moonlark_main.mention.system",
                 self.moonlark_main.lang_str,
+                identity_prompt,
+                summary,
             )
             user_prompt = await lang.text(
                 "moonlark_main.mention.user",
@@ -225,7 +236,9 @@ class SleepController:
         elif sleep_decision == "wake_up" and self.moonlark_main.state["sleep_mode"]:
             await self.wake_up()
 
-    async def submit_sleep_decision(self, deal_type: str, delay_minutes: int = 5, reason: str = "") -> str:
+    async def submit_sleep_decision(
+        self, deal_type: str, delay_minutes: int = 5, reason: str = ""
+    ) -> str:
         """处理来自子会话的睡眠决策"""
         if deal_type == "ready":
             await self.handle_tired()

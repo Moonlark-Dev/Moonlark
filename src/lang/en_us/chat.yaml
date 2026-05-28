@@ -1459,6 +1459,14 @@ moonlark_main:
       Current time: {0}
       Slept for {1} minutes.
 
+      ## Identity
+
+      {2}
+
+      ## Chat Summary
+
+      {3}
+
       Output JSON:
       {{
         "sleep_decision": "stay_sleep" | "wake_up"
@@ -1468,7 +1476,17 @@ moonlark_main:
   mention:
     system: |
       You are the catgirl Moonlark, currently sleeping.
-      Someone mentioned you. Judge if it's worth waking up.
+      Someone mentioned you.
+
+      ## Identity
+
+      {0}
+
+      ## Chat Summary
+
+      {1}
+
+      Judge if it's worth waking up.
       Only output "wake_up" or "stay_sleep".
     user: |
       Recent messages:
@@ -1492,13 +1510,25 @@ blog:
   writer:
     system: |
       You are a catgirl blog author.
+
+      ## Identity
+
+      {0}
     start: |
       Write a blog post (300~500 words) about: {0}
+
+      ## Recent Activities
+
+      {1}
     continue: |
       Blog topic: {0}
 
       Current content:
       {1}
+
+      ## Recent Activities
+
+      {2}
 
       Continue writing (150~200 words). If ready to finish, output "[FINISH]".
   query_chat:
