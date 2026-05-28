@@ -98,7 +98,7 @@ class ActionAdvisor:
                 minutes = cooldown_remaining // 60
                 return f"博客冷却中，还需等待 {minutes} 分钟。"
             else:
-                return "可以考虑写一篇博客（blog_action: {\"start_new_topic\": \"主题\"}）。"
+                return '可以考虑写一篇博客（blog_action: {"start_new_topic": "主题"}）。'
 
         return ""
 
@@ -117,9 +117,7 @@ class ActionAdvisor:
                     last_chat = info.get("last_chat")
                     if last_chat:
                         minutes_ago = (datetime.now() - last_chat).total_seconds() // 60
-                        suggestions.append(
-                            f"用户 {user_id} 在 {int(minutes_ago)} 分钟前收到私聊但未回复。"
-                        )
+                        suggestions.append(f"用户 {user_id} 在 {int(minutes_ago)} 分钟前收到私聊但未回复。")
 
         return "\n".join(suggestions)
 
