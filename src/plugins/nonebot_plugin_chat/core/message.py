@@ -274,9 +274,9 @@ class MessageQueue:
             self.fetcher_task.cancel()
 
     async def _fetch_reply(self) -> FetchStatus:
-        from .ego.main_session import main_session
+        from .ego.moonlark_main import moonlark_main
 
-        main_session.consecutive_replies += 1
+        moonlark_main.on_reply_sent()
 
         state = FetchStatus.SUCCESS
         messages = await self.get_messages()

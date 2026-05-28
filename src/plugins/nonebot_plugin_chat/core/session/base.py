@@ -334,7 +334,7 @@ class BaseSession(ABC):
         Returns:
             工具调用的结果（会等待main_session统一处理）
         """
-        from ..ego import consciousness
+        from ..ego import moonlark_main
 
         # 验证参数
         if deal_type == "delay":
@@ -345,12 +345,12 @@ class BaseSession(ABC):
             if delay_minutes < 0:
                 delay_minutes = 0
 
-        # 创建一个Future用于等待main_session的处理结果
+        # 创建一个Future用于等待moonlark_main的处理结果
         # 这里使用异步等待挂起响应
         result_future = asyncio.get_event_loop().create_future()
 
-        # 提交决策到main_session
-        await consciousness.submit_sleep_decision(
+        # 提交决策到moonlark_main
+        await moonlark_main.submit_sleep_decision(
             session_id=self.session_id,
             deal_type=deal_type,
             delay_minutes=delay_minutes,
@@ -376,11 +376,11 @@ class BaseSession(ABC):
         Returns:
             意识会话的决定结果
         """
-        from ..ego import consciousness
+        from ..ego import moonlark_main
 
         result_future = asyncio.get_event_loop().create_future()
 
-        await consciousness.submit_action_decision(
+        await moonlark_main.submit_action_decision(
             session_id=self.session_id,
             do=do,
             duration=duration,
@@ -400,11 +400,11 @@ class BaseSession(ABC):
         Returns:
             意识会话的决定结果
         """
-        from ..ego import consciousness
+        from ..ego import moonlark_main
 
         result_future = asyncio.get_event_loop().create_future()
 
-        await consciousness.submit_sleep_request(
+        await moonlark_main.submit_sleep_request(
             session_id=self.session_id,
             future=result_future,
         )

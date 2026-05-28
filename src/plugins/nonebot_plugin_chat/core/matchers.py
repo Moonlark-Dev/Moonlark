@@ -23,7 +23,7 @@ from nonebot.matcher import Matcher
 from nonebot.adapters.onebot.v11 import GroupRecallNoticeEvent
 
 from .session import create_group_session, create_private_session, get_session_directly
-from .ego import consciousness
+from .ego import moonlark_main
 
 from ..utils.group import enabled_group, parse_message_to_string
 from ..utils.gift_drop import handle_gift_drop
@@ -95,7 +95,7 @@ async def _(
     await record_private_chat_session(user_id, session_key, bot.self_id)
 
     # 检查是否是主动私聊的回复
-    consciousness.update_send_private_message_state(user_id)
+    moonlark_main.on_private_message_replied(user_id)
 
     session = await create_private_session(session_key, get_target(event), bot)
     if session.mute_until is not None:

@@ -118,6 +118,7 @@ async def get_landscape_image() -> ImageWithData | None:
 
     # 无横版图，随机删除一条缓存腾出空间
     import random
+
     removed = cache_data.pop(random.randint(0, len(cache_data) - 1))
     await save_cache_data(cache_data)
     cache_file = cache_dir.joinpath(f"{removed.pid}_{removed.p}.{removed.ext}")
