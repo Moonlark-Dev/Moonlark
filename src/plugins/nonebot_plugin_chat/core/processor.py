@@ -334,10 +334,18 @@ class MessageProcessor:
         if self.session.get_session_type() == "group":
             self.openai_messages.continuous_response = self.openai_messages.continuous_response or important
 
-        if moonlark_main.state == StateEnum.SLEEPING:
+        # 使用新的 handle_mention 接口处理睡眠唤醒
+        if moonlark_main.state["sleep_mode"]:
             if not important:
                 return
-            await moonlark_main.wake_up(session=self.session)
+            # 获取最近消息作为上下文
+            recent_msgs = [
+                f"[{msg['send_time'].strftime('%H:%M')}][{msg['nickname']}]: {msg['content']}"
+                for msg in self.session.cached_messages[-5:]
+            ]
+            should_wake = await moonlark_main.handle_mention(recent_msgs)
+            if not should_wake:
+                return
 
         logger.info(f"Generating reply ({important=})...")
         self.session.accumulated_text_length = 0
