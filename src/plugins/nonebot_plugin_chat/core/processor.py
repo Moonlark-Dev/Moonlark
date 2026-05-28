@@ -339,10 +339,8 @@ class MessageProcessor:
             if not important:
                 return
             # 获取最近消息作为上下文
-            recent_msgs = [
-                f"[{msg['send_time'].strftime('%H:%M')}][{msg['nickname']}]: {msg['content']}"
-                for msg in self.session.cached_messages[-5:]
-            ]
+            recent_text = await self.session.get_cached_messages_string(length=5)
+            recent_msgs = recent_text.splitlines() if recent_text else []
             should_wake = await moonlark_main.handle_mention(recent_msgs)
             if not should_wake:
                 return
@@ -465,7 +463,6 @@ class MessageProcessor:
 
                 # 通知 MoonlarkMain 收到消息（更新 SleepController 的 last_message_time）
                 from .ego.moonlark_main import moonlark_main
-
                 moonlark_main.on_message_received()
 
             # 消息入队后异步检查是否需要生成即时记忆
@@ -572,7 +569,9 @@ class MessageProcessor:
         )
 
         recent_activities = "\n".join(
-            await self.filter_info_lines(moonlark_main._get_recent_actions_text().splitlines())
+            await self.filter_info_lines(
+                moonlark_main._get_recent_actions_text().splitlines()
+            )
         )
         return await self.session.text(
             "prompt_group.chat_additional_info",
@@ -613,7 +612,9 @@ class MessageProcessor:
 
         # 获取正在做的事（查重）
         recent_activities = "\n".join(
-            await self.filter_info_lines(moonlark_main._get_recent_actions_text().splitlines())
+            await self.filter_info_lines(
+                moonlark_main._get_recent_actions_text().splitlines()
+            )
         )
 
         return await self.session.text(
