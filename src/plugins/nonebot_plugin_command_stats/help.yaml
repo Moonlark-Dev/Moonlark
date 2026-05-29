@@ -1,0 +1,13 @@
+name: "command_stats"
+description: "help.description"
+category: "system"
+commands:
+  - name: "指令排行"
+    aliases: ["cmd-rank", "命令排行", "热门指令"]
+    description: "help.details"
+    usage:
+      - "help.usage1"
+      - "help.usage2"
+    examples:
+      - "/指令排行"
+      - "/指令排行 30"
