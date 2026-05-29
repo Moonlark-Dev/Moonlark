@@ -5,10 +5,10 @@
 - 提供活动计时和自动结束功能
 - 维护活动历史记录
 - duration 由单独请求 LLM 生成
-- 查找类活动会实际执行搜索，结果存入历史
+- 通过 Runner 模式执行不同类型的活动（查找、学习等）
+- 查找类结果存入 note，task_finish 时展示给 MoonlarkMain
 """
 
-import re
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Optional
 
@@ -18,12 +18,10 @@ from nonebot_plugin_openai.utils.chat import fetch_json
 from nonebot_plugin_openai.utils.message import generate_message
 from ...lang import lang
 from ...models import SelfActionDurationResponse
+from .runners import get_runner
 
 if TYPE_CHECKING:
     from .moonlark_main import MoonlarkMain
-
-# 查找类活动关键词
-_SEARCH_KEYWORDS = re.compile(r"查找|搜索|查一下|搜一下|了解一下|看看|查查|搜搜|search|look\s*up", re.IGNORECASE)
 
 
 class SelfActionController:
@@ -42,6 +40,7 @@ class SelfActionController:
         self.activity_start_time: Optional[datetime] = None
         self.activity_duration: int = 0
         self.activity_history: list[dict] = []
+        self._current_runner_result: Optional[str] = None
 
         # 注册定时器，每分钟检查活动超时
         scheduler.scheduled_job("interval", minutes=1, id="self_action_tick")(self.tick)
@@ -53,6 +52,7 @@ class SelfActionController:
         1. 若已有活动在进行，打断并记录
         2. 若未提供 duration，调用 LLM 生成
         3. 记录开始时间和持续时间
+        4. 通过 Runner 执行活动（如搜索、学习等）
 
         Args:
             activity: 活动描述（如"学习CSS"、"做拉伸"）
@@ -70,37 +70,14 @@ class SelfActionController:
         self.current_activity = activity
         self.activity_start_time = datetime.now()
         self.activity_duration = duration_seconds
+        self._current_runner_result = None
 
         logger.info(f"[SelfAction] 开始活动: {activity}，计划时长: {duration_seconds}秒")
 
-        # 如果是查找类活动，立即执行搜索
-        if _SEARCH_KEYWORDS.search(activity):
-            await self._do_search(activity)
-
-    async def _do_search(self, activity: str) -> None:
-        """执行查找类活动：提取关键词并搜索，结果存入当前活动"""
-        try:
-            from ...utils.tools.search import web_search
-            from ...lang import lang as lang_mod
-
-            # 提取搜索关键词（去掉动词前缀）
-            query = _SEARCH_KEYWORDS.sub("", activity).strip()
-            if not query:
-                query = activity
-
-            get_text = lambda key, *args: lang_mod.text(key, self.moonlark_main.lang_str, *args)
-            result = await web_search(query, get_text)
-
-            self._current_search_result = result
-            logger.info(f"[SelfAction] 搜索完成: {query}，结果长度: {len(result)}")
-
-        except Exception as e:
-            logger.exception(f"[SelfAction] 搜索失败: {e}")
-            self._current_search_result = f"搜索失败: {e}"
-
-        # 如果是查找类活动，立即执行搜索
-        if _SEARCH_KEYWORDS.search(activity):
-            await self._do_search(activity)
+        # 通过 Runner 执行活动
+        runner = get_runner(activity)
+        logger.info(f"[SelfAction] 使用 runner: {runner.__class__.__name__}")
+        self._current_runner_result = await runner.run(activity)
 
     async def _generate_duration(self, activity: str) -> int:
         """调用 LLM 生成活动持续时间（秒）
@@ -161,17 +138,15 @@ class SelfActionController:
         elapsed = (end_time - self.activity_start_time).total_seconds()
 
         # 记录到历史
-        search_result = getattr(self, "_current_search_result", None)
         self.activity_history.append({
             "activity": self.current_activity,
             "start_time": self.activity_start_time,
             "end_time": end_time,
             "duration": elapsed,
             "completed": completed,
-            "result": search_result,
+            "result": self._current_runner_result,
         })
-        # 清理搜索结果
-        self._current_search_result = None
+        self._current_runner_result = None
         # 只保留最近 20 条
         self.activity_history = self.activity_history[-20:]
 
@@ -205,14 +180,23 @@ class SelfActionController:
         """获取最近完成的活动"""
         return self.activity_history[-limit:]
 
-    def get_recent_results_text(self, limit: int = 3) -> str:
-        """获取最近查找类活动的结果文本，供 prompt 使用"""
-        lines = []
-        for item in self.activity_history[-limit:]:
-            if item.get("result"):
-                time_str = item["start_time"].strftime("%H:%M")
-                lines.append(f"[{time_str}] {item['activity']}:\n{item['result']}")
-        return "\n\n".join(lines) if lines else ""
+    async def get_findings_text(self, limit: int = 5) -> str:
+        """获取最近活动中的查找/学习成果（从 note 中读取）"""
+        from ...utils.note_manager import get_context_notes
+
+        try:
+            note_mgr = await get_context_notes("self_action")
+            notes = await note_mgr.get_notes()
+            if not notes:
+                return ""
+
+            lines = []
+            for note in notes[-limit:]:
+                lines.append(note.content)
+            return "\n\n---\n\n".join(lines)
+        except Exception as e:
+            logger.exception(f"[SelfAction] 获取 note 失败: {e}")
+            return ""
 
     def get_activity_remaining(self) -> int:
         """获取当前活动剩余秒数"""
