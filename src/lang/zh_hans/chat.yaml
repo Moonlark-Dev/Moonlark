@@ -1277,8 +1277,6 @@ moonlark_main:
     上次主动私聊: {}
   not_chatted_private: 从未主动私聊过
   friends: |
-    ## 好友列表
-
     {}
 
     ## 好感度规则
