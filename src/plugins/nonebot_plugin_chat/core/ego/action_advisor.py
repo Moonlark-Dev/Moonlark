@@ -98,7 +98,7 @@ class ActionAdvisor:
                 minutes = cooldown_remaining // 60
                 return f"博客冷却中，还需等待 {minutes} 分钟。"
             else:
-                return '可以考虑写一篇博客（blog_action: {"start_new_topic": "主题"}）。'
+                return "可以考虑写一篇博客（blog_action: {\"start_new_topic\": \"主题\"}）。"
 
         return ""
 
@@ -117,7 +117,9 @@ class ActionAdvisor:
                     last_chat = info.get("last_chat")
                     if last_chat:
                         minutes_ago = (datetime.now() - last_chat).total_seconds() // 60
-                        suggestions.append(f"用户 {user_id} 在 {int(minutes_ago)} 分钟前收到私聊但未回复。")
+                        suggestions.append(
+                            f"用户 {user_id} 在 {int(minutes_ago)} 分钟前收到私聊但未回复。"
+                        )
 
         return "\n".join(suggestions)
 
@@ -125,7 +127,14 @@ class ActionAdvisor:
         """检查自主活动相关建议"""
         current_activity = state.get("current_activity")
         if current_activity:
-            return ""  # 已有活动，不建议
+            remaining = state.get("current_activity_remaining", 0)
+            if remaining > 0:
+                minutes = remaining // 60
+                return (
+                    f"当前正在「{current_activity}」，还剩约 {minutes} 分钟。"
+                    f"请继续执行当前活动，不要发起新的 self_action 或其他动作。"
+                )
+            return f"当前正在「{current_activity}」，请继续执行，不要发起新动作。"
 
         return "当前无自主活动，可以安排一个 self_action（如学习CSS、做拉伸、看番等）。"
 

@@ -98,7 +98,7 @@ class SelfActionController:
                 reasoning_effort="low",
             )
 
-            return max(60, min(3600, result.duration_seconds))
+            return max(60, min(3600, result.duration_minutes * 60))
 
         except Exception as e:
             logger.exception(f"[SelfAction] 生成 duration 失败: {e}")
@@ -127,15 +127,13 @@ class SelfActionController:
         elapsed = (end_time - self.activity_start_time).total_seconds()
 
         # 记录到历史
-        self.activity_history.append(
-            {
-                "activity": self.current_activity,
-                "start_time": self.activity_start_time,
-                "end_time": end_time,
-                "duration": elapsed,
-                "completed": completed,
-            }
-        )
+        self.activity_history.append({
+            "activity": self.current_activity,
+            "start_time": self.activity_start_time,
+            "end_time": end_time,
+            "duration": elapsed,
+            "completed": completed,
+        })
         # 只保留最近 20 条
         self.activity_history = self.activity_history[-20:]
 

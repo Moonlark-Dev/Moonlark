@@ -1502,11 +1502,11 @@ moonlark_main:
 self_action:
   duration:
     system: |
-      Estimate activity duration in seconds. Output JSON:
+      Estimate activity duration in minutes. Output JSON:
       {{
-        "duration_seconds": 300
+        "duration_minutes": 5
       }}
-      Range: 60~3600 seconds.
+      Range: 1~60 minutes.
     user: |
       Activity: {0}
 
