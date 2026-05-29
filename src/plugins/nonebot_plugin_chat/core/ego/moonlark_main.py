@@ -189,7 +189,11 @@ class MoonlarkMain:
         identity_prompt = await get_prompt_text("identity")
 
         draft = state_info.get("draft")
-        blog_text = f"草稿《{draft['topic']}》，{draft['word_count']}字，续写{draft['continue_count']}次" if draft else "无草稿"
+        if draft:
+            preview = draft['content'][:200] + "..." if len(draft['content']) > 200 else draft['content']
+            blog_text = f"草稿《{draft['topic']}》，{draft['word_count']}字\n内容预览：{preview}\n\n可以 blog_action=\"publish\" 发布，或 blog_action=\"abort\" 取消。"
+        else:
+            blog_text = "无草稿"
 
         proactive_info = state_info.get("proactive_info", {})
         if proactive_info:

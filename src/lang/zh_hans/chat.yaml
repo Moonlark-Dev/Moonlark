@@ -1419,7 +1419,7 @@ moonlark_main:
 
       {{
         "sleep_decision": "go_to_sleep" | "wake_up",
-        "blog_action": "skip" | "continue_draft" | "abort_draft" | {{"start_new_topic": "主题"}},
+        "blog_action": "skip" | "publish" | "abort" | {{"start_new_topic": "主题"}},
         "private_chat": {{"target": "用户昵称", "reason": "理由", "content_hint": "聊什么"}},
         "self_action": "具体活动描述"
       }}
@@ -1427,7 +1427,8 @@ moonlark_main:
       要求：
       - 避免连续两次以上做完全相同的动作组合。
       - 若输出空 JSON {{}}，则维持当前状态不变。
-      - blog_action 为字符串时表示操作已有草稿，为对象 {{"start_new_topic": "主题"}} 时表示开始新博客。
+      - blog_action 为 "start_new_topic" 时表示开始新博客，写完后草稿会显示在状态中。
+      - blog_action 为 "publish" 时确认发布已有草稿，为 "abort" 时取消草稿。
       - self_action 和 blog 主题必须具体，禁止模糊描述。例如不要写"看番"，要写"看《葬送的芙莉莲》第12集"；不要写"听歌"，要写"听YOASOBI的新单曲"。从群消息总结和活动记录中提取具体的名称。
       - 同一个用户每天最多主动私聊 2 次。私聊前请认真考虑要说什么，不要只是唠家常，要有具体内容或关心。
       - 如果用户连续两次没有回复你的主动私聊，请不要再私聊该用户。
