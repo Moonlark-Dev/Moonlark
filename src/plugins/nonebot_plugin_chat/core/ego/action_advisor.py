@@ -132,9 +132,9 @@ class ActionAdvisor:
                 minutes = remaining // 60
                 return (
                     f"当前正在「{current_activity}」，还剩约 {minutes} 分钟。"
-                    f"请继续执行当前活动，不要发起新的 self_action 或其他动作。"
+                    f"建议继续完成当前活动。"
                 )
-            return f"当前正在「{current_activity}」，请继续执行，不要发起新动作。"
+            return f"当前正在「{current_activity}」，建议继续完成。"
 
         return "当前无自主活动，可以安排一个 self_action（如学习CSS、做拉伸、看番等）。"
 
