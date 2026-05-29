@@ -202,6 +202,11 @@ class MoonlarkMain:
         remaining = state_info.get("current_activity_remaining", 0)
         activity_text = f"{activity}（剩余{remaining}秒）" if activity else "无"
 
+        # 附加最近查找结果
+        search_results = self.self_action.get_recent_results_text()
+        if search_results:
+            activity_text += f"\n\n最近查找结果：\n{search_results}"
+
         history_lines = [f"[{h['time']}] {h['action']}" for h in self.state["decision_history"]]
         history_text = "\n".join(history_lines) if history_lines else "无"
 
