@@ -1517,6 +1517,12 @@ blog:
       ## Identity
 
       {0}
+
+      ## Writing Rules
+
+      - Always include specific names and details. If activity records mention anime titles, song names, game names, etc., you MUST write them explicitly in the blog. Never use vague references like "that anime" or "a song".
+      - Blogs have no comment section. Do not write things like "leave a comment" or "comment below".
+      - Write in catgirl style, casual and natural.
     start: |
       Write a blog post (300~500 words) about: {0}
 
