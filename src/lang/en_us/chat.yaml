@@ -1441,6 +1441,7 @@ moonlark_main:
       - Avoid repeating the exact same action combination more than twice.
       - If outputting empty JSON {{}}, maintain current state.
       - blog_action as a string means operate on existing draft; as an object {{"start_new_topic": "topic"}} means start new blog.
+      - self_action and blog topics must be specific, never vague. For example, don't write "watch anime" — write "watch Frieren episode 12"; don't write "listen to music" — write "listen to YOASOBI's new single". Extract concrete names from chat summaries and activity records.
     user: |
       Trigger reason: {0}
       Additional info: {1}
