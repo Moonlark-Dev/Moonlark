@@ -97,9 +97,14 @@ class BlogWriter:
         try:
             identity_prompt = await get_prompt_text("identity")
             recent_actions = self.moonlark_main._get_recent_actions_text()
+            extra_context = await self._gather_context(topic)
 
-            system_prompt = await lang.text("blog.writer.system", self.moonlark_main.lang_str, identity_prompt)
-            user_prompt = await lang.text("blog.writer.start", self.moonlark_main.lang_str, topic, recent_actions)
+            system_prompt = await lang.text(
+                "blog.writer.system", self.moonlark_main.lang_str, identity_prompt
+            )
+            user_prompt = await lang.text(
+                "blog.writer.start", self.moonlark_main.lang_str, topic, recent_actions, extra_context
+            )
 
             content = await fetch_message(
                 [generate_message(system_prompt, "system"), generate_message(user_prompt, "user")],
@@ -130,14 +135,18 @@ class BlogWriter:
         try:
             identity_prompt = await get_prompt_text("identity")
             recent_actions = self.moonlark_main._get_recent_actions_text()
+            extra_context = await self._gather_context(self.current_draft["topic"])
 
-            system_prompt = await lang.text("blog.writer.system", self.moonlark_main.lang_str, identity_prompt)
+            system_prompt = await lang.text(
+                "blog.writer.system", self.moonlark_main.lang_str, identity_prompt
+            )
             user_prompt = await lang.text(
                 "blog.writer.continue",
                 self.moonlark_main.lang_str,
                 self.current_draft["topic"],
                 self.current_draft["content"],
                 recent_actions,
+                extra_context,
             )
 
             content = await fetch_message(
@@ -194,12 +203,10 @@ class BlogWriter:
             await create_blog_post(self.current_draft["topic"], self.current_draft["content"])
 
             # 记录发布信息
-            self.published_blogs.append(
-                {
-                    "title": self.current_draft["topic"],
-                    "timestamp": datetime.now(),
-                }
-            )
+            self.published_blogs.append({
+                "title": self.current_draft["topic"],
+                "timestamp": datetime.now(),
+            })
             self.last_blog_time = datetime.now()
 
             # 清空草稿
@@ -210,6 +217,31 @@ class BlogWriter:
 
         except Exception as e:
             logger.exception(f"[BlogWriter] 发布失败: {e}")
+
+    async def _gather_context(self, topic: str) -> str:
+        """收集博客写作的额外上下文：聊天记录 + note 中的查找/学习成果"""
+        parts = []
+
+        # 1. 从 note 获取查找/学习成果
+        try:
+            from ...utils.note_manager import get_context_notes
+            note_mgr = await get_context_notes("self_action")
+            notes = await note_mgr.get_notes()
+            if notes:
+                note_lines = [n.content for n in notes[-5:]]
+                parts.append("## 查找/学习成果\n\n" + "\n\n---\n\n".join(note_lines))
+        except Exception as e:
+            logger.debug(f"[BlogWriter] 获取 note 失败: {e}")
+
+        # 2. 从聊天记录中检索与主题相关的内容
+        try:
+            chat_result = await self.query_chat_history(topic)
+            if chat_result and chat_result != "未找到活跃的聊天会话":
+                parts.append("## 相关聊天记录\n\n" + chat_result)
+        except Exception as e:
+            logger.debug(f"[BlogWriter] 查询聊天记录失败: {e}")
+
+        return "\n\n".join(parts) if parts else ""
 
     async def query_chat_history(self, query: str) -> str:
         """工具方法：从 session 缓存检索特定主题信息
@@ -237,7 +269,9 @@ class BlogWriter:
 
         # 调用 LLM 检索
         try:
-            system_prompt = await lang.text("blog.query_chat.system", self.moonlark_main.lang_str, combined)
+            system_prompt = await lang.text(
+                "blog.query_chat.system", self.moonlark_main.lang_str, combined
+            )
             response = await fetch_message(
                 [generate_message(system_prompt, "system"), generate_message(query, "user")],
                 identify="Blog Writer - Query History",
