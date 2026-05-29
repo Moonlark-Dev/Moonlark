@@ -1435,7 +1435,7 @@ moonlark_main:
       {{
         "sleep_decision": "go_to_sleep" | "wake_up",
         "blog_action": "skip" | "continue_draft" | "abort_draft" | {{"start_new_topic": "topic"}},
-        "private_chat": {{"target": "user_id", "reason": "reason", "content_hint": "what to chat"}},
+        "private_chat": {{"target": "nickname", "reason": "reason", "content_hint": "what to chat"}},
         "self_action": "activity description"
       }}
 

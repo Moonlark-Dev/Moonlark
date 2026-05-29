@@ -27,11 +27,13 @@ class ProactiveChatController:
         self.cooldown_seconds: int = 1800  # 30 分钟
         self.pending_queue: list[dict] = []  # 待发送的私聊任务
 
-    async def send_private_message(self, target: str, reason: str, content_hint: str) -> bool:
+    async def send_private_message(
+        self, target: str, reason: str, content_hint: str
+    ) -> bool:
         """决策并发送主动私聊消息
 
         Args:
-            target: 目标用户ID
+            target: 目标用户昵称
             reason: 私聊理由
             content_hint: 聊什么的提示
 
@@ -49,23 +51,30 @@ class ProactiveChatController:
             from nonebot import get_bot
             from ...models import PrivateChatSession
             from nonebot_plugin_orm import get_session
+            from nonebot_plugin_larkuser.utils.user import get_user
             from sqlalchemy import select
 
-            # 获取 bot 和 user_id
+            # 按昵称匹配用户
             async with get_session() as db_session:
-                result = await db_session.execute(
-                    select(PrivateChatSession).where(PrivateChatSession.user_id == target)
-                )
-                chat_session = result.scalar_one_or_none()
+                all_sessions = (await db_session.execute(select(PrivateChatSession))).scalars().all()
 
-            if not chat_session:
-                logger.warning(f"[ProactiveChatCtrl] 用户 {target} 无私聊会话记录")
+            matched_user_id = None
+            matched_bot_id = None
+            for chat_session in all_sessions:
+                user = await get_user(chat_session.user_id)
+                if user.get_nickname() == target:
+                    matched_user_id = chat_session.user_id
+                    matched_bot_id = chat_session.bot_id
+                    break
+
+            if not matched_user_id:
+                logger.warning(f"[ProactiveChatCtrl] 未找到昵称为 {target} 的好友会话")
                 return False
 
-            bot = get_bot(chat_session.bot_id)
-            await send_proactive_private_message(bot, target, content_hint)
+            bot = get_bot(matched_bot_id)
+            await send_proactive_private_message(bot, matched_user_id, content_hint)
 
-            # 3. 更新记录
+            # 3. 更新记录（用昵称作为 key）
             self.last_private_chats[target] = {
                 "timestamp": datetime.now(),
                 "topic": content_hint,

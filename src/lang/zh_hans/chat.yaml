@@ -1422,7 +1422,7 @@ moonlark_main:
       {{
         "sleep_decision": "go_to_sleep" | "wake_up",
         "blog_action": "skip" | "continue_draft" | "abort_draft" | {{"start_new_topic": "主题"}},
-        "private_chat": {{"target": "用户ID", "reason": "理由", "content_hint": "聊什么"}},
+        "private_chat": {{"target": "用户昵称", "reason": "理由", "content_hint": "聊什么"}},
         "self_action": "具体活动描述"
       }}
 
