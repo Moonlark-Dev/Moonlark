@@ -1,0 +1,151 @@
+{% extends base %}
+
+{% block header %}
+<style>
+    .stats-container {
+        display: flex;
+        justify-content: space-around;
+        margin-bottom: 20px;
+        padding: 15px 0;
+        border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+    }
+    .stat-item {
+        text-align: center;
+    }
+    .stat-value {
+        font-size: 250%;
+        font-weight: bold;
+        color: #4a9eff;
+    }
+    .stat-label {
+        font-size: 90%;
+        color: #888;
+        margin-top: 5px;
+    }
+    .rank-list {
+        padding: 0 10px;
+    }
+    .rank-item {
+        display: flex;
+        align-items: center;
+        padding: 12px 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .rank-item:last-child {
+        border-bottom: none;
+    }
+    .rank-badge {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 120%;
+        margin-right: 15px;
+        flex-shrink: 0;
+    }
+    .rank-1 {
+        background: linear-gradient(135deg, #FFD700, #FFA500);
+        color: #fff;
+        box-shadow: 0 2px 10px rgba(255, 215, 0, 0.4);
+    }
+    .rank-2 {
+        background: linear-gradient(135deg, #C0C0C0, #A0A0A0);
+        color: #fff;
+        box-shadow: 0 2px 8px rgba(192, 192, 192, 0.3);
+    }
+    .rank-3 {
+        background: linear-gradient(135deg, #CD7F32, #B8860B);
+        color: #fff;
+        box-shadow: 0 2px 8px rgba(205, 127, 50, 0.3);
+    }
+    .rank-other {
+        background: rgba(255, 255, 255, 0.1);
+        color: #aaa;
+    }
+    .rank-info {
+        flex: 1;
+    }
+    .rank-command {
+        font-size: 130%;
+        font-weight: bold;
+        color: #fff;
+    }
+    .rank-command .prefix {
+        color: #4a9eff;
+    }
+    .rank-detail {
+        font-size: 85%;
+        color: #888;
+        margin-top: 3px;
+    }
+    .rank-count {
+        text-align: right;
+        margin-left: 15px;
+    }
+    .count-number {
+        font-size: 180%;
+        font-weight: bold;
+        color: #4a9eff;
+    }
+    .count-unit {
+        font-size: 80%;
+        color: #888;
+    }
+    .rank-medal {
+        font-size: 200%;
+        margin-right: 10px;
+    }
+</style>
+{% endblock header %}
+
+{% block body %}
+<!-- 总体统计 -->
+<div class="stats-container">
+    <div class="stat-item">
+        <div class="stat-value">{{ stats.total_count }}</div>
+        <div class="stat-label">{{ text.total_count }}</div>
+    </div>
+    <div class="stat-item">
+        <div class="stat-value">{{ stats.cmd_count }}</div>
+        <div class="stat-label">{{ text.cmd_count }}</div>
+    </div>
+    <div class="stat-item">
+        <div class="stat-value">{{ stats.user_count }}</div>
+        <div class="stat-label">{{ text.user_count }}</div>
+    </div>
+</div>
+
+<!-- 排行列表 -->
+<div class="rank-list">
+    {% for item in ranking %}
+    <div class="rank-item">
+        {% if item.rank == 1 %}
+            <span class="rank-medal">🥇</span>
+        {% elif item.rank == 2 %}
+            <span class="rank-medal">🥈</span>
+        {% elif item.rank == 3 %}
+            <span class="rank-medal">🥉</span>
+        {% else %}
+            <div class="rank-badge rank-other">{{ item.rank }}</div>
+        {% endif %}
+
+        <div class="rank-info">
+            <div class="rank-command">
+                <span class="prefix">/</span>{{ item.command }}
+            </div>
+            <div class="rank-detail">
+                {{ text.user_detail | replace("{{count}}", item.user_count) }}
+            </div>
+        </div>
+
+        <div class="rank-count">
+            <span class="count-number">{{ item.count }}</span>
+            <span class="count-unit">{{ text.count_unit }}</span>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock body %}
