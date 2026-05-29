@@ -1526,6 +1526,7 @@ blog:
 
       - Always include specific names and details. If activity records mention anime titles, song names, game names, etc., you MUST write them explicitly in the blog. Never use vague references like "that anime" or "a song".
       - Blogs have no comment section. Do not write things like "leave a comment" or "comment below".
+      - Write body only — no title, date, author name, or metadata. The blog system adds those automatically.
       - Write in catgirl style, casual and natural.
       - If search/study results are provided, incorporate them into the blog content.
     start: |
