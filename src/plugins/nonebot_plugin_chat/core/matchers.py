@@ -95,7 +95,7 @@ async def _(
     await record_private_chat_session(user_id, session_key, bot.self_id)
 
     # 检查是否是主动私聊的回复
-    moonlark_main.on_private_message_replied(user_id)
+    await moonlark_main.on_private_message_replied(user_id)
 
     session = await create_private_session(session_key, get_target(event), bot)
     if session.mute_until is not None:

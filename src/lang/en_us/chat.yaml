@@ -1442,6 +1442,8 @@ moonlark_main:
       - If outputting empty JSON {{}}, maintain current state.
       - blog_action as a string means operate on existing draft; as an object {{"start_new_topic": "topic"}} means start new blog.
       - self_action and blog topics must be specific, never vague. For example, don't write "watch anime" — write "watch Frieren episode 12"; don't write "listen to music" — write "listen to YOASOBI's new single". Extract concrete names from chat summaries and activity records.
+      - Max 2 proactive private chats per user per day. Think carefully about what to say — don't just make small talk, have something specific to discuss or show care.
+      - If a user hasn't replied to your last 2 proactive chats, stop messaging them.
     user: |
       Trigger reason: {0}
       Additional info: {1}

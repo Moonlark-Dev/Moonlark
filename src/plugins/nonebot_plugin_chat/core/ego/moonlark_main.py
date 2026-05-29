@@ -307,8 +307,8 @@ class MoonlarkMain:
     def on_reply_sent(self) -> None:
         self.sleep_controller.handle_reply()
 
-    def on_private_message_replied(self, user_id: str) -> None:
-        self.proactive_chat.update_reply_status(user_id, replied=True)
+    async def on_private_message_replied(self, user_id: str) -> None:
+        await self.proactive_chat.update_reply_status(user_id, replied=True)
 
     def get_minutes_since_last_group_message(self) -> float:
         """获取距离最近一次群内发言的分钟数"""

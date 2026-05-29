@@ -22,7 +22,8 @@ class ProactiveChatController:
 
     def __init__(self, moonlark_main: "MoonlarkMain") -> None:
         self.moonlark_main = moonlark_main
-        # {user_id: {"timestamp": datetime, "topic": str, "replied": bool}}
+        # {nickname: {"timestamp": datetime, "topic": str, "replied": bool,
+        #              "unreplied_count": int, "today_count": int, "today_date": str}}
         self.last_private_chats: dict[str, dict] = {}
         self.cooldown_seconds: int = 1800  # 30 分钟
         self.pending_queue: list[dict] = []  # 待发送的私聊任务
@@ -75,10 +76,22 @@ class ProactiveChatController:
             await send_proactive_private_message(bot, matched_user_id, content_hint)
 
             # 3. 更新记录（用昵称作为 key）
+            today = datetime.now().strftime("%Y-%m-%d")
+            existing = self.last_private_chats.get(target, {})
+            # 如果之前的私聊未回复，累加未回复计数
+            prev_unreplied = 0
+            if existing and not existing.get("replied", True):
+                prev_unreplied = existing.get("unreplied_count", 0)
+            # 每日计数：跨日重置
+            today_count = existing.get("today_count", 0) if existing.get("today_date") == today else 0
+
             self.last_private_chats[target] = {
                 "timestamp": datetime.now(),
                 "topic": content_hint,
                 "replied": False,
+                "unreplied_count": prev_unreplied + 1,
+                "today_count": today_count + 1,
+                "today_date": today,
             }
             logger.info(f"[ProactiveChatCtrl] 已向 {target} 发送主动私聊: {content_hint}")
             return True
@@ -87,22 +100,37 @@ class ProactiveChatController:
             logger.exception(f"[ProactiveChatCtrl] 发送失败: {e}")
             return False
 
-    def update_reply_status(self, user_id: str, replied: bool = True) -> None:
-        """当用户回复了主动私聊时回调"""
-        if user_id in self.last_private_chats:
-            self.last_private_chats[user_id]["replied"] = replied
+    async def update_reply_status(self, user_id: str, replied: bool = True) -> None:
+        """当用户回复了主动私聊时回调（user_id → 解析昵称 → 重置未回复计数）"""
+        try:
+            from nonebot_plugin_larkuser.utils.user import get_user
+            user = await get_user(user_id)
+            nickname = user.get_nickname()
+
+            if nickname in self.last_private_chats:
+                if replied:
+                    self.last_private_chats[nickname]["replied"] = True
+                    self.last_private_chats[nickname]["unreplied_count"] = 0
+                    logger.info(f"[ProactiveChatCtrl] 用户 {nickname} 已回复，重置未回复计数")
+        except Exception as e:
+            logger.exception(f"[ProactiveChatCtrl] update_reply_status 失败: {e}")
 
     def get_cooldown_info(self) -> dict:
         """返回所有用户的冷却状态，供 MoonlarkMain 使用"""
-        return {
-            user_id: {
+        today = datetime.now().strftime("%Y-%m-%d")
+        result = {}
+        for user_id, info in self.last_private_chats.items():
+            # 跨日重置每日计数
+            today_count = info.get("today_count", 0) if info.get("today_date") == today else 0
+            result[user_id] = {
                 "last_chat": info["timestamp"],
                 "in_cooldown": self._in_cooldown(user_id),
                 "replied": info["replied"],
                 "topic": info["topic"],
+                "unreplied_count": info.get("unreplied_count", 0),
+                "today_count": today_count,
             }
-            for user_id, info in self.last_private_chats.items()
-        }
+        return result
 
     def _in_cooldown(self, user_id: str) -> bool:
         """检查用户是否在冷却期"""

@@ -110,6 +110,19 @@ class ActionAdvisor:
 
         suggestions = []
         for user_id, info in proactive_info.items():
+            unreplied = info.get("unreplied_count", 0)
+            today_count = info.get("today_count", 0)
+
+            # 连续两次未回复 → 不建议私聊
+            if unreplied >= 2:
+                suggestions.append(f"用户 {user_id} 连续 {unreplied} 次未回复主动私聊，不建议再私聊。")
+                continue
+
+            # 今日已达两次上限
+            if today_count >= 2:
+                suggestions.append(f"用户 {user_id} 今日已主动私聊 {today_count} 次，已达上限。")
+                continue
+
             if not info.get("in_cooldown"):
                 if info.get("replied"):
                     suggestions.append(f"用户 {user_id} 已回复上次私聊，可以再次私聊。")
