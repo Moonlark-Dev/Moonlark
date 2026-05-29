@@ -431,7 +431,7 @@ class MoonlarkMain:
         friend_list = []
         async with get_session() as session:
             for friend_record in await session.scalars(select(PrivateChatSession)):
-                from ...utils.larkuser import get_user
+                from nonebot_plugin_larkuser.utils.user import get_user
                 user = await get_user(friend_record.user_id)
                 friend_list.append(
                     await lang.text("moonlark_main.friend", self.lang_str,
