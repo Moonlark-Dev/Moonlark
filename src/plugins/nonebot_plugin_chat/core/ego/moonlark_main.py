@@ -5,12 +5,13 @@
 """
 
 import asyncio
-from datetime import datetime, timedelta
-from typing import TYPE_CHECKING, Literal, Optional
+from datetime import datetime
+from typing import Any, Literal, Optional
 
 from nonebot import logger
 from nonebot_plugin_apscheduler import scheduler
-from nonebot_plugin_openai.utils.chat import fetch_json, fetch_message
+from nonebot_plugin_openai.types import AsyncFunction, FunctionParameter
+from nonebot_plugin_openai.utils.chat import MessageFetcher, fetch_json, fetch_message
 from nonebot_plugin_openai.utils.message import generate_message
 from nonebot_plugin_orm import get_session
 from sqlalchemy import select
@@ -18,20 +19,141 @@ from sqlalchemy import select
 from ...lang import lang
 from ...models import (
     ActionDecisionResponse,
-    EgoDecisionResponse,
-    Note,
     PrivateChatSession,
 )
 from ...utils.instant_mem import get_instant_memories
-from ...utils.note_manager import get_context_notes
 from ...utils.prompt import get_prompt_text
 from ...utils.status_manager import get_status_manager
 from ..session import groups
-from .sleep_controller import SleepController
+from .action_advisor import ActionAdvisor
 from .blog_writer import BlogWriter
 from .proactive_chat_ctrl import ProactiveChatController
 from .self_action_ctrl import SelfActionController
-from .action_advisor import ActionAdvisor
+from .sleep_controller import SleepController
+
+
+class ActionDecider:
+
+    fetcher: MessageFetcher
+
+    def __init__(self, moonlark_main: "MoonlarkMain") -> None:
+        self.moonlark_main = moonlark_main
+        self.lang = moonlark_main.lang_str
+        self.lock = asyncio.Lock()
+
+    async def setup(self) -> None:
+        messages = [
+            generate_message(
+                await lang.text(
+                    "moonlark_main.prompt",
+                    self.moonlark_main.lang_str,
+                    await get_prompt_text("identity"),
+                    await self.moonlark_main.get_friends(),
+                ),
+                "system",
+            ),
+        ]
+        fetcher = await MessageFetcher.create(
+            messages,
+            identify="ActionDecider",
+            functions=[
+                AsyncFunction(
+                    func=self.moonlark_main.sleep_controller.sleep,
+                    description=await lang.text("moonlark_main.tools.sleep.description", self.lang),
+                    parameters={},
+                ),
+                AsyncFunction(
+                    func=self.moonlark_main.self_action.start_action,
+                    description=await lang.text("moonlark_main.tools.start_action.description", self.lang),
+                    parameters={
+                        "activity": FunctionParameter(
+                            type="string",
+                            description=await lang.text("moonlark_main.tools.start_action.activity", self.lang),
+                            required=True,
+                        ),
+                    },
+                ),
+                AsyncFunction(
+                    func=self.moonlark_main.blog_writer.start_new_blog,
+                    description=await lang.text("moonlark_main.tools.start_new_blog.description", self.lang),
+                    parameters={
+                        "topic": FunctionParameter(
+                            type="string",
+                            description=await lang.text("moonlark_main.tools.start_new_blog.topic", self.lang),
+                            required=True,
+                        ),
+                    },
+                ),
+                AsyncFunction(
+                    func=self.moonlark_main.blog_writer.blog_publish_draft,
+                    description=await lang.text("moonlark_main.tools.blog_publish_draft.description", self.lang),
+                    parameters={},
+                ),
+                AsyncFunction(
+                    func=self.moonlark_main.blog_writer.blog_drop_draft,
+                    description=await lang.text("moonlark_main.tools.blog_drop_draft.description", self.lang),
+                    parameters={},
+                ),
+                AsyncFunction(
+                    func=self.moonlark_main.blog_writer.get_blog_state,
+                    description=await lang.text("moonlark_main.tools.get_blog_state.description", self.lang),
+                    parameters={},
+                ),
+                AsyncFunction(
+                    func=self.moonlark_main.proactive_chat.send_private_message,
+                    description=await lang.text("moonlark_main.tools.send_private_message.description", self.lang),
+                    parameters={
+                        "target": FunctionParameter(
+                            type="string",
+                            description=await lang.text("moonlark_main.tools.send_private_message.target", self.lang),
+                            required=True,
+                        ),
+                        "content_hint": FunctionParameter(
+                            type="string",
+                            description=await lang.text("moonlark_main.tools.send_private_message.content_hint", self.lang),
+                            required=True,
+                        ),
+                        "wait_for": FunctionParameter(
+                            type="integer",
+                            description=await lang.text("moonlark_main.tools.send_private_message.wait_for", self.lang),
+                            required=False,
+                        ),
+                    },
+                ),
+            ],
+            pre_function_call=self.pre_function_call,
+            reasoning_effort="medium",
+        )
+        self.fetcher = fetcher
+
+    async def loop(self) -> None:
+        if self.lock.locked():
+            return
+        async with self.lock:
+            await self.on_event("timer")
+            async for message in self.fetcher.fetch_message_stream():
+                logger.info(f"[ActionDecider] {message}")
+
+    async def pre_function_call(self, call_id: str, name: str, params: dict[str, Any]) -> tuple[str, str, dict[str, Any]]:
+        self.moonlark_main._update_decision_history(f"{name}({params})")
+        return call_id, name, params
+
+    async def on_event(self, reason: str) -> None:
+        self.fetcher.session.insert_message(
+            generate_message(
+                await lang.text(
+                    "moonlark_main.user",
+                    self.lang,
+                    reason,
+                    datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    await self.moonlark_main.summary_instant_memory(),
+                ),
+            ),
+        )
+
+    def reset(self) -> None:
+        if hasattr(self, "fetcher"):
+            del self.fetcher
 
 
 class MoonlarkMain:
@@ -46,6 +168,7 @@ class MoonlarkMain:
         self.proactive_chat = ProactiveChatController(self)
         self.self_action = SelfActionController(self)
         self.action_advisor = ActionAdvisor(self)
+        self.action_decider = ActionDecider(self)
 
         # 心情：直接用外部 StatusManager
         self.status_manager = get_status_manager()
@@ -58,12 +181,8 @@ class MoonlarkMain:
             "instant_memory_summary": "",
         }
 
-        # MoonlarkMain 定时器（每10分钟，清醒时触发 request_think）
+        # MoonlarkMain 定时器（每10分钟，清醒时触发 action_decider.loop）
         scheduler.scheduled_job("interval", minutes=10, id="moonlark_main_timer")(self._on_timer)
-
-    # ========================================================================
-    # 核心方法
-    # ========================================================================
 
     async def summary_instant_memory(self) -> str:
         memories = get_instant_memories()
@@ -99,44 +218,6 @@ class MoonlarkMain:
 
         return self.state["instant_memory_summary"]
 
-    async def request_think(
-        self,
-        trigger_reason: str = "timer",
-        request_text: Optional[str] = None,
-        trigger_from: Optional[str] = None,
-    ) -> None:
-        logger.info(f"[MoonlarkMain] request_think, reason={trigger_reason}")
-
-        # 睡眠模式 → SleepController 处理
-        if self.state["sleep_mode"]:
-            await self.sleep_controller.request_think()
-            return
-
-        # 清醒模式
-        summary = await self.summary_instant_memory()
-        state_info = self._collect_state()
-        suggestions = self.action_advisor.get_suggestions(state_info, summary)
-
-        system_prompt = await self._generate_system_prompt(summary, state_info, suggestions)
-        user_prompt = await self._generate_user_prompt(trigger_reason, request_text, trigger_from)
-
-        try:
-            decision = await fetch_json(
-                [
-                    generate_message(system_prompt, "system"),
-                    generate_message(user_prompt, "user"),
-                ],
-                EgoDecisionResponse,
-                identify="MoonlarkMain - Request Think",
-                reasoning_effort="medium",
-            )
-        except Exception as e:
-            logger.exception(f"[MoonlarkMain] LLM 决策失败: {e}")
-            return
-
-        await self._execute_decision(decision)
-        self.state["last_decision_time"] = datetime.now()
-
     async def handle_mention(self, chat_context: list) -> bool:
         """当被 @ 或提及时调用。
 
@@ -155,6 +236,7 @@ class MoonlarkMain:
         mood, mood_reason = self.status_manager.get_status()
         blog_status = self.blog_writer.get_status()
         proactive_info = self.proactive_chat.get_cooldown_info()
+        self_action_status = self.self_action.get_status()
 
         return {
             "sleep_mode": self.state["sleep_mode"],
@@ -163,8 +245,7 @@ class MoonlarkMain:
             "cooldown_remaining": blog_status["cooldown_remaining"],
             "last_blog_time": blog_status["last_blog_time"],
             "proactive_info": proactive_info,
-            "current_activity": self.self_action.current_activity,
-            "current_activity_remaining": self.self_action.get_activity_remaining(),
+            "self_action": self_action_status,
             "mood": {
                 "emotion": mood.value,
                 "intensity": self.status_manager.get_mood_retention(),
@@ -180,126 +261,14 @@ class MoonlarkMain:
         self.state["decision_history"] = self.state["decision_history"][-5:]
 
     # ========================================================================
-    # Prompt 生成
+    # 定时器
     # ========================================================================
-
-    async def _generate_system_prompt(
-        self, summary: str, state_info: dict, suggestions: str
-    ) -> str:
-        identity_prompt = await get_prompt_text("identity")
-
-        draft = state_info.get("draft")
-        if draft:
-            preview = draft['content'][:200] + "..." if len(draft['content']) > 200 else draft['content']
-            blog_text = f"草稿《{draft['topic']}》，{draft['word_count']}字\n内容预览：{preview}\n\n可以 blog_action=\"publish\" 发布，或 blog_action=\"abort\" 取消。"
-        else:
-            blog_text = "无草稿"
-
-        proactive_info = state_info.get("proactive_info", {})
-        if proactive_info:
-            parts = [f"{uid}: {info.get('last_chat', '').strftime('%H:%M')}" for uid, info in proactive_info.items() if info.get("last_chat")]
-            last_private_text = ", ".join(parts) if parts else "无"
-        else:
-            last_private_text = "无"
-
-        activity = state_info.get("current_activity")
-        remaining = state_info.get("current_activity_remaining", 0)
-        activity_text = f"{activity}（剩余{remaining}秒）" if activity else "无"
-
-        # 附加最近查找结果（从 note 中读取）
-        findings = await self.self_action.get_findings_text()
-        if findings:
-            activity_text += f"\n\n最近查找/学习成果：\n{findings}"
-
-        history_lines = [f"[{h['time']}] {h['action']}" for h in self.state["decision_history"]]
-        history_text = "\n".join(history_lines) if history_lines else "无"
-
-        last_time = self.state["last_decision_time"]
-        elapsed = int((datetime.now() - last_time).total_seconds() / 60) if last_time else 0
-
-        mood = state_info["mood"]
-        friends_text = await self.get_friends()
-
-        return await lang.text(
-            "moonlark_main.think.system",
-            self.lang_str,
-            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            str(elapsed),
-            identity_prompt,
-            summary,
-            str(self.state["sleep_mode"]),
-            last_private_text,
-            blog_text,
-            mood["emotion"],
-            str(mood["intensity"]),
-            mood["reason"],
-            activity_text,
-            suggestions,
-            history_text,
-            friends_text,
-        )
-
-    async def _generate_user_prompt(
-        self,
-        trigger_reason: str,
-        request_text: Optional[str] = None,
-        trigger_from: Optional[str] = None,
-    ) -> str:
-        return await lang.text(
-            "moonlark_main.think.user",
-            self.lang_str,
-            trigger_reason,
-            request_text or "",
-            trigger_from or "",
-        )
-
-    # ========================================================================
-    # 决策执行
-    # ========================================================================
-
-    async def _execute_decision(self, decision: EgoDecisionResponse) -> None:
-        """解析并执行 LLM 决策结果（Pydantic model）"""
-        actions_taken = []
-
-        # sleep_decision → SleepController 处理
-        if decision.sleep_decision:
-            await self.sleep_controller.handle_decision(decision.sleep_decision)
-            actions_taken.append(f"sleep: {decision.sleep_decision}")
-
-        # blog_action → BlogWriter 处理
-        if decision.blog_action and decision.blog_action != "skip":
-            if isinstance(decision.blog_action, dict) and "start_new_topic" in decision.blog_action:
-                topic = decision.blog_action["start_new_topic"]
-                await self.blog_writer.handle_action(f"start_new_topic:{topic}")
-                actions_taken.append(f"blog: start_new_topic:{topic}")
-            else:
-                await self.blog_writer.handle_action(str(decision.blog_action))
-                actions_taken.append(f"blog: {decision.blog_action}")
-
-        # private_chat → ProactiveChatController 处理
-        if decision.private_chat:
-            await self.proactive_chat.send_private_message(
-                decision.private_chat.target,
-                decision.private_chat.reason,
-                decision.private_chat.content_hint,
-            )
-            actions_taken.append(f"private_chat: {decision.private_chat.target}")
-
-        # self_action → SelfActionController 处理（duration 由其单独请求 LLM）
-        if decision.self_action:
-            await self.self_action.start_activity(decision.self_action)
-            actions_taken.append(f"self_action: {decision.self_action}")
-
-        if actions_taken:
-            self._update_decision_history(", ".join(actions_taken))
-        else:
-            self._update_decision_history("no_action")
 
     async def _on_timer(self) -> None:
         """定时器回调（每10分钟）。睡眠时不触发，由 SleepController 自己的定时器处理。"""
         if self.state["sleep_mode"]:
             return
-        await self.request_think("timer")
+        asyncio.create_task(self.action_decider.loop())
 
     # ========================================================================
     # 供外部调用的接口
@@ -348,7 +317,7 @@ class MoonlarkMain:
             system_prompt = await lang.text(
                 "moonlark_main.action_request.system", self.lang_str,
                 await get_prompt_text("identity"),
-                await self._get_additional_prompt(),
+                self._get_additional_prompt_text(),
                 self._get_recent_actions_text(),
             )
             user_prompt = await lang.text(
@@ -363,7 +332,7 @@ class MoonlarkMain:
             )
 
             if result.approved and result.allocated_time > 0:
-                await self.self_action.start_activity(do, duration_seconds=result.allocated_time * 60)
+                await self.self_action.start_action(do)
 
             if future and not future.done():
                 key = "moonlark_main.action_request.result_approved" if result.approved else "moonlark_main.action_request.result_denied"
@@ -384,7 +353,7 @@ class MoonlarkMain:
     ) -> None:
         try:
             result = await self.sleep_controller.submit_sleep_decision(
-                deal_type, delay_minutes or 5, reason or ""
+                deal_type, delay_minutes or 5, reason or "",
             )
             if future and not future.done():
                 future.set_result(result)
@@ -401,40 +370,9 @@ class MoonlarkMain:
         lines = [f"[{h['time']}] {h['action']}" for h in self.state["decision_history"]]
         return "\n".join(lines) if lines else ""
 
-    async def _get_additional_prompt(self) -> str:
+    def _get_additional_prompt_text(self) -> str:
         mood, mood_reason = self.status_manager.get_status()
-        state_str = await lang.text(
-            "prompt_group.state", self.lang_str,
-            await lang.text(f"status.mood.{mood.value}", self.lang_str),
-            self.status_manager.get_mood_retention(),
-            mood_reason,
-        )
-
-        instant_mem_lines = []
-        for mem in get_instant_memories():
-            instant_mem_lines.append(
-                await lang.text("prompt_group.instant_mem", self.lang_str,
-                    mem["create_time"].strftime("%Y-%m-%d %H:%M:%S"),
-                    mem["expire_time"].strftime("%Y-%m-%d %H:%M:%S"),
-                    mem["content"])
-            )
-        instant_mem = "\n".join(instant_mem_lines)
-
-        note_manager = await get_context_notes("main_")
-        notes = await note_manager.filter_note(instant_mem)
-        notes = notes[0] + notes[1]
-
-        return await lang.text(
-            "moonlark_main.additional_info", self.lang_str,
-            await lang.text("prompt_group.time", self.lang_str, datetime.now().isoformat()),
-            state_str,
-            "\n".join([await self._format_note(n) for n in notes]) if notes else await lang.text("prompt.note.none", self.lang_str),
-            instant_mem,
-        )
-
-    async def _format_note(self, note: Note) -> str:
-        created_time = datetime.fromtimestamp(note.created_time).strftime("%y-%m-%d")
-        return await lang.text("prompt.note.format", self.lang_str, note.content, note.id, created_time)
+        return f"心情：{mood.value} (强度: {self.status_manager.get_mood_retention():.2f}; 原因: {mood_reason or '无'})"
 
     async def get_friends(self) -> str:
         friend_list = []
@@ -458,4 +396,5 @@ moonlark_main = MoonlarkMain()
 
 
 async def init_moonlark_main() -> None:
+    await moonlark_main.action_decider.setup()
     logger.info("[MoonlarkMain] 初始化完成")

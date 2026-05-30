@@ -235,3 +235,8 @@ class SleepThinkResponse(BaseModel):
 class SelfActionDurationResponse(BaseModel):
     """SelfActionController _generate_duration 的 LLM 返回格式"""
     duration_minutes: int = 5
+
+
+class TaskClassificationResponse(BaseModel):
+    """TaskController _classify_task 的 LLM 返回格式"""
+    activity_type: Literal["学习", "任务"]

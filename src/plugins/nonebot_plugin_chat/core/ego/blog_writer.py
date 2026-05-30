@@ -79,48 +79,55 @@ class BlogWriter:
         else:
             logger.warning(f"[BlogWriter] 未知的 blog_action: {action_str}")
 
-    async def _start_new_blog(self, topic: str) -> None:
-        """撰写新博客（一次性完成，写完后等 MoonlarkMain 确认发布）"""
-        # 检查状态
+    async def start_new_blog(self, topic: str) -> str:
         if self.status != STATUS_IDLE:
-            logger.info(f"[BlogWriter] 当前状态为 {self.status}，无法开始新博客")
-            return
+            return f"当前状态为 {self.status}，无法开始新博客"
 
         # 检查冷却
         if self._in_cooldown():
-            logger.info(f"[BlogWriter] 冷却中，剩余 {self._get_cooldown_remaining()} 秒")
-            return
+            return f"冷却中，剩余 {self._get_cooldown_remaining()} 秒"
+        
+        return await self._start_new_blog(topic)
+    
+    async def get_blog_state(self) -> str:
+        return await lang.text("moonlark_main.blog_state", self.moonlark_main.lang_str, self.status, self.current_draft)
+    
+    async def blog_drop_draft(self) -> None:
+        await self._abort_draft()
 
-        try:
-            identity_prompt = await get_prompt_text("identity")
-            recent_actions = self.moonlark_main._get_recent_actions_text()
-            extra_context = await self._gather_context(topic)
+    async def blog_publish_draft(self) -> None:
+        await self._publish_blog()
 
-            system_prompt = await lang.text(
-                "blog.writer.system", self.moonlark_main.lang_str, identity_prompt
-            )
-            user_prompt = await lang.text(
-                "blog.writer.start", self.moonlark_main.lang_str, topic, recent_actions, extra_context
-            )
+    async def _start_new_blog(self, topic: str) -> str:
+        """撰写新博客（一次性完成，写完后等 MoonlarkMain 确认发布）"""
+        # 检查状态
+        
+        identity_prompt = await get_prompt_text("identity")
+        recent_actions = self.moonlark_main._get_recent_actions_text()
+        extra_context = await self._gather_context(topic)
 
-            content = await fetch_message(
-                [generate_message(system_prompt, "system"), generate_message(user_prompt, "user")],
-                identify="Blog Writer",
-                reasoning_effort="medium",
-            )
+        system_prompt = await lang.text(
+            "blog.writer.system", self.moonlark_main.lang_str, identity_prompt
+        )
+        user_prompt = await lang.text(
+            "blog.writer.start", self.moonlark_main.lang_str, topic, recent_actions, extra_context
+        )
 
-            # 保存草稿，状态设为 FINISHED（等 MoonlarkMain 确认发布）
-            self.current_draft = {
-                "topic": topic,
-                "content": content,
-                "word_count": len(content),
-                "last_updated": datetime.now(),
-            }
-            self.status = STATUS_FINISHED
-            logger.info(f"[BlogWriter] 博客撰写完成: {topic}，字数: {len(content)}，等待确认发布")
+        content = await fetch_message(
+            [generate_message(system_prompt, "system"), generate_message(user_prompt, "user")],
+            identify="Blog Writer",
+            reasoning_effort="medium",
+        )
 
-        except Exception as e:
-            logger.exception(f"[BlogWriter] 生成博客失败: {e}")
+        # 保存草稿，状态设为 FINISHED（等 MoonlarkMain 确认发布）
+        self.current_draft = {
+            "topic": topic,
+            "content": content,
+            "word_count": len(content),
+            "last_updated": datetime.now(),
+        }
+        self.status = STATUS_FINISHED
+        return content
 
     async def _abort_draft(self) -> None:
         """取消当前草稿"""

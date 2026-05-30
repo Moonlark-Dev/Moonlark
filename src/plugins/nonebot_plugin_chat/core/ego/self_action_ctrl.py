@@ -9,19 +9,65 @@
 - 查找类结果存入 note，task_finish 时展示给 MoonlarkMain
 """
 
-from datetime import datetime, timedelta
+import asyncio
+from datetime import datetime
+from enum import Enum
 from typing import TYPE_CHECKING, Optional
 
 from nonebot import logger
-from nonebot_plugin_apscheduler import scheduler
+from nonebot_plugin_openai import MessageFetcher
 from nonebot_plugin_openai.utils.chat import fetch_json
 from nonebot_plugin_openai.utils.message import generate_message
+
 from ...lang import lang
-from ...models import SelfActionDurationResponse
-from .runners import get_runner
+from ...models import SelfActionDurationResponse, TaskClassificationResponse
+from ...utils.tool_manager import ToolManager
 
 if TYPE_CHECKING:
     from .moonlark_main import MoonlarkMain
+
+
+class ActionType(Enum):
+    LEARN = "学习"
+    TASK = "任务"
+
+
+class SelfActionAgent:
+    """自主活动 AI Agent
+
+    类似 AskAISession，使用 ToolManager 提供的 agent 工具列表执行任务。
+    """
+
+    def __init__(self, lang_str: str) -> None:
+        self.lang_str = lang_str
+        self.tool_manager = ToolManager(lang_str=lang_str)
+        self.functions = []
+
+    async def setup(self) -> None:
+        self.functions = await self.tool_manager.select_tools("agent")
+
+    async def execute_task(self, activity: str, context: Optional[str] = None) -> str:
+        if not self.functions:
+            await self.setup()
+
+        system_text = await lang.text(
+            "self_action.agent.system", self.lang_str,
+            datetime.now().isoformat(),
+        )
+        user_text = activity
+        if context:
+            user_text = f"{activity}\n\n背景信息：{context}"
+
+        fetcher = await MessageFetcher.create(
+            [
+                generate_message(system_text, "system"),
+                generate_message(user_text, "user"),
+            ],
+            False,
+            functions=self.functions,
+            identify="SelfActionAgent",
+        )
+        return await fetcher.fetch_last_message()
 
 
 class SelfActionController:
@@ -30,7 +76,6 @@ class SelfActionController:
     按设计文档属性：
     - current_activity: Optional[str]
     - activity_start_time: Optional[datetime]
-    - activity_duration: int (秒，0=无限)
     - activity_history: list
     """
 
@@ -38,171 +83,72 @@ class SelfActionController:
         self.moonlark_main = moonlark_main
         self.current_activity: Optional[str] = None
         self.activity_start_time: Optional[datetime] = None
-        self.activity_duration: int = 0
         self.activity_history: list[dict] = []
-        self._current_runner_result: Optional[str] = None
+        self.lang = moonlark_main.lang_str
+        self.agent = SelfActionAgent(self.lang)
+        self._task: Optional[asyncio.Task] = None
 
-        # 注册定时器，每分钟检查活动超时
-        scheduler.scheduled_job("interval", minutes=1, id="self_action_tick")(self.tick)
+    def get_status(self) -> dict:
+        return {
+            "current_activity": self.current_activity,
+            "activity_start_time": self.activity_start_time.isoformat() if self.activity_start_time else None,
+        }
 
-    async def start_activity(self, activity: str, duration_seconds: int = 0) -> None:
-        """开始一项新活动
-
-        按设计文档：
-        1. 若已有活动在进行，打断并记录
-        2. 若未提供 duration，调用 LLM 生成
-        3. 记录开始时间和持续时间
-        4. 通过 Runner 执行活动（如搜索、学习等）
-
-        Args:
-            activity: 活动描述（如"学习CSS"、"做拉伸"）
-            duration_seconds: 计划持续时间（秒），0 表示由 LLM 生成
-        """
-        # 若已有活动在进行，打断并记录
+    async def start_action(self, activity: str) -> str:
         if self.current_activity:
-            logger.info(f"[SelfAction] 打断当前活动: {self.current_activity}")
-            await self.finish_activity(completed=False)
-
-        # 若未提供 duration，调用 LLM 生成
-        if duration_seconds <= 0:
-            duration_seconds = await self._generate_duration(activity)
+            return f"当前正在「{self.current_activity}」，无法同时进行其他活动。"
 
         self.current_activity = activity
         self.activity_start_time = datetime.now()
-        self.activity_duration = duration_seconds
-        self._current_runner_result = None
+        return await self._run_action(activity)
 
-        logger.info(f"[SelfAction] 开始活动: {activity}，计划时长: {duration_seconds}秒")
-
-        # 通过 Runner 执行活动
-        runner = get_runner(activity)
-        logger.info(f"[SelfAction] 使用 runner: {runner.__class__.__name__}")
-        self._current_runner_result = await runner.run(activity)
-
-    async def _generate_duration(self, activity: str) -> int:
-        """调用 LLM 生成活动持续时间（秒）
-
-        Args:
-            activity: 活动描述
-
-        Returns:
-            持续时间（秒），默认 300 秒（5分钟）
-        """
+    async def _run_action(self, activity: str) -> str:
         try:
-            system_prompt = await lang.text(
-                "self_action.duration.system",
-                self.moonlark_main.lang_str,
-            )
-            user_prompt = await lang.text(
-                "self_action.duration.user",
-                self.moonlark_main.lang_str,
-                activity,
-            )
+            task_type = await self.get_task_type(activity)
+            if task_type == ActionType.LEARN:
+                result = await self.agent.execute_task(activity)
+            else:
+                duration = await self.get_task_duration(activity)
+                await asyncio.sleep(duration * 60)
+                result = None
 
-            result = await fetch_json(
-                [
-                    generate_message(system_prompt, "system"),
-                    generate_message(user_prompt, "user"),
-                ],
-                SelfActionDurationResponse,
-                identify="SelfAction - Generate Duration",
-                reasoning_effort="low",
-            )
-
-            return max(60, min(3600, result.duration_minutes * 60))
-
+            self.activity_history.append({
+                "activity": activity,
+                "start_time": self.activity_start_time.isoformat() if self.activity_start_time else None,
+                "end_time": datetime.now().isoformat(),
+                "result": result,
+            })
+            logger.info(f"[SelfAction] 活动完成: {activity}")
+            return result or f"活动完成: {activity}"
+        except asyncio.CancelledError:
+            return "[SelfAction] 活动取消: {activity}"
         except Exception as e:
-            logger.exception(f"[SelfAction] 生成 duration 失败: {e}")
-            return 300  # 默认 5分钟
+            return "[SelfAction] 活动失败: {e}"
+        finally:
+            self.current_activity = None
+            self.activity_start_time = None
+            self._task = None
 
-    async def tick(self) -> None:
-        """检查当前活动是否超时，由定时器每分钟调用"""
-        if not self.current_activity or self.activity_duration == 0:
-            return
+    async def get_task_duration(self, activity: str) -> int:
+        response = await fetch_json(
+            [
+                generate_message(await lang.text("self_action.duration.system", self.lang), "system"),
+                generate_message(await lang.text("self_action.duration.user", self.lang, activity), "user"),
+            ],
+            SelfActionDurationResponse,
+        )
+        return response.duration_minutes
 
-        elapsed = (datetime.now() - self.activity_start_time).total_seconds()
-        if elapsed >= self.activity_duration:
-            logger.info(f"[SelfAction] 活动超时完成: {self.current_activity}")
-            await self.finish_activity(completed=True)
-
-    async def finish_activity(self, completed: bool = True) -> None:
-        """结束当前活动
-
-        Args:
-            completed: True 表示正常完成，False 表示被打断
-        """
-        if not self.current_activity:
-            return
-
-        end_time = datetime.now()
-        elapsed = (end_time - self.activity_start_time).total_seconds()
-
-        # 记录到历史
-        self.activity_history.append({
-            "activity": self.current_activity,
-            "start_time": self.activity_start_time,
-            "end_time": end_time,
-            "duration": elapsed,
-            "completed": completed,
-            "result": self._current_runner_result,
-        })
-        self._current_runner_result = None
-        # 只保留最近 20 条
-        self.activity_history = self.activity_history[-20:]
-
-        activity_name = self.current_activity
-        self.current_activity = None
-        self.activity_start_time = None
-        self.activity_duration = 0
-
-        if completed:
-            # 通知 MoonlarkMain 活动完成，触发新一轮决策
-            logger.info(f"[SelfAction] 活动完成: {activity_name}，触发决策")
-            await self.moonlark_main.request_think("task_finished", activity_name)
-
-    def get_status_text(self) -> str:
-        """返回当前活动状态文本，供 MoonlarkMain 的 Prompt 使用"""
-        if not self.current_activity:
-            return "当前无自主活动"
-
-        elapsed = (datetime.now() - self.activity_start_time).total_seconds()
-        if self.activity_duration > 0:
-            remaining = max(0, self.activity_duration - elapsed)
-            return (
-                f"正在{self.current_activity}，"
-                f"已进行 {int(elapsed) // 60} 分钟，"
-                f"剩余 {int(remaining) // 60} 分钟"
-            )
-        else:
-            return f"正在{self.current_activity}，已进行 {int(elapsed) // 60} 分钟"
-
-    def get_recent_activities(self, limit: int = 5) -> list[dict]:
-        """获取最近完成的活动"""
-        return self.activity_history[-limit:]
-
-    async def get_findings_text(self, limit: int = 5) -> str:
-        """获取最近活动中的查找/学习成果（从 note 中读取）"""
-        from ...utils.note_manager import get_context_notes
-
-        try:
-            note_mgr = await get_context_notes("self_action")
-            notes = await note_mgr.get_notes()
-            if not notes:
-                return ""
-
-            lines = []
-            for note in notes[-limit:]:
-                lines.append(note.content)
-            return "\n\n---\n\n".join(lines)
-        except Exception as e:
-            logger.exception(f"[SelfAction] 获取 note 失败: {e}")
-            return ""
-
-    def get_activity_remaining(self) -> int:
-        """获取当前活动剩余秒数"""
-        if not self.current_activity or not self.activity_start_time:
-            return 0
-        if self.activity_duration == 0:
-            return -1  # 无限
-        elapsed = (datetime.now() - self.activity_start_time).total_seconds()
-        return max(0, int(self.activity_duration - elapsed))
+    async def get_task_type(self, activity: str) -> ActionType:
+        response = await fetch_json(
+            [
+                generate_message(
+                    await lang.text("moonlark_main.task_classification.prompt", self.lang), "system",
+                ),
+                generate_message(
+                    await lang.text("moonlark_main.task_classification.user", self.lang, activity), "user",
+                ),
+            ],
+            TaskClassificationResponse,
+        )
+        return ActionType(response.activity_type)

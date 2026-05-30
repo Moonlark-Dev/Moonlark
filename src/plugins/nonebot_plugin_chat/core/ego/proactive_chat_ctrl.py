@@ -8,7 +8,9 @@
 - proactive_chat.py：实际消息发送逻辑
 """
 
+import asyncio
 from datetime import datetime, timedelta
+from re import A
 from typing import TYPE_CHECKING, Optional
 
 from nonebot import logger
@@ -27,50 +29,56 @@ class ProactiveChatController:
         self.last_private_chats: dict[str, dict] = {}
         self.cooldown_seconds: int = 1800  # 30 分钟
         self.pending_queue: list[dict] = []  # 待发送的私聊任务
+        # {nickname: asyncio.Event} — 用于等待用户回复
+        self._reply_events: dict[str, asyncio.Event] = {}
+
+    async def match_nickname(self, target: str) -> tuple[Optional[str], Optional[str]]:
+        from ...models import PrivateChatSession
+        from nonebot_plugin_orm import get_session
+        from nonebot_plugin_larkuser.utils.user import get_user
+        from sqlalchemy import select
+
+        # 按昵称匹配用户
+        async with get_session() as db_session:
+            all_sessions = (await db_session.execute(select(PrivateChatSession))).scalars().all()
+
+        matched_user_id = None
+        matched_bot_id = None
+        for chat_session in all_sessions:
+            user = await get_user(chat_session.user_id)
+            if user.get_nickname() == target:
+                matched_user_id = chat_session.user_id
+                matched_bot_id = chat_session.bot_id
+                break
+        return matched_user_id, matched_bot_id
+
 
     async def send_private_message(
-        self, target: str, reason: str, content_hint: str
-    ) -> bool:
+        self, target: str, content_hint: str, wait_for: int = 0
+    ) -> str:
         """决策并发送主动私聊消息
 
         Args:
             target: 目标用户昵称
             reason: 私聊理由
             content_hint: 聊什么的提示
+            wait_for: 发送后等待用户回复的秒数（0 表示不等待）
 
         Returns:
-            是否成功发送
+            状态字符串: "replied" | "timeout" | 跳过/失败的描述
         """
         # 1. 检查冷却
         if self._in_cooldown(target):
-            logger.info(f"[ProactiveChatCtrl] 用户 {target} 在冷却期内，跳过")
-            return False
+            return f"用户 {target} 在冷却期内"
 
         # 2. 调用实际发送模块
         try:
             from ..proactive_chat import send_proactive_private_message
             from nonebot import get_bot
-            from ...models import PrivateChatSession
-            from nonebot_plugin_orm import get_session
-            from nonebot_plugin_larkuser.utils.user import get_user
-            from sqlalchemy import select
-
-            # 按昵称匹配用户
-            async with get_session() as db_session:
-                all_sessions = (await db_session.execute(select(PrivateChatSession))).scalars().all()
-
-            matched_user_id = None
-            matched_bot_id = None
-            for chat_session in all_sessions:
-                user = await get_user(chat_session.user_id)
-                if user.get_nickname() == target:
-                    matched_user_id = chat_session.user_id
-                    matched_bot_id = chat_session.bot_id
-                    break
+            matched_user_id, matched_bot_id = await self.match_nickname(target)
 
             if not matched_user_id:
-                logger.warning(f"[ProactiveChatCtrl] 未找到昵称为 {target} 的好友会话")
-                return False
+                return f"未找到昵称为 {target} 的好友会话"
 
             bot = get_bot(matched_bot_id)
             await send_proactive_private_message(bot, matched_user_id, content_hint)
@@ -94,11 +102,27 @@ class ProactiveChatController:
                 "today_date": today,
             }
             logger.info(f"[ProactiveChatCtrl] 已向 {target} 发送主动私聊: {content_hint}")
-            return True
+
+            # 4. 如果需要等待回复
+            if wait_for > 0:
+                event = asyncio.Event()
+                self._reply_events[target] = event
+                try:
+                    logger.info(f"[ProactiveChatCtrl] 等待 {target} 回复，超时 {wait_for}s")
+                    await asyncio.wait_for(event.wait(), timeout=wait_for)
+                    logger.info(f"[ProactiveChatCtrl] {target} 在超时前回复")
+                    return "已发送主动私聊，并被用户回复。"
+                except asyncio.TimeoutError:
+                    logger.info(f"[ProactiveChatCtrl] 等待 {target} 回复超时 ({wait_for}s)")
+                    return "已发送主动私聊，用户未在预计时间内回复。"
+                finally:
+                    self._reply_events.pop(target, None)
+
+            return "已发送（未等待回复）"
 
         except Exception as e:
             logger.exception(f"[ProactiveChatCtrl] 发送失败: {e}")
-            return False
+            return f"发送失败: {e}"
 
     async def update_reply_status(self, user_id: str, replied: bool = True) -> None:
         """当用户回复了主动私聊时回调（user_id → 解析昵称 → 重置未回复计数）"""
@@ -112,6 +136,12 @@ class ProactiveChatController:
                     self.last_private_chats[nickname]["replied"] = True
                     self.last_private_chats[nickname]["unreplied_count"] = 0
                     logger.info(f"[ProactiveChatCtrl] 用户 {nickname} 已回复，重置未回复计数")
+
+            # 通知正在等待该用户回复的 send_private_message
+            event = self._reply_events.get(nickname)
+            if event and not event.is_set():
+                event.set()
+                logger.info(f"[ProactiveChatCtrl] 已通知等待 {nickname} 回复的协程")
         except Exception as e:
             logger.exception(f"[ProactiveChatCtrl] update_reply_status 失败: {e}")
 

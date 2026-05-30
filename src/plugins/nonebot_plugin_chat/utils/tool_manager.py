@@ -17,6 +17,7 @@
 
 from typing import TYPE_CHECKING, Literal, Optional
 from ..enums import MoodEnum
+from ..lang import lang
 from nonebot_plugin_openai.types import AsyncFunction, FunctionParameter, FunctionParameterWithEnum
 from nonebot.adapters.onebot.v11 import Bot as OB11Bot
 from nonebot_plugin_larkutils.jrrp import get_luck_value
@@ -43,12 +44,15 @@ if TYPE_CHECKING:
 
 
 class ToolManager:
-    def __init__(self, processor: "MessageProcessor"):
+    def __init__(self, processor: Optional["MessageProcessor"] = None, lang_str: str = "zh_hans"):
         self.processor = processor
+        self.lang_str = lang_str
         self.status_manager = get_status_manager()
 
     async def text(self, key: str, *args, **kwargs) -> str:
-        return await self.processor.session.text(key, *args, **kwargs)
+        if self.processor is not None:
+            return await self.processor.session.text(key, *args, **kwargs)
+        return await lang.text(key, self.lang_str, *args, **kwargs)
 
     async def browse_webpage(self, url: str) -> str:
         return await browse_webpage(url, self.text)

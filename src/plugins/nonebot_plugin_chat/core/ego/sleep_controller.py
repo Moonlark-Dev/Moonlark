@@ -217,7 +217,12 @@ class SleepController:
         self.sleep_state = True
         self.sleep_begin_time = datetime.now()
         self.moonlark_main.state["sleep_mode"] = True
-        logger.info("[SleepController] 进入睡眠模式")
+        self.moonlark_main.action_decider.reset()
+        logger.info("[SleepController] 进入睡眠模式，已重置 ActionDecider")
+
+    async def sleep(self) -> None:
+        """睡觉工具调用"""
+        await self.handle_tired()
 
     async def process_timer(self) -> None:
         """定时检查困倦度（自己的定时器，每10分钟）"""
