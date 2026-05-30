@@ -1205,6 +1205,9 @@ moonlark_main:
 
     ## 当前草稿
     {}
+
+    ## 今日已发布
+    {}
   tools:
     start_action:
       description: |

@@ -13,7 +13,10 @@ from typing import TYPE_CHECKING, Optional
 from nonebot import logger
 from nonebot_plugin_openai.utils.chat import fetch_message
 from nonebot_plugin_openai.utils.message import generate_message
+from nonebot_plugin_orm import get_session
+from sqlalchemy import select
 from ...lang import lang
+from ...models import BlogPost
 from ...utils.prompt import get_prompt_text
 
 if TYPE_CHECKING:
@@ -90,7 +93,26 @@ class BlogWriter:
         return await self._start_new_blog(topic)
     
     async def get_blog_state(self) -> str:
-        return await lang.text("moonlark_main.blog_state", self.moonlark_main.lang_str, self.status, self.current_draft)
+        today_posts = await self._get_today_posts()
+        if today_posts:
+            today_text = "\n".join(f"- [{p['time']}] {p['title']}" for p in today_posts)
+        else:
+            today_text = "今日尚未发布博客"
+        return await lang.text("moonlark_main.blog_state", self.moonlark_main.lang_str, self.status, self.current_draft, today_text)
+
+    async def _get_today_posts(self) -> list[dict]:
+        """查询今天已发布的博客"""
+        now = datetime.now()
+        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        try:
+            async with get_session() as session:
+                posts = (await session.scalars(
+                    select(BlogPost).where(BlogPost.create_at >= today_start)
+                )).all()
+                return [{"title": p.title, "time": p.create_at.strftime("%H:%M")} for p in posts]
+        except Exception as e:
+            logger.debug(f"[BlogWriter] 查询今日博客失败: {e}")
+            return []
     
     async def blog_drop_draft(self) -> None:
         await self._abort_draft()
