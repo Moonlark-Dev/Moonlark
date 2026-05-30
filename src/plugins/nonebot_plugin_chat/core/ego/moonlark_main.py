@@ -133,17 +133,20 @@ class ActionDecider:
         if self.lock.locked():
             return
         async with self.lock:
-            if not hasattr(self, "fetcher"):
-                await self.setup()
-            async for message in self.fetcher.fetch_message_stream():
-                logger.info(f"[ActionDecider] {message}")
-                last_summary_time = self.moonlark_main.state.get("last_summary_time")
-                memories = get_instant_memories()
-                if last_summary_time:
-                    memories = [m for m in memories if m["create_time"] > last_summary_time]
-                if memories:
-                    await self.on_event("new_group_event")
-                await asyncio.sleep(60)
+            try:
+                if not hasattr(self, "fetcher"):
+                    await self.setup()
+                async for message in self.fetcher.fetch_message_stream():
+                    logger.info(f"[ActionDecider] {message}")
+                    last_summary_time = self.moonlark_main.state.get("last_summary_time")
+                    memories = get_instant_memories()
+                    if last_summary_time:
+                        memories = [m for m in memories if m["create_time"] > last_summary_time]
+                    if memories:
+                        await self.on_event("new_group_event")
+                    await asyncio.sleep(60)
+            except Exception:
+                logger.exception("[ActionDecider] loop exited with error")
 
     async def pre_function_call(self, call_id: str, name: str, params: dict[str, Any]) -> tuple[str, str, dict[str, Any]]:
         self.moonlark_main._update_decision_history(f"{name}({params})")
@@ -201,6 +204,14 @@ class MoonlarkMain:
         scheduler.scheduled_job("interval", minutes=10, id="moonlark_main_timer")(self._on_timer)
 
     async def summary_instant_memory(self) -> str:
+        tasks = [
+            session.instant_memory_manager.generate()
+            for session in groups.values()
+            if session.instant_memory_manager.message_cache
+        ]
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)
+
         last_summary_time = self.state.get("last_summary_time")
         memories = get_instant_memories()
         if last_summary_time:
