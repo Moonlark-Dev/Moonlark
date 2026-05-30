@@ -130,6 +130,8 @@ class ActionDecider:
         if self.lock.locked():
             return
         async with self.lock:
+            if not hasattr(self, "fetcher"):
+                await self.setup()
             await asyncio.sleep(60)
             await self.on_event("timer")
             async for message in self.fetcher.fetch_message_stream():

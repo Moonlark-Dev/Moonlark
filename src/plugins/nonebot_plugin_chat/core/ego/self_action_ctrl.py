@@ -121,9 +121,9 @@ class SelfActionController:
             logger.info(f"[SelfAction] 活动完成: {activity}")
             return result or f"活动完成: {activity}"
         except asyncio.CancelledError:
-            return "[SelfAction] 活动取消: {activity}"
+            return f"[SelfAction] 活动取消: {activity}"
         except Exception as e:
-            return "[SelfAction] 活动失败: {e}"
+            return f"[SelfAction] 活动失败: {e}"
         finally:
             self.current_activity = None
             self.activity_start_time = None
