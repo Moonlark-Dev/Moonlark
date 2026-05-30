@@ -131,34 +131,32 @@ class SleepController:
             logger.exception(f"[SleepController] 睡眠决策失败: {e}")
 
     async def _maybe_clear_context(self, sleep_duration: float) -> None:
-        """入睡后首次决策继续睡时，重置所有会话上下文。
+        """入睡后首次决策继续睡时，重置所有会话的消息队列上下文。
 
-        条件：入睡到决策时间 > 20 分钟，且未清除过。
+        条件：入睡到决策时间 > 30 分钟，且未清除过。
         """
         if self.context_cleared:
             return
 
-        if sleep_duration < 20:
-            logger.info(f"[SleepController] 入睡 {int(sleep_duration)} 分钟，不足20分钟，暂不重置上下文")
+        if sleep_duration < 30:
+            logger.info(f"[SleepController] 入睡 {int(sleep_duration)} 分钟，不足30分钟，暂不重置上下文")
             return
 
-        # 满足条件，重置所有会话上下文
-        logger.info("[SleepController] 入睡后首次继续睡决策，重置所有会话上下文")
-        await self._reset_all_sessions()
+        # 满足条件，重置所有会话的消息队列上下文
+        logger.info("[SleepController] 入睡后首次继续睡决策，重置所有会话消息队列上下文")
+        await self._reset_all_message_queues()
         self.context_cleared = True
 
-    async def _reset_all_sessions(self) -> None:
-        """重置所有会话的上下文（内存 + 数据库）"""
+    async def _reset_all_message_queues(self) -> None:
+        """重置所有会话的消息队列（内存 + 数据库），但不销毁 session 对象"""
         from ..session import groups
-        from ..session import reset_session
 
-        session_ids = list(groups.keys())
-        for session_id in session_ids:
+        for session_id, session in list(groups.items()):
             try:
-                await reset_session(session_id)
-                logger.info(f"[SleepController] 已重置会话: {session_id}")
+                await session.processor.openai_messages._reset_and_clear_db(session_id)
+                logger.info(f"[SleepController] 已重置会话消息队列: {session_id}")
             except Exception as e:
-                logger.exception(f"[SleepController] 重置会话 {session_id} 失败: {e}")
+                logger.exception(f"[SleepController] 重置会话 {session_id} 消息队列失败: {e}")
 
     async def handle_mention(self, chat_context: list) -> bool:
         """当被提及时调用。返回 True 表示已唤醒，应正常回复。
