@@ -27,6 +27,8 @@ from ...utils.status_manager import get_status_manager
 from ..session import groups
 from .action_advisor import ActionAdvisor
 from .blog_writer import BlogWriter
+
+from nonebot_plugin_openai.types import Message as OpenAIChatMessage
 from .proactive_chat_ctrl import ProactiveChatController
 from .self_action_ctrl import SelfActionController
 from .sleep_controller import SleepController
@@ -52,6 +54,7 @@ class ActionDecider:
                 ),
                 "system",
             ),
+            await self.generate_message("")
         ]
         fetcher = await MessageFetcher.create(
             messages,
@@ -132,7 +135,6 @@ class ActionDecider:
         async with self.lock:
             if not hasattr(self, "fetcher"):
                 await self.setup()
-            await self.on_event("timer")
             async for message in self.fetcher.fetch_message_stream():
                 logger.info(f"[ActionDecider] {message}")
                 last_summary_time = self.moonlark_main.state.get("last_summary_time")
@@ -147,17 +149,20 @@ class ActionDecider:
         self.moonlark_main._update_decision_history(f"{name}({params})")
         return call_id, name, params
 
+    async def generate_message(self, reason) -> OpenAIChatMessage:
+        return generate_message(
+            await lang.text(
+                "moonlark_main.user",
+                self.lang,
+                reason,
+                datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                await self.moonlark_main.summary_instant_memory(),
+            ),
+        )
+
     async def on_event(self, reason: str) -> None:
         self.fetcher.session.insert_message(
-            generate_message(
-                await lang.text(
-                    "moonlark_main.user",
-                    self.lang,
-                    reason,
-                    datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                    await self.moonlark_main.summary_instant_memory(),
-                ),
-            ),
+            await self.generate_message(reason),
         )
 
     def reset(self) -> None:
