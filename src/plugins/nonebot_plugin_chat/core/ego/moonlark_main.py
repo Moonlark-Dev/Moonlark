@@ -158,6 +158,7 @@ class ActionDecider:
                 datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 await self.moonlark_main.summary_instant_memory(),
             ),
+            "user"
         )
 
     async def on_event(self, reason: str) -> None:
