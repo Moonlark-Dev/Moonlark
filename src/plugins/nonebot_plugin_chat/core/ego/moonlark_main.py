@@ -132,7 +132,6 @@ class ActionDecider:
         async with self.lock:
             if not hasattr(self, "fetcher"):
                 await self.setup()
-            await asyncio.sleep(60)
             await self.on_event("timer")
             async for message in self.fetcher.fetch_message_stream():
                 logger.info(f"[ActionDecider] {message}")
@@ -142,6 +141,7 @@ class ActionDecider:
                     memories = [m for m in memories if m["create_time"] > last_summary_time]
                 if memories:
                     await self.on_event("new_group_event")
+                await asyncio.sleep(60)
 
     async def pre_function_call(self, call_id: str, name: str, params: dict[str, Any]) -> tuple[str, str, dict[str, Any]]:
         self.moonlark_main._update_decision_history(f"{name}({params})")
@@ -411,4 +411,5 @@ moonlark_main = MoonlarkMain()
 
 async def init_moonlark_main() -> None:
     await moonlark_main.action_decider.setup()
+    await moonlark_main._on_timer()
     logger.info("[MoonlarkMain] 初始化完成")
