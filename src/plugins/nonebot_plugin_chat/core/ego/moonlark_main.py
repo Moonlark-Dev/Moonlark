@@ -130,9 +130,16 @@ class ActionDecider:
         if self.lock.locked():
             return
         async with self.lock:
+            await asyncio.sleep(60)
             await self.on_event("timer")
             async for message in self.fetcher.fetch_message_stream():
                 logger.info(f"[ActionDecider] {message}")
+                last_summary_time = self.moonlark_main.state.get("last_summary_time")
+                memories = get_instant_memories()
+                if last_summary_time:
+                    memories = [m for m in memories if m["create_time"] > last_summary_time]
+                if memories:
+                    await self.on_event("new_group_event")
 
     async def pre_function_call(self, call_id: str, name: str, params: dict[str, Any]) -> tuple[str, str, dict[str, Any]]:
         self.moonlark_main._update_decision_history(f"{name}({params})")
@@ -179,13 +186,18 @@ class MoonlarkMain:
             "last_decision_time": None,
             "decision_history": [],
             "instant_memory_summary": "",
+            "last_summary_time": None,
         }
 
         # MoonlarkMain 定时器（每10分钟，清醒时触发 action_decider.loop）
         scheduler.scheduled_job("interval", minutes=10, id="moonlark_main_timer")(self._on_timer)
 
     async def summary_instant_memory(self) -> str:
+        last_summary_time = self.state.get("last_summary_time")
         memories = get_instant_memories()
+        if last_summary_time:
+            memories = [m for m in memories if m["create_time"] > last_summary_time]
+        self.state["last_summary_time"] = datetime.now()
         if not memories:
             self.state["instant_memory_summary"] = "暂无群聊记忆。"
             return self.state["instant_memory_summary"]
