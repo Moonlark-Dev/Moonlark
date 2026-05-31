@@ -52,7 +52,8 @@ class SelfActionAgent:
             await self.setup()
 
         system_text = await lang.text(
-            "self_action.agent.system", self.lang_str,
+            "self_action.agent.system",
+            self.lang_str,
             datetime.now().isoformat(),
         )
         user_text = activity
@@ -113,12 +114,14 @@ class SelfActionController:
                 await asyncio.sleep(duration * 60)
                 result = None
 
-            self.activity_history.append({
-                "activity": activity,
-                "start_time": self.activity_start_time.isoformat() if self.activity_start_time else None,
-                "end_time": datetime.now().isoformat(),
-                "result": result,
-            })
+            self.activity_history.append(
+                {
+                    "activity": activity,
+                    "start_time": self.activity_start_time.isoformat() if self.activity_start_time else None,
+                    "end_time": datetime.now().isoformat(),
+                    "result": result,
+                }
+            )
             logger.info(f"[SelfAction] 活动完成: {activity}")
             return result or f"活动完成: {activity}"
         except asyncio.CancelledError:
@@ -135,10 +138,12 @@ class SelfActionController:
             processed = await fetch_json(
                 [
                     generate_message(
-                        await lang.text("self_action.result_process.system", self.lang), "system",
+                        await lang.text("self_action.result_process.system", self.lang),
+                        "system",
                     ),
                     generate_message(
-                        await lang.text("self_action.result_process.user", self.lang, activity, result), "user",
+                        await lang.text("self_action.result_process.user", self.lang, activity, result),
+                        "user",
                     ),
                 ],
                 SelfActionResultProcessResponse,
@@ -167,10 +172,12 @@ class SelfActionController:
         response = await fetch_json(
             [
                 generate_message(
-                    await lang.text("moonlark_main.task_classification.prompt", self.lang), "system",
+                    await lang.text("moonlark_main.task_classification.prompt", self.lang),
+                    "system",
                 ),
                 generate_message(
-                    await lang.text("moonlark_main.task_classification.user", self.lang, activity), "user",
+                    await lang.text("moonlark_main.task_classification.user", self.lang, activity),
+                    "user",
                 ),
             ],
             TaskClassificationResponse,

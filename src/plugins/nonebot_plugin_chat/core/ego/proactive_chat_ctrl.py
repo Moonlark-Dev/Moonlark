@@ -52,10 +52,7 @@ class ProactiveChatController:
                 break
         return matched_user_id, matched_bot_id
 
-
-    async def send_private_message(
-        self, target: str, content_hint: str, wait_for: int = 0
-    ) -> str:
+    async def send_private_message(self, target: str, content_hint: str, wait_for: int = 0) -> str:
         """决策并发送主动私聊消息
 
         Args:
@@ -75,6 +72,7 @@ class ProactiveChatController:
         try:
             from ..proactive_chat import send_proactive_private_message
             from nonebot import get_bot
+
             matched_user_id, matched_bot_id = await self.match_nickname(target)
 
             if not matched_user_id:
@@ -128,6 +126,7 @@ class ProactiveChatController:
         """当用户回复了主动私聊时回调（user_id → 解析昵称 → 重置未回复计数）"""
         try:
             from nonebot_plugin_larkuser.utils.user import get_user
+
             user = await get_user(user_id)
             nickname = user.get_nickname()
 
