@@ -240,3 +240,10 @@ class SelfActionDurationResponse(BaseModel):
 class TaskClassificationResponse(BaseModel):
     """TaskController _classify_task 的 LLM 返回格式"""
     activity_type: Literal["学习", "任务"]
+
+
+class SelfActionResultProcessResponse(BaseModel):
+    """SelfActionController 结果处理的 LLM 返回格式"""
+    compressed_content: str
+    keywords: str
+    expire_hours: float = 168

@@ -20,7 +20,8 @@ from nonebot_plugin_openai.utils.chat import fetch_json
 from nonebot_plugin_openai.utils.message import generate_message
 
 from ...lang import lang
-from ...models import SelfActionDurationResponse, TaskClassificationResponse
+from ...models import SelfActionDurationResponse, SelfActionResultProcessResponse, TaskClassificationResponse
+from ...utils.note_manager import NoteManager
 from ...utils.tool_manager import ToolManager
 
 if TYPE_CHECKING:
@@ -105,6 +106,8 @@ class SelfActionController:
             task_type = await self.get_task_type(activity)
             if task_type == ActionType.LEARN:
                 result = await self.agent.execute_task(activity)
+                if result:
+                    await self._process_and_store_result(activity, result)
             else:
                 duration = await self.get_task_duration(activity)
                 await asyncio.sleep(duration * 60)
@@ -126,6 +129,29 @@ class SelfActionController:
             self.current_activity = None
             self.activity_start_time = None
             self._task = None
+
+    async def _process_and_store_result(self, activity: str, result: str) -> None:
+        try:
+            processed = await fetch_json(
+                [
+                    generate_message(
+                        await lang.text("self_action.result_process.system", self.lang), "system",
+                    ),
+                    generate_message(
+                        await lang.text("self_action.result_process.user", self.lang, activity, result), "user",
+                    ),
+                ],
+                SelfActionResultProcessResponse,
+            )
+            note_manager = NoteManager("moonlark_self")
+            await note_manager.create_note(
+                content=processed.compressed_content,
+                keywords=processed.keywords,
+                expire_hours=processed.expire_hours,
+            )
+            logger.info(f"[SelfAction] 结果已存入笔记: {processed.keywords}")
+        except Exception as e:
+            logger.warning(f"[SelfAction] 结果处理/存储失败: {e}")
 
     async def get_task_duration(self, activity: str) -> int:
         response = await fetch_json(

@@ -86,6 +86,11 @@ class ActionDecider:
                             description=await lang.text("moonlark_main.tools.start_new_blog.topic", self.lang),
                             required=True,
                         ),
+                        "prompt": FunctionParameter(
+                            type="string",
+                            description=await lang.text("moonlark_main.tools.start_new_blog.prompt", self.lang),
+                            required=True,
+                        ),
                     },
                 ),
                 AsyncFunction(

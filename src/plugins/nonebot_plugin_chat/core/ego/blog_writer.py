@@ -74,7 +74,7 @@ class BlogWriter:
             return
         elif action_str.startswith("start_new_topic:"):
             topic = action_str.split(":", 1)[1].strip()
-            await self._start_new_blog(topic)
+            await self._start_new_blog(topic, "")
         elif action_str == "publish":
             await self._publish_blog()
         elif action_str == "abort":
@@ -82,7 +82,7 @@ class BlogWriter:
         else:
             logger.warning(f"[BlogWriter] 未知的 blog_action: {action_str}")
 
-    async def start_new_blog(self, topic: str) -> str:
+    async def start_new_blog(self, topic: str, prompt: str) -> str:
         if self.status != STATUS_IDLE:
             return f"当前状态为 {self.status}，无法开始新博客"
 
@@ -90,7 +90,7 @@ class BlogWriter:
         if self._in_cooldown():
             return f"冷却中，剩余 {self._get_cooldown_remaining()} 秒"
         
-        return await self._start_new_blog(topic)
+        return await self._start_new_blog(topic, prompt)
     
     async def get_blog_state(self) -> str:
         today_posts = await self._get_today_posts()
@@ -120,7 +120,7 @@ class BlogWriter:
     async def blog_publish_draft(self) -> None:
         await self._publish_blog()
 
-    async def _start_new_blog(self, topic: str) -> str:
+    async def _start_new_blog(self, topic: str, prompt: str) -> str:
         """撰写新博客（一次性完成，写完后等 MoonlarkMain 确认发布）"""
         # 检查状态
         
@@ -132,7 +132,7 @@ class BlogWriter:
             "blog.writer.system", self.moonlark_main.lang_str, identity_prompt
         )
         user_prompt = await lang.text(
-            "blog.writer.start", self.moonlark_main.lang_str, topic, recent_actions, extra_context
+            "blog.writer.start", self.moonlark_main.lang_str, topic, prompt, recent_actions, extra_context
         )
 
         content = await fetch_message(

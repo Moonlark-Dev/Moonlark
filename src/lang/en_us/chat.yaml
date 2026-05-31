@@ -1512,6 +1512,30 @@ self_action:
       Range: 1~60 minutes.
     user: |
       Activity: {0}
+  result_process:
+    system: |
+      You are an information compression assistant. Compress the following activity result into a concise note format.
+
+      **Requirements:**
+      1. Compressed content should retain core information, remove redundant descriptions, and be under 100 characters
+      2. Extract 3-6 keywords (space-separated) for future retrieval
+      3. Estimate reasonable expiration time (in hours) based on information timeliness:
+         - Time-sensitive news (news, weather, etc.): 24-72 hours
+         - General knowledge/technical info: 168-720 hours (1 week to 1 month)
+         - Long-term knowledge: 8760 hours (1 year)
+         - Never expires: -1
+
+      Output JSON:
+      {{
+        "compressed_content": "compressed note content",
+        "keywords": "keyword1 keyword2 keyword3",
+        "expire_hours": 168
+      }}
+    user: |
+      Activity: {0}
+      Result:
+      {1}
+      Please compress the result and generate keywords and expiration time.
 
 blog:
   writer:
@@ -1532,11 +1556,15 @@ blog:
     start: |
       Write a blog post (300~500 words) about: {0}
 
-      ## Recent Activities
+      ## Writing Guide
 
       {1}
 
+      ## Recent Activities
+
       {2}
+
+      {3}
     continue: |
       Blog topic: {0}
 
