@@ -5,7 +5,7 @@
 """
 
 import asyncio
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any, Literal, Optional
 
 from nonebot import logger
@@ -19,6 +19,7 @@ from sqlalchemy import select
 from ...lang import lang
 from ...models import (
     ActionDecisionResponse,
+    MainSessionActionHistory,
     PrivateChatSession,
 )
 from ...utils.instant_mem import get_instant_memories
@@ -154,6 +155,7 @@ class ActionDecider:
         return call_id, name, params
 
     async def generate_message(self, reason) -> OpenAIChatMessage:
+        today_history = await self.moonlark_main._get_today_actions_text()
         return generate_message(
             await lang.text(
                 "moonlark_main.user",
@@ -161,6 +163,7 @@ class ActionDecider:
                 reason,
                 datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 await self.moonlark_main.summary_instant_memory(),
+                today_history,
             ),
             "user"
         )
@@ -291,6 +294,49 @@ class MoonlarkMain:
             "action": action_desc,
         })
         self.state["decision_history"] = self.state["decision_history"][-5:]
+
+        # 持久化到数据库
+        asyncio.create_task(self._persist_action(action_desc))
+
+    async def _persist_action(self, action_desc: str) -> None:
+        """将动作记录持久化到数据库"""
+        try:
+            async with get_session() as session:
+                record = MainSessionActionHistory(
+                    start_time=datetime.now(),
+                    action={"action": action_desc},
+                )
+                session.add(record)
+                await session.commit()
+        except Exception as e:
+            logger.warning(f"[MoonlarkMain] 持久化动作记录失败: {e}")
+
+    async def _get_today_actions_text(self) -> str:
+        """获取今天已进行过的动作列表，供 ActionDecider 首条消息使用"""
+        try:
+            today_start = datetime.combine(date.today(), datetime.min.time())
+            async with get_session() as session:
+                result = await session.execute(
+                    select(MainSessionActionHistory)
+                    .where(MainSessionActionHistory.start_time >= today_start)
+                    .order_by(MainSessionActionHistory.start_time)
+                )
+                records = result.scalars().all()
+
+            if not records:
+                return ""
+
+            lines = []
+            for r in records:
+                time_str = r.start_time.strftime("%H:%M")
+                action_name = r.action.get("action", str(r.action))
+                end_str = r.end_time.strftime("%H:%M") if r.end_time else "未结束"
+                lines.append(f"[{time_str}] {action_name} (结束: {end_str})")
+
+            return "今日已进行的动作:\n" + "\n".join(lines)
+        except Exception as e:
+            logger.warning(f"[MoonlarkMain] 获取今日动作历史失败: {e}")
+            return ""
 
     # ========================================================================
     # 定时器
