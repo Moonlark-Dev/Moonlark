@@ -336,8 +336,7 @@ class MoonlarkMain:
             for r in records:
                 time_str = r.start_time.strftime("%H:%M")
                 action_name = r.action.get("action", str(r.action))
-                end_str = r.end_time.strftime("%H:%M") if r.end_time else "未结束"
-                lines.append(f"[{time_str}] {action_name} (结束: {end_str})")
+                lines.append(f"[{time_str}] {action_name}")
 
             return "今日已进行的动作:\n" + "\n".join(lines)
         except Exception as e:
