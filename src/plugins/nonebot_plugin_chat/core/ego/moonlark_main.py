@@ -42,6 +42,7 @@ class ActionDecider:
         self.moonlark_main = moonlark_main
         self.lang = moonlark_main.lang_str
         self.lock = asyncio.Lock()
+        self.loop_task: Optional[asyncio.Task] = None
 
     async def setup(self) -> None:
         messages = [
@@ -138,15 +139,10 @@ class ActionDecider:
                     await self.setup()
                 async for message in self.fetcher.fetch_message_stream():
                     logger.info(f"[ActionDecider] {message}")
-                    last_summary_time = self.moonlark_main.state.get("last_summary_time")
-                    memories = get_instant_memories()
-                    if last_summary_time:
-                        memories = [m for m in memories if m["create_time"] > last_summary_time]
-                    if memories:
-                        await self.on_event("new_group_event")
                     await asyncio.sleep(60)
-            except Exception:
-                logger.exception("[ActionDecider] loop exited with error")
+                    await self.on_event("timer")
+            except Exception as e:
+                logger.exception(e)
 
     async def pre_function_call(self, call_id: str, name: str, params: dict[str, Any]) -> tuple[str, str, dict[str, Any]]:
         self.moonlark_main._update_decision_history(f"{name}({params})")
@@ -170,8 +166,8 @@ class ActionDecider:
         )
 
     def reset(self) -> None:
-        if hasattr(self, "fetcher"):
-            del self.fetcher
+        if self.loop_task is not None:
+            self.loop_task.cancel()
 
 
 class MoonlarkMain:
@@ -299,7 +295,7 @@ class MoonlarkMain:
         """定时器回调（每10分钟）。睡眠时不触发，由 SleepController 自己的定时器处理。"""
         if self.state["sleep_mode"]:
             return
-        asyncio.create_task(self.action_decider.loop())
+        self.action_decider.loop_task = asyncio.create_task(self.action_decider.loop())
 
     # ========================================================================
     # 供外部调用的接口

@@ -46,7 +46,7 @@ class SelfActionAgent:
     async def setup(self) -> None:
         self.functions = await self.tool_manager.select_tools("agent")
 
-    async def execute_task(self, activity: str, context: Optional[str] = None) -> str:
+    async def execute_task(self, activity: str) -> str:
         if not self.functions:
             await self.setup()
 
@@ -55,8 +55,6 @@ class SelfActionAgent:
             datetime.now().isoformat(),
         )
         user_text = activity
-        if context:
-            user_text = f"{activity}\n\n背景信息：{context}"
 
         fetcher = await MessageFetcher.create(
             [

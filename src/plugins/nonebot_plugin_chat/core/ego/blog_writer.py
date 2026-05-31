@@ -184,21 +184,10 @@ class BlogWriter:
             logger.exception(f"[BlogWriter] 发布失败: {e}")
 
     async def _gather_context(self, topic: str) -> str:
-        """收集博客写作的额外上下文：聊天记录 + note 中的查找/学习成果"""
+        """收集博客写作的额外上下文：聊天记录"""
         parts = []
 
-        # 1. 从 note 获取查找/学习成果
-        try:
-            from ...utils.note_manager import get_context_notes
-            note_mgr = await get_context_notes("self_action")
-            notes = await note_mgr.get_notes()
-            if notes:
-                note_lines = [n.content for n in notes[-5:]]
-                parts.append("## 查找/学习成果\n\n" + "\n\n---\n\n".join(note_lines))
-        except Exception as e:
-            logger.debug(f"[BlogWriter] 获取 note 失败: {e}")
-
-        # 2. 从聊天记录中检索与主题相关的内容
+        # 从聊天记录中检索与主题相关的内容
         try:
             chat_result = await self.query_chat_history(topic)
             if chat_result and chat_result != "未找到活跃的聊天会话":

@@ -575,27 +575,27 @@ class ToolManager:
                         },
                     )
                 )
-        if processor.session.__class__.__name__ == "GroupSession":
-            emoji_id_table = "/".join([f"{emoji}({emoji_id})" for emoji_id, emoji in QQ_EMOJI_MAP.items()])
-            tools.append(
-                AsyncFunction(
-                    func=processor.send_reaction,
-                    description=await self.text("tools_desc.send_reaction.desc", emoji_id_table),
-                    parameters={
-                        "message_id": FunctionParameter(
-                            type="string",
-                            description=await self.text("tools_desc.send_reaction.message_id"),
-                            required=True,
-                        ),
-                        "emoji_id": FunctionParameterWithEnum(
-                            type="string",
-                            description=await self.text("tools_desc.send_reaction.emoji_id"),
-                            required=True,
-                            enum=set(QQ_EMOJI_MAP.keys()),
-                        ),
-                    },
+            if processor.session.__class__.__name__ == "GroupSession":
+                emoji_id_table = "/".join([f"{emoji}({emoji_id})" for emoji_id, emoji in QQ_EMOJI_MAP.items()])
+                tools.append(
+                    AsyncFunction(
+                        func=processor.send_reaction,
+                        description=await self.text("tools_desc.send_reaction.desc", emoji_id_table),
+                        parameters={
+                            "message_id": FunctionParameter(
+                                type="string",
+                                description=await self.text("tools_desc.send_reaction.message_id"),
+                                required=True,
+                            ),
+                            "emoji_id": FunctionParameterWithEnum(
+                                type="string",
+                                description=await self.text("tools_desc.send_reaction.emoji_id"),
+                                required=True,
+                                enum=set(QQ_EMOJI_MAP.keys()),
+                            ),
+                        },
+                    )
                 )
-            )
 
         return tools
 
