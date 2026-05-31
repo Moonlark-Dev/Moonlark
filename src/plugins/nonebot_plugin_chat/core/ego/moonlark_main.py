@@ -197,7 +197,7 @@ class MoonlarkMain:
         }
 
         # MoonlarkMain 定时器（每10分钟，清醒时触发 action_decider.loop）
-        scheduler.scheduled_job("interval", minutes=10, id="moonlark_main_timer")(self._on_timer)
+        scheduler.scheduled_job("interval", minutes=2, id="moonlark_main_timer")(self._on_timer)
 
     async def summary_instant_memory(self) -> str:
         tasks = [
