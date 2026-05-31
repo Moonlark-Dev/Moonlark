@@ -212,8 +212,10 @@ class ActionState(TypedDict, total=False):
 # EGO 决策相关模型
 # ========================================================================
 
+
 class PrivateChatDecision(BaseModel):
     """主动私聊决策"""
+
     target: str
     reason: str
     content_hint: str
@@ -221,29 +223,36 @@ class PrivateChatDecision(BaseModel):
 
 class EgoDecisionResponse(BaseModel):
     """MoonlarkMain request_think 的 LLM 返回格式"""
+
     sleep_decision: Optional[Literal["go_to_sleep", "wake_up"]] = None
-    blog_action: Optional[Union[str, dict]] = None  # "skip" | "continue_draft" | "abort_draft" | {"start_new_topic": "主题"}
+    blog_action: Optional[Union[str, dict]] = (
+        None  # "skip" | "continue_draft" | "abort_draft" | {"start_new_topic": "主题"}
+    )
     private_chat: Optional[PrivateChatDecision] = None
     self_action: Optional[str] = None  # 活动描述，不返回即不动作
 
 
 class SleepThinkResponse(BaseModel):
     """SleepController request_think 的 LLM 返回格式"""
+
     sleep_decision: Literal["stay_sleep", "wake_up"]
 
 
 class SelfActionDurationResponse(BaseModel):
     """SelfActionController _generate_duration 的 LLM 返回格式"""
+
     duration_minutes: int = 5
 
 
 class TaskClassificationResponse(BaseModel):
     """TaskController _classify_task 的 LLM 返回格式"""
+
     activity_type: Literal["学习", "任务"]
 
 
 class SelfActionResultProcessResponse(BaseModel):
     """SelfActionController 结果处理的 LLM 返回格式"""
+
     compressed_content: str
     keywords: str
     expire_hours: float = 168

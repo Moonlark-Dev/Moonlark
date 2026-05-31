@@ -266,12 +266,7 @@ async def cleanup_old_records() -> None:
             count_result = await session.execute(select(func.count()).select_from(model))
             total = count_result.scalar() or 0
             if total > max_count:
-                subq = (
-                    select(model.id)
-                    .order_by(model.id.desc())
-                    .offset(max_count)
-                    .subquery()
-                )
+                subq = select(model.id).order_by(model.id.desc()).offset(max_count).subquery()
                 await session.execute(delete(model).where(model.id.in_(select(subq.c.id))))
         await session.commit()
 

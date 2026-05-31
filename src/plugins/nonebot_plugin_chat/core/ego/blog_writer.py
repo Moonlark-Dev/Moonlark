@@ -89,16 +89,18 @@ class BlogWriter:
         # 检查冷却
         if self._in_cooldown():
             return f"冷却中，剩余 {self._get_cooldown_remaining()} 秒"
-        
+
         return await self._start_new_blog(topic, prompt)
-    
+
     async def get_blog_state(self) -> str:
         today_posts = await self._get_today_posts()
         if today_posts:
             today_text = "\n".join(f"- [{p['time']}] {p['title']}" for p in today_posts)
         else:
             today_text = "今日尚未发布博客"
-        return await lang.text("moonlark_main.blog_state", self.moonlark_main.lang_str, self.status, self.current_draft, today_text)
+        return await lang.text(
+            "moonlark_main.blog_state", self.moonlark_main.lang_str, self.status, self.current_draft, today_text
+        )
 
     async def _get_today_posts(self) -> list[dict]:
         """查询今天已发布的博客"""
@@ -106,14 +108,12 @@ class BlogWriter:
         today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
         try:
             async with get_session() as session:
-                posts = (await session.scalars(
-                    select(BlogPost).where(BlogPost.create_at >= today_start)
-                )).all()
+                posts = (await session.scalars(select(BlogPost).where(BlogPost.create_at >= today_start))).all()
                 return [{"title": p.title, "time": p.create_at.strftime("%H:%M")} for p in posts]
         except Exception as e:
             logger.debug(f"[BlogWriter] 查询今日博客失败: {e}")
             return []
-    
+
     async def blog_drop_draft(self) -> None:
         await self._abort_draft()
 
@@ -123,14 +123,12 @@ class BlogWriter:
     async def _start_new_blog(self, topic: str, prompt: str) -> str:
         """撰写新博客（一次性完成，写完后等 MoonlarkMain 确认发布）"""
         # 检查状态
-        
+
         identity_prompt = await get_prompt_text("identity")
         recent_actions = self.moonlark_main._get_recent_actions_text()
         extra_context = await self._gather_context(topic)
 
-        system_prompt = await lang.text(
-            "blog.writer.system", self.moonlark_main.lang_str, identity_prompt
-        )
+        system_prompt = await lang.text("blog.writer.system", self.moonlark_main.lang_str, identity_prompt)
         user_prompt = await lang.text(
             "blog.writer.start", self.moonlark_main.lang_str, topic, prompt, recent_actions, extra_context
         )
@@ -169,10 +167,12 @@ class BlogWriter:
 
             await create_blog_post(self.current_draft["topic"], self.current_draft["content"])
 
-            self.published_blogs.append({
-                "title": self.current_draft["topic"],
-                "timestamp": datetime.now(),
-            })
+            self.published_blogs.append(
+                {
+                    "title": self.current_draft["topic"],
+                    "timestamp": datetime.now(),
+                }
+            )
             self.last_blog_time = datetime.now()
 
             logger.info(f"[BlogWriter] 博客发布成功: {self.current_draft['topic']}")
@@ -221,9 +221,7 @@ class BlogWriter:
         combined = "\n\n".join(all_sessions_info)
 
         try:
-            system_prompt = await lang.text(
-                "blog.query_chat.system", self.moonlark_main.lang_str, combined
-            )
+            system_prompt = await lang.text("blog.query_chat.system", self.moonlark_main.lang_str, combined)
             response = await fetch_message(
                 [generate_message(system_prompt, "system"), generate_message(query, "user")],
                 identify="Blog Writer - Query History",
