@@ -75,6 +75,7 @@ class LLMRequestSession(Generic[T2]):
         timeout_strategy: Optional[TimeoutStrategy] = None,
         reasoning_effort: Optional[ReasoningEffort] = None,
         response_format: Optional[type[T2]] = None,
+        tool_choice: str = "auto",
     ) -> None:
         self.messages: Messages = messages
         self.identify = identify
@@ -94,6 +95,7 @@ class LLMRequestSession(Generic[T2]):
         self.timeout_per_request = timeout
         self.timeout_strategy = timeout_strategy
         self.insert_message_queue = []
+        self.tool_choice = tool_choice
 
     def set_custom_trace_id(self, trace_id: str) -> None:
         self.trace_id = trace_id
@@ -120,7 +122,7 @@ class LLMRequestSession(Generic[T2]):
                 messages=self.messages,  # type: ignore
                 model=self.model,
                 tools=self.func_list,
-                tool_choice="auto" if self.func_list else "none",
+                tool_choice=self.tool_choice if self.func_list else "none",
                 extra_headers={
                     config.openai_thread_header: (t := f"{config.identify_prefix} - {self.identify}"),
                     config.openai_trace_header: self.trace_id,
@@ -135,7 +137,7 @@ class LLMRequestSession(Generic[T2]):
                 messages=self.messages,  # type: ignore
                 model=self.model,
                 tools=self.func_list,
-                tool_choice="auto" if self.func_list else "none",
+                tool_choice=self.tool_choice if self.func_list else "none",
                 extra_headers={
                     config.openai_thread_header: (t := f"{config.identify_prefix} - {self.identify}"),
                     config.openai_trace_header: self.trace_id,
@@ -226,6 +228,7 @@ class MessageFetcher(Generic[T2]):
         timeout_strategy: Optional[TimeoutStrategy] = None,
         reasoning_effort: Optional[ReasoningEffort] = None,
         response_format: Optional[type[T2]] = None,
+        tool_choice: str = "auto",
         **kwargs,
     ) -> None:
         logger.debug(f"{identify=}")
@@ -248,6 +251,7 @@ class MessageFetcher(Generic[T2]):
             timeout_strategy,
             reasoning_effort,
             response_format,
+            tool_choice,
         )
 
     @classmethod
@@ -266,6 +270,7 @@ class MessageFetcher(Generic[T2]):
         timeout_strategy: Optional[TimeoutStrategy] = None,
         reasoning_effort: Optional[ReasoningEffort] = None,
         response_format: Optional[type[T2]] = None,
+        tool_choice: str = "auto",
         **kwargs,
     ) -> "MessageFetcher":
         """异步创建 MessageFetcher 实例，正确处理模型配置获取"""
@@ -290,6 +295,7 @@ class MessageFetcher(Generic[T2]):
             timeout_strategy,
             reasoning_effort,
             response_format,
+            tool_choice,
             **kwargs,
         )
 
