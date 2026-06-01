@@ -30,6 +30,7 @@ from .action_advisor import ActionAdvisor
 from .blog_writer import BlogWriter
 
 from nonebot_plugin_openai.types import Message as OpenAIChatMessage
+from openai.types.chat import ChatCompletionMessage
 from .proactive_chat_ctrl import ProactiveChatController
 from .self_action_ctrl import SelfActionController
 from .sleep_controller import SleepController
@@ -148,10 +149,15 @@ class ActionDecider:
                 if not hasattr(self, "fetcher"):
                     await self.setup()
                 async for message in self.fetcher.fetch_message_stream():
-                    if not self.fetcher.last_response_had_tool_calls:
-                        # 模型输出了纯文本而非工具调用（tool_choice="required" 下通常不会发生）
+                    # 参考 MessageQueue._fetch_reply() 的检测方式：
+                    # 检查 fetcher 底层 session 中最后一条消息是否有 tool_calls
+                    last_msg = self.fetcher.session.messages[-1] if self.fetcher.session.messages else None
+                    has_tool_calls = (
+                        isinstance(last_msg, ChatCompletionMessage)
+                        and last_msg.tool_calls is not None
+                    )
+                    if not has_tool_calls:
                         logger.warning(f"[ActionDecider] 模型未调用工具，输出文本: {str(message)[:200]}")
-                        # 注入提醒消息，要求必须调用工具
                         self.fetcher.session.insert_message(
                             generate_message(
                                 "你的回复必须调用一个工具来执行决策，不能直接输出文本。请立即调用工具。",
