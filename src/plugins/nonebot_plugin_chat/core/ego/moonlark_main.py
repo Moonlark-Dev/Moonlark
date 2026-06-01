@@ -148,9 +148,9 @@ class ActionDecider:
                 if not hasattr(self, "fetcher"):
                     await self.setup()
                 async for message in self.fetcher.fetch_message_stream():
-                    if isinstance(message, str):
-                        # 模型输出了文本而非工具调用（tool_choice="required" 下通常不会发生）
-                        logger.warning(f"[ActionDecider] 模型未调用工具，输出文本: {message[:200]}")
+                    if not self.fetcher.last_response_had_tool_calls:
+                        # 模型输出了纯文本而非工具调用（tool_choice="required" 下通常不会发生）
+                        logger.warning(f"[ActionDecider] 模型未调用工具，输出文本: {str(message)[:200]}")
                         # 注入提醒消息，要求必须调用工具
                         self.fetcher.session.insert_message(
                             generate_message(
