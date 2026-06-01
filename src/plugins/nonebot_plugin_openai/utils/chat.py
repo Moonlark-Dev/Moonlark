@@ -80,6 +80,7 @@ class LLMRequestSession(Generic[T2]):
         self.identify = identify
         self.func_list = generate_function_list(func_index)
         self.func_index = func_index
+        self.tool_choice = kwargs.pop("tool_choice", "auto")
         self.kwargs = kwargs
         self.stop = False
         self.trace_id = uuid.uuid4().hex
@@ -115,8 +116,7 @@ class LLMRequestSession(Generic[T2]):
         await report_openai_history(self.messages, self.identify, self.model)
 
     async def create_completion(self) -> ChatCompletion:
-        # 从 kwargs 中取 tool_choice，避免与显式参数重复
-        tool_choice = self.kwargs.pop("tool_choice", "auto") if self.func_list else "none"
+        tool_choice = self.tool_choice if self.func_list else "none"
         if not self.response_format:
             completion = await client.chat.completions.create(
                 messages=self.messages,  # type: ignore
