@@ -30,6 +30,7 @@ from .action_advisor import ActionAdvisor
 from .blog_writer import BlogWriter
 
 from nonebot_plugin_openai.types import Message as OpenAIChatMessage
+from openai.types.chat import ChatCompletionMessage
 from .proactive_chat_ctrl import ProactiveChatController
 from .self_action_ctrl import SelfActionController
 from .sleep_controller import SleepController
@@ -38,6 +39,7 @@ from .sleep_controller import SleepController
 class ActionDecider:
 
     fetcher: MessageFetcher
+    MAX_TOOL_RETRY: int = 2  # 文本回退最大重试次数
 
     def __init__(self, moonlark_main: "MoonlarkMain") -> None:
         self.moonlark_main = moonlark_main
@@ -135,6 +137,7 @@ class ActionDecider:
             ],
             pre_function_call=self.pre_function_call,
             reasoning_effort="medium",
+            tool_choice="required",
         )
         self.fetcher = fetcher
 
@@ -146,6 +149,19 @@ class ActionDecider:
                 if not hasattr(self, "fetcher"):
                     await self.setup()
                 async for message in self.fetcher.fetch_message_stream():
+                    # 参考 MessageQueue._fetch_reply() 的检测方式：
+                    # 检查 fetcher 底层 session 中最后一条消息是否有 tool_calls
+                    last_msg = self.fetcher.session.messages[-1] if self.fetcher.session.messages else None
+                    has_tool_calls = isinstance(last_msg, ChatCompletionMessage) and last_msg.tool_calls is not None
+                    if not has_tool_calls:
+                        logger.warning(f"[ActionDecider] 模型未调用工具，输出文本: {str(message)[:200]}")
+                        self.fetcher.session.insert_message(
+                            generate_message(
+                                "你的回复必须调用一个工具来执行决策，不能直接输出文本。请立即调用工具。",
+                                "user",
+                            )
+                        )
+                        continue
                     logger.info(f"[ActionDecider] {message}")
                     await asyncio.sleep(60)
                     await self.on_event("timer")
