@@ -152,10 +152,7 @@ class ActionDecider:
                     # 参考 MessageQueue._fetch_reply() 的检测方式：
                     # 检查 fetcher 底层 session 中最后一条消息是否有 tool_calls
                     last_msg = self.fetcher.session.messages[-1] if self.fetcher.session.messages else None
-                    has_tool_calls = (
-                        isinstance(last_msg, ChatCompletionMessage)
-                        and last_msg.tool_calls is not None
-                    )
+                    has_tool_calls = isinstance(last_msg, ChatCompletionMessage) and last_msg.tool_calls is not None
                     if not has_tool_calls:
                         logger.warning(f"[ActionDecider] 模型未调用工具，输出文本: {str(message)[:200]}")
                         self.fetcher.session.insert_message(
