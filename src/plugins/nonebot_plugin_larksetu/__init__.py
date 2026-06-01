@@ -19,6 +19,7 @@ require("nonebot_plugin_larklang")
 require("nonebot_plugin_localstore")
 require("nonebot_plugin_alconna")
 
+from .cache import get_image, get_landscape_image
 from . import __main__
 
 nonebot.load_plugin("nonebot_plugin_larksetu.plugins.nonebot_plugin_seturank")

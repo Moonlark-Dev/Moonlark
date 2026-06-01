@@ -72,6 +72,13 @@ async def post_cave(
     async with lock:
         await session.commit()
         cave_id = await get_cave_id(session)
+        # 展开嵌套的 UniMessage 对象
+        flat_content: list[Image | Text] = []
+        for seg in content:
+            if isinstance(seg, UniMessage):
+                flat_content.extend(seg)
+            else:
+                flat_content.append(seg)
         parsed_content = " ".join(
             [
                 (
@@ -83,7 +90,7 @@ async def post_cave(
                         )
                     )
                 )
-                for seg in content
+                for seg in flat_content
             ]
         )
         session.add(CaveData(id=cave_id, author=user_id, time=datetime.now(), content=parsed_content))

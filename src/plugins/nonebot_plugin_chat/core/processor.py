@@ -290,7 +290,7 @@ class MessageProcessor:
 
     async def generate_reply(self, important: bool = False, is_event: bool = False) -> None:
         # 延迟导入以避免循环导入
-        from .ego import consciousness
+        from .ego import moonlark_main
 
         dt = datetime.now()
         recent_message_count = len(
@@ -334,10 +334,16 @@ class MessageProcessor:
         if self.session.get_session_type() == "group":
             self.openai_messages.continuous_response = self.openai_messages.continuous_response or important
 
-        if consciousness.state == StateEnum.SLEEPING:
+        # 使用新的 handle_mention 接口处理睡眠唤醒
+        if moonlark_main.state["sleep_mode"]:
             if not important:
                 return
-            await consciousness.wake_up(session=self.session)
+            # 获取最近消息作为上下文
+            recent_text = await self.session.get_cached_messages_string(length=5)
+            recent_msgs = recent_text.splitlines() if recent_text else []
+            should_wake = await moonlark_main.handle_mention(recent_msgs)
+            if not should_wake:
+                return
 
         logger.info(f"Generating reply ({important=})...")
         self.session.accumulated_text_length = 0
@@ -455,6 +461,11 @@ class MessageProcessor:
                     self.session.accumulated_text_length += len(cleaned)
                 logger.debug(f"Accumulated text length: {self.session.accumulated_text_length}")
 
+                # 通知 MoonlarkMain 收到消息（更新 SleepController 的 last_message_time）
+                from .ego.moonlark_main import moonlark_main
+
+                moonlark_main.on_message_received()
+
             # 消息入队后异步检查是否需要生成即时记忆
             if not self.blocked:
                 asyncio.create_task(self._maybe_generate_instant_memory())
@@ -548,7 +559,7 @@ class MessageProcessor:
         status_manager = get_status_manager()
         mood, mood_reason = status_manager.get_status()
         mood_text = await self.session.text(f"status.mood.{mood.value}")
-        from .ego import consciousness
+        from .ego import moonlark_main
 
         current_time = await self.session.text("prompt_group.time", datetime.now().isoformat())
         state = await self.session.text(
@@ -559,9 +570,7 @@ class MessageProcessor:
         )
 
         recent_activities = "\n".join(
-            await self.filter_info_lines(
-                (await consciousness.get_recent_actions_text(self.session.lang_str)).splitlines()
-            )
+            await self.filter_info_lines(moonlark_main._get_recent_actions_text().splitlines())
         )
         return await self.session.text(
             "prompt_group.chat_additional_info",
@@ -587,7 +596,7 @@ class MessageProcessor:
 
     async def generate_event_additional_info(self) -> str:
         """生成事件的 additional_info，包含 token、当前状态和正在做的事"""
-        from .ego import consciousness
+        from .ego import moonlark_main
 
         status_manager = get_status_manager()
         mood, mood_reason = status_manager.get_status()
@@ -602,9 +611,7 @@ class MessageProcessor:
 
         # 获取正在做的事（查重）
         recent_activities = "\n".join(
-            await self.filter_info_lines(
-                (await consciousness.get_recent_actions_text(self.session.lang_str)).splitlines()
-            )
+            await self.filter_info_lines(moonlark_main._get_recent_actions_text().splitlines())
         )
 
         return await self.session.text(

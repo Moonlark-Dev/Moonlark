@@ -14,32 +14,32 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
-import asyncio
 import hashlib
-import json
 import traceback
 from datetime import datetime
 from typing import cast, Optional, TYPE_CHECKING
 
-import aiofiles
 from fastapi import FastAPI
 from nonebot import get_app, get_loaded_plugins, get_driver
 from nonebot.message import run_postprocessor, run_preprocessor
 from nonebot.typing import T_State
 from nonebot_plugin_alconna import UniMessage
 from nonebot_plugin_alconna.matcher import AlconnaMatcher
+from nonebot_plugin_apscheduler import scheduler
+from nonebot_plugin_orm import get_session
 from nonebot_plugin_bots.__main__ import bots_status
 from nonebot_plugin_larklang.__main__ import LangHelper
 from nonebot_plugin_larkutils import get_main_account
-from nonebot_plugin_localstore import get_data_dir
 from nonebot_plugin_render import render_template
 from nonebot_plugin_render.render import generate_render_keys
 from nonebot.adapters import Event, Bot
 from nonebot.matcher import Matcher, matchers
 from fastapi import Request, status
 from fastapi.exceptions import HTTPException
+from sqlalchemy import select, func, delete
 from .config import config
 from .matcher import simple_run
+from .models import CommandUsage, HandlerResultRecord, ExceptionRecord, OpenAIHistoryRecord
 from .types import ExceptionStatus, EventCounter, OpenAIHistory, StatusReport, HandlerResult
 
 if TYPE_CHECKING:
@@ -48,27 +48,69 @@ if TYPE_CHECKING:
 
 lang = LangHelper()
 
-
-class DataLocks:
-
-    def __init__(self) -> None:
-        self.commands = asyncio.Lock()
-        self.handler = asyncio.Lock()
-        self.openai = asyncio.Lock()
-        self.exceptions = asyncio.Lock()
-
-
-lock = DataLocks()
-data_dir = get_data_dir("nonebot_plugin_status_report")
 app = cast(FastAPI, get_app())
 event_counter = (0, 0)  # total, success
 
+MAX_HANDLER_RESULTS = 20
+MAX_EXCEPTIONS = 20
+MAX_OPENAI_HISTORY = 20
+
 
 async def get_command_usage() -> dict[str, int]:
-    if data_dir.joinpath("commands.json").is_file():
-        async with aiofiles.open(data_dir.joinpath("commands.json"), "r", encoding="utf-8") as f:
-            return json.loads(await f.read())
-    return {}
+    async with get_session() as session:
+        result = await session.execute(select(CommandUsage))
+        return {row.command_name: row.usage_count for row in result.scalars().all()}
+
+
+async def get_handler_results() -> list[HandlerResult]:
+    async with get_session() as session:
+        result = await session.execute(
+            select(HandlerResultRecord).order_by(HandlerResultRecord.id.desc()).limit(MAX_HANDLER_RESULTS)
+        )
+        rows = result.scalars().all()
+        return [
+            HandlerResult(
+                command_name=row.command_name,
+                message=row.message,
+                result=row.result or [],
+                matcher=row.matcher,
+            )
+            for row in reversed(rows)
+        ]
+
+
+async def get_exceptions() -> list[ExceptionStatus]:
+    async with get_session() as session:
+        result = await session.execute(
+            select(ExceptionRecord).order_by(ExceptionRecord.id.desc()).limit(MAX_EXCEPTIONS)
+        )
+        rows = result.scalars().all()
+        return [
+            ExceptionStatus(
+                exception=row.exception,
+                session=row.session,
+                message=row.message,
+                bot_id=row.bot_id,
+                timestamp=int(row.timestamp.timestamp()),
+            )
+            for row in reversed(rows)
+        ]
+
+
+async def get_openai_history() -> list[OpenAIHistory]:
+    async with get_session() as session:
+        result = await session.execute(
+            select(OpenAIHistoryRecord).order_by(OpenAIHistoryRecord.id.desc()).limit(MAX_OPENAI_HISTORY)
+        )
+        rows = result.scalars().all()
+        return [
+            OpenAIHistory(
+                model=row.model,
+                identify=row.identify,
+                messages=row.messages or [],
+            )
+            for row in reversed(rows)
+        ]
 
 
 @get_driver().on_startup
@@ -89,20 +131,16 @@ async def _(matcher: Matcher, state: T_State) -> None:
             return
     else:
         return
-    commands = await get_command_usage()
-    commands[command_name] = commands.get(command_name, 0) + 1
-    async with lock.commands:
-        async with aiofiles.open(data_dir.joinpath("commands.json"), "w", encoding="utf-8") as f:
-            await f.write(json.dumps(commands, ensure_ascii=False, indent=4))
+    async with get_session() as session:
+        result = await session.execute(select(CommandUsage).where(CommandUsage.command_name == command_name))
+        record = result.scalar_one_or_none()
+        if record:
+            record.usage_count += 1
+        else:
+            session.add(CommandUsage(command_name=command_name, usage_count=1))
+        await session.commit()
     state["status_report_command_name"] = command_name
     state["original_simple_run_method"] = matcher.simple_run
-
-
-async def get_handler_results() -> list[HandlerResult]:
-    if data_dir.joinpath("handler.json").is_file():
-        async with aiofiles.open(data_dir.joinpath("handler.json"), "r", encoding="utf-8") as f:
-            return json.loads(await f.read())
-    return []
 
 
 @run_postprocessor
@@ -113,18 +151,17 @@ async def _(matcher: Matcher, state: T_State, event: Event) -> None:
         message = str(event.get_message())
     except ValueError:
         message = ""
-    results = await get_handler_results()
-    results.append(
-        HandlerResult(
-            message=message,
-            command_name=state.get("status_report_command_name", ""),
-            result=state["handler_results"],
-            matcher=str(matcher),
+    async with get_session() as session:
+        session.add(
+            HandlerResultRecord(
+                command_name=state.get("status_report_command_name", ""),
+                message=message,
+                result=state["handler_results"],
+                matcher=str(matcher),
+                timestamp=datetime.now(),
+            )
         )
-    )
-    async with lock.handler:
-        async with aiofiles.open(data_dir.joinpath("handler.json"), "w", encoding="utf-8") as f:
-            await f.write(json.dumps(results[-20:], ensure_ascii=False, indent=4))
+        await session.commit()
     matcher.simple_run = state["original_simple_run_method"]
 
 
@@ -185,49 +222,53 @@ async def _(event: Event, bot: Bot, exception: Optional[Exception]) -> None:
         event_counter = event_counter[0] + 1, event_counter[1] + 1
         return
     event_counter = event_counter[0] + 1, event_counter[1]
-    exc_list = await get_exceptions()
     try:
         session_id = event.get_session_id()
         message = event.get_message()
     except ValueError:
         message = None
         session_id = None
-    exc_list.append(
-        ExceptionStatus(
-            timestamp=int(datetime.now().timestamp()),
-            bot_id=bot.self_id,
-            message=str(message),
-            session=session_id,
-            exception="".join(traceback.format_exception(exception)),
+    async with get_session() as session:
+        session.add(
+            ExceptionRecord(
+                exception="".join(traceback.format_exception(exception)),
+                session=session_id,
+                message=str(message),
+                bot_id=bot.self_id,
+                timestamp=datetime.now(),
+            )
         )
-    )
-    exc_list = exc_list[-20:]
-    async with lock.exceptions:
-        async with aiofiles.open(data_dir.joinpath("exceptions.json"), "w", encoding="utf-8") as f:
-            await f.write(json.dumps(exc_list, ensure_ascii=False, indent=4))
+        await session.commit()
 
 
 async def report_openai_history(messages: "Messages", identify: str, model: str) -> None:
     message_list = [message if isinstance(message, dict) else message.model_dump() for message in messages]
-    history = await get_openai_history()
-    history.append(OpenAIHistory(model=model, identify=identify, messages=message_list))
-    async with lock.openai:
-        async with aiofiles.open(data_dir.joinpath("openai.json"), "w", encoding="utf-8") as f:
-            await f.write(json.dumps(history[-20:], ensure_ascii=False, indent=4))
+    async with get_session() as session:
+        session.add(
+            OpenAIHistoryRecord(
+                model=model,
+                identify=identify,
+                messages=message_list,
+                timestamp=datetime.now(),
+            )
+        )
+        await session.commit()
 
 
-async def get_exceptions() -> list[ExceptionStatus]:
-    if not data_dir.joinpath("exceptions.json").is_file():
-        return []
-    async with aiofiles.open(data_dir.joinpath("exceptions.json"), "r", encoding="utf-8") as f:
-        return json.loads(await f.read())
-
-
-async def get_openai_history() -> list[OpenAIHistory]:
-    if not data_dir.joinpath("openai.json").is_file():
-        return []
-    async with aiofiles.open(data_dir.joinpath("openai.json"), "r", encoding="utf-8") as f:
-        return json.loads(await f.read())
+@scheduler.scheduled_job("cron", hour=4, id="cleanup_status_report")
+async def cleanup_old_records() -> None:
+    async with get_session() as session:
+        for model, max_count in [
+            (HandlerResultRecord, MAX_HANDLER_RESULTS),
+            (ExceptionRecord, MAX_EXCEPTIONS),
+            (OpenAIHistoryRecord, MAX_OPENAI_HISTORY),
+        ]:
+            count_result = await session.execute(select(func.count()).select_from(model))
+            total = count_result.scalar() or 0
+            if total > max_count:
+                subq = select(model.id).order_by(model.id.desc()).offset(max_count).subquery()
+                await session.execute(delete(model).where(model.id.in_(select(subq.c.id))))
+        await session.commit()
 
 
 @app.get("/admin/status")
