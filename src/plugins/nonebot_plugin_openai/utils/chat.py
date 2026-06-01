@@ -96,6 +96,7 @@ class LLMRequestSession(Generic[T2]):
         self.timeout_strategy = timeout_strategy
         self.insert_message_queue = []
         self.tool_choice = tool_choice
+        self.last_response_had_tool_calls: bool = False
 
     def set_custom_trace_id(self, trace_id: str) -> None:
         self.trace_id = trace_id
@@ -166,6 +167,7 @@ class LLMRequestSession(Generic[T2]):
             return
         logger.debug(f"{response=}")
         self.messages.append(response.message)
+        self.last_response_had_tool_calls = bool(response.message.tool_calls)
         if response.message.content:
             if self.response_format and hasattr(response.message, "parsed"):
                 yield response.message.parsed  # type: ignore
@@ -306,6 +308,10 @@ class MessageFetcher(Generic[T2]):
     async def fetch_message_stream(self) -> AsyncGenerator[T2 | str, None]:
         async for msg in self.session.fetch_llm_response():
             yield msg
+
+    @property
+    def last_response_had_tool_calls(self) -> bool:
+        return self.session.last_response_had_tool_calls
 
     def get_messages(self) -> Messages:
         return self.session.messages
