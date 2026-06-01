@@ -115,12 +115,14 @@ class LLMRequestSession(Generic[T2]):
         await report_openai_history(self.messages, self.identify, self.model)
 
     async def create_completion(self) -> ChatCompletion:
+        # 从 kwargs 中取 tool_choice，避免与显式参数重复
+        tool_choice = self.kwargs.pop("tool_choice", "auto") if self.func_list else "none"
         if not self.response_format:
             completion = await client.chat.completions.create(
                 messages=self.messages,  # type: ignore
                 model=self.model,
                 tools=self.func_list,
-                tool_choice="auto" if self.func_list else "none",
+                tool_choice=tool_choice,
                 extra_headers={
                     config.openai_thread_header: (t := f"{config.identify_prefix} - {self.identify}"),
                     config.openai_trace_header: self.trace_id,
@@ -135,7 +137,7 @@ class LLMRequestSession(Generic[T2]):
                 messages=self.messages,  # type: ignore
                 model=self.model,
                 tools=self.func_list,
-                tool_choice="auto" if self.func_list else "none",
+                tool_choice=tool_choice,
                 extra_headers={
                     config.openai_thread_header: (t := f"{config.identify_prefix} - {self.identify}"),
                     config.openai_trace_header: self.trace_id,
