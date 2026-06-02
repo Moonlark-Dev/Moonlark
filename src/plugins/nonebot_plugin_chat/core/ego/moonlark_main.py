@@ -146,7 +146,7 @@ class ActionDecider:
             return
         async with self.lock:
             try:
-                if not hasattr(self, "fetcher"):
+                if getattr(self, "fetcher", None) is None:
                     await self.setup()
                 async for message in self.fetcher.fetch_message_stream():
                     # 检查 sleep 工具是否已被触发（工具调用过程中设置 sleep_mode=True）
@@ -208,7 +208,7 @@ class ActionDecider:
         if self.loop_task is not None:
             self.loop_task.cancel()
             self.loop_task = None
-        # 清除 fetcher，使下次 loop() 调用时通过 hasattr 检测重新 setup
+        # 清除 fetcher，使下次 loop() 调用时通过 getattr 检测重新 setup
         self.fetcher = None
 
 
