@@ -202,7 +202,7 @@ class ActionDecider:
 
     def reset(self) -> None:
         """重置 ActionDecider 状态。
-        
+
         取消正在运行的循环任务，并清理 fetcher 以便下次重新 setup。
         """
         if self.loop_task is not None:

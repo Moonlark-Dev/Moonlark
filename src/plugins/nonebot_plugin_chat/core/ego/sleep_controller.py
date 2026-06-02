@@ -224,7 +224,7 @@ class SleepController:
 
     async def process_timer(self) -> None:
         """定时回调（每10分钟）。
-        
+
         清醒时：检查困倦度，如果达标则触发睡眠。
         睡眠时：调用 request_think 做定时决策检查（是否该醒来/清除上下文）。
         """
