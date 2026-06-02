@@ -33,7 +33,7 @@ class SleepController:
         self.sleep_think_count: int = 0  # 睡眠后定时决策计数器
         self.context_cleared: bool = False  # 是否已清除过上下文
 
-        # 定时器：清醒时每10分钟检查困倦度
+        # 定时器：每10分钟检查困倦度（清醒时）或睡眠决策检查（睡眠时）
         scheduler.scheduled_job("interval", minutes=10, id="sleep_controller_process_timer")(self.process_timer)
 
     # ========================================================================
@@ -80,7 +80,7 @@ class SleepController:
     # ========================================================================
 
     async def request_think(self) -> None:
-        """睡眠状态下的定时决策（每10分钟由 MoonlarkMain 调用）
+        """睡眠状态下的定时决策（每10分钟由 process_timer 调用）
 
         内部处理 wake_up，不返回值。
         入睡后首次决策继续睡时（入睡到决策 >20分钟），重置所有会话上下文。
@@ -223,8 +223,13 @@ class SleepController:
         await self.handle_tired()
 
     async def process_timer(self) -> None:
-        """定时检查困倦度（自己的定时器，每10分钟）"""
+        """定时回调（每10分钟）。
+        
+        清醒时：检查困倦度，如果达标则触发睡眠。
+        睡眠时：调用 request_think 做定时决策检查（是否该醒来/清除上下文）。
+        """
         if self.sleep_state:
+            await self.request_think()
             return
 
         tiredness = self.calculate_sleepiness_index()
@@ -256,4 +261,6 @@ class SleepController:
         self.sleep_think_count = 0
         self.context_cleared = False
         self.moonlark_main.state["sleep_mode"] = False
+        # 重置 ActionDecider 以便下次从干净状态启动
+        self.moonlark_main.action_decider.reset()
         logger.info("[SleepController] 已唤醒")

@@ -149,6 +149,11 @@ class ActionDecider:
                 if not hasattr(self, "fetcher"):
                     await self.setup()
                 async for message in self.fetcher.fetch_message_stream():
+                    # 检查 sleep 工具是否已被触发（工具调用过程中设置 sleep_mode=True）
+                    if self.moonlark_main.state.get("sleep_mode", False):
+                        logger.info("[ActionDecider] 已进入睡眠模式，停止决策循环")
+                        break
+
                     # 参考 MessageQueue._fetch_reply() 的检测方式：
                     # 检查 fetcher 底层 session 中最后一条消息是否有 tool_calls
                     last_msg = self.fetcher.session.messages[-1] if self.fetcher.session.messages else None
@@ -165,6 +170,8 @@ class ActionDecider:
                     logger.info(f"[ActionDecider] {message}")
                     await asyncio.sleep(60)
                     await self.on_event("timer")
+            except asyncio.CancelledError:
+                logger.info("[ActionDecider] 决策循环被取消")
             except Exception as e:
                 logger.exception(e)
 
@@ -194,8 +201,15 @@ class ActionDecider:
         )
 
     def reset(self) -> None:
+        """重置 ActionDecider 状态。
+        
+        取消正在运行的循环任务，并清理 fetcher 以便下次重新 setup。
+        """
         if self.loop_task is not None:
             self.loop_task.cancel()
+            self.loop_task = None
+        # 清除 fetcher，使下次 loop() 调用时通过 hasattr 检测重新 setup
+        self.fetcher = None
 
 
 class MoonlarkMain:
@@ -224,8 +238,8 @@ class MoonlarkMain:
             "last_summary_time": None,
         }
 
-        # MoonlarkMain 定时器（每10分钟，清醒时触发 action_decider.loop）
-        scheduler.scheduled_job("interval", minutes=2, id="moonlark_main_timer")(self._on_timer)
+        # MoonlarkMain 定时器（每5分钟，清醒时触发 action_decider.loop）
+        scheduler.scheduled_job("interval", minutes=5, id="moonlark_main_timer")(self._on_timer)
 
     async def summary_instant_memory(self) -> str:
         tasks = [
@@ -364,8 +378,14 @@ class MoonlarkMain:
     # ========================================================================
 
     async def _on_timer(self) -> None:
-        """定时器回调（每10分钟）。睡眠时不触发，由 SleepController 自己的定时器处理。"""
+        """定时器回调（每5分钟）。睡眠时不触发。
+
+        确保不会重复创建多个 loop task。
+        """
         if self.state["sleep_mode"]:
+            return
+        if self.action_decider.loop_task is not None and not self.action_decider.loop_task.done():
+            logger.debug("[MoonlarkMain] ActionDecider 循环已在运行，跳过此触发")
             return
         self.action_decider.loop_task = asyncio.create_task(self.action_decider.loop())
 
