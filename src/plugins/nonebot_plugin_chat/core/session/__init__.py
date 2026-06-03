@@ -153,6 +153,17 @@ async def _() -> None:
         await session.process_timer()
 
 
+@scheduler.scheduled_job("cron", hour=4, id="daily_reset_message_queues")
+async def _reset_all_message_queues() -> None:
+    """每天凌晨4点重置所有会话的消息队列（内存 + 数据库）"""
+    for session_id, session in list(groups.items()):
+        try:
+            await session.processor.openai_messages._reset_and_clear_db(session_id)
+            logger.info(f"[DailyReset] 已重置会话消息队列: {session_id}")
+        except Exception as e:
+            logger.exception(f"[DailyReset] 重置会话 {session_id} 失败: {e}")
+
+
 @get_driver().on_shutdown
 async def _() -> None:
     for session in groups.values():

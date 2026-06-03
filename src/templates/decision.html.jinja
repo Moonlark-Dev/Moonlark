@@ -34,9 +34,10 @@
 
         .page {
             background: var(--paper-bg);
-            width: 210mm;
+            width: 100%;
+            max-width: 1100px;
             min-height: 297mm;
-            padding: 30mm 26mm 30mm 28mm;
+            padding: 30mm 60px 30mm 65px;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
             position: relative;
             line-height: 1.8;
@@ -130,6 +131,7 @@
             font-size: 14pt;
             font-family: 'Noto Serif SC', '仿宋', 'FangSong', serif;
             text-align: justify;
+            margin: 0 26px 0 28px;
         }
 
         .doc-body p {
@@ -154,6 +156,7 @@
             margin: 3mm 0 3mm 2em;
             padding: 0;
             list-style: none;
+            counter-reset: item;
         }
 
         .violation-list li {
@@ -164,9 +167,10 @@
         }
 
         .violation-list li::before {
-            content: '（{{ loop.index }}）';
+            content: counter(item) "、";
             position: absolute;
             left: 0;
+            counter-increment: item;
         }
 
         /* 处分内容 */
@@ -182,6 +186,7 @@
             text-align: right;
             font-family: 'Noto Serif SC', '仿宋', 'FangSong', serif;
             font-size: 14pt;
+            margin-bottom: 30mm;
         }
 
         .signature-area .org-name {
@@ -204,15 +209,22 @@
         /* 版记 */
         .colophon {
             position: absolute;
-            bottom: 20mm;
+            bottom: 10mm;
             left: 28mm;
             right: 26mm;
             font-size: 10pt;
             color: var(--text-secondary);
-            border-top: 1px solid #999;
-            padding-top: 3mm;
-            display: flex;
-            justify-content: space-between;
+        }
+
+        .colophon-line {
+            width: 100%;
+            height: 1px;
+            background: #999;
+            margin: 2mm 0;
+        }
+
+        .colophon-content {
+            padding: 1mm 0;
         }
     </style>
 </head>
@@ -253,7 +265,7 @@
 
             <ul class="violation-list">
                 {% for item in violation_details %}
-                <li>{{ item }}</li>
+                <li>{{ item }}。</li>
                 {% endfor %}
             </ul>
 
@@ -265,7 +277,7 @@
             <!-- 三、整改与申诉要求 -->
             <p class="section-title">三、整改与申诉要求</p>
             {% for req in rectification_requirements %}
-            <p>{{ req }}</p>
+            <p>{{ req }}。</p>
             {% endfor %}
 
             <p>本决定自下发之日起生效。</p>
@@ -278,10 +290,17 @@
             <div class="date">{{ date }}</div>
         </div>
 
-        <!-- 版记（可选） -->
+        <!-- 版记 -->
         <div class="colophon">
-            <span>抄送：全体群成员</span>
-            <span>{{ group_name }}群管理小组办公室</span>
+            <div class="colophon-line"></div>
+            <div class="colophon-content">
+                <span>抄送：{{ group_name }}群管理小组办公室</span>
+            </div>
+            <div class="colophon-line"></div>
+            <div class="colophon-content">
+                <span>{{ group_name }}群管理小组</span>
+            </div>
+            <div class="colophon-line"></div>
         </div>
     </div>
 </body>

@@ -80,6 +80,7 @@ class LLMRequestSession(Generic[T2]):
         self.identify = identify
         self.func_list = generate_function_list(func_index)
         self.func_index = func_index
+        self.tool_choice = kwargs.pop("tool_choice", "auto")
         self.kwargs = kwargs
         self.stop = False
         self.trace_id = uuid.uuid4().hex
@@ -115,12 +116,13 @@ class LLMRequestSession(Generic[T2]):
         await report_openai_history(self.messages, self.identify, self.model)
 
     async def create_completion(self) -> ChatCompletion:
+        tool_choice = self.tool_choice if self.func_list else "none"
         if not self.response_format:
             completion = await client.chat.completions.create(
                 messages=self.messages,  # type: ignore
                 model=self.model,
                 tools=self.func_list,
-                tool_choice="auto" if self.func_list else "none",
+                tool_choice=tool_choice,
                 extra_headers={
                     config.openai_thread_header: (t := f"{config.identify_prefix} - {self.identify}"),
                     config.openai_trace_header: self.trace_id,
@@ -135,7 +137,7 @@ class LLMRequestSession(Generic[T2]):
                 messages=self.messages,  # type: ignore
                 model=self.model,
                 tools=self.func_list,
-                tool_choice="auto" if self.func_list else "none",
+                tool_choice=tool_choice,
                 extra_headers={
                     config.openai_thread_header: (t := f"{config.identify_prefix} - {self.identify}"),
                     config.openai_trace_header: self.trace_id,
