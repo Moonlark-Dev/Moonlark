@@ -38,12 +38,13 @@ lang = LangHelper()
 # 自动记录指令使用（复用 status_report 的 run_preprocessor 模式）
 # ============================================================
 
+
 @run_preprocessor
 async def record_command_usage(matcher: Matcher, state: T_State, event: Event) -> None:
     """自动记录所有指令使用到数据库"""
     # 识别指令名（参考 status_report 的逻辑）
     try:
-        if hasattr(matcher, 'command') and callable(matcher.command):
+        if hasattr(matcher, "command") and callable(matcher.command):
             # AlconnaMatcher
             command_name = matcher.command().command
         elif matcher.type == "message":
@@ -91,6 +92,7 @@ async def record_command_usage(matcher: Matcher, state: T_State, event: Event) -
 # 查询指令排行
 # ============================================================
 
+
 async def get_command_ranking(days: int = 7, limit: int = 10) -> list[dict]:
     """获取近N天热门指令排行"""
     cutoff = datetime.now() - timedelta(days=days)
@@ -126,23 +128,18 @@ async def get_total_stats(days: int = 7) -> dict:
 
     async with get_session() as session:
         # 总使用次数
-        total_result = await session.execute(
-            select(func.count(CommandUsage.id))
-            .where(CommandUsage.used_at >= cutoff)
-        )
+        total_result = await session.execute(select(func.count(CommandUsage.id)).where(CommandUsage.used_at >= cutoff))
         total_count = total_result.scalar() or 0
 
         # 独立用户数
         user_result = await session.execute(
-            select(func.count(distinct(CommandUsage.user_id)))
-            .where(CommandUsage.used_at >= cutoff)
+            select(func.count(distinct(CommandUsage.user_id))).where(CommandUsage.used_at >= cutoff)
         )
         user_count = user_result.scalar() or 0
 
         # 独立指令数
         cmd_result = await session.execute(
-            select(func.count(distinct(CommandUsage.command)))
-            .where(CommandUsage.used_at >= cutoff)
+            select(func.count(distinct(CommandUsage.command))).where(CommandUsage.used_at >= cutoff)
         )
         cmd_count = cmd_result.scalar() or 0
 
