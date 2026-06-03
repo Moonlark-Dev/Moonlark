@@ -136,10 +136,21 @@ class ActionDecider:
                 ),
             ],
             pre_function_call=self.pre_function_call,
+            on_tool_round_complete=self._on_tool_round,
             reasoning_effort="medium",
             tool_choice="required",
         )
         self.fetcher = fetcher
+
+    async def _on_tool_round(self) -> None:
+        """工具调用完成但模型未输出文本时的回调。
+
+        当 request() 不 yield（content 为空）时，loop() 拿不到控制权，
+        此回调在 insert_message_queue flush 之前执行，确保 timer 消息能注入上下文。
+        """
+        logger.info("[ActionDecider] 工具调用完成（无文本输出），等待 60 秒后注入 timer")
+        await asyncio.sleep(60)
+        await self.on_event("timer")
 
     async def loop(self) -> None:
         if self.lock.locked():
