@@ -996,6 +996,9 @@ parser:
     not_supported: '[合并转发：获取信息失败（不支持）]'
     failed: '[合并转发：获取信息失败（{}）]'
     forward: '[合并转发：{}]'
+    summary: '[合并转发（消息过多，已总结）：{}]'
+    summary_prompt: |
+      You are a chat log summarization assistant. Please provide a concise summary of the following forwarded chat messages, keeping key information and main topics.
   reply: '[回复: {}]'
   reply_with_sender: '[回复: {} (来自 {})]'
   reply_failed: '[回复: 获取信息失败]'

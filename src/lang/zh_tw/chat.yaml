@@ -993,9 +993,12 @@ parser:
   image_without_desc: '[图片({})]'
   poke: '[戳一戳]'
   forward:
-    not_supported: '[合并转发：获取信息失败（不支持）]'
-    failed: '[合并转发：获取信息失败（{}）]'
-    forward: '[合并转发：{}]'
+    not_supported: '[合併轉發：獲取信息失敗（不支持）]'
+    failed: '[合併轉發：獲取信息失敗（{}）]'
+    forward: '[合併轉發：{}]'
+    summary: '[合併轉發（消息過多，已總結）：{}]'
+    summary_prompt: |
+      你是一位聊天記錄總結助手。請對以下合併轉發的聊天記錄進行簡潔的總結，保留關鍵信息和主要話題。
   reply: '[回复: {}]'
   reply_with_sender: '[回复: {} (来自 {})]'
   reply_failed: '[回复: 获取信息失败]'

@@ -1049,6 +1049,9 @@ parser:
     not_supported: '[合并转发：获取信息失败（不支持）]'
     failed: '[合并转发：获取信息失败（{}）]'
     forward: '[合并转发：{}]'
+    summary: '[合并转发（消息过多，已总结）：{}]'
+    summary_prompt: |
+      你是一位聊天记录总结助手。请对以下合并转发的聊天记录进行简洁的总结，保留关键信息和主要话题。
   reply: '[回复: {}]'
   reply_with_sender: '[回复: {} (来自 {})]'
   reply_failed: '[回复: 获取信息失败]'
