@@ -215,9 +215,8 @@ class SleepController:
         self.sleep_state = True
         self.sleep_begin_time = datetime.now()
         self.moonlark_main.state["sleep_mode"] = True
-        self.moonlark_main.state["injected_note_ids"] = []
         self.moonlark_main.action_decider.reset()
-        logger.info("[SleepController] 进入睡眠模式，已重置 ActionDecider 和 Note 注入记录")
+        logger.info("[SleepController] 进入睡眠模式，已重置 ActionDecider")
 
     async def sleep(self) -> None:
         """睡觉工具调用"""
