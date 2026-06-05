@@ -313,8 +313,13 @@ class MoonlarkMain:
             context_text = ""
             if hasattr(self.action_decider, "fetcher") and self.action_decider.fetcher:
                 for msg in self.action_decider.fetcher.session.messages:
-                    if hasattr(msg, "content") and msg.content:
-                        context_text += msg.content + "\n"
+                    content = None
+                    if isinstance(msg, dict):
+                        content = msg.get("content")
+                    elif hasattr(msg, "content"):
+                        content = msg.content
+                    if content:
+                        context_text += str(content) + "\n"
 
             if not context_text:
                 return "暂无备忘录。"
