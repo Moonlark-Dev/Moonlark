@@ -24,8 +24,6 @@ from sqlalchemy import String, DateTime, Integer, func
 class CommandUsage(Model):
     """指令使用记录表"""
 
-    __tablename__ = "command_usage"
-
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     command: Mapped[str] = mapped_column(String(64), index=True)  # 指令名
     user_id: Mapped[str] = mapped_column(String(128), index=True)  # 用户ID
