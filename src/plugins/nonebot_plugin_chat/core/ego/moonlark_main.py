@@ -304,9 +304,6 @@ class MoonlarkMain:
     async def get_relevant_notes(self) -> str:
         """获取相关的备忘录，使用 ActionDecider 的全部上下文进行筛选"""
         from ..utils.note_manager import NoteManager
-        from nonebot_plugin_orm import get_session
-        from sqlalchemy import select, distinct
-        from ...models import Note
 
         try:
             # 获取 ActionDecider 的全部上下文文本
@@ -327,15 +324,7 @@ class MoonlarkMain:
             # 使用固定的 context_id，获取所有其他上下文的 Note
             note_manager = NoteManager("moonlark_main")
             _, notes_from_other = await note_manager.filter_note(context_text)
-
-            # 获取所有未过期的 Note（无关键词的无条件注入）
-            current_time = datetime.now()
-            async with get_session() as session:
-                query = select(Note).where(
-                    Note.context_id != "moonlark_main", (Note.expire_time.is_(None)) | (Note.expire_time > current_time)
-                )
-                result = await session.scalars(query)
-                all_notes = list(result.all())
+            all_notes = await note_manager.get_notes(except_current_context=True)
 
             # 合并：无关键词的无条件加入 + filter_note 匹配到的
             matched_ids = {n.id for n in notes_from_other}
