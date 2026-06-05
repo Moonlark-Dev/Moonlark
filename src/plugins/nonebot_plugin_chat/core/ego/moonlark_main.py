@@ -311,9 +311,9 @@ class MoonlarkMain:
         try:
             # 获取 ActionDecider 的全部上下文文本
             context_text = ""
-            if hasattr(self.action_decider, 'fetcher') and self.action_decider.fetcher:
+            if hasattr(self.action_decider, "fetcher") and self.action_decider.fetcher:
                 for msg in self.action_decider.fetcher.session.messages:
-                    if hasattr(msg, 'content') and msg.content:
+                    if hasattr(msg, "content") and msg.content:
                         context_text += msg.content + "\n"
 
             if not context_text:
@@ -327,8 +327,7 @@ class MoonlarkMain:
             current_time = datetime.now()
             async with get_session() as session:
                 query = select(Note).where(
-                    Note.context_id != "moonlark_main",
-                    (Note.expire_time.is_(None)) | (Note.expire_time > current_time)
+                    Note.context_id != "moonlark_main", (Note.expire_time.is_(None)) | (Note.expire_time > current_time)
                 )
                 result = await session.scalars(query)
                 all_notes = list(result.all())
