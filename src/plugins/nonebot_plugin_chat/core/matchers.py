@@ -127,7 +127,10 @@ async def _(
     moonlark_group_id: str = get_group_id(),
     user_id: str = get_user_id(),
 ) -> None:
-    session = await create_group_session(moonlark_group_id, get_target(event), bot)
+    if event.group_id is not None:
+        session = await create_group_session(moonlark_group_id, get_target(event), bot)
+    else:
+        session = await create_private_session(user_id, get_target(event), bot)
     nickname = await get_nickname(user_id, bot, event)
     await session.handle_poke(event, nickname)
 

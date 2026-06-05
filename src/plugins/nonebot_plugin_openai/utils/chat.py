@@ -75,11 +75,14 @@ class LLMRequestSession(Generic[T2]):
         timeout_strategy: Optional[TimeoutStrategy] = None,
         reasoning_effort: Optional[ReasoningEffort] = None,
         response_format: Optional[type[T2]] = None,
+        on_tool_round_complete: Optional[Callable[[], Awaitable[None]]] = None,
     ) -> None:
         self.messages: Messages = messages
         self.identify = identify
+        self.on_tool_round_complete = on_tool_round_complete
         self.func_list = generate_function_list(func_index)
         self.func_index = func_index
+        self.tool_choice = kwargs.pop("tool_choice", "auto")
         self.kwargs = kwargs
         self.stop = False
         self.trace_id = uuid.uuid4().hex
@@ -94,6 +97,7 @@ class LLMRequestSession(Generic[T2]):
         self.timeout_per_request = timeout
         self.timeout_strategy = timeout_strategy
         self.insert_message_queue = []
+        self._content_yielded = False
 
     def set_custom_trace_id(self, trace_id: str) -> None:
         self.trace_id = trace_id
@@ -115,12 +119,13 @@ class LLMRequestSession(Generic[T2]):
         await report_openai_history(self.messages, self.identify, self.model)
 
     async def create_completion(self) -> ChatCompletion:
+        tool_choice = self.tool_choice if self.func_list else "none"
         if not self.response_format:
             completion = await client.chat.completions.create(
                 messages=self.messages,  # type: ignore
                 model=self.model,
                 tools=self.func_list,
-                tool_choice="auto" if self.func_list else "none",
+                tool_choice=tool_choice,
                 extra_headers={
                     config.openai_thread_header: (t := f"{config.identify_prefix} - {self.identify}"),
                     config.openai_trace_header: self.trace_id,
@@ -135,7 +140,7 @@ class LLMRequestSession(Generic[T2]):
                 messages=self.messages,  # type: ignore
                 model=self.model,
                 tools=self.func_list,
-                tool_choice="auto" if self.func_list else "none",
+                tool_choice=tool_choice,
                 extra_headers={
                     config.openai_thread_header: (t := f"{config.identify_prefix} - {self.identify}"),
                     config.openai_trace_header: self.trace_id,
@@ -164,7 +169,9 @@ class LLMRequestSession(Generic[T2]):
             return
         logger.debug(f"{response=}")
         self.messages.append(response.message)
+        self._content_yielded = False
         if response.message.content:
+            self._content_yielded = True
             if self.response_format and hasattr(response.message, "parsed"):
                 yield response.message.parsed  # type: ignore
             else:
@@ -173,6 +180,8 @@ class LLMRequestSession(Generic[T2]):
             for request in response.message.tool_calls:
                 if isinstance(request, ChatCompletionMessageFunctionToolCall):
                     await self.call_function(request.id, request.function.name, json.loads(request.function.arguments))
+            if not self._content_yielded and self.on_tool_round_complete:
+                await self.on_tool_round_complete()
         elif not self.insert_message_queue:
             self.stop = True
         self.messages.extend(self.insert_message_queue)
@@ -226,6 +235,7 @@ class MessageFetcher(Generic[T2]):
         timeout_strategy: Optional[TimeoutStrategy] = None,
         reasoning_effort: Optional[ReasoningEffort] = None,
         response_format: Optional[type[T2]] = None,
+        on_tool_round_complete: Optional[Callable[[], Awaitable[None]]] = None,
         **kwargs,
     ) -> None:
         logger.debug(f"{identify=}")
@@ -248,6 +258,7 @@ class MessageFetcher(Generic[T2]):
             timeout_strategy,
             reasoning_effort,
             response_format,
+            on_tool_round_complete,
         )
 
     @classmethod
@@ -266,6 +277,7 @@ class MessageFetcher(Generic[T2]):
         timeout_strategy: Optional[TimeoutStrategy] = None,
         reasoning_effort: Optional[ReasoningEffort] = None,
         response_format: Optional[type[T2]] = None,
+        on_tool_round_complete: Optional[Callable[[], Awaitable[None]]] = None,
         **kwargs,
     ) -> "MessageFetcher":
         """异步创建 MessageFetcher 实例，正确处理模型配置获取"""
@@ -290,6 +302,7 @@ class MessageFetcher(Generic[T2]):
             timeout_strategy,
             reasoning_effort,
             response_format,
+            on_tool_round_complete,
             **kwargs,
         )
 
