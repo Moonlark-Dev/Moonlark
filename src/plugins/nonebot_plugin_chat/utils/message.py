@@ -31,10 +31,10 @@ from nonebot.adapters.onebot.v11 import MessageSegment as OneBotV11Segment
 
 from nonebot_plugin_openai import fetch_message, generate_message
 
+from nonebot_plugin_chat.config import config
+
 from .image import generate_image_id, get_image_summary
 from .file import get_file_summary
-
-FORWARD_SUMMARY_THRESHOLD = 2000
 
 
 class MessageParser:
@@ -105,7 +105,7 @@ class MessageParser:
             message_list_str = await self.get_forawrd_message_list(ref_id)
         except ActionFailed as e:
             return await lang.text("parser.forward.failed", self.user_id, e)
-        if len(message_list_str) > FORWARD_SUMMARY_THRESHOLD:
+        if len(message_list_str) > config.forward_summary_threshold:
             try:
                 summary = await fetch_message(
                     [
