@@ -303,7 +303,7 @@ class MoonlarkMain:
 
     async def get_relevant_notes(self) -> str:
         """获取相关的备忘录，使用 ActionDecider 的全部上下文进行筛选"""
-        from ..utils.note_manager import NoteManager
+        from ...utils.note_manager import NoteManager
 
         try:
             # 获取 ActionDecider 的全部上下文文本
