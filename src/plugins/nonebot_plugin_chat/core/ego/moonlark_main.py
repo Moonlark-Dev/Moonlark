@@ -194,6 +194,7 @@ class ActionDecider:
 
     async def generate_message(self, reason) -> OpenAIChatMessage:
         today_history = await self.moonlark_main._get_today_actions_text()
+        notes_text = await self.moonlark_main.get_relevant_notes()
         return generate_message(
             await lang.text(
                 "moonlark_main.user",
@@ -201,6 +202,7 @@ class ActionDecider:
                 reason,
                 datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 await self.moonlark_main.summary_instant_memory(),
+                notes_text,
                 today_history,
             ),
             "user",
@@ -247,6 +249,7 @@ class MoonlarkMain:
             "decision_history": [],
             "instant_memory_summary": "",
             "last_summary_time": None,
+            "injected_note_ids": [],
         }
 
         # MoonlarkMain 定时器（每5分钟，清醒时触发 action_decider.loop）
@@ -297,6 +300,62 @@ class MoonlarkMain:
             self.state["instant_memory_summary"] = "记忆汇总失败。"
 
         return self.state["instant_memory_summary"]
+
+    async def get_relevant_notes(self) -> str:
+        """获取相关的备忘录，使用 ActionDecider 的全部上下文进行筛选"""
+        from ..utils.note_manager import NoteManager
+
+        try:
+            # 获取 ActionDecider 的全部上下文文本
+            context_text = ""
+            if hasattr(self.action_decider, "fetcher") and self.action_decider.fetcher:
+                for msg in self.action_decider.fetcher.session.messages:
+                    content = None
+                    if isinstance(msg, dict):
+                        content = msg.get("content")
+                    elif hasattr(msg, "content"):
+                        content = msg.content
+                    if content:
+                        context_text += str(content) + "\n"
+
+            if not context_text:
+                return "暂无备忘录。"
+
+            # 使用固定的 context_id，获取所有其他上下文的 Note
+            note_manager = NoteManager("moonlark_main")
+            _, notes_from_other = await note_manager.filter_note(context_text)
+            all_notes = await note_manager.get_notes(except_current_context=True)
+
+            # 合并：无关键词的无条件加入 + filter_note 匹配到的
+            matched_ids = {n.id for n in notes_from_other}
+            final_notes = []
+            for note in all_notes:
+                if note.id in self.state["injected_note_ids"]:
+                    continue  # 跳过已注入的
+                if not note.keywords or note.id in matched_ids:
+                    final_notes.append(note)
+
+            if not final_notes:
+                return "暂无新的备忘录。"
+
+            # 记录已注入的 ID
+            self.state["injected_note_ids"].extend([n.id for n in final_notes])
+
+            # 格式化
+            lines = []
+            for note in final_notes:
+                created_time = datetime.fromtimestamp(note.created_time).strftime("%m-%d %H:%M")
+                expire_info = ""
+                if note.expire_time:
+                    expire_info = f" (过期: {note.expire_time.strftime('%m-%d %H:%M')})"
+                lines.append(f"[{created_time}]{expire_info} {note.content}")
+                if note.keywords:
+                    lines.append(f"  关键词: {note.keywords}")
+
+            return "\n".join(lines)
+        except Exception as e:
+            logger.warning(f"[MoonlarkMain] 获取备忘录失败: {e}")
+            return "获取备忘录失败。"
 
     async def handle_mention(self, chat_context: list) -> bool:
         """当被 @ 或提及时调用。
