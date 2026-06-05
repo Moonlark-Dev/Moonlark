@@ -26,6 +26,8 @@ class Config(BaseModel):
     moonlark_api_base: str = "http://localhost:8080"  # Moonlark API 基础地址
     rua_reaction_config: RuaReactionConfig = RuaReactionConfig()
     judge_reaction_config: JudgeReactionConfig = JudgeReactionConfig()
+    # 合并转发消息自动总结阈值（字符数），超过此长度的转发消息将调用 AI 生成摘要
+    forward_summary_threshold: int = 2000
 
 
 config = get_plugin_config(Config)
