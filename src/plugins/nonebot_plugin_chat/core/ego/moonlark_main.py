@@ -38,7 +38,6 @@ from .sleep_controller import SleepController
 
 class ActionDecider:
 
-    fetcher: MessageFetcher
     MAX_TOOL_RETRY: int = 2  # 文本回退最大重试次数
 
     def __init__(self, moonlark_main: "MoonlarkMain") -> None:
@@ -46,8 +45,13 @@ class ActionDecider:
         self.lang = moonlark_main.lang_str
         self.lock = asyncio.Lock()
         self.loop_task: Optional[asyncio.Task] = None
+        self.fetcher: Optional[MessageFetcher] = None
 
     async def setup(self) -> None:
+        
+        self.fetcher = await self.create_fetcher()
+
+    async def create_fetcher(self) -> MessageFetcher:
         messages = [
             generate_message(
                 await lang.text(
@@ -58,7 +62,11 @@ class ActionDecider:
                 ),
                 "system",
             ),
-            await self.generate_message(""),
+            await self.generate_message((
+                "online\n\n"
+                "## 今日已进行的动作\n"
+                f"{await self.moonlark_main._get_today_actions_text()}"
+            )),
         ]
         fetcher = await MessageFetcher.create(
             messages,
@@ -140,7 +148,7 @@ class ActionDecider:
             reasoning_effort="medium",
             tool_choice="required",
         )
-        self.fetcher = fetcher
+        return fetcher
 
     async def _on_tool_round(self) -> None:
         """工具调用完成但模型未输出文本时的回调。
@@ -157,8 +165,8 @@ class ActionDecider:
             return
         async with self.lock:
             try:
-                if getattr(self, "fetcher", None) is None:
-                    await self.setup()
+                if self.fetcher is None:
+                    self.fetcher = await self.create_fetcher()
                 async for message in self.fetcher.fetch_message_stream():
                     # 检查 sleep 工具是否已被触发（工具调用过程中设置 sleep_mode=True）
                     if self.moonlark_main.state.get("sleep_mode", False):
@@ -193,7 +201,6 @@ class ActionDecider:
         return call_id, name, params
 
     async def generate_message(self, reason) -> OpenAIChatMessage:
-        today_history = await self.moonlark_main._get_today_actions_text()
         notes_text = await self.moonlark_main.get_relevant_notes()
         return generate_message(
             await lang.text(
@@ -203,15 +210,16 @@ class ActionDecider:
                 datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 await self.moonlark_main.summary_instant_memory(),
                 notes_text,
-                today_history,
             ),
             "user",
         )
 
     async def on_event(self, reason: str) -> None:
-        self.fetcher.session.insert_message(
-            await self.generate_message(reason),
-        )
+        if self.fetcher:
+            self.fetcher.session.insert_message(
+                await self.generate_message(reason),
+            )
+        logger.warning(f"Fetcher 未初始化，已忽略事件: {reason}")
 
     def reset(self) -> None:
         """重置 ActionDecider 状态。
@@ -438,7 +446,7 @@ class MoonlarkMain:
                 action_name = r.action.get("action", str(r.action))
                 lines.append(f"[{time_str}] {action_name}")
 
-            return "今日已进行的动作:\n" + "\n".join(lines)
+            return "\n".join(lines)
         except Exception as e:
             logger.warning(f"[MoonlarkMain] 获取今日动作历史失败: {e}")
             return ""
