@@ -48,7 +48,7 @@ class ActionDecider:
         self.fetcher: Optional[MessageFetcher] = None
 
     async def setup(self) -> None:
-        
+
         self.fetcher = await self.create_fetcher()
 
     async def create_fetcher(self) -> MessageFetcher:
@@ -62,11 +62,9 @@ class ActionDecider:
                 ),
                 "system",
             ),
-            await self.generate_message((
-                "online\n\n"
-                "## 今日已进行的动作\n"
-                f"{await self.moonlark_main._get_today_actions_text()}"
-            )),
+            await self.generate_message(
+                ("online\n\n" "## 今日已进行的动作\n" f"{await self.moonlark_main._get_today_actions_text()}")
+            ),
         ]
         fetcher = await MessageFetcher.create(
             messages,
