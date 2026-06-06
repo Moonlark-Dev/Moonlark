@@ -211,9 +211,7 @@ class ActionDecider:
                             "请用 1-2 句话总结以下工具调用结果，保留关键信息，不要添加额外解释。",
                             "system",
                         ),
-                        generate_message(
-                            content,
-                            "user",
+                        generate_message(content, "user",
                         ),
                     ],
                     identify="ActionDecider - SummarizeToolResult",
@@ -602,7 +600,9 @@ class MoonlarkMain:
         cutoff = datetime.now() - timedelta(hours=hours)
         async with get_session() as session:
             result = await session.execute(
-                select(DiaryEntry).where(DiaryEntry.created_at >= cutoff).order_by(DiaryEntry.created_at)
+                select(DiaryEntry)
+                .where(DiaryEntry.created_at >= cutoff)
+                .order_by(DiaryEntry.created_at)
             )
             return list(result.scalars().all())
 
@@ -618,10 +618,13 @@ class MoonlarkMain:
         """清理指定时间之前的日记条目"""
         try:
             async with get_session() as session:
-                await session.execute(select(DiaryEntry).where(DiaryEntry.created_at < before))
+                await session.execute(
+                    select(DiaryEntry).where(DiaryEntry.created_at < before)
+                )
                 from sqlalchemy import delete
-
-                await session.execute(delete(DiaryEntry).where(DiaryEntry.created_at < before))
+                await session.execute(
+                    delete(DiaryEntry).where(DiaryEntry.created_at < before)
+                )
                 await session.commit()
                 logger.debug("[Diary] 已清理过期日记条目")
         except Exception as e:
