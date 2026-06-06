@@ -20,7 +20,6 @@ from nonebot_plugin_openai.utils.message import generate_message
 
 from ...lang import lang
 from ...models import SelfActionDurationResponse, TaskClassificationResponse
-from ...utils.prompt import get_prompt_text
 from ...utils.tool_manager import ToolManager
 
 if TYPE_CHECKING:
@@ -131,10 +130,9 @@ class SelfActionController:
             self._task = None
 
     async def get_task_duration(self, activity: str) -> int:
-        identity_prompt = await get_prompt_text("identity")
         response = await fetch_json(
             [
-                generate_message(await lang.text("self_action.duration.system", self.lang, identity_prompt), "system"),
+                generate_message(await lang.text("self_action.duration.system", self.lang), "system"),
                 generate_message(await lang.text("self_action.duration.user", self.lang, activity), "user"),
             ],
             SelfActionDurationResponse,
@@ -143,11 +141,10 @@ class SelfActionController:
         return response.duration_minutes
 
     async def get_task_type(self, activity: str) -> ActionType:
-        identity_prompt = await get_prompt_text("identity")
         response = await fetch_json(
             [
                 generate_message(
-                    await lang.text("moonlark_main.task_classification.prompt", self.lang, identity_prompt),
+                    await lang.text("moonlark_main.task_classification.prompt", self.lang),
                     "system",
                 ),
                 generate_message(
