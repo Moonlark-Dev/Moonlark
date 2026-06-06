@@ -6,7 +6,6 @@
 - 维护活动历史记录
 - duration 由单独请求 LLM 生成
 - 通过 Runner 模式执行不同类型的活动（查找、学习等）
-- 查找类结果存入 note，task_finish 时展示给 MoonlarkMain
 """
 
 import asyncio
@@ -20,8 +19,7 @@ from nonebot_plugin_openai.utils.chat import fetch_json
 from nonebot_plugin_openai.utils.message import generate_message
 
 from ...lang import lang
-from ...models import SelfActionDurationResponse, SelfActionResultProcessResponse, TaskClassificationResponse
-from ...utils.note_manager import NoteManager
+from ...models import SelfActionDurationResponse, TaskClassificationResponse
 from ...utils.tool_manager import ToolManager
 
 if TYPE_CHECKING:
@@ -107,8 +105,6 @@ class SelfActionController:
             task_type = await self.get_task_type(activity)
             if task_type == ActionType.LEARN:
                 result = await self.agent.execute_task(activity)
-                if result:
-                    await self._process_and_store_result(activity, result)
             else:
                 duration = await self.get_task_duration(activity)
                 await asyncio.sleep(duration * 60)
@@ -133,31 +129,6 @@ class SelfActionController:
             self.activity_start_time = None
             self._task = None
 
-    async def _process_and_store_result(self, activity: str, result: str) -> None:
-        try:
-            processed = await fetch_json(
-                [
-                    generate_message(
-                        await lang.text("self_action.result_process.system", self.lang),
-                        "system",
-                    ),
-                    generate_message(
-                        await lang.text("self_action.result_process.user", self.lang, activity, result),
-                        "user",
-                    ),
-                ],
-                SelfActionResultProcessResponse,
-            )
-            note_manager = NoteManager("moonlark_self")
-            await note_manager.create_note(
-                content=processed.compressed_content,
-                keywords=processed.keywords,
-                expire_hours=processed.expire_hours,
-            )
-            logger.info(f"[SelfAction] 结果已存入笔记: {processed.keywords}")
-        except Exception as e:
-            logger.warning(f"[SelfAction] 结果处理/存储失败: {e}")
-
     async def get_task_duration(self, activity: str) -> int:
         response = await fetch_json(
             [
@@ -165,6 +136,7 @@ class SelfActionController:
                 generate_message(await lang.text("self_action.duration.user", self.lang, activity), "user"),
             ],
             SelfActionDurationResponse,
+            identify="SelfAction - Duration Assessment",
         )
         return response.duration_minutes
 
@@ -181,5 +153,6 @@ class SelfActionController:
                 ),
             ],
             TaskClassificationResponse,
+            identify="SelfAction - Task Classification",
         )
         return ActionType(response.activity_type)
