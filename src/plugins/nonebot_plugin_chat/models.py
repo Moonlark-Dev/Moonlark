@@ -82,7 +82,9 @@ class MessageQueueCache(Model):
     # MySQL 使用 MEDIUMTEXT (16MB)，SQLite 使用 Text（无大小限制）
     message_json: Mapped[str] = mapped_column(CompatibleMediumText)  # JSON 序列化的消息列表
     updated_time: Mapped[datetime] = mapped_column(DateTime(), default=datetime.now)  # 最后更新时间戳
-    message_hash: Mapped[bytes] = mapped_column(BINARY(32).with_variant(LargeBinary(32), "sqlite"))  # 消息哈希，用于去重
+    message_hash: Mapped[bytes] = mapped_column(
+        BINARY(32).with_variant(LargeBinary(32), "sqlite")
+    )  # 消息哈希，用于去重
 
 
 class JudgeData(BaseModel):
