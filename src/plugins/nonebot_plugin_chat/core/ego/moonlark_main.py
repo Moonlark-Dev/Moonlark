@@ -19,6 +19,8 @@ from sqlalchemy import select
 from ...lang import lang
 from ...models import (
     ActionDecisionResponse,
+    DiaryEntry,
+    DiaryProcessResponse,
     MainSessionActionHistory,
     PrivateChatSession,
 )
@@ -48,7 +50,6 @@ class ActionDecider:
         self.fetcher: Optional[MessageFetcher] = None
 
     async def setup(self) -> None:
-
         self.fetcher = await self.create_fetcher()
 
     async def create_fetcher(self) -> MessageFetcher:
@@ -142,6 +143,7 @@ class ActionDecider:
                 ),
             ],
             pre_function_call=self.pre_function_call,
+            post_function_call=self._post_function_call,
             on_tool_round_complete=self._on_tool_round,
             reasoning_effort="medium",
             tool_choice="required",
@@ -175,8 +177,9 @@ class ActionDecider:
                     # 检查 fetcher 底层 session 中最后一条消息是否有 tool_calls
                     last_msg = self.fetcher.session.messages[-1] if self.fetcher.session.messages else None
                     has_tool_calls = isinstance(last_msg, ChatCompletionMessage) and last_msg.tool_calls is not None
+
                     if not has_tool_calls:
-                        logger.warning(f"[ActionDecider] 模型未调用工具，输出文本: {str(message)[:200]}")
+                        logger.warning(f"[ActionDecider] 模型未调用工具，输出文本: {message[:200]}")
                         self.fetcher.session.insert_message(
                             generate_message(
                                 "你的回复必须调用一个工具来执行决策，不能直接输出文本。请立即调用工具。",
@@ -184,7 +187,12 @@ class ActionDecider:
                             )
                         )
                         continue
+
+                    # 工具调用结果由 post_function_call 记录
                     logger.info(f"[ActionDecider] {message}")
+                    # 记录模型本次输出的文本
+                    if message:
+                        await self._record_diary_entry("[思考] " + message)
                     await asyncio.sleep(60)
                     await self.on_event("timer")
             except asyncio.CancelledError:
@@ -192,21 +200,65 @@ class ActionDecider:
             except Exception as e:
                 logger.exception(e)
 
+    async def _post_function_call(self, result: str) -> str:
+        """工具调用完成后记录返回结果到日记"""
+        content = str(result)
+        if len(content) > 500:
+            try:
+                content = await fetch_message(
+                    [
+                        generate_message(
+                            "请用 1-2 句话总结以下工具调用结果，保留关键信息，不要添加额外解释。",
+                            "system",
+                        ),
+                        generate_message(content, "user",
+                        ),
+                    ],
+                    identify="ActionDecider - SummarizeToolResult",
+                    reasoning_effort="low",
+                )
+                if not content:
+                    content = str(result)[:500] + "..."
+            except Exception as e:
+                logger.warning(f"[Diary] 总结工具结果失败，回退截断: {e}")
+                content = str(result)[:500] + "..."
+        await self._record_diary_entry("[动作结果] " + content)
+        return result
+
+    async def _record_diary_entry(self, text: str) -> None:
+        """记录一条文本到日记条目表"""
+        try:
+            async with get_session() as session:
+                session.add(DiaryEntry(content=text))
+                await session.commit()
+            logger.debug(f"[Diary] Recorded: {text[:60]}...")
+        except Exception as e:
+            logger.warning(f"[Diary] Failed to record: {e}")
+
     async def pre_function_call(
         self, call_id: str, name: str, params: dict[str, Any]
     ) -> tuple[str, str, dict[str, Any]]:
         self.moonlark_main._update_decision_history(f"{name}({params})")
+        # 记录工具调用到日记
+        args_str = str(params)
+        if len(args_str) > 200:
+            args_str = args_str[:200] + "..."
+        await self._record_diary_entry(f"[动作] {name}({args_str})")
         return call_id, name, params
 
     async def generate_message(self, reason) -> OpenAIChatMessage:
         notes_text = await self.moonlark_main.get_relevant_notes()
+        instant_mem = await self.moonlark_main.summary_instant_memory()
+        # 记录群聊事件总结到日记
+        if instant_mem and instant_mem not in ("暂无群聊记忆。", "记忆汇总失败。"):
+            await self._record_diary_entry("[群聊事件] " + instant_mem)
         return generate_message(
             await lang.text(
                 "moonlark_main.user",
                 self.lang,
                 reason,
                 datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                await self.moonlark_main.summary_instant_memory(),
+                instant_mem,
                 notes_text,
             ),
             "user",
@@ -217,6 +269,7 @@ class ActionDecider:
             self.fetcher.session.insert_message(
                 await self.generate_message(reason),
             )
+            return
         logger.warning(f"Fetcher 未初始化，已忽略事件: {reason}")
 
     def reset(self) -> None:
@@ -260,6 +313,9 @@ class MoonlarkMain:
 
         # MoonlarkMain 定时器（每5分钟，清醒时触发 action_decider.loop）
         scheduler.scheduled_job("interval", minutes=5, id="moonlark_main_timer")(self._on_timer)
+
+        # 日记定时器（每天凌晨 2 点）
+        scheduler.scheduled_job("cron", hour=2, id="moonlark_diary")(self.generate_diary)
 
     async def summary_instant_memory(self) -> str:
         tasks = [
@@ -448,6 +504,131 @@ class MoonlarkMain:
         except Exception as e:
             logger.warning(f"[MoonlarkMain] 获取今日动作历史失败: {e}")
             return ""
+
+    # ========================================================================
+    # 日记
+    # ========================================================================
+
+    async def generate_diary(self) -> None:
+        """每日凌晨 2 点生成日记并写入笔记"""
+        try:
+            # 1. 读取近 24h 的日记条目
+            entries = await self._fetch_diary_entries(hours=24)
+            if not entries:
+                logger.info("[Diary] 近 24h 无日记条目，跳过")
+                return
+
+            # 2. 格式化为可读文本
+            context = self._format_diary_context(entries)
+
+            # 3. 生成身份信息
+            identity_prompt = await get_prompt_text("identity")
+
+            # 4. 第一次调用：生成日记正文
+            diary_text = await fetch_message(
+                [
+                    generate_message(
+                        await lang.text(
+                            "diary.system",
+                            self.lang_str,
+                            identity_prompt,
+                        ),
+                        "system",
+                    ),
+                    generate_message(
+                        await lang.text(
+                            "diary.user",
+                            self.lang_str,
+                            context,
+                        ),
+                        "user",
+                    ),
+                ],
+                identify="MoonlarkMain - Generate Diary",
+                reasoning_effort="low",
+            )
+
+            if not diary_text or not diary_text.strip():
+                logger.warning("[Diary] LLM 生成的日记为空")
+                return
+
+            # 5. 第二次调用：生成关键词 + 过期时间
+            processed = await fetch_json(
+                [
+                    generate_message(
+                        await lang.text(
+                            "diary_process.system",
+                            self.lang_str,
+                        ),
+                        "system",
+                    ),
+                    generate_message(
+                        await lang.text(
+                            "diary_process.user",
+                            self.lang_str,
+                            diary_text,
+                        ),
+                        "user",
+                    ),
+                ],
+                DiaryProcessResponse,
+                identify="MoonlarkMain - Diary Process",
+                reasoning_effort="low",
+            )
+
+            # 6. 写入笔记
+            from ...utils.note_manager import NoteManager
+
+            note_manager = NoteManager("moonlark_diary")
+            await note_manager.create_note(
+                content=diary_text,
+                keywords=processed.keywords,
+                expire_hours=processed.expire_hours,
+            )
+            logger.info(f"[Diary] 日记已生成并存入笔记: {processed.keywords}")
+
+            # 7. 清理已使用的日记条目
+            await self._cleanup_diary_entries(before=entries[-1].created_at)
+
+        except Exception as e:
+            logger.exception(f"[Diary] 日记生成失败: {e}")
+
+    async def _fetch_diary_entries(self, hours: int = 24) -> list[DiaryEntry]:
+        """获取近 N 小时的日记条目"""
+        from datetime import timedelta
+
+        cutoff = datetime.now() - timedelta(hours=hours)
+        async with get_session() as session:
+            result = await session.execute(
+                select(DiaryEntry)
+                .where(DiaryEntry.created_at >= cutoff)
+                .order_by(DiaryEntry.created_at)
+            )
+            return list(result.scalars().all())
+
+    def _format_diary_context(self, entries: list[DiaryEntry]) -> str:
+        """将日记条目格式化为可读文本"""
+        lines = []
+        for entry in entries:
+            time_str = entry.created_at.strftime("%H:%M")
+            lines.append(f"[{time_str}] {entry.content}")
+        return "\n".join(lines)
+
+    async def _cleanup_diary_entries(self, before: datetime) -> None:
+        """清理指定时间之前的日记条目"""
+        try:
+            async with get_session() as session:
+                await session.execute(
+                    select(DiaryEntry).where(DiaryEntry.created_at < before)
+                )
+                from sqlalchemy import delete
+                await session.execute(
+                    delete(DiaryEntry).where(DiaryEntry.created_at < before)
+                )
+                await session.commit()
+                logger.debug("[Diary] 已清理过期日记条目")
+        except Exception as e:
+            logger.warning(f"[Diary] 清理日记条目失败: {e}")
 
     # ========================================================================
     # 定时器
