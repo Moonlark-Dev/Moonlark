@@ -1,8 +1,8 @@
 from datetime import datetime, timedelta
-from typing import TypedDict
+from typing import Optional, TypedDict
 
 from nonebot_plugin_openai.utils.chat import fetch_message
-from nonebot_plugin_openai.utils.message import generate_message
+from nonebot_plugin_openai.utils.message import generate_message, get_message, get_messages
 from nonebot.log import logger
 from nonebot_plugin_orm import get_session
 from sqlalchemy import select, delete
@@ -10,7 +10,6 @@ import json
 import re
 import asyncio
 
-from ..lang import lang
 from ..models import InstantMemoryCache
 
 
@@ -174,18 +173,10 @@ async def _deduplicate(lang_str: str = "zh_tw") -> None:
                 memory_descriptions.append(f"[{i}] (创建于 {create_str}) {mem['content']}")
             existing_memories_str = "\n".join(memory_descriptions)
 
-            system_prompt = await lang.text("conflict_detection.system_prompt", lang_str)
-            user_prompt = await lang.text(
-                "conflict_detection.user_prompt",
-                lang_str,
+            messages = await get_messages(
+                "memory_conflict_detection",
                 existing_memories=existing_memories_str,
-                current_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             )
-
-            messages = [
-                generate_message(system_prompt, "system"),
-                generate_message(user_prompt, "user"),
-            ]
 
             response = await fetch_message(messages, identify="Memory Deduplication")
             cleaned_response = re.sub(r"`{1,3}(json)?", "", response).strip()
@@ -239,10 +230,7 @@ class InstantMemoryManager:
             try:
                 model_response = await fetch_message(
                     [
-                        generate_message(
-                            await lang.text("memory_cache.creator", self.lang_str, datetime.now().isoformat()),
-                            "system",
-                        ),
+                        await get_message("system", "instant_memory_generator.md.jinja"),
                         generate_message("\n".join(messages_to_process), "user"),
                     ],
                     reasoning_effort="medium",

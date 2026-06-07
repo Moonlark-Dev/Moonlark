@@ -1,0 +1,12 @@
+description: "作为 Moonlark 发送一条消息到群聊中。"
+parameters:
+  - name: message_content
+    description: "要发送的消息内容，可以使用 @群友的昵称 来提及某位群友。"
+    type: string
+    required: true
+  - name: reply_message_id
+    description: |
+      要回复的消息的**消息 ID**，不指定则不会对有关消息进行引用。
+      你也可以通过在这个参数填入 `send_message` 工具中返回的消息来引用你自己发送的消息。
+    type: integer
+    required: false

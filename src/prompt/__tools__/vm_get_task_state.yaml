@@ -1,0 +1,17 @@
+description: |
+  获取指定任务的执行状态和输出内容。
+  **何时调用**:
+  - 在使用 vm_create_task 创建任务后，查询任务执行结果
+  - 需要检查长时间运行的任务是否完成
+  - 需要获取任务的输出内容
+  **任务状态说明**:
+  - pending: 任务等待执行
+  - running: 任务正在执行
+  - completed: 任务执行完成（成功）
+  - failed: 任务执行失败
+  - stopped: 任务被手动停止
+parameters:
+  - name: task_id
+    description: "由 vm_create_task 返回的任务 ID。格式为 UUID，例如: '550e8400-e29b-41d4-a716-446655440000'"
+    type: string
+    required: true

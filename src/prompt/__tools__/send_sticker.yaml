@@ -1,0 +1,9 @@
+description: |
+  发送一个已收藏的表情包到群聊中。
+  **何时调用**: 在使用 search_sticker 找到合适的表情包后，调用此工具发送。
+  **注意**: sticker_id 必须是从 search_sticker 结果中获得的有效 ID。
+parameters:
+  - name: sticker_id
+    description: "要发送的表情包的数据库 ID，从 search_sticker 的搜索结果中获取。"
+    type: integer
+    required: true

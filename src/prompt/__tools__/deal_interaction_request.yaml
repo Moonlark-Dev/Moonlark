@@ -1,0 +1,16 @@
+description: |
+  处理群友的互动行为，例如戳一戳、摸头等。
+  拒绝互动 (deal_type 为 dodge/bite) 的场景：对方过于频繁的交互、你觉得对方与你的好感度过低。合适的拒绝会让你显得更傲娇、可爱。
+parameters:
+  - name: interaction_id
+    description: '互动"交互ID"'
+    type: string
+    required: true
+  - name: deal_type
+    description: "处理类型，可选值：enjoy/dodge/bite；enjoy 表示你很享受这次互动，dodge/bite 表示你不太喜欢这样的互动。只有互动请求中提到"该动作可被拒绝"时，你才可以选择 dodge/bite。"
+    type: string
+    required: true
+    enum:
+      - enjoy
+      - dodge
+      - bite

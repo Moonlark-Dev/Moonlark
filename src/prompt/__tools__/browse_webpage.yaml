@@ -1,0 +1,11 @@
+description: |
+  使用浏览器访问指定 URL 并获取网页内容的 Markdown 格式文本。
+  **何时必须调用**:
+  1. 当用户直接提供一个 URL，或者要求你**总结、分析、提取特定网页的内容**时。
+  2. 当你使用 web_search 获取到了一些结果，需要详细查看某个网页获取更多的信息时。
+  **判断标准**: 只要输入中包含 `http://` 或 `https://`，并且用户的意图与该链接内容相关，就**必须**调用此工具。
+parameters:
+  - name: url
+    description: "要访问的网页的 URL 地址"
+    type: string
+    required: true

@@ -1,0 +1,12 @@
+description: |
+  向你的"EGO"申请执行一个内部行为（如吃饭、工作）。
+  **何时必须调用**：你被要求"去做某事"时调用，例如"去吃点东西"。不要用于机器人回复用户消息或获取外部知识。
+parameters:
+  - name: do
+    description: '想要做的事的名字，例如："吃午饭"、"玩一会游戏"'
+    type: string
+    required: true
+  - name: duration
+    description: "建议的持续时间（分钟），意识会话会参考这个值但不一定完全采纳。"
+    type: integer
+    required: false

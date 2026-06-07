@@ -355,7 +355,7 @@ async def fetch_message(
     return await fetcher.fetch_last_message()
 
 
-T3 = TypeVar("T3", bound=BaseModel)
+T3 = TypeVar("T3")
 from nonebot.compat import type_validate_json
 
 

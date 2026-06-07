@@ -98,6 +98,8 @@ class ToolManager:
         Returns:
             人品值结果消息
         """
+        if self.processor is None:
+            raise RuntimeError("processor is None")
         users = await self.processor.session.get_users()
         if not (user_id := users.get(nickname)):
             return await self.text("tools_desc.calculate_luck_value.user_not_found", nickname)
@@ -108,16 +110,22 @@ class ToolManager:
         self, deal_type: Literal["ready", "delay"], delay_minutes: Optional[int] = None, reason: Optional[str] = None
     ) -> str:
         """修改睡觉状态，委托给session处理"""
+        if self.processor is None:
+            raise RuntimeError("processor is None")
         return await self.processor.session.change_sleep_status(
             deal_type=deal_type, delay_minutes=delay_minutes, reason=reason
         )
 
     async def request_action(self, do: str, duration: Optional[int] = None) -> str:
         """向意识会话申请执行一个动作"""
+        if self.processor is None:
+            raise RuntimeError("processor is None")
         return await self.processor.session.request_action(do=do, duration=duration)
 
     async def request_sleep(self) -> str:
         """向意识会话申请睡觉"""
+        if self.processor is None:
+            raise RuntimeError("processor is None")
         return await self.processor.session.request_sleep()
 
     async def select_tools(self, mode: Literal["group", "agent"]) -> list[AsyncFunction]:
@@ -289,7 +297,7 @@ class ToolManager:
             )
 
         # # === Group 模式特有工具 ===
-        if mode == "group":
+        if processor and mode == "group":
             # query_image
             tools.append(
                 AsyncFunction(
@@ -561,7 +569,7 @@ class ToolManager:
             )
 
             # Conditional tools
-            if processor.session.is_napcat_bot():
+            if processor and  processor.session.is_napcat_bot():
                 tools.append(
                     AsyncFunction(
                         func=processor.poke,
@@ -575,7 +583,7 @@ class ToolManager:
                         },
                     )
                 )
-            if processor.session.__class__.__name__ == "GroupSession":
+            if processor and processor.session.__class__.__name__ == "GroupSession":
                 emoji_id_table = "/".join([f"{emoji}({emoji_id})" for emoji_id, emoji in QQ_EMOJI_MAP.items()])
                 tools.append(
                     AsyncFunction(
@@ -600,6 +608,8 @@ class ToolManager:
         return tools
 
     async def deal_interaction_request(self, interaction_id: str, deal_type: Literal["dodge", "bite", "enjoy"]) -> None:
+        if self.processor is None:
+            raise RuntimeError("processor is not set")
         if deal_type == "enjoy":
             await self.processor.accept_interaction_request(interaction_id)
         else:
@@ -607,6 +617,9 @@ class ToolManager:
 
     async def remove_note(self, note_id: int) -> Optional[str]:
         # Get the note manager for this context
+        
+        if self.processor is None:
+            raise RuntimeError("processor is None")
         note_manager = await get_context_notes(self.processor.session.session_id)
         # Try to delete the note
         success = await note_manager.delete_note(note_id)
@@ -617,6 +630,8 @@ class ToolManager:
         self, text: str, expire_hours: Optional[float] = None, keywords: Optional[str] = None
     ) -> Optional[str]:
         # Get the note manager for this context
+        if self.processor is None:
+            raise RuntimeError("Session is None")
         note_manager = await get_context_notes(self.processor.session.session_id)
         note_check_result = await check_note(self.processor.session, keywords, text, expire_hours)
         if note_check_result["create"] == False:
@@ -628,6 +643,9 @@ class ToolManager:
 
     async def query_history_message(self) -> str:
         from ..core.session import groups
+        
+        if self.processor is None:
+            raise RuntimeError("processor is None")
 
         # 触发所有会话的即时记忆生成
         for group in groups.values():
