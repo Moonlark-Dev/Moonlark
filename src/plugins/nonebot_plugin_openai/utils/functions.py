@@ -54,20 +54,20 @@ async def create_function_list(functions: list[Callable[..., Awaitable[Any]]], *
             if param.enum:
                 parameters[param.name] = FunctionParameterWithEnum(
                     type=param.type,
-                    description=param.description,
+                    description=param.description.format(**kwargs),
                     required=param.required,
                     enum=set(param.enum),
                 )
             else:
                 parameters[param.name] = FunctionParameter(
                     type=param.type,
-                    description=param.description,
+                    description=param.description.format(**kwargs),
                     required=param.required,
                 )
         func_list.append(
             AsyncFunction(
                 func=func,
-                description=func_info.description,
+                description=func_info.description.format(**kwargs),
                 parameters=parameters,
             )
         )
