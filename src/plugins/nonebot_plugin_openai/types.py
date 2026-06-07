@@ -1,4 +1,4 @@
-from typing import Literal, TypedDict, Awaitable, Callable, Any
+from typing import Literal, Optional, TypedDict, Awaitable, Callable, Any
 from openai.types.chat import ChatCompletionMessageParam, ChatCompletionToolMessageParam, ChatCompletionMessage
 from openai.types.chat.chat_completion import Choice
 from pydantic import BaseModel
