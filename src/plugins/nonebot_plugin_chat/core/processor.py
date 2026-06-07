@@ -350,14 +350,10 @@ class MessageProcessor:
         await self.openai_messages.fetch_reply()
 
     async def append_tool_call_history(self, call_string: str) -> None:
-        history = self.session.tool_calls_history
-        existing = next((i for i, h in enumerate(history) if call_string in h), None)
-        if existing is not None:
-            history.pop(existing)
-        history.append(
+        self.session.tool_calls_history.append(
             await self.session.text("tools.template", datetime.now().strftime("%H:%M"), call_string)
         )
-        self.session.tool_calls_history = history[-5:]
+        self.session.tool_calls_history = self.session.tool_calls_history[-5:]
 
     async def send_function_call_feedback(
         self, call_id: str, name: str, param: dict[str, Any]
