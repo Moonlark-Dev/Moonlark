@@ -8,7 +8,7 @@ from nonebot_plugin_alconna import At, UniMessage
 from nonebot_plugin_chat.utils.group import LinkParser
 from nonebot_plugin_chat.utils.token_bucket import TokenBucket
 from ..enums import StateEnum
-from nonebot_plugin_chat.utils.prompt import get_prompt_text
+from nonebot_plugin_openai import get_message
 from ..config import config
 from nonebot_plugin_openai.types import Message as OpenAIMessage
 from nonebot.log import logger
@@ -622,27 +622,12 @@ class MessageProcessor:
         )
 
     async def generate_system_prompt(self) -> OpenAIMessage:
-        fav_rule = await get_prompt_text("favorability")
-
-        return generate_message(
-            await self.session.text(
-                "prompt_group.default",
-                await self.session.get_session_name(),
-                await get_prompt_text("identity"),
-                (
-                    await self.session.text("prompt_group.simple_image")
-                    if not self.ENABLE_EMBEDDED_IMAGE
-                    else await self.session.text("prompt_group.image_placeholder")
-                ),
-                await get_prompt_text("rule"),
-                (
-                    await self.session.text("prompt_group.token_bucket_rule")
-                    if self.session.get_session_type() == "group"
-                    else ""
-                ),
-                await get_prompt_text("interaction", fav_rule),
-            ),
+        return await get_message(
             "system",
+            "chat.md.jinja",
+            session_name=await self.session.get_session_name(),
+            image_placeholder=self.ENABLE_EMBEDDED_IMAGE,
+            is_group_session=self.session.get_session_type() == "group"
         )
 
     async def handle_recall(self, message_id: str, message_content: str) -> None:
