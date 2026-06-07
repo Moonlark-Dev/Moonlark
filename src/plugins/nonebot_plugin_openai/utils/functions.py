@@ -48,7 +48,7 @@ async def create_function_list(functions: list[Callable[..., Awaitable[Any]]], *
     for func in functions:
         name = func.__name__
         async with aiofiles.open(f"./src/prompt/__tools__/{name}.yaml", "r", encoding="utf-8") as f:
-            func_info = type_validate_python(MoonlarkFunctionDefinition, yaml.parse(await f.read()))
+            func_info = type_validate_python(MoonlarkFunctionDefinition, yaml.safe_load(await f.read()))
         parameters = {}
         for param in func_info.parameters:
             if param.enum:
