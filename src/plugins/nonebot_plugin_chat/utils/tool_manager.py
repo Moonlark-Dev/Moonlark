@@ -132,6 +132,7 @@ class ToolManager:
 
     async def select_tools(self, mode: Literal["group", "agent"]) -> list[AsyncFunction]:
         tools = []
+        emoji_id_table = None
         processor = self.processor
 
         # === 通用工具 ===
