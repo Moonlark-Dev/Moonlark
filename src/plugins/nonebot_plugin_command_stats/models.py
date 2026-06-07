@@ -18,11 +18,16 @@
 from datetime import datetime
 from nonebot_plugin_orm import Model
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy import String, DateTime, Integer, func
+from sqlalchemy import String, DateTime, Integer, Index, func
 
 
 class CommandUsage(Model):
     """指令使用记录表"""
+
+    __table_args__ = (
+        Index("ix_nonebot_plugin_command_stats_commandusage_used_at_command", "used_at", "command"),
+        {"extend_existing": True},
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     command: Mapped[str] = mapped_column(String(64), index=True)  # 指令名
