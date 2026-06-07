@@ -1,7 +1,7 @@
 description: |
   对一条消息添加一个表情反应。
   emoji_id 参数的对照表如下，文本反应内容为 QQ 的小黄脸表情（文本为"反应"的内容，括号内为对应的 emoji_id）：
-  {{ emoji_table }}
+  { emoji_table }
 parameters:
   - name: message_id
     description: "要添加反应的消息的**消息 ID**。"

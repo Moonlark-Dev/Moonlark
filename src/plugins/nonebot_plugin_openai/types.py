@@ -1,6 +1,7 @@
 from typing import Literal, TypedDict, Awaitable, Callable, Any
 from openai.types.chat import ChatCompletionMessageParam, ChatCompletionToolMessageParam, ChatCompletionMessage
 from openai.types.chat.chat_completion import Choice
+from pydantic import BaseModel
 
 Message = ChatCompletionMessageParam | ChatCompletionToolMessageParam | ChatCompletionMessage
 Messages = list[Message]
@@ -32,3 +33,16 @@ class ReplaceResponseStrategy(TypedDict):
 
 
 TimeoutStrategy = ReplaceResponseStrategy | StopSessionStrategy
+
+
+class FunctionParameterDefinition(BaseModel):
+    type: str
+    description: str
+    required: bool = True
+    enum: Optional[list[str]] = None
+    name: str
+
+
+class MoonlarkFunctionDefinition(BaseModel):
+    description: str
+    parameters: list[FunctionParameterDefinition]
