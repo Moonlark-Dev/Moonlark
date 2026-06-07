@@ -4,7 +4,7 @@ from typing import Any, Literal, Optional, TypedDict, Union
 from nonebot_plugin_orm import Model
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy import BLOB, JSON, DateTime, LargeBinary, String, Text, Float, Integer, BINARY
+from sqlalchemy import BLOB, JSON, DateTime, LargeBinary, String, Text, Float, Integer, BINARY, func
 from sqlalchemy.dialects.mysql import MEDIUMBLOB, MEDIUMTEXT
 
 # 创建跨数据库兼容的二进制类型：MySQL 使用 MEDIUMBLOB (16MB)，其他数据库使用 LargeBinary
@@ -258,3 +258,18 @@ class SelfActionResultProcessResponse(BaseModel):
     compressed_content: str
     keywords: str
     expire_hours: float = 168
+
+
+class DiaryEntry(Model):
+    """日记录入表，记录有意义的文本消息"""
+
+    id: Mapped[int] = mapped_column(Integer(), primary_key=True, autoincrement=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(), server_default=func.now(), index=True)
+    content: Mapped[str] = mapped_column(Text())
+
+
+class DiaryProcessResponse(BaseModel):
+    """日记处理 LLM 返回格式（关键词 + 过期时间）"""
+
+    keywords: str = Field(description="关键词，空格分隔，至少 1 个")
+    expire_hours: float = Field(description="根据信息时效性估算的过期时间（小时），-1 表示永不过期")
