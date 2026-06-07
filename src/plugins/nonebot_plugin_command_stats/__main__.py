@@ -22,7 +22,7 @@ from nonebot.message import run_preprocessor
 from nonebot.typing import T_State
 from nonebot.adapters import Event
 from nonebot.matcher import Matcher
-from nonebot_plugin_alconna import on_alconna, Args, Arparma, UniMessage
+from nonebot_plugin_alconna import on_alconna, Alconna, Args, Arparma, UniMessage
 from nonebot_plugin_orm import get_session
 from nonebot_plugin_larkutils import get_user_id, get_group_id
 from nonebot_plugin_larklang import LangHelper
@@ -158,8 +158,8 @@ async def get_total_stats(days: int = 7) -> dict:
 # ============================================================
 
 cmd_rank = on_alconna(
-    Args["days?", int],
-    aliases={"指令排行", "cmd-rank", "命令排行", "热门指令"},
+    Alconna("cmd-rank", Args["days?", int]),
+    aliases={"指令排行", "命令排行", "热门指令"},
     priority=5,
 )
 
