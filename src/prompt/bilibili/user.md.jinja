@@ -1,0 +1,12 @@
+{#
+模板参数：
+- title: 视频标题或文件名
+- description: 视频简介，如果为非 B 站视频为 None，依据此识别提示词类型
+#}
+{% if description %}
+这是 B 站视频：{{ title }}
+简介：{{ description }}
+{% else %}
+文件名：{{ title }}
+{% endif %}
+请总结这个视频的内容。

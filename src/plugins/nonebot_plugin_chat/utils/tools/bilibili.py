@@ -1,4 +1,4 @@
-from nonebot_plugin_openai.utils.message import generate_message
+from nonebot_plugin_openai.utils.message import generate_message, get_message, get_message_text
 from bilibili_api import video
 from ...config import config
 import httpx
@@ -151,10 +151,13 @@ async def describe_bilibili_video(bv_id: str, get_text: GetTextFunc) -> str:
         external_url = f"{config.moonlark_api_base}/chat/video/{file_name}"
 
         messages = [
-            generate_message(await get_text("bilibili.summary_system_prompt"), role="system"),
+            await get_message("system", "bilibili/system.md.jinja"),
             generate_message(
                 [
-                    {"type": "text", "text": await get_text("bilibili.summary_user_prompt", title, desc)},
+                    {
+                        "type": "text",
+                        "text": await get_message_text("bilibili/user.md.jinja", title=title, description=desc),
+                    },
                     {"type": "video_url", "video_url": {"url": external_url}},
                 ],
                 role="user",

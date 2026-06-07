@@ -1,8 +1,6 @@
-from datetime import datetime
 from nonebot_plugin_openai import MessageFetcher
-from nonebot_plugin_openai.utils.message import generate_message
+from nonebot_plugin_openai.utils.message import generate_message, get_message
 
-from ..lang import lang
 from .tool_manager import ToolManager
 
 
@@ -21,7 +19,7 @@ class AskAISession:
             await self.setup()
         fetcher = await MessageFetcher.create(
             [
-                generate_message(await lang.text("prompt_agent.system", self.user_id, datetime.now().isoformat())),
+                await get_message("system", "chat_agent.md.jinja"),
                 generate_message(query, "user"),
             ],
             False,

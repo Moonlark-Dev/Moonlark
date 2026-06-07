@@ -1,0 +1,6 @@
+description: "向指定群友发送一个戳一戳互动。"
+parameters:
+  - name: target_name
+    description: "被戳的群友的昵称。"
+    type: string
+    required: true

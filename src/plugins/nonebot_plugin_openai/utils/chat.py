@@ -1,5 +1,9 @@
 import asyncio
+import aiofiles
 from nonebot_plugin_openai.types import TimeoutStrategy
+from nonebot_plugin_openai.types import FunctionParameterDefinition
+from nonebot_plugin_openai.types import MoonlarkFunctionDefinition
+from nonebot_plugin_openai.utils.functions import generate_function_list
 from openai.types.shared.reasoning_effort import ReasoningEffort
 import hashlib
 from collections.abc import Awaitable
@@ -21,38 +25,12 @@ from openai.types.chat import ChatCompletionToolMessageParam, ChatCompletionFunc
 from nonebot_plugin_status_report import report_openai_history
 from pydantic import BaseModel, ValidationError
 
-from ..types import Messages, AsyncFunction, Message as OpenaiMessage
+from ..types import FunctionParameter, FunctionParameterWithEnum, Messages, AsyncFunction, Message as OpenaiMessage
 
 from ..config import config
 from .message import generate_message
 from .client import client
 from .model_config import get_model_for_identify
-
-
-def generate_function_list(func_index: dict[str, AsyncFunction]) -> list[ChatCompletionFunctionToolParam]:
-    func_list = []
-    for name, data in func_index.items():
-        func_info = FunctionDefinition(
-            name=name,
-            description=data["description"],
-            parameters={"type": "object", "properties": {}, "required": []},
-            strict=True,
-        )
-        for p_name, p_data in data["parameters"].items():
-            param_info: dict[str, Any] = {"type": p_data["type"], "description": p_data["description"]}
-            if "enum" in p_data:
-                param_info["enum"] = list(p_data["enum"])
-            func_info["parameters"]["properties"][p_name] = param_info  # type: ignore
-            if p_data["required"]:
-                func_info["parameters"]["required"].append(p_name)  # type: ignore
-        func_list.append(
-            ChatCompletionFunctionToolParam(
-                type="function",
-                function=func_info,
-            )
-        )
-    return func_list
-
 
 T = TypeVar("T")
 T2 = TypeVar("T2", bound=BaseModel)
@@ -355,7 +333,7 @@ async def fetch_message(
     return await fetcher.fetch_last_message()
 
 
-T3 = TypeVar("T3", bound=BaseModel)
+T3 = TypeVar("T3")
 from nonebot.compat import type_validate_json
 
 

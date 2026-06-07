@@ -30,6 +30,7 @@ from nonebot_plugin_orm import get_session
 from .message import parse_message_to_string as _parse_message_to_string
 from nonebot_plugin_larkutils import get_group_id
 from nonebot_plugin_openai import generate_message, fetch_message
+from nonebot_plugin_openai.utils.message import get_message
 from ..lang import lang
 
 from ..models import ChatGroup
@@ -86,10 +87,7 @@ class LinkParser:
             raise BrowserErrorOccurred(f"解析失败: {result}")
         return await fetch_message(
             [
-                generate_message(
-                    await lang.text("prompt_link_parser", self.lang_str),
-                    "system",
-                ),
+                await get_message("system", "link_parser.md.jinja"),
                 generate_message(
                     await lang.text(
                         "browse_webpage.success",

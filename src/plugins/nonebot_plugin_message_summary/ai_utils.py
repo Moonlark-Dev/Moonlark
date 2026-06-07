@@ -4,9 +4,9 @@ from typing import Sequence
 
 from nonebot import logger
 from nonebot_plugin_openai import fetch_message, fetch_json, generate_message
+from nonebot_plugin_openai.utils.message import get_message, get_message_text, get_messages
 from pydantic import BaseModel
 
-from .lang import lang
 from .models import CatGirlScore, DebateAnalysis, GroupMessage
 
 
@@ -29,12 +29,8 @@ async def generate_message_string(result: list[GroupMessage] | Sequence[GroupMes
 
 
 async def fetch_broadcast_summary(user_id: str, messages: str) -> str:
-    time_str = datetime.now(timezone(timedelta(hours=8))).strftime("%Y-%m-%d %H:%M:%S")
     summary_string = await fetch_message(
-        [
-            generate_message(await lang.text("prompt2s", user_id, time_str), "system"),
-            generate_message(await lang.text("prompt2u", user_id, messages), "user"),
-        ],
+        await get_messages("msg_summary_broadcast", messages=messages),
         identify="Message Summary (Broadcast)",
     )
     return summary_string
@@ -42,7 +38,7 @@ async def fetch_broadcast_summary(user_id: str, messages: str) -> str:
 
 async def fetch_default_summary(user_id: str, messages: str) -> str:
     summary_string = await fetch_message(
-        [generate_message(await lang.text("prompt", user_id), "system"), generate_message(messages, "user")],
+        [await get_message("system", "msg_summary/system.md.jinja"), generate_message(messages, "user")],
         identify="Message Summary",
     )
     return summary_string
@@ -50,7 +46,7 @@ async def fetch_default_summary(user_id: str, messages: str) -> str:
 
 async def fetch_topic_summary(user_id: str, messages: str) -> str:
     summary_string = await fetch_message(
-        [generate_message(await lang.text("prompt_topic", user_id), "system"), generate_message(messages, "user")],
+        [await get_message("system", "msg_summary_topic/system.md.jinja"), generate_message(messages, "user")],
         identify="Message Summary (Topic)",
     )
     return summary_string
@@ -59,7 +55,7 @@ async def fetch_topic_summary(user_id: str, messages: str) -> str:
 async def fetch_daily_summary(user_id: str, messages: str) -> str:
     summary_string = await fetch_message(
         [
-            generate_message(await lang.text("prompt_everyday_summary", user_id, datetime.now().isoformat()), "system"),
+            await get_message("system", "msg_summary_daily/system.md.jinja"),
             generate_message(messages, "user"),
         ],
         identify="Message Summary (Daily)",
@@ -72,7 +68,7 @@ async def get_catgirl_score(message_list: str) -> list[CatGirlScore]:
     return json.loads(
         await fetch_message(
             [
-                generate_message(await lang.text("neko.prompt", message_list), "system"),
+                await get_message("system", "neko/system.md.jinja"),
                 generate_message(message_list, "user"),
             ],
             identify="Message Summary (Neko)",
@@ -84,7 +80,7 @@ async def analyze_debate(messages: str, user_id: str) -> DebateAnalysis | None:
     """分析聊天记录中的辩论内容"""
     result = await fetch_message(
         [
-            generate_message(await lang.text("debate.prompt", user_id), "system"),
+            await get_message("system", "debate/system.md.jinja"),
             generate_message(messages, "user"),
         ],
         identify="Message Summary (Debate)",
@@ -107,10 +103,9 @@ async def analyze_debate(messages: str, user_id: str) -> DebateAnalysis | None:
 
 async def generate_semantic_search_payload(query: str) -> str:
     """Stage 1: Intent Extraction"""
-    prompt = await lang.text("check_history.prompt_stage1", "")
     result = await fetch_message(
         [
-            generate_message(prompt, "system"),
+            await get_message("system", "check_history_stage1/system.md.jinja"),
             generate_message(query, "user"),
         ],
         identify="Message Summary (History Check Stage 1)",
@@ -121,11 +116,10 @@ async def generate_semantic_search_payload(query: str) -> str:
 async def analyze_history(payload: str, history: list[GroupMessage], user_id: str) -> dict | None:
     """Stage 2: Historical Analysis"""
     messages_str = await generate_message_string(history, "broadcast")
-    prompt = await lang.text("check_history.prompt_stage2", user_id)
 
     result = await fetch_message(
         [
-            generate_message(prompt, "system"),
+            await get_message("system", "check_history_stage2/system.md.jinja"),
             generate_message(f"Payload: {payload}\n\nHistory:\n{messages_str}", "user"),
         ],
         identify="Message Summary (History Check Stage 2)",
@@ -154,7 +148,7 @@ async def extract_mvp_from_summary(summary_string: str, user_id: str = "") -> tu
     try:
         result = await fetch_json(
             [
-                generate_message(await lang.text("mvp_ranking.extract_prompt", user_id), "system"),
+                await get_message("system", "mvp_extract/system.md.jinja"),
                 generate_message(summary_string, "user"),
             ],
             response_format=MVPResult,
@@ -194,7 +188,7 @@ async def generate_decision_content(
         punishment: 处分内容（如"女装"）
         user_id: 用户ID
     """
-    prompt = await lang.text("decision.prompt", user_id)
+    prompt = await get_message_text("decision/system.md.jinja")
     try:
         result = await fetch_json(
             [

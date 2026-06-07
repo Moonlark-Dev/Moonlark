@@ -12,7 +12,8 @@ from nonebot import logger
 from nonebot_plugin_apscheduler import scheduler
 from nonebot_plugin_openai.types import AsyncFunction, FunctionParameter
 from nonebot_plugin_openai.utils.chat import MessageFetcher, fetch_json, fetch_message
-from nonebot_plugin_openai.utils.message import generate_message
+from nonebot_plugin_openai.utils.functions import create_function_list
+from nonebot_plugin_openai.utils.message import generate_message, get_message, get_message_text, get_messages
 from nonebot_plugin_orm import get_session
 from sqlalchemy import select
 
@@ -25,7 +26,6 @@ from ...models import (
     PrivateChatSession,
 )
 from ...utils.instant_mem import get_instant_memories
-from ...utils.prompt import get_prompt_text
 from ...utils.status_manager import get_status_manager
 from ..session import groups
 from .action_advisor import ActionAdvisor
@@ -54,94 +54,26 @@ class ActionDecider:
 
     async def create_fetcher(self) -> MessageFetcher:
         messages = [
-            generate_message(
-                await lang.text(
-                    "moonlark_main.prompt",
-                    self.moonlark_main.lang_str,
-                    await get_prompt_text("identity"),
-                    await self.moonlark_main.get_friends(),
-                ),
-                "system",
-            ),
+            await get_message("system", "action_decider.md.jinja"),
             await self.generate_message(
                 ("online\n\n" "## 今日已进行的动作\n" f"{await self.moonlark_main._get_today_actions_text()}")
             ),
         ]
+        functions = await create_function_list(
+            [
+                self.moonlark_main.sleep_controller.sleep,
+                self.moonlark_main.self_action.start_action,
+                self.moonlark_main.blog_writer.start_new_blog,
+                self.moonlark_main.blog_writer.blog_publish_draft,
+                self.moonlark_main.blog_writer.blog_drop_draft,
+                self.moonlark_main.blog_writer.get_blog_state,
+                self.moonlark_main.proactive_chat.send_private_message,
+            ]
+        )
         fetcher = await MessageFetcher.create(
             messages,
             identify="ActionDecider",
-            functions=[
-                AsyncFunction(
-                    func=self.moonlark_main.sleep_controller.sleep,
-                    description=await lang.text("moonlark_main.tools.sleep.description", self.lang),
-                    parameters={},
-                ),
-                AsyncFunction(
-                    func=self.moonlark_main.self_action.start_action,
-                    description=await lang.text("moonlark_main.tools.start_action.description", self.lang),
-                    parameters={
-                        "activity": FunctionParameter(
-                            type="string",
-                            description=await lang.text("moonlark_main.tools.start_action.activity", self.lang),
-                            required=True,
-                        ),
-                    },
-                ),
-                AsyncFunction(
-                    func=self.moonlark_main.blog_writer.start_new_blog,
-                    description=await lang.text("moonlark_main.tools.start_new_blog.description", self.lang),
-                    parameters={
-                        "topic": FunctionParameter(
-                            type="string",
-                            description=await lang.text("moonlark_main.tools.start_new_blog.topic", self.lang),
-                            required=True,
-                        ),
-                        "prompt": FunctionParameter(
-                            type="string",
-                            description=await lang.text("moonlark_main.tools.start_new_blog.prompt", self.lang),
-                            required=True,
-                        ),
-                    },
-                ),
-                AsyncFunction(
-                    func=self.moonlark_main.blog_writer.blog_publish_draft,
-                    description=await lang.text("moonlark_main.tools.blog_publish_draft.description", self.lang),
-                    parameters={},
-                ),
-                AsyncFunction(
-                    func=self.moonlark_main.blog_writer.blog_drop_draft,
-                    description=await lang.text("moonlark_main.tools.blog_drop_draft.description", self.lang),
-                    parameters={},
-                ),
-                AsyncFunction(
-                    func=self.moonlark_main.blog_writer.get_blog_state,
-                    description=await lang.text("moonlark_main.tools.get_blog_state.description", self.lang),
-                    parameters={},
-                ),
-                AsyncFunction(
-                    func=self.moonlark_main.proactive_chat.send_private_message,
-                    description=await lang.text("moonlark_main.tools.send_private_message.description", self.lang),
-                    parameters={
-                        "target": FunctionParameter(
-                            type="string",
-                            description=await lang.text("moonlark_main.tools.send_private_message.target", self.lang),
-                            required=True,
-                        ),
-                        "content_hint": FunctionParameter(
-                            type="string",
-                            description=await lang.text(
-                                "moonlark_main.tools.send_private_message.content_hint", self.lang
-                            ),
-                            required=True,
-                        ),
-                        "wait_for": FunctionParameter(
-                            type="integer",
-                            description=await lang.text("moonlark_main.tools.send_private_message.wait_for", self.lang),
-                            required=False,
-                        ),
-                    },
-                ),
-            ],
+            functions=functions,
             pre_function_call=self.pre_function_call,
             post_function_call=self._post_function_call,
             on_tool_round_complete=self._on_tool_round,
@@ -254,16 +186,8 @@ class ActionDecider:
         # 记录群聊事件总结到日记
         if instant_mem and instant_mem not in ("暂无群聊记忆。", "记忆汇总失败。"):
             await self._record_diary_entry("[群聊事件] " + instant_mem)
-        return generate_message(
-            await lang.text(
-                "moonlark_main.user",
-                self.lang,
-                reason,
-                datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                instant_mem,
-                notes_text,
-            ),
-            "user",
+        return await get_message(
+            "user", "moonlark_main/user.md.jinja", reason=reason, summary=instant_mem, notes=notes_text
         )
 
     async def on_event(self, reason: str) -> None:
@@ -344,17 +268,9 @@ class MoonlarkMain:
             memory_lines.append(f"[{time_str}][{ctx}] {mem['content']}")
 
         try:
+            messages = await get_messages("summarize", memories="\n".join(memory_lines))
             summary = await fetch_message(
-                [
-                    generate_message(
-                        await lang.text("moonlark_main.summarize.system", self.lang_str),
-                        "system",
-                    ),
-                    generate_message(
-                        await lang.text("moonlark_main.summarize.user", self.lang_str, "\n".join(memory_lines)),
-                        "user",
-                    ),
-                ],
+                messages,
                 identify="MoonlarkMain - Summary Instant Memory",
                 reasoning_effort="low",
             )
@@ -523,29 +439,10 @@ class MoonlarkMain:
             # 2. 格式化为可读文本
             context = self._format_diary_context(entries)
 
-            # 3. 生成身份信息
-            identity_prompt = await get_prompt_text("identity")
-
-            # 4. 第一次调用：生成日记正文
+            # 3. 第一次调用：生成日记正文
+            diary_messages = await get_messages("diary", context=context)
             diary_text = await fetch_message(
-                [
-                    generate_message(
-                        await lang.text(
-                            "diary.system",
-                            self.lang_str,
-                            identity_prompt,
-                        ),
-                        "system",
-                    ),
-                    generate_message(
-                        await lang.text(
-                            "diary.user",
-                            self.lang_str,
-                            context,
-                        ),
-                        "user",
-                    ),
-                ],
+                diary_messages,
                 identify="MoonlarkMain - Generate Diary",
                 reasoning_effort="low",
             )
@@ -554,25 +451,10 @@ class MoonlarkMain:
                 logger.warning("[Diary] LLM 生成的日记为空")
                 return
 
-            # 5. 第二次调用：生成关键词 + 过期时间
+            # 4. 第二次调用：生成关键词 + 过期时间
+            diary_process_messages = await get_messages("diary_process", diary_text=diary_text)
             processed = await fetch_json(
-                [
-                    generate_message(
-                        await lang.text(
-                            "diary_process.system",
-                            self.lang_str,
-                        ),
-                        "system",
-                    ),
-                    generate_message(
-                        await lang.text(
-                            "diary_process.user",
-                            self.lang_str,
-                            diary_text,
-                        ),
-                        "user",
-                    ),
-                ],
+                diary_process_messages,
                 DiaryProcessResponse,
                 identify="MoonlarkMain - Diary Process",
                 reasoning_effort="low",
@@ -693,23 +575,17 @@ class MoonlarkMain:
                     length=10, include_self_message=True
                 )
 
-            system_prompt = await lang.text(
-                "moonlark_main.action_request.system",
-                self.lang_str,
-                await get_prompt_text("identity"),
-                self._get_additional_prompt_text(),
-                self._get_recent_actions_text(),
-            )
-            user_prompt = await lang.text(
-                "moonlark_main.action_request.user",
-                self.lang_str,
-                session_info,
-                do,
-                str(duration) if duration else "未指定",
-                cached_messages or "无消息",
+            action_messages = await get_messages(
+                "action_request",
+                additional_info=self._get_additional_prompt_text(),
+                recent_actions=self._get_recent_actions_text(),
+                session_info=session_info,
+                do=do,
+                duration=str(duration) if duration else "未指定",
+                cached_messages=cached_messages or "无消息",
             )
             result = await fetch_json(
-                [generate_message(system_prompt, "system"), generate_message(user_prompt, "user")],
+                action_messages,
                 ActionDecisionResponse,
                 identify="MoonlarkMain - Action Request Decision",
                 reasoning_effort="low",
@@ -790,7 +666,10 @@ class MoonlarkMain:
                     )
                 )
         return await lang.text(
-            "moonlark_main.friends", self.lang_str, "\n".join(friend_list), await get_prompt_text("favorability")
+            "moonlark_main.friends",
+            self.lang_str,
+            "\n".join(friend_list),
+            await get_message_text("favorability.md.jinja"),
         )
 
 

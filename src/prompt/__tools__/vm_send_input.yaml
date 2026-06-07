@@ -1,0 +1,21 @@
+description: |
+  向正在运行的任务的标准输入（stdin）发送内容。
+  **何时调用**:
+  - 当任务需要交互式输入时（如程序等待用户输入）
+  - 当需要回答程序的提示问题时（如 yes/no 确认）
+  **注意事项**:
+  - 只能向状态为 running 的任务发送输入
+  - 如果需要发送换行符以模拟按下回车键，请在内容末尾添加 \n
+  - 发送后可使用 vm_get_task_state 查看任务响应
+parameters:
+  - name: task_id
+    description: "正在运行的任务的 ID"
+    type: string
+    required: true
+  - name: input_text
+    description: |
+      要发送到任务标准输入的内容。
+      如需模拟按下回车键，请在末尾添加换行符 \n。
+      例如: 'yes\n' 表示输入 yes 并按回车
+    type: string
+    required: true

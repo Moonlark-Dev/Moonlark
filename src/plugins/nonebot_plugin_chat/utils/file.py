@@ -27,10 +27,9 @@ from nonebot.typing import T_State
 from nonebot_plugin_alconna import File
 from nonebot_plugin_localstore import get_cache_dir
 from nonebot_plugin_openai import fetch_message
-from nonebot_plugin_openai.utils.message import generate_message
+from nonebot_plugin_openai.utils.message import generate_message, get_message, get_message_text
 
 from ..config import config
-from ..lang import lang
 from .cache import AsyncCache
 
 # 视频文件扩展名
@@ -123,13 +122,13 @@ async def describe_video(file_path: Path, file_name: str, user_id: str) -> str:
     try:
         # 复用 bilibili 的提示词
         messages = [
-            generate_message(
-                await lang.text("bilibili.summary_system_prompt", user_id),
-                role="system",
-            ),
+            await get_message("system", "bilibili/system.md.jinja"),
             generate_message(
                 [
-                    {"type": "text", "text": await lang.text("bilibili.summary_user_prompt_1", user_id, file_name, "")},
+                    {
+                        "type": "text",
+                        "text": await get_message_text("bilibili/user.md.jinja", title=file_name, description=""),
+                    },
                     {"type": "video_url", "video_url": {"url": external_url}},
                 ],
                 role="user",

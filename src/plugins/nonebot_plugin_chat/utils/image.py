@@ -15,7 +15,6 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 import base64
-import datetime
 import hashlib
 import traceback
 from typing import Optional, TypedDict
@@ -27,10 +26,9 @@ from nonebot.typing import T_State
 from nonebot_plugin_alconna import Image, image_fetch
 
 from nonebot_plugin_openai.utils.chat import fetch_message
-from nonebot_plugin_openai.utils.message import generate_message
+from nonebot_plugin_openai.utils.message import generate_message, get_message, get_message_text
 from nonebot import get_driver
 
-from ..lang import lang
 from .cache import AsyncCache
 
 
@@ -83,14 +81,11 @@ async def request_describe_image(image: bytes, user_id: str) -> tuple[str, str]:
     # 调用 VLM 获取描述
     image_base64 = base64.b64encode(image).decode("utf-8")
     messages = [
-        generate_message(
-            await lang.text("prompt_group.image_describe_system", user_id, datetime.datetime.now().isoformat()),
-            "system",
-        ),
+        await get_message("system", "image_describe/system.md.jinja"),
         generate_message(
             [
                 {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_base64}"}},
-                {"type": "text", "text": await lang.text("prompt_group.image_describe_user", user_id)},
+                {"type": "text", "text": await get_message_text("image_describe/user.md.jinja")},
             ],
             "user",
         ),
@@ -177,14 +172,11 @@ async def query_image_content(image_id: str, query_prompt: str, user_id: str) ->
     image_base64 = base64.b64encode(image).decode("utf-8")
 
     messages = [
-        generate_message(
-            await lang.text("prompt_group.image_query_system", user_id, datetime.datetime.now().isoformat()),
-            "system",
-        ),
+        await get_message("system", "image_query/system.md.jinja"),
         generate_message(
             [
                 {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_base64}"}},
-                {"type": "text", "text": await lang.text("prompt_group.image_query_user", user_id, query_prompt)},
+                {"type": "text", "text": await get_message_text("image_query/user.md.jinja", query=query_prompt)},
             ],
             "user",
         ),

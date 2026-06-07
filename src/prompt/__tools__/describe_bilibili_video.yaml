@@ -1,0 +1,9 @@
+description: |
+  根据 Bilibili 视频的 BV 号，下载视频并进行内容总结。
+  **何时必须调用**：用户发分享了一个 bilibili 视频链接或者 b23.tv 短链时，你需要使用此工具获取获取视频的信息。
+  注意：b23.tv 短链需要先调用 resolve_b23_url 工具解析出 BV 号。
+parameters:
+  - name: bv_id
+    description: "Bilibili 视频的 BV 号，如 'BV1xx411c7mD'"
+    type: string
+    required: true

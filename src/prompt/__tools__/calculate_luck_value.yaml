@@ -1,0 +1,9 @@
+description: |
+  计算指定群友的人品值（今日运势）。
+  **何时调用**: 当你需要知道群友的今日运势时，比如群友问你应不应该抽卡时你可以以这个数值为参考。
+  人品值范围是 0-100，数值越高代表今日运势越好。
+parameters:
+  - name: nickname
+    description: "要查询人品值的群友的昵称。"
+    type: string
+    required: true

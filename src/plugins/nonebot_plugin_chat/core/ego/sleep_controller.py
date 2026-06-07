@@ -10,7 +10,6 @@ from typing import TYPE_CHECKING, Optional
 
 from nonebot import logger
 from nonebot_plugin_apscheduler import scheduler
-from ...utils.prompt import get_prompt_text
 
 if TYPE_CHECKING:
     from .moonlark_main import MoonlarkMain
@@ -86,8 +85,7 @@ class SleepController:
         入睡后首次决策继续睡时（入睡到决策 >20分钟），重置所有会话上下文。
         """
         from nonebot_plugin_openai.utils.chat import fetch_json
-        from nonebot_plugin_openai.utils.message import generate_message
-        from ...lang import lang
+        from nonebot_plugin_openai.utils.message import get_messages
         from ...models import SleepThinkResponse
 
         self.sleep_think_count += 1
@@ -97,24 +95,17 @@ class SleepController:
             sleep_duration = (now - self.sleep_begin_time).total_seconds() / 60
 
         try:
-            identity_prompt = await get_prompt_text("identity")
             summary = self.moonlark_main.state.get("instant_memory_summary", "暂无群聊记忆。")
 
-            system_prompt = await lang.text(
-                "moonlark_main.sleep_think.system",
-                self.moonlark_main.lang_str,
-                now.strftime("%Y-%m-%d %H:%M:%S"),
-                str(int(sleep_duration)),
-                identity_prompt,
-                summary,
-            )
-            user_prompt = await lang.text(
-                "moonlark_main.sleep_think.user",
-                self.moonlark_main.lang_str,
+            messages = await get_messages(
+                "sleep_think",
+                current_time=now.strftime("%Y-%m-%d %H:%M:%S"),
+                sleep_duration=str(int(sleep_duration)),
+                summary=summary,
             )
 
             result = await fetch_json(
-                [generate_message(system_prompt, "system"), generate_message(user_prompt, "user")],
+                messages,
                 SleepThinkResponse,
                 identify="SleepController - Sleep Think",
                 reasoning_effort="low",
@@ -164,29 +155,21 @@ class SleepController:
         内部处理 wake_up 和状态更新。
         """
         from nonebot_plugin_openai.utils.chat import fetch_message
-        from nonebot_plugin_openai.utils.message import generate_message
-        from ...lang import lang
+        from nonebot_plugin_openai.utils.message import get_messages
 
         context_text = "\n".join(chat_context[-5:]) if chat_context else ""
 
         try:
-            identity_prompt = await get_prompt_text("identity")
             summary = self.moonlark_main.state.get("instant_memory_summary", "暂无群聊记忆。")
 
-            system_prompt = await lang.text(
-                "moonlark_main.mention.system",
-                self.moonlark_main.lang_str,
-                identity_prompt,
-                summary,
-            )
-            user_prompt = await lang.text(
-                "moonlark_main.mention.user",
-                self.moonlark_main.lang_str,
-                context_text,
+            messages = await get_messages(
+                "mention",
+                summary=summary,
+                context=context_text,
             )
 
             response = await fetch_message(
-                [generate_message(system_prompt, "system"), generate_message(user_prompt, "user")],
+                messages,
                 identify="SleepController - Handle Mention",
                 reasoning_effort="low",
             )

@@ -29,7 +29,7 @@ from nonebot_plugin_chat.enums import MoodEnum
 from nonebot_plugin_chat.types import EMOTIONS
 from nonebot_plugin_orm import get_session
 from nonebot_plugin_openai.utils.chat import fetch_message
-from nonebot_plugin_openai.utils.message import generate_message
+from nonebot_plugin_openai.utils.message import generate_message, get_message
 from sqlalchemy import select
 
 from ..models import Sticker
@@ -46,33 +46,6 @@ class MemeClassification(TypedDict):
 
 
 _EMOTIONS = "\n".join([f"- {emotion}" for emotion in EMOTIONS])
-# 表情包分类提示词
-MEME_CLASSIFICATION_PROMPT = f"""你是一个表情包分析 AI。
-我会向你提供一张表情包图片，你需要分析表情包的内容，并对其进行分类。
-  
-### 输出格式
-一段 JSON，不要包含除了 JSON 结构以外的任何内容。
-  
-{{
-     "is_meme": boolen,       // 这张图片是一个表情包吗？如果是为 true。
-     "text": string,                 // 表情包中的文本，如果没有请填空字符串。
-     "emotion": string,        // 表情包所表达的情绪的类型，如：高兴、难过、生气、恐惧。
-     "labels": array[string],       // 表情包的标签，按照参考的标签库分类中给出的示例进行编写。
-     "context_keywords": array[string]       // 表情包适用的语境，这个表情包适合在群聊中谈到什么关键词时出现？
-}}
-  
-
-### 可用的情绪列表
-
-`emotion` 字段只能从如下的字符串中选择：
-
-{_EMOTIONS}
-
-### 参考的标签库分类
-1.  **社交回应类**：`赞同`、`反对`、`无语`、`震惊`、`委屈`、`认怂`。
-2.  **网络梗类**：`吃瓜`、`摆烂`、`摸鱼`、`内卷`、`抽象`、`典`。
-3.  **时间/天气类**：`早安`、`周五`、`放假`。
-4.  **互动类**：`贴贴`、`抱抱`、`禁言`、`反弹`。"""
 
 
 def is_gif(image_data: bytes) -> bool:
@@ -199,7 +172,7 @@ async def classify_meme(image_data: bytes) -> Optional[MemeClassification]:
 
         # 构建消息
         messages = [
-            generate_message(MEME_CLASSIFICATION_PROMPT, "system"),
+            await get_message("system", "meme_classification/system.md.jinja", emotions=_EMOTIONS),
             generate_message(
                 [
                     {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_base64}"}},

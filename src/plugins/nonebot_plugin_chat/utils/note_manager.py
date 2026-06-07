@@ -24,7 +24,7 @@ from nonebot import logger
 from nonebot_plugin_apscheduler import scheduler
 from nonebot_plugin_chat.types import AvailableNote, NoteCheckResult
 from nonebot_plugin_openai.utils.chat import fetch_message
-from nonebot_plugin_openai.utils.message import generate_message
+from nonebot_plugin_openai.utils.message import generate_message, get_messages
 from nonebot_plugin_orm import get_session
 from sqlalchemy import select
 
@@ -271,37 +271,26 @@ async def cleanup_expired_notes() -> int:
     return deleted_count
 
 
-def decode_check_result(data: str) -> NoteCheckResult:
-    return json.loads(re.sub(r"`{1,3}([a-zA-Z0-9]+)?", "", data))
-
-
 if TYPE_CHECKING:
     from ..core.session.base import BaseSession
+
+from nonebot_plugin_openai import fetch_json
 
 
 async def check_note(
     session: "BaseSession", keywords: Optional[str], text: str, expire_hours: Optional[float]
 ) -> NoteCheckResult:
-    try:
-        return decode_check_result(
-            await fetch_message(
-                [
-                    generate_message(await session.text("note.system", datetime.now().isoformat()), "system"),
-                    generate_message(
-                        await session.text(
-                            "note.message",
-                            await session.get_cached_messages_string(),
-                            keywords or "",
-                            text,
-                            (datetime.now() + timedelta(hours=expire_hours or 87600)).isoformat(),  # 默认10年
-                        ),
-                        "user",
-                    ),
-                ]
-            )
-        )
-    except json.JSONDecodeError:
-        return AvailableNote(create=True, keywords=keywords, expire_hours=expire_hours or 87600, text=text, comment="")
+    return await fetch_json(
+        await get_messages(
+            "check_note",
+            messages=await session.get_cached_messages_string(),
+            keywords=keywords or "",
+            content=text,
+            expire_time=(datetime.now() + timedelta(hours=expire_hours or 87600)).isoformat(),  # 默认10年
+        ),
+        NoteCheckResult,  # type: ignore
+        identify="Check Note",
+    )
 
 
 @scheduler.scheduled_job("cron", hour="3", id="cleanup_expired_notes")
