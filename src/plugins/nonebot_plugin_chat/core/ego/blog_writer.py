@@ -211,7 +211,7 @@ class BlogWriter:
         for session_id, session in groups.items():
             cached = await session.get_cached_messages_string(length=50)
             if cached:
-                session_name = await session.get_session_name()
+                session_name = (await session.get_session_name()) or session_id
                 all_sessions_info.append(f"## {session_name}\n{cached}")
 
         if not all_sessions_info:

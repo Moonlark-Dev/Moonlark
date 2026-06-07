@@ -567,7 +567,7 @@ class MoonlarkMain:
         try:
             session_info = f"会话ID: {session_id}"
             if session_id in groups:
-                session_info = await groups[session_id].get_session_name()
+                session_info = (await groups[session_id].get_session_name()) or session_info
 
             cached_messages = ""
             if session_id in groups:

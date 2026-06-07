@@ -43,7 +43,7 @@ class PrivateSession(BaseSession):
             self.nickname = ml_user.get_nickname()
             self.user_info = AdapterUserInfo(nickname=self.nickname, sex="unknown", role="user", join_time=0, card=None)
         self.call = ml_user.get_config_key("call", self.nickname)
-        return await self.text("prompt_group.private_session", self.nickname)
+        return self.nickname
 
     async def format_message(self, origin_message: str) -> UniMessage:
         return UniMessage().text(text=origin_message.replace(f"@{self.nickname}", self.call))

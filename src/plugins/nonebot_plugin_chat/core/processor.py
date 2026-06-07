@@ -8,7 +8,7 @@ from nonebot_plugin_alconna import At, UniMessage
 from nonebot_plugin_chat.utils.group import LinkParser
 from nonebot_plugin_chat.utils.token_bucket import TokenBucket
 from ..enums import StateEnum
-from nonebot_plugin_openai import get_message
+from nonebot_plugin_openai import get_message, get_message_text
 from ..config import config
 from nonebot_plugin_openai.types import Message as OpenAIMessage
 from nonebot.log import logger
@@ -572,16 +572,16 @@ class MessageProcessor:
         recent_activities = "\n".join(
             await self.filter_info_lines(moonlark_main._get_recent_actions_text().splitlines())
         )
-        return await self.session.text(
-            "prompt_group.chat_additional_info",
-            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            round(self.token_bucket.get(), 2),
-            sender.get_nickname(),
-            sender.get_display_fav(),
-            await sender.get_fav_level(),
-            await self.generate_note_text(notes),
-            recent_activities or None,
-            state,
+        return await get_message_text(
+            "chat_message.md.jinja",
+            current_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            token=round(self.token_bucket.get(), 2),
+            nickname=sender.get_nickname(),
+            display_fav=sender.get_display_fav(),
+            fav_level=await sender.get_fav_level(),
+            note_text=await self.generate_note_text(notes),
+            recent_activities=recent_activities or None,
+            state=state,
         )
 
     async def filter_info_lines(self, lines: list[str]) -> list[str]:
@@ -622,12 +622,15 @@ class MessageProcessor:
         )
 
     async def generate_system_prompt(self) -> OpenAIMessage:
+        is_private = self.session.get_session_type() == "private"
         return await get_message(
             "system",
             "chat.md.jinja",
             session_name=await self.session.get_session_name(),
             image_placeholder=self.ENABLE_EMBEDDED_IMAGE,
-            is_group_session=self.session.get_session_type() == "group",
+            is_group_session=not is_private,
+            is_private=is_private,
+            session_nickname=getattr(self.session, "nickname", None),
         )
 
     async def handle_recall(self, message_id: str, message_content: str) -> None:

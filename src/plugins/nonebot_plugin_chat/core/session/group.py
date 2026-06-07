@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Literal, Optional
 
 from nonebot.adapters import Bot
 from nonebot.adapters.onebot.v11 import Bot as OB11Bot
@@ -81,10 +81,10 @@ class GroupSession(BaseSession):
         if len(cached_users) <= 1:
             self.ghot_coefficient *= 0.75
 
-    async def get_session_name(self) -> str:
+    async def get_session_name(self) -> Optional[str]:
         if isinstance(self.bot, OB11Bot):
             return (await self.bot.get_group_info(group_id=int(self.adapter_group_id)))["group_name"]
-        return await self.text("prompt_group.unknown_session_name")
+        return None
 
     async def format_message(self, origin_message: str) -> UniMessage:
         message = re.sub(r"\[\d\d:\d\d:\d\d]\[Moonlark]\(\d+\): ?", "", origin_message)
