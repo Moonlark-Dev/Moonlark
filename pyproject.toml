@@ -90,7 +90,8 @@ plugins = [
     "nonebot_plugin_wtfis",
     "nonebot_plugin_epic_freegame",
     "nonebot_plugin_version_manager",
-    "nonebot_plugin_last_seen"
+    "nonebot_plugin_last_seen",
+    "nonebot_plugin_command_stats",
 ]
 plugin_dirs = []
 builtin_plugins = []
