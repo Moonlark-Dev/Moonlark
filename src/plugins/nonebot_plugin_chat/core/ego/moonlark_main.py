@@ -12,7 +12,8 @@ from nonebot import logger
 from nonebot_plugin_apscheduler import scheduler
 from nonebot_plugin_openai.types import AsyncFunction, FunctionParameter
 from nonebot_plugin_openai.utils.chat import MessageFetcher, fetch_json, fetch_message
-from nonebot_plugin_openai.utils.message import generate_message
+from nonebot_plugin_openai.utils.functions import create_function_list
+from nonebot_plugin_openai.utils.message import generate_message, get_message
 from nonebot_plugin_orm import get_session
 from sqlalchemy import select
 
@@ -25,7 +26,6 @@ from ...models import (
     PrivateChatSession,
 )
 from ...utils.instant_mem import get_instant_memories
-from ...utils.prompt import get_prompt_text
 from ...utils.status_manager import get_status_manager
 from ..session import groups
 from .action_advisor import ActionAdvisor
@@ -54,94 +54,24 @@ class ActionDecider:
 
     async def create_fetcher(self) -> MessageFetcher:
         messages = [
-            generate_message(
-                await lang.text(
-                    "moonlark_main.prompt",
-                    self.moonlark_main.lang_str,
-                    await get_prompt_text("identity"),
-                    await self.moonlark_main.get_friends(),
-                ),
-                "system",
-            ),
+            await get_message("system", "action_decider.md.jinja"),
             await self.generate_message(
                 ("online\n\n" "## 今日已进行的动作\n" f"{await self.moonlark_main._get_today_actions_text()}")
             ),
         ]
+        functions = await create_function_list([
+            self.moonlark_main.sleep_controller.sleep,
+            self.moonlark_main.self_action.start_action,
+            self.moonlark_main.blog_writer.start_new_blog,
+            self.moonlark_main.blog_writer.blog_publish_draft,
+            self.moonlark_main.blog_writer.blog_drop_draft,
+            self.moonlark_main.blog_writer.get_blog_state,
+            self.moonlark_main.proactive_chat.send_private_message,
+        ])
         fetcher = await MessageFetcher.create(
             messages,
             identify="ActionDecider",
-            functions=[
-                AsyncFunction(
-                    func=self.moonlark_main.sleep_controller.sleep,
-                    description=await lang.text("moonlark_main.tools.sleep.description", self.lang),
-                    parameters={},
-                ),
-                AsyncFunction(
-                    func=self.moonlark_main.self_action.start_action,
-                    description=await lang.text("moonlark_main.tools.start_action.description", self.lang),
-                    parameters={
-                        "activity": FunctionParameter(
-                            type="string",
-                            description=await lang.text("moonlark_main.tools.start_action.activity", self.lang),
-                            required=True,
-                        ),
-                    },
-                ),
-                AsyncFunction(
-                    func=self.moonlark_main.blog_writer.start_new_blog,
-                    description=await lang.text("moonlark_main.tools.start_new_blog.description", self.lang),
-                    parameters={
-                        "topic": FunctionParameter(
-                            type="string",
-                            description=await lang.text("moonlark_main.tools.start_new_blog.topic", self.lang),
-                            required=True,
-                        ),
-                        "prompt": FunctionParameter(
-                            type="string",
-                            description=await lang.text("moonlark_main.tools.start_new_blog.prompt", self.lang),
-                            required=True,
-                        ),
-                    },
-                ),
-                AsyncFunction(
-                    func=self.moonlark_main.blog_writer.blog_publish_draft,
-                    description=await lang.text("moonlark_main.tools.blog_publish_draft.description", self.lang),
-                    parameters={},
-                ),
-                AsyncFunction(
-                    func=self.moonlark_main.blog_writer.blog_drop_draft,
-                    description=await lang.text("moonlark_main.tools.blog_drop_draft.description", self.lang),
-                    parameters={},
-                ),
-                AsyncFunction(
-                    func=self.moonlark_main.blog_writer.get_blog_state,
-                    description=await lang.text("moonlark_main.tools.get_blog_state.description", self.lang),
-                    parameters={},
-                ),
-                AsyncFunction(
-                    func=self.moonlark_main.proactive_chat.send_private_message,
-                    description=await lang.text("moonlark_main.tools.send_private_message.description", self.lang),
-                    parameters={
-                        "target": FunctionParameter(
-                            type="string",
-                            description=await lang.text("moonlark_main.tools.send_private_message.target", self.lang),
-                            required=True,
-                        ),
-                        "content_hint": FunctionParameter(
-                            type="string",
-                            description=await lang.text(
-                                "moonlark_main.tools.send_private_message.content_hint", self.lang
-                            ),
-                            required=True,
-                        ),
-                        "wait_for": FunctionParameter(
-                            type="integer",
-                            description=await lang.text("moonlark_main.tools.send_private_message.wait_for", self.lang),
-                            required=False,
-                        ),
-                    },
-                ),
-            ],
+            functions=functions,
             pre_function_call=self.pre_function_call,
             post_function_call=self._post_function_call,
             on_tool_round_complete=self._on_tool_round,
