@@ -12,12 +12,11 @@ from typing import TYPE_CHECKING, Optional
 
 from nonebot import logger
 from nonebot_plugin_openai.utils.chat import fetch_message
-from nonebot_plugin_openai.utils.message import generate_message
+from nonebot_plugin_openai.utils.message import get_messages
 from nonebot_plugin_orm import get_session
 from sqlalchemy import select
 from ...lang import lang
 from ...models import BlogPost
-from ...utils.prompt import get_prompt_text
 
 if TYPE_CHECKING:
     from .moonlark_main import MoonlarkMain
@@ -122,19 +121,19 @@ class BlogWriter:
 
     async def _start_new_blog(self, topic: str, prompt: str) -> str:
         """撰写新博客（一次性完成，写完后等 MoonlarkMain 确认发布）"""
-        # 检查状态
-
-        identity_prompt = await get_prompt_text("identity")
         recent_actions = self.moonlark_main._get_recent_actions_text()
         extra_context = await self._gather_context(topic)
 
-        system_prompt = await lang.text("blog.writer.system", self.moonlark_main.lang_str, identity_prompt)
-        user_prompt = await lang.text(
-            "blog.writer.start", self.moonlark_main.lang_str, topic, prompt, recent_actions, extra_context
+        messages = await get_messages(
+            "blog_writer",
+            topic=topic,
+            prompt=prompt,
+            recent_action=recent_actions,
+            extra_context=extra_context,
         )
 
         content = await fetch_message(
-            [generate_message(system_prompt, "system"), generate_message(user_prompt, "user")],
+            messages,
             identify="Blog Writer",
             reasoning_effort="medium",
         )
@@ -221,9 +220,9 @@ class BlogWriter:
         combined = "\n\n".join(all_sessions_info)
 
         try:
-            system_prompt = await lang.text("blog.query_chat.system", self.moonlark_main.lang_str, combined)
+            messages = await get_messages("blog_query_chat", context=combined, query=query)
             response = await fetch_message(
-                [generate_message(system_prompt, "system"), generate_message(query, "user")],
+                messages,
                 identify="Blog Writer - Query History",
                 reasoning_effort="low",
             )

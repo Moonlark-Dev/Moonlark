@@ -16,9 +16,8 @@ from typing import TYPE_CHECKING, Optional
 from nonebot import logger
 from nonebot_plugin_openai import MessageFetcher
 from nonebot_plugin_openai.utils.chat import fetch_json
-from nonebot_plugin_openai.utils.message import generate_message
+from nonebot_plugin_openai.utils.message import generate_message, get_message, get_messages
 
-from ...lang import lang
 from ...models import SelfActionDurationResponse, TaskClassificationResponse
 from ...utils.tool_manager import ToolManager
 
@@ -49,18 +48,13 @@ class SelfActionAgent:
         if not self.functions:
             await self.setup()
 
-        system_text = await lang.text(
-            "self_action.agent.system",
-            self.lang_str,
-            datetime.now().isoformat(),
+        system_msg = await get_message(
+            "system", "self_action/system.md.jinja"
         )
-        user_text = activity
+        user_msg = generate_message(activity, "user")
 
         fetcher = await MessageFetcher.create(
-            [
-                generate_message(system_text, "system"),
-                generate_message(user_text, "user"),
-            ],
+            [system_msg, user_msg],
             False,
             functions=self.functions,
             identify="SelfActionAgent",
@@ -130,28 +124,18 @@ class SelfActionController:
             self._task = None
 
     async def get_task_duration(self, activity: str) -> int:
+        messages = await get_messages("self_action_duration", activity=activity)
         response = await fetch_json(
-            [
-                generate_message(await lang.text("self_action.duration.system", self.lang), "system"),
-                generate_message(await lang.text("self_action.duration.user", self.lang, activity), "user"),
-            ],
+            messages,
             SelfActionDurationResponse,
             identify="SelfAction - Duration Assessment",
         )
         return response.duration_minutes
 
     async def get_task_type(self, activity: str) -> ActionType:
+        messages = await get_messages("task_classification", activity=activity)
         response = await fetch_json(
-            [
-                generate_message(
-                    await lang.text("moonlark_main.task_classification.prompt", self.lang),
-                    "system",
-                ),
-                generate_message(
-                    await lang.text("moonlark_main.task_classification.user", self.lang, activity),
-                    "user",
-                ),
-            ],
+            messages,
             TaskClassificationResponse,
             identify="SelfAction - Task Classification",
         )
