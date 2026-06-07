@@ -249,7 +249,7 @@ class SelfActionDurationResponse(BaseModel):
 class TaskClassificationResponse(BaseModel):
     """TaskController _classify_task 的 LLM 返回格式"""
 
-    activity_type: Literal["学习", "任务"]
+    activity_type: Literal["学习", "任务", "消息"]
 
 
 class SelfActionResultProcessResponse(BaseModel):

@@ -28,6 +28,7 @@ if TYPE_CHECKING:
 class ActionType(Enum):
     LEARN = "学习"
     TASK = "任务"
+    MESSAGE = "消息"
 
 
 class SelfActionAgent:
@@ -95,7 +96,9 @@ class SelfActionController:
     async def _run_action(self, activity: str) -> str:
         try:
             task_type = await self.get_task_type(activity)
-            if task_type == ActionType.LEARN:
+            if task_type == ActionType.MESSAGE:
+                return f"[SelfAction] 该任务需要发送消息，请使用 send_private_message 工具完成：{activity}"
+            elif task_type == ActionType.LEARN:
                 result = await self.agent.execute_task(activity)
             else:
                 duration = await self.get_task_duration(activity)
