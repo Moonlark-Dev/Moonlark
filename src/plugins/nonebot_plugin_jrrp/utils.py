@@ -4,6 +4,8 @@ from .types import LuckType
 
 
 def get_luck_type(luck_value: int) -> LuckType:
+    if luck_value > 100:
+        return LuckType.BEYOND_PERFECT
     if luck_value == 100:
         return LuckType.PERFECT_LUCK
     elif luck_value == 99:

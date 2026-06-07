@@ -1,5 +1,6 @@
 message:
   __template__: '你今天的人品值是: {{}}{}'
+  beyond_perfect: '！！突破天際！！！'
   perfect_luck: '！100！100！！！'
   almost_perfect: '！可惜不是 100'
   great_day: '，是不错的一天呢！'
@@ -33,6 +34,7 @@ group_event_prompt: |
 reroll:
   max_reached: 你今天已经重算过 {} 次了，明天再来吧～
   perfect_luck: 你今天的人品值已经是 100 了，不需要再重算啦～
+  beyond_perfect: 你今天的人品值已经突破 100 了，不需要再重算啦～
   insufficient_vimcoin: 你的 VimCoin 不足哦，需要 {} vi，但你只有 {} vi。
   success: |
     今日已重算: {}/{} 次
