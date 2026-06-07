@@ -1,7 +1,12 @@
 from nonebot.compat import type_validate_json, type_validate_python
 from collections.abc import Awaitable
 
-from nonebot_plugin_openai.types import AsyncFunction, FunctionParameter, FunctionParameterWithEnum, MoonlarkFunctionDefinition
+from nonebot_plugin_openai.types import (
+    AsyncFunction,
+    FunctionParameter,
+    FunctionParameterWithEnum,
+    MoonlarkFunctionDefinition,
+)
 from openai.types.chat import ChatCompletionFunctionToolParam
 from openai.types.shared_params import FunctionDefinition
 
@@ -33,8 +38,10 @@ def generate_function_list(func_index: dict[str, AsyncFunction]) -> list[ChatCom
         )
     return func_list
 
+
 import aiofiles
 import yaml
+
 
 async def create_function_list(functions: list[Callable[..., Awaitable[Any]]], **kwargs) -> list[AsyncFunction]:
     func_list = []
@@ -57,9 +64,11 @@ async def create_function_list(functions: list[Callable[..., Awaitable[Any]]], *
                     description=param.description,
                     required=param.required,
                 )
-        func_list.append(AsyncFunction(
-            func=func,
-            description=func_info.description,
-            parameters=parameters,
-        ))
+        func_list.append(
+            AsyncFunction(
+                func=func,
+                description=func_info.description,
+                parameters=parameters,
+            )
+        )
     return func_list

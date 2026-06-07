@@ -44,7 +44,6 @@ env = Environment(
 )
 
 
-
 def generate_message(content: str | list, role: Literal["system", "user", "assistant"] = "system") -> Message:
     # NOTE 以下写法过不了类型检查
     # return {
@@ -60,10 +59,12 @@ def generate_message(content: str | list, role: Literal["system", "user", "assis
     else:
         raise ValueError(f"Invalid role: {role}")
 
+
 async def get_message_text(name: str, **kwargs) -> str:
     template = env.get_template(name)
     kwargs["current_time"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     return await template.render_async(**kwargs)
+
 
 async def get_message(role: Literal["system", "user", "assistant"], name: str, **kwargs) -> Message:
     text = await get_message_text(name, **kwargs)

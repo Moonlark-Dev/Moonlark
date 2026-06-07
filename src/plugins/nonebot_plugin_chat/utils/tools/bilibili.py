@@ -154,7 +154,10 @@ async def describe_bilibili_video(bv_id: str, get_text: GetTextFunc) -> str:
             await get_message("system", "bilibili/system.md.jinja"),
             generate_message(
                 [
-                    {"type": "text", "text": await get_message_text("bilibili/user.md.jinja", title=title, description=desc)},
+                    {
+                        "type": "text",
+                        "text": await get_message_text("bilibili/user.md.jinja", title=title, description=desc),
+                    },
                     {"type": "video_url", "video_url": {"url": external_url}},
                 ],
                 role="user",

@@ -59,15 +59,17 @@ class ActionDecider:
                 ("online\n\n" "## 今日已进行的动作\n" f"{await self.moonlark_main._get_today_actions_text()}")
             ),
         ]
-        functions = await create_function_list([
-            self.moonlark_main.sleep_controller.sleep,
-            self.moonlark_main.self_action.start_action,
-            self.moonlark_main.blog_writer.start_new_blog,
-            self.moonlark_main.blog_writer.blog_publish_draft,
-            self.moonlark_main.blog_writer.blog_drop_draft,
-            self.moonlark_main.blog_writer.get_blog_state,
-            self.moonlark_main.proactive_chat.send_private_message,
-        ])
+        functions = await create_function_list(
+            [
+                self.moonlark_main.sleep_controller.sleep,
+                self.moonlark_main.self_action.start_action,
+                self.moonlark_main.blog_writer.start_new_blog,
+                self.moonlark_main.blog_writer.blog_publish_draft,
+                self.moonlark_main.blog_writer.blog_drop_draft,
+                self.moonlark_main.blog_writer.get_blog_state,
+                self.moonlark_main.proactive_chat.send_private_message,
+            ]
+        )
         fetcher = await MessageFetcher.create(
             messages,
             identify="ActionDecider",
@@ -184,7 +186,9 @@ class ActionDecider:
         # 记录群聊事件总结到日记
         if instant_mem and instant_mem not in ("暂无群聊记忆。", "记忆汇总失败。"):
             await self._record_diary_entry("[群聊事件] " + instant_mem)
-        return await get_message("user", "moonlark_main/user.md.jinja", reason=reason, summary=instant_mem, notes=notes_text)
+        return await get_message(
+            "user", "moonlark_main/user.md.jinja", reason=reason, summary=instant_mem, notes=notes_text
+        )
 
     async def on_event(self, reason: str) -> None:
         if self.fetcher:
@@ -662,7 +666,10 @@ class MoonlarkMain:
                     )
                 )
         return await lang.text(
-            "moonlark_main.friends", self.lang_str, "\n".join(friend_list), await get_message_text("favorability.md.jinja")
+            "moonlark_main.friends",
+            self.lang_str,
+            "\n".join(friend_list),
+            await get_message_text("favorability.md.jinja"),
         )
 
 

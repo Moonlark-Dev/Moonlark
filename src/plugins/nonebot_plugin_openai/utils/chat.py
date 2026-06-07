@@ -32,7 +32,6 @@ from .message import generate_message
 from .client import client
 from .model_config import get_model_for_identify
 
-
 T = TypeVar("T")
 T2 = TypeVar("T2", bound=BaseModel)
 

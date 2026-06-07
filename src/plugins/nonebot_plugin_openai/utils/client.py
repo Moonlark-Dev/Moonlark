@@ -9,4 +9,3 @@ from ..config import config
 from ..types import Messages
 
 client = AsyncOpenAI(api_key=config.openai_api_key, base_url=config.openai_base_url)
-

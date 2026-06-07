@@ -214,7 +214,7 @@ class ToolManager:
             tools.append(self.query_history_message)
 
             # Conditional tools
-            if processor and  processor.session.is_napcat_bot():
+            if processor and processor.session.is_napcat_bot():
                 tools.append(processor.poke)
             if processor and processor.session.__class__.__name__ == "GroupSession":
                 emoji_id_table = "/".join([f"{emoji}({emoji_id})" for emoji_id, emoji in QQ_EMOJI_MAP.items()])
@@ -234,7 +234,7 @@ class ToolManager:
 
     async def remove_note(self, note_id: int) -> Optional[str]:
         # Get the note manager for this context
-        
+
         if self.processor is None:
             raise RuntimeError("processor is None")
         note_manager = await get_context_notes(self.processor.session.session_id)
@@ -260,7 +260,7 @@ class ToolManager:
 
     async def query_history_message(self) -> str:
         from ..core.session import groups
-        
+
         if self.processor is None:
             raise RuntimeError("processor is None")
 

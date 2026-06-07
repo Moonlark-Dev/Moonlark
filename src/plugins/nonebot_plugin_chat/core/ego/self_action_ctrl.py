@@ -48,9 +48,7 @@ class SelfActionAgent:
         if not self.functions:
             await self.setup()
 
-        system_msg = await get_message(
-            "system", "self_action/system.md.jinja"
-        )
+        system_msg = await get_message("system", "self_action/system.md.jinja")
         user_msg = generate_message(activity, "user")
 
         fetcher = await MessageFetcher.create(

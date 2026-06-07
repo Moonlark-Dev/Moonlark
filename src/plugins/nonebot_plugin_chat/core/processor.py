@@ -627,7 +627,7 @@ class MessageProcessor:
             "chat.md.jinja",
             session_name=await self.session.get_session_name(),
             image_placeholder=self.ENABLE_EMBEDDED_IMAGE,
-            is_group_session=self.session.get_session_type() == "group"
+            is_group_session=self.session.get_session_type() == "group",
         )
 
     async def handle_recall(self, message_id: str, message_content: str) -> None:

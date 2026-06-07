@@ -271,11 +271,11 @@ async def cleanup_expired_notes() -> int:
     return deleted_count
 
 
-
 if TYPE_CHECKING:
     from ..core.session.base import BaseSession
 
 from nonebot_plugin_openai import fetch_json
+
 
 async def check_note(
     session: "BaseSession", keywords: Optional[str], text: str, expire_hours: Optional[float]
@@ -288,8 +288,8 @@ async def check_note(
             content=text,
             expire_time=(datetime.now() + timedelta(hours=expire_hours or 87600)).isoformat(),  # 默认10年
         ),
-        NoteCheckResult,        # type: ignore
-        identify="Check Note"
+        NoteCheckResult,  # type: ignore
+        identify="Check Note",
     )
 
 

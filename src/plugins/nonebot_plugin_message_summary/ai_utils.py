@@ -55,9 +55,7 @@ async def fetch_topic_summary(user_id: str, messages: str) -> str:
 async def fetch_daily_summary(user_id: str, messages: str) -> str:
     summary_string = await fetch_message(
         [
-            await get_message(
-                "system", "msg_summary_daily/system.md.jinja"
-            ),
+            await get_message("system", "msg_summary_daily/system.md.jinja"),
             generate_message(messages, "user"),
         ],
         identify="Message Summary (Daily)",

@@ -125,7 +125,10 @@ async def describe_video(file_path: Path, file_name: str, user_id: str) -> str:
             await get_message("system", "bilibili/system.md.jinja"),
             generate_message(
                 [
-                    {"type": "text", "text": await get_message_text("bilibili/user.md.jinja", title=file_name, description="")},
+                    {
+                        "type": "text",
+                        "text": await get_message_text("bilibili/user.md.jinja", title=file_name, description=""),
+                    },
                     {"type": "video_url", "video_url": {"url": external_url}},
                 ],
                 role="user",
