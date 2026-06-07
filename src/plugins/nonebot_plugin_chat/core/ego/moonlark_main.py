@@ -54,7 +54,9 @@ class ActionDecider:
 
     async def create_fetcher(self) -> MessageFetcher:
         messages = [
-            await get_message("system", "moonlark_main/system.md.jinja", friends=await self.moonlark_main.get_friends()),
+            await get_message(
+                "system", "moonlark_main/system.md.jinja", friends=await self.moonlark_main.get_friends()
+            ),
             await self.generate_message(
                 ("online\n\n" "## 今日已进行的动作\n" f"{await self.moonlark_main._get_today_actions_text()}")
             ),
