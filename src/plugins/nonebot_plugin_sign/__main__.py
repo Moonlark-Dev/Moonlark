@@ -55,7 +55,7 @@ class SignClaimData(TypedDict):
 
 async def get_luck(user_id: str) -> str:
     value = await get_luck_value(user_id)
-    if 80 < value <= 100:
+    if 80 < value:
         return "a"
     elif 60 < value <= 80:
         return "b"

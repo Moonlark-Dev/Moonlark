@@ -61,7 +61,9 @@ async def _(bot: Bot, event: Event, user_id: str = get_user_id(), group_id: str 
     # 重新计算人品值
     result = await reroll_luck_value(user_id, MAX_REROLL_COUNT)
     if result is None:
-        if current_luck == 100:
+        if current_luck > 100:
+            await lang.finish("reroll.beyond_perfect", user_id, at_sender=True)
+        elif current_luck == 100:
             await lang.finish("reroll.perfect_luck", user_id, at_sender=True)
         else:
             await lang.finish("reroll.max_reached", user_id, MAX_REROLL_COUNT, at_sender=True)
