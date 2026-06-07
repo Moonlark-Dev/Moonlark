@@ -33,6 +33,9 @@ from .models import CommandUsage
 
 lang = LangHelper()
 
+# 排行指令的名称和别名，用于自动跳过记录
+RANK_COMMAND_NAMES = {"指令排行", "cmd-rank", "命令排行", "热门指令"}
+
 
 # ============================================================
 # 自动记录指令使用（复用 status_report 的 run_preprocessor 模式）
@@ -42,23 +45,24 @@ lang = LangHelper()
 @run_preprocessor
 async def record_command_usage(matcher: Matcher, state: T_State, event: Event) -> None:
     """自动记录所有指令使用到数据库"""
+    if matcher.type != "message":
+        return
+
     # 识别指令名（参考 status_report 的逻辑）
     try:
         if hasattr(matcher, "command") and callable(matcher.command):
             # AlconnaMatcher
             command_name = matcher.command().command
-        elif matcher.type == "message":
+        else:
             try:
                 command_name = list(matcher.rule.checkers)[0].call.cmds[0][0]
             except Exception:
                 return
-        else:
-            return
     except Exception:
         return
 
     # 跳过自身指令，避免死循环
-    if command_name in ("指令排行", "cmd-rank", "命令排行", "热门指令"):
+    if command_name in RANK_COMMAND_NAMES:
         return
 
     # 获取用户和群信息
@@ -72,14 +76,13 @@ async def record_command_usage(matcher: Matcher, state: T_State, event: Event) -
     except Exception:
         group_id = None
 
-    # 写入数据库
+    # 写入数据库（used_at 由数据库 server_default 自动填充）
     try:
         async with get_session() as session:
             usage = CommandUsage(
                 command=command_name,
                 user_id=user_id,
                 group_id=group_id,
-                used_at=datetime.now(),
             )
             session.add(usage)
             await session.commit()

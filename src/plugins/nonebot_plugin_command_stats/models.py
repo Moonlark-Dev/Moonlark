@@ -25,7 +25,7 @@ class CommandUsage(Model):
     """指令使用记录表"""
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    command: Mapped[str] = mapped_column(String(64), index=True)  # 指令名
-    user_id: Mapped[str] = mapped_column(String(128), index=True)  # 用户ID
-    group_id: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)  # 群ID（私聊为None）
-    used_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), index=True)  # 使用时间
+    command: Mapped[str] = mapped_column(String(64))  # 指令名
+    user_id: Mapped[str] = mapped_column(String(128))  # 用户ID
+    group_id: Mapped[str | None] = mapped_column(String(128), nullable=True)  # 群ID（私聊为None）
+    used_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())  # 使用时间
