@@ -268,6 +268,17 @@ class DiaryEntry(Model):
     content: Mapped[str] = mapped_column(Text())
 
 
+class DiaryPost(Model):
+    """生成的日记存储表，由每日凌晨任务自动生成"""
+
+    id: Mapped[int] = mapped_column(Integer(), primary_key=True, autoincrement=True)
+    title: Mapped[str] = mapped_column(String(256))
+    content: Mapped[str] = mapped_column(Text())
+    keywords: Mapped[str] = mapped_column(String(256), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(), server_default=func.now(), index=True)
+    expire_at: Mapped[Optional[datetime]] = mapped_column(DateTime(), nullable=True)
+
+
 class DiaryProcessResponse(BaseModel):
     """日记处理 LLM 返回格式（关键词 + 过期时间）"""
 

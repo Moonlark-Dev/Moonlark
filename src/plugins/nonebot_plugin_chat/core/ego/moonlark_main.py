@@ -21,6 +21,7 @@ from ...lang import lang
 from ...models import (
     ActionDecisionResponse,
     DiaryEntry,
+    DiaryPost,
     DiaryProcessResponse,
     MainSessionActionHistory,
     PrivateChatSession,
@@ -430,7 +431,7 @@ class MoonlarkMain:
     # ========================================================================
 
     async def generate_diary(self) -> None:
-        """每日凌晨 2 点生成日记并写入笔记"""
+        """每日凌晨 2 点生成日记并写入 DiaryPost 表"""
         try:
             # 1. 读取近 24h 的日记条目
             entries = await self._fetch_diary_entries(hours=24)
@@ -462,16 +463,23 @@ class MoonlarkMain:
                 reasoning_effort="low",
             )
 
-            # 6. 写入笔记
-            from ...utils.note_manager import NoteManager
+            # 5. 计算过期时间
+            from datetime import timedelta
 
-            note_manager = NoteManager("moonlark_diary")
-            await note_manager.create_note(
-                content=diary_text,
-                keywords=processed.keywords,
-                expire_hours=processed.expire_hours,
-            )
-            logger.info(f"[Diary] 日记已生成并存入笔记: {processed.keywords}")
+            expire_at = datetime.now() + timedelta(hours=processed.expire_hours)
+
+            # 6. 写入 DiaryPost 表
+            title = date.today().strftime("%Y-%m-%d") + " 日记"
+            async with get_session() as session:
+                diary_post = DiaryPost(
+                    title=title,
+                    content=diary_text,
+                    keywords=processed.keywords,
+                    expire_at=expire_at,
+                )
+                session.add(diary_post)
+                await session.commit()
+            logger.info(f"[Diary] 日记已生成并存入 DiaryPost: {processed.keywords}")
 
             # 7. 清理已使用的日记条目
             await self._cleanup_diary_entries(before=entries[-1].created_at)
