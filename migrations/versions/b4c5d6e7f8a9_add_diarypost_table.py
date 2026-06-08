@@ -32,7 +32,6 @@ def upgrade(name: str = "") -> None:
     op.create_table(
         DIARYPOST_TABLE,
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
-        sa.Column("title", sa.String(256), nullable=False),
         sa.Column("content", sa.Text(), nullable=False),
         sa.Column("keywords", sa.String(256), server_default="", nullable=False),
         sa.Column("created_at", sa.DateTime(), server_default=sa.func.now(), nullable=False),
@@ -43,11 +42,9 @@ def upgrade(name: str = "") -> None:
         batch_op.create_index(f"ix_{DIARYPOST_TABLE}_created_at", ["created_at"])
 
     # 2. 将 note 表中 context_id='moonlark_diary' 的数据迁移到 diarypost
-    #    title 从 keywords 中取（日期 + "日记"），expire_time 映射到 expire_at
     op.execute(f"""
-        INSERT INTO {DIARYPOST_TABLE} (title, content, keywords, created_at, expire_at)
+        INSERT INTO {DIARYPOST_TABLE} (content, keywords, created_at, expire_at)
         SELECT
-            COALESCE(keywords, '') AS title,
             content,
             COALESCE(keywords, ''),
             datetime(created_time, 'unixepoch', 'localtime'),
