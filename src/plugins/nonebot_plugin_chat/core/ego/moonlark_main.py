@@ -449,7 +449,7 @@ class MoonlarkMain:
                 diary_time_str = diary_time.strftime("%Y-%m-%d %H:%M:%S")
             else:
                 diary_time_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            
+
             diary_messages = await get_messages("diary", context=context, current_time=diary_time_str)
             diary_text = await fetch_message(
                 diary_messages,
