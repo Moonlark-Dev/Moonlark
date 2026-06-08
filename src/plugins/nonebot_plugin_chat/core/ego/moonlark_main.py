@@ -469,10 +469,8 @@ class MoonlarkMain:
             expire_at = datetime.now() + timedelta(hours=processed.expire_hours)
 
             # 6. 写入 DiaryPost 表
-            title = date.today().strftime("%Y-%m-%d") + " 日记"
             async with get_session() as session:
                 diary_post = DiaryPost(
-                    title=title,
                     content=diary_text,
                     keywords=processed.keywords,
                     expire_at=expire_at,
