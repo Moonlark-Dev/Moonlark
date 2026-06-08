@@ -62,7 +62,9 @@ def generate_message(content: str | list, role: Literal["system", "user", "assis
 
 async def get_message_text(name: str, **kwargs) -> str:
     template = env.get_template(name)
-    kwargs["current_time"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    # 只在未提供 current_time 时才使用当前时间
+    if "current_time" not in kwargs:
+        kwargs["current_time"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     return await template.render_async(**kwargs)
 
 

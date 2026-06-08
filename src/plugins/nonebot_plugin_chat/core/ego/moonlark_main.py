@@ -443,7 +443,14 @@ class MoonlarkMain:
             context = self._format_diary_context(entries)
 
             # 3. 第一次调用：生成日记正文
-            diary_messages = await get_messages("diary", context=context)
+            # 使用最后一次睡眠时间作为日记时间
+            diary_time = self.sleep_controller.sleep_begin_time
+            if diary_time:
+                diary_time_str = diary_time.strftime("%Y-%m-%d %H:%M:%S")
+            else:
+                diary_time_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+            diary_messages = await get_messages("diary", context=context, current_time=diary_time_str)
             diary_text = await fetch_message(
                 diary_messages,
                 identify="MoonlarkMain - Generate Diary",
