@@ -272,4 +272,4 @@ class DiaryProcessResponse(BaseModel):
     """日记处理 LLM 返回格式（关键词 + 过期时间）"""
 
     keywords: str = Field(description="关键词，空格分隔，至少 1 个")
-    expire_hours: float = Field(description="根据信息时效性估算的过期时间（小时），-1 表示永不过期")
+    expire_hours: float = Field(description="根据信息时效性估算的过期时间（小时），禁止 -1（永不过期）", gt=0)
