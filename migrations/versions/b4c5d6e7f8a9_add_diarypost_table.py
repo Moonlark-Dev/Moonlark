@@ -28,6 +28,17 @@ def upgrade(name: str = "") -> None:
     if name:
         return
 
+    bind = op.get_bind()
+    dialect = bind.dialect.name
+    if dialect == "mysql":
+        table_check = f"SHOW TABLES LIKE '{DIARYPOST_TABLE}'"
+    else:
+        table_check = f"SELECT name FROM sqlite_master WHERE type='table' AND name='{DIARYPOST_TABLE}'"
+    result = bind.execute(sa.text(table_check)).fetchall()
+    if result:
+        # 表已存在（之前迁移部分执行过），跳过
+        return
+
     # 1. 创建 DiaryPost 表
     op.create_table(
         DIARYPOST_TABLE,
@@ -44,8 +55,6 @@ def upgrade(name: str = "") -> None:
     # 2. 将 note 表中 context_id='moonlark_diary' 的数据迁移到 diarypost
     # created_time 是 Float 类型的 Unix 时间戳，需要转换为 DateTime
     # MySQL 用 FROM_UNIXTIME()，SQLite 用 datetime(..., 'unixepoch', 'localtime')
-    bind = op.get_bind()
-    dialect = bind.dialect.name
     if dialect == "mysql":
         created_at_expr = "FROM_UNIXTIME(created_time)"
     else:
