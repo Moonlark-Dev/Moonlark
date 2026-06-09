@@ -184,6 +184,11 @@ async def handle_cmd_rank(result: Arparma, user_id: str = get_user_id()):
 
     # 渲染图片
     title = await lang.text("ranking.title", user_id, days=days)
+
+    # 预渲染每条记录的 user_detail（因为 count 每条不同）
+    for item in ranking:
+        item["user_detail"] = await lang.text("ranking.user_detail", user_id, count=item["user_count"])
+
     image = await render_template(
         "command_ranking.html.jinja",
         title,
@@ -196,7 +201,6 @@ async def handle_cmd_rank(result: Arparma, user_id: str = get_user_id()):
                 "total_count": await lang.text("ranking.total_count", user_id),
                 "cmd_count": await lang.text("ranking.cmd_count", user_id),
                 "user_count": await lang.text("ranking.user_count", user_id),
-                "user_detail": await lang.text("ranking.user_detail", user_id),
                 "count_unit": await lang.text("ranking.count_unit", user_id),
             },
         },
