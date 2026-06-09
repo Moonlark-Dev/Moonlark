@@ -5,11 +5,11 @@ help:
   usage2: "cmd-rank <days> - Show top commands in last N days (max 90)"
 
 ranking:
-  title: "📊 Top Commands in Last {{days}} Days"
-  no_data: "No command usage recorded in the last {{days}} days~"
+  title: "📊 Top Commands in Last {days} Days"
+  no_data: "No command usage recorded in the last {days} days~"
   total_count: "Total Usage"
   cmd_count: "Commands"
   user_count: "Active Users"
-  user_detail: "{{count}} users"
+  user_detail: "{count} users"
   count_unit: "times"
   days_error: "Days must be between 1 and 90~"
