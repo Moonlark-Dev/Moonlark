@@ -151,10 +151,10 @@ class MessageQueue:
 
         session_id = self.processor.session.session_id
         lang_str = self.processor.session.lang_str
-        
+
         try:
             recent_events = await generate_recent_events_summary(session_id, lang_str)
-            
+
             if recent_events:
                 # 在消息列表末尾添加最近事件摘要
                 self.messages.append(generate_message(recent_events, "user"))
@@ -299,10 +299,10 @@ class MessageQueue:
         messages = await self.get_messages()
         if get_role(messages[-1]) == "assistant":
             return FetchStatus.SKIP
-        
+
         # 在获取回复前，生成并注入最近事件摘要
         await self._inject_recent_events()
-        
+
         # 保存 system prompt，确保后续重组时不会丢失
         system_prompt = messages[0]
         self.messages.clear()

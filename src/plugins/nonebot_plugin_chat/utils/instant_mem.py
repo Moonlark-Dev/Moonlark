@@ -126,19 +126,19 @@ def format_memories_for_injection(memories: list[InstantMemory]) -> str:
 
 async def generate_recent_events_summary(current_session_id: str, lang_str: str = "zh_tw") -> str:
     """生成最近事件摘要，基于非当前会话的即时记忆
-    
+
     Args:
         current_session_id: 当前会话ID
         lang_str: 语言字符串
-        
+
     Returns:
         生成的最近事件摘要文本，如果记忆少于3条则返回原文，否则返回AI总结
     """
     memories = get_memories_for_display(current_session_id)
-    
+
     if not memories:
         return ""
-    
+
     # 少于3条，直接展示原文
     if len(memories) < 3:
         lines = ["以下是最近发生的其他事件："]
@@ -147,7 +147,7 @@ async def generate_recent_events_summary(current_session_id: str, lang_str: str 
             name_part = f"[{mem['name']}] " if mem.get("name") else ""
             lines.append(f"- ({time_str}) {name_part}{mem['content']}")
         return "\n".join(lines)
-    
+
     # 3条或以上，调用AI进行总结
     try:
         memory_descriptions = []
@@ -155,23 +155,23 @@ async def generate_recent_events_summary(current_session_id: str, lang_str: str 
             time_str = mem["create_time"].strftime("%m-%d %H:%M")
             name_part = f"[{mem['name']}] " if mem.get("name") else ""
             memory_descriptions.append(f"({time_str}) {name_part}{mem['content']}")
-        
+
         memories_text = "\n".join(memory_descriptions)
-        
+
         messages = await get_messages(
             "recent_events_summary",
             memories=memories_text,
             current_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         )
-        
+
         response = await fetch_message(messages, identify="Recent Events Summary")
-        
+
         # 清理可能的markdown代码块标记
         summary = re.sub(r"`{1,3}([a-zA-Z0-9]+)?", "", response).strip()
-        
+
         logger.info(f"[RecentEvents] 生成了 {len(memories)} 条记忆的摘要")
         return f"以下是最近发生的其他事件总结：\n{summary}"
-        
+
     except Exception as e:
         logger.exception(f"[RecentEvents] 生成最近事件摘要失败: {e}")
         # 降级：返回简单列表
