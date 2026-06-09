@@ -44,6 +44,7 @@ class MessageQueue:
         self.inserted_messages = []
         self.trace_id: str = uuid.uuid4().hex
         self.created_at: datetime = datetime.now()
+        self.last_events_summary_time: Optional[datetime] = None
 
     async def reset_chat_history(self) -> list[OpenAIMessage]:
         messages = copy.deepcopy(self.messages)
@@ -153,11 +154,14 @@ class MessageQueue:
         lang_str = self.processor.session.lang_str
 
         try:
-            recent_events = await generate_recent_events_summary(session_id, lang_str)
+            recent_events = await generate_recent_events_summary(
+                session_id, lang_str,
+                after_time=self.last_events_summary_time,
+            )
 
             if recent_events:
-                # 在消息列表末尾添加最近事件摘要
                 self.messages.append(generate_message(recent_events, "user"))
+                self.last_events_summary_time = datetime.now()
                 logger.info(f"[RecentEvents] 已注入最近事件摘要到 {session_id}")
         except Exception as e:
             logger.exception(f"[RecentEvents] 注入最近事件摘要失败: {e}")

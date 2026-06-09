@@ -37,16 +37,27 @@ def get_instant_memories() -> list[InstantMemory]:
     return instant_memories
 
 
-def get_memories_for_display(current_session_id: str) -> list[InstantMemory]:
-    """获取用于跨会话展示的记忆（排除当前会话今天的记忆）"""
+def get_memories_for_display(
+    current_session_id: str,
+    after_time: Optional[datetime] = None,
+) -> list[InstantMemory]:
+    """获取用于跨会话展示的记忆（排除当前会话今天的记忆）
+
+    Args:
+        current_session_id: 当前会话ID
+        after_time: 只返回此时间之后创建的记忆
+    """
     _clear_expired()
     now = datetime.now()
     today = now.date()
-    return [
+    memories = [
         mem
         for mem in instant_memories
         if not (mem["ctx_id"] == current_session_id and mem["create_time"].date() == today)
     ]
+    if after_time is not None:
+        memories = [mem for mem in memories if mem["create_time"] > after_time]
+    return memories
 
 
 def get_memories_for_session(session_id: str) -> list[InstantMemory]:
@@ -124,63 +135,45 @@ def format_memories_for_injection(memories: list[InstantMemory]) -> str:
     return "\n".join(lines)
 
 
-async def generate_recent_events_summary(current_session_id: str, lang_str: str = "zh_tw") -> str:
+async def generate_recent_events_summary(
+    current_session_id: str,
+    lang_str: str = "zh_tw",
+    after_time: Optional[datetime] = None,
+) -> str:
     """生成最近事件摘要，基于非当前会话的即时记忆
 
     Args:
         current_session_id: 当前会话ID
         lang_str: 语言字符串
+        after_time: 只总结此时间之后的记忆
 
     Returns:
-        生成的最近事件摘要文本，如果记忆少于3条则返回原文，否则返回AI总结
+        生成的最近事件摘要文本，失败或无记忆时返回空字符串
     """
-    memories = get_memories_for_display(current_session_id)
+    memories = get_memories_for_display(current_session_id, after_time=after_time)
 
     if not memories:
         return ""
 
-    # 少于3条，直接展示原文
-    if len(memories) < 3:
-        lines = ["以下是最近发生的其他事件："]
-        for mem in memories:
-            time_str = mem["create_time"].strftime("%m-%d %H:%M")
-            name_part = f"[{mem['name']}] " if mem.get("name") else ""
-            lines.append(f"- ({time_str}) {name_part}{mem['content']}")
-        return "\n".join(lines)
+    # 格式化为 summarize 期望的输入格式："[时间][群名] 内容"
+    memory_lines = []
+    for mem in memories:
+        time_str = mem["create_time"].strftime("%H:%M")
+        ctx = mem.get("name", mem.get("ctx_id", ""))
+        memory_lines.append(f"[{time_str}][{ctx}] {mem['content']}")
+    memories_text = "\n".join(memory_lines)
 
-    # 3条或以上，调用AI进行总结
     try:
-        memory_descriptions = []
-        for mem in memories:
-            time_str = mem["create_time"].strftime("%m-%d %H:%M")
-            name_part = f"[{mem['name']}] " if mem.get("name") else ""
-            memory_descriptions.append(f"({time_str}) {name_part}{mem['content']}")
-
-        memories_text = "\n".join(memory_descriptions)
-
-        messages = await get_messages(
-            "recent_events_summary",
-            memories=memories_text,
-            current_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        )
-
-        response = await fetch_message(messages, identify="Recent Events Summary")
-
-        # 清理可能的markdown代码块标记
-        summary = re.sub(r"`{1,3}([a-zA-Z0-9]+)?", "", response).strip()
+        # 复用 MoonlarkMain 的 summarize prompt
+        messages = await get_messages("summarize", memories=memories_text)
+        summary = await fetch_message(messages, identify="Recent Events Summary")
 
         logger.info(f"[RecentEvents] 生成了 {len(memories)} 条记忆的摘要")
-        return f"以下是最近发生的其他事件总结：\n{summary}"
+        return summary.strip()
 
     except Exception as e:
         logger.exception(f"[RecentEvents] 生成最近事件摘要失败: {e}")
-        # 降级：返回简单列表
-        lines = ["以下是最近发生的其他事件："]
-        for mem in memories[:5]:  # 最多显示5条
-            time_str = mem["create_time"].strftime("%m-%d %H:%M")
-            name_part = f"[{mem['name']}] " if mem.get("name") else ""
-            lines.append(f"- ({time_str}) {name_part}{mem['content']}")
-        return "\n".join(lines)
+        return ""
 
 
 async def post_instant_memory(
