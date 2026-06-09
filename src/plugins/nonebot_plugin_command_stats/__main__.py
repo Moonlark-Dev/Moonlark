@@ -45,7 +45,8 @@ RANK_COMMAND_NAMES = {"指令排行", "cmd-rank", "命令排行", "热门指令"
 @run_preprocessor
 async def record_command_usage(matcher: Matcher, state: T_State, event: Event) -> None:
     """自动记录所有指令使用到数据库"""
-    if matcher.type != "message":
+    # AlconnaMatcher 的 type 可能为空字符串，只排除明确非 message 的类型
+    if matcher.type and matcher.type != "message":
         return
 
     # 识别指令名（参考 status_report 的逻辑）
