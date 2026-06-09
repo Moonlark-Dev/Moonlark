@@ -5,11 +5,11 @@ help:
   usage2: "指令排行 <天數> - 查看近N天熱門指令排行（最大90天）"
 
 ranking:
-  title: "📊 近{days}天熱門指令排行"
-  no_data: "近{days}天暫無指令使用記錄喵～"
+  title: "📊 近{{days}}天熱門指令排行"
+  no_data: "近{{days}}天暫無指令使用記錄喵～"
   total_count: "總使用次數"
   cmd_count: "指令種類"
   user_count: "活躍用戶"
-  user_detail: "{count} 位用戶使用"
+  user_detail: "{{count}} 位用戶使用"
   count_unit: "次"
   days_error: "天數範圍應在 1-90 之間喵～"
