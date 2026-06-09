@@ -180,10 +180,10 @@ async def handle_cmd_rank(result: Arparma, user_id: str = get_user_id()):
     stats = await get_total_stats(days=days)
 
     if not ranking:
-        await cmd_rank.finish(await lang.text("ranking.no_data", user_id, days))
+        await cmd_rank.finish(await lang.text("ranking.no_data", user_id, days=days))
 
     # 渲染图片
-    title = await lang.text("ranking.title", user_id, days)
+    title = await lang.text("ranking.title", user_id, days=days)
     image = await render_template(
         "command_ranking.html.jinja",
         title,
