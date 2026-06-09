@@ -24,7 +24,7 @@ from nonebot.adapters import Event
 from nonebot.matcher import Matcher
 from nonebot_plugin_alconna import on_alconna, Alconna, Args, Arparma, UniMessage
 from nonebot_plugin_orm import get_session
-from nonebot_plugin_larkutils import get_user_id, get_group_id
+from nonebot_plugin_larkutils import get_user_id
 from nonebot_plugin_larklang import LangHelper
 from nonebot_plugin_render import render_template
 from sqlalchemy import select, func, desc, distinct
@@ -58,7 +58,11 @@ async def record_command_usage(matcher: Matcher, state: T_State, event: Event) -
                 command_name = list(matcher.rule.checkers)[0].call.cmds[0][0]
             except Exception:
                 return
-    except Exception:
+    except Exception as e:
+        logger.warning(f"[CommandStats] Failed to extract command name: {e}")
+        return
+
+    if not command_name:
         return
 
     # 跳过自身指令，避免死循环
@@ -71,8 +75,9 @@ async def record_command_usage(matcher: Matcher, state: T_State, event: Event) -
     except Exception:
         user_id = "unknown"
 
+    # get_group_id() 返回 Depends 对象，不能直接调用，需从 event 提取
     try:
-        group_id = get_group_id()
+        group_id = event.get_session_id().split("_")[0] if event.get_session_id() != event.get_user_id() else None
     except Exception:
         group_id = None
 
@@ -86,7 +91,7 @@ async def record_command_usage(matcher: Matcher, state: T_State, event: Event) -
             )
             session.add(usage)
             await session.commit()
-            logger.debug(f"[CommandStats] Recorded: /{command_name} by {user_id}")
+            logger.info(f"[CommandStats] Recorded: /{command_name} by {user_id} in {group_id}")
     except Exception as e:
         logger.warning(f"[CommandStats] Failed to record command usage: {e}")
 
