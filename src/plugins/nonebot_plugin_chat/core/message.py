@@ -155,7 +155,8 @@ class MessageQueue:
 
         try:
             recent_events = await generate_recent_events_summary(
-                session_id, lang_str,
+                session_id,
+                lang_str,
                 after_time=self.last_events_summary_time,
             )
 
