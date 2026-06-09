@@ -145,6 +145,23 @@ class MessageQueue:
         self.messages.insert(1, generate_message(injected_text, "user"))
         logger.info(f"[InstantMemory] 已注入 {len(memories)} 条即时记忆到 {session_id}")
 
+    async def _inject_recent_events(self) -> None:
+        """在获取回复前，生成并注入最近事件摘要（基于非当前会话的即时记忆）"""
+        from ..utils.instant_mem import generate_recent_events_summary
+
+        session_id = self.processor.session.session_id
+        lang_str = self.processor.session.lang_str
+        
+        try:
+            recent_events = await generate_recent_events_summary(session_id, lang_str)
+            
+            if recent_events:
+                # 在消息列表末尾添加最近事件摘要
+                self.messages.append(generate_message(recent_events, "user"))
+                logger.info(f"[RecentEvents] 已注入最近事件摘要到 {session_id}")
+        except Exception as e:
+            logger.exception(f"[RecentEvents] 注入最近事件摘要失败: {e}")
+
     async def _reset_and_clear_db(self, group_id: str) -> None:
         """重置消息队列并清空数据库缓存"""
         self.messages = []
@@ -282,6 +299,10 @@ class MessageQueue:
         messages = await self.get_messages()
         if get_role(messages[-1]) == "assistant":
             return FetchStatus.SKIP
+        
+        # 在获取回复前，生成并注入最近事件摘要
+        await self._inject_recent_events()
+        
         # 保存 system prompt，确保后续重组时不会丢失
         system_prompt = messages[0]
         self.messages.clear()
