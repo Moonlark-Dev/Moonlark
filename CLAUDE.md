@@ -53,7 +53,7 @@ poetry run nb test tests/test_name.py
 ### Database Migrations
 ```bash
 # Create new migration
-poetry run nb orm revision --autogenerate -m "description"
+poetry run nb orm revision
 
 # Apply migrations
 poetry run nb orm upgrade
