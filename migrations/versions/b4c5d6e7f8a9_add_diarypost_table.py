@@ -42,12 +42,20 @@ def upgrade(name: str = "") -> None:
         batch_op.create_index(f"ix_{DIARYPOST_TABLE}_created_at", ["created_at"])
 
     # 2. 将 note 表中 context_id='moonlark_diary' 的数据迁移到 diarypost
+    # created_time 是 Float 类型的 Unix 时间戳，需要转换为 DateTime
+    # MySQL 用 FROM_UNIXTIME()，SQLite 用 datetime(..., 'unixepoch', 'localtime')
+    bind = op.get_bind()
+    dialect = bind.dialect.name
+    if dialect == "mysql":
+        created_at_expr = "FROM_UNIXTIME(created_time)"
+    else:
+        created_at_expr = "datetime(created_time, 'unixepoch', 'localtime')"
     op.execute(f"""
         INSERT INTO {DIARYPOST_TABLE} (content, keywords, created_at, expire_at)
         SELECT
             content,
             COALESCE(keywords, ''),
-            datetime(created_time, 'unixepoch', 'localtime'),
+            {created_at_expr},
             expire_time
         FROM {NOTE_TABLE}
         WHERE context_id = '{DIARY_CONTEXT_ID}'
