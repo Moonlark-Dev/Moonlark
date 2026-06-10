@@ -107,6 +107,20 @@ async def get_command_ranking(days: int = 7, limit: int = 10) -> list[dict]:
     cutoff = datetime.now() - timedelta(days=days)
 
     async with get_session() as session:
+        # DEBUG: 先查所有 command 值（包括空的）
+        debug_result = await session.execute(
+            select(
+                CommandUsage.command,
+                func.count(CommandUsage.id).label("count"),
+            )
+            .where(CommandUsage.used_at >= cutoff)
+            .group_by(CommandUsage.command)
+            .order_by(desc("count"))
+            .limit(20)
+        )
+        debug_rows = debug_result.all()
+        logger.info(f"[CommandStats] DEBUG all commands in DB: {[(repr(r.command), r.count) for r in debug_rows]}")
+
         result = await session.execute(
             select(
                 CommandUsage.command,
@@ -120,6 +134,8 @@ async def get_command_ranking(days: int = 7, limit: int = 10) -> list[dict]:
             .limit(limit)
         )
         rows = result.all()
+
+    logger.info(f"[CommandStats] DEBUG filtered ranking: {[(repr(r.command), r.count) for r in rows]}")
 
     return [
         {
