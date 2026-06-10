@@ -107,20 +107,6 @@ async def get_command_ranking(days: int = 7, limit: int = 10) -> list[dict]:
     cutoff = datetime.now() - timedelta(days=days)
 
     async with get_session() as session:
-        # DEBUG: 先查所有 command 值（包括空的）
-        debug_result = await session.execute(
-            select(
-                CommandUsage.command,
-                func.count(CommandUsage.id).label("count"),
-            )
-            .where(CommandUsage.used_at >= cutoff)
-            .group_by(CommandUsage.command)
-            .order_by(desc("count"))
-            .limit(20)
-        )
-        debug_rows = debug_result.all()
-        logger.info(f"[CommandStats] DEBUG all commands in DB: {[(repr(r.command), r.count) for r in debug_rows]}")
-
         result = await session.execute(
             select(
                 CommandUsage.command,
@@ -134,22 +120,6 @@ async def get_command_ranking(days: int = 7, limit: int = 10) -> list[dict]:
             .limit(limit)
         )
         rows = result.all()
-
-    import json as _json
-    _debug_data = {
-        "all_commands": [(repr(r.command), r.count) for r in debug_rows],
-        "filtered": [(repr(r.command), r.count) for r in rows],
-        "cutoff": str(cutoff),
-    }
-    for _debug_path in ["/tmp/cmd_stats_debug.json", "/vol2/1000/Project/Moonlark/cmd_stats_debug.json"]:
-        try:
-            with open(_debug_path, "w") as _f:
-                _json.dump(_debug_data, _f, ensure_ascii=False, indent=2)
-            break
-        except Exception as _e:
-            logger.warning(f"[CommandStats] DEBUG write failed to {_debug_path}: {_e}")
-    logger.info(f"[CommandStats] DEBUG all commands: {_debug_data['all_commands']}")
-    logger.info(f"[CommandStats] DEBUG filtered: {_debug_data['filtered']}")
 
     return [
         {
