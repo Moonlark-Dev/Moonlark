@@ -135,7 +135,19 @@ async def get_command_ranking(days: int = 7, limit: int = 10) -> list[dict]:
         )
         rows = result.all()
 
-    logger.info(f"[CommandStats] DEBUG filtered ranking: {[(repr(r.command), r.count) for r in rows]}")
+    import json as _json
+    _debug_data = {
+        "all_commands": [(repr(r.command), r.count) for r in debug_rows],
+        "filtered": [(repr(r.command), r.count) for r in rows],
+        "cutoff": str(cutoff),
+    }
+    try:
+        with open("/tmp/cmd_stats_debug.json", "w") as _f:
+            _json.dump(_debug_data, _f, ensure_ascii=False, indent=2)
+    except Exception:
+        pass
+    logger.info(f"[CommandStats] DEBUG all commands: {_debug_data['all_commands']}")
+    logger.info(f"[CommandStats] DEBUG filtered: {_debug_data['filtered']}")
 
     return [
         {
