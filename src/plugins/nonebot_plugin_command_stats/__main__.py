@@ -141,11 +141,13 @@ async def get_command_ranking(days: int = 7, limit: int = 10) -> list[dict]:
         "filtered": [(repr(r.command), r.count) for r in rows],
         "cutoff": str(cutoff),
     }
-    try:
-        with open("/tmp/cmd_stats_debug.json", "w") as _f:
-            _json.dump(_debug_data, _f, ensure_ascii=False, indent=2)
-    except Exception:
-        pass
+    for _debug_path in ["/tmp/cmd_stats_debug.json", "/vol2/1000/Project/Moonlark/cmd_stats_debug.json"]:
+        try:
+            with open(_debug_path, "w") as _f:
+                _json.dump(_debug_data, _f, ensure_ascii=False, indent=2)
+            break
+        except Exception as _e:
+            logger.warning(f"[CommandStats] DEBUG write failed to {_debug_path}: {_e}")
     logger.info(f"[CommandStats] DEBUG all commands: {_debug_data['all_commands']}")
     logger.info(f"[CommandStats] DEBUG filtered: {_debug_data['filtered']}")
 
