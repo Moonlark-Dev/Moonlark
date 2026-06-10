@@ -114,6 +114,7 @@ async def get_command_ranking(days: int = 7, limit: int = 10) -> list[dict]:
                 func.count(distinct(CommandUsage.user_id)).label("user_count"),
             )
             .where(CommandUsage.used_at >= cutoff)
+            .where(CommandUsage.command != "")
             .group_by(CommandUsage.command)
             .order_by(desc("count"))
             .limit(limit)
@@ -137,18 +138,20 @@ async def get_total_stats(days: int = 7) -> dict:
 
     async with get_session() as session:
         # 总使用次数
-        total_result = await session.execute(select(func.count(CommandUsage.id)).where(CommandUsage.used_at >= cutoff))
+        total_result = await session.execute(
+            select(func.count(CommandUsage.id)).where(CommandUsage.used_at >= cutoff).where(CommandUsage.command != "")
+        )
         total_count = total_result.scalar() or 0
 
         # 独立用户数
         user_result = await session.execute(
-            select(func.count(distinct(CommandUsage.user_id))).where(CommandUsage.used_at >= cutoff)
+            select(func.count(distinct(CommandUsage.user_id))).where(CommandUsage.used_at >= cutoff).where(CommandUsage.command != "")
         )
         user_count = user_result.scalar() or 0
 
         # 独立指令数
         cmd_result = await session.execute(
-            select(func.count(distinct(CommandUsage.command))).where(CommandUsage.used_at >= cutoff)
+            select(func.count(distinct(CommandUsage.command))).where(CommandUsage.used_at >= cutoff).where(CommandUsage.command != "")
         )
         cmd_count = cmd_result.scalar() or 0
 
