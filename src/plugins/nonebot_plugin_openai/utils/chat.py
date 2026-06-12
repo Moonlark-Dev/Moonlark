@@ -180,7 +180,9 @@ class LLMRequestSession(Generic[T2]):
             result = await self.func_index[name]["func"](**params)
         except Exception as e:
             logger.exception(e)
-            result = f"工具调用失败：{traceback.format_exc()}"
+            # 只取报错最后一行，避免完整 traceback 过长
+            last_line = traceback.format_exc().strip().splitlines()[-1]
+            result = f"工具调用失败：{last_line}"
         if self.trigger_functions["post_function_call"]:
             result = await self.trigger_functions["post_function_call"](result)
         if result is None:
