@@ -14,6 +14,7 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
+import base64
 import hashlib
 import os
 import traceback
@@ -117,9 +118,12 @@ async def describe_video(file_path: Path, file_name: str, user_id: str) -> str:
 
         shutil.copy(file_path, cache_file_path)
 
-    external_url = f"{config.moonlark_api_base}/chat/files/{file_id}"
-
     try:
+        # 读取视频文件并编码为 base64（Gemini 2.0+ 不再支持外部 HTTP URL）
+        video_bytes = cache_file_path.read_bytes()
+        video_base64 = base64.b64encode(video_bytes).decode("utf-8")
+        video_data_url = f"data:video/mp4;base64,{video_base64}"
+
         # 复用 bilibili 的提示词
         messages = [
             await get_message("system", "bilibili/system.md.jinja"),
@@ -129,7 +133,7 @@ async def describe_video(file_path: Path, file_name: str, user_id: str) -> str:
                         "type": "text",
                         "text": await get_message_text("bilibili/user.md.jinja", title=file_name, description=""),
                     },
-                    {"type": "video_url", "video_url": {"url": external_url}},
+                    {"type": "video_url", "video_url": {"url": video_data_url}},
                 ],
                 role="user",
             ),

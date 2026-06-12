@@ -1,3 +1,5 @@
+import base64
+
 from nonebot_plugin_openai.utils.message import generate_message, get_message, get_message_text
 from bilibili_api import video
 from ...config import config
@@ -148,7 +150,10 @@ async def describe_bilibili_video(bv_id: str, get_text: GetTextFunc) -> str:
                 os.remove(file_path)
             os.rename(temp_video_path, file_path)
 
-        external_url = f"{config.moonlark_api_base}/chat/video/{file_name}"
+        # 读取视频文件并编码为 base64（Gemini 2.0+ 不再支持外部 HTTP URL）
+        video_bytes = file_path.read_bytes()
+        video_base64 = base64.b64encode(video_bytes).decode("utf-8")
+        video_data_url = f"data:video/mp4;base64,{video_base64}"
 
         messages = [
             await get_message("system", "bilibili/system.md.jinja"),
@@ -158,7 +163,7 @@ async def describe_bilibili_video(bv_id: str, get_text: GetTextFunc) -> str:
                         "type": "text",
                         "text": await get_message_text("bilibili/user.md.jinja", title=title, description=desc),
                     },
-                    {"type": "video_url", "video_url": {"url": external_url}},
+                    {"type": "video_url", "video_url": {"url": video_data_url}},
                 ],
                 role="user",
             ),
