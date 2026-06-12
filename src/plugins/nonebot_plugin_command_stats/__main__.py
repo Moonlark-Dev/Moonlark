@@ -145,13 +145,17 @@ async def get_total_stats(days: int = 7) -> dict:
 
         # 独立用户数
         user_result = await session.execute(
-            select(func.count(distinct(CommandUsage.user_id))).where(CommandUsage.used_at >= cutoff).where(CommandUsage.command != "")
+            select(func.count(distinct(CommandUsage.user_id)))
+            .where(CommandUsage.used_at >= cutoff)
+            .where(CommandUsage.command != "")
         )
         user_count = user_result.scalar() or 0
 
         # 独立指令数
         cmd_result = await session.execute(
-            select(func.count(distinct(CommandUsage.command))).where(CommandUsage.used_at >= cutoff).where(CommandUsage.command != "")
+            select(func.count(distinct(CommandUsage.command)))
+            .where(CommandUsage.used_at >= cutoff)
+            .where(CommandUsage.command != "")
         )
         cmd_count = cmd_result.scalar() or 0
 
