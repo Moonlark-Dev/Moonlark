@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Moonlark is a multi-functional chatbot built on Python 3.11+ and the Nonebot2 framework. It supports multiple chat platforms (QQ, Discord) through various adapters (OneBot V11/V12, QQ official adapter). The project follows a plugin-based architecture with 60+ custom plugins located in `src/plugins/`.
+Moonlark is a multi-functional chatbot built on Python 3.11+ and the Nonebot2 framework. It supports multiple chat platforms (QQ, Discord) through various adapters (OneBot V11/V12, QQ official adapter). The project follows a plugin-based architecture with 67 custom plugins located in `src/plugins/`.
 
 ## Development Setup
 
@@ -150,28 +150,35 @@ All user-facing text must be localized using LarkLang:
 
 ## Environment Variables
 
-Key variables in `.env`:
+Key variables in `.env` (see `.env.template` for full list):
 - `SQLALCHEMY_DATABASE_URL`: Database connection string
 - `OPENAI_API_KEY`, `OPENAI_BASE_URL`: OpenAI API configuration
+- `OPENAI_DEFAULT_MODEL`: Default model for OpenAI-compatible APIs
 - `MODEL_OVERRIDE`: JSON mapping for model overrides per application
 - `WOLFRAM_API_KEY`: Wolfram Alpha API
 - `BAIDU_API_KEY`, `BAIDU_SECRET_KEY`: Baidu translation API
 - `SENTRY_DSN`: Error tracking
+- `MOONLARK_API_BASE`: Moonlark API base URL
+- `WAKATIME_APP_ID`, `WAKATIME_APP_SECRET`: WakaTime integration
+- `TRANSLATE_DEEPLX_URL`: DeepLX translation endpoint
+- `METASO_API_KEY`: Metaso search API
+- `HTMLRENDER_BROWSER`: Browser for HTML rendering (default: firefox)
 
 ## Adapters
 
 Supported chat platforms:
 - OneBot V11 (QQ)
 - OneBot V12
-- QQ Official (custom fork: `github.com/Moonlark-Dev/adapter-qq`)
+- QQ Official (uses custom fork `github.com/Moonlark-Dev/adapter-qq`, imported as `nonebot.adapters.qq`)
 
 ## Project Structure
 
 ```
 Moonlark/
 ├── src/
-│   ├── plugins/          # 60+ custom plugins
+│   ├── plugins/          # 67 custom plugins
 │   ├── lang/             # Localization files
+│   ├── prompt/           # Jinja2 prompt templates for AI features
 │   ├── static/           # Static assets
 │   └── templates/        # Jinja2 templates
 ├── migrations/           # Alembic database migrations
@@ -179,6 +186,9 @@ Moonlark/
 ├── docs/                 # Documentation
 ├── pyproject.toml        # Root project config
 ├── src/pyproject.toml    # Custom plugins package config
+├── COMMANDS.md           # Auto-generated command documentation
+├── CONTRIBUTING.md       # Contribution guidelines
+├── CODE_OF_CONDUCT.md    # Code of conduct
 └── .env                  # Environment configuration (not in git)
 ```
 
