@@ -186,9 +186,9 @@ class ActionDecider:
     async def generate_message(self, reason) -> OpenAIChatMessage:
         notes_text = await self.moonlark_main.get_relevant_notes()
         instant_mem = await self.moonlark_main.summary_instant_memory()
-        # 记录群聊事件总结到日记
-        if instant_mem and instant_mem not in ("暂无群聊记忆。", "记忆汇总失败。"):
-            await self._record_diary_entry("[群聊事件] " + instant_mem)
+        # 记录QQ中的事件总结到日记
+        if instant_mem and instant_mem not in ("暂无记忆。", "记忆汇总失败。"):
+            await self._record_diary_entry("[QQ中的事件] " + instant_mem)
         return await get_message(
             "user", "moonlark_main/user.md.jinja", reason=reason, summary=instant_mem, notes=notes_text
         )
@@ -261,7 +261,7 @@ class MoonlarkMain:
             memories = [m for m in memories if m["create_time"] > last_summary_time]
         self.state["last_summary_time"] = datetime.now()
         if not memories:
-            self.state["instant_memory_summary"] = "暂无群聊记忆。"
+            self.state["instant_memory_summary"] = "暂无记忆。"
             return self.state["instant_memory_summary"]
 
         memory_lines = []
