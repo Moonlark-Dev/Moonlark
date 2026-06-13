@@ -14,9 +14,16 @@ from re import A
 from typing import TYPE_CHECKING, Optional
 
 from nonebot import logger
+from nonebot_plugin_orm import get_session
+from sqlalchemy import select
+
+from ...models import PrivateChatSession
 
 if TYPE_CHECKING:
     from .moonlark_main import MoonlarkMain
+
+# 私聊回复后等待时间（秒），用于等待用户回复并生成即时记忆
+PRIVATE_REPLY_DELAY_SECONDS = 180  # 3 分钟
 
 
 class ProactiveChatController:
@@ -109,14 +116,41 @@ class ProactiveChatController:
                     logger.info(f"[ProactiveChatCtrl] 等待 {target} 回复，超时 {wait_for}s")
                     await asyncio.wait_for(event.wait(), timeout=wait_for)
                     logger.info(f"[ProactiveChatCtrl] {target} 在超时前回复")
-                    return "已发送主动私聊，并被用户回复。"
+                    wait_result = "已发送主动私聊，并被用户回复。"
                 except asyncio.TimeoutError:
                     logger.info(f"[ProactiveChatCtrl] 等待 {target} 回复超时 ({wait_for}s)")
-                    return "已发送主动私聊，用户未在预计时间内回复。"
+                    wait_result = "已发送主动私聊，用户未在预计时间内回复。"
                 finally:
                     self._reply_events.pop(target, None)
+            else:
+                wait_result = "已发送（未等待回复）"
 
-            return "已发送（未等待回复）"
+            # 5. 延迟 3 分钟后生成私聊会话的即时记忆
+            #    确保私聊事件总结能出现在 timer 事件的"QQ中的事件总结"中
+            logger.info(
+                f"[ProactiveChatCtrl] 等待 {PRIVATE_REPLY_DELAY_SECONDS}s "
+                f"后为 {target} 生成即时记忆"
+            )
+            await asyncio.sleep(PRIVATE_REPLY_DELAY_SECONDS)
+
+            try:
+                from ..session import groups as session_groups
+
+                # 查询 session_key
+                async with get_session() as db_session:
+                    result = await db_session.execute(
+                        select(PrivateChatSession).where(PrivateChatSession.user_id == matched_user_id)
+                    )
+                    chat_session = result.scalar_one_or_none()
+
+                if chat_session and chat_session.session_key and chat_session.session_key in session_groups:
+                    session = session_groups[chat_session.session_key]
+                    await session.instant_memory_manager.generate()
+                    logger.info(f"[ProactiveChatCtrl] 已为 {target} 生成即时记忆")
+            except Exception as e:
+                logger.warning(f"[ProactiveChatCtrl] 为 {target} 生成即时记忆失败: {e}")
+
+            return wait_result
 
         except Exception as e:
             logger.exception(f"[ProactiveChatCtrl] 发送失败: {e}")
