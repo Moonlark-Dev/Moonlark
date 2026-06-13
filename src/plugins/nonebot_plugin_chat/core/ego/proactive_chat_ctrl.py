@@ -127,10 +127,7 @@ class ProactiveChatController:
 
             # 5. 延迟 3 分钟后生成私聊会话的即时记忆
             #    确保私聊事件总结能出现在 timer 事件的"QQ中的事件总结"中
-            logger.info(
-                f"[ProactiveChatCtrl] 等待 {PRIVATE_REPLY_DELAY_SECONDS}s "
-                f"后为 {target} 生成即时记忆"
-            )
+            logger.info(f"[ProactiveChatCtrl] 等待 {PRIVATE_REPLY_DELAY_SECONDS}s " f"后为 {target} 生成即时记忆")
             await asyncio.sleep(PRIVATE_REPLY_DELAY_SECONDS)
 
             try:
