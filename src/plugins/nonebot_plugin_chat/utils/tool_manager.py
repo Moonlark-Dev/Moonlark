@@ -23,6 +23,9 @@ from ..lang import lang
 from nonebot_plugin_openai.types import AsyncFunction, FunctionParameter, FunctionParameterWithEnum
 from nonebot.adapters.onebot.v11 import Bot as OB11Bot
 from nonebot_plugin_larkutils.jrrp import get_luck_value
+from nonebot_plugin_bag.utils.item import get_bag_items
+from nonebot_plugin_items.base.gift import GiftItem
+
 from .tools import (
     browse_webpage,
     web_search,
@@ -107,6 +110,44 @@ class ToolManager:
             return await self.text("tools_desc.calculate_luck_value.user_not_found", nickname)
         luck_value = await get_luck_value(user_id)
         return await self.text("tools_desc.calculate_luck_value.result", nickname, luck_value)
+
+    async def query_gift(self, target_nickname: str) -> str:
+        """查询用户背包中可赠送给 Moonlark 的礼物及其数量
+
+        Args:
+            target_nickname: 要查询的用户的昵称
+
+        Returns:
+            格式化的礼物列表
+        """
+        if self.processor is None:
+            raise RuntimeError("processor is None")
+        
+        # 获取用户列表 {nickname: user_id}
+        users = await self.processor.session.get_users()
+        if not (user_id := users.get(target_nickname)):
+            return f"找不到用户「{target_nickname}」"
+        
+        # 获取用户背包物品
+        try:
+            items = await get_bag_items(user_id)
+        except Exception as e:
+            return f"查询背包失败: {e}"
+        
+        # 过滤出 GiftItem 并按名称合并数量
+        gift_counts = {}
+        for item in items:
+            if isinstance(item.stack.item, GiftItem):
+                name = await item.stack.getName()
+                gift_counts[name] = gift_counts.get(name, 0) + item.stack.count
+        
+        if not gift_counts:
+            return f"用户「{target_nickname}」背包中没有可送给 Moonlark 的礼物"
+        
+        # 格式化输出
+        lines = [f"{name}：{count}" for name, count in sorted(gift_counts.items(), key=lambda x: -x[1])]
+        return "\n".join(lines)
+
 
     async def change_sleep_status(
         self, deal_type: Literal["ready", "delay"], delay_minutes: Optional[int] = None, reason: Optional[str] = None
@@ -201,6 +242,9 @@ class ToolManager:
 
             # calculate_luck_value
             tools.append(self.calculate_luck_value)
+
+            # query_gift
+            tools.append(self.query_gift)
 
             # request_action
             tools.append(self.request_action)
