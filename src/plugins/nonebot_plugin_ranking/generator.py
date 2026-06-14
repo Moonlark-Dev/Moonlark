@@ -49,4 +49,3 @@ async def generate_image(ranked_data: list[RankingData], user_id: str, title: st
             "users": await get_users(ranked_data, user_id, limit),
         },
     )
-
