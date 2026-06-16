@@ -17,7 +17,7 @@
 
 import json
 
-from nonebot_plugin_chat.core.session import get_session_directly, group_disable, reset_session
+from nonebot_plugin_chat.core.session import get_session_directly, group_disable, reset_session, groups
 from nonebot_plugin_chat.core.session.base import BaseSession
 from nonebot.adapters.qq import Bot as BotQQ
 from nonebot.params import CommandArg
@@ -266,6 +266,36 @@ class CommandHandler:
         else:
             await lang.finish("command.no_argv", self.user_id)
 
+    async def handle_compact(self) -> None:
+        """处理 compact 命令：生成即时记忆并重置消息队列"""
+        from nonebot_plugin_larkutils.config import config as lark_config
+
+        # 验证 superuser
+        if self.user_id not in lark_config.superusers:
+            await lang.finish("command.compact.no_permission", self.user_id)
+
+        # 解析可选的会话 ID
+        target_session_id = self.argv[1] if len(self.argv) > 1 else self.group_id
+
+        # 获取目标会话
+        if target_session_id not in groups:
+            await lang.finish("command.compact.not_found", self.user_id, target_session_id)
+
+        session = groups[target_session_id]
+
+        # 如果有缓存消息，先生成即时记忆
+        if session.cached_messages:
+            await session.instant_memory_manager.generate()
+            await lang.send("command.compact.memory_generated", self.user_id)
+
+        # 重置消息队列
+        await session.processor.openai_messages._reset_and_clear_db(target_session_id)
+
+        # 重新注入即时记忆
+        await session.processor.openai_messages._inject_instant_memories(target_session_id)
+
+        await lang.finish("command.compact.success", self.user_id, target_session_id)
+
     async def handle(self) -> None:
         match self.argv[0]:
             case "switch":
@@ -294,6 +324,8 @@ class CommandHandler:
                 await self.handle_stats()
             case "dropping":
                 await self.handle_dropping()
+            case "compact":
+                await self.handle_compact()
             case _:
                 await lang.finish("command.no_argv", self.user_id)
 

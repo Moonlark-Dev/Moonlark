@@ -134,6 +134,11 @@ command:
   done: 完成
   not_available: 该功能在此节点不可用！
   stop: 已强制停止响应。
+  compact:
+    no_permission: 权限不足，仅超级用户可以使用此命令。
+    not_found: 未找到会话 {}，请确认会话 ID 是否正确。
+    memory_generated: 已生成即时记忆，正在重置消息队列……
+    success: 已压缩会话 {} 的消息队列（即时记忆已保留）。
   stats:
     result: |
       📊 Chat 时间统计
@@ -163,6 +168,7 @@ help:
   usage12: chat reset (清除当前会话所有历史消息并重置会话状态)
   usage13: chat stop (强制停止当前正在生成的响应)
   usage14: chat stats (查看时间统计数据)
+  usage16: chat compact [会话ID] (压缩消息队列，生成即时记忆后重置[SU])
 
 help_rua:
   description: 互动
