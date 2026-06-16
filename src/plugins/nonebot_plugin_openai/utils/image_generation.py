@@ -22,6 +22,7 @@ from typing import Optional
 import httpx
 
 from .client import client
+from .model_config import get_model_for_identify
 
 VALID_SIZES = {"auto", "1024x1024", "1536x1024", "1024x1536", "256x256", "512x512", "1792x1024", "1024x1792"}
 CUSTOM_SIZE_PATTERN = re.compile(r"^\d+x\d+$")
@@ -57,7 +58,7 @@ def validate_size(size: str) -> str:
 
 async def generate_image(
     prompt: str,
-    model: str = "gpt-image-1",
+    identify: str = "Draw Image",
     size: str = "auto",
     quality: str = "high",
 ) -> bytes:
@@ -65,7 +66,7 @@ async def generate_image(
 
     Args:
         prompt: 图片描述文本
-        model: 图像生成模型名称
+        identify: 用于识别模型配置的应用标识，可通过 /model 命令为该标识指定模型
         size: 图片尺寸，支持标准尺寸 (auto/1024x1024/1536x1024/1024x1536) 或自定义 WxH 格式（宽高需为 16 的倍数）
         quality: 图片质量，可选 "auto", "low", "medium", "high"
 
@@ -77,6 +78,7 @@ async def generate_image(
         Exception: API 调用失败时抛出异常
     """
     size = validate_size(size)
+    model = await get_model_for_identify(identify)
     response = await client.images.generate(
         model=model,
         prompt=prompt,
