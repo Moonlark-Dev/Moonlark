@@ -18,6 +18,8 @@
 from typing import TYPE_CHECKING, Literal, Optional
 
 from nonebot_plugin_openai.utils.functions import create_function_list
+from nonebot_plugin_openai.utils.image_generation import generate_image
+from nonebot_plugin_alconna import UniMessage
 from ..enums import MoodEnum
 from ..lang import lang
 from nonebot_plugin_openai.types import AsyncFunction, FunctionParameter, FunctionParameterWithEnum
@@ -93,6 +95,18 @@ class ToolManager:
             return
 
         self.status_manager.set_mood(mood_enum, reason, intensity)
+
+    async def draw_image(self, prompt: str) -> str:
+        """根据提示词生成图片并发送到当前会话"""
+        if self.processor is None:
+            raise RuntimeError("processor is None")
+
+        image_bytes = await generate_image(prompt)
+
+        message = UniMessage.image(raw=image_bytes)
+        await message.send(target=self.processor.session.target, bot=self.processor.session.bot)
+
+        return "图片已生成并发送"
 
     async def calculate_luck_value(self, nickname: str) -> str:
         """计算用户的人品值
@@ -238,6 +252,9 @@ class ToolManager:
 
             # refuse_interaction_request
             tools.append(self.deal_interaction_request)
+
+            # draw_image
+            tools.append(self.draw_image)
 
             # calculate_luck_value
             tools.append(self.calculate_luck_value)
