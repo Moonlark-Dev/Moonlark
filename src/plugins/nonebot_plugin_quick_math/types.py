@@ -1,5 +1,6 @@
 from enum import Enum
-from typing import Awaitable, Callable, Literal, TypedDict
+from typing import Awaitable, Callable, Literal
+from typing_extensions import TypedDict
 
 
 class Question(TypedDict):

@@ -15,8 +15,7 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
-from typing import Optional, Any, TypedDict, Literal
-
+from typing import Optional, Any, Literal
 from typing_extensions import TypedDict
 
 from nonebot_plugin_bots.types import BotStatus

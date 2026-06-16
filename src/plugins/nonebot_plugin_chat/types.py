@@ -1,5 +1,6 @@
 from datetime import datetime
-from typing import Any, Literal, Optional, Protocol, TypedDict
+from typing import Any, Literal, Optional, Protocol
+from typing_extensions import TypedDict
 
 from nonebot_plugin_chat.enums import MoodEnum
 

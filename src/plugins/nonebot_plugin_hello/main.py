@@ -13,7 +13,8 @@ lang = LangHelper()
 
 
 from datetime import datetime
-from typing import Literal, TypedDict, cast
+from typing import Literal, cast
+from typing_extensions import TypedDict
 
 
 def get_current_time_segment_name() -> Literal["morning", "afternoon", "night", "midnight"]:

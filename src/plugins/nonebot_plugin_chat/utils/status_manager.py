@@ -1,7 +1,8 @@
 from datetime import datetime, timedelta
 from nonebot.log import logger
 import math
-from typing import Optional, TypedDict
+from typing import Optional
+from typing_extensions import TypedDict
 
 from nonebot_plugin_apscheduler import scheduler
 from nonebot_plugin_chat.enums import MoodEnum

@@ -21,7 +21,8 @@ import json
 import re
 import traceback
 from datetime import datetime
-from typing import Any, Dict, List, Optional, TypedDict
+from typing import Any, Dict, List, Optional
+from typing_extensions import TypedDict
 
 from nonebot import logger
 from PIL import Image

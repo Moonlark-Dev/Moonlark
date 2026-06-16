@@ -19,7 +19,7 @@ import hashlib
 import os
 import traceback
 from pathlib import Path
-from typing import TypedDict
+from typing_extensions import TypedDict
 
 import httpx
 from nonebot import get_driver, logger

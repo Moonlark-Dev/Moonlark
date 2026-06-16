@@ -17,7 +17,7 @@
 
 import copy
 import random
-from typing import TypedDict
+from typing_extensions import TypedDict
 
 from ..enums import Directions, Blocks, DIRECTION_LIST
 

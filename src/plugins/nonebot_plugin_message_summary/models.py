@@ -2,7 +2,7 @@ from datetime import datetime
 from nonebot_plugin_orm import Model
 from sqlalchemy.orm import mapped_column, Mapped
 from sqlalchemy import String, Text, Integer, DateTime
-from typing import TypedDict
+from typing_extensions import TypedDict
 
 
 class GroupMessage(Model):

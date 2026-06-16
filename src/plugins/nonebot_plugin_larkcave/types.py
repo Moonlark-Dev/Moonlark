@@ -15,7 +15,8 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
-from typing import TypedDict, Literal
+from typing import Literal
+from typing_extensions import TypedDict
 from typing_extensions import TypedDict as ExtensionTypedDict
 
 from nonebot_plugin_larkcave.models import CaveData

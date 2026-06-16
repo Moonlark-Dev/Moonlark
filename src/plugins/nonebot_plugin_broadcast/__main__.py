@@ -15,7 +15,8 @@ from nonebot.log import logger
 from nonebot_plugin_htmlrender import md_to_pic
 from datetime import datetime
 from nonebot_plugin_localstore import get_data_file
-from typing import List, Literal, TypedDict
+from typing import List, Literal
+from typing_extensions import TypedDict
 
 # Initialize language helper
 lang = LangHelper()

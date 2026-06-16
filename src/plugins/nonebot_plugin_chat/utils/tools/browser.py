@@ -15,7 +15,8 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
-from typing import Literal, Optional, Dict, Any, TypedDict
+from typing import Literal, Optional, Dict, Any
+from typing_extensions import TypedDict
 from urllib.parse import urlparse
 import html2text
 from nonebot_plugin_chat.types import GetTextFunc

@@ -16,7 +16,8 @@
 # ##############################################################################
 
 
-from typing import AsyncGenerator, TypedDict
+from typing import AsyncGenerator
+from typing_extensions import TypedDict
 
 from sqlalchemy import select
 from sympy import use

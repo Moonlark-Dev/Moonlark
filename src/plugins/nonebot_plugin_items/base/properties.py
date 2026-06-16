@@ -1,4 +1,5 @@
-from typing import TypedDict, Literal, overload
+from typing import Literal, overload
+from typing_extensions import TypedDict
 
 
 class ItemProperties(TypedDict):

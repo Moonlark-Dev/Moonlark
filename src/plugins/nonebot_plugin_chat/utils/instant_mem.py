@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
-from typing import Optional, TypedDict
+from typing import Optional
+from typing_extensions import TypedDict
 
 from nonebot_plugin_openai.utils.chat import fetch_message
 from nonebot_plugin_openai.utils.message import generate_message, get_message, get_messages

@@ -17,7 +17,8 @@
 
 import httpx
 from .config import config
-from typing import TypedDict, Optional
+from typing import Optional
+from typing_extensions import TypedDict
 import asyncio
 
 

@@ -15,7 +15,8 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 from enum import Enum
-from typing import Any, TypedDict, Literal, TYPE_CHECKING, Optional
+from typing import Any, Literal, TYPE_CHECKING, Optional
+from typing_extensions import TypedDict
 
 if TYPE_CHECKING:
     from .base.monomer import Monomer

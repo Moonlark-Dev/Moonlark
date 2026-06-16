@@ -3,7 +3,8 @@ import base64
 import math
 import random
 from datetime import date
-from typing import Optional, TypedDict
+from typing import Optional
+from typing_extensions import TypedDict
 
 import httpx
 from nonebot import logger, on_fullmatch

@@ -17,7 +17,8 @@
 import base64
 import hashlib
 import traceback
-from typing import Optional, TypedDict
+from typing import Optional
+from typing_extensions import TypedDict
 
 from nonebot import logger
 from nonebot.adapters import Bot
