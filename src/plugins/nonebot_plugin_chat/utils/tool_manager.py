@@ -96,12 +96,12 @@ class ToolManager:
 
         self.status_manager.set_mood(mood_enum, reason, intensity)
 
-    async def draw_image(self, prompt: str) -> str:
+    async def draw_image(self, prompt: str, size: str = "auto", quality: str = "high") -> str:
         """根据提示词生成图片并发送到当前会话"""
         if self.processor is None:
             raise RuntimeError("processor is None")
 
-        image_bytes = await generate_image(prompt)
+        image_bytes = await generate_image(prompt, size=size, quality=quality)
 
         message = UniMessage.image(raw=image_bytes)
         await message.send(target=self.processor.session.target, bot=self.processor.session.bot)

@@ -16,6 +16,7 @@
 # ##############################################################################
 
 import base64
+import re
 from typing import Optional
 
 import httpx
@@ -23,26 +24,60 @@ import httpx
 from .client import client
 
 
+VALID_SIZES = {"auto", "1024x1024", "1536x1024", "1024x1536", "256x256", "512x512", "1792x1024", "1024x1792"}
+CUSTOM_SIZE_PATTERN = re.compile(r"^\d+x\d+$")
+
+
+def validate_size(size: str) -> str:
+    """校验图片尺寸参数
+
+    Args:
+        size: 图片尺寸字符串
+
+    Returns:
+        校验后的尺寸字符串
+
+    Raises:
+        ValueError: 尺寸格式不合法时抛出
+    """
+    if size in VALID_SIZES:
+        return size
+    if CUSTOM_SIZE_PATTERN.match(size):
+        parts = size.split("x")
+        width, height = int(parts[0]), int(parts[1])
+        if width % 16 != 0 or height % 16 != 0:
+            raise ValueError(f"尺寸 {size} 的宽高必须都是 16 的倍数")
+        aspect = width / height
+        if aspect < 1 / 3 or aspect > 3:
+            raise ValueError(f"尺寸 {size} 的宽高比必须在 1:3 到 3:1 之间")
+        if width > 3840 or height > 2160:
+            raise ValueError(f"尺寸 {size} 超过最大支持分辨率 3840x2160")
+        return size
+    raise ValueError(f"不支持的图片尺寸: {size}")
+
+
 async def generate_image(
     prompt: str,
     model: str = "gpt-image-1",
-    size: str = "1024x1024",
-    quality: str = "low",
+    size: str = "auto",
+    quality: str = "high",
 ) -> bytes:
     """调用 OpenAI 图像生成 API 生成图片
 
     Args:
         prompt: 图片描述文本
         model: 图像生成模型名称
-        size: 图片尺寸，可选 "1024x1024", "1536x1024", "1024x1536", "auto"
-        quality: 图片质量，可选 "low", "medium", "high"
+        size: 图片尺寸，支持标准尺寸 (auto/1024x1024/1536x1024/1024x1536) 或自定义 WxH 格式（宽高需为 16 的倍数）
+        quality: 图片质量，可选 "auto", "low", "medium", "high"
 
     Returns:
         图片的二进制数据
 
     Raises:
+        ValueError: 尺寸参数不合法时抛出
         Exception: API 调用失败时抛出异常
     """
+    size = validate_size(size)
     response = await client.images.generate(
         model=model,
         prompt=prompt,
