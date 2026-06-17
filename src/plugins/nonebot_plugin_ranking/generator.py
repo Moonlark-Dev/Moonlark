@@ -21,7 +21,7 @@ async def find_user(ranked_data: list[RankingData], user_id: str) -> Optional[Us
             }
 
 
-async def get_users(ranked_data: list[RankingData], user_id: str, limit: int = 12) -> list[UserData]:
+async def get_users(ranked_data: list[RankingData], user_id: str, limit: int = 7) -> list[UserData]:
     users = []
     for data in ranked_data[:limit]:
         user = await get_user(data["user_id"])
@@ -39,7 +39,7 @@ async def get_users(ranked_data: list[RankingData], user_id: str, limit: int = 1
     return users
 
 
-async def generate_image(ranked_data: list[RankingData], user_id: str, title: str, limit: int = 12) -> bytes:
+async def generate_image(ranked_data: list[RankingData], user_id: str, title: str, limit: int = 7) -> bytes:
     return await render_template(
         "ranking.html.jinja",
         title,
