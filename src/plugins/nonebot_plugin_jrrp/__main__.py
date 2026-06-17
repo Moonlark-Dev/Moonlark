@@ -15,12 +15,31 @@ jrrp = on_alconna(alc)
 
 
 async def process_jrrp_command(group_id: str, user_id: str, bot: Bot, event: Event) -> None:
+    luck_value = await get_luck_value(user_id)
+    event_text = await lang.text("chat_event", user_id, await get_nickname(user_id, bot, event), luck_value)
+
+    result = await jrrp.send(await get_luck_message(user_id), at_sender=True)
+    msg_id = None
+    if isinstance(result, dict):
+        msg_id = result.get("message_id")
+    elif isinstance(result, list) and result:
+        item = result[0]
+        if isinstance(item, dict):
+            msg_id = item.get("message_id")
+        else:
+            msg_id = getattr(item, "message_id", None)
+    else:
+        msg_id = getattr(result, "message_id", None)
+
+    if msg_id:
+        event_text += f"\n[供回复的消息ID：{msg_id}]"
+
     await post_group_event(
         group_id,
-        await lang.text("chat_event", user_id, await get_nickname(user_id, bot, event), await get_luck_value(user_id)),
+        event_text,
         "probability",
     )
-    await jrrp.finish(await get_luck_message(user_id), at_sender=True)
+    await jrrp.finish()
 
 
 @jrrp.assign("$main")
