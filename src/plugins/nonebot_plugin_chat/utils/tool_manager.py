@@ -234,6 +234,10 @@ class ToolManager:
             # vm_stop_task
             tools.append(self.vm_stop_task)
 
+        # set_timer (群聊和私聊均可用)
+        if processor:
+            tools.append(processor.session.set_timer)
+
         # # === Group 模式特有工具 ===
         if processor and mode == "group":
             # query_image
@@ -248,9 +252,6 @@ class ToolManager:
 
             # get_note_remover
             tools.append(self.remove_note)
-
-            # set_timer
-            tools.append(processor.session.set_timer)
 
             # sticker tools
             tools.append(processor.sticker_tools.save_sticker)
