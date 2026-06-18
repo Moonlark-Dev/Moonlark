@@ -284,3 +284,12 @@ class DiaryProcessResponse(BaseModel):
 
     keywords: str = Field(description="关键词，空格分隔，至少 1 个")
     expire_hours: float = Field(description="根据信息时效性估算的过期时间（小时），禁止 -1（永不过期）", gt=0)
+
+
+class Timer(Model):
+    """LLM 定时器持久化存储，确保重启后可恢复"""
+
+    id: Mapped[int] = mapped_column(Integer(), primary_key=True, autoincrement=True)
+    session_id: Mapped[str] = mapped_column(String(128), index=True)
+    trigger_time: Mapped[datetime] = mapped_column(DateTime(), index=True)
+    description: Mapped[str] = mapped_column(Text(), default="")

@@ -10,6 +10,10 @@ from nonebot_plugin_chat.lang import lang
 from nonebot_plugin_chat.types import AdapterUserInfo, CachedMessage, PendingInteraction, RuaAction
 from nonebot_plugin_larkuser import get_nickname, get_user
 from nonebot_plugin_chat.utils.instant_mem import InstantMemoryManager
+from nonebot_plugin_orm import get_session
+from sqlalchemy import delete
+
+from ...models import Timer
 
 
 import math
@@ -73,6 +77,7 @@ class BaseSession(ABC):
     @abstractmethod
     async def setup(self) -> None:
         await self.processor.setup()
+        await self.restore_timers()
 
     @abstractmethod
     def is_napcat_bot(self) -> bool:
@@ -429,7 +434,36 @@ class BaseSession(ABC):
         for timer in triggered_timers:
             self.llm_timers.remove(timer)
 
+        if triggered_timers:
+            async with get_session() as db_session:
+                await db_session.execute(
+                    delete(Timer).where(
+                        Timer.session_id == self.session_id,
+                        Timer.trigger_time <= dt,
+                    )
+                )
+                await db_session.commit()
+
         await self.processor.openai_messages.save_to_db()
+
+    async def restore_timers(self) -> None:
+        """从数据库恢复未触发的定时器（重启后调用）"""
+        async with get_session() as db_session:
+            from sqlalchemy import select
+
+            result = await db_session.execute(select(Timer).where(Timer.session_id == self.session_id))
+            rows = result.scalars().all()
+            for row in rows:
+                timer_id = f"{self.session_id}_{row.trigger_time.timestamp()}"
+                self.llm_timers.append(
+                    {
+                        "id": timer_id,
+                        "trigger_time": row.trigger_time,
+                        "description": row.description,
+                    }
+                )
+            if rows:
+                logger.info(f"Restored {len(rows)} timers for session {self.session_id}")
 
     async def get_cached_messages_string(self, length: int = 50, include_self_message: bool = False) -> str:
         messages = []
@@ -461,16 +495,22 @@ class BaseSession(ABC):
             delay: 延迟时间（分钟）
             description: 定时器描述
         """
-        # 获取当前时间
         now = datetime.now()
-        # 计算触发时间（将分钟转换为秒）
         trigger_time = now + timedelta(minutes=delay)
-
-        # 生成定时器ID
         timer_id = f"{self.session_id}_{now.timestamp()}"
 
-        # 存储定时器信息
-        self.llm_timers.append({"id": timer_id, "trigger_time": trigger_time, "description": description})
+        timer_entry = {"id": timer_id, "trigger_time": trigger_time, "description": description}
+        self.llm_timers.append(timer_entry)
+
+        async with get_session() as db_session:
+            db_session.add(
+                Timer(
+                    session_id=self.session_id,
+                    trigger_time=trigger_time,
+                    description=description,
+                )
+            )
+            await db_session.commit()
 
     async def post_event(self, event_prompt: str, trigger_mode: Literal["none", "probability", "all"]) -> None:
         """
