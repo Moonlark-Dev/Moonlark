@@ -71,6 +71,7 @@ class ActionDecider:
                 self.moonlark_main.blog_writer.blog_drop_draft,
                 self.moonlark_main.blog_writer.get_blog_state,
                 self.moonlark_main.proactive_chat.send_private_message,
+                self.moonlark_main.chat,
             ]
         )
         fetcher = await MessageFetcher.create(
@@ -657,6 +658,34 @@ class MoonlarkMain:
     def _get_additional_prompt_text(self) -> str:
         mood, mood_reason = self.status_manager.get_status()
         return f"心情：{mood.value} (强度: {self.status_manager.get_mood_retention():.2f}; 原因: {mood_reason or '无'})"
+
+    async def chat(self, max_wait_minutes: int = 10) -> str:
+        """在QQ中聊天，等待所有已初始化的会话冷却三分钟
+
+        Args:
+            max_wait_minutes: 最大等待时间（分钟），超时后返回
+        """
+        if not groups:
+            return "没有已初始化的会话"
+
+        cooldown_seconds = 180
+        max_wait_seconds = max_wait_minutes * 60
+        elapsed_total = 0
+        while elapsed_total < max_wait_seconds:
+            now = datetime.now()
+            all_cooled = True
+            for session in groups.values():
+                if not session.cached_messages:
+                    continue
+                elapsed = (now - session.cached_messages[-1]["send_time"]).total_seconds()
+                if elapsed < cooldown_seconds:
+                    all_cooled = False
+                    break
+            if all_cooled:
+                return "所有会话已冷却三分钟，可以继续决策"
+            await asyncio.sleep(30)
+            elapsed_total += 30
+        return "等待超时，部分会话仍未冷却"
 
     async def get_friends(self) -> str:
         friend_list = []
