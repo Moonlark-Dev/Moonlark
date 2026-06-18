@@ -1,4 +1,5 @@
 import base64
+import math
 
 import aiofiles
 from nonebot.adapters import Event
@@ -14,7 +15,7 @@ from nonebot_plugin_openai.types import Message as OpenAIMessage
 from nonebot.log import logger
 from nonebot_plugin_larkuser import get_user
 from nonebot_plugin_openai import generate_message
-from nonebot_plugin_openai.utils.chat import fetch_message
+from nonebot_plugin_openai.utils.chat import fetch_message, fetch_json
 from nonebot_plugin_orm import get_session
 from sqlalchemy import select
 
@@ -41,6 +42,13 @@ from ..utils.tools.sticker import StickerTools
 from ..utils.status_manager import get_status_manager
 from ..utils.timing_stats import timing_stats_manager
 from ..utils.instant_mem import get_memories_for_display
+from pydantic import BaseModel
+
+
+class UnlimitedTokenReviewResult(BaseModel):
+    approved: bool
+    reason: str
+
 
 if TYPE_CHECKING:
     from nonebot_plugin_chat.core.session.base import BaseSession
@@ -64,6 +72,9 @@ class MessageProcessor:
         self.consecutive_message_count = 0
         # Token bucket 相关属性
         self.token_bucket = TokenBucket(6, -2)
+        # Unlimited tokens 相关属性
+        self.unlimited_tokens_remaining = 0
+        self.unlimited_tokens_active = False
 
     async def query_image(self, image_id: str, query_prompt: str) -> str:
         return await query_image_content(image_id, query_prompt, self.session.lang_str)
@@ -245,7 +256,6 @@ class MessageProcessor:
                 "prompt.event_template", datetime.now().strftime("%H:%M:%S"), event_prompt, additional_info
             )
             await self.openai_messages.append_user_message(content)
-            self.token_bucket.add(0.6)
 
         elif item[0] == "message":
             # 处理消息类型队列项
@@ -273,10 +283,16 @@ class MessageProcessor:
             self.session.cached_messages.append(msg_dict)
             await self.session.on_cache_posted()
             trigger_mode = "all" if mentioned else "probability"
-            self.token_bucket.add(1 if len(text) >= 30 else 0.8)
         logger.debug(f"{trigger_mode=} {self.blocked=}")
-        if trigger_mode == "all":
-            self.token_bucket.add(1)
+        self.token_bucket.add(
+            {
+                ("event", "probability"): 0.5,
+                ("event", "all"): 1,
+                ("event", "none"): 0.2,
+                ("message", "probability"): 0.5,
+                ("message", "all"): 1,
+            }[item[0], trigger_mode]
+        )
         if (
             trigger_mode == "all" or (trigger_mode == "probability" and not self.session.message_queue)
         ) and not self.blocked:
@@ -302,13 +318,14 @@ class MessageProcessor:
         )
 
         # 如果在冷却期或消息为空，直接返回
+        token_check_passed = self.token_bucket.get() > 0 or self.unlimited_tokens_active
         if (
             self.cold_until > datetime.now()
             or len(self.openai_messages.messages) <= 0
             or (not self.openai_messages.is_last_message_from_user())
             or (len(self.openai_messages.messages) < 5 and not important)
             or (recent_message_count > 12 and not important)
-            or self.token_bucket.get() <= 0
+            or (not token_check_passed and not important)
         ):
             logger.info("规则检查不通过，跳过 ...")
             return
@@ -373,17 +390,27 @@ class MessageProcessor:
     async def send_message(self, message_content: str, reply_message_id: str | None = None) -> str:
         # 仅在群聊中启用 token bucket 功能
         if self.session.get_session_type() == "group":
-            # 检查 token 是否为负数
-            if self.token_bucket.get() < 0 and self.session.get_session_type() == "group":
-                return await self.session.text("message.token_insufficient", self.token_bucket.get())
+            if self.unlimited_tokens_active and self.unlimited_tokens_remaining > 0:
+                self.unlimited_tokens_remaining -= 1
+                token_cost = 0
+                logger.info(f"Unlimited tokens: {self.unlimited_tokens_remaining} messages remaining")
+                if self.unlimited_tokens_remaining <= 0:
+                    self.unlimited_tokens_active = False
+                    self.token_bucket.token = self.token_bucket.min_token
+                    logger.info("Unlimited tokens exhausted, token pool reset to minimum")
+            else:
+                # 检查 token 是否为负数
+                if self.token_bucket.get() < 0 and self.session.get_session_type() == "group":
+                    return await self.session.text("message.token_insufficient", self.token_bucket.get())
 
-            # 计算需要扣除的 token 数量（每 10 个字计入 1 token，不足 10 个字的部分按 10 个字算）
-            text_length = len(message_content)
-            token_cost = (text_length + 9) // 18  # 向上取整
+                # 计算需要扣除的 token 数量（每 7 个字计入 1 token，不足 7 个字的部分按 7 个字算）
+                text_length = len(message_content)
+                token_cost = math.ceil(text_length / 7)  # 向上取整
         else:
             token_cost = 0
         # 扣除 token
-        self.token_bucket.consume(token_cost)
+        if token_cost > 0:
+            self.token_bucket.consume(token_cost)
 
         self.session.last_activate = datetime.now()
         self.consecutive_message_count += 1
@@ -417,6 +444,46 @@ class MessageProcessor:
                         reply_time_ms = (datetime.now() - send_time).total_seconds() * 1000
                         timing_stats_manager.record_reply_time(self.session.session_id, reply_time_ms)
                     return
+
+    async def apply_unlimited_tokens(self, reason: str, message_count: int) -> str:
+        if self.session.get_session_type() != "group":
+            return await self.session.text("apply_unlimited_tokens.group_only")
+
+        if self.unlimited_tokens_active:
+            return await self.session.text("apply_unlimited_tokens.already_active", self.unlimited_tokens_remaining)
+
+        message_count = max(1, min(message_count, 10))
+
+        recent_messages = await self.session.get_cached_messages_string(length=10, include_self_message=True)
+
+        system_prompt = await self.session.text(
+            "apply_unlimited_tokens.review_system",
+            self.token_bucket.get(),
+            reason,
+        )
+
+        try:
+            result: UnlimitedTokenReviewResult = await fetch_json(
+                [
+                    generate_message(system_prompt, "system"),
+                    generate_message(recent_messages, "user"),
+                ],
+                UnlimitedTokenReviewResult,
+                identify="Unlimited Token Review",
+                reasoning_effort="low",
+            )
+        except Exception as e:
+            logger.exception(f"Unlimited token review failed: {e}")
+            return await self.session.text("apply_unlimited_tokens.review_error")
+
+        if result.approved:
+            self.unlimited_tokens_remaining = message_count
+            self.unlimited_tokens_active = True
+            logger.info(f"Unlimited tokens approved: {message_count} messages, reason: {reason}")
+            return await self.session.text("apply_unlimited_tokens.approved", message_count, result.reason)
+
+        logger.info(f"Unlimited tokens denied: reason: {reason}, denial: {result.reason}")
+        return await self.session.text("apply_unlimited_tokens.denied", result.reason)
 
     def append_user_message(self, msg_str: str, images: list[bytes]) -> None:
         content: list = [

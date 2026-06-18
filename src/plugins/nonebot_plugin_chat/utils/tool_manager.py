@@ -184,6 +184,17 @@ class ToolManager:
             raise RuntimeError("processor is None")
         return await self.processor.session.request_sleep()
 
+    async def apply_unlimited_tokens(self, reason: str, message_count: int) -> str:
+        """申请额外的消息 Token，提交理由和最近聊天记录供审核。审核通过后在指定次数内不消耗 Token。
+
+        Args:
+            reason: 申请原因，必须说明为什么需要额外 Token
+            message_count: 需要的额外消息数量（上限 10）
+        """
+        if self.processor is None:
+            raise RuntimeError("processor is None")
+        return await self.processor.apply_unlimited_tokens(reason=reason, message_count=message_count)
+
     async def select_tools(self, mode: Literal["group", "agent"]) -> list[AsyncFunction]:
         tools = []
         emoji_id_table = None
@@ -270,6 +281,9 @@ class ToolManager:
 
             # request_sleep
             tools.append(self.request_sleep)
+
+            # apply_unlimited_tokens
+            tools.append(self.apply_unlimited_tokens)
 
             # query_history_message
             tools.append(self.query_history_message)
