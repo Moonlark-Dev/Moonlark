@@ -292,4 +292,4 @@ class Timer(Model):
     id: Mapped[int] = mapped_column(Integer(), primary_key=True, autoincrement=True)
     session_id: Mapped[str] = mapped_column(String(128), index=True)
     trigger_time: Mapped[datetime] = mapped_column(DateTime(), index=True)
-    description: Mapped[str] = mapped_column(Text(), default="")
+    description: Mapped[str] = mapped_column(Text())

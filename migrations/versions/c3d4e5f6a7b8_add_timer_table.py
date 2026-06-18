@@ -40,7 +40,7 @@ def upgrade(name: str = "") -> None:
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
         sa.Column("session_id", sa.String(128), nullable=False),
         sa.Column("trigger_time", sa.DateTime(), nullable=False),
-        sa.Column("description", sa.Text(), nullable=False, server_default=""),
+        sa.Column("description", sa.Text(), nullable=False),
         sa.PrimaryKeyConstraint("id"),
     )
     with op.batch_alter_table(TABLE_NAME, schema=None) as batch_op:
