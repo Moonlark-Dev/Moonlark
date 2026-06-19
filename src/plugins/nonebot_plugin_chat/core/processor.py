@@ -657,8 +657,16 @@ class MessageProcessor:
     async def is_additional_info_line_showed(self, line: str) -> bool:
         async with self.openai_messages.fetcher_lock:
             for message in self.openai_messages.messages:
-                if line in str(message):
-                    return True
+                content = message.get("content") if isinstance(message, dict) else getattr(message, "content", None)
+                if content is None:
+                    continue
+                if isinstance(content, str):
+                    if line in content:
+                        return True
+                elif isinstance(content, list):
+                    for part in content:
+                        if isinstance(part, dict) and "text" in part and line in part["text"]:
+                            return True
         return False
 
     async def generate_event_additional_info(self) -> str:
