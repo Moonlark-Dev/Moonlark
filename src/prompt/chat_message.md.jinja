@@ -3,11 +3,14 @@
 当前 Token: {{ token }}
 {{ nickname }} 的好感度: {{ display_fav }}/{{ fav_level }}
 
+{% if note_text != "暂无"%}
 笔记:
 {{ note_text }}
-
+{% endif %}
+{% if recent_activities %}
 最近做的事:
 {{ recent_activities }}
+{% endif %}
 
 {{ state }}
 </additional_info>
