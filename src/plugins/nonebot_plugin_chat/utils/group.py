@@ -85,6 +85,9 @@ class LinkParser:
         result = await browser_tool.browse(link)
         if not result["success"]:
             raise BrowserErrorOccurred(f"解析失败: {result}")
+        status_code = result["metadata"].get("status_code")
+        if status_code != 200:
+            return f"HTTP {status_code}"
         return await fetch_message(
             [
                 await get_message("system", "link_parser.md.jinja"),
