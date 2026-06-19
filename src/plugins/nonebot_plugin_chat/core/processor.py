@@ -791,7 +791,7 @@ class MessageProcessor:
         try:
             model_response = await fetch_message(
                 [
-                    generate_message(await self.session.text("message_truncate_check.system"), "system"),
+                    generate_message(await get_message_text("truncate_check.md.jinja"), "system"),
                     generate_message(chat_history, "user"),
                 ],
                 identify="Truncate Check",
