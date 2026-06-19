@@ -50,6 +50,14 @@ class UnlimitedTokenReviewResult(BaseModel):
     reason: str
 
 
+class PreTriggerSignals(BaseModel):
+    truncate: bool
+    help_needed: bool
+    emotional_support_needed: bool
+    chatting_alone: bool
+    tech_topic: bool
+
+
 if TYPE_CHECKING:
     from nonebot_plugin_chat.core.session.base import BaseSession
 
@@ -332,21 +340,25 @@ class MessageProcessor:
         self.cold_until = datetime.now() + timedelta(seconds=3)
 
         # 检查是否应该触发回复
+        base_probability = 0.0
         if not important:
-            probability = await self.session.get_probability()
+            base_probability = await self.session.get_probability()
             logger.debug(
-                f"Accumulated length: {self.session.accumulated_text_length}, Trigger probability: {probability:.2%}"
+                f"Accumulated length: {self.session.accumulated_text_length}, Trigger probability: {base_probability:.2%}"
             )
-            probability *= min(1, 3 / (recent_message_count or 1))
+            probability = base_probability * min(1, 3 / (recent_message_count or 1))
             if random.random() > probability:
                 return
 
-        # 非 to_me 事件需要进行消息截断检查
-        if not is_event:
-            is_truncated = await self.check_message_truncated()
-            if is_truncated:
-                logger.debug("Message truncated, skipping response")
-                return
+        # 非 to_me 事件需要进行前触发信号分析
+        if not is_event and random.random() > base_probability * 2:
+            signals = await self.analyze_pre_trigger_signals()
+            if signals is not None:
+                gate_probability = self.calculate_gate_probability(signals)
+                logger.debug(f"Pre-trigger gate probability: {gate_probability:.2%}")
+                if random.random() > gate_probability:
+                    logger.debug("Pre-trigger gate denied, skipping response")
+                    return
 
         if self.session.get_session_type() == "group":
             self.openai_messages.continuous_response = self.openai_messages.continuous_response or important
@@ -786,19 +798,35 @@ class MessageProcessor:
 
         await manager.maybe_generate(min_messages=5, cooldown_seconds=600)
 
-    async def check_message_truncated(self) -> bool:
+    async def analyze_pre_trigger_signals(self) -> PreTriggerSignals | None:
         chat_history = await self.session.get_cached_messages_string(length=10, include_self_message=False)
         try:
-            model_response = await fetch_message(
+            result = await fetch_json(
                 [
                     generate_message(await get_message_text("truncate_check.md.jinja"), "system"),
                     generate_message(chat_history, "user"),
                 ],
-                identify="Truncate Check",
+                PreTriggerSignals,
+                identify="Pre-Trigger Analysis",
+                reasoning_effort="low",
             )
-            result = model_response.strip().lower()
-            logger.debug(f"Message truncate check result: {result}")
-            return result == "true"
+            logger.debug(f"Pre-trigger signals: {result}")
+            return result
         except Exception as e:
             logger.exception(e)
-            return False
+            return None
+
+    @staticmethod
+    def calculate_gate_probability(signals: PreTriggerSignals) -> float:
+        probability = 0.5
+        if signals.help_needed:
+            probability += 1.0
+        if signals.emotional_support_needed:
+            probability += 0.2
+        if signals.chatting_alone:
+            probability += 0.15
+        if signals.truncate:
+            probability -= 2.0
+        if signals.tech_topic:
+            probability -= 0.1
+        return max(0.0, min(1.0, probability))
