@@ -335,8 +335,18 @@ async def fetch_message(
     return await fetcher.fetch_last_message()
 
 
+import re
+
 T3 = TypeVar("T3")
 from nonebot.compat import type_validate_json
+
+
+def strip_json_codeblock(text: str) -> str:
+    stripped = text.strip()
+    m = re.match(r"^```(?:json)?\s*\n?(.*?)\n?\s*```$", stripped, re.DOTALL)
+    if m:
+        return m.group(1).strip()
+    return stripped
 
 
 async def fetch_json(
@@ -373,7 +383,7 @@ async def fetch_json(
     retry_count = 0
     async for message in fetcher.fetch_message_stream():
         try:
-            return type_validate_json(response_format, message)
+            return type_validate_json(response_format, strip_json_codeblock(message))
         except ValidationError as e:
             if retry_count >= formatter_max_retry:
                 raise e

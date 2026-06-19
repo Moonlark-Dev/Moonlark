@@ -11,7 +11,7 @@ from nonebot_plugin_chat.models import MessageQueueCache, ModelResponse
 from nonebot_plugin_chat.enums import FetchStatus
 from pydantic import ValidationError
 from nonebot_plugin_openai import generate_message
-from nonebot_plugin_openai.utils.chat import MessageFetcher
+from nonebot_plugin_openai.utils.chat import MessageFetcher, strip_json_codeblock
 from nonebot_plugin_orm import get_session
 from openai.types.chat import ChatCompletionMessage
 from nonebot_plugin_openai.types import Message as OpenAIMessage
@@ -329,7 +329,7 @@ class MessageQueue:
                 if not message:
                     continue
                 try:
-                    analysis = type_validate_json(ModelResponse, message)
+                    analysis = type_validate_json(ModelResponse, strip_json_codeblock(message))
                 except Exception as e:
                     fetcher.session.insert_message(
                         generate_message(await self.processor.session.text("fetcher.parse_failed", str(e)), "user")

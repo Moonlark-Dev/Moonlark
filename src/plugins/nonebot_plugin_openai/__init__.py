@@ -22,7 +22,7 @@ require("nonebot_plugin_alconna")
 from nonebot_plugin_localstore import get_data_file
 
 from . import models  # noqa: F401 - 确保 ORM 模型被注册
-from .utils.chat import fetch_message, fetch_json, MessageFetcher
+from .utils.chat import fetch_message, fetch_json, MessageFetcher, strip_json_codeblock
 from .utils.message import generate_message, get_message, get_messages, get_message_text
 from .commands import model as _  # noqa: F401
 from .utils.functions import create_function_list
