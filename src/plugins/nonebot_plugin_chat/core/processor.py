@@ -351,7 +351,7 @@ class MessageProcessor:
                 return
 
         # 非 to_me 事件需要进行前触发信号分析
-        if not is_event and random.random() > base_probability * 2:
+        if not important and random.random() > base_probability * 2:
             signals = await self.analyze_pre_trigger_signals()
             if signals is not None:
                 gate_probability = self.calculate_gate_probability(signals)
