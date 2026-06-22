@@ -317,14 +317,14 @@ lxml = ["lxml"]
 
 [[package]]
 name = "bilibili-api-python"
-version = "17.4.1"
+version = "17.4.2"
 description = "The fork of module bilibili-api. 哔哩哔哩的各种 API 调用便捷整合（视频、动态、直播等），另外附加一些常用的功能。"
 optional = false
-python-versions = ">=3.9"
+python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "bilibili_api_python-17.4.1-py3-none-any.whl", hash = "sha256:3054b824f0f7ac81917329f19909f39d24fb3b7d9de1672c6dd4cb9fa6e5757d"},
-    {file = "bilibili_api_python-17.4.1.tar.gz", hash = "sha256:5b0f16468cfbb3ee801c7d7cc970f9082252f6758c6d8c48c5d8dac42235cb62"},
+    {file = "bilibili_api_python-17.4.2-py3-none-any.whl", hash = "sha256:91e002b2e0bcd3eb50239e35ceb849133b574f407a92a06636e1de1031b6d09d"},
+    {file = "bilibili_api_python-17.4.2.tar.gz", hash = "sha256:3ec62eaa45702779957eaf70fba0c5ff7c858054804cb605780f76fee388ebd5"},
 ]
 
 [package.dependencies]
