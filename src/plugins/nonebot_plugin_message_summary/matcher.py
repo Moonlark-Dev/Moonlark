@@ -121,6 +121,7 @@ async def handle_main(
 
     messages = await generate_message_string(result, style)
 
+    await summary.send(await lang.text("analyzing", user_id))
     if style in ["broadcast", "bc"]:
         summary_string = await fetch_broadcast_summary(user_id, messages)
         await summary.finish(summary_string)
@@ -177,6 +178,7 @@ async def handle_neko_finder(
         await session.scalars(select(GroupMessage).where(GroupMessage.group_id == group_id).order_by(GroupMessage.id_))
     ).all()
     messages = await generate_message_string(list(result), "broadcast")
+    await neko_finder.send(await lang.text("analyzing", user_id))
     catgirl_scores = await get_catgirl_score(messages)
     await neko_finder.finish(await render_neko_result(catgirl_scores, user_id))
 
@@ -203,6 +205,7 @@ async def handle_debate(
         )
     ).all()
     messages = await generate_message_string(result, "broadcast")
+    await debate_helper.send(await lang.text("analyzing", user_id))
     debate_data = await analyze_debate(messages, user_id)
 
     if debate_data is None:
@@ -268,6 +271,7 @@ async def handle_check_history(
                 history_list.pop(i)
                 break
 
+    await check_history.send(await lang.text("analyzing", user_id))
     result = await analyze_history(payload, history_list, user_id)
 
     # 4. Visualization & Output
@@ -435,6 +439,7 @@ async def handle_decision(
     messages = await generate_message_string(result, "broadcast")
 
     # 调用 AI 生成处分内容
+    await decision.send(await lang.text("analyzing", user_id))
     decision_data = await generate_decision_content(
         messages=messages,
         target_nickname=target_nickname,
