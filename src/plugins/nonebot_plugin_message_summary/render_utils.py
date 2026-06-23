@@ -15,9 +15,7 @@ async def render_summary_result(summary_string: str, style: str) -> UniMessage:
 
 
 async def render_neko_result(catgirl_scores: list[CatGirlScore], user_id: str) -> UniMessage:
-    keys = await generate_render_keys(
-        lang, user_id, ["render_title", "no_data"], "neko."
-    )
+    keys = await generate_render_keys(lang, user_id, ["render_title", "no_data"], "neko.")
     # Calculate the max score for the background bar width percentages
     max_score = max((s["score"] for s in catgirl_scores), default=100)
     image = await render_template(
