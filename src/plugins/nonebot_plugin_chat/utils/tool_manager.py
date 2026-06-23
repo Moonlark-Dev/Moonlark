@@ -277,7 +277,6 @@ class ToolManager:
             # change_sleep_status
             tools.append(self.change_sleep_status)
 
-
             # query_history_message
             tools.append(self.query_history_message)
 

@@ -182,12 +182,18 @@ class ActionDecider:
         if len(args_str) > 200:
             args_str = args_str[:200] + "..."
         await self._record_diary_entry(f"[动作] {name}({args_str})")
-        
+
         # 检测 pending action request 的响应
         pending = self.moonlark_main._pending_action_request
-        action_tools = {"sleep", "start_self_action", "start_new_blog", 
-                        "blog_publish_draft", "blog_drop_draft", "send_private_message"}
-        
+        action_tools = {
+            "sleep",
+            "start_self_action",
+            "start_new_blog",
+            "blog_publish_draft",
+            "blog_drop_draft",
+            "send_private_message",
+        }
+
         if pending is not None and not pending["future"].done():
             if name == "refuse_action_request":
                 reason = params.get("reason", "无")
@@ -199,7 +205,7 @@ class ActionDecider:
                 result_text = f"动作请求已被接受，Moonlark 正在执行「{pending['type']}」"
                 pending["future"].set_result(result_text)
                 self.moonlark_main._pending_action_request = None
-        
+
         return call_id, name, params
 
     async def generate_message(self, reason) -> OpenAIChatMessage:
@@ -617,16 +623,16 @@ class MoonlarkMain:
                 await self.sleep_controller.wake_up()
                 # 重置 ActionDecider 以便重建 fetcher
                 self.action_decider.reset()
-            
+
             # 2. 如果 SelfActionController 正在 asyncio.sleep，取消它
             if self.self_action.cancel_action():
                 # 取消后已有 CancelledError 处理，不需要额外操作
                 pass
-            
+
             # 3. 确保 ActionDecider 的 fetcher 可用
             if self.action_decider.fetcher is None:
                 self.action_decider.fetcher = await self.action_decider.create_fetcher()
-            
+
             # 4. 存储 pending request
             self._pending_action_request = {
                 "future": future,
@@ -635,13 +641,13 @@ class MoonlarkMain:
                 "info": info,
                 "reason": reason,
             }
-            
+
             # 5. 获取会话名称
             if session_id in groups:
                 session_name = await groups[session_id].get_session_name() or session_id
             else:
                 session_name = session_id
-            
+
             # 6. 推送事件到 ActionDecider
             event_text = (
                 f"在{session_name}中，你想进行动作：\n"
@@ -650,9 +656,9 @@ class MoonlarkMain:
                 f"原因：{reason}\n"
                 f"你可以调用相应工具进行执行，也可以使用 refuse_action_request 工具拒绝"
             )
-            
+
             await self.action_decider.on_event(event_text)
-            
+
             # 7. 确保 ActionDecider 的 loop 正在运行
             if self.action_decider.loop_task is None or self.action_decider.loop_task.done():
                 self.action_decider.loop_task = asyncio.create_task(self.action_decider.loop())
