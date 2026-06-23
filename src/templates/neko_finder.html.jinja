@@ -178,11 +178,11 @@
 
     <!-- First Place Highlight -->
     <div class="first-place">
-        <div class="rank-badge-lg">🥇 #1</div>
+        <div class="rank-badge-lg">{{ text.first_badge }}</div>
         <h2 class="username-lg">{{ scores[0].username }}</h2>
         <div class="score-label">{{ text.score }}</div>
         <div class="score-lg">{{ scores[0].score }}</div>
-        <div class="comment-lg">💬 {{ scores[0].comment if scores[0].comment else '' }}</div>
+        <div class="comment-lg">{{ text.comment_prefix }} {{ scores[0].comment if scores[0].comment else '' }}</div>
     </div>
 
     <!-- Remaining Rankings -->
