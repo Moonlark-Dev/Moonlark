@@ -317,14 +317,14 @@ lxml = ["lxml"]
 
 [[package]]
 name = "bilibili-api-python"
-version = "17.4.1"
+version = "17.4.2"
 description = "The fork of module bilibili-api. 哔哩哔哩的各种 API 调用便捷整合（视频、动态、直播等），另外附加一些常用的功能。"
 optional = false
-python-versions = ">=3.9"
+python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "bilibili_api_python-17.4.1-py3-none-any.whl", hash = "sha256:3054b824f0f7ac81917329f19909f39d24fb3b7d9de1672c6dd4cb9fa6e5757d"},
-    {file = "bilibili_api_python-17.4.1.tar.gz", hash = "sha256:5b0f16468cfbb3ee801c7d7cc970f9082252f6758c6d8c48c5d8dac42235cb62"},
+    {file = "bilibili_api_python-17.4.2-py3-none-any.whl", hash = "sha256:91e002b2e0bcd3eb50239e35ceb849133b574f407a92a06636e1de1031b6d09d"},
+    {file = "bilibili_api_python-17.4.2.tar.gz", hash = "sha256:3ec62eaa45702779957eaf70fba0c5ff7c858054804cb605780f76fee388ebd5"},
 ]
 
 [package.dependencies]
@@ -1320,14 +1320,14 @@ tests = ["asttokens (>=2.1.0)", "coverage", "coverage-enable-subprocess", "ipyth
 
 [[package]]
 name = "fastapi"
-version = "0.137.2"
+version = "0.138.0"
 description = "FastAPI framework, high performance, easy to learn, fast to code, ready for production"
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "fastapi-0.137.2-py3-none-any.whl", hash = "sha256:791d36261e916a98b25ac85ee591bc3db159394070f6d3d096d94fb378f60ce2"},
-    {file = "fastapi-0.137.2.tar.gz", hash = "sha256:b9d893bebc97dcfbdcb1917e88a292d062844ea19445a5fa4f7eb28c4baea9e3"},
+    {file = "fastapi-0.138.0-py3-none-any.whl", hash = "sha256:b6f54fd1bd72c80b0f899f172c61a600f6f7af9b43d4d772a018f35624048cb0"},
+    {file = "fastapi-0.138.0.tar.gz", hash = "sha256:d445a4877636ad191e7053e08c9bf98cb921a6756776848400bb773d1740c061"},
 ]
 
 [package.dependencies]
