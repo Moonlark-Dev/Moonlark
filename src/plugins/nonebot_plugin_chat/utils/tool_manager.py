@@ -172,17 +172,11 @@ class ToolManager:
             deal_type=deal_type, delay_minutes=delay_minutes, reason=reason
         )
 
-    async def request_action(self, do: str, duration: Optional[int] = None) -> str:
-        """向意识会话申请执行一个动作"""
+    async def start_action(self, type: str, info: str, reason: str) -> str:
+        """向 Moonlark 申请执行一个动作"""
         if self.processor is None:
             raise RuntimeError("processor is None")
-        return await self.processor.session.request_action(do=do, duration=duration)
-
-    async def request_sleep(self) -> str:
-        """向意识会话申请睡觉"""
-        if self.processor is None:
-            raise RuntimeError("processor is None")
-        return await self.processor.session.request_sleep()
+        return await self.processor.session.start_action(type=type, info=info, reason=reason)
 
     async def apply_unlimited_tokens(self, reason: str, message_count: int) -> str:
         """申请额外的消息 Token，提交理由和最近聊天记录供审核。审核通过后在指定次数内不消耗 Token。
@@ -274,17 +268,15 @@ class ToolManager:
             # query_gift
             tools.append(self.query_gift)
 
-            # request_action
-            tools.append(self.request_action)
+            # start_action（原 request_action + request_sleep）
+            tools.append(self.start_action)
+
+            # apply_unlimited_tokens
+            tools.append(self.apply_unlimited_tokens)
 
             # change_sleep_status
             tools.append(self.change_sleep_status)
 
-            # request_sleep
-            tools.append(self.request_sleep)
-
-            # apply_unlimited_tokens
-            tools.append(self.apply_unlimited_tokens)
 
             # query_history_message
             tools.append(self.query_history_message)

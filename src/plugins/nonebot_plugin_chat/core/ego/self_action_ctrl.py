@@ -91,7 +91,15 @@ class SelfActionController:
 
         self.current_activity = activity
         self.activity_start_time = datetime.now()
-        return await self._run_action(activity)
+        self._task = asyncio.create_task(self._run_action(activity))
+        return await self._task
+
+    def cancel_action(self) -> bool:
+        """取消当前正在进行的活动"""
+        if self._task is not None and not self._task.done():
+            self._task.cancel()
+            return True
+        return False
 
     async def _run_action(self, activity: str) -> str:
         try:

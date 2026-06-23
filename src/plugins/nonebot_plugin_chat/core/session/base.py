@@ -370,25 +370,27 @@ class BaseSession(ABC):
         except asyncio.TimeoutError:
             return await self.text("sleep_decision.timeout")
 
-    async def request_action(self, do: str, duration: Optional[int] = None) -> str:
+    async def start_action(self, type: str, info: str, reason: str) -> str:
         """
-        向意识会话申请执行一个动作
+        向 Moonlark 申请执行一个动作
 
         Args:
-            do: 想要做的事的名字
-            duration: 建议的持续时间（分钟），可选
+            type: 动作类型，如 start_self_action、start_blog、sleep
+            info: 动作的补充信息
+            reason: 申请此动作的原因
 
         Returns:
-            意识会话的决定结果
+            Moonlark 的决定结果
         """
         from ..ego import moonlark_main
 
         result_future = asyncio.get_event_loop().create_future()
 
-        await moonlark_main.submit_action_decision(
+        await moonlark_main.submit_action_request(
             session_id=self.session_id,
-            do=do,
-            duration=duration,
+            type=type,
+            info=info,
+            reason=reason,
             future=result_future,
         )
 
@@ -396,29 +398,7 @@ class BaseSession(ABC):
             result = await asyncio.wait_for(result_future, timeout=120)
             return result
         except asyncio.TimeoutError:
-            return await self.text("request_action.timeout")
-
-    async def request_sleep(self) -> str:
-        """
-        向意识会话申请睡觉
-
-        Returns:
-            意识会话的决定结果
-        """
-        from ..ego import moonlark_main
-
-        result_future = asyncio.get_event_loop().create_future()
-
-        await moonlark_main.submit_sleep_request(
-            session_id=self.session_id,
-            future=result_future,
-        )
-
-        try:
-            result = await asyncio.wait_for(result_future, timeout=120)
-            return result
-        except asyncio.TimeoutError:
-            return await self.text("request_sleep.timeout")
+            return await self.text("start_action.timeout")
 
     async def process_timer(self) -> None:
         dt = datetime.now()
