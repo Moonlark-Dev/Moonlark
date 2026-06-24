@@ -2704,14 +2704,14 @@ test = ["flake8", "matplotlib", "nbdime", "nbval", "notebook", "pytest"]
 
 [[package]]
 name = "mcstatus"
-version = "12.2.1"
+version = "13.1.0"
 description = "A library to query Minecraft Servers for their status and capabilities."
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "mcstatus-12.2.1-py3-none-any.whl", hash = "sha256:9da6b8b6c1a43521f13cc50f312501091c1e7437c3ad2d65b9ccb534d70b1244"},
-    {file = "mcstatus-12.2.1.tar.gz", hash = "sha256:0c6fb84c96685bb02189951ba895afbaca22b65bfe74e7fc55ef73a1c6e8a9ce"},
+    {file = "mcstatus-13.1.0-py3-none-any.whl", hash = "sha256:76dfaedcdfbadb105c2483a6bba1dd7e5fa9ea3dee8698fe89e4a7651b6d9a21"},
+    {file = "mcstatus-13.1.0.tar.gz", hash = "sha256:491f27afd384c8b3dee21fe88d6c0119d2f12f7c8c6b58f44e41afb65b0a8369"},
 ]
 
 [package.dependencies]
@@ -6613,4 +6613,4 @@ type = ["pytest-mypy (>=1.0.1) ; platform_python_implementation != \"PyPy\""]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11, <4.0"
-content-hash = "ff0c80efa146f93877a90fa1ea7c6bdf2603492903bf88a773d4682742eb05a0"
+content-hash = "eeb964077b2e540d7bb1fd8b44b63d402f2a2d12e38e44bf0fcba0a212efa6b6"
