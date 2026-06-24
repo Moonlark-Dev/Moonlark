@@ -6,4 +6,5 @@ commands:
     usages:
       - help.usage1
       - help.usage2
+      - help.usage3
     category: community

@@ -82,7 +82,7 @@ async def handle_message(
 
 
 # Initialize command
-lastseen_alc = Alconna("lastseen", Args["user?", At])
+lastseen_alc = Alconna("lastseen", Args["user?", At | str])
 lastseen = on_alconna(lastseen_alc)
 
 
@@ -128,7 +128,7 @@ from nonebot_plugin_larkuser.utils.user import get_user
 async def handle_lastseen(
     bot: Bot,
     event: Event,
-    user: Match[At],
+    user: Match[At | str],
     sender_id: str = get_user_id(),
     is_private: bool = is_private_message(),
     group_id: str = get_group_id(),
@@ -137,7 +137,10 @@ async def handle_lastseen(
     # Determine target user
     target_user_id = sender_id
     if user.available:
-        target_user_id = user.result.target
+        if isinstance(user.result, At):
+            target_user_id = user.result.target
+        else:
+            target_user_id = str(user.result).strip()
     nickname = await get_nickname(target_user_id, bot, event)
     global_info = await get_last_seen_info(sender_id, target_user_id, GLOBAL_SESSION_ID, "global")
 
