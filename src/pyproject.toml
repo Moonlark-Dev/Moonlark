@@ -115,6 +115,7 @@ packages = [
     { include = "nonebot_plugin_version_manager", from = "./plugins" },
     { include = "nonebot_plugin_last_seen", from = "./plugins" },
     { include = "nonebot_plugin_command_stats", from = "./plugins" },
+    { include = "nonebot_plugin_wdym", from = "./plugins" },
 ]
 
 

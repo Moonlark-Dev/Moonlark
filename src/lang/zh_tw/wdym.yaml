@@ -1,0 +1,7 @@
+help:
+  description: "請問什麼意思？"
+  details: "回覆一條訊息，讓 AI 結合上下文解釋訊息中的晦澀內容、專業術語、梗或縮寫。"
+  usage1: "wdym (回覆一條訊息)"
+no_reply: "請回覆你想要解釋的訊息。"
+no_messages: "暫無聊天記錄，無法提供上下文。"
+ai_error: "AI 處理請求時出現錯誤，請稍後重試。"
