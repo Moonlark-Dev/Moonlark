@@ -62,10 +62,7 @@ async def handle_wdym(
     try:
         recent = (
             await session.scalars(
-                select(GroupMessage)
-                .where(GroupMessage.group_id == group_id)
-                .order_by(GroupMessage.id_.desc())
-                .limit(6)
+                select(GroupMessage).where(GroupMessage.group_id == group_id).order_by(GroupMessage.id_.desc()).limit(6)
             )
         ).all()
         context_messages = list(recent)[::-1]  # 按时间正序
@@ -83,7 +80,8 @@ async def handle_wdym(
     # 4. 创建 AI 会话并获取解释
     system_message = await get_message("system", "wdym/system.md.jinja")
     user_message = await get_message(
-        "user", "wdym/user.md.jinja",
+        "user",
+        "wdym/user.md.jinja",
         replied_text=replied_text,
         context=context_str,
         context_messages_count=len(context_messages),
