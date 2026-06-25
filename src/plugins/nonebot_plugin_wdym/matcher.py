@@ -71,17 +71,15 @@ async def _query_context_messages(
     if replied_raw_text:
         # 最近 2 天内按内容精确匹配被回复消息，取最新的匹配
         two_days_ago = datetime.now() - timedelta(days=2)
-        target_id = (
-            await session.scalar(
-                select(GroupMessage.id_)
-                .where(
-                    GroupMessage.group_id == group_id,
-                    GroupMessage.message == replied_raw_text,
-                    GroupMessage.timestamp >= two_days_ago,
-                )
-                .order_by(GroupMessage.id_.desc())
-                .limit(1)
+        target_id = await session.scalar(
+            select(GroupMessage.id_)
+            .where(
+                GroupMessage.group_id == group_id,
+                GroupMessage.message == replied_raw_text,
+                GroupMessage.timestamp >= two_days_ago,
             )
+            .order_by(GroupMessage.id_.desc())
+            .limit(1)
         )
 
         if target_id is not None:
