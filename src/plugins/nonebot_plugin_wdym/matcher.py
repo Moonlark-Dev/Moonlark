@@ -15,6 +15,8 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
+from datetime import datetime, timedelta
+
 from nonebot import logger
 from nonebot.adapters import Bot, Event
 from nonebot.adapters.onebot.v11 import Bot as OB11Bot
@@ -63,29 +65,48 @@ async def _query_context_messages(
 ) -> list[GroupMessage]:
     """获取上下文消息
 
-    优先精确匹配被回复消息的位置，取该消息 + 前 5 条（最多 6 条）。
-    匹配失败时回退到最近 10 条消息。
+    1. 有原文时：最近 2 天内按内容匹配，取目标 id_ 的前 5 条
+    2. 匹配失败或无法获取原文时：回退到最近 10 条
     """
-    recent = (
-        await session.scalars(
-            select(GroupMessage).where(GroupMessage.group_id == group_id).order_by(GroupMessage.id_.desc()).limit(50)
-        )
-    ).all()
-
-    if not recent:
-        return []
-
-    msgs = list(recent)[::-1]  # 时间正序
-
     if replied_raw_text:
-        # 从后往前匹配，取最新匹配的那条
-        for i in range(len(msgs) - 1, -1, -1):
-            if msgs[i].message == replied_raw_text:
-                start = max(0, i - 5)
-                return msgs[start : i + 1]
+        # 最近 2 天内按内容精确匹配被回复消息，取最新的匹配
+        two_days_ago = datetime.now() - timedelta(days=2)
+        target_id = (
+            await session.scalar(
+                select(GroupMessage.id_)
+                .where(
+                    GroupMessage.group_id == group_id,
+                    GroupMessage.message == replied_raw_text,
+                    GroupMessage.timestamp >= two_days_ago,
+                )
+                .order_by(GroupMessage.id_.desc())
+                .limit(1)
+            )
+        )
+
+        if target_id is not None:
+            # 用 id_ 精确取目标前 5 条
+            before = (
+                await session.scalars(
+                    select(GroupMessage)
+                    .where(
+                        GroupMessage.group_id == group_id,
+                        GroupMessage.id_ < target_id,
+                    )
+                    .order_by(GroupMessage.id_.desc())
+                    .limit(5)
+                )
+            ).all()
+            target_msg = await session.get(GroupMessage, target_id)
+            return [*reversed(before), target_msg]
 
     # 匹配失败或无法获取原文：回退到最近 10 条
-    return msgs[-10:]
+    recent = (
+        await session.scalars(
+            select(GroupMessage).where(GroupMessage.group_id == group_id).order_by(GroupMessage.id_.desc()).limit(10)
+        )
+    ).all()
+    return list(recent)[::-1]
 
 
 @wdym.handle()
