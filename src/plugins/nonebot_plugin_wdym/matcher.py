@@ -61,10 +61,11 @@ async def _query_context_messages(
     group_id: str,
     replied_raw_text: str | None,
 ) -> list[GroupMessage]:
-    """获取被回复消息 + 前 5 条上下文消息（最多 6 条）"""
-    if not replied_raw_text:
-        return []
+    """获取上下文消息
 
+    优先精确匹配被回复消息的位置，取该消息 + 前 5 条（最多 6 条）。
+    匹配失败时回退到最近 10 条消息。
+    """
     recent = (
         await session.scalars(
             select(GroupMessage).where(GroupMessage.group_id == group_id).order_by(GroupMessage.id_.desc()).limit(50)
@@ -76,13 +77,15 @@ async def _query_context_messages(
 
     msgs = list(recent)[::-1]  # 时间正序
 
-    # 精确匹配被回复消息
-    for i, msg in enumerate(msgs):
-        if msg.message == replied_raw_text:
-            start = max(0, i - 5)
-            return msgs[start : i + 1]
+    if replied_raw_text:
+        # 从后往前匹配，取最新匹配的那条
+        for i in range(len(msgs) - 1, -1, -1):
+            if msgs[i].message == replied_raw_text:
+                start = max(0, i - 5)
+                return msgs[start : i + 1]
 
-    return []
+    # 匹配失败或无法获取原文：回退到最近 10 条
+    return msgs[-10:]
 
 
 @wdym.handle()
