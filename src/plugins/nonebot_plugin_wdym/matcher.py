@@ -24,7 +24,7 @@ from nonebot_plugin_htmlrender import md_to_pic
 from nonebot_plugin_larklang import LangHelper
 from nonebot_plugin_larkutils import get_user_id, get_group_id
 from nonebot_plugin_orm import async_scoped_session
-from nonebot_plugin_openai.utils.message import get_message
+from nonebot_plugin_openai.utils.message import get_messages
 from nonebot_plugin_openai import fetch_message
 from nonebot_plugin_message_summary.models import GroupMessage
 from nonebot_plugin_chat.utils.group import parse_message_to_string
@@ -126,10 +126,8 @@ async def handle_wdym(
         context_lines = [f"[{msg.sender_nickname}]: {msg.message}" for msg in context_messages]
         context_str = "\n".join(context_lines)
 
-    system_message = await get_message("system", "wdym/system.md.jinja")
-    user_message = await get_message(
-        "user",
-        "wdym/user.md.jinja",
+    messages = await get_messages(
+        "wdym",
         replied_text=replied_text,
         context=context_str,
         context_messages_count=len(context_messages),
@@ -138,7 +136,7 @@ async def handle_wdym(
 
     try:
         result = await fetch_message(
-            messages=[system_message, user_message],
+            messages=messages,
             functions=tools,
             identify="WDYM",
         )
