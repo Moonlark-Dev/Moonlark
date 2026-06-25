@@ -15,10 +15,9 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
-from typing import Sequence
-
 from nonebot import logger
 from nonebot.adapters import Bot, Event
+from nonebot.adapters.onebot.v11 import Bot as OB11Bot
 from nonebot.typing import T_State
 from nonebot_plugin_alconna import on_alconna, Alconna, UniMessage, Reply
 from nonebot_plugin_htmlrender import md_to_pic
@@ -29,6 +28,7 @@ from nonebot_plugin_openai.utils.message import get_message
 from nonebot_plugin_openai import fetch_message
 from nonebot_plugin_message_summary.models import GroupMessage
 from nonebot_plugin_chat.utils.group import parse_message_to_string
+from nonebot_plugin_chat.utils.message import parse_dict_message
 from sqlalchemy import select
 
 from .utils import WdymTools
@@ -36,6 +36,58 @@ from .utils import WdymTools
 lang = LangHelper()
 
 wdym = on_alconna(Alconna("wdym"))
+
+
+async def _get_replied_raw_text(
+    bot: Bot, event: Event, state: T_State, reply: Reply, user_id: str
+) -> str | None:
+    """获取被回复消息的原始文本（无 Reply 包装），用于匹配 GroupMessage"""
+    # OB11：用 get_msg 拿到原始消息，再用 parse_message_to_string 解析为纯文本
+    if isinstance(bot, OB11Bot) and reply.id is not None:
+        try:
+            result = await bot.get_msg(message_id=int(reply.id))
+            return await parse_message_to_string(
+                await parse_dict_message(result["message"], bot), event, bot, state, user_id
+            )
+        except Exception as e:
+            logger.exception(f"Failed to get raw replied message: {e}")
+            return None
+    # 其他平台：reply.msg 如果已经是字符串就直接用
+    if isinstance(reply.msg, str):
+        return reply.msg
+    return None
+
+
+async def _query_context_messages(
+    session: async_scoped_session,
+    group_id: str,
+    replied_raw_text: str | None,
+) -> list[GroupMessage]:
+    """获取被回复消息 + 前 5 条上下文消息（最多 6 条）"""
+    if not replied_raw_text:
+        return []
+
+    recent = (
+        await session.scalars(
+            select(GroupMessage)
+            .where(GroupMessage.group_id == group_id)
+            .order_by(GroupMessage.id_.desc())
+            .limit(50)
+        )
+    ).all()
+
+    if not recent:
+        return []
+
+    msgs = list(recent)[::-1]  # 时间正序
+
+    # 精确匹配被回复消息
+    for i, msg in enumerate(msgs):
+        if msg.message == replied_raw_text:
+            start = max(0, i - 5)
+            return msgs[start : i + 1]
+
+    return []
 
 
 @wdym.handle()
@@ -57,27 +109,25 @@ async def handle_wdym(
     if not uni_msg.has(Reply):
         await lang.finish("no_reply", user_id)
 
-    # 2. 获取上下文消息（最近 6 条）
-    context_messages: Sequence[GroupMessage] = []
+    reply = uni_msg[Reply, 0]
+
+    # 2. 获取被回复消息的原始文本
+    replied_raw = await _get_replied_raw_text(bot, event, state, reply, user_id)
+
+    # 3. 获取上下文消息（精确匹配）
+    context_messages: list[GroupMessage] = []
     try:
-        recent = (
-            await session.scalars(
-                select(GroupMessage).where(GroupMessage.group_id == group_id).order_by(GroupMessage.id_.desc()).limit(6)
-            )
-        ).all()
-        context_messages = list(recent)[::-1]  # 按时间正序
+        context_messages = await _query_context_messages(session, group_id, replied_raw)
     except Exception as e:
         logger.exception(f"Failed to fetch context messages: {e}")
 
-    # 3. 获取被回复消息的文本内容
-    reply = uni_msg[Reply, 0]
+    # 4. 构建 AI 提示词
     replied_text = await parse_message_to_string(UniMessage([reply]), event, bot, state, user_id)
     context_str = ""
     if context_messages:
         context_lines = [f"[{msg.sender_nickname}]: {msg.message}" for msg in context_messages]
         context_str = "\n".join(context_lines)
 
-    # 4. 创建 AI 会话并获取解释
     system_message = await get_message("system", "wdym/system.md.jinja")
     user_message = await get_message(
         "user",
