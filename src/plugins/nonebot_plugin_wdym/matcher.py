@@ -38,9 +38,7 @@ lang = LangHelper()
 wdym = on_alconna(Alconna("wdym"))
 
 
-async def _get_replied_raw_text(
-    bot: Bot, event: Event, state: T_State, reply: Reply, user_id: str
-) -> str | None:
+async def _get_replied_raw_text(bot: Bot, event: Event, state: T_State, reply: Reply, user_id: str) -> str | None:
     """获取被回复消息的原始文本（无 Reply 包装），用于匹配 GroupMessage"""
     # OB11：用 get_msg 拿到原始消息，再用 parse_message_to_string 解析为纯文本
     if isinstance(bot, OB11Bot) and reply.id is not None:
@@ -69,10 +67,7 @@ async def _query_context_messages(
 
     recent = (
         await session.scalars(
-            select(GroupMessage)
-            .where(GroupMessage.group_id == group_id)
-            .order_by(GroupMessage.id_.desc())
-            .limit(50)
+            select(GroupMessage).where(GroupMessage.group_id == group_id).order_by(GroupMessage.id_.desc()).limit(50)
         )
     ).all()
 
