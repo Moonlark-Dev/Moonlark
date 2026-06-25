@@ -42,20 +42,16 @@ wdym = on_alconna(Alconna("wdym"))
 
 async def _get_replied_raw_text(bot: Bot, event: Event, state: T_State, reply: Reply, user_id: str) -> str | None:
     """获取被回复消息的原始文本（无 Reply 包装），用于匹配 GroupMessage"""
-    # OB11：用 get_msg 拿到原始消息，再用 parse_message_to_string 解析为纯文本
-    if isinstance(bot, OB11Bot) and reply.id is not None:
-        try:
-            result = await bot.get_msg(message_id=int(reply.id))
-            return await parse_message_to_string(
-                await parse_dict_message(result["message"], bot), event, bot, state, user_id
-            )
-        except Exception as e:
-            logger.exception(f"Failed to get raw replied message: {e}")
-            return None
-    # 其他平台：reply.msg 如果已经是字符串就直接用
-    if isinstance(reply.msg, str):
-        return reply.msg
-    return None
+    if not isinstance(bot, OB11Bot) or reply.id is None:
+        return None
+    try:
+        result = await bot.get_msg(message_id=int(reply.id))
+        return await parse_message_to_string(
+            await parse_dict_message(result["message"], bot), event, bot, state, user_id
+        )
+    except Exception as e:
+        logger.exception(f"Failed to get raw replied message: {e}")
+        return None
 
 
 async def _query_context_messages(
