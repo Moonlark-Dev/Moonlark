@@ -26,7 +26,6 @@ async def render_neko_result(catgirl_scores: list[CatGirlScore], user_id: str) -
         user_id,
         {"scores": catgirl_scores, "max_score": max_score},
         keys=keys,
-        viewport={"width": 800, "height": min(600, 120 + len(catgirl_scores) * 70)},
     )
     return UniMessage().image(raw=image)
 

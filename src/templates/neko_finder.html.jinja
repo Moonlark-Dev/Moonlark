@@ -85,27 +85,30 @@
         border-bottom: none;
     }
 
-    /* Background bar — absolutely positioned */
-    .score-bg-bar {
+    /* Background bar via ::before pseudo-element */
+    .ranking-row::before {
+        content: '';
         position: absolute;
         top: 0;
         left: 0;
         height: 100%;
-        opacity: 0.10;
+        width: calc(var(--bar-pct, 0) * 1%);
+        opacity: 0.20;
         pointer-events: none;
         z-index: 0;
+        border-radius: 0 4px 4px 0;
     }
 
-    .score-bg-bar.rank-2-bg {
-        background: linear-gradient(90deg, #e8eaf6, #c5cae9);
+    .ranking-row.rank-2-bg::before {
+        background: linear-gradient(90deg, #c5cae9, #e8eaf6);
     }
 
-    .score-bg-bar.rank-3-bg {
-        background: linear-gradient(90deg, #fff3e0, #ffe0b2);
+    .ranking-row.rank-3-bg::before {
+        background: linear-gradient(90deg, #ffe0b2, #fff3e0);
     }
 
-    .score-bg-bar.rank-other-bg {
-        background: linear-gradient(90deg, #f3e5f5, #e1bee7);
+    .ranking-row.rank-other-bg::before {
+        background: linear-gradient(90deg, #e1bee7, #f3e5f5);
     }
 
     /* Content sits above the bar */
@@ -194,8 +197,7 @@
     {% set trophy = "🥈" if idx == 2 else ("🥉" if idx == 3 else "") %}
     {% set bar_pct = (score.score / max_score * 100)|int %}
 
-    <div class="ranking-row">
-        <div class="score-bg-bar {{ bg_class }}" style="width: {{ bar_pct if bar_pct > 5 else 5 }}%;"></div>
+    <div class="ranking-row {{ bg_class }}" style="--bar-pct: {{ bar_pct if bar_pct > 5 else 5 }};">
         <div class="row-content">
             <div class="row-rank {{ rank_class }}">
                 {% if trophy %}<span class="trophy-icon">{{ trophy }}</span> {% endif %}#{{ idx }}
