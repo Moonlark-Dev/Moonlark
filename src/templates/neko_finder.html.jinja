@@ -1,0 +1,222 @@
+{% extends base %}
+
+{% block header %}
+<style>
+    .neko-card-body {
+        padding: 0;
+    }
+
+    /* --- First Place Special Display --- */
+    .first-place {
+        background: linear-gradient(135deg, #fff9c4 0%, #fff8e1 50%, #fff3cd 100%);
+        padding: 32px 32px 24px;
+        text-align: center;
+        border-bottom: 3px solid #ffc107;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .first-place::before {
+        content: "👑";
+        position: absolute;
+        top: -10px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 2.5rem;
+        opacity: 0.15;
+    }
+
+    .first-place .rank-badge-lg {
+        display: inline-block;
+        background: linear-gradient(135deg, #ffc107, #ffb300);
+        color: white;
+        font-weight: 800;
+        font-size: 1rem;
+        padding: 4px 18px;
+        border-radius: 20px;
+        margin-bottom: 12px;
+        box-shadow: 0 2px 10px rgba(255, 193, 7, 0.4);
+    }
+
+    .first-place .username-lg {
+        font-size: 1.6rem;
+        font-weight: 800;
+        color: #e65100;
+        margin: 0 0 6px 0;
+        line-height: 1.3;
+    }
+
+    .first-place .score-lg {
+        font-size: 2.8rem;
+        font-weight: 900;
+        color: #ff6f00;
+        margin: 4px 0;
+    }
+
+    .first-place .score-label {
+        font-size: 0.8rem;
+        color: #bf8f00;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 8px;
+    }
+
+    .first-place .comment-lg {
+        font-size: 0.9rem;
+        color: #795548;
+        font-style: italic;
+        margin-top: 8px;
+        padding: 8px 16px;
+        background: rgba(255, 255, 255, 0.6);
+        border-radius: 10px;
+        display: inline-block;
+    }
+
+    /* --- General Ranking Row --- */
+    .ranking-row {
+        position: relative;
+        padding: 12px 20px;
+        border-bottom: 1px solid #f5f5f5;
+        overflow: hidden;
+    }
+
+    .ranking-row:last-child {
+        border-bottom: none;
+    }
+
+    /* Background bar — absolutely positioned */
+    .score-bg-bar {
+        position: absolute;
+        top: 0;
+        left: 0;
+        height: 100%;
+        opacity: 0.10;
+        pointer-events: none;
+        z-index: 0;
+    }
+
+    .score-bg-bar.rank-2-bg {
+        background: linear-gradient(90deg, #e8eaf6, #c5cae9);
+    }
+
+    .score-bg-bar.rank-3-bg {
+        background: linear-gradient(90deg, #fff3e0, #ffe0b2);
+    }
+
+    .score-bg-bar.rank-other-bg {
+        background: linear-gradient(90deg, #f3e5f5, #e1bee7);
+    }
+
+    /* Content sits above the bar */
+    .row-content {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .row-rank {
+        min-width: 40px;
+        font-weight: 700;
+        font-size: 0.95rem;
+    }
+
+    .row-rank.r2 {
+        color: #757575;
+    }
+
+    .row-rank.r3 {
+        color: #a1887f;
+    }
+
+    .row-rank.rx {
+        color: #bdbdbd;
+    }
+
+    .row-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .row-info .row-name {
+        font-weight: 700;
+        font-size: 1rem;
+        color: #212529;
+    }
+
+    .row-info .row-comment {
+        font-size: 0.8rem;
+        color: #6c757d;
+        font-style: italic;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .row-score {
+        font-weight: 800;
+        font-size: 1.1rem;
+        color: #6a1b9a;
+        min-width: 40px;
+        text-align: right;
+    }
+
+    /* Trophies for top 3 row rank */
+    .trophy-icon {
+        font-size: 1.1rem;
+    }
+</style>
+{% endblock header %}
+
+{% block card %}
+<div class="card-body neko-card-body">
+
+    {% if scores and scores|length > 0 %}
+    {% set max_score = max_score|default(100) %}
+
+    <!-- First Place Highlight -->
+    <div class="first-place">
+        <div class="rank-badge-lg">{{ text.first_badge }}</div>
+        <h2 class="username-lg">{{ scores[0].username }}</h2>
+        <div class="score-label">{{ text.score }}</div>
+        <div class="score-lg">{{ scores[0].score }}</div>
+        <div class="comment-lg">{{ text.comment_prefix }} {{ scores[0].comment if scores[0].comment else '' }}</div>
+    </div>
+
+    <!-- Remaining Rankings -->
+    {% for score in scores %}
+    {% if loop.index > 1 %}
+    {% set idx = loop.index %}
+    {% set bg_class = "rank-2-bg" if idx == 2 else ("rank-3-bg" if idx == 3 else "rank-other-bg") %}
+    {% set rank_class = "r2" if idx == 2 else ("r3" if idx == 3 else "rx") %}
+    {% set trophy = "🥈" if idx == 2 else ("🥉" if idx == 3 else "") %}
+    {% set bar_pct = (score.score / max_score * 100)|int %}
+
+    <div class="ranking-row">
+        <div class="score-bg-bar {{ bg_class }}" style="width: {{ bar_pct if bar_pct > 5 else 5 }}%;"></div>
+        <div class="row-content">
+            <div class="row-rank {{ rank_class }}">
+                {% if trophy %}<span class="trophy-icon">{{ trophy }}</span> {% endif %}#{{ idx }}
+            </div>
+            <div class="row-info">
+                <div class="row-name">{{ score.username }}</div>
+                <div class="row-comment">{{ score.comment if score.comment else '' }}</div>
+            </div>
+            <div class="row-score">{{ score.score }}</div>
+        </div>
+    </div>
+    {% endif %}
+    {% endfor %}
+
+    {% else %}
+    <!-- Empty State -->
+    <div class="text-center py-5">
+        <p style="font-size: 3rem; opacity: 0.3;">😿</p>
+        <p class="text-muted">{{ text.no_data }}</p>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock card %}

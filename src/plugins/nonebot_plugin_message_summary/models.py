@@ -30,6 +30,7 @@ class CatGirlScore(TypedDict):
     rank: int
     username: str
     score: int
+    comment: str
 
 
 class DebateParty(TypedDict):

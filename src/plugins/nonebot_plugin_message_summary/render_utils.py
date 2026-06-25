@@ -3,7 +3,6 @@ from nonebot_plugin_htmlrender import md_to_pic
 from nonebot_plugin_alconna import UniMessage
 from nonebot_plugin_localstore import get_data_file
 from .lang import lang
-from .chart import render_horizontal_bar_chart
 from .models import CatGirlScore, DebateAnalysis
 from .ai_utils import DecisionResult
 
@@ -16,8 +15,20 @@ async def render_summary_result(summary_string: str, style: str) -> UniMessage:
 
 
 async def render_neko_result(catgirl_scores: list[CatGirlScore], user_id: str) -> UniMessage:
-    image_bytes = await render_horizontal_bar_chart(catgirl_scores, user_id)
-    return UniMessage().image(raw=image_bytes)
+    keys = await generate_render_keys(
+        lang, user_id, ["render_title", "no_data", "score", "comment_prefix", "first_badge"], "neko."
+    )
+    # Calculate the max score for the background bar width percentages
+    max_score = max((s["score"] for s in catgirl_scores), default=100)
+    image = await render_template(
+        "neko_finder.html.jinja",
+        keys["render_title"],
+        user_id,
+        {"scores": catgirl_scores, "max_score": max_score},
+        keys=keys,
+        viewport={"width": 800, "height": min(600, 120 + len(catgirl_scores) * 70)},
+    )
+    return UniMessage().image(raw=image)
 
 
 async def render_debate_result(debate_data: DebateAnalysis, user_id: str) -> UniMessage:

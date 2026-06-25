@@ -217,6 +217,10 @@ neko:
   no_data: 暂无数据
   x_label: '猫娘分数'
   title: 猫娘分数排行榜
+  render_title: 猫娘分数排行榜
+  score: 分数
+  comment_prefix: "💬"
+  first_badge: "🥇 #1"
   prompt: |
     # Role: 资深二次元文化鉴定师与数据分析师
 
