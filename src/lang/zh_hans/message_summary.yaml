@@ -64,3 +64,4 @@ help_decision:
   details: 根据群内最近 300 条消息，对指定群员生成一份符合公文格式的虚假处分通知（整活用）。
   usage1: decision @群友 <处分内容>
   example: decision @小明 女装
+analyzing: 正在分析中，请稍候...
