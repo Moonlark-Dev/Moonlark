@@ -9,6 +9,7 @@
     }
 </style>
 {% if me %}
+{% if "wide" in base %}
 <style>
     .ranking {
         margin-bottom: 0;
@@ -17,6 +18,7 @@
         margin-bottom: 0;
     }
 </style>
+{% endif %}
 {% endif %}
 {% endblock header %}
 
@@ -33,11 +35,22 @@
     {% endfor %}
 </div>
 {% if me %}
+{% if "wide" in base %}
 <div style="background-color: rgba(var(--mdb-primary-rgb), 0.5);" class="card-body myrank-card">
-    <span class="h3">{{ me.index }}. {{ me.nickname }}</span>
-    <span class="num">{{ me.data }}</span>
-    <br>
-    {{ me.info }}
+{% else %}
+<div class="card bg-primary bg-opacity-50">
+    <div class="card-body myrank">
+{% endif %}
+        <span class="h3">{{ me.index }}. {{ me.nickname }}</span>
+        <span class="num">{{ me.data }}</span>
+        <br>
+        {{ me.info }}
+{% if "wide" in base %}
 </div>
+{% else %}
+    </div>
+</div>
+{% endif %}
+{% endif %}
 {% endif %}
 {% endblock card %}
