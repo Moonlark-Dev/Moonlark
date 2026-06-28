@@ -11,7 +11,10 @@
 {% if me %}
 <style>
     .ranking {
-        margin-bottom: -20px;
+        margin-bottom: 0;
+    }
+    .myrank-card {
+        margin-bottom: 0;
     }
 </style>
 {% endif %}
@@ -30,13 +33,11 @@
     {% endfor %}
 </div>
 {% if me %}
-<div class="card bg-primary bg-opacity-50">
-    <div class="card-body myrank">
-        <span class="h3">{{ me.index }}. {{ me.nickname }}</span>
-        <span class="num">{{ me.data }}</span>
-        <br>
-        {{ me.info }}
-    </div>
+<div style="background-color: rgba(var(--mdb-primary-rgb), 0.5);" class="card-body myrank-card">
+    <span class="h3">{{ me.index }}. {{ me.nickname }}</span>
+    <span class="num">{{ me.data }}</span>
+    <br>
+    {{ me.info }}
 </div>
 {% endif %}
 {% endblock card %}
