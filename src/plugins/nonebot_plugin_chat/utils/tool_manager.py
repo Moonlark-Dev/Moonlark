@@ -339,7 +339,4 @@ class ToolManager:
         if self.processor is None:
             raise RuntimeError("processor is None")
 
-        return await _query_history_impl(
-            group_id=self.processor.session.session_id,
-            query=query
-        )
+        return await _query_history_impl(group_id=self.processor.session.session_id, query=query)
