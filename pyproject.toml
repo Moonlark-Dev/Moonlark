@@ -92,6 +92,7 @@ plugins = [
     "nonebot_plugin_version_manager",
     "nonebot_plugin_last_seen",
     "nonebot_plugin_command_stats",
+    "nonebot_plugin_wdym",
 ]
 plugin_dirs = []
 builtin_plugins = []

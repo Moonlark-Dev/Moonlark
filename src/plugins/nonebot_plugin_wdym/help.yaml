@@ -1,0 +1,3 @@
+plugin: 'wdym'
+commands:
+  wdym: help;1;tools

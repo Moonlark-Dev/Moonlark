@@ -1,0 +1,6 @@
+help:
+  description: "What do you mean?"
+  details: "Reply to a message to have the AI explain obscure content, jargon, memes, or abbreviations with context."
+  usage1: "wdym (reply to a message)"
+no_reply: "Please reply to a message you want to explain."
+ai_error: "An error occurred while processing the AI request. Please try again later."
