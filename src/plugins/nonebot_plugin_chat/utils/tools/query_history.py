@@ -8,10 +8,7 @@ async def fetch_history_messages(group_id: str, limit: int = 1000) -> str:
     async with get_session() as session:
         # 拉取最近的 N 条消息，按 ID 降序排列
         stmt = (
-            select(GroupMessage)
-            .where(GroupMessage.group_id == group_id)
-            .order_by(GroupMessage.id_.desc())
-            .limit(limit)
+            select(GroupMessage).where(GroupMessage.group_id == group_id).order_by(GroupMessage.id_.desc()).limit(limit)
         )
         results = await session.scalars(stmt)
 
