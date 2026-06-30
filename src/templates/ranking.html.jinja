@@ -9,7 +9,6 @@
     }
 </style>
 {% if me %}
-{% if "wide" in base %}
 <style>
     .ranking {
         margin-bottom: 0;
@@ -18,7 +17,6 @@
         margin-bottom: 0;
     }
 </style>
-{% endif %}
 {% endif %}
 {% endblock header %}
 
@@ -41,6 +39,5 @@
     <br>
     {{ me.info }}
 </div>
-{% endif %}
 {% endif %}
 {% endblock card %}
