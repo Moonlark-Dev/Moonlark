@@ -17,10 +17,10 @@
 
 from typing import TYPE_CHECKING, Literal, Optional
 
-from nonebot_plugin_openai import fetch_message
-from nonebot_plugin_openai.utils.message import generate_message, get_message
+from nonebot_plugin_openai.utils.message import generate_message, get_message, get_messages
 from nonebot_plugin_openai.utils.functions import create_function_list
 from nonebot_plugin_openai.utils.image_generation import generate_image
+from nonebot_plugin_openai.utils.chat import fetch_message
 from nonebot_plugin_alconna import UniMessage
 from ..enums import MoodEnum
 from ..lang import lang
@@ -378,15 +378,10 @@ class ToolManager:
         if not context:
             return "历史消息库为空，无法查询。"
 
-        # 调用 AI 分析并回答
-        messages = [
-            generate_message(
-                await get_message("query_history/system.md.jinja"),
-                role="system",
-            ),
-            generate_message(
-                await get_message("query_history/user.md.jinja", context=context, query=query),
-                role="user",
-            ),
-        ]
+        # 使用 get_messages 一次性加载 system 和 user prompt
+        messages = await get_messages(
+            "query_history",
+            context=context,
+            query=query,
+        )
         return await fetch_message(messages=messages, identify="Query History Message")
