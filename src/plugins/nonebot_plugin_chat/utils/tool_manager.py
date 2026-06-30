@@ -17,6 +17,8 @@
 
 from typing import TYPE_CHECKING, Literal, Optional
 
+from nonebot_plugin_openai import fetch_message
+from nonebot_plugin_openai.utils.message import generate_message, get_message
 from nonebot_plugin_openai.utils.functions import create_function_list
 from nonebot_plugin_openai.utils.image_generation import generate_image
 from nonebot_plugin_alconna import UniMessage
@@ -40,7 +42,7 @@ from .tools import (
     vm_send_input,
     vm_stop_task,
     is_vm_available,
-    fetch_history_messages as _query_history_impl,
+    fetch_history_messages,
 )
 from ..utils.emoji import QQ_EMOJI_MAP
 from .note_manager import check_note, get_context_notes
@@ -372,14 +374,15 @@ class ToolManager:
             raise RuntimeError("processor is None")
 
         # 拉取历史消息作为上下文
-        context = await _query_history_impl(group_id=self.processor.session.session_id)
+        context = await fetch_history_messages(group_id=self.processor.session.session_id)
         if not context:
             return "历史消息库为空，无法查询。"
 
         # 调用 AI 分析并回答
-        prompt = (
-            f"以下是某个群聊的历史消息：\n\n{context}\n\n"
-            f"请根据以上历史消息回答：{query}\n"
-            f"要求：必须给出具体的发送者和时间。"
-        )
-        return await self.processor.ai_agent.ask_ai(prompt)
+        messages = [
+            generate_message(
+                await get_message("query_history/user.md.jinja", context=context, query=query),
+                role="user",
+            ),
+        ]
+        return await fetch_message(messages=messages, identify="Query History Message")
