@@ -8,6 +8,6 @@ description: |
   - 匹配的聊天记录列表，每条记录包含发送者、时间戳和具体内容。
 parameters:
   - name: query
-    description: "要搜索的关键词或短语。请尽可能使用简洁且具有辨识度的词汇。"
+    description: "你想查询的问题，使用自然语言提问。例如：\"上次我们讨论的服务器配置是什么？\""
     type: string
     required: true

@@ -381,6 +381,10 @@ class ToolManager:
         # 调用 AI 分析并回答
         messages = [
             generate_message(
+                await get_message("query_history/system.md.jinja"),
+                role="system",
+            ),
+            generate_message(
                 await get_message("query_history/user.md.jinja", context=context, query=query),
                 role="user",
             ),
