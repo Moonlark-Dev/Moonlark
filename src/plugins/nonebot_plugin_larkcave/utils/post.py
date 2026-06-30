@@ -24,8 +24,6 @@ from nonebot.adapters import Bot
 from nonebot.internal.adapter import Event
 from nonebot.typing import T_State
 from nonebot_plugin_alconna import Image, Text, UniMessage, image_fetch
-from nonebot_plugin_chat.core.session import post_group_event
-from nonebot_plugin_chat.utils.message import parse_message_to_string
 from nonebot_plugin_larkuser import get_nickname
 
 from nonebot_plugin_orm import async_scoped_session
@@ -95,16 +93,5 @@ async def post_cave(
         )
         session.add(CaveData(id=cave_id, author=user_id, time=datetime.now(), content=parsed_content))
         await session.commit()
-
-    # 投稿成功后，向 chat 插件发送事件
-    if group_id:
-        try:
-            uni_message = UniMessage(content)
-            content_str = await parse_message_to_string(uni_message, event, bot, state, user_id)
-            nickname = await get_nickname(user_id, bot, event)
-            event_prompt = await lang.text("add.event_prompt", user_id, nickname, cave_id, content_str)
-            await post_group_event(group_id, event_prompt, "probability")
-        except Exception as e:
-            logger.warning(f"Failed to post cave event to chat: {e}")
 
     await lang.finish("add.posted", user_id, cave_id, reply_message=True)

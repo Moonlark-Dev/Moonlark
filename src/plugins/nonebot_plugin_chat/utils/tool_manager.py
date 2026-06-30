@@ -17,8 +17,10 @@
 
 from typing import TYPE_CHECKING, Literal, Optional
 
+from nonebot_plugin_openai.utils.message import generate_message, get_message, get_messages
 from nonebot_plugin_openai.utils.functions import create_function_list
 from nonebot_plugin_openai.utils.image_generation import generate_image
+from nonebot_plugin_openai.utils.chat import fetch_message
 from nonebot_plugin_alconna import UniMessage
 from ..enums import MoodEnum
 from ..lang import lang
@@ -40,6 +42,7 @@ from .tools import (
     vm_send_input,
     vm_stop_task,
     is_vm_available,
+    fetch_history_messages,
 )
 from ..utils.emoji import QQ_EMOJI_MAP
 from .note_manager import check_note, get_context_notes
@@ -280,6 +283,9 @@ class ToolManager:
             # query_history_message
             tools.append(self.query_history_message)
 
+            # recall_global_events
+            tools.append(self.recall_global_events)
+
             # Conditional tools
             if processor and processor.session.is_napcat_bot():
                 tools.append(processor.poke)
@@ -325,11 +331,8 @@ class ToolManager:
         expire_hours = note_check_result["expire_hours"]
         await note_manager.create_note(content=text, keywords=keywords or "", expire_hours=expire_hours or 87600)
 
-    async def query_history_message(self) -> str:
+    async def recall_global_events(self) -> str:
         from ..core.session import groups
-
-        if self.processor is None:
-            raise RuntimeError("processor is None")
 
         # 触发所有会话的即时记忆生成
         for group in groups.values():
@@ -356,3 +359,20 @@ class ToolManager:
             result_parts.append("即时记忆: (无)")
 
         return "\n\n".join(result_parts)
+
+    async def query_history_message(self, query: str) -> str:
+        if self.processor is None:
+            raise RuntimeError("processor is None")
+
+        # 拉取历史消息作为上下文
+        context = await fetch_history_messages(group_id=self.processor.session.session_id)
+        if not context:
+            return "历史消息库为空，无法查询。"
+
+        # 使用 get_messages 一次性加载 system 和 user prompt
+        messages = await get_messages(
+            "query_history",
+            context=context,
+            query=query,
+        )
+        return await fetch_message(messages=messages, identify="Query History Message")
