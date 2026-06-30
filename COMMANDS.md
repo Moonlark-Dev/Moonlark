@@ -373,6 +373,12 @@ Moonlark 投票
 - `/wakatime (查看我的 WakaTime 信息)`
 - `/wakatime login (绑定 WakaTime 账户)`
 - `/wakatime rank (查看 WakaTime 排行榜)`
+## `wdym`: 请问什么意思
+
+回复一条消息，让 AI 结合上下文解释消息中的晦涩内容、专业术语、梗或缩写。
+
+### 用法
+- `/wdym (回复一条消息)`
 ## `cave`: 回声洞
 
 （与漂流瓶类似）投稿或查看其他用户投稿的回声洞，所有内容依照 CC-BY-NC-SA 4.0 许可协议授权
@@ -442,6 +448,7 @@ Moonlark 投票
 ### 用法
 - `/lastseen (查看自己最后上线时间)`
 - `/lastseen @用户 (查看指定用户最后上线时间)`
+- `/lastseen QQ号 (通过QQ号查询指定用户最后上线时间)`
 ## `neko-finder`: 找猫娘
 
 根据近 2 天的消息对群友的“猫娘指数”进行打分。

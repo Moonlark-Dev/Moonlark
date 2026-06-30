@@ -15,17 +15,24 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
-from .browser import browse_webpage
-from .search import web_search
-from .wolfram_alpha import request_wolfram_alpha
-from .abbreviation import search_abbreviation
-from .vm import (
-    vm_create_task,
-    vm_get_task_state,
-    vm_send_input,
-    vm_stop_task,
-    is_vm_available,
-    is_vm_configured,
+from nonebot.plugin import PluginMetadata
+from nonebot import require
+
+__plugin_meta__ = PluginMetadata(
+    name="nonebot-plugin-wdym",
+    description="What do you mean? - 解释聊天中晦涩难懂的消息",
+    usage="",
+    config=None,
 )
-from .bilibili import describe_bilibili_video, resolve_b23_url
-from .query_history import query_history_message
+
+require("nonebot_plugin_larklang")
+require("nonebot_plugin_larkutils")
+require("nonebot_plugin_larkuser")
+require("nonebot_plugin_htmlrender")
+require("nonebot_plugin_openai")
+require("nonebot_plugin_orm")
+require("nonebot_plugin_alconna")
+require("nonebot_plugin_message_summary")
+require("nonebot_plugin_chat")
+
+from . import matcher

@@ -21,3 +21,4 @@ help:
   description: "查询最后上线时间"
   usage1: "lastseen (查看自己最后上线时间)"
   usage2: "lastseen @用户 (查看指定用户最后上线时间)"
+  usage3: "lastseen QQ号 (通过QQ号查询指定用户最后上线时间)"
