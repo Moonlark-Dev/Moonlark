@@ -40,6 +40,7 @@ from .tools import (
     vm_send_input,
     vm_stop_task,
     is_vm_available,
+    query_history_message as _query_history_impl,
 )
 from ..utils.emoji import QQ_EMOJI_MAP
 from .note_manager import check_note, get_context_notes
@@ -334,34 +335,11 @@ class ToolManager:
         expire_hours = note_check_result["expire_hours"]
         await note_manager.create_note(content=text, keywords=keywords or "", expire_hours=expire_hours or 87600)
 
-    async def query_history_message(self) -> str:
-        from ..core.session import groups
-
+    async def query_history_message(self, query: str) -> str:
         if self.processor is None:
             raise RuntimeError("processor is None")
 
-        # 触发所有会话的即时记忆生成
-        for group in groups.values():
-            await group.processor.generate_instant_memory()
-
-        result_parts = []
-
-        # 展示非当前群聊的即时记忆
-        current_session_id = self.processor.session.session_id
-        memories = get_memories_for_display(current_session_id)
-        if memories:
-            mem_lines = []
-            for mem in memories:
-                mem_lines.append(
-                    await self.text(
-                        "prompt_group.instant_mem",
-                        mem["create_time"].strftime("%Y-%m-%d %H:%M:%S"),
-                        mem["expire_time"].strftime("%Y-%m-%d %H:%M:%S"),
-                        mem["content"],
-                    )
-                )
-            result_parts.append("即时记忆:\n" + "\n".join(mem_lines))
-        else:
-            result_parts.append("即时记忆: (无)")
-
-        return "\n\n".join(result_parts)
+        return await _query_history_impl(
+            group_id=self.processor.session.session_id,
+            query=query
+        )
