@@ -905,6 +905,9 @@ moonlark_main:
 sleep:
   drowsy_prompt: "[提示]: 你感到有些犯困了。请使用 `change_sleep_status` 工具来决定是否准备睡觉。"
 
+start_action:
+  timeout: "动作请求超时，Moonlark 未在规定时间内做出决定。"
+
 request_action:
   timeout: "动作申请超时，意识会话未在规定时间内做出决定。"
 
