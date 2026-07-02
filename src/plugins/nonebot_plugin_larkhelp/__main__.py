@@ -74,7 +74,9 @@ async def get_templates(user_id: str) -> list[dict[str, Any]]:
         raise ValueError("No Command")
     sorted_help_list = sorted(list(help_list.items()), key=lambda x: x[0])
     commands = []
-    for command in [await get_help_dict(name, user_id, data) for name, data in sorted_help_list if data.category != "superuser"]:
+    for command in [
+        await get_help_dict(name, user_id, data) for name, data in sorted_help_list if data.category != "superuser"
+    ]:
         for category in commands:
             if category["name"] == command["category"]:
                 category["commands"].append(command)
@@ -102,7 +104,7 @@ async def generate_markdown() -> str:
         for usage in command["usages"]:
             text += await lang.text("markdown.usage", user_id, usage)
     # Superuser commands with warning
-    for category in (await get_menu_templates(user_id)):
+    for category in await get_menu_templates(user_id):
         if category["id"] == "superuser":
             for command in category["commands"]:
                 text += await lang.text(
