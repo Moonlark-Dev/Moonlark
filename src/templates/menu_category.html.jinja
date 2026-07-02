@@ -1,0 +1,18 @@
+{% extends base %}
+
+{% block body %}
+<div class="row">
+    <div class="col-12">
+        <ul style="list-style: none; padding: 0;">
+            {% for command in commands %}
+            <li style="margin: 10px 0;">
+                <span class="badge bg-info" style="font-size: 14px;">{{ command.name }}</span>
+                <span style="margin-left: 8px;">{{ command.description }}</span>
+            </li>
+            {% endfor %}
+        </ul>
+        <hr>
+        <p style="color: #666;">{{ text.usage_text }}</p>
+    </div>
+</div>
+{% endblock body %}
