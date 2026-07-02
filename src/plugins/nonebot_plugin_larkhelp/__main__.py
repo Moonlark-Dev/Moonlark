@@ -184,7 +184,6 @@ async def get_category_commands(category_id: str, user_id: str) -> Optional[dict
     }
 
 
-@creator("menu.html.jinja")
 async def render_menu(user_id: str) -> bytes:
     categories = await get_menu_templates(user_id)
     random_cmd = await get_random_command(user_id)
