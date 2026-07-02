@@ -34,6 +34,8 @@ menu:
   usage1: 'menu (View category menu)'
   usage2: 'menu <category> (View details of a category)'
   menu_cat_help_hint: 'Use help <command> to view command details'
+  description: Category Menu
+  details: Browse command categories and discover random commands
 
 help:
   description: Command Help

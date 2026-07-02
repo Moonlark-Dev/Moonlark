@@ -35,6 +35,8 @@ menu:
   usage1: menu (查看分类菜单)
   usage2: menu <分类ID> (查看指定分类的指令列表)
   menu_cat_help_hint: '使用 help <指令名> 查看指令的具体用法'
+  description: 分级菜单
+  details: 显示分类菜单和随机指令
 
 help:
   description: 命令帮助
