@@ -53,4 +53,5 @@ markdown:
     {}
 
     ### 用法
+  superuser_warning: '> 此指令僅 Moonlark 管理員可用。'
   usage: "- `{}`\n"
