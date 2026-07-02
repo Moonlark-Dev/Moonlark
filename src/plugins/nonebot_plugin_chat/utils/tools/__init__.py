@@ -28,3 +28,4 @@ from .vm import (
     is_vm_configured,
 )
 from .bilibili import describe_bilibili_video, resolve_b23_url
+from .query_history import fetch_history_messages
