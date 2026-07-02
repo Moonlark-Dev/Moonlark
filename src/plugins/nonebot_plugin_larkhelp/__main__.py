@@ -218,7 +218,7 @@ async def _(category: str, user_id: str = get_user_id()) -> None:
                     cat_data["name"],
                     user_id,
                     cat_data,
-                    {"usage_text": await lang.text("list.usage_text", user_id)},
+                    {"help_hint": await lang.text("menu.menu_cat_help_hint", user_id)},
                     False,
                     True,
                 ),

@@ -33,6 +33,7 @@ menu:
   category_not_found: 未找到分類 {category}
   usage1: menu (查看分類菜單)
   usage2: menu <分類ID> (查看指定分類的指令列表)
+  menu_cat_help_hint: '使用 help <指令名> 查看指令的具體用法'
 
 help:
   description: 命令帮助
