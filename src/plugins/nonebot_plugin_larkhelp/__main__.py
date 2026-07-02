@@ -1,4 +1,5 @@
 import asyncio
+import random
 from nonebot.log import logger
 import traceback
 from unittest.util import sorted_list_difference
@@ -73,7 +74,7 @@ async def get_templates(user_id: str) -> list[dict[str, Any]]:
         raise ValueError("No Command")
     sorted_help_list = sorted(list(help_list.items()), key=lambda x: x[0])
     commands = []
-    for command in [await get_help_dict(name, user_id, data) for name, data in sorted_help_list]:
+    for command in [await get_help_dict(name, user_id, data) for name, data in sorted_help_list if data.category != "superuser"]:
         for category in commands:
             if category["name"] == command["category"]:
                 category["commands"].append(command)
@@ -135,3 +136,113 @@ async def _(user_id: str = get_user_id()) -> None:
     except Exception:
         logger.error(traceback.format_exc())
         await help_cmd.finish(await lang.text("command.error", user_id))
+
+
+async def get_menu_templates(user_id: str) -> list[dict[str, Any]]:
+    """获取菜单所需的所有分类数据，包括 superuser"""
+    if not help_list:
+        raise ValueError("No Command")
+    sorted_help_list = sorted(list(help_list.items()), key=lambda x: x[0])
+    categories: dict[str, dict] = {}
+    for name, data in sorted_help_list:
+        cat_id = data.category
+        if cat_id not in categories:
+            categories[cat_id] = {"id": cat_id, "commands": []}
+        cmd_dict = await get_help_dict(name, user_id, data)
+        categories[cat_id]["commands"].append(cmd_dict)
+
+    result = []
+    for cat_id, cat_data in categories.items():
+        cat_data["name"] = await lang.text(f"list.category.{cat_id}", user_id)
+        cat_data["count"] = len(cat_data["commands"])
+        result.append(cat_data)
+    return result
+
+
+async def get_random_command(user_id: str) -> dict:
+    """随机指令（排除 superuser）"""
+    non_super = {name: data for name, data in help_list.items() if data.category != "superuser"}
+    if not non_super:
+        raise ValueError("No non-superuser commands")
+    name = random.choice(list(non_super.keys()))
+    return await get_help_dict(name, user_id, non_super[name])
+
+
+async def get_category_commands(category_id: str, user_id: str) -> Optional[dict]:
+    """获取指定分类的指令数据"""
+    commands = []
+    for name, data in sorted(help_list.items(), key=lambda x: x[0]):
+        if data.category == category_id:
+            commands.append(await get_help_dict(name, user_id, data))
+    if not commands:
+        return None
+    return {
+        "id": category_id,
+        "name": await lang.text(f"list.category.{category_id}", user_id),
+        "commands": commands,
+        "count": len(commands),
+    }
+
+
+@creator("menu.html.jinja")
+async def render_menu(user_id: str) -> bytes:
+    categories = await get_menu_templates(user_id)
+    random_cmd = await get_random_command(user_id)
+    return await render_template(
+        "menu.html.jinja",
+        await lang.text("menu.title", user_id),
+        user_id,
+        {"categories": categories, "random_command": random_cmd},
+        {
+            "menu_category_hint": await lang.text("menu.menu_category_hint", user_id),
+            "random_title": await lang.text("menu.random_title", user_id),
+        },
+        True,
+        True,
+    )
+
+
+menu_cmd = on_alconna(Alconna("menu", Args["category?", str]))
+
+
+@menu_cmd.assign("category")
+async def _(category: str, user_id: str = get_user_id()) -> None:
+    cat_data = await get_category_commands(category, user_id)
+    if cat_data is None:
+        await lang.finish("menu.category_not_found", user_id, category)
+    try:
+        await menu_cmd.finish(
+            UniMessage().image(
+                raw=await render_template(
+                    "menu_category.html.jinja",
+                    cat_data["name"],
+                    user_id,
+                    cat_data,
+                    {"usage_text": await lang.text("list.usage_text", user_id)},
+                    False,
+                    True,
+                ),
+                name="image.png",
+            )
+        )
+    except FinishedException:
+        raise
+    except Exception:
+        logger.error(traceback.format_exc())
+        await menu_cmd.finish(await lang.text("command.error", user_id))
+
+
+@menu_cmd.assign("$main")
+async def _(user_id: str = get_user_id()) -> None:
+    try:
+        await menu_cmd.finish(
+            UniMessage().image(
+                raw=await render_menu(user_id),
+                name="image.png",
+            )
+        )
+    except FinishedException:
+        raise
+    except Exception:
+        logger.error(traceback.format_exc())
+        await menu_cmd.finish(await lang.text("command.error", user_id))

@@ -9,6 +9,7 @@ list:
     setting: 用户与系统管理
     community: 社区与社交
     new: 新加入的
+    superuser: 管理员
     
 command:
   info: |
@@ -25,6 +26,15 @@ command:
   error: |
     指令列表发送失败了唔……
     主人可以前往 Moonlark 的 GitHub 仓库的 COMMANDS.md 文件查阅指令列表喵~
+
+menu:
+  title: Moonlark 在这里喵~！
+  menu_category_hint: '使用 {prefix}menu <分类ID> 查看分类详情'
+  random_title: 随机指令
+  category_not_found: 未找到分类 {category}
+  usage1: menu (查看分类菜单)
+  usage2: menu <分类ID> (查看指定分类的指令列表)
+
 help:
   description: 命令帮助
   details: 获取命令用法
