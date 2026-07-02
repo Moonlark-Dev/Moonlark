@@ -206,7 +206,7 @@ menu_cmd = on_alconna(Alconna("menu", Args["category?", str]))
 
 
 @menu_cmd.assign("category")
-async def _(category: str, user_id: str = get_user_id()) -> None:
+async def menu_category_handler(category: str, user_id: str = get_user_id()) -> None:
     cat_data = await get_category_commands(category, user_id)
     if cat_data is None:
         await lang.finish("menu.category_not_found", user_id, category)
@@ -233,7 +233,7 @@ async def _(category: str, user_id: str = get_user_id()) -> None:
 
 
 @menu_cmd.assign("$main")
-async def _(user_id: str = get_user_id()) -> None:
+async def menu_main_handler(user_id: str = get_user_id()) -> None:
     try:
         await menu_cmd.finish(
             UniMessage().image(
