@@ -10,20 +10,20 @@ from typing import Any, Literal, Optional
 
 from nonebot import logger
 from nonebot_plugin_apscheduler import scheduler
-from nonebot_plugin_openai.types import AsyncFunction, FunctionParameter
+from nonebot_plugin_openai.types import Message as OpenAIChatMessage
 from nonebot_plugin_openai.utils.chat import MessageFetcher, fetch_json, fetch_message
 from nonebot_plugin_openai.utils.functions import create_function_list
 from nonebot_plugin_openai.utils.message import generate_message, get_message, get_message_text, get_messages
 from nonebot_plugin_orm import get_session
+from openai.types.chat import ChatCompletionMessage
 from sqlalchemy import select
 
 from ...lang import lang
 from ...models import (
     ActionDecisionResponse,
-    DiaryEntry,
+    AgentEvent,
     DiaryPost,
     DiaryProcessResponse,
-    MainSessionActionHistory,
     PrivateChatSession,
 )
 from ...utils.instant_mem import get_instant_memories
@@ -31,16 +31,12 @@ from ...utils.status_manager import get_status_manager
 from ..session import groups
 from .action_advisor import ActionAdvisor
 from .blog_writer import BlogWriter
-
-from nonebot_plugin_openai.types import Message as OpenAIChatMessage
-from openai.types.chat import ChatCompletionMessage
 from .proactive_chat_ctrl import ProactiveChatController
 from .self_action_ctrl import SelfActionController
 from .sleep_controller import SleepController
 
 
 class ActionDecider:
-
     MAX_TOOL_RETRY: int = 2  # 文本回退最大重试次数
 
     def __init__(self, moonlark_main: "MoonlarkMain") -> None:
@@ -56,10 +52,10 @@ class ActionDecider:
     async def create_fetcher(self) -> MessageFetcher:
         messages = [
             await get_message(
-                "system", "moonlark_main/system.md.jinja", friends=await self.moonlark_main.get_friends()
+                "system", "moonlark_main/system.md.jinja", friends=await self.moonlark_main.get_friends(),
             ),
             await self.generate_message(
-                ("online\n\n" "## 今日已进行的动作\n" f"{await self.moonlark_main._get_today_actions_text()}")
+                (f"online\n\n## 今日已进行的动作\n{await self.moonlark_main._get_today_actions_text()}"),
             ),
         ]
         functions = await create_function_list(
@@ -72,7 +68,7 @@ class ActionDecider:
                 self.moonlark_main.blog_writer.get_blog_state,
                 self.moonlark_main.proactive_chat.send_private_message,
                 self.moonlark_main.chat,
-            ]
+            ],
         )
         fetcher = await MessageFetcher.create(
             messages,
@@ -119,7 +115,7 @@ class ActionDecider:
                             generate_message(
                                 "你的回复必须调用一个工具来执行决策，不能直接输出文本。请立即调用工具。",
                                 "user",
-                            )
+                            ),
                         )
                         continue
 
@@ -127,7 +123,7 @@ class ActionDecider:
                     logger.info(f"[ActionDecider] {message}")
                     # 记录模型本次输出的文本
                     if message:
-                        await self._record_diary_entry("[思考] " + message)
+                        await self._record_event("[思考] " + message)
                     await asyncio.sleep(60)
                     await self.on_event("timer")
             except asyncio.CancelledError:
@@ -159,28 +155,28 @@ class ActionDecider:
             except Exception as e:
                 logger.warning(f"[Diary] 总结工具结果失败，回退截断: {e}")
                 content = str(result)[:500] + "..."
-        await self._record_diary_entry("[动作结果] " + content)
+        await self._record_event("[动作结果] " + content)
         return result
 
-    async def _record_diary_entry(self, text: str) -> None:
-        """记录一条文本到日记条目表"""
+    async def _record_event(self, text: str) -> None:
+        """记录一条事件到智能体事件表"""
         try:
             async with get_session() as session:
-                session.add(DiaryEntry(content=text))
+                session.add(AgentEvent(content=text))
                 await session.commit()
-            logger.debug(f"[Diary] Recorded: {text[:60]}...")
+            logger.debug(f"[AgentEvent] Recorded: {text[:60]}...")
         except Exception as e:
-            logger.warning(f"[Diary] Failed to record: {e}")
+            logger.warning(f"[AgentEvent] Failed to record: {e}")
 
     async def pre_function_call(
-        self, call_id: str, name: str, params: dict[str, Any]
+        self, call_id: str, name: str, params: dict[str, Any],
     ) -> tuple[str, str, dict[str, Any]]:
         self.moonlark_main._update_decision_history(f"{name}({params})")
         # 记录工具调用到日记
         args_str = str(params)
         if len(args_str) > 200:
             args_str = args_str[:200] + "..."
-        await self._record_diary_entry(f"[动作] {name}({args_str})")
+        await self._record_event(f"[动作] {name}({args_str})")
         return call_id, name, params
 
     async def generate_message(self, reason) -> OpenAIChatMessage:
@@ -188,9 +184,9 @@ class ActionDecider:
         instant_mem = await self.moonlark_main.summary_instant_memory()
         # 记录QQ中的事件总结到日记
         if instant_mem and instant_mem not in ("暂无记忆。", "记忆汇总失败。"):
-            await self._record_diary_entry("[QQ中的事件] " + instant_mem)
+            await self._record_event("[QQ中的事件] " + instant_mem)
         return await get_message(
-            "user", "moonlark_main/user.md.jinja", reason=reason, summary=instant_mem, notes=notes_text
+            "user", "moonlark_main/user.md.jinja", reason=reason, summary=instant_mem, notes=notes_text,
         )
 
     async def on_event(self, reason: str) -> None:
@@ -380,25 +376,9 @@ class MoonlarkMain:
             {
                 "time": datetime.now().isoformat(),
                 "action": action_desc,
-            }
+            },
         )
         self.state["decision_history"] = self.state["decision_history"][-5:]
-
-        # 持久化到数据库
-        asyncio.create_task(self._persist_action(action_desc))
-
-    async def _persist_action(self, action_desc: str) -> None:
-        """将动作记录持久化到数据库"""
-        try:
-            async with get_session() as session:
-                record = MainSessionActionHistory(
-                    start_time=datetime.now(),
-                    action={"action": action_desc},
-                )
-                session.add(record)
-                await session.commit()
-        except Exception as e:
-            logger.warning(f"[MoonlarkMain] 持久化动作记录失败: {e}")
 
     async def _get_today_actions_text(self) -> str:
         """获取今天已进行过的动作列表，供 ActionDecider 首条消息使用"""
@@ -406,9 +386,9 @@ class MoonlarkMain:
             today_start = datetime.combine(date.today(), datetime.min.time())
             async with get_session() as session:
                 result = await session.execute(
-                    select(MainSessionActionHistory)
-                    .where(MainSessionActionHistory.start_time >= today_start)
-                    .order_by(MainSessionActionHistory.start_time)
+                    select(AgentEvent)
+                    .where(AgentEvent.created_at >= today_start, AgentEvent.content.startswith("[动作]"))
+                    .order_by(AgentEvent.created_at),
                 )
                 records = result.scalars().all()
 
@@ -417,9 +397,8 @@ class MoonlarkMain:
 
             lines = []
             for r in records:
-                time_str = r.start_time.strftime("%H:%M")
-                action_name = r.action.get("action", str(r.action))
-                lines.append(f"[{time_str}] {action_name}")
+                time_str = r.created_at.strftime("%H:%M")
+                lines.append(f"[{time_str}] {r.content}")
 
             return "\n".join(lines)
         except Exception as e:
@@ -492,19 +471,19 @@ class MoonlarkMain:
         except Exception as e:
             logger.exception(f"[Diary] 日记生成失败: {e}")
 
-    async def _fetch_diary_entries(self, hours: int = 24) -> list[DiaryEntry]:
-        """获取近 N 小时的日记条目"""
+    async def _fetch_diary_entries(self, hours: int = 24) -> list[AgentEvent]:
+        """获取近 N 小时的智能体事件条目"""
         from datetime import timedelta
 
         cutoff = datetime.now() - timedelta(hours=hours)
         async with get_session() as session:
             result = await session.execute(
-                select(DiaryEntry).where(DiaryEntry.created_at >= cutoff).order_by(DiaryEntry.created_at)
+                select(AgentEvent).where(AgentEvent.created_at >= cutoff).order_by(AgentEvent.created_at),
             )
             return list(result.scalars().all())
 
-    def _format_diary_context(self, entries: list[DiaryEntry]) -> str:
-        """将日记条目格式化为可读文本"""
+    def _format_diary_context(self, entries: list[AgentEvent]) -> str:
+        """将智能体事件条目格式化为可读文本"""
         lines = []
         for entry in entries:
             time_str = entry.created_at.strftime("%H:%M")
@@ -512,17 +491,17 @@ class MoonlarkMain:
         return "\n".join(lines)
 
     async def _cleanup_diary_entries(self, before: datetime) -> None:
-        """清理指定时间之前的日记条目"""
+        """清理指定时间之前的智能体事件条目"""
         try:
             async with get_session() as session:
-                await session.execute(select(DiaryEntry).where(DiaryEntry.created_at < before))
+                await session.execute(select(AgentEvent).where(AgentEvent.created_at < before))
                 from sqlalchemy import delete
 
-                await session.execute(delete(DiaryEntry).where(DiaryEntry.created_at < before))
+                await session.execute(delete(AgentEvent).where(AgentEvent.created_at < before))
                 await session.commit()
-                logger.debug("[Diary] 已清理过期日记条目")
+                logger.debug("[AgentEvent] 已清理过期条目")
         except Exception as e:
-            logger.warning(f"[Diary] 清理日记条目失败: {e}")
+            logger.warning(f"[AgentEvent] 清理条目失败: {e}")
 
     # ========================================================================
     # 定时器
@@ -587,7 +566,7 @@ class MoonlarkMain:
             cached_messages = ""
             if session_id in groups:
                 cached_messages = await groups[session_id].get_cached_messages_string(
-                    length=10, include_self_message=True
+                    length=10, include_self_message=True,
                 )
 
             action_messages = await get_messages(
@@ -706,7 +685,7 @@ class MoonlarkMain:
                             if friend_record.last_proactive_message_time
                             else await lang.text("moonlark_main.not_chatted_private", self.lang_str)
                         ),
-                    )
+                    ),
                 )
         return await lang.text(
             "moonlark_main.friends",
