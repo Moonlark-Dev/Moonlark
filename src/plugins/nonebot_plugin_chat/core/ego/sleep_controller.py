@@ -41,7 +41,7 @@ class SleepController:
 
     @staticmethod
     def circadian(hour: float) -> float:
-        return 0.5 + 0.3 * math.cos(2 * math.pi * (hour - 4) / 24) + 0.1 * math.cos(2 * math.pi * (hour - 14) / 12)
+        return 0.5 - 0.3 * math.cos(2 * math.pi * (hour - 12) / 24)
 
     @staticmethod
     def silence_factor(minutes_since_last_msg: float) -> float:
