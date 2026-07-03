@@ -52,7 +52,9 @@ class ActionDecider:
     async def create_fetcher(self) -> MessageFetcher:
         messages = [
             await get_message(
-                "system", "moonlark_main/system.md.jinja", friends=await self.moonlark_main.get_friends(),
+                "system",
+                "moonlark_main/system.md.jinja",
+                friends=await self.moonlark_main.get_friends(),
             ),
             await self.generate_message(
                 (f"online\n\n## 今日已进行的动作\n{await self.moonlark_main._get_today_actions_text()}"),
@@ -169,7 +171,10 @@ class ActionDecider:
             logger.warning(f"[AgentEvent] Failed to record: {e}")
 
     async def pre_function_call(
-        self, call_id: str, name: str, params: dict[str, Any],
+        self,
+        call_id: str,
+        name: str,
+        params: dict[str, Any],
     ) -> tuple[str, str, dict[str, Any]]:
         self.moonlark_main._update_decision_history(f"{name}({params})")
         # 记录工具调用到日记
@@ -186,7 +191,11 @@ class ActionDecider:
         if instant_mem and instant_mem not in ("暂无记忆。", "记忆汇总失败。"):
             await self._record_event("[QQ中的事件] " + instant_mem)
         return await get_message(
-            "user", "moonlark_main/user.md.jinja", reason=reason, summary=instant_mem, notes=notes_text,
+            "user",
+            "moonlark_main/user.md.jinja",
+            reason=reason,
+            summary=instant_mem,
+            notes=notes_text,
         )
 
     async def on_event(self, reason: str) -> None:
@@ -566,7 +575,8 @@ class MoonlarkMain:
             cached_messages = ""
             if session_id in groups:
                 cached_messages = await groups[session_id].get_cached_messages_string(
-                    length=10, include_self_message=True,
+                    length=10,
+                    include_self_message=True,
                 )
 
             action_messages = await get_messages(
