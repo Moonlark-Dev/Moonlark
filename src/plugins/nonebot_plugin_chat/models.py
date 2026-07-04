@@ -1,12 +1,12 @@
 from datetime import datetime
-from typing import Any, Literal, Optional, Union
+from typing import Literal, Optional, Union
 from typing_extensions import TypedDict
 
 from nonebot_plugin_orm import Model
 from pydantic import BaseModel, Field
-from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy import BLOB, JSON, DateTime, LargeBinary, String, Text, Float, Integer, BINARY, func
+from sqlalchemy import BINARY, DateTime, Float, Integer, LargeBinary, String, Text, func
 from sqlalchemy.dialects.mysql import MEDIUMBLOB, MEDIUMTEXT
+from sqlalchemy.orm import Mapped, mapped_column
 
 # 创建跨数据库兼容的二进制类型：MySQL 使用 MEDIUMBLOB (16MB)，其他数据库使用 LargeBinary
 CompatibleBlob = LargeBinary().with_variant(MEDIUMBLOB(), "mysql")
@@ -84,7 +84,7 @@ class MessageQueueCache(Model):
     message_json: Mapped[str] = mapped_column(CompatibleMediumText)  # JSON 序列化的消息列表
     updated_time: Mapped[datetime] = mapped_column(DateTime(), default=datetime.now)  # 最后更新时间戳
     message_hash: Mapped[bytes] = mapped_column(
-        BINARY(32).with_variant(LargeBinary(32), "sqlite")
+        BINARY(32).with_variant(LargeBinary(32), "sqlite"),
     )  # 消息哈希，用于去重
 
 
@@ -139,15 +139,6 @@ class InstantMemoryCache(Model):
     name: Mapped[str] = mapped_column(String(128), default="")  # 记忆名称
     created_time: Mapped[datetime] = mapped_column(DateTime(), default=datetime.now)  # 创建时间
     expire_time: Mapped[datetime] = mapped_column(DateTime())  # 过期时间
-
-
-class MainSessionActionHistory(Model):
-    """MainSession 数据持久化存储，用于保存 action_history"""
-
-    id_: Mapped[int] = mapped_column(Integer(), primary_key=True, autoincrement=True)
-    start_time: Mapped[datetime] = mapped_column(DateTime())
-    end_time: Mapped[Optional[datetime]] = mapped_column(DateTime(), nullable=True)
-    action: Mapped[dict[str, Any]] = mapped_column(JSON())
 
 
 class BlogPost(Model):
@@ -261,8 +252,10 @@ class SelfActionResultProcessResponse(BaseModel):
     expire_hours: float = 168
 
 
-class DiaryEntry(Model):
-    """日记录入表，记录有意义的文本消息"""
+class AgentEvent(Model):
+    """智能体事件记录表，记录思考、动作、动作结果及外部事件"""
+
+    __tablename__ = "nonebot_plugin_chat_diaryentry"
 
     id: Mapped[int] = mapped_column(Integer(), primary_key=True, autoincrement=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(), server_default=func.now(), index=True)

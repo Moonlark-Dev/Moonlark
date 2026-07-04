@@ -12,6 +12,22 @@ bcsu:
   no_bots: "未找到 OneBot V11 适配器的机器人"
   broadcast_sent: "广播已发送至 {0} 个群聊"
   start: 已开始推送广播内容
+help:
+  description: Broadcast Management
+  details: Send and manage broadcast messages
+  usage1: bcsu (View broadcast management menu)
+  usage2: bcsu <content> (Set broadcast content)
+  usage3: bcsu clear (Clear broadcast content)
+  usage4: bcsu preview (Preview broadcast content)
+  usage5: bcsu submit (Submit and send broadcast)
+
+bc_help:
+  description: Broadcast Settings
+  details: Enable or disable broadcast reception in your group
+  usage1: bc (View broadcast status)
+  usage2: bc on (Enable broadcast)
+  usage3: bc off (Disable broadcast)
+
 bc:
   group_only: "此命令只能在群聊中使用"
   enabled: "广播功能已启用"
