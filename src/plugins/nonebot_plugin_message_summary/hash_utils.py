@@ -3,22 +3,14 @@ from nonebot.adapters import Message as BaseMessage
 
 
 def compute_message_hash(message: BaseMessage) -> bytes:
-    """计算消息的 SHA-256 哈希值（用于可靠的消息匹配）"""
+    """计算消息的 SHA-256 哈希值（用于可靠的消息匹配）
+
+    OneBot V11 / V12 / QQ 三种适配器的 Message 均支持 str()，
+    此处保留通用 fallback 以备未来适配器不兼容之需。
+    """
     try:
         raw = str(message)
     except Exception:
-        # 如果 str() 失败，按适配器类型处理
-        from nonebot.adapters.onebot.v11 import Message as OB11Message
-        from nonebot.adapters.onebot.v12 import Message as OB12Message
-        from nonebot.adapters.qq.message import Message as QQMessage
-
-        if isinstance(message, OB11Message):
-            raw = "".join(str(seg) for seg in message)
-        elif isinstance(message, OB12Message):
-            raw = "".join(str(seg) for seg in message)
-        elif isinstance(message, QQMessage):
-            raw = "".join(str(seg) for seg in message)
-        else:
-            raw = repr(message)
+        raw = "".join(str(seg) for seg in message)
 
     return hashlib.sha256(raw.encode("utf-8")).digest()
