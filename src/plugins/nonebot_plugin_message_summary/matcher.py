@@ -21,6 +21,7 @@ from nonebot_plugin_broadcast import get_available_groups
 from nonebot_plugin_htmlrender import md_to_pic
 
 from .models import GroupMessage, GroupDailySummary, MVPRecord
+from .hash_utils import compute_message_hash
 from .lang import lang
 from .__main__ import get_cached_daily_summary, send_daily_summary_to_group
 from .ai_utils import (
@@ -310,7 +311,13 @@ async def _(
     else:
         msg = event.raw_message
     session.add(
-        GroupMessage(message=msg, sender_nickname=event.sender.nickname, user_id=event.get_user_id(), group_id=group_id)
+        GroupMessage(
+            message=msg,
+            message_hash=compute_message_hash(event.message),
+            sender_nickname=event.sender.nickname,
+            user_id=event.get_user_id(),
+            group_id=group_id,
+        )
     )
     await session.commit()
     await recorder.finish()
@@ -327,6 +334,7 @@ async def _(
     session.add(
         GroupMessage(
             message=event.get_plaintext(),
+            message_hash=compute_message_hash(event.get_message()),
             sender_nickname=(await get_user(user_id)).get_nickname(),
             user_id=user_id,
             group_id=group_id,
