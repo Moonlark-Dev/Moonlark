@@ -147,6 +147,7 @@ async def handle_wdym(
             messages=messages,
             functions=tools,
             identify="WDYM",
+            reasoning_effort="high"
         )
     except Exception as e:
         logger.exception(f"WDYM AI request failed: {e}")
