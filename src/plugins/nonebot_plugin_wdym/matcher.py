@@ -41,6 +41,7 @@ wdym = on_command("wdym")
 
 from nonebot.adapters.onebot.v11 import MessageEvent as OB11MessageEvent
 
+
 async def _get_reply_message_id(event: Event, bot: Bot) -> Optional[int]:
     """Get the replied message ID from the event"""
     # if hasattr(event, "reply") and event.reply is not None:
@@ -124,7 +125,9 @@ async def get_replied_raw(state: T_State, bot: Bot, event: Event, user_id: str =
     return replied_raw
 
 
-async def get_context_str(state: T_State, session: async_scoped_session, group_id: str = get_group_id()) -> Optional[str]:
+async def get_context_str(
+    state: T_State, session: async_scoped_session, group_id: str = get_group_id()
+) -> Optional[str]:
     replied_raw = state.get("replied_raw")
     context_messages: list[GroupMessage] = []
     try:
@@ -136,12 +139,13 @@ async def get_context_str(state: T_State, session: async_scoped_session, group_i
         context_lines = [f"[{msg.sender_nickname}]: {msg.message}" for msg in context_messages]
         return "\n".join(context_lines)
 
+
 @wdym.handle()
 async def handle_wdym(
     state: T_State,
     user_id: str = get_user_id(),
     replied_text: str = Depends(get_replied_raw),
-    context_str: str  = Depends(get_context_str)
+    context_str: str = Depends(get_context_str),
 ) -> None:
     """处理 /wdym 命令 - 解释消息中的晦涩内容"""
     messages = await get_messages(
@@ -153,12 +157,7 @@ async def handle_wdym(
     tools = await WdymTools(user_id).get_tools()
 
     try:
-        result = await fetch_message(
-            messages=messages,
-            functions=tools,
-            identify="WDYM",
-            reasoning_effort="high"
-        )
+        result = await fetch_message(messages=messages, functions=tools, identify="WDYM", reasoning_effort="high")
     except Exception as e:
         logger.exception(f"WDYM AI request failed: {e}")
         await lang.finish("ai_error", user_id)
