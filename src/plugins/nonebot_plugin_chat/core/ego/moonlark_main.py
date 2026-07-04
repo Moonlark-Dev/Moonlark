@@ -82,7 +82,6 @@ class ActionDecider:
             post_function_call=self._post_function_call,
             on_tool_round_complete=self._on_tool_round,
             reasoning_effort="medium",
-            tool_choice="required",
         )
         return fetcher
 
