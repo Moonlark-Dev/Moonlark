@@ -24,7 +24,7 @@ from nonebot.adapters.qq import Bot as BotQQ
 from nonebot.adapters import Bot as BaseBot
 
 lang = LangHelper()
-wtfis = on_alconna(Alconna("wtfis", Args["topic", str, ""]), use_cmd_start=True)
+wtfis = on_alconna(Alconna("logicfail", Args["topic", str, ""]), use_cmd_start=True)
 
 
 @wtfis.assign("$main")
@@ -39,6 +39,6 @@ async def _(bot: BaseBot, topic: str, user_id: str = get_user_id()) -> None:
                 if topic
                 else [generate_message(await lang.text("prompt", user_id), "user")]
             ),
-            identify="wtfis",
+            identify="logicfail",
         )
     )

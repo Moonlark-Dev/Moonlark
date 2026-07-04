@@ -2,9 +2,9 @@ from nonebot import require
 from nonebot.plugin import PluginMetadata
 
 __plugin_meta__ = PluginMetadata(
-    name="nonebot-plugin-wtfis",
+    name="nonebot-plugin-logicfail",
     description="What the fuck it's saying",
-    usage="/wtfis",
+    usage="/logicfail",
     config=None,
 )
 
