@@ -13,6 +13,8 @@ __pycache__/
 
 .env.prod
 
+.kilo/
+
 # 语言测试插件
 src/plugins/test
 src/lang/zh_hans/test.yaml
