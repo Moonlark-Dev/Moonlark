@@ -18,25 +18,26 @@
 from datetime import datetime, timedelta
 from typing import Optional
 
-from nonebot import on_command, logger
+from nonebot import logger, on_command
 from nonebot.adapters import Bot, Event
 from nonebot.adapters.onebot.v11 import (
     Bot as OB11Bot,
-    MessageEvent as OB11MessageEvent,
     Message as OB11Message,
+    MessageEvent as OB11MessageEvent,
     MessageSegment as OB11Segment,
 )
+from nonebot.params import Depends
+from nonebot.typing import T_State
 from nonebot_plugin_alconna import UniMessage
+from nonebot_plugin_chat.utils import parse_message_to_string
 from nonebot_plugin_htmlrender import md_to_pic
 from nonebot_plugin_larklang import LangHelper
-from nonebot.typing import T_State
-from nonebot_plugin_larkutils import get_user_id, get_group_id
-from nonebot.params import Depends
-from nonebot_plugin_orm import async_scoped_session
-from nonebot_plugin_openai.utils.message import get_messages
-from nonebot_plugin_openai import fetch_message
-from nonebot_plugin_message_summary.models import GroupMessage
+from nonebot_plugin_larkutils import get_group_id, get_user_id
 from nonebot_plugin_message_summary.hash_utils import compute_message_hash
+from nonebot_plugin_message_summary.models import GroupMessage
+from nonebot_plugin_openai import fetch_message
+from nonebot_plugin_openai.utils.message import get_messages
+from nonebot_plugin_orm import async_scoped_session
 from sqlalchemy import select
 
 from .utils import WdymTools
@@ -55,7 +56,14 @@ async def _get_reply_message_id(event: Event, bot: Bot) -> Optional[int]:
         return event.reply.message_id
 
 
-async def _get_replied_message_hash(bot: Bot, reply_msg_id: int) -> tuple[bytes | None, str | None]:
+async def _get_replied_message_hash(
+    bot: Bot,
+    reply_msg_id: int,
+    event: Event,
+    state: T_State,
+    lang_str: str,
+    session: async_scoped_session,
+) -> tuple[bytes | None, str | None]:
     """获取被回复消息的 hash 和原始文本
 
     Returns:
@@ -73,7 +81,19 @@ async def _get_replied_message_hash(bot: Bot, reply_msg_id: int) -> tuple[bytes 
                 msg = OB11Message(str(message_data))
         else:
             msg = OB11Message(str(message_data))
-        return compute_message_hash(msg), str(message_data)
+        message_hash = compute_message_hash(msg)
+
+        group_msg = await session.scalar(
+            select(GroupMessage)
+            .where(GroupMessage.message_hash == message_hash)
+            .order_by(GroupMessage.id_.desc())
+            .limit(1),
+        )
+        if group_msg is not None:
+            raw_text = group_msg.message
+        else:
+            raw_text = await parse_message_to_string(UniMessage.generate_without_reply(message=msg, bot=bot), event, bot, state, lang_str)
+        return message_hash, raw_text
     except Exception as e:
         logger.exception(f"Failed to get replied message hash: {e}")
         return None, None
@@ -99,7 +119,7 @@ async def _query_context_messages(
                 GroupMessage.timestamp >= two_days_ago,
             )
             .order_by(GroupMessage.id_.desc())
-            .limit(1)
+            .limit(1),
         )
 
         if target_id is not None:
@@ -111,7 +131,7 @@ async def _query_context_messages(
                         GroupMessage.id_ < target_id,
                     )
                     .order_by(GroupMessage.id_.desc())
-                    .limit(5)
+                    .limit(5),
                 )
             ).all()
             target_msg = await session.get(GroupMessage, target_id)
@@ -122,19 +142,25 @@ async def _query_context_messages(
 
     recent = (
         await session.scalars(
-            select(GroupMessage).where(GroupMessage.group_id == group_id).order_by(GroupMessage.id_.desc()).limit(10)
+            select(GroupMessage).where(GroupMessage.group_id == group_id).order_by(GroupMessage.id_.desc()).limit(10),
         )
     ).all()
     return list(recent)[::-1]
 
 
-async def get_replied_raw(state: T_State, bot: Bot, event: Event, user_id: str = get_user_id()) -> str:
+async def get_replied_raw(
+    state: T_State,
+    bot: Bot,
+    event: Event,
+    session: async_scoped_session,
+    user_id: str = get_user_id(),
+) -> str:
     # 1. 获取被回复的消息 ID
     reply_msg_id = await _get_reply_message_id(event, bot)
     if reply_msg_id is None:
         await lang.finish("no_reply", user_id)
     # 2. 获取被回复消息的 hash 和原始文本
-    replied_hash, replied_raw = await _get_replied_message_hash(bot, reply_msg_id)
+    replied_hash, replied_raw = await _get_replied_message_hash(bot, reply_msg_id, event, state, user_id, session)
     if replied_hash is None:
         await lang.finish("get_reply_failed", user_id)
     state["replied_hash"] = replied_hash
@@ -142,7 +168,7 @@ async def get_replied_raw(state: T_State, bot: Bot, event: Event, user_id: str =
 
 
 async def get_context_str(
-    state: T_State, session: async_scoped_session, group_id: str = get_group_id()
+    state: T_State, session: async_scoped_session, group_id: str = get_group_id(),
 ) -> Optional[str]:
     replied_hash = state.get("replied_hash")
     context_messages: list[GroupMessage] = []
