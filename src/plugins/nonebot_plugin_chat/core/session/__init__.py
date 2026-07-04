@@ -104,8 +104,9 @@ async def reset_session(session_id: str) -> bool:
         session.processor.openai_messages.fetcher_task.cancel()
 
     # 清除消息队列中的所有消息
-    session.processor.openai_messages.messages.clear()
-    session.processor.openai_messages.inserted_messages.clear()
+    if session.processor.openai_messages.fetcher is not None:
+        session.processor.openai_messages.fetcher.session.messages.clear()
+        session.processor.openai_messages.fetcher.session.insert_message_queue.clear()
 
     # 删除数据库中的缓存
     async with get_session() as db_session:

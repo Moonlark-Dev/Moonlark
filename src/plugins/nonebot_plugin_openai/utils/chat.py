@@ -76,25 +76,30 @@ class LLMRequestSession(Generic[T2]):
         self.timeout_strategy = timeout_strategy
         self.insert_message_queue = []
         self._content_yielded = False
+        self._in_request: bool = False
 
     def set_custom_trace_id(self, trace_id: str) -> None:
         self.trace_id = trace_id
 
     async def fetch_llm_response(self) -> AsyncGenerator[T2 | str, None]:
         retry_count = 0
-        while not self.stop:
-            is_success = False
-            async for message in self.request():
-                yield message
-                is_success = True
-            if not is_success:
-                retry_count += 1
-                if retry_count > 3:
-                    raise Exception("Failed to fetch LLM response after 3 retries")
-                await asyncio.sleep(1)
-            else:
-                retry_count = 0
-        await report_openai_history(self.messages, self.identify, self.model)
+        self._in_request = True
+        try:
+            while not self.stop:
+                is_success = False
+                async for message in self.request():
+                    yield message
+                    is_success = True
+                if not is_success:
+                    retry_count += 1
+                    if retry_count > 3:
+                        raise Exception("Failed to fetch LLM response after 3 retries")
+                    await asyncio.sleep(1)
+                else:
+                    retry_count = 0
+        finally:
+            self._in_request = False
+            await report_openai_history(self.messages, self.identify, self.model)
 
     async def create_completion(self) -> ChatCompletion:
         tool_choice = self.tool_choice if self.func_list else "none"
@@ -166,10 +171,16 @@ class LLMRequestSession(Generic[T2]):
         self.insert_message_queue.clear()
 
     def insert_message(self, message: OpenaiMessage) -> None:
-        self.insert_message_queue.append(message)
+        if self._in_request:
+            self.insert_message_queue.append(message)
+        else:
+            self.messages.append(message)
 
     def insert_messages(self, messages: Messages) -> None:
-        self.insert_message_queue.extend(messages)
+        if self._in_request:
+            self.insert_message_queue.extend(messages)
+        else:
+            self.messages.extend(messages)
 
     async def call_function(self, call_id: str, name: str, params: dict[str, Any]) -> None:
         logger.debug(f"[{self.identify}] Calling function {name} with params {params}")
