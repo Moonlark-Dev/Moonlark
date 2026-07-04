@@ -393,9 +393,7 @@ class MessageQueue:
                             generate_message(await self.processor.session.text("fetcher.reply_required"), "user")
                         )
                         retry_count += 1
-                if self.continuous_response:
-                    self.fetcher.session.insert_messages(self.messages)
-                    self.messages.clear()
+
             fetcher_messages = self.fetcher.get_messages()
             if fetcher_messages and get_role(fetcher_messages[0]) == "system":
                 pass
