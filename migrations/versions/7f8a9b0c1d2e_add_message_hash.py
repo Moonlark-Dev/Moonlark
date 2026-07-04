@@ -11,7 +11,6 @@ from alembic import op
 import sqlalchemy as sa
 from sqlalchemy import LargeBinary, inspect
 
-
 revision: str = "7f8a9b0c1d2e"
 down_revision: str | Sequence[str] | None = "ffdcbc994494"
 branch_labels: str | Sequence[str] | None = None
@@ -44,7 +43,6 @@ def upgrade(name: str = "") -> None:
             "nonebot_plugin_message_summary_groupmessage",
             sa.Column("message_hash", hash_type, nullable=True),
         )
-
 
 
 def downgrade(name: str = "") -> None:
