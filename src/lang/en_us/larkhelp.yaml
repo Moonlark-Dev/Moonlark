@@ -28,9 +28,9 @@ command:
 
 menu:
   title: Moonlark Menu
-  menu_category_hint: 'Use {prefix}menu <category> to view category details'
+  menu_category_hint: 'Use {__prefix__}menu <category> to view category details'
   random_title: Random Command
-  category_not_found: Category {category} not found
+  category_not_found: Category {} not found
   usage1: 'menu (View category menu)'
   usage2: 'menu <category> (View details of a category)'
   menu_cat_help_hint: 'Use help <command> to view command details'
