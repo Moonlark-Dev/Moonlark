@@ -16,12 +16,11 @@
 # ##############################################################################
 
 from datetime import datetime, timedelta
+from typing import Optional
 
-from nonebot import logger
+from nonebot import on_command, logger
 from nonebot.adapters import Bot, Event
 from nonebot.adapters.onebot.v11 import Bot as OB11Bot
-from nonebot.typing import T_State
-from nonebot_plugin_alconna import on_alconna, Alconna, UniMessage, Reply
 from nonebot_plugin_htmlrender import md_to_pic
 from nonebot_plugin_larklang import LangHelper
 from nonebot_plugin_larkutils import get_user_id, get_group_id
@@ -29,26 +28,29 @@ from nonebot_plugin_orm import async_scoped_session
 from nonebot_plugin_openai.utils.message import get_messages
 from nonebot_plugin_openai import fetch_message
 from nonebot_plugin_message_summary.models import GroupMessage
-from nonebot_plugin_chat.utils.group import parse_message_to_string
-from nonebot_plugin_chat.utils.message import parse_dict_message
 from sqlalchemy import select
 
 from .utils import WdymTools
 
 lang = LangHelper()
 
-wdym = on_alconna(Alconna("wdym"))
+wdym = on_command("wdym")
 
 
-async def _get_replied_raw_text(bot: Bot, event: Event, state: T_State, reply: Reply, user_id: str) -> str | None:
-    """获取被回复消息的原始文本（无 Reply 包装），用于匹配 GroupMessage"""
-    if not isinstance(bot, OB11Bot) or reply.id is None:
+async def _get_reply_message_id(event: Event, bot: Bot) -> Optional[int]:
+    """Get the replied message ID from the event"""
+    if hasattr(event, "reply") and event.reply is not None:
+        return event.reply.message_id
+    return None
+
+
+async def _get_replied_raw_text(bot: Bot, reply_msg_id: int) -> str | None:
+    """获取被回复消息的原始文本"""
+    if not isinstance(bot, OB11Bot):
         return None
     try:
-        result = await bot.get_msg(message_id=int(reply.id))
-        return await parse_message_to_string(
-            await parse_dict_message(result["message"], bot), event, bot, state, user_id
-        )
+        result = await bot.get_msg(message_id=reply_msg_id)
+        return str(result.get("message", ""))
     except Exception as e:
         logger.exception(f"Failed to get raw replied message: {e}")
         return None
@@ -65,7 +67,6 @@ async def _query_context_messages(
     2. 匹配失败或无法获取原文时：回退到最近 10 条
     """
     if replied_raw_text:
-        # 最近 2 天内按内容精确匹配被回复消息，取最新的匹配
         two_days_ago = datetime.now() - timedelta(days=2)
         target_id = await session.scalar(
             select(GroupMessage.id_)
@@ -79,7 +80,6 @@ async def _query_context_messages(
         )
 
         if target_id is not None:
-            # 用 id_ 精确取目标前 5 条
             before = (
                 await session.scalars(
                     select(GroupMessage)
@@ -94,7 +94,6 @@ async def _query_context_messages(
             target_msg = await session.get(GroupMessage, target_id)
             return [*reversed(before), target_msg]
 
-    # 匹配失败或无法获取原文：回退到最近 10 条
     recent = (
         await session.scalars(
             select(GroupMessage).where(GroupMessage.group_id == group_id).order_by(GroupMessage.id_.desc()).limit(10)
@@ -107,27 +106,21 @@ async def _query_context_messages(
 async def handle_wdym(
     bot: Bot,
     event: Event,
-    state: T_State,
     session: async_scoped_session,
     user_id: str = get_user_id(),
     group_id: str = get_group_id(),
 ) -> None:
     """处理 /wdym 命令 - 解释消息中的晦涩内容"""
 
-    # 1. 获取被回复的消息
-    original_msg = event.get_message()
-    uni_msg = UniMessage.of(original_msg, bot)
-    await uni_msg.attach_reply(event, bot)
-
-    if not uni_msg.has(Reply):
+    # 1. 获取被回复的消息 ID
+    reply_msg_id = await _get_reply_message_id(event, bot)
+    if reply_msg_id is None:
         await lang.finish("no_reply", user_id)
 
-    reply = uni_msg[Reply, 0]
-
     # 2. 获取被回复消息的原始文本
-    replied_raw = await _get_replied_raw_text(bot, event, state, reply, user_id)
+    replied_raw = await _get_replied_raw_text(bot, reply_msg_id)
 
-    # 3. 获取上下文消息（精确匹配）
+    # 3. 获取上下文消息
     context_messages: list[GroupMessage] = []
     try:
         context_messages = await _query_context_messages(session, group_id, replied_raw)
@@ -135,7 +128,7 @@ async def handle_wdym(
         logger.exception(f"Failed to fetch context messages: {e}")
 
     # 4. 构建 AI 提示词
-    replied_text = await parse_message_to_string(UniMessage([reply]), event, bot, state, user_id)
+    replied_text = replied_raw or "(无法获取消息内容)"
     context_str = ""
     if context_messages:
         context_lines = [f"[{msg.sender_nickname}]: {msg.message}" for msg in context_messages]
@@ -166,4 +159,4 @@ async def handle_wdym(
         logger.exception(f"Failed to render markdown: {e}")
         await wdym.finish(result)
 
-    await wdym.finish(UniMessage().image(raw=image_bytes))
+    await wdym.finish(image_bytes)

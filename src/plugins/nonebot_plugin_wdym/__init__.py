@@ -31,7 +31,6 @@ require("nonebot_plugin_larkuser")
 require("nonebot_plugin_htmlrender")
 require("nonebot_plugin_openai")
 require("nonebot_plugin_orm")
-require("nonebot_plugin_alconna")
 require("nonebot_plugin_message_summary")
 require("nonebot_plugin_chat")
 
