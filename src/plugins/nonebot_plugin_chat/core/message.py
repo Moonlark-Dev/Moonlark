@@ -360,6 +360,7 @@ class MessageQueue:
 
         self.fetcher = await self._create_fetcher()
         retry_count = 0
+        analysis = None  # 跟踪是否已成功解析 JSON
         try:
             async for message in self.fetcher.fetch_message_stream():
                 if retry_count > 5:
@@ -369,6 +370,13 @@ class MessageQueue:
                 try:
                     analysis = type_validate_json(ModelResponse, strip_json_codeblock(message))
                 except Exception as e:
+                    # 如果当前轮次含有工具调用，忽略输出解析失败提示
+                    last_msg = self.fetcher.session.messages[-1] if self.fetcher.session.messages else None
+                    if last_msg and getattr(last_msg, "tool_calls", None):
+                        continue
+                    # 如果已成功解析过 JSON，忽略同一调用后续轮次的解析失败
+                    if analysis is not None:
+                        continue
                     self.fetcher.session.insert_message(
                         generate_message(await self.processor.session.text("fetcher.parse_failed", str(e)), "user")
                     )
