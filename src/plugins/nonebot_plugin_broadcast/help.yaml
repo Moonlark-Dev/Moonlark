@@ -1,0 +1,4 @@
+plugin: broadcast
+commands:
+  bcsu: help;5;superuser
+  bc: bc_help;3;tools
