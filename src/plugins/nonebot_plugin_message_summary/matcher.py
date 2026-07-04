@@ -312,11 +312,11 @@ async def _(
         msg = event.raw_message
     session.add(
         GroupMessage(
-            message=msg, 
+            message=msg,
             message_hash=compute_message_hash(event.message),
-            sender_nickname=event.sender.nickname, 
-            user_id=event.get_user_id(), 
-            group_id=group_id
+            sender_nickname=event.sender.nickname,
+            user_id=event.get_user_id(),
+            group_id=group_id,
         )
     )
     await session.commit()
