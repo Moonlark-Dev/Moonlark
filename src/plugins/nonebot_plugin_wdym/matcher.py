@@ -73,14 +73,7 @@ async def _get_replied_message_hash(
         return None, None
     try:
         result = await bot.get_msg(message_id=reply_msg_id)
-        message_data = result.get("message", "")
-        if isinstance(message_data, list):
-            try:
-                msg = OB11Message([OB11Segment(**seg) for seg in message_data])
-            except Exception:
-                msg = OB11Message(str(message_data))
-        else:
-            msg = OB11Message(str(message_data))
+        msg = result["raw_message"]
         message_hash = compute_message_hash(msg)
 
         group_msg = await session.scalar(
