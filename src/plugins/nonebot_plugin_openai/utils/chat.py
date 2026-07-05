@@ -77,6 +77,7 @@ class LLMRequestSession(Generic[T2]):
         self.insert_message_queue = []
         self._content_yielded = False
         self._in_request: bool = False
+        self._this_round_success = False
 
     def set_custom_trace_id(self, trace_id: str) -> None:
         self.trace_id = trace_id
@@ -86,11 +87,11 @@ class LLMRequestSession(Generic[T2]):
         self._in_request = True
         try:
             while not self.stop:
-                is_success = False
+                content_yielded = False
                 async for message in self.request():
                     yield message
-                    is_success = True
-                if not is_success:
+                    content_yielded = True
+                if not content_yielded and not self._this_round_success:
                     retry_count += 1
                     if retry_count > 3:
                         raise Exception("Failed to fetch LLM response after 3 retries")
@@ -137,6 +138,7 @@ class LLMRequestSession(Generic[T2]):
         return completion
 
     async def request(self) -> AsyncGenerator[T2 | str, None]:
+        self._this_round_success = False
         try:
             logger.info(f"[{self.identify}] 正在请求模型 {self.model} ...")
             completion = await self.create_completion()
@@ -155,11 +157,13 @@ class LLMRequestSession(Generic[T2]):
         self._content_yielded = False
         if response.message.content:
             self._content_yielded = True
+            self._this_round_success = True
             if self.response_format and hasattr(response.message, "parsed"):
                 yield response.message.parsed  # type: ignore
             else:
                 yield response.message.content
         if response.message.tool_calls:
+            self._this_round_success = True
             for request in response.message.tool_calls:
                 if isinstance(request, ChatCompletionMessageFunctionToolCall):
                     await self.call_function(request.id, request.function.name, json.loads(request.function.arguments))

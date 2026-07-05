@@ -73,15 +73,9 @@ async def _get_replied_message_hash(
         return None, None
     try:
         result = await bot.get_msg(message_id=reply_msg_id)
-        message_data = result.get("message", "")
-        if isinstance(message_data, list):
-            try:
-                msg = OB11Message([OB11Segment(**seg) for seg in message_data])
-            except Exception:
-                msg = OB11Message(str(message_data))
-        else:
-            msg = OB11Message(str(message_data))
-        message_hash = compute_message_hash(msg)
+        raw_message = result["raw_message"]
+        message_hash = compute_message_hash(raw_message)
+        message = OB11Message([OB11Segment(**seg) for seg in result["message"]])
 
         group_msg = await session.scalar(
             select(GroupMessage)
@@ -92,7 +86,7 @@ async def _get_replied_message_hash(
         if group_msg is not None:
             raw_text = group_msg.message
         else:
-            raw_text = await parse_message_to_string(UniMessage.generate_without_reply(message=msg, bot=bot), event, bot, state, lang_str)
+            raw_text = await parse_message_to_string(UniMessage.generate_without_reply(message=message, bot=bot), event, bot, state, lang_str)
         return message_hash, raw_text
     except Exception as e:
         logger.exception(f"Failed to get replied message hash: {e}")
@@ -110,13 +104,11 @@ async def _query_context_messages(
     2. 匹配失败或无法获取原文时：回退到最近 10 条
     """
     if replied_message_hash:
-        two_days_ago = datetime.now() - timedelta(days=2)
         target_id = await session.scalar(
             select(GroupMessage.id_)
             .where(
                 GroupMessage.group_id == group_id,
-                GroupMessage.message_hash == replied_message_hash,
-                GroupMessage.timestamp >= two_days_ago,
+                GroupMessage.message_hash == replied_message_hash
             )
             .order_by(GroupMessage.id_.desc())
             .limit(1),
@@ -168,7 +160,7 @@ async def get_replied_raw(
 
 
 async def get_context_str(
-    state: T_State, session: async_scoped_session, group_id: str = get_group_id(),
+    state: T_State, session: async_scoped_session, group_id
 ) -> Optional[str]:
     replied_hash = state.get("replied_hash")
     context_messages: list[GroupMessage] = []
@@ -185,11 +177,13 @@ async def get_context_str(
 @wdym.handle()
 async def handle_wdym(
     state: T_State,
+    session: async_scoped_session,
+    group_id: str = get_group_id(),
     user_id: str = get_user_id(),
     replied_text: str = Depends(get_replied_raw),
-    context_str: str = Depends(get_context_str),
 ) -> None:
     """处理 /wdym 命令 - 解释消息中的晦涩内容"""
+    context_str = await get_context_str(state, session, group_id)
     messages = await get_messages(
         "wdym",
         replied_text=replied_text,
