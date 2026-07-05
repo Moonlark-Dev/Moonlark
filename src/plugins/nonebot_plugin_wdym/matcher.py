@@ -86,7 +86,9 @@ async def _get_replied_message_hash(
         if group_msg is not None:
             raw_text = group_msg.message
         else:
-            raw_text = await parse_message_to_string(UniMessage.generate_without_reply(message=message, bot=bot), event, bot, state, lang_str)
+            raw_text = await parse_message_to_string(
+                UniMessage.generate_without_reply(message=message, bot=bot), event, bot, state, lang_str
+            )
         return message_hash, raw_text
     except Exception as e:
         logger.exception(f"Failed to get replied message hash: {e}")
@@ -106,10 +108,7 @@ async def _query_context_messages(
     if replied_message_hash:
         target_id = await session.scalar(
             select(GroupMessage.id_)
-            .where(
-                GroupMessage.group_id == group_id,
-                GroupMessage.message_hash == replied_message_hash
-            )
+            .where(GroupMessage.group_id == group_id, GroupMessage.message_hash == replied_message_hash)
             .order_by(GroupMessage.id_.desc())
             .limit(1),
         )
@@ -159,9 +158,7 @@ async def get_replied_raw(
     return replied_raw or ""
 
 
-async def get_context_str(
-    state: T_State, session: async_scoped_session, group_id
-) -> Optional[str]:
+async def get_context_str(state: T_State, session: async_scoped_session, group_id) -> Optional[str]:
     replied_hash = state.get("replied_hash")
     context_messages: list[GroupMessage] = []
     try:
