@@ -65,7 +65,6 @@ class MessageQueue:
         fetcher.session.set_custom_trace_id(self.trace_id)
         return fetcher
 
-
     async def reset_chat_history(self) -> list[OpenAIMessage]:
         messages = copy.deepcopy(self.messages)
         if self.fetcher is not None:

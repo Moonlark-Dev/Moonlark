@@ -99,13 +99,15 @@ class StickerTools:
                 data = response.json()
                 results = []
                 for item in data.get("items", []):
-                    results.append({
-                        "id": -item["id"],  # 取相反数以区分本地库
-                        "title": item.get("title", ""),
-                        "description": item.get("description", ""),
-                        "tags": item.get("tags", []),
-                        "source": "meme-search",
-                    })
+                    results.append(
+                        {
+                            "id": -item["id"],  # 取相反数以区分本地库
+                            "title": item.get("title", ""),
+                            "description": item.get("description", ""),
+                            "tags": item.get("tags", []),
+                            "source": "meme-search",
+                        }
+                    )
                 return results
         except httpx.TimeoutException:
             logger.warning("Meme-Search API request timed out")
