@@ -73,8 +73,9 @@ async def _get_replied_message_hash(
         return None, None
     try:
         result = await bot.get_msg(message_id=reply_msg_id)
-        msg = result["raw_message"]
-        message_hash = compute_message_hash(msg)
+        raw_message = result["raw_message"]
+        message_hash = compute_message_hash(raw_message)
+        message = OB11Message([OB11Segment(**seg) for seg in result["message"]])
 
         group_msg = await session.scalar(
             select(GroupMessage)
@@ -85,7 +86,7 @@ async def _get_replied_message_hash(
         if group_msg is not None:
             raw_text = group_msg.message
         else:
-            raw_text = await parse_message_to_string(UniMessage.generate_without_reply(message=msg, bot=bot), event, bot, state, lang_str)
+            raw_text = await parse_message_to_string(UniMessage.generate_without_reply(message=message, bot=bot), event, bot, state, lang_str)
         return message_hash, raw_text
     except Exception as e:
         logger.exception(f"Failed to get replied message hash: {e}")
