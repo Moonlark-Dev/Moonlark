@@ -17,8 +17,11 @@
 
 from typing import TYPE_CHECKING, List, Optional
 
+from nonebot import logger
 from nonebot_plugin_alconna import UniMessage
+import httpx
 
+from ...config import config
 from ...lang import lang
 from ..image import get_image_by_id
 from ..sticker_manager import get_sticker_manager
@@ -39,6 +42,7 @@ class StickerTools:
         """
         self.session = session
         self.manager = get_sticker_manager()
+        self.meme_search_base = config.meme_search_base_url.rstrip("/")
 
     async def save_sticker(self, image_id: str) -> str:
         """
@@ -71,9 +75,90 @@ class StickerTools:
         except NotMemeError:
             return await lang.text("sticker.not_meme", self.session.lang_str)
 
+    async def _search_meme_search(self, query: str, limit: int = 5) -> list[dict]:
+        """
+        搜索外部 Meme-Search 梗图源
+
+        Args:
+            query: 搜索关键词
+            limit: 返回结果数量
+
+        Returns:
+            格式化后的结果列表，id 取相反数
+        """
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(
+                    f"{self.meme_search_base}/api/search",
+                    params={"q": query, "page_size": limit},
+                    timeout=10.0,
+                )
+                if response.status_code != 200:
+                    logger.warning(f"Meme-Search API returned {response.status_code}")
+                    return []
+                data = response.json()
+                results = []
+                for item in data.get("items", []):
+                    results.append({
+                        "id": -item["id"],  # 取相反数以区分本地库
+                        "title": item.get("title", ""),
+                        "description": item.get("description", ""),
+                        "tags": item.get("tags", []),
+                        "source": "meme-search",
+                    })
+                return results
+        except httpx.TimeoutException:
+            logger.warning("Meme-Search API request timed out")
+            return []
+        except Exception as e:
+            logger.warning(f"Failed to search Meme-Search: {e}")
+            return []
+
+    async def _fetch_meme_search_image(self, original_id: int) -> Optional[bytes]:
+        """
+        从 Meme-Search 下载梗图图片
+
+        Args:
+            original_id: 原始非取反的 ID
+
+        Returns:
+            图片二进制数据，失败返回 None
+        """
+        try:
+            async with httpx.AsyncClient() as client:
+                # 先获取元数据得到文件名
+                meta_resp = await client.get(
+                    f"{self.meme_search_base}/api/memes/{original_id}",
+                    timeout=10.0,
+                )
+                if meta_resp.status_code != 200:
+                    logger.warning(f"Failed to get meme metadata (ID={original_id}): {meta_resp.status_code}")
+                    return None
+                meta = meta_resp.json()
+                filename = meta.get("filename")
+                if not filename:
+                    logger.warning(f"Meme metadata missing filename (ID={original_id})")
+                    return None
+
+                # 下载图片文件
+                img_resp = await client.get(
+                    f"{self.meme_search_base}/uploads/{filename}",
+                    timeout=30.0,
+                )
+                if img_resp.status_code != 200:
+                    logger.warning(f"Failed to download meme image (ID={original_id}): {img_resp.status_code}")
+                    return None
+                return img_resp.content
+        except httpx.TimeoutException:
+            logger.warning(f"Meme-Search image download timed out (ID={original_id})")
+            return None
+        except Exception as e:
+            logger.warning(f"Failed to fetch Meme-Search image (ID={original_id}): {e}")
+            return None
+
     async def search_sticker(self, query: str) -> str:
         """
-        根据描述搜索表情包
+        根据描述搜索表情包（含本地收藏和外部梗图源）
 
         Args:
             query: 搜索查询字符串
@@ -81,21 +166,27 @@ class StickerTools:
         Returns:
             格式化的匹配表情包列表或空消息
         """
-        # 首先尝试 AND 匹配（所有关键词都必须匹配）
+        # 搜索本地收藏的表情包
         stickers = await self.manager.search_sticker(query, limit=5)
-
-        # 如果没有结果，尝试 OR 匹配（任一关键词匹配）
         if not stickers:
             stickers = await self.manager.search_sticker_any(query, limit=5)
 
-        if not stickers:
-            return await lang.text("sticker.search_empty", self.session.lang_str)
-
-        # 格式化结果
+        # 格式化本地结果
         results = []
         for sticker in stickers:
             desc = sticker.description
             results.append(f"- {sticker.id}: {desc}")
+
+        # 同时搜索外部 Meme-Search 梗图源
+        meme_search_results = await self._search_meme_search(query, limit=5)
+        for item in meme_search_results:
+            desc = item["description"]
+            tags = " ".join(item["tags"][:3]) if item["tags"] else ""
+            tag_suffix = f" [{tags}]" if tags else ""
+            results.append(f"- {item['id']}: {desc}{tag_suffix}")
+
+        if not results:
+            return await lang.text("sticker.search_empty", self.session.lang_str)
 
         return await lang.text("sticker.search_result", self.session.lang_str, "\n".join(results))
 
@@ -113,11 +204,22 @@ class StickerTools:
         发送表情包到群聊
 
         Args:
-            sticker_id: 要发送的表情包的数据库 ID
+            sticker_id: 要发送的表情包的数据库 ID（外部梗图源使用负数 ID）
 
         Returns:
             成功或错误消息
         """
+        # 负数 ID 表示外部 Meme-Search 梗图源
+        if sticker_id < 0:
+            original_id = -sticker_id
+            image_data = await self._fetch_meme_search_image(original_id)
+            if image_data is None:
+                return await lang.text("sticker.id_not_found", self.session.lang_str, sticker_id)
+            message = UniMessage.image(raw=image_data)
+            await message.send(target=self.session.target, bot=self.session.bot)
+            self.session.processor.token_bucket.add(0.5)
+            return None
+
         sticker = await self.manager.get_sticker(sticker_id)
 
         if sticker is None:

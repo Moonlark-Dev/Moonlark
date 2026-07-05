@@ -28,6 +28,8 @@ class Config(BaseModel):
     judge_reaction_config: JudgeReactionConfig = JudgeReactionConfig()
     # 合并转发消息自动总结阈值（字符数），超过此长度的转发消息将调用 AI 生成摘要
     forward_summary_threshold: int = 2000
+    # Meme-Search 外部梗图源配置
+    meme_search_base_url: str = "https://meme-search.xxtg666.top"
 
 
 config = get_plugin_config(Config)
