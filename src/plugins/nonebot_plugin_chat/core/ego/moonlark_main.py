@@ -607,7 +607,7 @@ class MoonlarkMain:
         try:
             # 1. 如果处于睡眠状态，唤醒
             if self.state["sleep_mode"]:
-                await self.sleep_controller.wake_up()
+                await self.sleep_controller.wake_up(f"来自会话 {session_id} 的动作请求")
                 # 重置 ActionDecider 以便重建 fetcher
                 self.action_decider.reset()
 

@@ -3,6 +3,10 @@
 按设计文档实现，不兼容旧代码。
 """
 
+
+from nonebot_plugin_openai.utils.chat import fetch_message
+from nonebot_plugin_openai.utils.message import get_messages
+
 import math
 import random
 from datetime import datetime
@@ -112,8 +116,8 @@ class SleepController:
             )
 
             if result.sleep_decision == "wake_up":
-                await self.wake_up()
-                self.moonlark_main._update_decision_history("wake_up")
+                await self.wake_up("睡眠决策")
+                self.moonlark_main._update_decision_history("wake_up(原因: 睡眠决策)")
             else:
                 # 决定继续睡：检查是否需要清除上下文
                 await self._maybe_clear_context(sleep_duration)
@@ -154,8 +158,6 @@ class SleepController:
 
         内部处理 wake_up 和状态更新。
         """
-        from nonebot_plugin_openai.utils.chat import fetch_message
-        from nonebot_plugin_openai.utils.message import get_messages
 
         context_text = "\n".join(chat_context[-5:]) if chat_context else ""
 
@@ -176,7 +178,7 @@ class SleepController:
             should_wake = response.strip().lower() == "wake_up"
 
             if should_wake:
-                await self.wake_up()
+                await self.wake_up("被提及")
                 return True
             return False
 
@@ -226,7 +228,7 @@ class SleepController:
         if sleep_decision == "go_to_sleep":
             await self.handle_tired()
         elif sleep_decision == "wake_up" and self.moonlark_main.state["sleep_mode"]:
-            await self.wake_up()
+            await self.wake_up("来自决策指令")
 
     async def submit_sleep_decision(self, deal_type: str, delay_minutes: int = 5, reason: str = "") -> str:
         """处理来自子会话的睡眠决策"""
@@ -237,7 +239,7 @@ class SleepController:
             delay = min(delay_minutes, 30)
             return f"已延迟 {delay} 分钟睡觉。" + (f"原因: {reason}" if reason else "")
 
-    async def wake_up(self) -> None:
+    async def wake_up(self, reason: str = "") -> None:
         self.sleep_state = False
         self.sleep_begin_time = None
         self.tiredness = 0.0
@@ -247,4 +249,7 @@ class SleepController:
         self.moonlark_main.state["sleep_mode"] = False
         # 重置 ActionDecider 以便下次从干净状态启动
         self.moonlark_main.action_decider.reset()
-        logger.info("[SleepController] 已唤醒")
+        if reason:
+            logger.info(f"[SleepController] 已唤醒, 原因: {reason}")
+        else:
+            logger.info("[SleepController] 已唤醒")

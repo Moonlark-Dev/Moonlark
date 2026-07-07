@@ -363,16 +363,24 @@ class MessageProcessor:
         if self.session.get_session_type() == "group":
             self.openai_messages.continuous_response = self.openai_messages.continuous_response or important
 
-        # 使用新的 handle_mention 接口处理睡眠唤醒
+        # 处理睡眠唤醒
         if moonlark_main.state["sleep_mode"]:
             if not important:
                 return
-            # 获取最近消息作为上下文
-            recent_text = await self.session.get_cached_messages_string(length=5)
-            recent_msgs = recent_text.splitlines() if recent_text else []
-            should_wake = await moonlark_main.handle_mention(recent_msgs)
-            if not should_wake:
-                return
+
+            if is_event:
+                # 重要事件：强制唤醒，使用事件文本作为原因
+                message_contents = self.get_message_content_list()
+                event_reason = message_contents[-1] if message_contents else "重要事件"
+                await moonlark_main.sleep_controller.wake_up(event_reason)
+                logger.info(f"[Processor] 重要事件强制唤醒: {event_reason[:100]}")
+            else:
+                # 被提及：通过 LLM 决策是否唤醒
+                recent_text = await self.session.get_cached_messages_string(length=5)
+                recent_msgs = recent_text.splitlines() if recent_text else []
+                should_wake = await moonlark_main.handle_mention(recent_msgs)
+                if not should_wake:
+                    return
 
         logger.info(f"Generating reply ({important=})...")
         self.session.accumulated_text_length = 0
