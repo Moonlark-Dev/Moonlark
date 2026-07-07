@@ -47,6 +47,7 @@ lang = LangHelper()
 wdym = on_command("wdym")
 
 
+
 async def _get_reply_message_id(event: Event, bot: Bot) -> Optional[int]:
     """Get the replied message ID from the event"""
     # if hasattr(event, "reply") and event.reply is not None:
