@@ -327,15 +327,7 @@ class MessageProcessor:
 
         # 如果在冷却期或消息为空，直接返回
         token_check_passed = self.token_bucket.get() > 0 or self.unlimited_tokens_active
-        if (
-            self.cold_until > datetime.now()
-            or len(self.openai_messages.messages) <= 0
-            or (not self.openai_messages.is_last_message_from_user())
-            or (len(self.openai_messages.messages) < 5 and not important)
-            or (recent_message_count > 12 and not important)
-            or (not token_check_passed and not important)
-        ):
-            logger.info("规则检查不通过，跳过 ...")
+        if not await self._check_rules(important, token_check_passed, recent_message_count):
             return
         self.cold_until = datetime.now() + timedelta(seconds=3)
 
@@ -385,6 +377,22 @@ class MessageProcessor:
         logger.info(f"Generating reply ({important=})...")
         self.session.accumulated_text_length = 0
         await self.openai_messages.fetch_reply()
+
+    async def _check_rules(self, important: bool, token_check_passed: bool, recent_message_count: int) -> bool:
+        checks = [
+            ("cold_until", self.cold_until > datetime.now(), "冷却期"),
+            ("messages_empty", len(self.openai_messages.messages) <= 0, "消息为空"),
+            ("last_message_not_user", not self.openai_messages.is_last_message_from_user(), "最后一条消息不是用户"),
+            ("min_messages", len(self.openai_messages.messages) < 5 and not important, "消息数量不足 5 条"),
+            ("excessive_self_reply", recent_message_count > 12 and not important, "近期自回复过多"),
+            ("token_insufficient", not token_check_passed and not important, "Token 不足"),
+        ]
+        for name, result, desc in checks:
+            logger.debug(f"规则检查 [{name}]: {desc} -> {'阻塞' if result else '通过'}")
+        if any(result for _, result, _ in checks):
+            logger.info("规则检查不通过，跳过 ...")
+            return False
+        return True
 
     async def append_tool_call_history(self, call_string: str) -> None:
         self.session.tool_calls_history.append(
