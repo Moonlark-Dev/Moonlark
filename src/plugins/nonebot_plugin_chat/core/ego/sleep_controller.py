@@ -133,8 +133,8 @@ class SleepController:
         if self.context_cleared:
             return
 
-        if sleep_duration < 30:
-            logger.info(f"[SleepController] 入睡 {int(sleep_duration)} 分钟，不足30分钟，暂不重置上下文")
+        if sleep_duration < 5:
+            logger.info(f"[SleepController] 入睡 {int(sleep_duration)} 分钟，不足5分钟，暂不重置上下文")
             return
 
         # 满足条件，重置所有会话的消息队列上下文
