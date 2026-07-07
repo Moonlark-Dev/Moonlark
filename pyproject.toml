@@ -87,7 +87,7 @@ plugins = [
     "nonebot_plugin_broadcast",
     "nonebot_plugin_ghot",
     "nonebot_plugin_status",
-    "nonebot_plugin_wtfis",
+    "nonebot_plugin_logicfail",
     "nonebot_plugin_epic_freegame",
     "nonebot_plugin_version_manager",
     "nonebot_plugin_last_seen",
