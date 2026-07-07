@@ -30,7 +30,6 @@ if TYPE_CHECKING:
 
 
 class MessageQueue:
-
     def __init__(
         self,
         processor: "MessageProcessor",
@@ -40,6 +39,7 @@ class MessageQueue:
         self.fetcher_lock = asyncio.Lock()
         self.continuous_response = False
         self.fetcher_task = None
+        self.waiting_sequence: list[OpenAIMessage] = []
         self.trace_id: str = uuid.uuid4().hex
         self.created_at: datetime = datetime.now()
         self.last_events_summary_time: Optional[datetime] = None
@@ -294,11 +294,20 @@ class MessageQueue:
             self.fetcher_task = asyncio.create_task(self._fetch_reply())
             status = await self.fetcher_task
             logger.info(f"Reply fetcher ended with status: {status.name}")
+            await self.apply_waiting_queue()
 
         if self.continuous_response and self.processor.session.get_session_type() == "group":
             self.continuous_response = False
 
         timing_stats_manager.record_fetch_end(session_id)
+
+    async def apply_waiting_queue(self) -> None:
+        if self.waiting_sequence:
+            if self.fetcher is None:
+                self.fetcher = await self._create_fetcher()
+            await self._ensure_system_prompt()
+            self.fetcher.session.insert_messages(self.waiting_sequence)
+            self.waiting_sequence.clear()
 
     async def stop_fetcher(self) -> None:
         if self.fetcher_task:
@@ -421,11 +430,15 @@ class MessageQueue:
             msg for msg in self.messages[1:] if get_role(msg) != "system"
         ]
 
-    async def append_user_message(self, message: str) -> None:
-        if self.fetcher is None:
-            self.fetcher = await self._create_fetcher()
-        await self._ensure_system_prompt()
-        self.fetcher.session.insert_message(generate_message(message, "user"))
+    async def append_user_message(self, message: str | list) -> None:
+        msg = generate_message(message, "user")
+        if self.fetcher_lock.locked() and not self.continuous_response:
+            self.waiting_sequence.append(msg)
+        else:
+            if self.fetcher is None:
+                self.fetcher = await self._create_fetcher()
+            await self._ensure_system_prompt()
+            self.fetcher.session.insert_message(msg)
 
     def is_last_message_from_user(self) -> bool:
         return get_role(self.messages[-1]) == "user"
