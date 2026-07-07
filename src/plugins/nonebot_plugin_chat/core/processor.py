@@ -504,9 +504,7 @@ class MessageProcessor:
         for img in images:
             image_base64 = base64.b64encode(img).decode("utf-8")
             content.append({"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_base64}"}})
-        message = generate_message(content, "user")
-        await self.openai_messages._ensure_system_prompt()
-        self.openai_messages.messages.append(message)
+        await self.openai_messages.append_user_message(content)
 
     async def process_messages(self, msg_dict: CachedMessage) -> None:
         async with get_session() as session:
