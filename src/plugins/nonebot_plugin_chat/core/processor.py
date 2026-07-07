@@ -497,7 +497,7 @@ class MessageProcessor:
         logger.info(f"Unlimited tokens denied: reason: {reason}, denial: {result.reason}")
         return await self.session.text("apply_unlimited_tokens.denied", result.reason)
 
-    def append_user_message(self, msg_str: str, images: list[bytes]) -> None:
+    async def append_user_message(self, msg_str: str, images: list[bytes]) -> None:
         content: list = [
             {"type": "text", "text": msg_str},
         ]
@@ -505,6 +505,7 @@ class MessageProcessor:
             image_base64 = base64.b64encode(img).decode("utf-8")
             content.append({"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_base64}"}})
         message = generate_message(content, "user")
+        await self.openai_messages._ensure_system_prompt()
         self.openai_messages.messages.append(message)
 
     async def process_messages(self, msg_dict: CachedMessage) -> None:
@@ -530,7 +531,7 @@ class MessageProcessor:
             if not self.blocked:
                 msg_str = generate_message_string(msg_dict)
                 msg_str += await self.generate_additional_prompt(msg_str, msg_dict["user_id"])
-                self.append_user_message(msg_str, msg_dict["images"])
+                await self.append_user_message(msg_str, msg_dict["images"])
                 # print(self.openai_messages.messages)
             if not self.blocked and not msg_dict["self"]:
                 content = msg_dict.get("content", "")
