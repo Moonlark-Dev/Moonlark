@@ -249,7 +249,7 @@ class MessageProcessor:
 
     async def get_message(self) -> None:
         if not self.session.message_queue:
-            await asyncio.sleep(3)
+            await asyncio.sleep(1)
             return
         trigger_mode: Literal["none", "probability", "all"] = "none"
         self.consecutive_message_count = 0
@@ -313,6 +313,8 @@ class MessageProcessor:
         await self.session.mute()
 
     async def generate_reply(self, important: bool = False, is_event: bool = False) -> None:
+        if not important:
+            await asyncio.sleep(5)
         # 延迟导入以避免循环导入
         from .ego import moonlark_main
 
