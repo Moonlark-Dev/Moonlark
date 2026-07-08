@@ -13,11 +13,15 @@ from nonebot_plugin_orm import get_session
 from nonebot_plugin_larkuser import get_user
 from nonebot import on_message, on_notice
 from nonebot.adapters.onebot.v11 import Bot as OB11Bot
+from nonebot.adapters.onebot.v11 import Message as OB11Message, MessageSegment as OB11MessageSegment
 from nonebot.adapters import Event, Bot
 from nonebot.adapters.onebot.v11.event import PokeNotifyEvent
 from nonebot_plugin_larkutils import get_user_id, get_group_id
 from nonebot_plugin_larkutils.subaccount import get_main_account
 from nonebot_plugin_larkutils.user import private_message
+from nonebot_plugin_message_summary.hash_utils import compute_message_hash
+from nonebot_plugin_message_summary.models import GroupMessage
+from sqlalchemy import select
 from nonebot.log import logger
 from nonebot.matcher import Matcher
 from nonebot.adapters.onebot.v11 import GroupRecallNoticeEvent
@@ -146,13 +150,22 @@ async def _(event: NoticeEvent, bot: OB11Bot, platform_id: str = get_group_id())
     group_id = f"{platform_id}_{event_dict['group_id']}"
     user_id = await get_main_account(str(event_dict["user_id"]))
     session = await create_group_session(group_id, get_target(event), bot)
-    message = await parse_message_to_string(
-        await parse_dict_message((await bot.get_msg(message_id=event_dict["message_id"]))["message"], bot),
-        event,
-        bot,
-        {},
-        session.lang_str,
-    )
+    raw_msg = (await bot.get_msg(message_id=event_dict["message_id"]))["message"]
+    ob11_msg = OB11Message()
+    for seg in raw_msg:
+        ob11_msg.append(OB11MessageSegment(**seg))
+    msg_hash = compute_message_hash(ob11_msg)
+    async with get_session() as db_session:
+        result = await db_session.scalars(
+            select(GroupMessage)
+            .where(GroupMessage.group_id == group_id)
+            .where(GroupMessage.message_hash == msg_hash)
+            .limit(1)
+        )
+        cached = result.first()
+        message = cached.message if cached is not None else "".join(
+            seg["data"].get("text", "") for seg in raw_msg if seg["type"] == "text"
+        )
     user = await get_user(user_id)
     if user.has_nickname():
         operator_nickname = user.nickname
