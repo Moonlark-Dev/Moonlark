@@ -127,27 +127,30 @@ async def _(bot: Bot, event: Event, session_id: str = get_group_id()) -> None:
     try:
         user_id = event.get_user_id()
     except ValueError:
-        return
-    if user_id in get_bots().keys():
-        raise IgnoredException("忽略自身消息")
+        user_id = None
 
-    # 检查是否为私聊消息
-    try:
-        is_private = event.get_session_id() == user_id
-    except ValueError:
-        is_private = False
+    if user_id is not None:
+        if user_id in get_bots().keys():
+            raise IgnoredException("忽略自身消息")
 
-    if is_private:
-        # 检查用户是否关闭了该 bot 的私聊
-        async with get_session() as session:
-            settings = await session.get(UserBotPrivateChatSettings, {"user_id": user_id, "bot_id": bot.self_id})
-            # 如果设置存在且私聊已关闭，检查是否为 .pm on 命令
-            if settings is not None and not settings.private_chat_enabled:
-                plaintext = event.get_plaintext().strip()
-                if plaintext != ".pm on":
-                    raise IgnoredException("用户已关闭该 bot 的私聊")
+        # 检查是否为私聊消息
+        try:
+            is_private = event.get_session_id() == user_id
+        except ValueError:
+            is_private = False
 
-    ToMeProcessor(bot, event, session_id).process_to_me_event()
+        if is_private:
+            # 检查用户是否关闭了该 bot 的私聊
+            async with get_session() as session:
+                settings = await session.get(UserBotPrivateChatSettings, {"user_id": user_id, "bot_id": bot.self_id})
+                # 如果设置存在且私聊已关闭，检查是否为 .pm on 命令
+                if settings is not None and not settings.private_chat_enabled:
+                    plaintext = event.get_plaintext().strip()
+                    if plaintext != ".pm on":
+                        raise IgnoredException("用户已关闭该 bot 的私聊")
+
+        ToMeProcessor(bot, event, session_id).process_to_me_event()
+
     if session_id in sessions and sessions[session_id][0] != bot.self_id:
         raise IgnoredException(f"此群组已分配给帐号 {session_id}")
     assign_session(session_id, bot.self_id)
