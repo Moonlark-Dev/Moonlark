@@ -159,28 +159,6 @@ class MessageQueue:
         self.fetcher.session.messages.insert(1, generate_message(injected_text, "user"))
         logger.info(f"[InstantMemory] 已注入 {len(memories)} 条即时记忆到 {session_id}")
 
-    async def _inject_recent_events(self) -> None:
-        from ..utils.instant_mem import generate_recent_events_summary
-
-        session_id = self.processor.session.session_id
-        lang_str = self.processor.session.lang_str
-
-        try:
-            recent_events = await generate_recent_events_summary(
-                session_id,
-                lang_str,
-                after_time=self.last_events_summary_time,
-            )
-
-            if recent_events:
-                if self.fetcher is None:
-                    self.fetcher = await self._create_fetcher()
-                self.fetcher.session.insert_message(generate_message(recent_events, "user"))
-                self.last_events_summary_time = datetime.now()
-                logger.info(f"[RecentEvents] 已注入最近事件摘要到 {session_id}")
-        except Exception as e:
-            logger.exception(f"[RecentEvents] 注入最近事件摘要失败: {e}")
-
     async def _reset_and_clear_db(self, group_id: str) -> None:
         if self.fetcher is not None:
             self.fetcher.session.messages.clear()
@@ -361,8 +339,6 @@ class MessageQueue:
 
         if not await self._validate_messages():
             return FetchStatus.SKIP
-
-        await self._inject_recent_events()
 
         system_prompt = self.messages[0] if self.messages else None
 
