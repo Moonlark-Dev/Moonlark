@@ -81,8 +81,9 @@ async def _fmt_time(avg_seconds: float) -> str:
 
 async def _get_user_valid_records(session, user_id: str):
     result = await session.execute(
-        select(RiseData.wake_time, RiseData.record_date)
-        .where(RiseData.user_id == user_id, RiseData.valid == True)  # noqa: E712
+        select(RiseData.wake_time, RiseData.record_date).where(
+            RiseData.user_id == user_id, RiseData.valid == True
+        )  # noqa: E712
     )
     return result.all()
 
@@ -98,8 +99,9 @@ async def _(matcher: Matcher, user_id: str = get_user_id()) -> None:
                 func.row_number()
                 .over(partition_by=RiseData.record_date, order_by=[RiseData.wake_time, RiseData.user_id])
                 .label("rn"),
-            )
-            .where(RiseData.valid == True)  # noqa: E712
+            ).where(
+                RiseData.valid == True
+            )  # noqa: E712
         ).subquery()
 
         winners = (
@@ -139,8 +141,9 @@ async def _(matcher: Matcher, user_id: str = get_user_id()) -> None:
     async with get_session() as session:
         rows = (
             await session.execute(
-                select(RiseData.user_id, RiseData.record_date, RiseData.wake_time)
-                .where(RiseData.valid == True)  # noqa: E712
+                select(RiseData.user_id, RiseData.record_date, RiseData.wake_time).where(
+                    RiseData.valid == True
+                )  # noqa: E712
             )
         ).all()
     if not rows:
@@ -189,12 +192,16 @@ async def _(matcher: Matcher, user_id: str = get_user_id()) -> None:
     today = date.today()
     async with get_session() as session:
         rows = (
-            await session.execute(
-                select(RiseData)
-                .where(RiseData.record_date == today, RiseData.valid == True)  # noqa: E712
-                .order_by(RiseData.wake_time),
+            (
+                await session.execute(
+                    select(RiseData)
+                    .where(RiseData.record_date == today, RiseData.valid == True)  # noqa: E712
+                    .order_by(RiseData.wake_time),
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
     if not rows:
         await lang.finish("rise_rank.no_data", user_id)
 
