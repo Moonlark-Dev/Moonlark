@@ -56,19 +56,19 @@ async def _(bot: Bot, event: Event, user_id: str = get_user_id()) -> None:
         await session.commit()
 
 
-@scheduler.scheduled_job("cron", hour=4, minute=0, id="rise_rank_cleanup")
+@scheduler.scheduled_job("cron", hour=4, minute=0, id="wakeuprank_cleanup")
 async def cleanup_invalid_records() -> None:
     async with get_session() as session:
         await session.execute(delete(RiseData).where(RiseData.valid == False))  # noqa: E712
         await session.commit()
 
 
-rise_rank_alc = Alconna(
-    "rise-rank",
+wakeuprank_alc = Alconna(
+    "wakeuprank",
     Subcommand("avg"),
     Subcommand("today"),
 )
-rise_rank = on_alconna(rise_rank_alc)
+wakeuprank = on_alconna(wakeuprank_alc)
 
 
 async def _fmt_time(avg_seconds: float) -> str:
@@ -88,7 +88,7 @@ async def _get_user_valid_records(session, user_id: str):
     return result.all()
 
 
-@rise_rank.assign("$main")
+@wakeuprank.assign("$main")
 async def _(matcher: Matcher, user_id: str = get_user_id()) -> None:
     async with get_session() as session:
         subq = (
@@ -110,7 +110,7 @@ async def _(matcher: Matcher, user_id: str = get_user_id()) -> None:
             )
         ).all()
     if not winners:
-        await lang.finish("rise_rank.no_data", user_id)
+        await lang.finish("wakeuprank.no_data", user_id)
 
     user_counts: dict[str, int] = {}
     for row in winners:
@@ -131,12 +131,12 @@ async def _(matcher: Matcher, user_id: str = get_user_id()) -> None:
                 avg_time_str = "00:00:00"
             ranked_data.append({"user_id": uid, "data": count, "info": avg_time_str})
 
-    title = await lang.text("rise_rank.title", user_id)
+    title = await lang.text("wakeuprank.title", user_id)
     image = await generate_image(ranked_data, user_id, title)
-    await rise_rank.finish(await UniMessage().image(raw=image, name="image.png").export())
+    await wakeuprank.finish(await UniMessage().image(raw=image, name="image.png").export())
 
 
-@rise_rank.assign("avg")
+@wakeuprank.assign("avg")
 async def _(matcher: Matcher, user_id: str = get_user_id()) -> None:
     async with get_session() as session:
         rows = (
@@ -147,7 +147,7 @@ async def _(matcher: Matcher, user_id: str = get_user_id()) -> None:
             )
         ).all()
     if not rows:
-        await lang.finish("rise_rank.no_data", user_id)
+        await lang.finish("wakeuprank.no_data", user_id)
 
     user_times: dict[str, list[float]] = {}
     for row in rows:
@@ -167,9 +167,9 @@ async def _(matcher: Matcher, user_id: str = get_user_id()) -> None:
         for uid, avg_seconds in sorted_users
     ]
 
-    title = await lang.text("rise_rank.avg_title", user_id)
+    title = await lang.text("wakeuprank.avg_title", user_id)
     image = await render_template(
-        "rise_rank_avg.html.jinja",
+        "wakeuprank_avg.html.jinja",
         title,
         user_id,
         {
@@ -184,10 +184,10 @@ async def _(matcher: Matcher, user_id: str = get_user_id()) -> None:
             ],
         },
     )
-    await rise_rank.finish(await UniMessage().image(raw=image, name="image.png").export())
+    await wakeuprank.finish(await UniMessage().image(raw=image, name="image.png").export())
 
 
-@rise_rank.assign("today")
+@wakeuprank.assign("today")
 async def _(matcher: Matcher, user_id: str = get_user_id()) -> None:
     today = date.today()
     async with get_session() as session:
@@ -203,7 +203,7 @@ async def _(matcher: Matcher, user_id: str = get_user_id()) -> None:
             .all()
         )
     if not rows:
-        await lang.finish("rise_rank.no_data", user_id)
+        await lang.finish("wakeuprank.no_data", user_id)
 
     ranked_data: list[RankingData] = [
         {
@@ -214,6 +214,6 @@ async def _(matcher: Matcher, user_id: str = get_user_id()) -> None:
         for row in rows
     ]
 
-    title = await lang.text("rise_rank.today_title", user_id)
+    title = await lang.text("wakeuprank.today_title", user_id)
     image = await generate_image(ranked_data, user_id, title)
-    await rise_rank.finish(await UniMessage().image(raw=image, name="image.png").export())
+    await wakeuprank.finish(await UniMessage().image(raw=image, name="image.png").export())

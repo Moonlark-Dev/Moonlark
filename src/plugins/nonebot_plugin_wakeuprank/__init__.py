@@ -2,7 +2,7 @@ from nonebot import require
 from nonebot.plugin import PluginMetadata
 
 __plugin_meta__ = PluginMetadata(
-    name="nonebot_plugin_rise_rank",
+    name="nonebot_plugin_wakeuprank",
     description="早起排行插件",
     usage="",
     config=None,
@@ -18,4 +18,4 @@ require("nonebot_plugin_last_seen")
 require("nonebot_plugin_ranking")
 require("nonebot_plugin_render")
 
-from . import __main__ as __main__  # noqa: E402, F401
+from . import __main__

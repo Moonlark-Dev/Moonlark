@@ -1,4 +1,4 @@
-rise_rank:
+wakeuprank:
   title: "早起次数排行"
   avg_title: "平均起床时间排行"
   today_title: "今日起床时间排行"
@@ -6,6 +6,6 @@ rise_rank:
 help:
   description: "早起排行"
   details: "在每日 4:00-14:00 间首次发消息记录早起时间，可进行早起次数排行、平均起床时间排行和今日排行。"
-  usage1: "rise-rank (早起次数排行)"
-  usage2: "rise-rank avg (平均起床时间排行)"
-  usage3: "rise-rank today (今日起床时间排行)"
+  usage1: "wakeuprank (早起次数排行)"
+  usage2: "wakeuprank avg (平均起床时间排行)"
+  usage3: "wakeuprank today (今日起床时间排行)"
