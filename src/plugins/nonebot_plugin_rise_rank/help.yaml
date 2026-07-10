@@ -1,0 +1,3 @@
+plugin: 'rise_rank'
+commands:
+  rise-rank: help;3;community

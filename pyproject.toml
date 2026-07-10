@@ -93,6 +93,7 @@ plugins = [
     "nonebot_plugin_last_seen",
     "nonebot_plugin_command_stats",
     "nonebot_plugin_wdym",
+    "nonebot_plugin_rise_rank",
 ]
 plugin_dirs = []
 builtin_plugins = []
