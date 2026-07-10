@@ -163,8 +163,10 @@ async def _(event: NoticeEvent, bot: OB11Bot, platform_id: str = get_group_id())
             .limit(1)
         )
         cached = result.first()
-        message = cached.message if cached is not None else "".join(
-            seg["data"].get("text", "") for seg in raw_msg if seg["type"] == "text"
+        message = (
+            cached.message
+            if cached is not None
+            else "".join(seg["data"].get("text", "") for seg in raw_msg if seg["type"] == "text")
         )
     user = await get_user(user_id)
     if user.has_nickname():

@@ -3,7 +3,6 @@
 按设计文档实现，不兼容旧代码。
 """
 
-
 from nonebot_plugin_openai.utils.chat import fetch_message
 from nonebot_plugin_openai.utils.message import get_messages
 
