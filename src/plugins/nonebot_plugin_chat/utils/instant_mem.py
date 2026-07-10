@@ -135,6 +135,7 @@ def format_memories_for_injection(memories: list[InstantMemory]) -> str:
         lines.append(f"- ({time_str}) {name_part}{mem['content']}")
     return "\n".join(lines)
 
+
 async def post_instant_memory(
     content: str,
     expire_hours: float,
