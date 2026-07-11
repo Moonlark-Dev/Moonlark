@@ -4,10 +4,9 @@ import math
 import random
 from datetime import date
 from typing import Optional
-from typing_extensions import TypedDict
 
 import httpx
-from nonebot import logger, on_fullmatch
+from nonebot import logger
 from nonebot.matcher import Matcher
 from nonebot_plugin_alconna import Alconna, UniMessage, on_alconna
 from nonebot_plugin_bag.config import config as bag_config
@@ -19,7 +18,6 @@ from nonebot_plugin_items.registry.registry import ResourceLocation
 from nonebot_plugin_items.utils.get import get_item
 from nonebot_plugin_larksetu import get_landscape_image
 from nonebot_plugin_larkuser import get_user
-from nonebot_plugin_larkuser.user.base import MoonlarkUser
 from nonebot_plugin_larkuser.utils.matcher import patch_matcher
 from nonebot_plugin_larkuser.utils.waiter import PromptRetryTooMuch, PromptTimeout, prompt
 from nonebot_plugin_larkutils import get_user_id
@@ -36,25 +34,11 @@ from .models import SignData
 sign = on_alconna(Alconna("签到"), aliases={"签到", "sign"})
 patch_matcher(sign)
 
-# 用户级别的异步锁字典
-_user_locks: dict[str, asyncio.Lock] = {}
+# 全局锁，保护 SignData 数据操作
+_global_sign_lock = asyncio.Lock()
 
 
-def get_user_lock(user_id: str) -> asyncio.Lock:
-    """获取或创建用户的异步锁"""
-    if user_id not in _user_locks:
-        _user_locks[user_id] = asyncio.Lock()
-    return _user_locks[user_id]
-
-
-class SignClaimData(TypedDict):
-    text: str
-    origin: float | int
-    add: float | int
-    now: float | int
-
-
-async def get_luck(user_id: str) -> str:
+async def _get_luck(user_id: str) -> str:
     value = await get_luck_value(user_id)
     if 80 < value:
         return "a"
@@ -70,125 +54,16 @@ async def get_luck(user_id: str) -> str:
         return "f"
 
 
-async def get_sign_data(session: AsyncSession, user_id: str) -> SignData:
+async def _get_sign_data(session: AsyncSession, user_id: str) -> SignData:
     try:
         return await session.get_one(SignData, {"user_id": user_id})
     except NoResultFound:
         session.add(SignData(user_id=user_id))
         await session.commit()
-        return await get_sign_data(session, user_id)
+        return await _get_sign_data(session, user_id)
 
 
-async def get_sign_exp(user: MoonlarkUser, sign_data: SignData) -> SignClaimData:
-    level = user.get_level()
-    origin_exp = user.get_experience()
-    exp = round(random.random() * level / 2 * max(user.get_fav(), 0.1) * min(sign_data.sign_days + 1, 15) + 1)
-    if level <= 4:
-        exp = round(exp * 1.3)
-    await user.add_experience(exp)
-    return {
-        "text": await lang.text("image.exp", user.user_id),
-        "now": user.get_experience(),
-        "add": exp,
-        "origin": origin_exp,
-    }
-
-
-async def get_sign_vim(user_data: MoonlarkUser, sign_data: SignData) -> SignClaimData:
-    level = user_data.get_level()
-    origin = user_data.get_vimcoin()
-    vim = round(
-        1
-        + math.sqrt(
-            math.sqrt(
-                (1000 + random.random()) * level * max(user_data.get_fav(), 0.1) / 5 * min(sign_data.sign_days, 15) / 8
-                + 1
-            )
-        )
-        * 25
-        * random.random(),
-        1,
-    )
-    await user_data.add_vimcoin(vim)
-    return {
-        "text": await lang.text("image.vim", user_data.user_id),
-        "add": vim,
-        "origin": origin,
-        "now": user_data.get_vimcoin(),
-    }
-
-
-async def get_sign_fav(user_data: MoonlarkUser) -> SignClaimData:
-    origin = user_data.get_display_fav()
-    fav = 0.001
-    await user_data.add_fav(fav)
-    return {
-        "text": await lang.text("image.fav", user_data.user_id),
-        "add": round(fav * 1000),
-        "now": user_data.get_display_fav(),
-        "origin": origin,
-    }
-
-
-async def resign(sign_data: SignData, user: MoonlarkUser) -> bool:
-    if (days := (date.today() - sign_data.last_sign).days - 1) >= 15:
-        return False
-    needed_vimcoin = days * 30
-    if not await user.has_vimcoin(needed_vimcoin):
-        return False
-    try:
-        if not await prompt(
-            await lang.text("resign.prompt", sign_data.user_id, days, needed_vimcoin),
-            sign_data.user_id,
-            retry=1,
-            parser=lambda message: not message.lower().startswith("n"),
-            ignore_error_details=False,
-            allow_quit=False,
-        ):
-            return False
-    except (PromptTimeout, PromptRetryTooMuch):
-        return False
-    got_vimcoin = 0
-    got_experience = 0
-    for _ in range(days):
-        sign_data.sign_days += 1
-        got_vimcoin += (await get_sign_vim(user, sign_data))["add"]
-        got_experience += (await get_sign_exp(user, sign_data))["add"]
-    await lang.send("resign.success", user.user_id, days, got_vimcoin, got_experience)
-    await user.add_fav(0.001)
-    sign_data.sign_days += 1
-    return True
-
-
-async def get_sign_days(sign_data: SignData, user: MoonlarkUser) -> int:
-    if (date.today() - sign_data.last_sign).days == 1:
-        sign_data.sign_days += 1
-    elif not await resign(sign_data, user):
-        sign_data.sign_days = 1
-    return sign_data.sign_days
-
-
-async def get_hitokoto(user_id: str) -> str:
-    try:
-        if (count := await get_unread_email_count(user_id)) > 0:
-            return await lang.text("image.email_unread", user_id, count)
-        async with httpx.AsyncClient() as client:
-            response = await client.get(config.hitokoto_api)
-        if response.status_code == 200:
-            return response.json()["hitokoto"]
-        return await lang.text("image.hitokoto", user_id)
-    except Exception as e:
-        logger.exception(e)
-        return await lang.text("image.hitokoto", user_id)
-
-
-async def is_user_signed(user_id: str) -> bool:
-    async with get_session() as session:
-        data = await get_sign_data(session, user_id)
-        return (date.today() - data.last_sign).days < 1
-
-
-async def try_sign_gift_drop(user_id: str) -> Optional[tuple[str, str]]:
+async def _try_sign_gift_drop(user_id: str) -> Optional[tuple[str, str]]:
     gift_id = get_gift_drop_manager().select_gift()
     namespace, path = gift_id.split(":", 1)
     location = ResourceLocation(namespace, path)
@@ -212,72 +87,254 @@ async def try_sign_gift_drop(user_id: str) -> Optional[tuple[str, str]]:
     return gift_id, item_name
 
 
-@sign.handle()
-@patch_matcher(on_fullmatch(("sign", "签到"))).handle()
-async def _(matcher: Matcher, user_id: str = get_user_id()) -> None:
-    # 使用用户级别的异步锁防止同一用户并发签到
-    async with get_user_lock(user_id):
+async def _get_hitokoto(user_id: str) -> str:
+    try:
+        if (count := await get_unread_email_count(user_id)) > 0:
+            return await lang.text("image.email_unread", user_id, count)
+        async with httpx.AsyncClient() as client:
+            response = await client.get(config.hitokoto_api)
+        if response.status_code == 200:
+            return response.json()["hitokoto"]
+        return await lang.text("image.hitokoto", user_id)
+    except Exception as e:
+        logger.exception(e)
+        return await lang.text("image.hitokoto", user_id)
+
+
+async def _calc_sign_exp(
+    user_id: str, sign_days: int
+) -> dict:
+    """计算并增加签到经验值。返回 (text, origin, add, now)。"""
+    user = await get_user(user_id)
+    level = user.get_level()
+    origin_exp = user.get_experience()
+    exp = round(random.random() * level / 2 * max(user.get_fav(), 0.1) * min(sign_days + 1, 15) + 1)
+    if level <= 4:
+        exp = round(exp * 1.3)
+    await user.add_experience(exp)
+    return {
+        "text": await lang.text("image.exp", user_id),
+        "now": user.get_experience(),
+        "add": exp,
+        "origin": origin_exp,
+    }
+
+
+async def _calc_sign_vim(
+    user_id: str, sign_days: int
+) -> dict:
+    """计算并增加签到虚拟币。返回 (text, origin, add, now)。"""
+    user = await get_user(user_id)
+    level = user.get_level()
+    origin = user.get_vimcoin()
+    vim = round(
+        1
+        + math.sqrt(
+            math.sqrt(
+                (1000 + random.random()) * level * max(user.get_fav(), 0.1) / 5 * min(sign_days, 15) / 8
+                + 1
+            )
+        )
+        * 25
+        * random.random(),
+        1,
+    )
+    await user.add_vimcoin(vim)
+    return {
+        "text": await lang.text("image.vim", user_id),
+        "add": vim,
+        "origin": origin,
+        "now": user.get_vimcoin(),
+    }
+
+
+async def _calc_sign_fav(user_id: str) -> dict:
+    """计算并增加签到好感度。返回 (text, origin, add, now)。"""
+    user = await get_user(user_id)
+    origin = user.get_display_fav()
+    fav = 0.001
+    await user.add_fav(fav)
+    return {
+        "text": await lang.text("image.fav", user_id),
+        "add": round(fav * 1000),
+        "now": user.get_display_fav(),
+        "origin": origin,
+    }
+
+
+async def _is_user_signed(user_id: str) -> bool:
+    async with get_session() as session:
+        data = await _get_sign_data(session, user_id)
+        return (date.today() - data.last_sign).days < 1
+
+
+class SignHandler:
+    """签到处理类：数据操作与渲染分离"""
+
+    def __init__(self, user_id: str) -> None:
+        self.user_id = user_id
+        self._already_signed: bool = False
+        self._final_sign_days: int = 0
+        self._rank: int = 0
+        self._gift_text: Optional[str] = None
+        self._templates: dict = {}
+        self._bg_kwargs: dict = {}
+
+    async def process_data(self) -> None:
+        """收集信息并操作数据（SignData 表操作由全局锁保护）"""
+
+        # ====== Phase 1: 预检查 ======
         async with get_session() as session:
-            data = await get_sign_data(session, user_id)
-            user = await get_user(user_id)
-            if (date.today() - data.last_sign).days < 1:
-                await lang.finish("sign.signed", user_id)
-            templates = {
-                "date": date.today().strftime("%d"),
-                "signdays": {
-                    "text": await lang.text("image.signdays", user_id),
-                    "value": await lang.text("image.signdays_text", user_id, await get_sign_days(data, user)),
-                },
-                "nickname": user.nickname,
-                "uid": await lang.text("image.uid", user_id, user_id),
-                "hitokoto": await get_hitokoto(user_id),
-                "exp": await get_sign_exp(user, data),
-                "vim": await get_sign_vim(user, data),
-                "fav": await get_sign_fav(user),
-                "fortune": {
-                    "text": await lang.text("image.fortune", user_id),
-                    "value": await lang.text(f"luck.{await get_luck(user_id)}", user_id),
-                },
-                "avatar": base64.b64encode(user.avatar).decode() if user.avatar is not None else None,
-            }
-            rank_count = len(
-                (await session.execute(select(SignData.user_id).where(SignData.last_sign == date.today())))
-                .scalars()
-                .all()
-            )
-            templates["rank"] = {
-                "text": await lang.text("image.rank", user_id),
-                "value": await lang.text("image.rank_text", user_id, rank_count + 1),
-            }
-            if rank_count == 0:
-                gift_drop = await try_sign_gift_drop(user_id)
-                if gift_drop:
-                    _, item_name = gift_drop
-                    gift_text = await lang.text("image.gift", user_id, item_name)
-                    templates["hitokoto"] = f"{gift_text}"
-            data.last_sign = date.today()
-            await session.commit()
-            # 获取横版 setu 图片作为背景
-            bg_kwargs = {}
-            try:
-                setu_img = await get_landscape_image()
-                if setu_img:
-                    b64 = base64.b64encode(setu_img["image"]).decode()
-                    ext = setu_img["data"].ext
-                    mime = "image/png" if ext == "png" else "image/jpeg"
-                    bg_kwargs["background_url"] = f"data:{mime};base64,{b64}"
+            data = await _get_sign_data(session, self.user_id)
+
+        if (date.today() - data.last_sign).days < 1:
+            self._already_signed = True
+            return
+
+        # ====== Phase 2: 判断补签（涉及用户交互，不可放锁内） ======
+        days_since = (date.today() - data.last_sign).days
+        self._do_resign = False
+        self._missed_days = 0
+        if days_since > 1:
+            self._missed_days = days_since - 1
+            if self._missed_days < 15:
+                user = await get_user(self.user_id)
+                needed = self._missed_days * 30
+                if await user.has_vimcoin(needed):
+                    try:
+                        self._do_resign = await prompt(
+                            await lang.text("resign.prompt", self.user_id, self._missed_days, needed),
+                            self.user_id,
+                            retry=1,
+                            parser=lambda message: not message.lower().startswith("n"),
+                            ignore_error_details=False,
+                            allow_quit=False,
+                        )
+                    except (PromptTimeout, PromptRetryTooMuch):
+                        pass
+
+        # ====== Phase 3: 全局锁保护——操作 SignData 表 ======
+        async with _global_sign_lock:
+            async with get_session() as session:
+                sd = await session.get_one(SignData, {"user_id": self.user_id})
+                if (date.today() - sd.last_sign).days < 1:
+                    self._already_signed = True
+                    return
+
+                # 计算新签到天数
+                if days_since == 1:
+                    sd.sign_days += 1
+                elif self._do_resign:
+                    sd.sign_days += self._missed_days + 1  # 补签天数 + 当天
                 else:
-                    logger.info("无横版 setu 图片，使用默认背景")
-            except Exception as e:
-                logger.warning(f"获取 setu 背景图失败，使用默认背景: {e}")
-            image = await render_template(
-                "sign.html.jinja",
-                await lang.text("image.title", user_id),
-                user_id,
-                templates,
-                viewport={"width": 380, "height": 10},
-                **bg_kwargs,
+                    sd.sign_days = 1
+                self._final_sign_days = sd.sign_days
+
+                # 排名（基于当前已签到人数）
+                signed_today = (
+                    await session.execute(
+                        select(SignData.user_id).where(SignData.last_sign == date.today())
+                    )
+                ).scalars().all()
+                self._rank = len(signed_today) + 1
+
+                # 第一名礼物掉落
+                if self._rank == 1:
+                    gift = await _try_sign_gift_drop(self.user_id)
+                    if gift:
+                        self._gift_text = gift[1]
+
+                sd.last_sign = date.today()
+                await session.commit()
+
+        # ====== Phase 4: 补签奖励（用户数据，不涉及 SignData 锁） ======
+        if self._do_resign:
+            got_vim = 0.0
+            got_exp = 0
+            # 每日补签奖励：逐天累加
+            for offset in range(self._missed_days):
+                day_count = offset + 1  # 第一天从 1 开始计
+                got_vim += (await _calc_sign_vim(self.user_id, day_count))["add"]
+                got_exp += (await _calc_sign_exp(self.user_id, day_count))["add"]
+            user = await get_user(self.user_id)
+            await user.add_fav(0.001 * self._missed_days)
+            await lang.send(
+                "resign.success",
+                self.user_id,
+                self._missed_days,
+                round(got_vim, 1),
+                got_exp,
             )
-            msg = UniMessage().image(raw=image)
-            _user_locks.pop(user_id, None)
-            await matcher.finish(await msg.export(), at_sender=True)
+
+    async def render_result(self, matcher: Matcher) -> None:
+        """渲染并发送处理结果"""
+        if self._already_signed:
+            await lang.finish("sign.signed", self.user_id)
+
+        self._templates = {
+            "date": date.today().strftime("%d"),
+            "signdays": {
+                "text": await lang.text("image.signdays", self.user_id),
+                "value": await lang.text(
+                    "image.signdays_text",
+                    self.user_id,
+                    self._final_sign_days,
+                ),
+            },
+            "rank": {
+                "text": await lang.text("image.rank", self.user_id),
+                "value": await lang.text("image.rank_text", self.user_id, self._rank),
+            },
+            "exp": await _calc_sign_exp(self.user_id, self._final_sign_days),
+            "vim": await _calc_sign_vim(self.user_id, self._final_sign_days),
+            "fav": await _calc_sign_fav(self.user_id),
+            "fortune": {
+                "text": await lang.text("image.fortune", self.user_id),
+                "value": await lang.text(f"luck.{await _get_luck(self.user_id)}", self.user_id),
+            },
+            "hitokoto": (
+                await lang.text("image.gift", self.user_id, self._gift_text)
+                if self._gift_text
+                else await _get_hitokoto(self.user_id)
+            ),
+        }
+        user = await get_user(self.user_id)
+        self._templates["nickname"] = user.nickname
+        self._templates["uid"] = await lang.text("image.uid", self.user_id, self.user_id)
+        self._templates["avatar"] = (
+            base64.b64encode(user.avatar).decode() if user.avatar is not None else None
+        )
+
+        # 横版 setu 背景
+        try:
+            setu_img = await get_landscape_image()
+            if setu_img:
+                b64 = base64.b64encode(setu_img["image"]).decode()
+                ext = setu_img["data"].ext
+                self._bg_kwargs["background_url"] = (
+                    f"data:image/png;base64,{b64}" if ext == "png" else f"data:image/jpeg;base64,{b64}"
+                )
+        except Exception as e:
+            logger.warning(f"获取 setu 背景图失败: {e}")
+
+        image = await render_template(
+            "sign.html.jinja",
+            await lang.text("image.title", self.user_id),
+            self.user_id,
+            self._templates,
+            viewport={"width": 380, "height": 10},
+            **self._bg_kwargs,
+        )
+        msg = UniMessage().image(raw=image)
+        await matcher.finish(await msg.export(), at_sender=True)
+
+
+@sign.handle()
+async def _(matcher: Matcher, user_id: str = get_user_id()) -> None:
+    handler = SignHandler(user_id)
+    await handler.process_data()
+    await handler.render_result(matcher)
+
+
+# 暴露给外部使用的接口
+is_user_signed = _is_user_signed
