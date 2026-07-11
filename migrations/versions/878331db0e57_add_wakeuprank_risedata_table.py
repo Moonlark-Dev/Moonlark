@@ -1,8 +1,8 @@
 """add wakeuprank risedata table
 
-迁移 ID: 004f2830fe5c
+迁移 ID: 878331db0e57
 父迁移: c3d4e5f6a7b8
-创建时间: 2026-07-11 19:37:30.111286
+创建时间: 2026-07-11 19:59:00.000000
 
 """
 
@@ -13,7 +13,7 @@ from collections.abc import Sequence
 from alembic import op
 import sqlalchemy as sa
 
-revision: str = "004f2830fe5c"
+revision: str = "878331db0e57"
 down_revision: str | Sequence[str] | None = "c3d4e5f6a7b8"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
