@@ -100,6 +100,32 @@ nonebot_plugin_example/
 └── utils/               # Utility functions
 ```
 
+### Help YAML Format (`help.yaml`)
+
+Each plugin registers command help in a `help.yaml` file. Standard format:
+
+```yaml
+plugin: <plugin_name>
+commands:
+  <command_name>:
+    description: help.description     # LarkLang.text key
+    details: help.details             # LarkLang.text key
+    usages:                           # list of LarkLang.text keys
+      - help.usage1
+      - help.usage2
+    category: game|tools|community|setting
+```
+
+Shorthand format:
+
+```yaml
+<command_name>: <localization_key>;<usage_count>;<category>
+```
+
+The **middle number is the usage count** (number of `help.usage<N>` entries in the lang file). For example, `rise-rank: help;3;community` expands to `description: help.description`, `details: help.details`, `usages: [help.usage1, help.usage2, help.usage3]`, `category: community`.
+
+See `docs/plugins/larkhelp.md` for full documentation.
+
 ### Localization
 
 All user-facing text must be localized using LarkLang:
