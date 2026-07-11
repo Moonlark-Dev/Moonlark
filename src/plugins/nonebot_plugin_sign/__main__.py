@@ -101,9 +101,7 @@ async def _get_hitokoto(user_id: str) -> str:
         return await lang.text("image.hitokoto", user_id)
 
 
-async def _calc_sign_exp(
-    user_id: str, sign_days: int
-) -> dict:
+async def _calc_sign_exp(user_id: str, sign_days: int) -> dict:
     """计算并增加签到经验值。返回 (text, origin, add, now)。"""
     user = await get_user(user_id)
     level = user.get_level()
@@ -120,9 +118,7 @@ async def _calc_sign_exp(
     }
 
 
-async def _calc_sign_vim(
-    user_id: str, sign_days: int
-) -> dict:
+async def _calc_sign_vim(user_id: str, sign_days: int) -> dict:
     """计算并增加签到虚拟币。返回 (text, origin, add, now)。"""
     user = await get_user(user_id)
     level = user.get_level()
@@ -130,10 +126,7 @@ async def _calc_sign_vim(
     vim = round(
         1
         + math.sqrt(
-            math.sqrt(
-                (1000 + random.random()) * level * max(user.get_fav(), 0.1) / 5 * min(sign_days, 15) / 8
-                + 1
-            )
+            math.sqrt((1000 + random.random()) * level * max(user.get_fav(), 0.1) / 5 * min(sign_days, 15) / 8 + 1)
         )
         * 25
         * random.random(),
@@ -232,10 +225,10 @@ class SignHandler:
 
                 # 排名（基于当前已签到人数）
                 signed_today = (
-                    await session.execute(
-                        select(SignData.user_id).where(SignData.last_sign == date.today())
-                    )
-                ).scalars().all()
+                    (await session.execute(select(SignData.user_id).where(SignData.last_sign == date.today())))
+                    .scalars()
+                    .all()
+                )
                 self._rank = len(signed_today) + 1
 
                 # 第一名礼物掉落
@@ -301,9 +294,7 @@ class SignHandler:
         user = await get_user(self.user_id)
         self._templates["nickname"] = user.nickname
         self._templates["uid"] = await lang.text("image.uid", self.user_id, self.user_id)
-        self._templates["avatar"] = (
-            base64.b64encode(user.avatar).decode() if user.avatar is not None else None
-        )
+        self._templates["avatar"] = base64.b64encode(user.avatar).decode() if user.avatar is not None else None
 
         # 横版 setu 背景
         try:
