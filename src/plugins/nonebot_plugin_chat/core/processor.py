@@ -372,7 +372,10 @@ class MessageProcessor:
                 # 被提及：通过 LLM 决策是否唤醒
                 recent_text = await self.session.get_cached_messages_string(length=5)
                 recent_msgs = recent_text.splitlines() if recent_text else []
-                should_wake = await moonlark_main.handle_mention(recent_msgs)
+                session_name = await self.session.get_session_name()
+                last_msg = self.session.cached_messages[-1] if self.session.cached_messages else {}
+                nickname = last_msg.get("nickname", "") if isinstance(last_msg, dict) else ""
+                should_wake = await moonlark_main.handle_mention(recent_msgs, session_name=session_name, nickname=nickname)
                 if not should_wake:
                     return
 
