@@ -1,0 +1,24 @@
+{% extends base %}
+
+{% block header %}
+<style>
+    .avg-time {
+        float: right;
+        margin-top: -10px;
+        font-size: 200%;
+    }
+</style>
+{% endblock header %}
+
+{% block card %}
+<div class="card-body ranking">
+    {% for user in users %}
+    <span class="h3">{{ loop.index }}. {{ user.nickname }}</span>
+    <span class="avg-time">{{ user.info }}</span>
+    <br>
+    {% if not loop.last %}
+    <hr>
+    {% endif %}
+    {% endfor %}
+</div>
+{% endblock card %}

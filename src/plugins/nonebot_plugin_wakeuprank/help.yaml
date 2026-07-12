@@ -1,0 +1,3 @@
+plugin: 'wakeuprank'
+commands:
+  wakeuprank: help;3;community

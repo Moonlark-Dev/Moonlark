@@ -367,6 +367,12 @@ Moonlark 投票
 - `/waifu (今日群老婆)`
 - `/waifu divorce (离婚)`
 - `/waifu force-marry <@群员> (强娶)`
+## `wakeuprank`: 早起排行
+
+在每日 4:00-14:00 间首次发消息记录早起时间，可进行早起次数排行、平均起床时间排行和今日排行。
+- `/wakeuprank (早起次数排行)`
+- `/wakeuprank avg (平均起床时间排行)`
+- `/wakeuprank today (今日起床时间排行)`
 ## `bcsu`: 广播管理
 
 发送和管理广播消息
