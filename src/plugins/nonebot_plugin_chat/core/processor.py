@@ -375,7 +375,9 @@ class MessageProcessor:
                 session_name = await self.session.get_session_name()
                 last_msg = self.session.cached_messages[-1] if self.session.cached_messages else {}
                 nickname = last_msg.get("nickname", "") if isinstance(last_msg, dict) else ""
-                should_wake = await moonlark_main.handle_mention(recent_msgs, session_name=session_name, nickname=nickname)
+                should_wake = await moonlark_main.handle_mention(
+                    recent_msgs, session_name=session_name, nickname=nickname
+                )
                 if not should_wake:
                     return
 

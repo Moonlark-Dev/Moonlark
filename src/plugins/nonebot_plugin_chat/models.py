@@ -228,6 +228,7 @@ class EgoDecisionResponse(BaseModel):
 
 class SleepThinkResponse(BaseModel):
     """SleepController request_think 的 LLM 返回格式"""
+
     wake_up: bool = False
     reason: str = ""
 
