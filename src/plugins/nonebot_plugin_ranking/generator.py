@@ -15,9 +15,10 @@ async def find_user(ranked_data: list[RankingData], user_id: str) -> Optional[Us
             return {
                 "nickname": (await get_user(user_id)).get_nickname(),
                 "user_id": user_id,
-                "data": data["data"],
+                "data": data.get("display", data["data"]),
                 "index": index,
                 "info": data["info"] or await lang.text("image.info", user_id, data["user_id"]),
+                "display": data.get("display"),
             }
 
 
@@ -33,7 +34,7 @@ async def get_users(ranked_data: list[RankingData], user_id: str, limit: int = 7
             {
                 "nickname": nickname,
                 "info": data["info"] or await lang.text("image.info", user_id, data["user_id"]),
-                "data": data["data"],
+                "data": data.get("display", data["data"]),
             }
         )
     return users

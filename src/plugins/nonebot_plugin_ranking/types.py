@@ -6,6 +6,7 @@ class RankingData(TypedDict):
     user_id: str
     data: int | float
     info: str | None
+    display: Optional[str] = None
 
 
 class UserDataWithIndex(TypedDict):
@@ -14,6 +15,7 @@ class UserDataWithIndex(TypedDict):
     data: int | float
     index: int
     info: str | None
+    display: Optional[str] = None
 
 
 class RankingResponse(TypedDict):
