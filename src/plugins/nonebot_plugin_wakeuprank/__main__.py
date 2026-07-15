@@ -115,9 +115,7 @@ async def _filter_ranked_data(
     if group and group_id:
         async with get_session() as session:
             result = await session.execute(
-                select(LastSeenRecord.user_id)
-                .where(LastSeenRecord.session_id == group_id)
-                .distinct()
+                select(LastSeenRecord.user_id).where(LastSeenRecord.session_id == group_id).distinct()
             )
             group_user_ids = {row[0] for row in result}
         if allowed_ids is not None:
@@ -180,7 +178,9 @@ async def _(
                 avg_time_str = await _fmt_time(avg_offset)
             else:
                 avg_time_str = "00:00:00"
-            ranked_data.append({"user_id": uid, "data": count, "info": await lang.text("wakeuprank.avg_time", user_id, avg_time_str)})
+            ranked_data.append(
+                {"user_id": uid, "data": count, "info": await lang.text("wakeuprank.avg_time", user_id, avg_time_str)}
+            )
 
     ranked_data = await _filter_ranked_data(ranked_data, registered, group_flag, group_id)
     if not ranked_data:
@@ -223,20 +223,21 @@ async def _(
         user_times[uid].append(offset)
 
     user_avg: dict[str, tuple[float, int]] = {
-        uid: (sum(offsets) / len(offsets), len(offsets))
-        for uid, offsets in user_times.items()
+        uid: (sum(offsets) / len(offsets), len(offsets)) for uid, offsets in user_times.items()
     }
     sorted_users = sorted(user_avg.items(), key=lambda x: x[1][0])
 
     ranked_data: list[RankingData] = []
     for uid, (avg_seconds, count) in sorted_users:
         display_time = await _fmt_time_no_seconds(avg_seconds)
-        ranked_data.append({
-            "user_id": uid,
-            "data": round(avg_seconds),
-            "display": display_time,
-            "info": await lang.text("wakeuprank.record_count", user_id, count),
-        })
+        ranked_data.append(
+            {
+                "user_id": uid,
+                "data": round(avg_seconds),
+                "display": display_time,
+                "info": await lang.text("wakeuprank.record_count", user_id, count),
+            }
+        )
 
     ranked_data = await _filter_ranked_data(ranked_data, registered, group_flag, group_id)
     if not ranked_data:
