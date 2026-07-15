@@ -180,7 +180,7 @@ async def _(
                 avg_time_str = await _fmt_time(avg_offset)
             else:
                 avg_time_str = "00:00:00"
-            ranked_data.append({"user_id": uid, "data": count, "info": f"平均起床时间：{avg_time_str}"})
+            ranked_data.append({"user_id": uid, "data": count, "info": await lang.text("wakeuprank.avg_time", user_id, avg_time_str)})
 
     ranked_data = await _filter_ranked_data(ranked_data, registered, group_flag, group_id)
     if not ranked_data:
@@ -235,7 +235,7 @@ async def _(
             "user_id": uid,
             "data": round(avg_seconds),
             "display": display_time,
-            "info": f"记录的次数：{count}",
+            "info": await lang.text("wakeuprank.record_count", user_id, count),
         })
 
     ranked_data = await _filter_ranked_data(ranked_data, registered, group_flag, group_id)
