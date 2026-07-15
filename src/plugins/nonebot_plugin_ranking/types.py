@@ -1,12 +1,12 @@
 from typing import Optional
-from typing_extensions import TypedDict
+from typing_extensions import NotRequired, TypedDict
 
 
 class RankingData(TypedDict):
     user_id: str
     data: int | float
-    info: str | None
-    display: Optional[str] = None
+    info: Optional[str]
+    display: NotRequired[str]
 
 
 class UserDataWithIndex(TypedDict):
@@ -14,8 +14,8 @@ class UserDataWithIndex(TypedDict):
     nickname: str
     data: int | float
     index: int
-    info: str | None
-    display: Optional[str] = None
+    info: Optional[str]
+    display: NotRequired[str]
 
 
 class RankingResponse(TypedDict):
