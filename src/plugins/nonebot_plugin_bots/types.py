@@ -19,9 +19,9 @@ from typing import Literal, Optional
 from typing_extensions import TypedDict
 
 
-class OnlineBotStatus(TypedDict):
+class BotFullStatus(TypedDict):
     user_id: str
-    online: Literal[True]
+    online: bool
     adapter_name: str
     good: bool
     nickname: Optional[str]
@@ -32,4 +32,4 @@ class OfflineBotStatus(TypedDict):
     online: Literal[False]
 
 
-BotStatus = OfflineBotStatus | OnlineBotStatus
+BotStatus = OfflineBotStatus | BotFullStatus

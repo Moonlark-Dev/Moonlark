@@ -14,7 +14,7 @@ from typing import Optional, cast
 
 from nonebot_plugin_larkutils import get_group_id, get_user_id
 from .config import config
-from .types import BotStatus, OnlineBotStatus
+from .types import BotStatus, BotFullStatus
 from .models import UserBotPrivateChatSettings
 
 from nonebot import get_bots
@@ -28,7 +28,7 @@ async def get_bot_status(user_id: str, all_fields: bool = False) -> BotStatus:
         bot = get_bot(user_id)
     except KeyError:
         if all_fields:
-            return OnlineBotStatus(
+            return BotFullStatus(
                 user_id=user_id,
                 adapter_name="",
                 online=False,
@@ -54,7 +54,7 @@ async def get_bot_status(user_id: str, all_fields: bool = False) -> BotStatus:
     except ActionFailed:
         good = False
         nickname = None
-    return OnlineBotStatus(
+    return BotFullStatus(
         user_id=user_id,
         adapter_name=bot.adapter.get_name(),
         online=True,
