@@ -9,7 +9,7 @@ from nonebot.adapters import Bot, Event
 from nonebot.exception import IgnoredException, ActionFailed
 from nonebot import get_bot
 from nonebot import get_app
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from typing import Optional, cast
 
 from nonebot_plugin_larkutils import get_group_id, get_user_id
@@ -23,20 +23,30 @@ from nonebot_plugin_orm import get_session
 sessions: dict[str, tuple[str, float]] = {}
 
 
-async def get_bot_status(user_id: str) -> BotStatus:
+async def get_bot_status(user_id: str, all_fields: bool = False) -> BotStatus:
     try:
         bot = get_bot(user_id)
     except KeyError:
+        if all_fields:
+            return OnlineBotStatus(
+                user_id=user_id,
+                adapter_name="",
+                online=False,
+                good=False,
+                nickname="",
+            )
         return {"user_id": user_id, "online": False}
     try:
         if isinstance(bot, QQBot):
             good = bot.ready
             nickname = bot.self_info.username
         elif isinstance(bot, V11Bot):
-            good = (await bot.get_status())["good"]
+            status = await bot.get_status()
+            good = status.get("good", False)
             nickname = (await bot.get_login_info()).get("nickname")
         elif isinstance(bot, V12Bot):
-            good = (await bot.get_status())["good"]
+            status = await bot.get_status()
+            good = status.get("good", False)
             nickname = (await bot.get_self_info())["user_name"]
         else:
             good = False
@@ -65,12 +75,24 @@ async def is_bot_online(bot_id: str) -> bool:
     return bool(status["online"] and status.get("good"))
 
 
+async def get_single_bot_status(code: str, all_fields: bool = False) -> BotStatus:
+    """获取单个 bot 的状态，bot_id 不存在时抛出 HTTPException 404"""
+    if code not in config.bots_list:
+        raise HTTPException(status_code=404, detail=f"Bot {code} not found")
+    return await get_bot_status(config.bots_list[code], all_fields=all_fields)
+
+
 @cast(FastAPI, get_app()).get("/api/bots")
-async def bots_status(_: Request) -> dict[str, BotStatus]:
+async def bots_status(_: Request, all_fields: bool = False) -> dict[str, BotStatus]:
     bots: dict[str, BotStatus] = {}
     for code, user_id in config.bots_list.items():
-        bots[code] = await get_bot_status(user_id)
+        bots[code] = await get_bot_status(user_id, all_fields=all_fields)
     return bots
+
+
+@cast(FastAPI, get_app()).get("/api/bots/{bot_id}")
+async def bot_status(bot_id: str, _: Request, all_fields: bool = False) -> BotStatus:
+    return await get_single_bot_status(bot_id, all_fields=all_fields)
 
 
 def assign_session(session_id: str, bot_id: str) -> None:
