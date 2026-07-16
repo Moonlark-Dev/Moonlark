@@ -33,10 +33,12 @@ async def get_bot_status(user_id: str) -> BotStatus:
             good = bot.ready
             nickname = bot.self_info.username
         elif isinstance(bot, V11Bot):
-            good = (await bot.get_status())["good"]
+            status = await bot.get_status()
+            good = status.get("good", False)
             nickname = (await bot.get_login_info()).get("nickname")
         elif isinstance(bot, V12Bot):
-            good = (await bot.get_status())["good"]
+            status = await bot.get_status()
+            good = status.get("good", False)
             nickname = (await bot.get_self_info())["user_name"]
         else:
             good = False

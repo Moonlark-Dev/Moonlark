@@ -159,7 +159,16 @@
 <ul class="list-group list-group-flush">
   {% for node_id, node in admin_status.nodes.items() %}
   <li class="list-group-item d-flex justify-content-between align-items-center">
-    {% if node.online %}
+    {% if node.online and not node.good %}
+    <div>
+      <span class="ms-2">{{ node.nickname }} ({{ node_id }})</span>
+      <small class="text-muted d-block">
+        <span class="badge bg-info">{{ node.adapter_name }}</span>
+        {{ node.user_id }}
+      </small>
+    </div>
+    <span class="badge bg-warning">{{ text.abnormal }}</span>
+    {% elif node.online %}
     <div>
       <span class="ms-2">{{ node.nickname }} ({{ node_id }})</span>
       <small class="text-muted d-block">
