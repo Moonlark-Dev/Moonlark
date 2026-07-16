@@ -93,6 +93,3 @@ async def _(request: Request, cave_id: int) -> RandomCaveResponse:
             images=[img async for img in get_image_data(cave.id)],
         )
     return data
-
-
-
