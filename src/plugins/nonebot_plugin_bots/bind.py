@@ -55,9 +55,9 @@ async def get_group_id_from_event(bot: Bot, event: Event) -> str | None:
 async def try_process_bind_code(bot: Bot, event: Event, session_id: str) -> bool:
     """
     检测并处理绑定验证码。
-    
+
     当任何 bot 检测到消息中含有绑定验证码时，尝试完成绑定。
-    
+
     返回 True 表示已处理绑定（应阻断后续处理），False 表示未检测到绑定码。
     """
     try:
@@ -76,9 +76,7 @@ async def try_process_bind_code(bot: Bot, event: Event, session_id: str) -> bool
         # 查找绑定了此验证码的记录
         from sqlalchemy import select
 
-        result = await session.execute(
-            select(GroupBind).where(GroupBind.bind_code == code)
-        )
+        result = await session.execute(select(GroupBind).where(GroupBind.bind_code == code))
         bind_record = result.scalar_one_or_none()
 
         if bind_record is None:
@@ -87,7 +85,9 @@ async def try_process_bind_code(bot: Bot, event: Event, session_id: str) -> bool
 
         # 检查验证码是否过期
         if bind_record.bind_code_created_at is not None:
-            elapsed = (datetime.now(timezone.utc) - bind_record.bind_code_created_at.replace(tzinfo=timezone.utc)).total_seconds()
+            elapsed = (
+                datetime.now(timezone.utc) - bind_record.bind_code_created_at.replace(tzinfo=timezone.utc)
+            ).total_seconds()
             if elapsed > config.bots_bind_group_timeout:
                 logger.info(f"[Bind] 验证码 {code} 已过期 ({elapsed:.0f}s > {config.bots_bind_group_timeout}s)")
                 return True  # 过期，阻断消息
@@ -130,21 +130,19 @@ async def handle_bind_group_id(bot: Bot, event: Event) -> None:
     """处理 /bind-group-id 命令"""
     code = generate_bind_code()
     now = datetime.now(timezone.utc)
-    
+
     async with get_session() as session:
         from sqlalchemy import select
-        
+
         if isinstance(bot, V11Bot):
             group_qq = await get_group_id_from_event(bot, event)
             if not group_qq:
                 await bind_group.finish("无法获取群 QQ 号，请稍后再试")
-            
+
             # 检查是否已有绑定记录（通过 group_qq_number 查找）
-            result = await session.execute(
-                select(GroupBind).where(GroupBind.group_qq_number == group_qq)
-            )
+            result = await session.execute(select(GroupBind).where(GroupBind.group_qq_number == group_qq))
             existing = result.scalar_one_or_none()
-            
+
             if existing:
                 # 更新验证码
                 existing.bind_code = code
@@ -160,20 +158,18 @@ async def handle_bind_group_id(bot: Bot, event: Event) -> None:
                 )
                 session.add(bind_record)
                 logger.info(f"[Bind] 创建群 {group_qq} 的绑定记录")
-            
+
             await session.commit()
-            
+
         elif isinstance(bot, QQBot):
             group_oid = await get_group_id_from_event(bot, event)
             if not group_oid:
                 await bind_group.finish("无法获取群 openid，请稍后再试")
-            
+
             # QQ bot 发起的绑定：检查是否已有记录
-            result = await session.execute(
-                select(GroupBind).where(GroupBind.group_openid == group_oid)
-            )
+            result = await session.execute(select(GroupBind).where(GroupBind.group_openid == group_oid))
             existing = result.scalar_one_or_none()
-            
+
             if existing:
                 existing.bind_code = code
                 existing.bind_code_created_at = now
@@ -187,9 +183,9 @@ async def handle_bind_group_id(bot: Bot, event: Event) -> None:
                 )
                 session.add(bind_record)
                 logger.info(f"[Bind] QQBot 创建群 openid={group_oid} 的绑定记录")
-            
+
             await session.commit()
-            
+
         else:
             await bind_group.finish("当前 bot 类型不支持群绑定")
             return

@@ -118,15 +118,14 @@ def _is_self_bot_message(user_id: str) -> bool:
 async def _lookup_bind_by_ob11_group(session_id: str) -> Optional[GroupBind]:
     """通过 OB11 的 session_id 查找 GroupBind"""
     from sqlalchemy import select
+
     # OB11 session_id 格式: onebot_v11_{qq_group_number}
     try:
         parts = session_id.rsplit("_", 1)
         if len(parts) == 2 and parts[0].startswith("onebot"):
             group_qq = parts[1]
             async with get_session() as db_session:
-                result = await db_session.execute(
-                    select(GroupBind).where(GroupBind.group_qq_number == group_qq)
-                )
+                result = await db_session.execute(select(GroupBind).where(GroupBind.group_qq_number == group_qq))
                 return result.scalar_one_or_none()
     except Exception:
         pass
@@ -136,14 +135,13 @@ async def _lookup_bind_by_ob11_group(session_id: str) -> Optional[GroupBind]:
 async def _lookup_bind_by_qqbot_group(session_id: str) -> Optional[GroupBind]:
     """通过 QQBot 的 session_id 查找 GroupBind"""
     from sqlalchemy import select
+
     try:
         # QQBot session_id 格式: qq_{group_openid}
         if session_id.startswith("qq_"):
             group_oid = session_id[3:]
             async with get_session() as db_session:
-                result = await db_session.execute(
-                    select(GroupBind).where(GroupBind.group_openid == group_oid)
-                )
+                result = await db_session.execute(select(GroupBind).where(GroupBind.group_openid == group_oid))
                 return result.scalar_one_or_none()
     except Exception:
         pass
@@ -160,7 +158,7 @@ async def _get_bound_group(session_id: str) -> Optional[GroupBind]:
 
 def _is_qqbot_at_mentioned_in_ob11(event: Event) -> bool:
     """在 OB11 事件中检查 QQ 官方 bot 是否被 @
-    
+
     通过 bots_appid_map 的值（QQ 号）和 bots_list 的值来匹配 @ 目标。
     """
     # 获取所有已知的 QQ bot 的 QQ 号
@@ -185,12 +183,10 @@ def _is_qqbot_at_mentioned_in_ob11(event: Event) -> bool:
     return False
 
 
-def _should_bot_handle_in_shared_group(
-    bot: Bot, event: Event, bind: GroupBind
-) -> bool:
+def _should_bot_handle_in_shared_group(bot: Bot, event: Event, bind: GroupBind) -> bool:
     """
     在同时含有 OB11 和 QQBot 的群聊中，判断当前 bot 是否应该处理此消息。
-    
+
     规则：
     - 如果 @ 了 QQ bot → QQBot 处理
     - 否则 → OB11 优先处理
