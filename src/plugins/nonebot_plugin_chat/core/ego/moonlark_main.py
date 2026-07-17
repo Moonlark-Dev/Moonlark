@@ -380,7 +380,7 @@ class MoonlarkMain:
             logger.warning(f"[MoonlarkMain] 获取备忘录失败: {e}")
             return "获取备忘录失败。"
 
-    async def handle_mention(self, chat_context: list) -> bool:
+    async def handle_mention(self, chat_context: list, session_name: str = "", nickname: str = "") -> bool:
         """当被 @ 或提及时调用。
 
         若不在睡眠状态，返回 False（正常回复）。
@@ -388,7 +388,7 @@ class MoonlarkMain:
         """
         if not self.state["sleep_mode"]:
             return False
-        return await self.sleep_controller.handle_mention(chat_context)
+        return await self.sleep_controller.handle_mention(chat_context, session_name=session_name, nickname=nickname)
 
     # ========================================================================
     # 状态收集

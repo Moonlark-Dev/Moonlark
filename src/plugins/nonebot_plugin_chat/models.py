@@ -229,7 +229,8 @@ class EgoDecisionResponse(BaseModel):
 class SleepThinkResponse(BaseModel):
     """SleepController request_think 的 LLM 返回格式"""
 
-    sleep_decision: Literal["stay_sleep", "wake_up"]
+    wake_up: bool = False
+    reason: str = ""
 
 
 class SelfActionDurationResponse(BaseModel):

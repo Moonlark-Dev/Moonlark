@@ -114,9 +114,9 @@ class SleepController:
                 reasoning_effort="low",
             )
 
-            if result.sleep_decision == "wake_up":
-                await self.wake_up("睡眠决策")
-                self.moonlark_main._update_decision_history("wake_up(原因: 睡眠决策)")
+            if result.wake_up:
+                await self.wake_up(result.reason or "睡眠决策")
+                self.moonlark_main._update_decision_history(f"wake_up(原因: {result.reason or '睡眠决策'})")
             else:
                 # 决定继续睡：检查是否需要清除上下文
                 await self._maybe_clear_context(sleep_duration)
@@ -152,7 +152,7 @@ class SleepController:
             except Exception as e:
                 logger.exception(f"[SleepController] 重置会话 {session_id} 消息队列失败: {e}")
 
-    async def handle_mention(self, chat_context: list) -> bool:
+    async def handle_mention(self, chat_context: list, session_name: str = "", nickname: str = "") -> bool:
         """当被提及时调用。返回 True 表示已唤醒，应正常回复。
 
         内部处理 wake_up 和状态更新。
@@ -177,7 +177,15 @@ class SleepController:
             should_wake = response.strip().lower() == "wake_up"
 
             if should_wake:
-                await self.wake_up("被提及")
+                reason = "被提及"
+                if session_name or nickname:
+                    parts = []
+                    if session_name:
+                        parts.append(f"会话: {session_name}")
+                    if nickname:
+                        parts.append(f"用户: {nickname}")
+                    reason += f" ({', '.join(parts)})"
+                await self.wake_up(reason)
                 return True
             return False
 
