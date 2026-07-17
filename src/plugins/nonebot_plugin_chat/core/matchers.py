@@ -1,38 +1,34 @@
 from datetime import datetime
 
-from nonebot import on_message
-from nonebot.adapters.onebot.v11 import NoticeEvent
+from nonebot import on_message, on_notice
+from nonebot.adapters import Bot, Event
+from nonebot.adapters.onebot.v11 import (
+    Bot as OB11Bot,
+    GroupRecallNoticeEvent,
+    Message as OB11Message,
+    MessageSegment as OB11MessageSegment,
+    NoticeEvent,
+)
+from nonebot.adapters.onebot.v11.event import FriendRecallNoticeEvent, PokeNotifyEvent
+from nonebot.log import logger
+from nonebot.matcher import Matcher
 from nonebot.typing import T_State
 from nonebot_plugin_alconna import UniMessage, get_target
-from nonebot.adapters.onebot.v11.event import FriendRecallNoticeEvent
-from nonebot_plugin_chat.utils.message import parse_dict_message
-from nonebot_plugin_larkuser import get_nickname
-from nonebot_plugin_orm import get_session
-
-from nonebot_plugin_larkuser import get_user
-from nonebot import on_message, on_notice
-from nonebot.adapters.onebot.v11 import Bot as OB11Bot
-from nonebot.adapters.onebot.v11 import Message as OB11Message, MessageSegment as OB11MessageSegment
-from nonebot.adapters import Event, Bot
-from nonebot.adapters.onebot.v11.event import PokeNotifyEvent
-from nonebot_plugin_larkutils import get_user_id, get_group_id
+from nonebot_plugin_larkuser import get_nickname, get_user
+from nonebot_plugin_larkutils import get_group_id, get_user_id
 from nonebot_plugin_larkutils.subaccount import get_main_account
-from nonebot_plugin_larkutils.user import private_message
 from nonebot_plugin_message_summary.hash_utils import compute_message_hash
 from nonebot_plugin_message_summary.models import GroupMessage
 from nonebot_plugin_openai import check_ai_enabled
+from nonebot_plugin_orm import get_session
 from sqlalchemy import select
-from nonebot.log import logger
-from nonebot.matcher import Matcher
-from nonebot.adapters.onebot.v11 import GroupRecallNoticeEvent
 
-from .session import create_group_session, create_private_session, get_session_directly
-from .ego import moonlark_main
-
-from ..utils.group import enabled_group, parse_message_to_string
-from ..utils.gift_drop import handle_gift_drop
 from ..config import config
 from ..models import PrivateChatSession
+from ..utils.gift_drop import handle_gift_drop
+from ..utils.group import enabled_group, enabled_private_chat
+from .ego import moonlark_main
+from .session import create_group_session, create_private_session, get_session_directly
 
 
 async def record_private_chat_session(user_id: str, session_key: str, bot_id: str) -> None:
@@ -84,7 +80,7 @@ async def _(
         logger.exception(e)
 
 
-@on_message(priority=50, rule=private_message, block=False).handle()
+@on_message(priority=50, rule=enabled_private_chat, block=False).handle()
 async def _(
     event: Event,
     matcher: Matcher,
@@ -162,7 +158,7 @@ async def _(event: NoticeEvent, bot: OB11Bot, platform_id: str = get_group_id())
             select(GroupMessage)
             .where(GroupMessage.group_id == group_id)
             .where(GroupMessage.message_hash == msg_hash)
-            .limit(1)
+            .limit(1),
         )
         cached = result.first()
         message = (
@@ -183,7 +179,7 @@ async def _(event: NoticeEvent, bot: OB11Bot, platform_id: str = get_group_id())
 
 @on_notice(block=False).handle()
 async def _(
-    bot: Bot, event: FriendRecallNoticeEvent, user_id: str = get_user_id(), session_key: str = get_group_id()
+    bot: Bot, event: FriendRecallNoticeEvent, user_id: str = get_user_id(), session_key: str = get_group_id(),
 ) -> None:
     message_id = str(event.message_id)
     session = await create_private_session(session_key, get_target(event), bot)

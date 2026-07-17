@@ -113,6 +113,10 @@ command:
   switch:
     enabled: 已启用
     disabled: 已禁用
+  switch_private:
+    enabled: 私聊 Chat 功能已启用
+    disabled: 私聊 Chat 功能已禁用
+  private_only_switch: 私聊中仅支持 chat on / chat off / chat switch 命令。
   dropping:
     enabled: 已启用礼物掉落
     disabled: 已禁用礼物掉落
