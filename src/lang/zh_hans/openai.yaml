@@ -30,3 +30,21 @@ model:
       /model <模型名> - 更换默认模型
       /model <模型名> <应用标识> - 设置应用模型
       /model :default: <应用标识> - 删除应用配置
+
+help_ai_whitelist:
+  description: AI 白名单管理
+  details: 管理 QQ 节点上允许使用 AI 功能的群聊白名单（仅限超级用户）
+  usage1: ai-whitelist add <群号> (添加群聊到白名单)
+  usage2: ai-whitelist remove <群号> (从白名单移除群聊)
+  usage3: ai-whitelist list (查看白名单)
+  usage4: ai-whitelist (查看使用帮助)
+
+ai_whitelist:
+  no_permission: "权限不足：只有 superuser 可以使用此命令"
+  list: |
+    📋 AI 功能白名单群聊:
+    {0}
+  list_empty: "📋 当前 AI 功能白名单为空"
+  add: "✅ 已将群聊 {0} 添加到 AI 功能白名单"
+  remove: "✅ 已将群聊 {0} 从 AI 功能白名单移除"
+  remove_not_found: "⚠️ 群聊 {0} 不在 AI 功能白名单中"

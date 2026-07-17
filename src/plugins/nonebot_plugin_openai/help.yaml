@@ -1,3 +1,4 @@
 plugin: openai
 commands:
   model: help_model;4;superuser
+  ai-whitelist: help_ai_whitelist;4;superuser
