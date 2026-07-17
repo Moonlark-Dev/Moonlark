@@ -35,7 +35,10 @@ from .tools.browser import browser_tool
 
 
 async def group_message(event: Event) -> bool:
-    return event.get_user_id() != event.get_session_id()
+    try:
+        return event.get_user_id() != event.get_session_id()
+    except (ValueError, NotImplementedError):
+        return False
 
 
 async def enabled_group(event: Event, group_id: str = get_group_id()) -> bool:
@@ -46,10 +49,21 @@ async def enabled_group(event: Event, group_id: str = get_group_id()) -> bool:
 
 
 async def enabled_private_chat(event: Event, user_id: str = get_user_id()) -> bool:
-    if event.get_user_id() == event.get_session_id():
-        async with get_session() as session:
-            g = await session.get(PrivateChatConfig, {"user_id": user_id})
-            return g is not None and g.enabled
+    try:
+        if event.get_user_id() == event.get_session_id():
+            async with get_session() as session:
+                g = await session.get(PrivateChatConfig, {"user_id": user_id})
+                return g is not None and g.enabled
+    except (ValueError, NotImplementedError):
+        pass
+    # QQ adapter C2C messages: get_user_id() returns openid, get_session_id() returns "friend_{openid}"
+    if event.__class__.__module__.startswith("nonebot.adapters.qq"):
+        from nonebot.adapters.qq.event import C2CMessageCreateEvent
+
+        if isinstance(event, C2CMessageCreateEvent):
+            async with get_session() as session:
+                g = await session.get(PrivateChatConfig, {"user_id": user_id})
+                return g is not None and g.enabled
     return False
 
 
@@ -79,7 +93,7 @@ class LinkParser:
             try:
                 description = await self.get_description(link)
                 self.message = (
-                    f"{self.message[:link_match.start()]}{link}({description}){self.message[link_match.end():]}"
+                    f"{self.message[: link_match.start()]}{link}({description}){self.message[link_match.end() :]}"
                 )
             except BrowserErrorOccurred:
                 logger.warning(traceback.format_exc())

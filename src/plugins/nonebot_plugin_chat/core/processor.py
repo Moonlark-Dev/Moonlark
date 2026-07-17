@@ -455,11 +455,21 @@ class MessageProcessor:
         self.session.last_activate = datetime.now()
         self.consecutive_message_count += 1
         message = await self.session.format_message(message_content)
-        if reply_message_id:
+        if reply_message_id is not None:
+            reply_message_id = str(reply_message_id)
             message = message.reply(reply_message_id)
         receipt = await message.send(target=self.session.target, bot=self.session.bot)
         # 记录回应用时（使用 reply_message_id 查找对应的原消息）
         self._record_reply_timing(reply_message_id)
+
+        # 兼容处理：msg_ids[0] 可能是 dict 或 pydantic model
+        msg_first = receipt.msg_ids[0]
+        if isinstance(msg_first, dict):
+            message_id = msg_first.get("message_id", "")
+            sent_msg_id = msg_first.get("message_id")
+        else:
+            message_id = getattr(msg_first, "id", "")
+            sent_msg_id = getattr(msg_first, "id", None)
 
         # 记录 Moonlark 自己发送的消息到缓存
         self_msg: CachedMessage = {
@@ -468,7 +478,7 @@ class MessageProcessor:
             "send_time": datetime.now(),
             "user_id": "",
             "self": True,
-            "message_id": receipt.msg_ids[0].get("message_id", ""),
+            "message_id": message_id,
             "images": [],
         }
         self.session.cached_messages.append(self_msg)
@@ -484,7 +494,7 @@ class MessageProcessor:
         return (
             await self.session.text(
                 "message.sent",
-                receipt.msg_ids[0].get("message_id"),
+                sent_msg_id or "",
                 len(message_content),
                 self.consecutive_message_count,
                 (

@@ -8,5 +8,5 @@ parameters:
     description: |
       要回复的消息的**消息 ID**，不指定则不会对有关消息进行引用。
       你也可以通过在这个参数填入 `send_message` 工具中返回的消息来引用你自己发送的消息。
-    type: integer
+    type: string
     required: false
