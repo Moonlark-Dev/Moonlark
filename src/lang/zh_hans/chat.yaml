@@ -113,10 +113,6 @@ command:
   switch:
     enabled: 已启用
     disabled: 已禁用
-  switch_private:
-    enabled: 私聊 Chat 功能已启用
-    disabled: 私聊 Chat 功能已禁用
-  private_only_switch: 私聊中仅支持 chat on / chat off / chat switch 命令。
   dropping:
     enabled: 已启用礼物掉落
     disabled: 已禁用礼物掉落
@@ -837,9 +833,43 @@ self_action:
       }}
     user: |
       活动描述：{0}
-      活动结果：
-      {1}
-      请压缩结果并生成关键词和过期时间。
+       活动结果：
+       {1}
+       请压缩结果并生成关键词和过期时间。
+
+private_chat_whitelist:
+  no_permission: "权限不足：只有 superuser 可以使用此命令"
+  usage: |
+    📝 私聊 Chat 白名单管理
+
+    使用方法:
+      /private-chat-whitelist - 查看白名单列表
+      /private-chat-whitelist add <用户ID> - 添加用户到白名单
+      /private-chat-whitelist remove <用户ID> - 从白名单移除用户
+      /private-chat-whitelist enable <用户ID> - 启用用户私聊 Chat
+      /private-chat-whitelist disable <用户ID> - 禁用用户私聊 Chat
+  empty: "📋 白名单为空"
+  list: |
+    📋 私聊 Chat 白名单列表
+
+    {0}
+
+    共 {1} 个用户
+  already_exists: "⚠️ 用户 {0} 已在白名单中"
+  added: "✅ 已将用户 {0} 添加到白名单"
+  not_found: "⚠️ 未找到用户 {0}"
+  removed: "✅ 已将用户 {0} 从白名单移除"
+  enabled: "✅ 已启用用户 {0} 的私聊 Chat 功能"
+  disabled: "✅ 已禁用用户 {0} 的私聊 Chat 功能"
+
+help_private_chat_whitelist:
+  description: 私聊 Chat 白名单管理
+  details: 管理可在私聊中使用 Chat 功能的用户白名单（仅限超级用户）
+  usage1: private-chat-whitelist (查看白名单)
+  usage2: "private-chat-whitelist add <用户ID> (添加用户)"
+  usage3: "private-chat-whitelist remove <用户ID> (移除用户)"
+  usage4: "private-chat-whitelist enable <用户ID> (启用)"
+  usage5: "private-chat-whitelist disable <用户ID> (禁用)"
 
 
 

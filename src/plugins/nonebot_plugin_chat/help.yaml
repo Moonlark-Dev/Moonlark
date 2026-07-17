@@ -1,4 +1,5 @@
 plugin: 'chat'
 commands:
   chat: help;16;community
+  private-chat-whitelist: help_private_chat_whitelist;5;setting
   rua: help_rua;7;community

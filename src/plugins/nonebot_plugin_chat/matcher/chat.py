@@ -18,7 +18,7 @@
 import json
 
 from nonebot import on_command
-from nonebot.adapters import Bot, Event, Message
+from nonebot.adapters import Bot, Message
 from nonebot.matcher import Matcher
 from nonebot.params import CommandArg
 from nonebot_plugin_larkutils import get_group_id, get_user_id
@@ -28,50 +28,34 @@ from nonebot_plugin_chat.core.session import get_session_directly, group_disable
 from nonebot_plugin_chat.core.session.base import BaseSession
 
 from ..lang import lang
-from ..models import ChatGroup, PrivateChatConfig
+from ..models import ChatGroup
 from ..utils.timing_stats import timing_stats_manager
 
 
 class CommandHandler:
     def __init__(
-        self,
-        matcher: Matcher,
-        bot: Bot,
-        session: async_scoped_session,
-        message: Message,
-        group_id: str,
-        user_id: str,
-        is_private_chat: bool = False,
+        self, mathcer: Matcher, bot: Bot, session: async_scoped_session, message: Message, group_id: str, user_id: str,
     ):
-        self.matcher = matcher
+        self.matcher = mathcer
         self.bot = bot
         self.session = session
         self.group_id = group_id
         self.user_id = user_id
         self.argv = message.extract_plain_text().split(" ")
-        self.is_private_chat = is_private_chat
-        self.group_config: ChatGroup | None = None
-        self.private_config: PrivateChatConfig | None = None
+        self.group_config = ChatGroup(group_id=self.group_id, enabled=False)
 
     async def setup(self) -> "CommandHandler":
-        if self.is_private_chat:
-            self.private_config = (await self.session.get(PrivateChatConfig, {"user_id": self.user_id})) or PrivateChatConfig(
-                user_id=self.user_id, enabled=False,
-            )
-        else:
-            from nonebot_plugin_openai import is_ai_enabled_for_group
+        from nonebot_plugin_openai import is_ai_enabled_for_group
 
-            if not await is_ai_enabled_for_group(self.bot, self.group_id):
-                await lang.finish("command.not_available", self.user_id)
-            self.group_config = (await self.session.get(ChatGroup, {"group_id": self.group_id})) or ChatGroup(
-                group_id=self.group_id, enabled=False,
-            )
+        if not await is_ai_enabled_for_group(self.bot, self.group_id):
+            await lang.finish("command.not_available", self.user_id)
+        self.group_config = (await self.session.get(ChatGroup, {"group_id": self.group_id})) or ChatGroup(
+            group_id=self.group_id, enabled=False,
+        )
         return self
 
     def is_group_enabled(self) -> bool:
-        if self.is_private_chat:
-            return self.private_config.enabled if self.private_config else False
-        return self.group_config.enabled if self.group_config else False
+        return self.group_config.enabled
 
     async def handle_switch(self) -> None:
         if self.is_group_enabled():
@@ -84,27 +68,15 @@ class CommandHandler:
         await self.session.commit()
 
     async def handle_off(self) -> None:
-        if self.is_private_chat:
-            self.private_config.enabled = False
-            await self.session.merge(self.private_config)
-            await self.session.commit()
-            await lang.finish("command.switch_private.disabled", self.user_id)
-        else:
-            self.group_config.enabled = False
-            await self.merge_group_config()
-            await group_disable(self.group_id)
-            await lang.finish("command.switch.disabled", self.user_id)
+        self.group_config.enabled = False
+        await self.merge_group_config()
+        await group_disable(self.group_id)
+        await lang.finish("command.switch.disabled", self.user_id)
 
     async def handle_on(self) -> None:
-        if self.is_private_chat:
-            self.private_config.enabled = True
-            await self.session.merge(self.private_config)
-            await self.session.commit()
-            await lang.finish("command.switch_private.enabled", self.user_id)
-        else:
-            self.group_config.enabled = True
-            await self.merge_group_config()
-            await lang.finish("command.switch.enabled", self.user_id)
+        self.group_config.enabled = True
+        await self.merge_group_config()
+        await lang.finish("command.switch.enabled", self.user_id)
 
     async def handle_desire(self) -> None:
         session = await self.get_group_session()
@@ -326,12 +298,6 @@ class CommandHandler:
         await lang.finish("command.compact.success", self.user_id, target_session_id)
 
     async def handle(self) -> None:
-        if not self.argv or not self.argv[0]:
-            await lang.finish("command.no_argv", self.user_id)
-
-        if self.is_private_chat and self.argv[0] not in ("switch", "on", "off"):
-            await lang.finish("command.private_only_switch", self.user_id)
-
         match self.argv[0]:
             case "switch":
                 await self.handle_switch()
@@ -378,13 +344,11 @@ class CommandHandler:
 async def _(
     matcher: Matcher,
     bot: Bot,
-    event: Event,
     session: async_scoped_session,
     message: Message = CommandArg(),
     group_id: str = get_group_id(),
     user_id: str = get_user_id(),
 ) -> None:
-    is_private_chat = event.get_session_id() == event.get_user_id()
-    handler = CommandHandler(matcher, bot, session, message, group_id, user_id, is_private_chat)
+    handler = CommandHandler(matcher, bot, session, message, group_id, user_id)
     await handler.setup()
     await handler.handle()
