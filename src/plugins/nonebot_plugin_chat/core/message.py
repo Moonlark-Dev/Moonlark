@@ -139,25 +139,9 @@ class MessageQueue:
                 context_reset = True
 
             if context_reset:
-                await self._inject_instant_memories(session_id)
+                await self.processor._inject_pending_notes_to_openai_messages()
         except Exception as e:
             logger.warning(f"从数据库恢复消息队列失败: {e}")
-
-    async def _inject_instant_memories(self, session_id: str) -> None:
-        from ..utils.instant_mem import get_memories_for_session, format_memories_for_injection
-
-        memories = get_memories_for_session(session_id)
-        if not memories:
-            return
-
-        injected_text = format_memories_for_injection(memories)
-        if not injected_text:
-            return
-
-        if self.fetcher is None:
-            self.fetcher = await self._create_fetcher()
-        self.fetcher.session.messages.insert(1, generate_message(injected_text, "user"))
-        logger.info(f"[InstantMemory] 已注入 {len(memories)} 条即时记忆到 {session_id}")
 
     async def _reset_and_clear_db(self, group_id: str) -> None:
         if self.fetcher is not None:

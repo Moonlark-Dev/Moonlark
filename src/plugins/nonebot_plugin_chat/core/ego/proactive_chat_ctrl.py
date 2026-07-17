@@ -22,7 +22,7 @@ from ...models import PrivateChatSession
 if TYPE_CHECKING:
     from .moonlark_main import MoonlarkMain
 
-# 私聊回复后等待时间（秒），用于等待用户回复并生成即时记忆
+# 私聊回复后等待时间（秒），用于等待用户回复后分析待定笔记
 PRIVATE_REPLY_DELAY_SECONDS = 180  # 3 分钟
 
 
@@ -125,9 +125,8 @@ class ProactiveChatController:
             else:
                 wait_result = "已发送（未等待回复）"
 
-            # 5. 延迟 3 分钟后生成私聊会话的即时记忆
-            #    确保私聊事件总结能出现在 timer 事件的"QQ中的事件总结"中
-            logger.info(f"[ProactiveChatCtrl] 等待 {PRIVATE_REPLY_DELAY_SECONDS}s " f"后为 {target} 生成即时记忆")
+            # 5. 延迟 3 分钟后分析私聊会话的待定笔记
+            logger.info(f"[ProactiveChatCtrl] 等待 {PRIVATE_REPLY_DELAY_SECONDS}s 后为 {target} 分析待定笔记")
             await asyncio.sleep(PRIVATE_REPLY_DELAY_SECONDS)
 
             try:
@@ -142,10 +141,10 @@ class ProactiveChatController:
 
                 if chat_session and chat_session.session_key and chat_session.session_key in session_groups:
                     session = session_groups[chat_session.session_key]
-                    await session.instant_memory_manager.generate()
-                    logger.info(f"[ProactiveChatCtrl] 已为 {target} 生成即时记忆")
+                    await session.processor._analyze_pending_notes()
+                    logger.info(f"[ProactiveChatCtrl] 已为 {target} 分析待定笔记")
             except Exception as e:
-                logger.warning(f"[ProactiveChatCtrl] 为 {target} 生成即时记忆失败: {e}")
+                logger.warning(f"[ProactiveChatCtrl] 为 {target} 分析待定笔记失败: {e}")
 
             return wait_result
 

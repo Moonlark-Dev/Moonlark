@@ -32,7 +32,6 @@ from ..utils.timing_stats import timing_stats_manager
 
 
 class CommandHandler:
-
     def __init__(
         self, mathcer: Matcher, bot: Bot, session: async_scoped_session, message: Message, group_id: str, user_id: str
     ):
@@ -268,7 +267,7 @@ class CommandHandler:
             await lang.finish("command.no_argv", self.user_id)
 
     async def handle_compact(self) -> None:
-        """处理 compact 命令：生成即时记忆并重置消息队列"""
+        """处理 compact 命令：分析待定笔记并重置消息队列"""
         from nonebot_plugin_larkutils.config import config as lark_config
 
         # 验证 superuser
@@ -284,16 +283,16 @@ class CommandHandler:
 
         session = groups[target_session_id]
 
-        # 如果有缓存消息，先生成即时记忆
+        # 如果有缓存消息，先分析待定笔记
         if session.cached_messages:
-            await session.instant_memory_manager.generate()
-            await lang.send("command.compact.memory_generated", self.user_id)
+            await session.processor._analyze_pending_notes()
+            await lang.send("command.compact.pending_notes_analyzed", self.user_id)
 
         # 重置消息队列
         await session.processor.openai_messages._reset_and_clear_db(target_session_id)
 
-        # 重新注入即时记忆
-        await session.processor.openai_messages._inject_instant_memories(target_session_id)
+        # 重新注入待定笔记
+        await session.processor._inject_pending_notes_to_openai_messages()
 
         await lang.finish("command.compact.success", self.user_id, target_session_id)
 
