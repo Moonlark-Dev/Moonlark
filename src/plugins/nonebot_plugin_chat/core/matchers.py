@@ -2,7 +2,6 @@ from datetime import datetime
 
 from nonebot import on_message
 from nonebot.adapters.onebot.v11 import NoticeEvent
-from nonebot.adapters.qq import Bot as BotQQ
 from nonebot.typing import T_State
 from nonebot_plugin_alconna import UniMessage, get_target
 from nonebot.adapters.onebot.v11.event import FriendRecallNoticeEvent
@@ -21,6 +20,7 @@ from nonebot_plugin_larkutils.subaccount import get_main_account
 from nonebot_plugin_larkutils.user import private_message
 from nonebot_plugin_message_summary.hash_utils import compute_message_hash
 from nonebot_plugin_message_summary.models import GroupMessage
+from nonebot_plugin_openai import check_ai_enabled
 from sqlalchemy import select
 from nonebot.log import logger
 from nonebot.matcher import Matcher
@@ -62,8 +62,9 @@ async def _(
     state: T_State,
     user_id: str = get_user_id(),
     session_id: str = get_group_id(),
+    ai_enabled: bool = check_ai_enabled(),
 ) -> None:
-    if isinstance(bot, BotQQ):
+    if not ai_enabled:
         await matcher.finish()
     session = await create_group_session(session_id, get_target(event), bot)
     if session.mute_until is not None:
@@ -91,8 +92,9 @@ async def _(
     state: T_State,
     user_id: str = get_user_id(),
     session_key: str = get_group_id(),
+    ai_enabled: bool = check_ai_enabled(),
 ) -> None:
-    if isinstance(bot, BotQQ):
+    if not ai_enabled:
         await matcher.finish()
 
     # 记录私聊会话信息（用于主动消息时获取正确的 bot）

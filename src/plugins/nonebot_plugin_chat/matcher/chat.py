@@ -19,13 +19,12 @@ import json
 
 from nonebot_plugin_chat.core.session import get_session_directly, group_disable, reset_session, groups
 from nonebot_plugin_chat.core.session.base import BaseSession
-from nonebot.adapters.qq import Bot as BotQQ
 from nonebot.params import CommandArg
 
 from nonebot import on_command
 from nonebot.adapters import Bot, Message
 from nonebot_plugin_larkutils import get_user_id, get_group_id
-from nonebot_plugin_orm import async_scoped_session
+from nonebot_plugin_orm import async_scoped_session, get_session
 from nonebot.matcher import Matcher
 from ..lang import lang
 from ..models import ChatGroup
@@ -46,7 +45,9 @@ class CommandHandler:
         self.group_config = ChatGroup(group_id=self.group_id, enabled=False)
 
     async def setup(self) -> "CommandHandler":
-        if isinstance(self.bot, BotQQ):
+        from nonebot_plugin_openai import is_ai_enabled_for_group
+
+        if not await is_ai_enabled_for_group(self.bot, self.group_id):
             await lang.finish("command.not_available", self.user_id)
         self.group_config = (await self.session.get(ChatGroup, {"group_id": self.group_id})) or ChatGroup(
             group_id=self.group_id, enabled=False

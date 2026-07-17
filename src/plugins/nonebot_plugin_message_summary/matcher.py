@@ -14,6 +14,7 @@ from datetime import datetime, timedelta
 from nonebot_plugin_larkutils import get_user_id, get_group_id, open_file, FileType
 from nonebot_plugin_larkutils.file import FileManager
 from nonebot_plugin_larkuser import get_user
+from nonebot_plugin_openai import is_ai_enabled_for_group
 from nonebot_plugin_ranking import generate_image
 from nonebot_plugin_chat.utils.group import parse_message_to_string
 from nonebot_plugin_chat.models import ChatGroup
@@ -325,11 +326,13 @@ async def _(
 
 @recorder.handle()
 async def _(
-    event: Event, session: async_scoped_session, group_id: str = get_group_id(), user_id: str = get_user_id()
+    event: Event, session: async_scoped_session, bot: Bot, group_id: str = get_group_id(), user_id: str = get_user_id()
 ) -> None:
     async with get_config() as conf:
         if group_id in conf.data:
             await recorder.finish()
+    if isinstance(bot, Bot_QQ) and not await is_ai_enabled_for_group(bot, group_id):
+        await recorder.finish()
     await clean_recorded_message(session)
     session.add(
         GroupMessage(
