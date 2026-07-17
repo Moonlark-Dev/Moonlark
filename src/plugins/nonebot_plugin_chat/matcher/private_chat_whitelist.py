@@ -8,16 +8,17 @@ from ..models import PrivateChatConfig
 
 private_chat_whitelist_cmd = on_alconna(
     Alconna(
-        ["private-chat-whitelist"],
-        Args["action?", str]["user_id?", str],
+        "private-chat-whitelist",
+        Args["action?", str, ""],
+        Args["target_user_id?", str, ""],
     ),
 )
 
 
 @private_chat_whitelist_cmd.handle()
 async def handle_private_chat_whitelist(
-    action: str | None = None,
-    target_user_id: str | None = None,
+    action: str,
+    target_user_id: str,
     is_superuser: bool = is_user_superuser(),
     user_id: str = get_user_id(),
 ) -> None:
