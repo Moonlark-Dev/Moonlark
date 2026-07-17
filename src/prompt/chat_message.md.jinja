@@ -7,6 +7,10 @@
 笔记:
 {{ note_text }}
 {% endif %}
+{% if pending_notes %}
+待定笔记 (可使用 apply_pending_note 工具应用):
+{{ pending_notes }}
+{% endif %}
 {% if recent_activities %}
 最近做的事:
 {{ recent_activities }}

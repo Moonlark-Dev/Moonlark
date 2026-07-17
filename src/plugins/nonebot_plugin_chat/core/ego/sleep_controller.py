@@ -22,7 +22,6 @@ SLEEP_THRESHOLD = 0.95
 
 
 class SleepController:
-
     def __init__(self, moonlark_main: "MoonlarkMain"):
         self.moonlark_main = moonlark_main
 
@@ -98,7 +97,7 @@ class SleepController:
             sleep_duration = (now - self.sleep_begin_time).total_seconds() / 60
 
         try:
-            summary = self.moonlark_main.state.get("instant_memory_summary", "暂无群聊记忆。")
+            summary = self.moonlark_main.state.get("chat_summary", "暂无聊天记录。")
 
             messages = await get_messages(
                 "sleep_think",
@@ -161,7 +160,7 @@ class SleepController:
         context_text = "\n".join(chat_context[-5:]) if chat_context else ""
 
         try:
-            summary = self.moonlark_main.state.get("instant_memory_summary", "暂无群聊记忆。")
+            summary = self.moonlark_main.state.get("chat_summary", "暂无聊天记录。")
 
             messages = await get_messages(
                 "mention",

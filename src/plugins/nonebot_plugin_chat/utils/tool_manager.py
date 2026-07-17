@@ -22,6 +22,7 @@ from nonebot_plugin_openai.utils.functions import create_function_list
 from nonebot_plugin_openai.utils.image_generation import generate_image
 from nonebot_plugin_openai.utils.chat import fetch_message
 from nonebot_plugin_alconna import UniMessage
+from nonebot.log import logger
 from ..enums import MoodEnum
 from ..lang import lang
 from nonebot_plugin_openai.types import AsyncFunction, FunctionParameter, FunctionParameterWithEnum
@@ -47,7 +48,6 @@ from .tools import (
 from ..utils.emoji import QQ_EMOJI_MAP
 from .note_manager import check_note, get_context_notes
 from .status_manager import get_status_manager
-from .instant_mem import get_memories_for_display
 
 if TYPE_CHECKING:
     from ..core.processor import MessageProcessor
@@ -250,6 +250,9 @@ class ToolManager:
             # get_note_remover
             tools.append(self.remove_note)
 
+            # apply_pending_note
+            tools.append(self.apply_pending_note)
+
             # sticker tools
             tools.append(processor.sticker_tools.save_sticker)
             tools.append(processor.sticker_tools.search_sticker)
@@ -331,32 +334,66 @@ class ToolManager:
         expire_hours = note_check_result["expire_hours"]
         await note_manager.create_note(content=text, keywords=keywords or "", expire_hours=expire_hours or 87600)
 
+    async def apply_pending_note(self, note_id: int) -> str:
+        """应用一条待定笔记到永久存储
+
+        Args:
+            note_id: 待定笔记的 ID（如 #0, #1）
+
+        Returns:
+            操作结果消息
+        """
+        if self.processor is None:
+            raise RuntimeError("processor is None")
+
+        pending = self.processor.pending_notes.pop(note_id, None)
+        if pending is None:
+            return await self.text("pending_note.not_found", note_id)
+
+        note_manager = await get_context_notes(self.processor.session.session_id)
+        await note_manager.create_note(
+            content=pending["content"],
+            keywords=pending.get("keywords", ""),
+            expire_hours=pending.get("expire_hours", 87600),
+        )
+
+        return await self.text("pending_note.applied", note_id, pending["content"])
+
     async def recall_global_events(self) -> str:
         from ..core.session import groups
 
-        # 触发所有会话的即时记忆生成
-        for group in groups.values():
-            await group.processor.generate_instant_memory()
-
         result_parts = []
 
-        # 展示非当前群聊的即时记忆
         current_session_id = self.processor.session.session_id
-        memories = get_memories_for_display(current_session_id)
-        if memories:
-            mem_lines = []
-            for mem in memories:
-                mem_lines.append(
-                    await self.text(
-                        "prompt_group.instant_mem",
-                        mem["create_time"].strftime("%Y-%m-%d %H:%M:%S"),
-                        mem["expire_time"].strftime("%Y-%m-%d %H:%M:%S"),
-                        mem["content"],
-                    )
+
+        # 收集其他会话的最近消息作为上下文
+        other_sessions_text = []
+        for session_id, session in groups.items():
+            if session_id == current_session_id:
+                continue
+            session_name = await session.get_session_name()
+            recent = await session.get_cached_messages_string(length=20, include_self_message=True)
+            if recent:
+                other_sessions_text.append(f"会话 {session_name}:\n{recent}")
+
+        if other_sessions_text:
+            combined = "\n\n---\n\n".join(other_sessions_text)
+            try:
+                messages = await get_messages(
+                    "recall_global_events",
+                    chat_history=combined,
                 )
-            result_parts.append("即时记忆:\n" + "\n".join(mem_lines))
+                summary = await fetch_message(
+                    messages=messages,
+                    identify="Recall Global Events",
+                    reasoning_effort="low",
+                )
+                result_parts.append("其他会话的事件摘要:\n" + summary)
+            except Exception as e:
+                logger.warning(f"[ToolManager] 全局事件摘要失败: {e}")
+                result_parts.append("其他会话中暂时没有值得注意的事件。")
         else:
-            result_parts.append("即时记忆: (无)")
+            result_parts.append("其他会话中暂无消息。")
 
         return "\n\n".join(result_parts)
 
