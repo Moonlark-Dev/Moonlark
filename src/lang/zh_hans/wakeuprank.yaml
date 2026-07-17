@@ -3,6 +3,8 @@ wakeuprank:
   avg_title: "平均起床时间排行"
   today_title: "今日起床时间排行"
   no_data: "暂无早起数据。"
+  avg_time: "平均起床时间：{}"
+  record_count: "记录的次数：{}"
 help:
   description: "早起排行"
   details: "在每日 4:00-14:00 间首次发消息记录早起时间，可进行早起次数排行、平均起床时间排行和今日排行。"

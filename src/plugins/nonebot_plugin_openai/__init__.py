@@ -25,7 +25,9 @@ from . import models  # noqa: F401 - 确保 ORM 模型被注册
 from .utils.chat import fetch_message, fetch_json, MessageFetcher, strip_json_codeblock
 from .utils.message import generate_message, get_message, get_messages, get_message_text
 from .commands import model as _  # noqa: F401
+from .commands import ai_whitelist as _ai_whitelist_cmd  # noqa: F401
 from .utils.functions import create_function_list
+from .utils.ai_whitelist import check_ai_enabled, is_ai_enabled_for_group
 
 driver = get_driver()
 

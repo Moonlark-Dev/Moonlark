@@ -26,7 +26,6 @@ from ...models import (
     DiaryProcessResponse,
     PrivateChatSession,
 )
-from ...utils.instant_mem import get_instant_memories
 from ...utils.status_manager import get_status_manager
 from ..session import groups
 from .action_advisor import ActionAdvisor
@@ -210,15 +209,15 @@ class ActionDecider:
 
     async def generate_message(self, reason) -> OpenAIChatMessage:
         notes_text = await self.moonlark_main.get_relevant_notes()
-        instant_mem = await self.moonlark_main.summary_instant_memory()
+        chat_summary = await self.moonlark_main.summary_instant_memory()
         # 记录QQ中的事件总结到日记
-        if instant_mem and instant_mem not in ("暂无记忆。", "记忆汇总失败。"):
-            await self._record_event("[QQ中的事件] " + instant_mem)
+        if chat_summary and chat_summary not in ("暂无聊天记录。", "聊天记录汇总失败。"):
+            await self._record_event("[QQ中的事件] " + chat_summary)
         return await get_message(
             "user",
             "moonlark_main/user.md.jinja",
             reason=reason,
-            summary=instant_mem,
+            summary=chat_summary,
             notes=notes_text,
         )
 
@@ -272,7 +271,7 @@ class MoonlarkMain:
             "sleep_mode": False,
             "last_decision_time": None,
             "decision_history": [],
-            "instant_memory_summary": "",
+            "chat_summary": "",
             "last_summary_time": None,
             "injected_note_ids": [],
         }
@@ -287,42 +286,38 @@ class MoonlarkMain:
         scheduler.scheduled_job("cron", hour=2, id="moonlark_diary")(self.generate_diary)
 
     async def summary_instant_memory(self) -> str:
-        tasks = [
-            session.instant_memory_manager.generate()
-            for session in groups.values()
-            if session.instant_memory_manager.message_cache
-        ]
-        if tasks:
-            await asyncio.gather(*tasks, return_exceptions=True)
+        """从所有会话的聊天记录中提取摘要（替代原来的即时记忆汇总）"""
+        from ..session import groups
 
-        last_summary_time = self.state.get("last_summary_time")
-        memories = get_instant_memories()
-        if last_summary_time:
-            memories = [m for m in memories if m["create_time"] > last_summary_time]
-        self.state["last_summary_time"] = datetime.now()
-        if not memories:
-            self.state["instant_memory_summary"] = "暂无记忆。"
-            return self.state["instant_memory_summary"]
+        # 收集所有会话的聊天记录
+        all_chat_parts = []
+        for session_id, session in groups.items():
+            session_name = await session.get_session_name()
+            recent = await session.get_cached_messages_string(length=30, include_self_message=True)
+            if recent:
+                all_chat_parts.append(f"会话 {session_name}:\n{recent}")
 
-        memory_lines = []
-        for mem in memories:
-            time_str = mem["create_time"].strftime("%H:%M")
-            ctx = mem.get("name", mem.get("ctx_id", ""))
-            memory_lines.append(f"[{time_str}][{ctx}] {mem['content']}")
+        if not all_chat_parts:
+            self.state["chat_summary"] = "暂无聊天记录。"
+            return self.state["chat_summary"]
 
+        combined = "\n\n---\n\n".join(all_chat_parts)
         try:
-            messages = await get_messages("summarize", memories="\n".join(memory_lines))
+            messages = await get_messages(
+                "summarize",
+                memories=combined,
+            )
             summary = await fetch_message(
                 messages,
-                identify="MoonlarkMain - Summary Instant Memory",
+                identify="MoonlarkMain - Summary Chat History",
                 reasoning_effort="low",
             )
-            self.state["instant_memory_summary"] = summary
+            self.state["chat_summary"] = summary
         except Exception as e:
-            logger.exception(f"[MoonlarkMain] 汇总即时记忆失败: {e}")
-            self.state["instant_memory_summary"] = "记忆汇总失败。"
+            logger.exception(f"[MoonlarkMain] 汇总聊天记录失败: {e}")
+            self.state["chat_summary"] = "聊天记录汇总失败。"
 
-        return self.state["instant_memory_summary"]
+        return self.state["chat_summary"]
 
     async def get_relevant_notes(self) -> str:
         """获取相关的备忘录，使用 ActionDecider 的全部上下文进行筛选"""
@@ -380,7 +375,7 @@ class MoonlarkMain:
             logger.warning(f"[MoonlarkMain] 获取备忘录失败: {e}")
             return "获取备忘录失败。"
 
-    async def handle_mention(self, chat_context: list) -> bool:
+    async def handle_mention(self, chat_context: list, session_name: str = "", nickname: str = "") -> bool:
         """当被 @ 或提及时调用。
 
         若不在睡眠状态，返回 False（正常回复）。
@@ -388,7 +383,7 @@ class MoonlarkMain:
         """
         if not self.state["sleep_mode"]:
             return False
-        return await self.sleep_controller.handle_mention(chat_context)
+        return await self.sleep_controller.handle_mention(chat_context, session_name=session_name, nickname=nickname)
 
     # ========================================================================
     # 状态收集

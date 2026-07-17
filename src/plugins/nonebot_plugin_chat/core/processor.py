@@ -41,7 +41,6 @@ from ..utils.tool_manager import ToolManager
 from ..utils.tools.sticker import StickerTools
 from ..utils.status_manager import get_status_manager
 from ..utils.timing_stats import timing_stats_manager
-from ..utils.instant_mem import get_memories_for_display
 from pydantic import BaseModel
 
 
@@ -83,6 +82,12 @@ class MessageProcessor:
         # Unlimited tokens 相关属性
         self.unlimited_tokens_remaining = 0
         self.unlimited_tokens_active = False
+        # Pending notes 相关属性
+        self.pending_notes: dict[int, dict[str, Any]] = {}
+        self._next_pending_note_id: int = 0
+        self.unanalyzed_message_count: int = 0
+        self._pending_note_lock = asyncio.Lock()
+        self._shown_pending_note_ids: set[int] = set()
 
     async def query_image(self, image_id: str, query_prompt: str) -> str:
         return await query_image_content(image_id, query_prompt, self.session.lang_str)
@@ -372,7 +377,12 @@ class MessageProcessor:
                 # 被提及：通过 LLM 决策是否唤醒
                 recent_text = await self.session.get_cached_messages_string(length=5)
                 recent_msgs = recent_text.splitlines() if recent_text else []
-                should_wake = await moonlark_main.handle_mention(recent_msgs)
+                session_name = await self.session.get_session_name()
+                last_msg = self.session.cached_messages[-1] if self.session.cached_messages else {}
+                nickname = last_msg.get("nickname", "") if isinstance(last_msg, dict) else ""
+                should_wake = await moonlark_main.handle_mention(
+                    recent_msgs, session_name=session_name, nickname=nickname
+                )
                 if not should_wake:
                     return
 
@@ -451,16 +461,39 @@ class MessageProcessor:
         # 记录回应用时（使用 reply_message_id 查找对应的原消息）
         self._record_reply_timing(reply_message_id)
 
-        return await self.session.text(
-            "message.sent",
-            receipt.msg_ids[0].get("message_id"),
-            len(message_content),
-            self.consecutive_message_count,
-            (
-                await self.session.text("message.token", self.token_bucket.get(), token_cost)
-                if self.session.get_session_type() == "group"
-                else ""
-            ),
+        # 记录 Moonlark 自己发送的消息到缓存
+        self_msg: CachedMessage = {
+            "content": message_content,
+            "nickname": "Moonlark",
+            "send_time": datetime.now(),
+            "user_id": "",
+            "self": True,
+            "message_id": receipt.msg_ids[0].get("message_id", ""),
+            "images": [],
+        }
+        self.session.cached_messages.append(self_msg)
+        await self.session.on_cache_posted()
+
+        # 检查待定笔记是否有新内容
+        pending_notes_text = self._format_pending_notes_for_tool_result()
+
+        # 发送消息后检查是否需要分析待定笔记
+        if self.unanalyzed_message_count > 5:
+            asyncio.create_task(self._analyze_pending_notes())
+
+        return (
+            await self.session.text(
+                "message.sent",
+                receipt.msg_ids[0].get("message_id"),
+                len(message_content),
+                self.consecutive_message_count,
+                (
+                    await self.session.text("message.token", self.token_bucket.get(), token_cost)
+                    if self.session.get_session_type() == "group"
+                    else ""
+                ),
+            )
+            + pending_notes_text
         )
 
     def _record_reply_timing(self, reply_message_id: str | None = None) -> None:
@@ -562,9 +595,11 @@ class MessageProcessor:
 
                 moonlark_main.on_message_received()
 
-            # 消息入队后异步检查是否需要生成即时记忆
-            if not self.blocked:
-                asyncio.create_task(self._maybe_generate_instant_memory())
+            # 消息入队后更新未分析计数并检查是否需要分析待定笔记
+            if not self.blocked and not msg_dict["self"]:
+                self.unanalyzed_message_count += 1
+                if self.unanalyzed_message_count >= 20:
+                    asyncio.create_task(self._analyze_pending_notes())
 
     def get_message_content_list(self) -> list[str]:
         l = []
@@ -668,6 +703,9 @@ class MessageProcessor:
         recent_activities = "\n".join(
             await self.filter_info_lines(moonlark_main._get_recent_actions_text().splitlines())
         )
+
+        pending_notes_text = self._get_pending_notes_text()
+
         return await get_message_text(
             "chat_message.md.jinja",
             current_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -678,6 +716,7 @@ class MessageProcessor:
             note_text=await self.generate_note_text(notes),
             recent_activities=recent_activities or None,
             state=state,
+            pending_notes=pending_notes_text or None,
         )
 
     async def filter_info_lines(self, lines: list[str]) -> list[str]:
@@ -718,12 +757,14 @@ class MessageProcessor:
             await self.filter_info_lines(moonlark_main._get_recent_actions_text().splitlines())
         )
 
+        pending_notes_text = self._get_pending_notes_text()
+
         return await self.session.text(
             "prompt.event_additional_info",
             round(self.token_bucket.get(), 2),
             state,
             recent_activities or await self.session.text("prompt.event_additional_info.no_activity"),
-        )
+        ) + (f"\n待定笔记:\n{pending_notes_text}" if pending_notes_text else "")
 
     async def generate_system_prompt(self) -> OpenAIMessage:
         is_private = self.session.get_session_type() == "private"
@@ -775,45 +816,130 @@ class MessageProcessor:
             "probability",
         )
 
-    async def generate_instant_memory(self) -> None:
-        manager = self.session.instant_memory_manager
-
-        messages = [
-            f"[{msg['send_time'].strftime('%H:%M:%S')}][{msg['nickname']}]({msg['message_id']}): {msg['content']}"
-            for msg in self.session.get_message_for_instant_memory()
-        ]
-
-        if not messages:
+    async def _inject_pending_notes_to_openai_messages(self) -> None:
+        """在上下文重置后，将待定笔记注入到 OpenAI 消息队列中"""
+        if not self.pending_notes:
             return
 
-        manager.add_messages_to_cache(messages)
-        manager.cursor = len(self.session.cached_messages)
+        lines = ["以下是需要在对话中注意的待定笔记："]
+        for note_id, note in self.pending_notes.items():
+            line = f"  [#{note_id}] {note['content']}"
+            if note.get("keywords"):
+                line += f" (关键词: {note['keywords']})"
+            lines.append(line)
 
-        if manager.should_generate():
-            await manager.generate()
+        self._shown_pending_note_ids.update(self.pending_notes.keys())
+        injected_text = "\n".join(lines)
+        await self.openai_messages.append_user_message(injected_text)
+        logger.info(f"[PendingNotes] 已注入 {len(self.pending_notes)} 条待定笔记到 {self.session.session_id}")
 
-    async def _maybe_generate_instant_memory(self) -> None:
-        """在消息处理流程中条件触发即时记忆生成。
+    def _get_pending_notes_text(self) -> str:
+        """获取未展示过的待定笔记文本（用于附加信息）"""
+        unshown = {nid: note for nid, note in self.pending_notes.items() if nid not in self._shown_pending_note_ids}
+        if not unshown:
+            return ""
+        self._shown_pending_note_ids.update(unshown.keys())
+        lines = []
+        for note_id, note in unshown.items():
+            line = f"  [#{note_id}] {note['content']}"
+            if note.get("name"):
+                line += f" (来源: {note['name']})"
+            lines.append(line)
+        return "\n".join(lines)
 
-        复用 InstantMemoryManager 的缓存和锁机制，
-        避免与 generate_instant_memory() 重复处理消息。
-        """
-        manager = self.session.instant_memory_manager
+    def _format_pending_notes_for_tool_result(self) -> str:
+        """格式化未展示过的待定笔记，作为 send_message 工具结果的附加信息"""
+        unshown = {nid: note for nid, note in self.pending_notes.items() if nid not in self._shown_pending_note_ids}
+        if not unshown:
+            return ""
+        self._shown_pending_note_ids.update(unshown.keys())
+        lines = ["\n\n[待定笔记]"]
+        for note_id, note in unshown.items():
+            line = f"  #{note_id}: {note['content']}"
+            if note.get("keywords"):
+                line += f" (关键词: {note['keywords']})"
+            lines.append(line)
+        return "\n".join(lines)
 
-        messages = [
-            f"[{msg['send_time'].strftime('%H:%M:%S')}][{msg['nickname']}]({msg['message_id']}): {msg['content']}"
-            for msg in self.session.get_message_for_instant_memory()
-        ]
-
-        if not messages:
-            # 没有新消息，直接尝试用已有缓存触发
-            await manager.maybe_generate(min_messages=5, cooldown_seconds=600)
+    async def _analyze_pending_notes(self) -> None:
+        if self._pending_note_lock.locked():
             return
 
-        manager.add_messages_to_cache(messages)
-        manager.cursor = len(self.session.cached_messages)
+        async with self._pending_note_lock:
+            try:
+                chat_history = await self.session.get_cached_messages_string(length=50, include_self_message=True)
+                if not chat_history.strip():
+                    return
 
-        await manager.maybe_generate(min_messages=5, cooldown_seconds=600)
+                identity_text = await get_message_text("identity.md.jinja")
+
+                note_manager = await get_context_notes(self.session.session_id)
+                existing_notes = await note_manager.get_notes()
+                existing_notes_text = ""
+                if existing_notes:
+                    existing_notes_text = "\n".join(
+                        f"- [{n.id}] {n.content}{f' (关键词: {n.keywords})' if n.keywords else ''}"
+                        for n in existing_notes[-20:]
+                    )
+
+                messages = [
+                    await get_message_text(
+                        "pending_note_generator.md.jinja",
+                        identity=identity_text,
+                        current_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                        existing_notes=existing_notes_text,
+                    ),
+                    generate_message(chat_history, "user"),
+                ]
+
+                response = await fetch_message(
+                    [
+                        generate_message(messages[0], "system"),
+                        messages[1],
+                    ],
+                    reasoning_effort="medium",
+                    identify=f"PendingNotes-{self.session.session_id}",
+                )
+
+                cleaned_response = re.sub(r"`{1,3}([a-zA-Z0-9]+)?", "", response).strip()
+                note_list = json.loads(cleaned_response)
+
+                if not isinstance(note_list, list):
+                    logger.warning(f"[PendingNotes] LLM 返回格式异常: {type(note_list)}")
+                    return
+
+                new_count = 0
+                for note_data in note_list:
+                    if not isinstance(note_data, dict) or "content" not in note_data:
+                        continue
+
+                    content = note_data["content"].strip()
+                    if not content:
+                        continue
+
+                    expire_hours = float(note_data.get("expire_hours", 72))
+                    expire_hours = min(87600, max(0.5, expire_hours))
+
+                    note_id = self._next_pending_note_id
+                    self._next_pending_note_id += 1
+
+                    self.pending_notes[note_id] = {
+                        "content": content,
+                        "keywords": note_data.get("keywords", ""),
+                        "expire_hours": expire_hours,
+                        "name": note_data.get("name", ""),
+                        "created_time": datetime.now(),
+                    }
+                    new_count += 1
+
+                self.unanalyzed_message_count = 0
+                if new_count > 0:
+                    logger.info(f"[PendingNotes:{self.session.session_id}] 生成了 {new_count} 条待定笔记")
+
+            except json.JSONDecodeError as e:
+                logger.warning(f"[PendingNotes] LLM 返回非 JSON 格式: {e}")
+            except Exception as e:
+                logger.exception(f"[PendingNotes:{self.session.session_id}] 分析失败: {e}")
 
     async def analyze_pre_trigger_signals(self) -> PreTriggerSignals | None:
         chat_history = await self.session.get_cached_messages_string(length=10, include_self_message=False)

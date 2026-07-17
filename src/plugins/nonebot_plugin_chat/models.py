@@ -130,17 +130,6 @@ class PrivateChatSession(Model):
     last_proactive_message_time: Mapped[Optional[float]] = mapped_column(Float(), nullable=True)  # 最后主动消息时间戳
 
 
-class InstantMemoryCache(Model):
-    """即时记忆持久化缓存"""
-
-    id: Mapped[int] = mapped_column(Integer(), primary_key=True, autoincrement=True)
-    session_id: Mapped[str] = mapped_column(String(128), index=True)  # 会话 ID
-    content: Mapped[str] = mapped_column(Text())  # 记忆内容
-    name: Mapped[str] = mapped_column(String(128), default="")  # 记忆名称
-    created_time: Mapped[datetime] = mapped_column(DateTime(), default=datetime.now)  # 创建时间
-    expire_time: Mapped[datetime] = mapped_column(DateTime())  # 过期时间
-
-
 class BlogPost(Model):
     """Blog post model for storing Moonlark's blog posts"""
 
@@ -229,7 +218,8 @@ class EgoDecisionResponse(BaseModel):
 class SleepThinkResponse(BaseModel):
     """SleepController request_think 的 LLM 返回格式"""
 
-    sleep_decision: Literal["stay_sleep", "wake_up"]
+    wake_up: bool = False
+    reason: str = ""
 
 
 class SelfActionDurationResponse(BaseModel):

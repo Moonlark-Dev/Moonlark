@@ -19,13 +19,12 @@ import json
 
 from nonebot_plugin_chat.core.session import get_session_directly, group_disable, reset_session, groups
 from nonebot_plugin_chat.core.session.base import BaseSession
-from nonebot.adapters.qq import Bot as BotQQ
 from nonebot.params import CommandArg
 
 from nonebot import on_command
 from nonebot.adapters import Bot, Message
 from nonebot_plugin_larkutils import get_user_id, get_group_id
-from nonebot_plugin_orm import async_scoped_session
+from nonebot_plugin_orm import async_scoped_session, get_session
 from nonebot.matcher import Matcher
 from ..lang import lang
 from ..models import ChatGroup
@@ -33,7 +32,6 @@ from ..utils.timing_stats import timing_stats_manager
 
 
 class CommandHandler:
-
     def __init__(
         self, mathcer: Matcher, bot: Bot, session: async_scoped_session, message: Message, group_id: str, user_id: str
     ):
@@ -46,7 +44,9 @@ class CommandHandler:
         self.group_config = ChatGroup(group_id=self.group_id, enabled=False)
 
     async def setup(self) -> "CommandHandler":
-        if isinstance(self.bot, BotQQ):
+        from nonebot_plugin_openai import is_ai_enabled_for_group
+
+        if not await is_ai_enabled_for_group(self.bot, self.group_id):
             await lang.finish("command.not_available", self.user_id)
         self.group_config = (await self.session.get(ChatGroup, {"group_id": self.group_id})) or ChatGroup(
             group_id=self.group_id, enabled=False
@@ -267,7 +267,7 @@ class CommandHandler:
             await lang.finish("command.no_argv", self.user_id)
 
     async def handle_compact(self) -> None:
-        """处理 compact 命令：生成即时记忆并重置消息队列"""
+        """处理 compact 命令：分析待定笔记并重置消息队列"""
         from nonebot_plugin_larkutils.config import config as lark_config
 
         # 验证 superuser
@@ -283,16 +283,16 @@ class CommandHandler:
 
         session = groups[target_session_id]
 
-        # 如果有缓存消息，先生成即时记忆
+        # 如果有缓存消息，先分析待定笔记
         if session.cached_messages:
-            await session.instant_memory_manager.generate()
-            await lang.send("command.compact.memory_generated", self.user_id)
+            await session.processor._analyze_pending_notes()
+            await lang.send("command.compact.pending_notes_analyzed", self.user_id)
 
         # 重置消息队列
         await session.processor.openai_messages._reset_and_clear_db(target_session_id)
 
-        # 重新注入即时记忆
-        await session.processor.openai_messages._inject_instant_memories(target_session_id)
+        # 重新注入待定笔记
+        await session.processor._inject_pending_notes_to_openai_messages()
 
         await lang.finish("command.compact.success", self.user_id, target_session_id)
 
