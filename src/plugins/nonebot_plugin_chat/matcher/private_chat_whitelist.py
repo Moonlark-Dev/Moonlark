@@ -8,7 +8,7 @@ from ..models import PrivateChatConfig
 
 private_chat_whitelist_cmd = on_alconna(
     Alconna(
-        "private-chat-whitelist",
+        ["private-chat-whitelist"],
         Args["action?", str]["user_id?", str],
     ),
 )
