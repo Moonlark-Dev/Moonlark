@@ -62,7 +62,9 @@ async def _(
 ) -> None:
     if not ai_enabled:
         await matcher.finish()
-    session = await create_group_session(session_id, get_target(event), bot)
+    target = get_target(event)
+    session = await create_group_session(session_id, target, bot)
+    session.set_target(target, bot)
     if session.mute_until is not None:
         await matcher.finish()
     plaintext = event.get_plaintext().strip()
@@ -99,7 +101,9 @@ async def _(
     # 检查是否是主动私聊的回复
     await moonlark_main.on_private_message_replied(user_id)
 
-    session = await create_private_session(session_key, get_target(event), bot)
+    target = get_target(event)
+    session = await create_private_session(session_key, target, bot)
+    session.set_target(target, bot)
     if session.mute_until is not None:
         await matcher.finish()
     plaintext = event.get_plaintext().strip()
