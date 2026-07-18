@@ -871,6 +871,11 @@ help_private_chat_whitelist:
   usage4: "private-chat-whitelist enable <用户ID> (启用)"
   usage5: "private-chat-whitelist disable <用户ID> (禁用)"
 
+help_private_chat:
+  description: 私聊 Chat
+  details: 私聊 Chat 功能，仅限白名单用户使用。允许用户通过私聊与 Moonlark 对话。
+  usage1: chat reset (清除私聊会话的所有历史消息并重置对话状态)
+
 
 
 

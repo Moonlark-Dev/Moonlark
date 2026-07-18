@@ -18,17 +18,17 @@
 import json
 
 from nonebot import on_command
-from nonebot.adapters import Bot, Message
+from nonebot.adapters import Bot, Event, Message
 from nonebot.matcher import Matcher
 from nonebot.params import CommandArg
 from nonebot_plugin_larkutils import get_group_id, get_user_id
-from nonebot_plugin_orm import async_scoped_session
+from nonebot_plugin_orm import async_scoped_session, get_session as get_db_session
 
 from nonebot_plugin_chat.core.session import get_session_directly, group_disable, groups, reset_session
 from nonebot_plugin_chat.core.session.base import BaseSession
 
 from ..lang import lang
-from ..models import ChatGroup
+from ..models import ChatGroup, PrivateChatConfig
 from ..utils.timing_stats import timing_stats_manager
 
 
@@ -41,16 +41,45 @@ class CommandHandler:
         message: Message,
         group_id: str,
         user_id: str,
+        event: Event,
     ):
         self.matcher = mathcer
         self.bot = bot
         self.session = session
+        self.event = event
         self.group_id = group_id
         self.user_id = user_id
         self.argv = message.extract_plain_text().split(" ")
         self.group_config = ChatGroup(group_id=self.group_id, enabled=False)
 
+    def _is_private_chat(self) -> bool:
+        """判断当前是否是私聊上下文"""
+        try:
+            if self.event.get_user_id() == self.event.get_session_id():
+                return True
+        except (ValueError, NotImplementedError):
+            pass
+        # QQ adapter C2C 消息
+        if self.event.__class__.__module__.startswith("nonebot.adapters.qq"):
+            from nonebot.adapters.qq.event import C2CMessageCreateEvent
+
+            if isinstance(self.event, C2CMessageCreateEvent):
+                return True
+        return False
+
+    async def _check_private_chat_whitelist(self) -> None:
+        """检查用户是否在白名单中（私聊 Chat 功能已启用）"""
+        async with get_db_session() as db_session:
+            config = await db_session.get(PrivateChatConfig, {"user_id": self.user_id})
+            if config is None or not config.enabled:
+                await lang.finish("command.not_available", self.user_id)
+
     async def setup(self) -> "CommandHandler":
+        # 私聊模式：跳过群组专属检查，只验证白名单
+        if self._is_private_chat():
+            await self._check_private_chat_whitelist()
+            return self
+
         from nonebot_plugin_openai import is_ai_enabled_for_group
 
         if not await is_ai_enabled_for_group(self.bot, self.group_id):
@@ -305,6 +334,15 @@ class CommandHandler:
         await lang.finish("command.compact.success", self.user_id, target_session_id)
 
     async def handle(self) -> None:
+        # 私聊模式：只允许 reset 命令
+        if self._is_private_chat():
+            match self.argv[0]:
+                case "reset":
+                    await self.handle_reset()
+                case _:
+                    await lang.finish("command.no_argv", self.user_id)
+            return
+
         match self.argv[0]:
             case "switch":
                 await self.handle_switch()
@@ -352,10 +390,11 @@ async def _(
     matcher: Matcher,
     bot: Bot,
     session: async_scoped_session,
+    event: Event,
     message: Message = CommandArg(),
     group_id: str = get_group_id(),
     user_id: str = get_user_id(),
 ) -> None:
-    handler = CommandHandler(matcher, bot, session, message, group_id, user_id)
+    handler = CommandHandler(matcher, bot, session, message, group_id, user_id, event)
     await handler.setup()
     await handler.handle()
