@@ -34,7 +34,13 @@ from ..utils.timing_stats import timing_stats_manager
 
 class CommandHandler:
     def __init__(
-        self, mathcer: Matcher, bot: Bot, session: async_scoped_session, message: Message, group_id: str, user_id: str,
+        self,
+        mathcer: Matcher,
+        bot: Bot,
+        session: async_scoped_session,
+        message: Message,
+        group_id: str,
+        user_id: str,
     ):
         self.matcher = mathcer
         self.bot = bot
@@ -50,7 +56,8 @@ class CommandHandler:
         if not await is_ai_enabled_for_group(self.bot, self.group_id):
             await lang.finish("command.not_available", self.user_id)
         self.group_config = (await self.session.get(ChatGroup, {"group_id": self.group_id})) or ChatGroup(
-            group_id=self.group_id, enabled=False,
+            group_id=self.group_id,
+            enabled=False,
         )
         return self
 
