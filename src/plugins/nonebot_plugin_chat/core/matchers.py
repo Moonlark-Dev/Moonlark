@@ -179,7 +179,10 @@ async def _(event: NoticeEvent, bot: OB11Bot, platform_id: str = get_group_id())
 
 @on_notice(block=False).handle()
 async def _(
-    bot: Bot, event: FriendRecallNoticeEvent, user_id: str = get_user_id(), session_key: str = get_group_id(),
+    bot: Bot,
+    event: FriendRecallNoticeEvent,
+    user_id: str = get_user_id(),
+    session_key: str = get_group_id(),
 ) -> None:
     message_id = str(event.message_id)
     session = await create_private_session(session_key, get_target(event), bot)

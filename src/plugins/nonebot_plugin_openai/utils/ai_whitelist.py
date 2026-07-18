@@ -18,9 +18,7 @@ from ..models import AIWhitelist
 async def is_ai_enabled_for_group(bot: Bot, group_id: str) -> bool:
     """检查指定群聊是否在 AI 白名单中且已启用"""
     async with get_session() as session:
-        result = await session.scalar(
-            select(AIWhitelist.enabled).where(AIWhitelist.group_id == group_id)
-        )
+        result = await session.scalar(select(AIWhitelist.enabled).where(AIWhitelist.group_id == group_id))
         if result:
             return True
     return not isinstance(bot, Bot_QQ)
