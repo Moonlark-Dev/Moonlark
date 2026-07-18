@@ -10,4 +10,4 @@ async def get_nickname(user_id: str, bot: Bot, event: Event) -> str:
         nickname = user.get_nickname()
     else:
         nickname = user_info.user_displayname or user_info.user_name
-    return nickname
+    return nickname or f"匿名-{user_id[-4:]}"
