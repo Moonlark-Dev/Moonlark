@@ -13,7 +13,9 @@
 
 请判断是否应该醒来。输出 JSON：
 {
-  "sleep_decision": "stay_sleep" | "wake_up"
+  "wake_up": true,
+  "reason": "唤醒的原因说明"
 }
 
+如果 wake_up 为 true，请在 reason 中简要说明唤醒原因。
 如果已经睡够了或者有重要的事需要处理，选择 wake_up。

@@ -19,32 +19,52 @@ import re
 import traceback
 
 from nonebot import logger
-
-from openai import APITimeoutError
-from .tools.browser import browser_tool
-from nonebot.adapters import Bot
-from nonebot.adapters import Event
+from nonebot.adapters import Bot, Event
 from nonebot.typing import T_State
 from nonebot_plugin_alconna import UniMessage
-from nonebot_plugin_orm import get_session
-from .message import parse_message_to_string as _parse_message_to_string
-from nonebot_plugin_larkutils import get_group_id
-from nonebot_plugin_openai import generate_message, fetch_message
+from nonebot_plugin_larkutils import get_group_id, get_user_id
+from nonebot_plugin_openai import fetch_message, generate_message
 from nonebot_plugin_openai.utils.message import get_message
-from ..lang import lang
+from nonebot_plugin_orm import get_session
+from openai import APITimeoutError
 
-from ..models import ChatGroup
+from ..lang import lang
+from ..models import ChatGroup, PrivateChatConfig
+from .message import parse_message_to_string as _parse_message_to_string
+from .tools.browser import browser_tool
 
 
 async def group_message(event: Event) -> bool:
-    return event.get_user_id() != event.get_session_id()
+    try:
+        return event.get_user_id() != event.get_session_id()
+    except (ValueError, NotImplementedError):
+        return False
 
 
 async def enabled_group(event: Event, group_id: str = get_group_id()) -> bool:
     async with get_session() as session:
         return bool(
-            (await group_message(event)) and (g := await session.get(ChatGroup, {"group_id": group_id})) and g.enabled
+            (await group_message(event)) and (g := await session.get(ChatGroup, {"group_id": group_id})) and g.enabled,
         )
+
+
+async def enabled_private_chat(event: Event, user_id: str = get_user_id()) -> bool:
+    try:
+        if event.get_user_id() == event.get_session_id():
+            async with get_session() as session:
+                g = await session.get(PrivateChatConfig, {"user_id": user_id})
+                return g is not None and g.enabled
+    except (ValueError, NotImplementedError):
+        pass
+    # QQ adapter C2C messages: get_user_id() returns openid, get_session_id() returns "friend_{openid}"
+    if event.__class__.__module__.startswith("nonebot.adapters.qq"):
+        from nonebot.adapters.qq.event import C2CMessageCreateEvent
+
+        if isinstance(event, C2CMessageCreateEvent):
+            async with get_session() as session:
+                g = await session.get(PrivateChatConfig, {"user_id": user_id})
+                return g is not None and g.enabled
+    return False
 
 
 class BrowserErrorOccurred(Exception):
@@ -56,7 +76,7 @@ class LinkParser:
         self.message = message
         self.lang_str = lang_str
         self.pattern = re.compile(
-            r"((https?|ftp):\/\/)?(([\w\-]+\.)+[a-zA-Z]{2,}|localhost|(\d{1,3}\.){3}\d{1,3})(:\d{2,5})?(\/[^\s]*)?"
+            r"((https?|ftp):\/\/)?(([\w\-]+\.)+[a-zA-Z]{2,}|localhost|(\d{1,3}\.){3}\d{1,3})(:\d{2,5})?(\/[^\s]*)?",
         )
         self.links = self.get_links()
 
@@ -73,7 +93,7 @@ class LinkParser:
             try:
                 description = await self.get_description(link)
                 self.message = (
-                    f"{self.message[:link_match.start()]}{link}({description}){self.message[link_match.end():]}"
+                    f"{self.message[: link_match.start()]}{link}({description}){self.message[link_match.end() :]}"
                 )
             except BrowserErrorOccurred:
                 logger.warning(traceback.format_exc())

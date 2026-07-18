@@ -120,6 +120,13 @@ class ModelResponse(BaseModel, extra="forbid"):
     thought: Optional[str] = None
 
 
+class PrivateChatConfig(Model):
+    """记录用户私聊 Chat 功能的开关状态，默认关闭"""
+
+    user_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    enabled: Mapped[bool] = mapped_column(default=False)
+
+
 class PrivateChatSession(Model):
     """记录用户私聊会话信息，用于主动消息时获取正确的 bot"""
 
@@ -128,17 +135,6 @@ class PrivateChatSession(Model):
     bot_id: Mapped[str] = mapped_column(String(128))  # 用户最后使用的 bot ID
     last_message_time: Mapped[float] = mapped_column(Float())  # 最后消息时间戳
     last_proactive_message_time: Mapped[Optional[float]] = mapped_column(Float(), nullable=True)  # 最后主动消息时间戳
-
-
-class InstantMemoryCache(Model):
-    """即时记忆持久化缓存"""
-
-    id: Mapped[int] = mapped_column(Integer(), primary_key=True, autoincrement=True)
-    session_id: Mapped[str] = mapped_column(String(128), index=True)  # 会话 ID
-    content: Mapped[str] = mapped_column(Text())  # 记忆内容
-    name: Mapped[str] = mapped_column(String(128), default="")  # 记忆名称
-    created_time: Mapped[datetime] = mapped_column(DateTime(), default=datetime.now)  # 创建时间
-    expire_time: Mapped[datetime] = mapped_column(DateTime())  # 过期时间
 
 
 class BlogPost(Model):
@@ -229,7 +225,8 @@ class EgoDecisionResponse(BaseModel):
 class SleepThinkResponse(BaseModel):
     """SleepController request_think 的 LLM 返回格式"""
 
-    sleep_decision: Literal["stay_sleep", "wake_up"]
+    wake_up: bool = False
+    reason: str = ""
 
 
 class SelfActionDurationResponse(BaseModel):

@@ -15,7 +15,5 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
-from . import chat
-
 # from . import profile
-from . import rua
+from . import chat as chat, private_chat_whitelist as private_chat_whitelist, rua as rua

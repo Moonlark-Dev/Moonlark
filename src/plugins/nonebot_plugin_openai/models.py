@@ -17,3 +17,10 @@ class OpenAIModelConfig(Model):
     model_name: Mapped[str] = mapped_column(String(128), nullable=False)
     # 配置类型：'default' 或 'override'
     config_type: Mapped[str] = mapped_column(String(32), default="override")
+
+
+class AIWhitelist(Model):
+    """AI 功能白名单 - 特许群聊在 QQ 节点上使用 AI 功能"""
+
+    group_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    enabled: Mapped[bool] = mapped_column(default=True)

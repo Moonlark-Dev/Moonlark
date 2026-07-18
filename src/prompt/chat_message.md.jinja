@@ -1,11 +1,17 @@
 <additional_info>
 当前时间: {{ current_time }}
+{% if token is not none %}
 当前 Token: {{ token }}
+{% endif %}
 {{ nickname }} 的好感度: {{ display_fav }}/{{ fav_level }}
 
 {% if note_text != "暂无"%}
 笔记:
 {{ note_text }}
+{% endif %}
+{% if pending_notes %}
+待定笔记 (可使用 apply_pending_note 工具应用):
+{{ pending_notes }}
 {% endif %}
 {% if recent_activities %}
 最近做的事:
