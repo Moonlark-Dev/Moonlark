@@ -3,15 +3,14 @@ from datetime import date, datetime, time, timedelta
 from nonebot import on_message
 from nonebot.adapters import Bot, Event
 from nonebot.matcher import Matcher
-from nonebot_plugin_alconna import Alconna, Subcommand, UniMessage, on_alconna
+from nonebot_plugin_alconna import Alconna, Arparma, Option, Subcommand, UniMessage, on_alconna
 from nonebot_plugin_apscheduler import scheduler
-from nonebot_plugin_larkuser import get_user
-from nonebot_plugin_larkutils import get_user_id
+from nonebot_plugin_larkuser import get_registered_user_ids
+from nonebot_plugin_larkutils import get_group_id, get_user_id
 from nonebot_plugin_last_seen.models import LastSeenRecord
 from nonebot_plugin_orm import get_session
 from nonebot_plugin_ranking import generate_image
 from nonebot_plugin_ranking.types import RankingData
-from nonebot_plugin_render.render import render_template
 from sqlalchemy import delete, func, select
 
 from .lang import lang
@@ -65,6 +64,8 @@ async def cleanup_invalid_records() -> None:
 
 wakeuprank_alc = Alconna(
     "wakeuprank",
+    Option("--registered|-r"),
+    Option("--group|-g"),
     Subcommand("avg"),
     Subcommand("today"),
 )
@@ -79,6 +80,13 @@ async def _fmt_time(avg_seconds: float) -> str:
     return f"{h:02d}:{m:02d}:{s:02d}"
 
 
+async def _fmt_time_no_seconds(avg_seconds: float) -> str:
+    total = max(0, int(avg_seconds)) + 14400
+    h = (total // 3600) % 24
+    m = (total % 3600) // 60
+    return f"{h:02d}:{m:02d}"
+
+
 async def _get_user_valid_records(session, user_id: str):
     result = await session.execute(
         select(RiseData.wake_time, RiseData.record_date).where(
@@ -88,8 +96,49 @@ async def _get_user_valid_records(session, user_id: str):
     return result.all()
 
 
+async def _filter_ranked_data(
+    ranked_data: list[RankingData],
+    registered: bool,
+    group: bool,
+    group_id: str,
+) -> list[RankingData]:
+    """根据 --registered 和 --group 选项过滤排行数据"""
+    if not registered and not group:
+        return ranked_data
+
+    allowed_ids: set[str] | None = None
+
+    if registered:
+        reg_ids = set(await get_registered_user_ids())
+        allowed_ids = reg_ids
+
+    if group and group_id:
+        async with get_session() as session:
+            result = await session.execute(
+                select(LastSeenRecord.user_id).where(LastSeenRecord.session_id == group_id).distinct()
+            )
+            group_user_ids = {row[0] for row in result}
+        if allowed_ids is not None:
+            allowed_ids &= group_user_ids
+        else:
+            allowed_ids = group_user_ids
+
+    if allowed_ids is None:
+        return ranked_data
+
+    return [item for item in ranked_data if item["user_id"] in allowed_ids]
+
+
 @wakeuprank.assign("$main")
-async def _(matcher: Matcher, user_id: str = get_user_id()) -> None:
+async def _(
+    matcher: Matcher,
+    user_id: str = get_user_id(),
+    group_id: str = get_group_id(),
+    result: Arparma | None = None,
+) -> None:
+    registered = result is not None and result.find("registered") if result else False
+    group_flag = result is not None and result.find("group") if result else False
+
     async with get_session() as session:
         subq = (
             select(
@@ -129,7 +178,13 @@ async def _(matcher: Matcher, user_id: str = get_user_id()) -> None:
                 avg_time_str = await _fmt_time(avg_offset)
             else:
                 avg_time_str = "00:00:00"
-            ranked_data.append({"user_id": uid, "data": count, "info": avg_time_str})
+            ranked_data.append(
+                {"user_id": uid, "data": count, "info": await lang.text("wakeuprank.avg_time", user_id, avg_time_str)}
+            )
+
+    ranked_data = await _filter_ranked_data(ranked_data, registered, group_flag, group_id)
+    if not ranked_data:
+        await lang.finish("wakeuprank.no_data", user_id)
 
     title = await lang.text("wakeuprank.title", user_id)
     image = await generate_image(ranked_data, user_id, title)
@@ -137,7 +192,15 @@ async def _(matcher: Matcher, user_id: str = get_user_id()) -> None:
 
 
 @wakeuprank.assign("avg")
-async def _(matcher: Matcher, user_id: str = get_user_id()) -> None:
+async def _(
+    matcher: Matcher,
+    user_id: str = get_user_id(),
+    group_id: str = get_group_id(),
+    result: Arparma | None = None,
+) -> None:
+    registered = result is not None and result.find("registered") if result else False
+    group_flag = result is not None and result.find("group") if result else False
+
     async with get_session() as session:
         rows = (
             await session.execute(
@@ -159,36 +222,42 @@ async def _(matcher: Matcher, user_id: str = get_user_id()) -> None:
             user_times[uid] = []
         user_times[uid].append(offset)
 
-    user_avg: dict[str, float] = {uid: sum(offsets) / len(offsets) for uid, offsets in user_times.items()}
-    sorted_users = sorted(user_avg.items(), key=lambda x: x[1])
+    user_avg: dict[str, tuple[float, int]] = {
+        uid: (sum(offsets) / len(offsets), len(offsets)) for uid, offsets in user_times.items()
+    }
+    sorted_users = sorted(user_avg.items(), key=lambda x: x[1][0])
 
-    ranked_data: list[RankingData] = [
-        {"user_id": uid, "data": round(avg_seconds), "info": await _fmt_time(avg_seconds)}
-        for uid, avg_seconds in sorted_users
-    ]
+    ranked_data: list[RankingData] = []
+    for uid, (avg_seconds, count) in sorted_users:
+        display_time = await _fmt_time_no_seconds(avg_seconds)
+        ranked_data.append(
+            {
+                "user_id": uid,
+                "data": round(avg_seconds),
+                "display": display_time,
+                "info": await lang.text("wakeuprank.record_count", user_id, count),
+            }
+        )
+
+    ranked_data = await _filter_ranked_data(ranked_data, registered, group_flag, group_id)
+    if not ranked_data:
+        await lang.finish("wakeuprank.no_data", user_id)
 
     title = await lang.text("wakeuprank.avg_title", user_id)
-    image = await render_template(
-        "wakeuprank_avg.html.jinja",
-        title,
-        user_id,
-        {
-            "me": None,
-            "users": [
-                {
-                    "nickname": (await get_user(item["user_id"])).get_nickname(),
-                    "info": item["info"],
-                    "seconds": item["data"],
-                }
-                for item in ranked_data[:7]
-            ],
-        },
-    )
+    image = await generate_image(ranked_data, user_id, title)
     await wakeuprank.finish(await UniMessage().image(raw=image, name="image.png").export())
 
 
 @wakeuprank.assign("today")
-async def _(matcher: Matcher, user_id: str = get_user_id()) -> None:
+async def _(
+    matcher: Matcher,
+    user_id: str = get_user_id(),
+    group_id: str = get_group_id(),
+    result: Arparma | None = None,
+) -> None:
+    registered = result is not None and result.find("registered") if result else False
+    group_flag = result is not None and result.find("group") if result else False
+
     today = date.today()
     async with get_session() as session:
         rows = (
@@ -209,11 +278,16 @@ async def _(matcher: Matcher, user_id: str = get_user_id()) -> None:
         {
             "user_id": row.user_id,
             "data": int((row.wake_time - datetime.combine(today, WAKE_START)).total_seconds()),
-            "info": row.wake_time.strftime("%H:%M:%S"),
+            "display": row.wake_time.strftime("%H:%M:%S"),
+            "info": None,
         }
         for row in rows
     ]
 
+    ranked_data = await _filter_ranked_data(ranked_data, registered, group_flag, group_id)
+    if not ranked_data:
+        await lang.finish("wakeuprank.no_data", user_id)
+
     title = await lang.text("wakeuprank.today_title", user_id)
-    image = await generate_image(ranked_data, user_id, title)
+    image = await generate_image(ranked_data, user_id, title, limit=9999)
     await wakeuprank.finish(await UniMessage().image(raw=image, name="image.png").export())

@@ -98,6 +98,9 @@ async def reset_session(session_id: str) -> bool:
 
     session = groups.pop(session_id)
     session.processor.enabled = False
+    session.processor.pending_notes.clear()
+    session.processor._shown_pending_note_ids.clear()
+    session.processor.unanalyzed_message_count = 0
     if session.processor.loop_task:
         session.processor.loop_task.cancel()
     if session.processor.openai_messages.fetcher_task:

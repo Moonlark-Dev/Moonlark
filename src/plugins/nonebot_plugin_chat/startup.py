@@ -68,11 +68,3 @@ async def _init_moonlark_main():
     from .core.ego.moonlark_main import init_moonlark_main
 
     await init_moonlark_main()
-
-
-@driver.on_startup
-async def _init_instant_memories():
-    from .utils.instant_mem import load_memories_from_db, _cleanup_expired_db
-
-    await _cleanup_expired_db()
-    await load_memories_from_db()
