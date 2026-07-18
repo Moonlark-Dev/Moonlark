@@ -719,7 +719,7 @@ class MessageProcessor:
         return await get_message_text(
             "chat_message.md.jinja",
             current_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            token=round(self.token_bucket.get(), 2),
+            token=round(self.token_bucket.get(), 2) if self.session.get_session_type() == "group" else None,
             nickname=sender.get_nickname(),
             display_fav=sender.get_display_fav(),
             fav_level=await sender.get_fav_level(),
