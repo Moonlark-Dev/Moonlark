@@ -2754,7 +2754,7 @@ nonebot-adapter-qq = "*"
 nonebot-plugin-alconna = ">=0.59.2, <0.63.0"
 nonebot-plugin-htmlrender = ">=0.6.6, <0.7.0"
 nonebot-plugin-orm = ">=0.8.0, <0.9.0"
-nonebot-plugin-session = ">=0.3.2, <0.4.0"
+nonebot-plugin-session = {git = "https://github.com/Moonlark-Dev/nonebot-plugin-session.git", tag = "v0.3.3-dev"}
 nonebot-plugin-userinfo = ">=0.2.6, <0.3.0"
 nonebot2 = {version = ">=2.3.1, <3.0.0", extras = ["fastapi"]}
 numpy = ">=2.3.1, <3.0.0"
@@ -3416,16 +3416,20 @@ name = "nonebot-plugin-session"
 version = "0.3.2"
 description = "Nonebot2 会话信息提取与会话id定义"
 optional = false
-python-versions = "<4.0,>=3.9"
+python-versions = "^3.9"
 groups = ["main"]
-files = [
-    {file = "nonebot_plugin_session-0.3.2-py3-none-any.whl", hash = "sha256:785e74ff656e46d84c4dbbac125f9a9adebcc4b9ff7db700527e6e47d47aabd6"},
-    {file = "nonebot_plugin_session-0.3.2.tar.gz", hash = "sha256:da0dabe9108151052a6e83d9923068d2ec43a93810ad37b264ed65aee2c69f93"},
-]
+files = []
+develop = false
 
 [package.dependencies]
-nonebot2 = ">=2.3.0,<3.0.0"
-strenum = ">=0.4.15,<0.5.0"
+nonebot2 = "^2.3.0"
+strenum = "^0.4.15"
+
+[package.source]
+type = "git"
+url = "https://github.com/Moonlark-Dev/nonebot-plugin-session.git"
+reference = "v0.3.3-dev"
+resolved_reference = "85e21aa5845ab50eed0dfc70e97423ff6d17a729"
 
 [[package]]
 name = "nonebot-plugin-uninfo"
