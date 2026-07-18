@@ -62,7 +62,9 @@ async def _(
 ) -> None:
     if not ai_enabled:
         await matcher.finish()
-    session = await create_group_session(session_id, get_target(event), bot)
+    target = get_target(event)
+    session = await create_group_session(session_id, target, bot)
+    session.set_target(target, bot)
     if session.mute_until is not None:
         await matcher.finish()
     plaintext = event.get_plaintext().strip()
@@ -99,7 +101,9 @@ async def _(
     # 检查是否是主动私聊的回复
     await moonlark_main.on_private_message_replied(user_id)
 
-    session = await create_private_session(session_key, get_target(event), bot)
+    target = get_target(event)
+    session = await create_private_session(session_key, target, bot)
+    session.set_target(target, bot)
     if session.mute_until is not None:
         await matcher.finish()
     plaintext = event.get_plaintext().strip()
@@ -179,7 +183,10 @@ async def _(event: NoticeEvent, bot: OB11Bot, platform_id: str = get_group_id())
 
 @on_notice(block=False).handle()
 async def _(
-    bot: Bot, event: FriendRecallNoticeEvent, user_id: str = get_user_id(), session_key: str = get_group_id(),
+    bot: Bot,
+    event: FriendRecallNoticeEvent,
+    user_id: str = get_user_id(),
+    session_key: str = get_group_id(),
 ) -> None:
     message_id = str(event.message_id)
     session = await create_private_session(session_key, get_target(event), bot)

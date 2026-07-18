@@ -65,9 +65,7 @@ async def show_whitelist(user_id: str) -> None:
 async def add_to_whitelist(user_id: str, group_id: str) -> None:
     """添加群聊到白名单"""
     async with get_session() as session:
-        existing = await session.scalar(
-            select(AIWhitelist).where(AIWhitelist.group_id == group_id)
-        )
+        existing = await session.scalar(select(AIWhitelist).where(AIWhitelist.group_id == group_id))
         if existing:
             await lang.finish("ai_whitelist.already_exists", user_id, group_id)
 
@@ -80,9 +78,7 @@ async def add_to_whitelist(user_id: str, group_id: str) -> None:
 async def remove_from_whitelist(user_id: str, group_id: str) -> None:
     """从白名单移除群聊"""
     async with get_session() as session:
-        entry = await session.scalar(
-            select(AIWhitelist).where(AIWhitelist.group_id == group_id)
-        )
+        entry = await session.scalar(select(AIWhitelist).where(AIWhitelist.group_id == group_id))
         if not entry:
             await lang.finish("ai_whitelist.not_found", user_id, group_id)
 
@@ -95,9 +91,7 @@ async def remove_from_whitelist(user_id: str, group_id: str) -> None:
 async def set_whitelist_enabled(user_id: str, group_id: str, enabled: bool) -> None:
     """启用/禁用白名单中的群聊"""
     async with get_session() as session:
-        entry = await session.scalar(
-            select(AIWhitelist).where(AIWhitelist.group_id == group_id)
-        )
+        entry = await session.scalar(select(AIWhitelist).where(AIWhitelist.group_id == group_id))
         if not entry:
             await lang.finish("ai_whitelist.not_found", user_id, group_id)
 

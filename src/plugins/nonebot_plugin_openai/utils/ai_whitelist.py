@@ -18,7 +18,5 @@ def check_ai_enabled() -> bool:
 async def is_ai_enabled_for_group(bot: QQBot, group_id: str) -> bool:
     """检查指定 QQ 群是否在 AI 白名单中且已启用"""
     async with get_session() as session:
-        result = await session.scalar(
-            select(AIWhitelist).where(AIWhitelist.group_id == group_id)
-        )
+        result = await session.scalar(select(AIWhitelist).where(AIWhitelist.group_id == group_id))
         return result is not None and result.enabled
