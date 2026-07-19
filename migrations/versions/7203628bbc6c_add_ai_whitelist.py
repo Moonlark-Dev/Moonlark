@@ -22,6 +22,10 @@ depends_on: str | Sequence[str] | None = None
 def upgrade(name: str = "") -> None:
     if name:
         return
+    conn = op.get_bind()
+    inspector = sa.inspect(conn)
+    if inspector.has_table("nonebot_plugin_openai_aiwhitelist"):
+        return
     op.create_table(
         "nonebot_plugin_openai_aiwhitelist",
         sa.Column("group_id", sa.String(length=128), nullable=False),
