@@ -73,7 +73,10 @@ async def _(
     platform_message = event.get_message()
     message = await UniMessage.of(message=platform_message, bot=bot).attach_reply(event, bot)
     nickname = await get_nickname(user_id, bot, event)
-    await session.handle_message(message, user_id, event, state, nickname, event.is_tome())
+    platform_user_id = event.get_user_id()
+    await session.handle_message(
+        message, user_id, event, state, nickname, event.is_tome(), platform_user_id=platform_user_id
+    )
 
     # 礼物掉落检测
     try:
@@ -113,7 +116,8 @@ async def _(
     platform_message = event.get_message()
     message = await UniMessage.of(message=platform_message, bot=bot).attach_reply(event, bot)
     nickname = await get_nickname(user_id, bot, event)
-    await session.handle_message(message, user_id, event, state, nickname, True)
+    platform_user_id = event.get_user_id()
+    await session.handle_message(message, user_id, event, state, nickname, True, platform_user_id=platform_user_id)
 
 
 @on_notice(block=False).handle()
