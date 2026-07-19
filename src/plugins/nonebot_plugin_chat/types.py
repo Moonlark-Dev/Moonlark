@@ -15,6 +15,7 @@ class CachedMessage(TypedDict):
     content: str
     nickname: str
     user_id: str
+    platform_user_id: str
     send_time: datetime
     images: list[bytes]
     self: bool
