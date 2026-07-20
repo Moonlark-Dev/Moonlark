@@ -169,11 +169,23 @@ class BaseSession(ABC):
         pass
 
     async def handle_message(
-        self, message: UniMessage, user_id: str, event: Event, state: T_State, nickname: str, mentioned: bool = False
+        self,
+        message: UniMessage,
+        user_id: str,
+        event: Event,
+        state: T_State,
+        nickname: str,
+        mentioned: bool = False,
+        platform_user_id: str = "",
     ) -> None:
         message_id = get_message_id(event)
+        if not platform_user_id:
+            platform_user_id = user_id
         self.message_queue.append(
-            ("message", (message, event, state, user_id, nickname, datetime.now(), mentioned, message_id))
+            (
+                "message",
+                (message, event, state, user_id, nickname, datetime.now(), mentioned, message_id, platform_user_id),
+            )
         )
 
     async def add_event(
@@ -198,7 +210,7 @@ class BaseSession(ABC):
         users = {}
         for message in self.cached_messages:
             if not message["self"]:
-                users[message["nickname"]] = message["user_id"]
+                users[message["nickname"]] = message.get("platform_user_id", message["user_id"])
         return users
 
     @abstractmethod

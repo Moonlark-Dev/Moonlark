@@ -63,7 +63,7 @@ class MoonlarkUser(ABC):
         return self.main_account
 
     def get_nickname(self) -> str:
-        return self.nickname
+        return self.nickname or f"匿名-{self.user_id[-4:]}"
 
     def has_nickname(self) -> bool:
         return bool(self.nickname)

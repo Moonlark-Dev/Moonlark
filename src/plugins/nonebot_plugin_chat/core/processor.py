@@ -272,7 +272,7 @@ class MessageProcessor:
 
         elif item[0] == "message":
             # 处理消息类型队列项
-            message, event, state, user_id, nickname, dt, mentioned, message_id = item[1]
+            message, event, state, user_id, nickname, dt, mentioned, message_id, platform_user_id = item[1]
             mentioned = mentioned and not await self.should_ignore_mention(user_id)
 
             text, images = await self.parse_message(message, event, state)
@@ -288,6 +288,7 @@ class MessageProcessor:
                 "nickname": nickname,
                 "send_time": dt,
                 "user_id": user_id,
+                "platform_user_id": platform_user_id,
                 "self": False,
                 "message_id": message_id,
                 "images": images,
@@ -477,6 +478,7 @@ class MessageProcessor:
             "nickname": "Moonlark",
             "send_time": datetime.now(),
             "user_id": "",
+            "platform_user_id": "",
             "self": True,
             "message_id": message_id,
             "images": [],
@@ -624,8 +626,14 @@ class MessageProcessor:
     async def _get_user_profiles(self) -> list[str]:
         """根据昵称获取用户的 profile 信息"""
         profiles = []
+        seen_nicknames: set[str] = set()
         async with get_session() as session:
-            for nickname, user_id in (await self.session._get_users_in_cached_message()).items():
+            for msg in self.session.cached_messages:
+                if msg["self"] or msg["nickname"] in seen_nicknames:
+                    continue
+                seen_nicknames.add(msg["nickname"])
+                nickname = msg["nickname"]
+                user_id = msg["user_id"]  # 使用主账户ID用于数据库查询
                 if not (profile := await session.get(UserProfile, {"user_id": user_id})):
                     profile = await self.session.text("prompt_group.user_profile_not_found")
                     is_profile_found = False
