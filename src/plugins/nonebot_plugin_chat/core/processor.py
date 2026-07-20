@@ -1,11 +1,12 @@
 import base64
 import math
+import random
 
 import aiofiles
 from nonebot.adapters import Event
 from nonebot.typing import T_State
 from nonebot.adapters.onebot.v11 import Bot as OB11Bot
-from nonebot_plugin_alconna import At, UniMessage
+from nonebot_plugin_alconna import At, Target, UniMessage
 from nonebot_plugin_chat.utils.group import LinkParser
 from nonebot_plugin_chat.utils.token_bucket import TokenBucket
 from ..enums import StateEnum
@@ -459,7 +460,14 @@ class MessageProcessor:
         if reply_message_id is not None:
             reply_message_id = str(reply_message_id)
             message = message.reply(reply_message_id)
-        receipt = await message.send(target=self.session.target, bot=self.session.bot)
+        # QQ 官方机器人适配器特殊处理：设置 msg_seq 防止消息去重
+        # 见 https://github.com/AstrBotDevs/AstrBot/issues/4382
+        target = self.session.target
+        bot = self.session.bot
+        if isinstance(target, Target) and bot.adapter.get_name() == "QQ":
+            if "qq.reply_seq" not in target.extra:
+                target.extra["qq.reply_seq"] = random.randint(1, 1000000)
+        receipt = await message.send(target=target, bot=bot)
         # 记录回应用时（使用 reply_message_id 查找对应的原消息）
         self._record_reply_timing(reply_message_id)
 
