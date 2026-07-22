@@ -118,7 +118,7 @@ moonlark-custom-plugins = {path = "./src", develop = true}
 nonebot-plugin-bilichat = {git = "https://github.com/Moonlark-Dev/nonebot-plugin-bilichat.git"}
 bilichat-request = ">=0.4.0"
 bilibili-api-python = "^17.4.1"
-nonebot-adapter-qq = {git = "https://github.com/Moonlark-Dev/adapter-qq.git", tag = "v1.7.2"}
+nonebot-adapter-qq = {git = "https://github.com/Moonlark-Dev/adapter-qq.git"}
 
 
 
