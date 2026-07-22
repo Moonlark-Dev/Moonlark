@@ -411,6 +411,10 @@ class MoonlarkMain:
         }
 
     def _update_decision_history(self, action_desc: str) -> None:
+        # 去重：如果有相同 action 的旧条目，先移除
+        self.state["decision_history"] = [
+            h for h in self.state["decision_history"] if h["action"] != action_desc
+        ]
         self.state["decision_history"].append(
             {
                 "time": datetime.now().isoformat(),
