@@ -96,7 +96,7 @@ plugins = [
     "nonebot_plugin_wakeuprank",
     "nonebot_plugin_qsend",
 ]
-plugin_dirs = ["src/plugins"]
+plugin_dirs = []
 builtin_plugins = []
 
 [tool.poetry]
