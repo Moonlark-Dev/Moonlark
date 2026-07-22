@@ -761,7 +761,11 @@ class MessageProcessor:
                         return True
                 elif isinstance(content, list):
                     for part in content:
-                        if isinstance(part, dict) and "text" in part and norm_line in self._normalize_line(part["text"]):
+                        if (
+                            isinstance(part, dict)
+                            and "text" in part
+                            and norm_line in self._normalize_line(part["text"])
+                        ):
                             return True
         return False
 
