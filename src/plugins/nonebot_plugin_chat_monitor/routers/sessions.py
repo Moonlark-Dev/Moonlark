@@ -307,12 +307,9 @@ async def get_message_context(session_id: str, msg_index: int, request: Request)
 
     # additional_info 块
     try:
-        from nonebot_plugin_chat.core.processor import Processor
         from nonebot_plugin_chat.utils.status_manager import get_status_manager
 
         status_manager = get_status_manager()
-        mood = status_manager.get_mood()
-        mood_text = mood.value if hasattr(mood, 'value') else str(mood)
 
         # Token 信息
         token_info = ""
@@ -347,9 +344,9 @@ async def get_message_context(session_id: str, msg_index: int, request: Request)
         # 笔记
         notes_text = ""
         try:
-            from nonebot_plugin_chat.utils.note_manager import get_note_manager
-            note_mgr = get_note_manager()
-            all_notes = await note_mgr.get_all_notes(context_id=session_id, limit=20)
+            from nonebot_plugin_chat.utils.note_manager import get_context_notes
+            note_mgr = await get_context_notes(context_id=session_id)
+            all_notes = await note_mgr.get_notes()
             if all_notes:
                 from nonebot_plugin_chat.utils.note_manager import NoteSchema
                 note_lines = []
@@ -366,9 +363,9 @@ async def get_message_context(session_id: str, msg_index: int, request: Request)
             pass
 
         # 当前状态
-        state_text = f"心情：{mood_text}"
-        if hasattr(status_manager, 'get_mood_retention'):
-            state_text += f" (情感强度: {status_manager.get_mood_retention()})"
+        mood_type, mood_reason = status_manager.get_status()
+        mood_label = mood_type.value if hasattr(mood_type, 'value') else str(mood_type)
+        state_text = f"心情：{mood_label} (情感强度: {status_manager.get_mood_retention()}; 原因: {mood_reason or '无'})"
 
         # 组装 additional_info
         info_parts = []
