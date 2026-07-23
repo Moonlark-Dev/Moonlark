@@ -1,4 +1,5 @@
 import base64
+import html
 import math
 
 import aiofiles
@@ -740,18 +741,31 @@ class MessageProcessor:
     async def filter_info_lines(self, lines: list[str]) -> list[str]:
         return [line for line in lines if not await self.is_additional_info_line_showed(line)]
 
+    def _normalize_line(self, text: str) -> str:
+        """归一化行文本：去除时间戳前缀并解码 HTML 实体"""
+        # 去除 [ISO时间戳] 前缀
+        result = text
+        if result.startswith("[") and "] " in result:
+            result = result.split("] ", 1)[1]
+        return html.unescape(result)
+
     async def is_additional_info_line_showed(self, line: str) -> bool:
+        norm_line = self._normalize_line(line)
         async with self.openai_messages.fetcher_lock:
             for message in self.openai_messages.messages:
                 content = message.get("content") if isinstance(message, dict) else getattr(message, "content", None)
                 if content is None:
                     continue
                 if isinstance(content, str):
-                    if line in content:
+                    if norm_line in self._normalize_line(content):
                         return True
                 elif isinstance(content, list):
                     for part in content:
-                        if isinstance(part, dict) and "text" in part and line in part["text"]:
+                        if (
+                            isinstance(part, dict)
+                            and "text" in part
+                            and norm_line in self._normalize_line(part["text"])
+                        ):
                             return True
         return False
 
