@@ -269,3 +269,117 @@ async def get_message_detail(
     if include_images and msg.get("images"):
         result["images"] = [base64.b64encode(img).decode("utf-8") for img in msg["images"]]
     return result
+
+
+@router.get("/chat-monitor/sessions/{session_id}/messages/{msg_index}/context")
+async def get_message_context(session_id: str, msg_index: int, request: Request):
+    """获取消息的完整上下文格式（与 AI 上下文中插入的格式相同）。"""
+    await verify_admin_request(request)
+    from nonebot_plugin_chat.core.session import get_session_directly
+
+    try:
+        session = get_session_directly(session_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    if msg_index < 0 or msg_index >= len(session.cached_messages):
+        raise HTTPException(status_code=404, detail="Message not found")
+
+    msg = session.cached_messages[msg_index]
+
+    # 格式化消息文本
+    try:
+        from nonebot_plugin_chat.utils.message import generate_message_string
+        formatted_msg = generate_message_string(msg)
+    except ImportError:
+        formatted_msg = f"[{msg.get('nickname', '?')}]({msg.get('message_id', '?')}): {msg.get('content', '')}\n"
+
+    # 搜集额外上下文信息
+    lines = [formatted_msg]
+
+    # additional_info 块
+    try:
+        from nonebot_plugin_chat.core.processor import Processor
+        from nonebot_plugin_chat.utils.status_manager import get_status_manager
+
+        status_manager = get_status_manager()
+        mood = status_manager.get_mood()
+        mood_text = mood.value if hasattr(mood, 'value') else str(mood)
+
+        # Token 信息
+        token_info = ""
+        if hasattr(session, 'processor') and hasattr(session.processor, 'token_bucket'):
+            try:
+                token_val = round(session.processor.token_bucket.get(), 2)
+                token_info = f"当前 Token: {token_val}"
+            except Exception:
+                pass
+
+        # 好感度（最近一条消息的发送者）
+        affection = ""
+        user_id = msg.get("user_id", "")
+        if user_id and hasattr(session, 'processor') and hasattr(session.processor, 'affection_manager'):
+            try:
+                level = session.processor.affection_manager.get_affection_level(user_id)
+                tag = session.processor.affection_manager.get_affection_tag(user_id)
+                affection = f"{msg.get('nickname', '?')} 的好感度: {level}/{tag}"
+            except Exception:
+                pass
+
+        # 最近活动
+        recent_actions = ""
+        try:
+            from nonebot_plugin_chat.core.ego import moonlark_main
+            actions = moonlark_main._get_recent_actions_text()
+            if actions:
+                recent_actions = f"最近做的事:\n{actions}"
+        except Exception:
+            pass
+
+        # 笔记
+        notes_text = ""
+        try:
+            from nonebot_plugin_chat.utils.note_manager import get_note_manager
+            note_mgr = get_note_manager()
+            all_notes = await note_mgr.get_all_notes(context_id=session_id, limit=20)
+            if all_notes:
+                from nonebot_plugin_chat.utils.note_manager import NoteSchema
+                note_lines = []
+                for n in all_notes:
+                    if isinstance(n, NoteSchema):
+                        from datetime import datetime
+                        created = datetime.fromtimestamp(n.created_time).strftime("%m-%d")
+                        note_lines.append(f"- {n.content}  (#{n.id}，创建于 {created})")
+                    elif isinstance(n, dict):
+                        note_lines.append(f"- {n.get('content', '')}")
+                if note_lines:
+                    notes_text = "笔记:\n" + "\n".join(note_lines[-10:])
+        except Exception:
+            pass
+
+        # 当前状态
+        state_text = f"心情：{mood_text}"
+        if hasattr(status_manager, 'get_mood_retention'):
+            state_text += f" (情感强度: {status_manager.get_mood_retention()})"
+
+        # 组装 additional_info
+        info_parts = []
+        now = now_iso()
+        info_parts.append(f"<additional_info>\n当前时间: {now}")
+        if token_info:
+            info_parts.append(token_info)
+        if affection:
+            info_parts.append(affection)
+        if notes_text:
+            info_parts.append(notes_text)
+        if recent_actions:
+            info_parts.append(recent_actions)
+        info_parts.append(state_text)
+        info_parts.append("</additional_info>")
+
+        lines.append("\n".join(info_parts))
+    except Exception as e:
+        logger.debug(f"[ChatMonitor] 构建消息上下文时出错: {e}")
+
+    return {"context": "".join(lines)}
+
