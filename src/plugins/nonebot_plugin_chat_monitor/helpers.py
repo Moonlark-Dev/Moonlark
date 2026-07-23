@@ -14,9 +14,53 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-"""辅助函数：会话状态判断、消息序列化等"""
+"""辅助函数：会话状态判断、消息序列化、会话名缓存等"""
 
+import time
 from typing import Any, Optional
+
+
+class SessionNameCache:
+    """会话名称缓存，避免每 2 秒异步调用 get_session_name()。"""
+
+    def __init__(self, ttl: float = 10.0):
+        self._cache: dict[str, tuple[str, float]] = {}  # session_id -> (name, timestamp)
+
+    def get(self, session_id: str) -> Optional[str]:
+        """获取缓存的会话名称（如果未过期）。"""
+        entry = self._cache.get(session_id)
+        if entry and time.monotonic() - entry[1] < 10.0:
+            return entry[0]
+        return None
+
+    def set(self, session_id: str, name: str):
+        self._cache[session_id] = (name, time.monotonic())
+
+    def remove(self, session_id: str):
+        self._cache.pop(session_id, None)
+
+    def clear(self):
+        self._cache.clear()
+
+
+# 全局会话名缓存实例（TTL 10 秒）
+session_name_cache = SessionNameCache()
+
+
+async def get_cached_session_name(session: Any, session_id: str) -> str:
+    """获取会话名称，优先使用缓存。"""
+    cached = session_name_cache.get(session_id)
+    if cached:
+        return cached
+
+    name = session_id
+    try:
+        resolved = await session.get_session_name()
+        name = resolved or session_id
+    except Exception:
+        pass
+    session_name_cache.set(session_id, name)
+    return name
 
 
 def get_session_state(session: Any) -> str:

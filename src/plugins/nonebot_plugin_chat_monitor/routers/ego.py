@@ -16,20 +16,20 @@
 
 """EGO 相关的 REST API 路由"""
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Request
 from fastapi.exceptions import HTTPException
 from nonebot_plugin_orm import get_session
 from sqlalchemy import func, select
 
-from ..auth import verify_admin
+from ..auth import verify_admin_request
 
 router = APIRouter(tags=["ego"])
 
 
 @router.get("/chat-monitor/ego/status")
-async def get_ego_status(token: str, salt: str):
+async def get_ego_status(request: Request):
     """获取 EGO 模块的详细状态"""
-    await verify_admin(token, salt)
+    await verify_admin_request(request)
     from nonebot_plugin_chat.core.ego.moonlark_main import moonlark_main
     from nonebot_plugin_chat.utils.status_manager import get_status_manager
 
@@ -55,13 +55,12 @@ async def get_ego_status(token: str, salt: str):
 
 @router.get("/chat-monitor/ego/events")
 async def list_ego_events(
-    token: str,
-    salt: str,
+    request: Request,
     limit: int = Query(100, ge=1, le=500),
     offset: int = Query(0, ge=0),
 ):
     """列出 EGO 的智能体事件记录"""
-    await verify_admin(token, salt)
+    await verify_admin_request(request)
     from nonebot_plugin_chat.models import AgentEvent
 
     async with get_session() as db_session:
@@ -86,9 +85,9 @@ async def list_ego_events(
 
 
 @router.get("/chat-monitor/ego/events/{event_id}")
-async def get_ego_event(event_id: int, token: str, salt: str):
+async def get_ego_event(event_id: int, request: Request):
     """获取单条 EGO 事件详情"""
-    await verify_admin(token, salt)
+    await verify_admin_request(request)
     from nonebot_plugin_chat.models import AgentEvent
 
     async with get_session() as db_session:

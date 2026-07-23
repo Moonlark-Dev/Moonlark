@@ -117,6 +117,7 @@ packages = [
     { include = "nonebot_plugin_command_stats", from = "./plugins" },
     { include = "nonebot_plugin_wdym", from = "./plugins" },
     { include = "nonebot_plugin_wakeuprank", from = "./plugins" },
+    { include = "nonebot_plugin_chat_monitor", from = "./plugins" },
 ]
 
 

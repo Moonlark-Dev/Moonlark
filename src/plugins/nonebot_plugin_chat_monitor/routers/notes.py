@@ -23,22 +23,21 @@ from fastapi.exceptions import HTTPException
 from nonebot_plugin_orm import get_session
 from sqlalchemy import func, select
 
-from ..auth import verify_admin
+from ..auth import verify_admin_request
 
 router = APIRouter(tags=["notes"])
 
 
 @router.get("/chat-monitor/notes")
 async def list_notes(
-    token: str,
-    salt: str,
+    request: Request,
     context_id: str = Query("", description="可选的会话/上下文 ID，为空则返回所有笔记"),
     search: str = Query("", description="搜索关键词（在内容中匹配）"),
     limit: int = Query(200, ge=1, le=500),
     offset: int = Query(0, ge=0),
 ):
     """列出笔记"""
-    await verify_admin(token, salt)
+    await verify_admin_request(request)
     from nonebot_plugin_chat.models import Note
 
     async with get_session() as db_session:
@@ -75,9 +74,9 @@ async def list_notes(
 
 
 @router.post("/chat-monitor/notes")
-async def create_note(request: Request, token: str, salt: str):
+async def create_note(request: Request):
     """创建新笔记"""
-    await verify_admin(token, salt)
+    await verify_admin_request(request)
     from nonebot_plugin_chat.models import Note
 
     body = await request.json()
@@ -115,9 +114,9 @@ async def create_note(request: Request, token: str, salt: str):
 
 
 @router.put("/chat-monitor/notes/{note_id}")
-async def update_note(note_id: int, request: Request, token: str, salt: str):
+async def update_note(note_id: int, request: Request):
     """更新笔记"""
-    await verify_admin(token, salt)
+    await verify_admin_request(request)
     from nonebot_plugin_chat.models import Note
 
     body = await request.json()
@@ -147,9 +146,9 @@ async def update_note(note_id: int, request: Request, token: str, salt: str):
 
 
 @router.delete("/chat-monitor/notes/{note_id}")
-async def delete_note(note_id: int, token: str, salt: str):
+async def delete_note(note_id: int, request: Request):
     """删除笔记"""
-    await verify_admin(token, salt)
+    await verify_admin_request(request)
     from nonebot_plugin_chat.models import Note
 
     async with get_session() as db_session:
