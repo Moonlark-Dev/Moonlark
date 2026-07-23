@@ -95,6 +95,7 @@ plugins = [
     "nonebot_plugin_wdym",
     "nonebot_plugin_wakeuprank",
     "nonebot_plugin_qsend",
+    "nonebot_plugin_chat_monitor",
 ]
 plugin_dirs = []
 builtin_plugins = []
