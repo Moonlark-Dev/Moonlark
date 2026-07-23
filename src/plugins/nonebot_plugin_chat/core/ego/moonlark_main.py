@@ -49,15 +49,18 @@ class ActionDecider:
         self.fetcher = await self.create_fetcher()
 
     async def create_fetcher(self) -> MessageFetcher:
+        today_actions = await self.moonlark_main._get_today_actions_text()
+        prev_diary = await self.moonlark_main._get_previous_diary()
+        reason = f"online\n\n## 今日已进行的动作\n{today_actions}"
+        if prev_diary:
+            reason += f"\n\n{prev_diary}"
         messages = [
             await get_message(
                 "system",
                 "moonlark_main/system.md.jinja",
                 friends=await self.moonlark_main.get_friends(),
             ),
-            await self.generate_message(
-                (f"online\n\n## 今日已进行的动作\n{await self.moonlark_main._get_today_actions_text()}"),
-            ),
+            await self.generate_message(reason),
         ]
         functions = await create_function_list(
             [
@@ -444,6 +447,21 @@ class MoonlarkMain:
             return "\n".join(lines)
         except Exception as e:
             logger.warning(f"[MoonlarkMain] 获取今日动作历史失败: {e}")
+            return ""
+
+    async def _get_previous_diary(self) -> str:
+        """获取前一天生成的日记内容，供 ActionDecider 首条消息使用"""
+        try:
+            async with get_session() as session:
+                result = await session.execute(
+                    select(DiaryPost).order_by(DiaryPost.created_at.desc()).limit(1),
+                )
+                diary = result.scalar_one_or_none()
+                if diary:
+                    return f"## 昨日日记\n{diary.content}"
+                return ""
+        except Exception as e:
+            logger.warning(f"[MoonlarkMain] 获取前日日记失败: {e}")
             return ""
 
     # ========================================================================
