@@ -93,11 +93,7 @@ async def _(
     state: T_State,
     user_id: str = get_user_id(),
     session_key: str = get_group_id(),
-    ai_enabled: bool = check_ai_enabled(),
 ) -> None:
-    if not ai_enabled:
-        await matcher.finish()
-
     # 记录私聊会话信息（用于主动消息时获取正确的 bot）
     await record_private_chat_session(user_id, session_key, bot.self_id)
 
