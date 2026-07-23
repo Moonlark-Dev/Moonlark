@@ -135,6 +135,7 @@ async def get_session_detail(session_id: str, request: Request):
         "last_interest": getattr(session, "last_interest", None),
         "queue_size": len(session.message_queue),
         "pending_interactions": len(getattr(session, "pending_interactions", {})),
+        "last_thought": getattr(session.processor.openai_messages, "last_thought", None),
     }
 
 

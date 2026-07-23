@@ -43,6 +43,7 @@ class MessageQueue:
         self.trace_id: str = uuid.uuid4().hex
         self.created_at: datetime = datetime.now()
         self.last_events_summary_time: Optional[datetime] = None
+        self.last_thought: Optional[str] = None
 
     @property
     def messages(self) -> list[OpenAIMessage]:
@@ -351,6 +352,8 @@ class MessageQueue:
                     retry_count += 2
                     continue
                 if analysis is not None:
+                    if analysis.thought:
+                        self.last_thought = analysis.thought
                     if analysis.mood:
                         await self.processor.tool_manager.set_mood(
                             analysis.mood, analysis.mood_reason, analysis.mood_intensity
