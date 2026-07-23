@@ -171,14 +171,16 @@ async def _collect_full_status() -> dict:
             session_name = (await session.get_session_name()) or session_id
         except Exception:
             session_name = session_id
-        sessions.append({
-            "id": session_id,
-            "type": session.get_session_type() if hasattr(session, "get_session_type") else "unknown",
-            "name": session_name,
-            "state": _get_session_state(session),
-            "last_activity": _get_session_last_activity(session),
-            "message_count": len(session.cached_messages),
-        })
+        sessions.append(
+            {
+                "id": session_id,
+                "type": session.get_session_type() if hasattr(session, "get_session_type") else "unknown",
+                "name": session_name,
+                "state": _get_session_state(session),
+                "last_activity": _get_session_last_activity(session),
+                "message_count": len(session.cached_messages),
+            }
+        )
 
     # Moonlark EGO 状态
     ego_state = {}
@@ -224,15 +226,17 @@ async def list_sessions(token: str, salt: str):
             session_name = (await session.get_session_name()) or session_id
         except Exception:
             session_name = session_id
-        result.append({
-            "id": session_id,
-            "type": session.get_session_type() if hasattr(session, "get_session_type") else "unknown",
-            "name": session_name,
-            "state": _get_session_state(session),
-            "last_activity": _get_session_last_activity(session),
-            "message_count": len(session.cached_messages),
-            "tool_calls_count": len(session.tool_calls_history),
-        })
+        result.append(
+            {
+                "id": session_id,
+                "type": session.get_session_type() if hasattr(session, "get_session_type") else "unknown",
+                "name": session_name,
+                "state": _get_session_state(session),
+                "last_activity": _get_session_last_activity(session),
+                "message_count": len(session.cached_messages),
+                "tool_calls_count": len(session.tool_calls_history),
+            }
+        )
     return result
 
 
@@ -288,7 +292,7 @@ async def get_session_messages(
 
     messages = session.cached_messages
     total = len(messages)
-    page = messages[-limit - offset:][:limit] if limit > 0 else messages
+    page = messages[-limit - offset :][:limit] if limit > 0 else messages
     return {
         "total": total,
         "messages": [_serialize_cached_message(m) for m in page],
@@ -310,19 +314,23 @@ async def get_session_queue(session_id: str, token: str, salt: str):
     for item in session.message_queue:
         if item[0] == "message":
             _, details = item
-            items.append({
-                "type": "message",
-                "user_id": details[3],
-                "nickname": details[4],
-                "time": details[5].isoformat(),
-            })
+            items.append(
+                {
+                    "type": "message",
+                    "user_id": details[3],
+                    "nickname": details[4],
+                    "time": details[5].isoformat(),
+                }
+            )
         elif item[0] == "event":
             _, details = item
-            items.append({
-                "type": "event",
-                "prompt": details[0][:200],
-                "trigger_mode": details[1],
-            })
+            items.append(
+                {
+                    "type": "event",
+                    "prompt": details[0][:200],
+                    "trigger_mode": details[1],
+                }
+            )
     return items
 
 
@@ -358,17 +366,21 @@ async def get_session_openai_messages(session_id: str, token: str, salt: str):
             role = msg.get("role", "unknown")
             content = msg.get("content", "")
             tool_calls = msg.get("tool_calls")
-            serialized.append({
-                "role": role,
-                "content": str(content)[:2000] if content else None,
-                "tool_calls": tool_calls,
-            })
+            serialized.append(
+                {
+                    "role": role,
+                    "content": str(content)[:2000] if content else None,
+                    "tool_calls": tool_calls,
+                }
+            )
         else:
-            serialized.append({
-                "role": getattr(msg, "role", "unknown"),
-                "content": str(getattr(msg, "content", ""))[:2000] if getattr(msg, "content", None) else None,
-                "tool_calls": getattr(msg, "tool_calls", None),
-            })
+            serialized.append(
+                {
+                    "role": getattr(msg, "role", "unknown"),
+                    "content": str(getattr(msg, "content", ""))[:2000] if getattr(msg, "content", None) else None,
+                    "tool_calls": getattr(msg, "tool_calls", None),
+                }
+            )
     return {"messages": serialized, "count": len(serialized)}
 
 
@@ -477,9 +489,7 @@ async def update_note(note_id: int, request: Request, token: str, salt: str):
             note.keywords = body["keywords"]
         if "expire_hours" in body:
             h = body["expire_hours"]
-            note.expire_time = (
-                datetime.fromtimestamp(datetime.now().timestamp() + h * 3600) if h and h > 0 else None
-            )
+            note.expire_time = datetime.fromtimestamp(datetime.now().timestamp() + h * 3600) if h and h > 0 else None
         await db_session.commit()
         await db_session.refresh(note)
 
@@ -549,12 +559,7 @@ async def list_ego_events(
         count_query = select(func.count()).select_from(AgentEvent)
         total = (await db_session.scalar(count_query)) or 0
 
-        query = (
-            select(AgentEvent)
-            .order_by(AgentEvent.created_at.desc())
-            .offset(offset)
-            .limit(limit)
-        )
+        query = select(AgentEvent).order_by(AgentEvent.created_at.desc()).offset(offset).limit(limit)
         result = await db_session.scalars(query)
         events = result.all()
 
