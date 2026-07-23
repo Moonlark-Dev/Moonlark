@@ -44,6 +44,7 @@ class MessageQueue:
         self.created_at: datetime = datetime.now()
         self.last_events_summary_time: Optional[datetime] = None
         self.last_thought: Optional[str] = None
+        self.last_response: Optional[Any] = None
 
     @property
     def messages(self) -> list[OpenAIMessage]:
@@ -381,6 +382,13 @@ class MessageQueue:
         except Exception as e:
             logger.exception(e)
             state = FetchStatus.FAILED
+
+        # 持久化最近一次 API 响应体（以便前端点击消息时查看）
+        if hasattr(self, "fetcher") and self.fetcher is not None:
+            last_resp = getattr(self.fetcher, "last_response", None)
+            if last_resp is not None:
+                self.last_response = last_resp
+
         return state
 
     async def _ensure_system_prompt(self) -> None:
