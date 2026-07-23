@@ -97,10 +97,10 @@ async def get_exceptions() -> list[ExceptionStatus]:
         ]
 
 
-async def get_openai_history() -> list[OpenAIHistory]:
+async def get_openai_history(limit: int = 10, offset: int = 0) -> list[OpenAIHistory]:
     async with get_session() as session:
         result = await session.execute(
-            select(OpenAIHistoryRecord).order_by(OpenAIHistoryRecord.id.desc()).limit(MAX_OPENAI_HISTORY)
+            select(OpenAIHistoryRecord).order_by(OpenAIHistoryRecord.id.desc()).limit(limit).offset(offset)
         )
         rows = result.scalars().all()
         return [
@@ -111,6 +111,12 @@ async def get_openai_history() -> list[OpenAIHistory]:
             )
             for row in reversed(rows)
         ]
+
+
+async def count_openai_history() -> int:
+    async with get_session() as session:
+        result = await session.execute(select(func.count()).select_from(OpenAIHistoryRecord))
+        return result.scalar()
 
 
 @get_driver().on_startup
@@ -319,9 +325,16 @@ async def get_status_events(token: str, salt: str) -> EventCounter:
 
 
 @app.get("/admin/status/openai")
-async def get_status_openai(token: str, salt: str) -> list[OpenAIHistory]:
+async def get_status_openai(token: str, salt: str, limit: int = 10, offset: int = 0) -> list[OpenAIHistory]:
     await verify_admin(token, salt)
-    return await get_openai_history()
+    return await get_openai_history(limit=limit, offset=offset)
+
+
+@app.get("/admin/status/openai/count")
+async def get_status_openai_count(token: str, salt: str) -> dict:
+    await verify_admin(token, salt)
+    total = await count_openai_history()
+    return {"total": total}
 
 
 @app.get("/admin/status/commands")
