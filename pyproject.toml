@@ -94,6 +94,7 @@ plugins = [
     "nonebot_plugin_command_stats",
     "nonebot_plugin_wdym",
     "nonebot_plugin_wakeuprank",
+    "nonebot_plugin_qsend",
 ]
 plugin_dirs = []
 builtin_plugins = []
@@ -118,7 +119,7 @@ moonlark-custom-plugins = {path = "./src", develop = true}
 nonebot-plugin-bilichat = {git = "https://github.com/Moonlark-Dev/nonebot-plugin-bilichat.git"}
 bilichat-request = ">=0.4.0"
 bilibili-api-python = "^17.4.1"
-nonebot-adapter-qq = {git = "https://github.com/nonebot/adapter-qq.git"}
+nonebot-adapter-qq = {git = "https://github.com/Moonlark-Dev/adapter-qq.git"}
 
 
 
