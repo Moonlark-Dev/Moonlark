@@ -3375,8 +3375,8 @@ yarl = ">=1.9.0,<2"
 [package.source]
 type = "git"
 url = "https://github.com/Moonlark-Dev/adapter-qq.git"
-reference = "v1.7.2"
-resolved_reference = "94ee2a6c4c511690568102f01fea91e033dcab16"
+reference = "HEAD"
+resolved_reference = "a0e434f7a74a4364b433fc328286e136c3bd96ee"
 
 [[package]]
 name = "nonebot-plugin-alconna"
@@ -7000,4 +7000,4 @@ type = ["pytest-mypy (>=1.0.1) ; platform_python_implementation != \"PyPy\""]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11, <4.0"
-content-hash = "e638d29b7d51ed1d81c323fd394ea8eb50ee09fa2cea722d25e8c03e9f3ea235"
+content-hash = "684c955fd74250454fe5c4e456271fa729cea7d40675cd6c7347d38e5543aa12"
