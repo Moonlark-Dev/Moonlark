@@ -96,9 +96,7 @@ async def create_note(request: Request, token: str, salt: str):
         keywords=keywords,
         created_time=now.timestamp(),
         expire_time=(
-            datetime.fromtimestamp(now.timestamp() + expire_hours * 3600)
-            if expire_hours and expire_hours > 0
-            else None
+            datetime.fromtimestamp(now.timestamp() + expire_hours * 3600) if expire_hours and expire_hours > 0 else None
         ),
     )
     async with get_session() as db_session:
@@ -134,11 +132,7 @@ async def update_note(note_id: int, request: Request, token: str, salt: str):
             note.keywords = body["keywords"]
         if "expire_hours" in body:
             h = body["expire_hours"]
-            note.expire_time = (
-                datetime.fromtimestamp(datetime.now().timestamp() + h * 3600)
-                if h and h > 0
-                else None
-            )
+            note.expire_time = datetime.fromtimestamp(datetime.now().timestamp() + h * 3600) if h and h > 0 else None
         await db_session.commit()
         await db_session.refresh(note)
 

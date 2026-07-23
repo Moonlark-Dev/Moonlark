@@ -68,12 +68,7 @@ async def list_ego_events(
         count_query = select(func.count()).select_from(AgentEvent)
         total = (await db_session.scalar(count_query)) or 0
 
-        query = (
-            select(AgentEvent)
-            .order_by(AgentEvent.created_at.desc())
-            .offset(offset)
-            .limit(limit)
-        )
+        query = select(AgentEvent).order_by(AgentEvent.created_at.desc()).offset(offset).limit(limit)
         result = await db_session.scalars(query)
         events = result.all()
 

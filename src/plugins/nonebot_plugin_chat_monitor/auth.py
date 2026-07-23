@@ -27,13 +27,9 @@ from .config import config
 
 async def verify_admin(token: str, salt: str) -> None:
     """验证 admin token，与 status_report 使用相同的方式。"""
-    expected = hashlib.sha256(
-        f"{config.status_report_password}+{salt}".encode()
-    ).hexdigest()
+    expected = hashlib.sha256(f"{config.status_report_password}+{salt}".encode()).hexdigest()
     if token != expected:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Invalid access token"
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid access token")
 
 
 def now_iso() -> str:

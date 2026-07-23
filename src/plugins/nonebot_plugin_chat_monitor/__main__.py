@@ -45,9 +45,7 @@ async def chat_monitor_websocket(websocket: WebSocket):
     salt = websocket.query_params.get("salt", "")
 
     # 验证 token
-    expected = hashlib.sha256(
-        f"{config.status_report_password}+{salt}".encode()
-    ).hexdigest()
+    expected = hashlib.sha256(f"{config.status_report_password}+{salt}".encode()).hexdigest()
     if token != expected:
         await websocket.close(code=4001, reason="Invalid access token")
         return
