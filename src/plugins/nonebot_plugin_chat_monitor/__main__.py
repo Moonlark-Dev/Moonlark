@@ -54,10 +54,7 @@ async def _ensure_indexes():
         async with get_session() as db_session:
             # Note.created_time 用于 ORDER BY DESC
             await db_session.execute(
-                text(
-                    "CREATE INDEX IF NOT EXISTS ix_note_created_time "
-                    "ON nonebot_plugin_chat_note (created_time)"
-                )
+                text("CREATE INDEX IF NOT EXISTS ix_note_created_time " "ON nonebot_plugin_chat_note (created_time)")
             )
             # AgentEvent.created_at 已有 index=True，但确保它存在
             await db_session.execute(

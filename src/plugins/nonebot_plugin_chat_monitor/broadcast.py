@@ -100,7 +100,7 @@ def _diff_status(current: dict[str, Any], previous: dict[str, Any]) -> dict[str,
     prev_decisions: list = prev_ego.get("decision_history", [])
 
     if len(cur_decisions) > len(prev_decisions):
-        inc["new_ego_decisions"] = cur_decisions[len(prev_decisions):]
+        inc["new_ego_decisions"] = cur_decisions[len(prev_decisions) :]
     elif cur_decisions != prev_decisions and len(cur_decisions) > 0:
         # 决策列表被修改了（不是追加），把当前全都送
         inc["ego_decision_full"] = cur_decisions
