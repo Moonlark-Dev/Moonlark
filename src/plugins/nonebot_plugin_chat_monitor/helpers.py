@@ -18,6 +18,7 @@
 
 import time
 from typing import Any, Optional
+from nonebot.log import logger
 
 
 class SessionNameCache:
@@ -57,8 +58,8 @@ async def get_cached_session_name(session: Any, session_id: str) -> str:
     try:
         resolved = await session.get_session_name()
         name = resolved or session_id
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning(f"[ChatMonitor] 获取会话名失败 {session_id}: {exc}")
     session_name_cache.set(session_id, name)
     return name
 
