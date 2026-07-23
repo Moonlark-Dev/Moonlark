@@ -78,6 +78,7 @@ class LLMRequestSession(Generic[T2]):
         self._content_yielded = False
         self._in_request: bool = False
         self._this_round_success = False
+        self.last_response: Optional[ChatCompletion] = None
 
     def set_custom_trace_id(self, trace_id: str) -> None:
         self.trace_id = trace_id
@@ -135,6 +136,7 @@ class LLMRequestSession(Generic[T2]):
                 response_format=self.response_format,
                 **self.kwargs,
             )
+        self.last_response = completion
         return completion
 
     async def request(self) -> AsyncGenerator[T2 | str, None]:

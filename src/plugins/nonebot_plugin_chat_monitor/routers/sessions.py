@@ -243,7 +243,14 @@ async def get_session_openai_messages(session_id: str, request: Request):
                     "tool_calls": getattr(msg, "tool_calls", None),
                 }
             )
-    return {"messages": serialized, "count": len(serialized)}
+    # 将最近一次 OpenAI API 响应体序列化
+    fetcher = session.processor.openai_messages.fetcher
+    if fetcher is not None and hasattr(fetcher, "last_response") and fetcher.last_response is not None:
+        last_response_raw = fetcher.last_response.model_dump(mode="json")
+    else:
+        last_response_raw = None
+
+    return {"messages": serialized, "count": len(serialized), "last_response": last_response_raw}
 
 
 @router.get("/chat-monitor/sessions/{session_id}/messages/{msg_index}")
