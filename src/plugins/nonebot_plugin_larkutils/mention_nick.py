@@ -10,6 +10,7 @@ QQ Adapter Mention 用户名缓存补全模块
 
 其他渠道（如 /setnick 命令、Recorder 自动识别）设置的昵称不会被覆盖。
 """
+
 import json
 
 from nonebot import on_message
@@ -77,10 +78,7 @@ async def _(
             # 昵称相同，无需更新
             continue
 
-        logger.info(
-            f"通过 @提及 补全用户 {mentioned_user_id} 的昵称: "
-            f"'{user_data.nickname}' -> '{username}'"
-        )
+        logger.info(f"通过 @提及 补全用户 {mentioned_user_id} 的昵称: " f"'{user_data.nickname}' -> '{username}'")
 
         user_data.nickname = username
         config[NICK_SOURCE_KEY] = NICK_SOURCE_MENTION
