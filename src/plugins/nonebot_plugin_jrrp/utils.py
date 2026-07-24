@@ -1,4 +1,4 @@
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 from nonebot_plugin_larkutils.jrrp import get_luck_value
 from nonebot_plugin_orm import get_session
@@ -9,29 +9,33 @@ from .models import LuckTrend
 from .types import LuckType
 
 
+def _today() -> date:
+    """返回当前 UTC+8 日期。"""
+    return datetime.now(timezone.utc).astimezone(timezone(timedelta(hours=8))).date()
+
+
 def get_luck_type(luck_value: int) -> LuckType:
     if luck_value > 100:
         return LuckType.BEYOND_PERFECT
     if luck_value == 100:
         return LuckType.PERFECT_LUCK
-    elif luck_value == 99:
+    if luck_value == 99:
         return LuckType.ALMOST_PERFECT
-    elif 99 > luck_value >= 85:
+    if luck_value >= 85:
         return LuckType.GREAT_DAY
-    elif 85 > luck_value >= 71:
+    if luck_value >= 71:
         return LuckType.GOOD_DAY
-    elif 71 > luck_value >= 57:
+    if luck_value >= 57:
         return LuckType.FAIR_DAY
-    elif 57 > luck_value >= 43:
+    if luck_value >= 43:
         return LuckType.AVERAGE_DAY
-    elif 43 > luck_value >= 29:
+    if luck_value >= 29:
         return LuckType.BELOW_AVERAGE
-    elif 29 > luck_value >= 15:
+    if luck_value >= 15:
         return LuckType.POOR_DAY
-    elif 15 > luck_value >= 1:
+    if luck_value >= 1:
         return LuckType.BAD_DAY
-    else:
-        return LuckType.TERRIBLE_LUCK
+    return LuckType.TERRIBLE_LUCK
 
 
 async def get_luck_message(user_id: str) -> str:
@@ -44,7 +48,7 @@ async def save_luck_trend(user_id: str, luck_value: int, reroll_count: int = 0) 
     async with get_session() as session:
         record = LuckTrend(
             user_id=user_id,
-            record_date=date.today(),
+            record_date=_today(),
             luck_value=luck_value,
             reroll_count=reroll_count,
         )
@@ -57,11 +61,11 @@ async def get_luck_trend(
     days: int = 7,
 ) -> list[LuckTrend]:
     """获取用户最近 N 天的人品走势数据"""
-    since = date.today() - timedelta(days=days - 1)
+    since = _today() - timedelta(days=days - 1)
     async with get_session() as session:
         result = await session.scalars(
             select(LuckTrend)
             .where(LuckTrend.user_id == user_id, LuckTrend.record_date >= since)
-            .order_by(LuckTrend.record_date.asc())
+            .order_by(LuckTrend.record_date.asc()),
         )
         return list(result.all())

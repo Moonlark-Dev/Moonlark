@@ -2,14 +2,14 @@ from datetime import date, datetime
 from io import BytesIO
 from pathlib import Path
 
-import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
+import matplotlib.pyplot as plt
 from matplotlib import font_manager
 
 from .lang import lang
 
 # 添加中文字体支持
-font_manager.fontManager.addfont(Path(".").joinpath("src/static/SarasaGothicSC-Regular.ttf"))
+font_manager.fontManager.addfont(Path("src/static/SarasaGothicSC-Regular.ttf"))
 plt.rcParams["font.sans-serif"] = ["Sarasa Gothic SC"]
 plt.rcParams["axes.unicode_minus"] = False
 
@@ -139,15 +139,12 @@ async def render_luck_trend_chart(
         color="#636E72",
     )
 
-    # 设置 Y 轴范围（0-100 或更大)
+    # 设置 Y 轴范围
     max_val = max(values)
-    if max_val > 100:
-        y_max = ((max_val // 10) + 1) * 10
-    else:
-        y_max = 100
-    min_val = min(values)
+    y_max = ((max_val // 10) + 1) * 10 if max_val > 100 else 100
+    min_val = min(values) if values else 0
     y_min = max(0, (min_val // 10) * 10)
-    ax.set_ylim(y_min if y_min > 0 else 0, y_max if y_max > 100 else 100)
+    ax.set_ylim(y_min, y_max)
 
     # 设置 X 轴格式
     ax.xaxis.set_major_formatter(mdates.DateFormatter("%m/%d"))
@@ -155,7 +152,7 @@ async def render_luck_trend_chart(
     plt.xticks(rotation=30, ha="right", fontsize=11)
 
     # 网格
-    ax.grid(True, alpha=0.3, linestyle="--", linewidth=0.5)
+    ax.grid(visible=True, alpha=0.3, linestyle="--", linewidth=0.5)
     ax.set_axisbelow(True)
 
     # 边框
@@ -163,7 +160,7 @@ async def render_luck_trend_chart(
         spine.set_visible(False)
 
     # 图例
-    legend = ax.legend(
+    ax.legend(
         loc="upper right",
         fontsize=11,
         framealpha=0.9,
@@ -182,7 +179,12 @@ async def render_luck_trend_chart(
             fontsize=10,
             fontweight="bold",
             color="#2D3436",
-            bbox=dict(boxstyle="round,pad=0.2", facecolor="white", alpha=0.8, edgecolor=color),
+            bbox={
+                "boxstyle": "round,pad=0.2",
+                "facecolor": "white",
+                "alpha": 0.8,
+                "edgecolor": color,
+            },
         )
 
     # 调整布局
