@@ -15,14 +15,19 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
-import aiofiles
-import asyncio
+from __future__ import annotations
 
+import asyncio
+from logging import getLogger
+
+import aiofiles
 from nonebot import get_driver
 from nonebot_plugin_localstore import get_data_dir
 from nonebot_plugin_orm import get_session
 
 from .models import MainAccountMapping
+
+logger = getLogger(__name__)
 
 # 文件迁移锁，确保启动时的数据迁移只执行一次
 _migration_lock = asyncio.Lock()
@@ -72,7 +77,8 @@ async def _migrate_from_files() -> None:
         try:
             async with aiofiles.open(file_path, "r", encoding="utf-8") as f:
                 main_account = (await f.read()).strip()
-        except Exception:
+        except (OSError, UnicodeDecodeError) as exc:
+            logger.warning("读取主账号映射文件 %s 失败: %s", file_path, exc)
             continue
         if not main_account:
             continue
@@ -85,7 +91,7 @@ async def _migrate_from_files() -> None:
                 migrated_count += 1
 
     if migrated_count > 0:
-        pass  # log if needed later
+        logger.info("已从文件迁移 %d 条主账号映射数据到数据库", migrated_count)
 
 
 async def _ensure_migrated() -> None:
