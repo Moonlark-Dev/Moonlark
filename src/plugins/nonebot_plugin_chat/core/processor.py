@@ -970,7 +970,7 @@ class MessageProcessor:
                         messages[1],
                     ],
                     reasoning_effort="medium",
-                    identify=f"PendingNotes-{self.session.session_id}",
+                    identify="PendingNotes",
                 )
 
                 cleaned_response = re.sub(r"`{1,3}([a-zA-Z0-9]+)?", "", response).strip()
