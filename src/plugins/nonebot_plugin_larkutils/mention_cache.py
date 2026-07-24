@@ -110,10 +110,7 @@ async def _update_nickname_from_mention(
         logger.debug(f"用户 {main_user_id} 昵称已是 {username!r}，无需更新")
         return
 
-    logger.info(
-        f"通过 @提及 补全用户 {main_user_id} 的昵称: "
-        f"{user_data.nickname!r} -> {username!r}"
-    )
+    logger.info(f"通过 @提及 补全用户 {main_user_id} 的昵称: " f"{user_data.nickname!r} -> {username!r}")
 
     user_data.nickname = username
     config[NICK_SOURCE_KEY] = NICK_SOURCE_MENTION
