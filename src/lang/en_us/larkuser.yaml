@@ -100,6 +100,41 @@ help_setnick:
   description: 修改昵称
   details: "修改自己在 Moonlark 中的昵称，不带参数则解锁昵称锁定"
   usage: "setnick <昵称> (修改昵称，不带参数解锁锁定)"
+subaccount_admin:
+  permission_denied: "Permission denied. Only superusers can use this command."
+  usage: |
+    Usage:
+    subaccount view <user_id>            - View binding status of the specified ID
+    subaccount bind <sub_id> <main_id>   - Bind a sub-account to a main account
+    subaccount unbind <sub_id>           - Unbind a sub-account from its main account
+    subaccount unbind <main_id> --all    - Unbind all sub-accounts of a main account
+  view_is_sub: |
+    User {} ({}) is currently a sub-account
+    Main account: {} ({})
+  view_has_subs: |
+    User {} ({}) is a main account with {} sub-account(s):
+    {}
+  view_none: "User {} ({}) has no sub-account bindings and is not a sub-account."
+  bind_already_bound: |
+    Sub-account {} ({}) is already bound to main account {} ({})!
+    Please unbind first if you want to change.
+  bind_target_not_found: "Target main account {} does not exist in the system."
+  bind_confirm: |
+    Confirm binding sub-account {} ({}) to main account {} ({})?
+  confirm_prompt: "Please enter y/yes to confirm, or send q to cancel:"
+  bind_success: "Sub-account {} ({}) has been successfully bound to main account {} ({})."
+  unbind_not_bound: "User {} ({}) is not a sub-account."
+  unbind_confirm: |
+    Confirm unbinding sub-account {} ({}) from its main account {} ({})?
+    After unbinding, the sub-account will become independent.
+  unbind_success: "Sub-account {} ({}) has been successfully unbound from main account {} ({})."
+  unbind_all_no_subs: "User {} ({}) has no sub-accounts."
+  unbind_all_confirm: |
+    Confirm unbinding all {} sub-account(s) of main account {} ({})?
+    {}
+    After unbinding, all sub-accounts will become independent.
+  unbind_all_success: "Successfully unbound all {} sub-account(s) of main account {} ({})."
+
 input:
   user_nickname: |
     Moonlark 没有办法读取您的展示名称（昵称）。请发送您的展示名称，也可以发送“q”留空。
