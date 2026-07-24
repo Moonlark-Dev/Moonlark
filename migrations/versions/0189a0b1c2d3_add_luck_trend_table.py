@@ -52,3 +52,4 @@ def downgrade(name: str = "") -> None:  # noqa: D103
     if name:
         return
     op.drop_table(TABLE_NAME)
+
