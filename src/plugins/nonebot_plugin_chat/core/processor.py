@@ -273,6 +273,20 @@ class MessageProcessor:
             )
             await self.openai_messages.append_user_message(content)
 
+            # 缓存事件消息以便前端展示
+            event_msg: CachedMessage = {
+                "content": event_prompt,
+                "nickname": "Moonlark",
+                "send_time": datetime.now(),
+                "user_id": "",
+                "platform_user_id": "",
+                "self": True,
+                "message_id": "",
+                "images": [],
+            }
+            self.session.cached_messages.append(event_msg)
+            await self.session.on_cache_posted()
+
         elif item[0] == "message":
             # 处理消息类型队列项
             message, event, state, user_id, nickname, dt, mentioned, message_id, platform_user_id = item[1]
