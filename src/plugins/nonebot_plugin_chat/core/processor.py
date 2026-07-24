@@ -409,26 +409,32 @@ class MessageProcessor:
             return False
         return True
 
-    async def append_tool_call_history(self, call_string: str) -> None:
+    async def append_tool_call_history(self, call_id: str, name: str, param: dict[str, Any], result: str | None = None) -> None:
         self.session.tool_calls_history.append(
-            await self.session.text("tools.template", datetime.now().strftime("%H:%M"), call_string)
+            {
+                "call_id": call_id,
+                "name": name,
+                "params": param,
+                "result": result,
+                "time": datetime.now().isoformat(),
+            }
         )
         self.session.tool_calls_history = self.session.tool_calls_history[-5:]
 
     async def send_function_call_feedback(
         self, call_id: str, name: str, param: dict[str, Any]
     ) -> tuple[str, str, dict[str, Any]]:
-        match name:
-            case "browse_webpage":
-                text = await self.session.text("tools.browse", param.get("url"))
-            case "request_wolfram_alpha":
-                text = await self.session.text("tools.wolfram", param.get("question"))
-            case "web_search":
-                text = await self.session.text("tools.search", param.get("keyword"))
-            case _:
-                return call_id, name, param
-        await self.append_tool_call_history(text)
+        await self.append_tool_call_history(call_id, name, param)
         return call_id, name, param
+
+    async def send_function_call_result(
+        self, result: Any
+    ) -> Any:
+        if self.session.tool_calls_history:
+            self.session.tool_calls_history[-1]["result"] = (
+                result if isinstance(result, str) else json.dumps(result, ensure_ascii=False)
+            )
+        return result
 
     async def send_message(self, message_content: str, reply_message_id: str | None = None) -> str:
         # 仅在群聊中启用 token bucket 功能

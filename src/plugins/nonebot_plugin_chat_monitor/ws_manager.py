@@ -37,10 +37,10 @@ class _RateLimiter:
         timestamps = self._buckets.get(ip, [])
         # 清除 60 秒前的记录
         timestamps = [t for t in timestamps if now - t < 60]
+        self._buckets[ip] = timestamps
         if len(timestamps) >= self._max:
             return False
         timestamps.append(now)
-        self._buckets[ip] = timestamps
         return True
 
 
