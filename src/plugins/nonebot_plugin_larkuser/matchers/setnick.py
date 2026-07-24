@@ -73,7 +73,6 @@ async def _(
         user.nickname = new_nick
         config = json.loads(user.config)
         config["lock_nickname"] = True
-        config.pop("nick_source", None)  # 清除自动补全标识，标记为手动设置
         user.config = json.dumps(config)
         await session.commit()
 
