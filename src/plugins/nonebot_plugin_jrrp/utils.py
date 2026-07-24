@@ -1,5 +1,11 @@
-from .lang import lang
+from datetime import date, timedelta
+
 from nonebot_plugin_larkutils.jrrp import get_luck_value
+from nonebot_plugin_orm import get_session
+from sqlalchemy import select
+
+from .lang import lang
+from .models import LuckTrend
 from .types import LuckType
 
 
@@ -31,3 +37,31 @@ def get_luck_type(luck_value: int) -> LuckType:
 async def get_luck_message(user_id: str) -> str:
     luck_value = await get_luck_value(user_id)
     return await lang.text(f"message.{get_luck_type(luck_value).name.lower()}", user_id, luck_value)
+
+
+async def save_luck_trend(user_id: str, luck_value: int, reroll_count: int = 0) -> None:
+    """记录今日人品值到走势表"""
+    async with get_session() as session:
+        record = LuckTrend(
+            user_id=user_id,
+            record_date=date.today(),
+            luck_value=luck_value,
+            reroll_count=reroll_count,
+        )
+        await session.merge(record)
+        await session.commit()
+
+
+async def get_luck_trend(
+    user_id: str,
+    days: int = 7,
+) -> list[LuckTrend]:
+    """获取用户最近 N 天的人品走势数据"""
+    since = date.today() - timedelta(days=days - 1)
+    async with get_session() as session:
+        result = await session.scalars(
+            select(LuckTrend)
+            .where(LuckTrend.user_id == user_id, LuckTrend.record_date >= since)
+            .order_by(LuckTrend.record_date.asc())
+        )
+        return list(result.all())

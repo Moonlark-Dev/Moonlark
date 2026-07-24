@@ -11,6 +11,8 @@ require("nonebot_plugin_ranking")
 require("nonebot_plugin_orm")
 require("nonebot_plugin_schedule")
 require("nonebot_plugin_render")
+require("nonebot_plugin_apscheduler")
 
+from . import models  # noqa: F401 - 确保 ORM 模型被注册
 from . import __main__
 from . import rank
