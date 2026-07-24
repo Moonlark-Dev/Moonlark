@@ -15,6 +15,7 @@ from nonebot_plugin_schedule.utils import complete_schedule
 
 from .lang import lang
 from .trend import render_luck_trend_chart
+from .config import config
 from .utils import get_luck_message, get_luck_trend, save_luck_trend
 
 if TYPE_CHECKING:
@@ -35,7 +36,7 @@ jrrp = on_alconna(alc)
 
 
 async def _extract_msg_id(result: Any) -> str | None:
-    """从 send 返回值中提取消息 ID。"""
+    """从 send 返回值中提取消息 ID."""
     if isinstance(result, dict):
         return result.get("message_id")
     if isinstance(result, list) and result:
@@ -76,8 +77,6 @@ async def _(bot: Bot, event: Event, user_id: str = get_user_id(), group_id: str 
 @jrrp.assign("reroll")
 async def _(bot: Bot, event: Event, user_id: str = get_user_id(), group_id: str = get_group_id()) -> None:
     """重新计算今日人品值"""
-    from .config import config
-
     max_reroll_count = config.jrrp_reroll_max_count
 
     # 获取用户数据
@@ -89,7 +88,6 @@ async def _(bot: Bot, event: Event, user_id: str = get_user_id(), group_id: str 
     # 检查是否已达到重算上限
     if reroll_count >= max_reroll_count:
         await lang.finish("reroll.max_reached", user_id, max_reroll_count, at_sender=True)
-        return
 
     # 计算本次重算所需费用
     cost = config.jrrp_reroll_base_cost * (reroll_count + 1)
@@ -97,7 +95,6 @@ async def _(bot: Bot, event: Event, user_id: str = get_user_id(), group_id: str 
     # 检查用户是否有足够的 vimcoin
     if not await user.has_vimcoin(cost):
         await lang.finish("reroll.insufficient_vimcoin", user_id, cost, round(user.get_vimcoin(), 2), at_sender=True)
-        return
 
     # 扣除 vimcoin
     await user.use_vimcoin(cost)
@@ -109,9 +106,7 @@ async def _(bot: Bot, event: Event, user_id: str = get_user_id(), group_id: str 
             await lang.finish("reroll.beyond_perfect", user_id, at_sender=True)
         elif current_luck == 100:
             await lang.finish("reroll.perfect_luck", user_id, at_sender=True)
-        else:
-            await lang.finish("reroll.max_reached", user_id, max_reroll_count, at_sender=True)
-        return
+        await lang.finish("reroll.max_reached", user_id, max_reroll_count, at_sender=True)
 
     new_luck, new_reroll_count = result
 
@@ -134,7 +129,7 @@ async def _(
 
 
 async def render_trend(user_id: str, days: int) -> None:
-    """渲染人品走势图"""
+    """渲染人品走势图."""
     records = await get_luck_trend(user_id, days)
 
     if not records:
@@ -143,7 +138,7 @@ async def render_trend(user_id: str, days: int) -> None:
             luck_value = await get_luck_value(user_id)
             await save_luck_trend(user_id, luck_value, 0)
             records = await get_luck_trend(user_id, days)
-        except Exception as exc:
+        except (ValueError, OSError) as exc:
             logger.warning("获取今日人品值用于走势图失败: %s", exc)
 
     if not records:

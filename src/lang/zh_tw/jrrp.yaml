@@ -36,7 +36,7 @@ group_event_prompt: |
   倒霉蛋: {} (运势: {})
 trend:
   title: 近 {} 天人品走勢
-  avg_line: 均值: {}
+  avg_line: '均值: {}'
   xlabel: 日期
   ylabel: 人品值
   no_data: 暫無走勢數據

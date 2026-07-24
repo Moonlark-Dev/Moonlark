@@ -1,3 +1,5 @@
+"""用户每日人品值 ORM 模型."""
+
 from datetime import date
 
 from nonebot_plugin_orm import Model
@@ -5,8 +7,8 @@ from sqlalchemy import Date, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 
-class LuckTrend(Model):
-    """记录用户每日人品值，用于走势图"""
+class LuckTrend(Model):  # pylint: disable=too-few-public-methods
+    """用户每日人品值记录，用于走势图."""
 
     __tablename__ = "nonebot_plugin_jrrp_lucktrend"
 

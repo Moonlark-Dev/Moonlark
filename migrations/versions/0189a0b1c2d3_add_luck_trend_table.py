@@ -1,10 +1,12 @@
-"""add luck trend table
+"""Add luck trend table.
 
 迁移 ID: 0189a0b1c2d3
 父迁移: ffdcbc994498
 创建时间: 2026-07-24 18:31:00.000000
 
 """
+
+# pylint: disable=invalid-name,missing-function-docstring
 
 from __future__ import annotations
 
@@ -23,17 +25,20 @@ depends_on: str | Sequence[str] | None = None
 TABLE_NAME = "nonebot_plugin_jrrp_lucktrend"
 
 
-def upgrade(name: str = "") -> None:
+def upgrade(name: str = "") -> None:  # noqa: D103
     if name:
         return
 
     bind = op.get_bind()
     dialect = bind.dialect.name
     if dialect == "mysql":
-        table_check = f"SHOW TABLES LIKE '{TABLE_NAME}'"
+        table_check = sa.text("SHOW TABLES LIKE :table_name")
+        result = bind.execute(table_check.bindparams(table_name=TABLE_NAME)).fetchall()
     else:
-        table_check = f"SELECT name FROM sqlite_master WHERE type='table' AND name='{TABLE_NAME}'"
-    result = bind.execute(sa.text(table_check)).fetchall()
+        table_check = sa.text(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name = :table_name"
+        )
+        result = bind.execute(table_check.bindparams(table_name=TABLE_NAME)).fetchall()
     if result:
         return
 
@@ -47,7 +52,7 @@ def upgrade(name: str = "") -> None:
     )
 
 
-def downgrade(name: str = "") -> None:
+def downgrade(name: str = "") -> None:  # noqa: D103
     if name:
         return
     op.drop_table(TABLE_NAME)

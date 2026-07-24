@@ -1,3 +1,5 @@
+"""人品走势图渲染模块."""
+
 from datetime import date, datetime
 from io import BytesIO
 from pathlib import Path
@@ -13,41 +15,25 @@ font_manager.fontManager.addfont(Path("src/static/SarasaGothicSC-Regular.ttf"))
 plt.rcParams["font.sans-serif"] = ["Sarasa Gothic SC"]
 plt.rcParams["axes.unicode_minus"] = False
 
-# 人品值等级颜色
-LUCK_COLORS = {
-    "beyond_perfect": "#FF6B6B",  # >100 红色
-    "perfect": "#FFD700",  # 100 金色
-    "great": "#4ECDC4",  # 85-99 青绿
-    "good": "#45B7D1",  # 71-84 蓝色
-    "fair": "#96CEB4",  # 57-70 浅绿
-    "average": "#FFEAA7",  # 43-56 浅黄
-    "below_average": "#DDA0DD",  # 29-42 梅色
-    "poor": "#F0A500",  # 15-28 橙色
-    "bad": "#E17055",  # 1-14 橙红
-    "terrible": "#D63031",  # 0 深红
-}
+# 人品值等级颜色阈值列表
+_LUCK_COLOR_THRESHOLDS: list[tuple[int, str]] = [
+    (101, "#FF6B6B"),   # >100
+    (100, "#FFD700"),    # 100
+    (85, "#4ECDC4"),     # 85-99
+    (71, "#45B7D1"),     # 71-84
+    (57, "#96CEB4"),     # 57-70
+    (43, "#FFEAA7"),     # 43-56
+    (29, "#DDA0DD"),     # 29-42
+    (15, "#F0A500"),     # 15-28
+    (1, "#E17055"),      # 1-14
+]
 
 
 def _get_luck_color(value: int) -> str:
-    if value > 100:
-        return LUCK_COLORS["beyond_perfect"]
-    if value == 100:
-        return LUCK_COLORS["perfect"]
-    if value >= 85:
-        return LUCK_COLORS["great"]
-    if value >= 71:
-        return LUCK_COLORS["good"]
-    if value >= 57:
-        return LUCK_COLORS["fair"]
-    if value >= 43:
-        return LUCK_COLORS["average"]
-    if value >= 29:
-        return LUCK_COLORS["below_average"]
-    if value >= 15:
-        return LUCK_COLORS["poor"]
-    if value >= 1:
-        return LUCK_COLORS["bad"]
-    return LUCK_COLORS["terrible"]
+    for threshold, color in _LUCK_COLOR_THRESHOLDS:
+        if value >= threshold:
+            return color
+    return "#D63031"  # 0 深红
 
 
 async def render_luck_trend_chart(
@@ -57,7 +43,7 @@ async def render_luck_trend_chart(
     days: int,
     average: float,
 ) -> bytes:
-    """生成人品走势折线图"""
+    """生成人品走势折线图."""
     if not dates or not values:
         fig, ax = plt.subplots(figsize=(10, 5))
         ax.text(
@@ -120,9 +106,8 @@ async def render_luck_trend_chart(
     )
 
     # 设置标题和标签
-    title = await lang.text("trend.title", user_id, days)
     ax.set_title(
-        title,
+        await lang.text("trend.title", user_id, days),
         fontsize=18,
         fontweight="bold",
         pad=20,
@@ -139,6 +124,26 @@ async def render_luck_trend_chart(
         color="#636E72",
     )
 
+    # 设置坐标轴
+    _configure_axes(ax, values, days)
+
+    # 在数据点上显示数值
+    _annotate_data_points(ax, date_nums, values, point_colors)
+
+    # 调整布局
+    plt.tight_layout()
+
+    # 保存到 BytesIO
+    buf = BytesIO()
+    plt.savefig(buf, format="png", bbox_inches="tight", dpi=200)
+    buf.seek(0)
+    plt.close(fig)
+
+    return buf.getvalue()
+
+
+def _configure_axes(ax: plt.Axes, values: list[int], days: int) -> None:
+    """配置坐标轴范围、格式、网格和边框."""
     # 设置 Y 轴范围
     max_val = max(values)
     y_max = ((max_val // 10) + 1) * 10 if max_val > 100 else 100
@@ -168,7 +173,9 @@ async def render_luck_trend_chart(
         edgecolor="#DFE6E9",
     )
 
-    # 在数据点上显示数值
+
+def _annotate_data_points(ax: plt.Axes, date_nums: list[float], values: list[int], point_colors: list[str]) -> None:
+    """在数据点上标注数值."""
     for x, y, color in zip(date_nums, values, point_colors):
         ax.annotate(
             str(y),
@@ -186,14 +193,3 @@ async def render_luck_trend_chart(
                 "edgecolor": color,
             },
         )
-
-    # 调整布局
-    plt.tight_layout()
-
-    # 保存到 BytesIO
-    buf = BytesIO()
-    plt.savefig(buf, format="png", bbox_inches="tight", dpi=200)
-    buf.seek(0)
-    plt.close(fig)
-
-    return buf.getvalue()
