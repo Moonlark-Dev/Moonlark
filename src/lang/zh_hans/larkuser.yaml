@@ -104,6 +104,13 @@ help_setnick:
   description: 修改昵称
   details: "修改自己在 Moonlark 中的昵称，不带参数则解锁昵称锁定"
   usage: "setnick <昵称> (修改昵称，不带参数解锁锁定)"
+help_subaccount:
+  description: 管理子账号
+  details: "[管理员专用] 管理子账号绑定关系：查看绑定状态、绑定/解绑子账号"
+  usage1: "subaccount view <用户ID> (查看绑定状态)"
+  usage2: "subaccount bind <子账号ID> <主账号ID> (绑定子账号)"
+  usage3: "subaccount unbind <子账号ID> (解绑子账号)"
+  usage4: "subaccount unbind <主账号ID> --all (解绑全部子账号)"
 subaccount_admin:
   permission_denied: "权限不足，只有超级管理员可以使用此命令。"
   usage: |

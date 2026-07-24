@@ -18,3 +18,12 @@ commands:
     usages:
       - help_setnick.usage
     category: setting
+  subaccount:
+    description: help_subaccount.description
+    details: help_subaccount.details
+    usages:
+      - help_subaccount.usage1
+      - help_subaccount.usage2
+      - help_subaccount.usage3
+      - help_subaccount.usage4
+    category: superuser

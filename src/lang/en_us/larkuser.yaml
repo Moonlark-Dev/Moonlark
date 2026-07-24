@@ -100,6 +100,14 @@ help_setnick:
   description: 修改昵称
   details: "修改自己在 Moonlark 中的昵称，不带参数则解锁昵称锁定"
   usage: "setnick <昵称> (修改昵称，不带参数解锁锁定)"
+help_subaccount:
+  description: Manage Sub-Accounts
+  details: "[Admin] Manage sub-account bindings: view status, bind/unbind"
+  usage1: "subaccount view <user_id> (View binding status)"
+  usage2: "subaccount bind <sub_id> <main_id> (Bind sub-account)"
+  usage3: "subaccount unbind <sub_id> (Unbind sub-account)"
+  usage4: "subaccount unbind <main_id> --all (Unbind all sub-accounts)"
+
 subaccount_admin:
   permission_denied: "Permission denied. Only superusers can use this command."
   usage: |
