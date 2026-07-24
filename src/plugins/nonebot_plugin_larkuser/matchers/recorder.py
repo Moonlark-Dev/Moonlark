@@ -29,8 +29,6 @@ async def _(session: async_scoped_session, user: UserInfo = EventUserInfo()) -> 
     if user_data.nickname != user.user_name and not config.get("lock_nickname"):
         logger.info(f"用户 {user_data.user_id} 修改了其昵称 ({user_data.nickname} => {user.user_name})")
         user_data.nickname = user.user_name
-        config.pop("nick_source", None)  # 清除自动补全标识，标记为通过自身消息更新
-        user_data.config = json.dumps(config)
     if user.user_avatar and user_data.register_time and not config.get("lock_avatar"):
         avatar = await user.user_avatar.get_image()
         if await is_user_avatar_updated(user_data.user_id, avatar):
