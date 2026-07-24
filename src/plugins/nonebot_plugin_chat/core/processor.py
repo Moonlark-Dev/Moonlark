@@ -90,7 +90,6 @@ class MessageProcessor:
         self.unanalyzed_message_count: int = 0
         self._pending_note_lock = asyncio.Lock()
         self._shown_pending_note_ids: set[int] = set()
-        self._shown_recent_action_lines: set[str] = set()
 
     async def query_image(self, image_id: str, query_prompt: str) -> str:
         return await query_image_content(image_id, query_prompt, self.session.lang_str)
@@ -748,11 +747,16 @@ class MessageProcessor:
             mood_reason,
         )
 
-        recent_activity_lines = moonlark_main._get_recent_actions_text().splitlines()
-        new_activity_lines = [line for line in recent_activity_lines if line not in self._shown_recent_action_lines]
-        if new_activity_lines:
-            self._shown_recent_action_lines.update(new_activity_lines)
-        recent_activities = "\n".join(new_activity_lines)
+        # 当前活动
+        current_activity = moonlark_main.self_action.current_activity
+        if moonlark_main.state["sleep_mode"]:
+            current_activity_text = "睡眠中"
+        elif current_activity:
+            current_activity_text = current_activity
+        else:
+            current_activity_text = "空闲"
+
+        tiredness = round(moonlark_main.sleep_controller.tiredness * 100)
 
         pending_notes_text = self._get_pending_notes_text()
 
@@ -764,7 +768,8 @@ class MessageProcessor:
             display_fav=sender.get_display_fav(),
             fav_level=await sender.get_fav_level(),
             note_text=await self.generate_note_text(notes),
-            recent_activities=recent_activities or None,
+            current_activity=current_activity_text,
+            tiredness=tiredness,
             state=state,
             pending_notes=pending_notes_text or None,
         )
@@ -798,7 +803,7 @@ class MessageProcessor:
         return False
 
     async def generate_event_additional_info(self) -> str:
-        """生成事件的 additional_info，包含 token、当前状态和正在做的事"""
+        """生成事件的 additional_info，包含 token、当前状态和当前活动"""
         from .ego import moonlark_main
 
         status_manager = get_status_manager()
@@ -812,12 +817,16 @@ class MessageProcessor:
             mood_reason,
         )
 
-        # 获取正在做的事（查重）
-        recent_activity_lines = moonlark_main._get_recent_actions_text().splitlines()
-        new_activity_lines = [line for line in recent_activity_lines if line not in self._shown_recent_action_lines]
-        if new_activity_lines:
-            self._shown_recent_action_lines.update(new_activity_lines)
-        recent_activities = "\n".join(new_activity_lines)
+        # 当前活动
+        current_activity = moonlark_main.self_action.current_activity
+        if moonlark_main.state["sleep_mode"]:
+            current_activity_text = "睡眠中"
+        elif current_activity:
+            current_activity_text = current_activity
+        else:
+            current_activity_text = "空闲"
+
+        tiredness = round(moonlark_main.sleep_controller.tiredness * 100)
 
         pending_notes_text = self._get_pending_notes_text()
 
@@ -825,7 +834,8 @@ class MessageProcessor:
             "prompt.event_additional_info",
             round(self.token_bucket.get(), 2),
             state,
-            recent_activities or await self.session.text("prompt.event_additional_info.no_activity"),
+            current_activity_text,
+            tiredness,
         ) + (f"\n待定笔记:\n{pending_notes_text}" if pending_notes_text else "")
 
     async def generate_system_prompt(self) -> OpenAIMessage:

@@ -308,10 +308,9 @@ prompt:
     <additional_info>
     当前 Token: {}
     {}
-    最近做的事:
-    {}
+    Current Activity: {}
+    Tiredness: {}%
     </additional_info>
-  event_additional_info.no_activity: "暂无"
   note:
     format: "- {} (#{}，创建于 {})"
     none: "暂无"

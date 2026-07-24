@@ -333,13 +333,20 @@ async def get_message_context(session_id: str, msg_index: int, request: Request)
             except Exception:
                 pass
 
-        # 最近活动
-        recent_actions = ""
+        # 当前活动
+        current_activity_text = ""
         try:
             from nonebot_plugin_chat.core.ego import moonlark_main
-            actions = moonlark_main._get_recent_actions_text()
-            if actions:
-                recent_actions = f"最近做的事:\n{actions}"
+            current_activity = moonlark_main.self_action.current_activity
+            if moonlark_main.state.get("sleep_mode", False):
+                current_activity_text = "睡眠中"
+            elif current_activity:
+                current_activity_text = f"正在「{current_activity}」"
+            else:
+                current_activity_text = "空闲"
+
+            tiredness = round(moonlark_main.sleep_controller.tiredness * 100)
+            current_activity_text = f"当前活动：{current_activity_text}\n困倦度：{tiredness}%"
         except Exception:
             pass
 
@@ -379,8 +386,8 @@ async def get_message_context(session_id: str, msg_index: int, request: Request)
             info_parts.append(affection)
         if notes_text:
             info_parts.append(notes_text)
-        if recent_actions:
-            info_parts.append(recent_actions)
+        if current_activity_text:
+            info_parts.append(current_activity_text)
         info_parts.append(state_text)
         info_parts.append("</additional_info>")
 
