@@ -31,7 +31,6 @@
 
 import aiofiles
 from nonebot_plugin_localstore import get_data_dir
-import json
 
 data_file = get_data_dir("nonebot_plugin_larkutils")
 
