@@ -20,6 +20,9 @@ help:
   usage2: jrrp r (今日幸运星[--rank])
   usage3: jrrp rr (今日倒霉蛋[--rank-r])
   usage4: jrrp reroll (重新计算今日人品值)
+  usage5: jrrp t (查看近 7 天人品走势)
+  usage6: jrrp t 7d (查看近 7 天人品走势)
+  usage7: jrrp t 30d (查看近 30 天人品走势)
 template:
   reverse_title: 今日倒霉蛋
   unregistered: 未注册用户无法参与排名
@@ -31,6 +34,13 @@ group_event_prompt: |
   发送者运势: {}
   欧皇: {} (运势: {})
   倒霉蛋: {} (运势: {})
+trend:
+  title: 近 {} 天人品走勢
+  avg_line: 均值: {}
+  xlabel: 日期
+  ylabel: 人品值
+  no_data: 暫無走勢數據
+  no_history: 還沒有走勢數據，先去查查今日人品吧～
 reroll:
   max_reached: 你今天已经重算过 {} 次了，明天再来吧～
   perfect_luck: 你今天的人品值已经是 100 了，不需要再重算啦～
