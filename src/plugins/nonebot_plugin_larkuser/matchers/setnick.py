@@ -48,6 +48,7 @@ async def _(
                 return
             config = json.loads(user.config)
             config["lock_nickname"] = False
+            config.pop("nick_source", None)  # 解锁时同时清除自动补全标识
             user.config = json.dumps(config)
             await session.commit()
         await lang.finish("setnick.unlocked", user_id)
@@ -73,6 +74,7 @@ async def _(
         user.nickname = new_nick
         config = json.loads(user.config)
         config["lock_nickname"] = True
+        config.pop("nick_source", None)  # 清除自动补全标识，标记为手动设置
         user.config = json.dumps(config)
         await session.commit()
 
