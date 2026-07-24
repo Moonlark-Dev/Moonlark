@@ -33,7 +33,6 @@ from ..lang import lang
 from ..models import UserData, GuestUser
 from ..utils.waiter import prompt as get_confirmation
 
-
 subaccount_admin = on_command(
     "subaccount",
     aliases={"子账号"},
