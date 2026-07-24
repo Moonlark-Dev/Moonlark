@@ -423,7 +423,9 @@ class MessageProcessor:
             return False
         return True
 
-    async def append_tool_call_history(self, call_id: str, name: str, param: dict[str, Any], result: str | None = None) -> None:
+    async def append_tool_call_history(
+        self, call_id: str, name: str, param: dict[str, Any], result: str | None = None
+    ) -> None:
         self.session.tool_calls_history.append(
             {
                 "call_id": call_id,
@@ -441,9 +443,7 @@ class MessageProcessor:
         await self.append_tool_call_history(call_id, name, param)
         return call_id, name, param
 
-    async def send_function_call_result(
-        self, result: Any
-    ) -> Any:
+    async def send_function_call_result(self, result: Any) -> Any:
         if self.session.tool_calls_history:
             self.session.tool_calls_history[-1]["result"] = (
                 result if isinstance(result, str) else json.dumps(result, ensure_ascii=False)

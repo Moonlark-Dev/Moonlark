@@ -300,6 +300,7 @@ async def get_message_context(session_id: str, msg_index: int, request: Request)
     # 格式化消息文本
     try:
         from nonebot_plugin_chat.utils.message import generate_message_string
+
         formatted_msg = generate_message_string(msg)
     except ImportError:
         formatted_msg = f"[{msg.get('nickname', '?')}]({msg.get('message_id', '?')}): {msg.get('content', '')}\n"
@@ -315,7 +316,7 @@ async def get_message_context(session_id: str, msg_index: int, request: Request)
 
         # Token 信息
         token_info = ""
-        if hasattr(session, 'processor') and hasattr(session.processor, 'token_bucket'):
+        if hasattr(session, "processor") and hasattr(session.processor, "token_bucket"):
             try:
                 token_val = round(session.processor.token_bucket.get(), 2)
                 token_info = f"当前 Token: {token_val}"
@@ -325,7 +326,7 @@ async def get_message_context(session_id: str, msg_index: int, request: Request)
         # 好感度（最近一条消息的发送者）
         affection = ""
         user_id = msg.get("user_id", "")
-        if user_id and hasattr(session, 'processor') and hasattr(session.processor, 'affection_manager'):
+        if user_id and hasattr(session, "processor") and hasattr(session.processor, "affection_manager"):
             try:
                 level = session.processor.affection_manager.get_affection_level(user_id)
                 tag = session.processor.affection_manager.get_affection_tag(user_id)
@@ -337,6 +338,7 @@ async def get_message_context(session_id: str, msg_index: int, request: Request)
         current_activity_text = ""
         try:
             from nonebot_plugin_chat.core.ego import moonlark_main
+
             current_activity = moonlark_main.self_action.current_activity
             if moonlark_main.state.get("sleep_mode", False):
                 current_activity_text = "睡眠中"
@@ -354,14 +356,17 @@ async def get_message_context(session_id: str, msg_index: int, request: Request)
         notes_text = ""
         try:
             from nonebot_plugin_chat.utils.note_manager import get_context_notes
+
             note_mgr = await get_context_notes(context_id=session_id)
             all_notes = await note_mgr.get_notes()
             if all_notes:
                 from nonebot_plugin_chat.utils.note_manager import NoteSchema
+
                 note_lines = []
                 for n in all_notes:
                     if isinstance(n, NoteSchema):
                         from datetime import datetime
+
                         created = datetime.fromtimestamp(n.created_time).strftime("%m-%d")
                         note_lines.append(f"- {n.content}  (#{n.id}，创建于 {created})")
                     elif isinstance(n, dict):
@@ -373,8 +378,10 @@ async def get_message_context(session_id: str, msg_index: int, request: Request)
 
         # 当前状态
         mood_type, mood_reason = status_manager.get_status()
-        mood_label = mood_type.value if hasattr(mood_type, 'value') else str(mood_type)
-        state_text = f"心情：{mood_label} (情感强度: {status_manager.get_mood_retention()}; 原因: {mood_reason or '无'})"
+        mood_label = mood_type.value if hasattr(mood_type, "value") else str(mood_type)
+        state_text = (
+            f"心情：{mood_label} (情感强度: {status_manager.get_mood_retention()}; 原因: {mood_reason or '无'})"
+        )
 
         # 组装 additional_info
         info_parts = []
@@ -396,4 +403,3 @@ async def get_message_context(session_id: str, msg_index: int, request: Request)
         logger.debug(f"[ChatMonitor] 构建消息上下文时出错: {e}")
 
     return {"context": "".join(lines)}
-
