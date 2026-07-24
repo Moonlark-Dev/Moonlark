@@ -90,6 +90,7 @@ class MessageProcessor:
         self.unanalyzed_message_count: int = 0
         self._pending_note_lock = asyncio.Lock()
         self._shown_pending_note_ids: set[int] = set()
+        self._shown_recent_action_lines: set[str] = set()
 
     async def query_image(self, image_id: str, query_prompt: str) -> str:
         return await query_image_content(image_id, query_prompt, self.session.lang_str)
@@ -733,9 +734,11 @@ class MessageProcessor:
             mood_reason,
         )
 
-        recent_activities = "\n".join(
-            await self.filter_info_lines(moonlark_main._get_recent_actions_text().splitlines())
-        )
+        recent_activity_lines = moonlark_main._get_recent_actions_text().splitlines()
+        new_activity_lines = [line for line in recent_activity_lines if line not in self._shown_recent_action_lines]
+        if new_activity_lines:
+            self._shown_recent_action_lines.update(new_activity_lines)
+        recent_activities = "\n".join(new_activity_lines)
 
         pending_notes_text = self._get_pending_notes_text()
 
@@ -775,11 +778,8 @@ class MessageProcessor:
                         return True
                 elif isinstance(content, list):
                     for part in content:
-                        if (
-                            isinstance(part, dict)
-                            and "text" in part
-                            and norm_line in self._normalize_line(part["text"])
-                        ):
+                        text = part.get("text") if isinstance(part, dict) else getattr(part, "text", None)
+                        if text and isinstance(text, str) and norm_line in self._normalize_line(text):
                             return True
         return False
 
@@ -799,9 +799,11 @@ class MessageProcessor:
         )
 
         # 获取正在做的事（查重）
-        recent_activities = "\n".join(
-            await self.filter_info_lines(moonlark_main._get_recent_actions_text().splitlines())
-        )
+        recent_activity_lines = moonlark_main._get_recent_actions_text().splitlines()
+        new_activity_lines = [line for line in recent_activity_lines if line not in self._shown_recent_action_lines]
+        if new_activity_lines:
+            self._shown_recent_action_lines.update(new_activity_lines)
+        recent_activities = "\n".join(new_activity_lines)
 
         pending_notes_text = self._get_pending_notes_text()
 
