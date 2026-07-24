@@ -35,6 +35,7 @@ from nonebot_plugin_chat.config import config
 
 from .image import generate_image_id, get_image_summary
 from .file import get_file_summary
+from .emoji import QQ_EMOJI_MAP
 
 
 class MessageParser:
@@ -96,6 +97,12 @@ class MessageParser:
     async def parse_special_segment(self, segment: MessageSegment) -> str:
         if segment.type == "poke":
             return await lang.text("parser.poke", self.user_id)
+        if segment.type == "emoji":
+            emoji_id = segment.data.get("id", "")
+            emoji_name = QQ_EMOJI_MAP.get(emoji_id, None)
+            if emoji_name:
+                return await lang.text("parser.emoji", self.user_id, emoji_name)
+            return await lang.text("parser.emoji_unknown", self.user_id, emoji_id)
         return await lang.text("parser.other", self.user_id, segment)
 
     async def parse_forawrd_message(self, ref_id: str) -> str:
