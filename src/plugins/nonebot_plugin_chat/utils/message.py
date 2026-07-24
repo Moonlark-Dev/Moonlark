@@ -146,7 +146,34 @@ class MessageParser:
             nickname = user_info.user_displayname or user_info.user_name
         else:
             nickname = user.get_nickname()
+
+        # 如果昵称为空或为匿名，尝试从适配器事件中提取更准确的用户名
+        if not nickname or nickname.startswith("匿名-"):
+            if _nickname := await self._get_mention_username_from_event(segment.target):
+                nickname = _nickname
+
         return f"@{nickname}"
+
+    async def _get_mention_username_from_event(self, target: str) -> Optional[str]:
+        """
+        从适配器事件中提取 @ 提及用户的用户名
+
+        部分适配器（如 QQ adapter）的 At segment 只包含 user_id（OpenID），
+        但原始事件中可能包含更详细的用户名信息。
+        """
+        try:
+            from nonebot.adapters.qq.event import GroupAtMessageCreateEvent
+
+            if isinstance(self.event, GroupAtMessageCreateEvent):
+                for mention in getattr(self.event, "mentions", []) or []:
+                    mention_id = getattr(mention, "id", None) or getattr(mention, "member_openid", None)
+                    if str(mention_id) == target:
+                        if username := str(getattr(mention, "username", "") or ""):
+                            return username
+        except ImportError:
+            pass
+
+        return None
 
     async def parse_replied_message(self, msg: UniMessage) -> str:
         if msg == self.message:
