@@ -16,9 +16,7 @@ from alembic import op
 import sqlalchemy as sa
 
 revision: str = "0189a0b1c2d3"
-down_revision: str | Sequence[str] | None = (
-    "ffdcbc994498",
-)
+down_revision: str | Sequence[str] | None = ("ffdcbc994498",)
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
@@ -35,9 +33,7 @@ def upgrade(name: str = "") -> None:  # noqa: D103
         table_check = sa.text("SHOW TABLES LIKE :table_name")
         result = bind.execute(table_check.bindparams(table_name=TABLE_NAME)).fetchall()
     else:
-        table_check = sa.text(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name = :table_name"
-        )
+        table_check = sa.text("SELECT name FROM sqlite_master WHERE type='table' AND name = :table_name")
         result = bind.execute(table_check.bindparams(table_name=TABLE_NAME)).fetchall()
     if result:
         return
