@@ -202,7 +202,7 @@ prompt:
     <additional_info>
     当前 Token: {}
     {}
-    最近做的事:
+    动态状态栏（聊天背景音）:
     {}
     </additional_info>
   event_additional_info.no_activity: "暂无"
@@ -774,7 +774,7 @@ moonlark_main:
 
     {}
   recent_activities:
-    none: 暂无记录（你还没有在空闲时间做任何事情）
+    none: 暂无（状态栏为空）
   fetch_chat_history:
     not_found: 未找到该会话
     no_messages: 无消息记录
