@@ -13,10 +13,8 @@
 待定笔记 (可使用 apply_pending_note 工具应用):
 {{ pending_notes }}
 {% endif %}
-{% if recent_activities %}
-最近做的事:
-{{ recent_activities }}
-{% endif %}
+当前活动：{{ current_activity }}
+困倦度：{{ tiredness }}%
 
 {{ state }}
 </additional_info>

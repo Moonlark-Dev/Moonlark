@@ -306,12 +306,11 @@ prompt:
     {}
   event_additional_info: |
     <additional_info>
-    当前 Token: {}
+    當前 Token: {}
     {}
-    最近做的事:
-    {}
+    當前活動：{}
+    睏倦度：{}%
     </additional_info>
-  event_additional_info.no_activity: "暂无"
   note:
     format: "- {} (#{}，创建于 {})"
     none: "暂无"
