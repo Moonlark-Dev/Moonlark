@@ -52,7 +52,12 @@ class BaseSession(ABC):
         self.llm_timers = []  # 定时器列表
         self.pending_interactions: dict[str, PendingInteraction] = {}  # 待处理的交互请求
         self.last_interest: Optional[float] = None  # 缓存的 interest 值
+        self.last_interest_update_time: Optional[datetime] = None  # interest 最后更新时间
         self.processor = MessageProcessor(self)
+
+    # interest 衰减配置
+    INTEREST_HALF_LIFE = 420  # 半衰期（秒），默认 7 分钟
+    INTEREST_CENTER = 0.5  # 回正中心值
 
     def set_target(self, target: Target, bot: Bot) -> None:
         self.target = target
@@ -109,11 +114,14 @@ class BaseSession(ABC):
 
         # 计算 interest 系数映射 (0-1) -> (0.25-4)
         interest_coefficient = 1.0
-        interest_value = self.last_interest
-        if self.last_interest is not None:
-            interest_coefficient = 0.25 + self.last_interest * 3.75
+        # 应用时间衰减获取回正后的 interest 值
+        decayed_interest = self._get_decayed_interest()
+        interest_value = decayed_interest
+        if decayed_interest is not None:
+            interest_coefficient = 0.25 + decayed_interest * 3.75
             logger.debug(
-                f"Applied interest coefficient: {interest_coefficient:.2f} (interest={self.last_interest:.2f})"
+                f"Applied interest coefficient: {interest_coefficient:.2f} "
+                f"(raw={self.last_interest:.2f}, decayed={decayed_interest:.2f})"
             )
 
         # 计算最终概率
@@ -143,9 +151,28 @@ class BaseSession(ABC):
         details = await self.get_probability_details(length_adjustment)
         return details["final_probability"]
 
+    def _get_decayed_interest(self) -> Optional[float]:
+        """获取经过时间衰减后的 interest 值"""
+        if self.last_interest is None or self.last_interest_update_time is None:
+            return self.last_interest
+        elapsed = (datetime.now() - self.last_interest_update_time).total_seconds()
+        if elapsed <= 0:
+            return self.last_interest
+        # 指数衰减公式：向中心值回正
+        # decayed = center + (original - center) * 0.5 ^ (elapsed / half_life)
+        decay_factor = math.pow(0.5, elapsed / self.INTEREST_HALF_LIFE)
+        decayed = self.INTEREST_CENTER + (self.last_interest - self.INTEREST_CENTER) * decay_factor
+        logger.debug(
+            f"Interest decay: {self.last_interest:.2f} -> {decayed:.2f} "
+            f"(elapsed={elapsed:.0f}s, factor={decay_factor:.4f})"
+        )
+        return decayed
+
     def set_interest(self, interest: Optional[float]) -> None:
         """缓存 interest 值用于后续概率计算"""
         self.last_interest = interest
+        if interest is not None:
+            self.last_interest_update_time = datetime.now()
 
     @abstractmethod
     async def calculate_ghot_coefficient(self) -> None:
