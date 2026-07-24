@@ -13,10 +13,8 @@
 待定笔记 (可使用 apply_pending_note 工具应用):
 {{ pending_notes }}
 {% endif %}
-{% if recent_activities %}
-动态状态栏（这是聊天背景音，不是请勿打扰模式）:
-{{ recent_activities }}
-{% endif %}
+当前活动：{{ current_activity }}
+困倦度：{{ tiredness }}%
 
 {{ state }}
 </additional_info>

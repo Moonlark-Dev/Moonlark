@@ -104,7 +104,7 @@ prompt_group:
     来自其他群聊的笔记：
     {}
 
-    动态状态栏（聊天背景音）：
+    最近做的事：
     {}
 
     部分群友的介绍：
@@ -308,10 +308,9 @@ prompt:
     <additional_info>
     当前 Token: {}
     {}
-    动态状态栏（聊天背景音）:
-    {}
+    Current Activity: {}
+    Tiredness: {}%
     </additional_info>
-  event_additional_info.no_activity: "暂无"
   note:
     format: "- {} (#{}，创建于 {})"
     none: "暂无"
@@ -1173,7 +1172,7 @@ moonlark_main:
 
     {}
   recent_activities:
-    none: 暂无（状态栏为空）
+    none: 暂无记录（你还没有在空闲时间做任何事情）
   fetch_chat_history:
     not_found: 未找到该会话
     no_messages: 无消息记录
