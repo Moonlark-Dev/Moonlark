@@ -67,9 +67,11 @@ class MoonlarkRegisteredUser(MoonlarkUser):
         self.main_account = False
 
     async def setup_user(self) -> None:
+        await self.setup_user_id()
         async with get_session() as session:
             user = await session.get(UserData, self.user_id)
             if user is None:
+                self.user_has_nickname = False
                 return
             self.nickname = user.nickname
             self.register_time = user.register_time
