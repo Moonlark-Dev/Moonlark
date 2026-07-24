@@ -406,3 +406,11 @@ Moonlark 投票
 - `/model <模型名> (更换默认模型)`
 - `/model <模型名> <应用标识> (设置应用专用模型)`
 - `/model :default: <应用标识> (删除应用配置)`
+## `subaccount`: 管理子账号
+
+[管理员专用] 管理子账号绑定关系：查看绑定状态、绑定/解绑子账号
+> 此指令仅 Moonlark 管理员可用。
+- `/subaccount view <用户ID> (查看绑定状态)`
+- `/subaccount bind <子账号ID> <主账号ID> (绑定子账号)`
+- `/subaccount unbind <子账号ID> (解绑子账号)`
+- `/subaccount unbind <主账号ID> --all (解绑全部子账号)`
