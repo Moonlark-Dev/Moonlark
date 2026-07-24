@@ -162,9 +162,9 @@ class MessageParser:
         但原始事件中可能包含更详细的用户名信息。
         """
         try:
-            from nonebot.adapters.qq.event import GroupAtMessageCreateEvent
+            from nonebot.adapters.qq.event import QQMessageEvent as QQMsgEvent
 
-            if isinstance(self.event, GroupAtMessageCreateEvent):
+            if isinstance(self.event, QQMsgEvent):
                 for mention in getattr(self.event, "mentions", []) or []:
                     mention_id = getattr(mention, "id", None) or getattr(mention, "member_openid", None)
                     if str(mention_id) == target:
