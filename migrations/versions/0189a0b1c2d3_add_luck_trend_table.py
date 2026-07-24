@@ -6,7 +6,7 @@
 
 """
 
-# pylint: disable=invalid-name,missing-function-docstring
+# pylint: disable=invalid-name
 
 from __future__ import annotations
 
@@ -23,7 +23,8 @@ depends_on: str | Sequence[str] | None = None
 TABLE_NAME = "nonebot_plugin_jrrp_lucktrend"
 
 
-def upgrade(name: str = "") -> None:  # noqa: D103
+def upgrade(name: str = "") -> None:
+    """创建 LuckTrend 表（如尚不存在）."""
     if name:
         return
 
@@ -48,8 +49,8 @@ def upgrade(name: str = "") -> None:  # noqa: D103
     )
 
 
-def downgrade(name: str = "") -> None:  # noqa: D103
+def downgrade(name: str = "") -> None:
+    """删除 LuckTrend 表."""
     if name:
         return
     op.drop_table(TABLE_NAME)
-
