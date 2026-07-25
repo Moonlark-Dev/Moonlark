@@ -176,7 +176,7 @@ def _configure_axes(ax: plt.Axes, values: list[int], days: int) -> None:
 
 def _annotate_data_points(ax: plt.Axes, date_nums: list[float], values: list[int], point_colors: list[str]) -> None:
     """在数据点上标注数值."""
-    for x, y, color in zip(date_nums, values, point_colors):
+    for x, y, color in zip(date_nums, values, point_colors, strict=True):
         ax.annotate(
             str(y),
             (x, y),

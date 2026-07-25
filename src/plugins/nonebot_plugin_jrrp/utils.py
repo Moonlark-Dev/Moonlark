@@ -1,4 +1,4 @@
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta, timezone
 
 from nonebot_plugin_larkutils.jrrp import get_luck_value
 from nonebot_plugin_orm import get_session
@@ -24,7 +24,7 @@ _LUCK_TYPE_THRESHOLDS: list[tuple[int, LuckType]] = [
 
 def _today() -> date:
     """返回当前 UTC+8 日期."""
-    return datetime.now(timezone.utc).astimezone(timezone(timedelta(hours=8))).date()
+    return datetime.now(UTC).astimezone(timezone(timedelta(hours=8))).date()
 
 
 def get_luck_type(luck_value: int) -> LuckType:

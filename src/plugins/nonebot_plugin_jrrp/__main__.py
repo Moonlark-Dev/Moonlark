@@ -13,9 +13,9 @@ from nonebot_plugin_larkutils.group import get_group_id
 from nonebot_plugin_larkutils.jrrp import get_luck_value, get_luck_value_with_reroll_count, reroll_luck_value
 from nonebot_plugin_schedule.utils import complete_schedule
 
+from .config import config
 from .lang import lang
 from .trend import render_luck_trend_chart
-from .config import config
 from .utils import get_luck_message, get_luck_trend, save_luck_trend
 
 if TYPE_CHECKING:
@@ -35,7 +35,7 @@ alc = Alconna(
 jrrp = on_alconna(alc)
 
 
-async def _extract_msg_id(result: Any) -> str | None:
+def _extract_msg_id(result: Any) -> str | None:
     """从 send 返回值中提取消息 ID."""
     if isinstance(result, dict):
         return result.get("message_id")
@@ -55,7 +55,7 @@ async def process_jrrp_command(group_id: str, user_id: str, bot: Bot, event: Eve
     event_text = await lang.text("chat_event", user_id, await get_nickname(user_id, bot, event), luck_value)
 
     result = await jrrp.send(await get_luck_message(user_id), at_sender=True)
-    msg_id = await _extract_msg_id(result)
+    msg_id = _extract_msg_id(result)
 
     if msg_id:
         event_text += f"\n[供回复的消息ID：{msg_id}]"
@@ -69,14 +69,14 @@ async def process_jrrp_command(group_id: str, user_id: str, bot: Bot, event: Eve
 
 
 @jrrp.assign("$main")
-async def _(bot: Bot, event: Event, user_id: str = get_user_id(), group_id: str = get_group_id()) -> None:
+async def _main_handler(bot: Bot, event: Event, user_id: str = get_user_id(), group_id: str = get_group_id()) -> None:
     await complete_schedule(user_id, "jrrp")
     await process_jrrp_command(group_id, user_id, bot, event)
 
 
 @jrrp.assign("reroll")
-async def _(bot: Bot, event: Event, user_id: str = get_user_id(), group_id: str = get_group_id()) -> None:
-    """重新计算今日人品值"""
+async def _reroll_handler(bot: Bot, event: Event, user_id: str = get_user_id(), group_id: str = get_group_id()) -> None:
+    """重新计算今日人品值."""
     max_reroll_count = config.jrrp_reroll_max_count
 
     # 获取用户数据
@@ -120,11 +120,11 @@ async def _(bot: Bot, event: Event, user_id: str = get_user_id(), group_id: str 
 
 
 @jrrp.assign("trend")
-async def _(
+async def _trend_handler(
     user_id: str = get_user_id(),
     days: int = 7,
 ) -> None:
-    """查看人品走势图（默认 7 天，可指定 30 天）"""
+    """查看人品走势图（默认 7 天，可指定 30 天）. """
     await render_trend(user_id, days)
 
 
