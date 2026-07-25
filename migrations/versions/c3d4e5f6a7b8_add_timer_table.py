@@ -30,9 +30,7 @@ def upgrade(name: str = "") -> None:
     if dialect == "mysql":
         table_check = sa.text("SHOW TABLES LIKE :table_name")
     else:
-        table_check = sa.text(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name=:table_name"
-        )
+        table_check = sa.text("SELECT name FROM sqlite_master WHERE type='table' AND name=:table_name")
     result = bind.execute(table_check, {"table_name": TABLE_NAME}).fetchall()
     if result:
         return

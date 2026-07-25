@@ -43,9 +43,7 @@ def upgrade(name: str = "") -> None:
     if dialect == "mysql":
         table_check = sa.text("SHOW TABLES LIKE :table_name")
     else:
-        table_check = sa.text(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name=:table_name"
-        )
+        table_check = sa.text("SELECT name FROM sqlite_master WHERE type='table' AND name=:table_name")
     result = bind.execute(table_check, {"table_name": DIARYPOST_TABLE}).fetchall()
     if result:
         # 表已存在（之前迁移部分执行过），跳过
@@ -86,9 +84,8 @@ def upgrade(name: str = "") -> None:
         created_at_col = func.from_unixtime(note.c.created_time)
     else:
         created_at_col = func.datetime(note.c.created_time, literal("unixepoch"), literal("localtime"))
-    select_stmt = (
-        select(note.c.content, func.coalesce(note.c.keywords, ""), created_at_col, note.c.expire_time)
-        .where(note.c.context_id == bindparam("context_id"))
+    select_stmt = select(note.c.content, func.coalesce(note.c.keywords, ""), created_at_col, note.c.expire_time).where(
+        note.c.context_id == bindparam("context_id")
     )
     insert_stmt = sa_insert(diarypost).from_select(
         ["content", "keywords", "created_at", "expire_at"],
