@@ -31,10 +31,12 @@ def upgrade(name: str = "") -> None:
     bind = op.get_bind()
     dialect = bind.dialect.name
     if dialect == "mysql":
-        table_check = f"SHOW TABLES LIKE '{DIARYPOST_TABLE}'"
+        table_check = sa.text("SHOW TABLES LIKE :table_name")
     else:
-        table_check = f"SELECT name FROM sqlite_master WHERE type='table' AND name='{DIARYPOST_TABLE}'"
-    result = bind.execute(sa.text(table_check)).fetchall()
+        table_check = sa.text(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name=:table_name"
+        )
+    result = bind.execute(table_check, {"table_name": DIARYPOST_TABLE}).fetchall()
     if result:
         # 表已存在（之前迁移部分执行过），跳过
         return
@@ -59,19 +61,20 @@ def upgrade(name: str = "") -> None:
         created_at_expr = "FROM_UNIXTIME(created_time)"
     else:
         created_at_expr = "datetime(created_time, 'unixepoch', 'localtime')"
-    op.execute(f"""
-        INSERT INTO {DIARYPOST_TABLE} (content, keywords, created_at, expire_at)
-        SELECT
-            content,
-            COALESCE(keywords, ''),
-            {created_at_expr},
-            expire_time
-        FROM {NOTE_TABLE}
-        WHERE context_id = '{DIARY_CONTEXT_ID}'
-    """)
+    bind.execute(
+        sa.text(
+            f"INSERT INTO {DIARYPOST_TABLE} (content, keywords, created_at, expire_at) "
+            f"SELECT content, COALESCE(keywords, ''), {created_at_expr}, expire_time "
+            f"FROM {NOTE_TABLE} WHERE context_id = :context_id"
+        ),
+        {"context_id": DIARY_CONTEXT_ID},
+    )
 
     # 3. 删除已迁移的 note 记录
-    op.execute(f"DELETE FROM {NOTE_TABLE} WHERE context_id = '{DIARY_CONTEXT_ID}'")
+    bind.execute(
+        sa.text(f"DELETE FROM {NOTE_TABLE} WHERE context_id = :context_id"),
+        {"context_id": DIARY_CONTEXT_ID},
+    )
 
 
 def downgrade(name: str = "") -> None:

@@ -32,7 +32,7 @@ def run_command(cmd: list[str], cwd: Optional[Path] = None) -> tuple[int, str, s
 
     try:
         result = subprocess.run(
-            cmd, cwd=project_root, capture_output=True, text=True, encoding="utf-8", errors="ignore"
+            cmd, cwd=project_root, capture_output=True, text=True, encoding="utf-8", errors="ignore", shell=False
         )
         return result.returncode, result.stdout.strip(), result.stderr.strip()
     except Exception as e:
