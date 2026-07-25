@@ -1,4 +1,5 @@
 import asyncio
+import functools
 import os
 import signal
 import subprocess
@@ -26,22 +27,16 @@ version_alc = Alconna(
 version_cmd = on_alconna(version_alc, permission=SUPERUSER)
 
 
-# 允许执行的可执行文件集合（来自配置或硬编码的已知路径）
-_ALLOWED_EXECUTABLES: set[str] = set()
-
-
-def _get_allowed_executables() -> set[str]:
+@functools.lru_cache(maxsize=1)
+def _get_allowed_executables() -> frozenset:
     """获取允许执行的命令可执行文件集合"""
-    global _ALLOWED_EXECUTABLES
-    if not _ALLOWED_EXECUTABLES:
-        _ALLOWED_EXECUTABLES = {
-            config.version_manager_git_path,
-            config.version_manager_nb_path,
-            "poetry",
-            "git",
-            "nb",
-        }
-    return _ALLOWED_EXECUTABLES
+    return frozenset({
+        config.version_manager_git_path,
+        config.version_manager_nb_path,
+        "poetry",
+        "git",
+        "nb",
+    })
 
 
 def _validate_command(cmd: list[str]) -> None:
