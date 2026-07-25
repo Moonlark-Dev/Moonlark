@@ -1,27 +1,24 @@
 from __future__ import annotations
 
-from logging import getLogger
+from typing import Any
+from datetime import date
 from statistics import mean
-from typing import TYPE_CHECKING, Any
+from logging import getLogger
 
-from nonebot_plugin_alconna import Alconna, Args, Subcommand, UniMessage, on_alconna
-from nonebot_plugin_chat.core.session import post_group_event
+from nonebot.adapters import Bot, Event
 from nonebot_plugin_larkuser import get_user
-from nonebot_plugin_larkuser.utils.nickname import get_nickname
 from nonebot_plugin_larkutils import get_user_id
 from nonebot_plugin_larkutils.group import get_group_id
-from nonebot_plugin_larkutils.jrrp import get_luck_value, get_luck_value_with_reroll_count, reroll_luck_value
 from nonebot_plugin_schedule.utils import complete_schedule
+from nonebot_plugin_chat.core.session import post_group_event
+from nonebot_plugin_larkuser.utils.nickname import get_nickname
+from nonebot_plugin_alconna import Args, Alconna, Subcommand, UniMessage, on_alconna
+from nonebot_plugin_larkutils.jrrp import get_luck_value, reroll_luck_value, get_luck_value_with_reroll_count
 
-from .config import config
 from .lang import lang
+from .config import config
 from .trend import render_luck_trend_chart
-from .utils import get_luck_message, get_luck_trend, save_luck_trend
-
-if TYPE_CHECKING:
-    from datetime import date
-
-    from nonebot.adapters import Bot, Event
+from .utils import get_luck_trend, save_luck_trend, get_luck_message
 
 logger = getLogger(__name__)
 
