@@ -30,13 +30,15 @@ version_cmd = on_alconna(version_alc, permission=SUPERUSER)
 @functools.lru_cache(maxsize=1)
 def _get_allowed_executables() -> frozenset:
     """获取允许执行的命令可执行文件集合"""
-    return frozenset({
-        config.version_manager_git_path,
-        config.version_manager_nb_path,
-        "poetry",
-        "git",
-        "nb",
-    })
+    return frozenset(
+        {
+            config.version_manager_git_path,
+            config.version_manager_nb_path,
+            "poetry",
+            "git",
+            "nb",
+        }
+    )
 
 
 def _validate_command(cmd: list[str]) -> None:
