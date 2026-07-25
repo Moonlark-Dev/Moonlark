@@ -12,6 +12,16 @@ from collections.abc import Sequence
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy import (
+    bindparam,
+    column,
+    delete as sa_delete,
+    func,
+    insert as sa_insert,
+    literal,
+    select,
+    table,
+)
 
 # revision identifiers, used by Alembic.
 revision: str = "b4c5d6e7f8a9"
@@ -57,24 +67,38 @@ def upgrade(name: str = "") -> None:
     # 2. 将 note 表中 context_id='moonlark_diary' 的数据迁移到 diarypost
     # created_time 是 Float 类型的 Unix 时间戳，需要转换为 DateTime
     # MySQL 用 FROM_UNIXTIME()，SQLite 用 datetime(..., 'unixepoch', 'localtime')
-    if dialect == "mysql":
-        created_at_expr = "FROM_UNIXTIME(created_time)"
-    else:
-        created_at_expr = "datetime(created_time, 'unixepoch', 'localtime')"
-    bind.execute(
-        sa.text(
-            f"INSERT INTO {DIARYPOST_TABLE} (content, keywords, created_at, expire_at) "
-            f"SELECT content, COALESCE(keywords, ''), {created_at_expr}, expire_time "
-            f"FROM {NOTE_TABLE} WHERE context_id = :context_id"
-        ),
-        {"context_id": DIARY_CONTEXT_ID},
+    diarypost = table(
+        DIARYPOST_TABLE,
+        column("content"),
+        column("keywords"),
+        column("created_at"),
+        column("expire_at"),
     )
+    note = table(
+        NOTE_TABLE,
+        column("content"),
+        column("keywords"),
+        column("created_time"),
+        column("expire_time"),
+        column("context_id"),
+    )
+    if dialect == "mysql":
+        created_at_col = func.from_unixtime(note.c.created_time)
+    else:
+        created_at_col = func.datetime(note.c.created_time, literal("unixepoch"), literal("localtime"))
+    select_stmt = (
+        select(note.c.content, func.coalesce(note.c.keywords, ""), created_at_col, note.c.expire_time)
+        .where(note.c.context_id == bindparam("context_id"))
+    )
+    insert_stmt = sa_insert(diarypost).from_select(
+        ["content", "keywords", "created_at", "expire_at"],
+        select_stmt,
+    )
+    bind.execute(insert_stmt, {"context_id": DIARY_CONTEXT_ID})
 
     # 3. 删除已迁移的 note 记录
-    bind.execute(
-        sa.text(f"DELETE FROM {NOTE_TABLE} WHERE context_id = :context_id"),
-        {"context_id": DIARY_CONTEXT_ID},
-    )
+    delete_stmt = sa_delete(note).where(note.c.context_id == bindparam("context_id"))
+    bind.execute(delete_stmt, {"context_id": DIARY_CONTEXT_ID})
 
 
 def downgrade(name: str = "") -> None:

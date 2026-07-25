@@ -26,9 +26,40 @@ version_alc = Alconna(
 version_cmd = on_alconna(version_alc, permission=SUPERUSER)
 
 
+# 允许执行的可执行文件集合（来自配置或硬编码的已知路径）
+_ALLOWED_EXECUTABLES: set[str] = set()
+
+
+def _get_allowed_executables() -> set[str]:
+    """获取允许执行的命令可执行文件集合"""
+    global _ALLOWED_EXECUTABLES
+    if not _ALLOWED_EXECUTABLES:
+        _ALLOWED_EXECUTABLES = {
+            config.version_manager_git_path,
+            config.version_manager_nb_path,
+            "poetry",
+            "git",
+            "nb",
+        }
+    return _ALLOWED_EXECUTABLES
+
+
+def _validate_command(cmd: list[str]) -> None:
+    """验证命令是否来自可信来源，防止任意命令执行"""
+    if not cmd:
+        raise ValueError("Command list is empty")
+    if not isinstance(cmd, list):
+        raise ValueError("Command must be a list")
+    executable = cmd[0]
+    allowed = _get_allowed_executables()
+    if executable not in allowed:
+        raise ValueError(f"Untrusted executable: {executable}")
+
+
 def run_command(cmd: list[str], cwd: Optional[Path] = None) -> tuple[int, str, str]:
     """运行任意命令并返回结果"""
     project_root = cwd or config.version_manager_project_root.resolve()
+    _validate_command(cmd)
 
     try:
         result = subprocess.run(
