@@ -933,6 +933,8 @@ parser:
   image_failed: '[图片: 获取失败]'
   image_without_desc: '[图片({})]'
   poke: '[戳一戳]'
+  emoji: '[表情: {}]'
+  emoji_unknown: '[emoji:{}]'
   forward:
     not_supported: '[合并转发：获取信息失败（不支持）]'
     failed: '[合并转发：获取信息失败（{}）]'
