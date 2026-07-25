@@ -124,7 +124,7 @@ async def _trend_handler(
     user_id: str = get_user_id(),
     days: int = 7,
 ) -> None:
-    """查看人品走势图（默认 7 天，可指定 30 天）. """
+    """查看人品走势图（默认 7 天，可指定 30 天）."""
     await render_trend(user_id, days)
 
 
