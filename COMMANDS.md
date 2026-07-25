@@ -48,6 +48,9 @@
 - `/jrrp r (今日幸运星[--rank])`
 - `/jrrp rr (今日倒霉蛋[--rank-r])`
 - `/jrrp reroll (重新计算今日人品值)`
+- `/jrrp t (查看近 7 天人品走势)`
+- `/jrrp t 7d (查看近 7 天人品走势)`
+- `/jrrp t 30d (查看近 30 天人品走势)`
 ## `minigame-rank`: 小游戏积分排名
 
 查看 Moonlark 中游玩玩法的用户的排名
