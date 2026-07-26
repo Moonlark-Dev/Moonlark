@@ -62,8 +62,7 @@ async def _(
     try:
         cave_data = await session.get_one(CaveData, {"id": cave_id})
     except NoResultFound:
-        await lang.reply()
-        await cave.finish()
+        await lang.finish("remove.no_result", user_id, cave_id)
     if not (cave_data.author == user_id or is_superuser):
         await lang.reply("remove.no_permission", user_id)
         await cave.finish()
