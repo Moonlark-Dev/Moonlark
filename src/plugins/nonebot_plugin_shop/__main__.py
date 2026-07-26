@@ -25,7 +25,7 @@ async def get_goods_name(item_id: str, user_id: str) -> str:
 
 
 @shop.assign("$main")
-async def _(user_id: str = get_user_id()) -> None:
+async def handle_main(user_id: str = get_user_id()) -> None:
     user = await get_user(user_id)
     lines = [await lang.text("list.title", user_id, round(user.get_vimcoin(), 1))]
     for index, (item_id, price) in enumerate(GOODS, start=1):
@@ -36,7 +36,7 @@ async def _(user_id: str = get_user_id()) -> None:
 
 
 @shop.assign("buy")
-async def _(index: int, count: int = 1, user_id: str = get_user_id()) -> None:
+async def handle_buy(index: int, count: int = 1, user_id: str = get_user_id()) -> None:
     if not 1 <= index <= len(GOODS):
         await lang.finish("buy.invalid_index", user_id)
     if count <= 0:
