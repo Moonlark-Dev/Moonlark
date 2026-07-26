@@ -1,5 +1,4 @@
 import asyncio
-import functools
 import os
 import signal
 import subprocess
@@ -27,10 +26,9 @@ version_alc = Alconna(
 version_cmd = on_alconna(version_alc, permission=SUPERUSER)
 
 
-@functools.lru_cache(maxsize=1)
-def _get_allowed_executables() -> frozenset:
-    """获取允许执行的命令可执行文件集合"""
-    return frozenset(
+def _run_subprocess(exe: str, args: list[str], cwd: Path) -> tuple[int, str, str]:
+    """安全执行已知可执行文件的子进程"""
+    allowed = frozenset(
         {
             config.version_manager_git_path,
             config.version_manager_nb_path,
@@ -39,28 +37,17 @@ def _get_allowed_executables() -> frozenset:
             "nb",
         }
     )
-
-
-def _validate_command(cmd: list[str]) -> None:
-    """验证命令是否来自可信来源，防止任意命令执行"""
-    if not cmd:
-        raise ValueError("Command list is empty")
-    if not isinstance(cmd, list):
-        raise ValueError("Command must be a list")
-    executable = cmd[0]
-    allowed = _get_allowed_executables()
-    if executable not in allowed:
-        raise ValueError(f"Untrusted executable: {executable}")
-
-
-def run_command(cmd: list[str], cwd: Optional[Path] = None) -> tuple[int, str, str]:
-    """运行任意命令并返回结果"""
-    project_root = cwd or config.version_manager_project_root.resolve()
-    _validate_command(cmd)
-
+    if exe not in allowed:
+        raise ValueError(f"Untrusted executable: {exe}")
     try:
         result = subprocess.run(
-            cmd, cwd=project_root, capture_output=True, text=True, encoding="utf-8", errors="ignore", shell=False
+            [exe] + args,
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="ignore",
+            shell=False,
         )
         return result.returncode, result.stdout.strip(), result.stderr.strip()
     except Exception as e:
@@ -69,19 +56,20 @@ def run_command(cmd: list[str], cwd: Optional[Path] = None) -> tuple[int, str, s
 
 def run_git_command(args: list[str], cwd: Optional[Path] = None) -> tuple[int, str, str]:
     """运行 git 命令并返回结果"""
-    git_path = config.version_manager_git_path
-    return run_command([git_path] + args, cwd)
+    project_root = cwd or config.version_manager_project_root.resolve()
+    return _run_subprocess(config.version_manager_git_path, args, project_root)
 
 
 def run_nb_command(args: list[str], cwd: Optional[Path] = None) -> tuple[int, str, str]:
     """运行 nb_cli 命令并返回结果"""
-    nb_path = config.version_manager_nb_path
-    return run_command([nb_path] + args, cwd)
+    project_root = cwd or config.version_manager_project_root.resolve()
+    return _run_subprocess(config.version_manager_nb_path, args, project_root)
 
 
 def run_poetry_command(args: list[str], cwd: Optional[Path] = None) -> tuple[int, str, str]:
     """运行 poetry 命令并返回结果"""
-    return run_command(["poetry"] + args, cwd)
+    project_root = cwd or config.version_manager_project_root.resolve()
+    return _run_subprocess("poetry", args, project_root)
 
 
 async def get_version_info() -> dict:
