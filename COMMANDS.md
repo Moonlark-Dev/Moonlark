@@ -315,7 +315,6 @@ Moonlark 投票
 - `/chat reset (清除当前会话所有历史消息并重置会话状态)`
 - `/chat stop (强制停止当前正在生成的响应)`
 - `/chat stats (查看时间统计数据)`
-- `/chat dropping <on|off> (开关礼物掉落功能)`
 - `/chat compact [会话ID] (压缩消息队列，分析待定笔记后重置[SU])`
 ## `decision`: 虚假处分通知
 
@@ -372,6 +371,11 @@ Moonlark 投票
 查看每日任务或领取每日任务奖励，每日刷新，部分功能仅在签到后可用。
 - `/schedule (查看每日任务列表)`
 - `/schedule collect (领取可领取的奖励)`
+## `shop`: 商店
+
+使用 VimCoin 购买礼物等商品，购买的物品会存入背包。
+- `/shop (查看商品列表)`
+- `/shop buy <编号> [数量] (购买商品)`
 ## `waifu`: 今日群老婆
 
 匹配你的每日群老婆！（仅支持群聊使用）
