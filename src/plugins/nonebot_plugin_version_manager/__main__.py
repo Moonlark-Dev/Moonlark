@@ -61,11 +61,22 @@ async def git_pull(cwd: Path) -> tuple[int, str, str]:
 
 
 async def git_diff_poetry_lock(cwd: Path) -> tuple[int, str, str]:
-    return await _exec(config.version_manager_git_path, "diff", "--name-only", "HEAD", "origin/HEAD", "--", "poetry.lock", cwd=cwd)
+    return await _exec(
+        config.version_manager_git_path, "diff", "--name-only", "HEAD", "origin/HEAD", "--", "poetry.lock", cwd=cwd
+    )
 
 
 async def git_diff_migrations(cwd: Path) -> tuple[int, str, str]:
-    return await _exec(config.version_manager_git_path, "diff", "--name-only", "HEAD", "origin/HEAD", "--", "migrations/versions/", cwd=cwd)
+    return await _exec(
+        config.version_manager_git_path,
+        "diff",
+        "--name-only",
+        "HEAD",
+        "origin/HEAD",
+        "--",
+        "migrations/versions/",
+        cwd=cwd,
+    )
 
 
 async def poetry_install(cwd: Path) -> tuple[int, str, str]:
