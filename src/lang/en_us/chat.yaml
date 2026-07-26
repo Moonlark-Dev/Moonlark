@@ -228,6 +228,14 @@ command:
   dropping:
     enabled: 已启用礼物掉落
     disabled: 已禁用礼物掉落
+  mode:
+    name:
+      passionate: 热情
+      standard: 标准
+      silent: 安静
+    current: 当前互动模式：{}。可用 {__prefix__}chat mode <passionate|standard|silent> 切换。
+    unchanged: 当前已是{}模式，无需切换。
+    changed: 已切换到{}模式，当前会话的所有上下文已重置。
   no_argv: 无效参数，请使用 {__prefix__}help chat 获取该命令的使用方法！
   desire:
     get: |
@@ -281,6 +289,7 @@ help:
   usage13: chat stop (强制停止当前正在生成的响应)
   usage14: chat stats (查看时间统计数据)
   usage16: chat compact [会话ID] (压缩消息队列，生成即时记忆后重置[SU])
+  usage17: chat mode [passionate|standard|silent] (查看或切换互动模式，切换将重置会话上下文)
 help_rua:
   description: 互动
   details: 通过 rua 指令与 Moonlark 进行亲密互动（如戳一戳、摸头、拥抱等）。不同的互动动作需要不同的好感度才能解锁。
