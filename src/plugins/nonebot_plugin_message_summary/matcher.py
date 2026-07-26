@@ -24,6 +24,7 @@ from nonebot_plugin_htmlrender import md_to_pic
 from .models import GroupMessage, GroupDailySummary, MVPRecord
 from .hash_utils import compute_message_hash
 from .lang import lang
+from .word_cloud import generate_word_cloud
 from .__main__ import get_cached_daily_summary, send_daily_summary_to_group
 from .ai_utils import (
     fetch_broadcast_summary,
@@ -70,6 +71,7 @@ decision = on_alconna(
         Args["reason", str, ""],
     )
 )
+word_cloud = on_alconna(Alconna("word-cloud", Args["hours", int, 24]))
 
 
 # --- Config Helpers ---
@@ -393,6 +395,41 @@ async def handle_group_daily(
     else:
         await send_daily_summary_to_group(group_id)
         await group_daily.finish()
+
+
+@word_cloud.handle()
+async def handle_word_cloud(
+    hours: int,
+    session: async_scoped_session,
+    user_id: str = get_user_id(),
+    group_id: str = get_group_id(),
+) -> None:
+    """处理 .word-cloud 指令，生成群聊词云"""
+    async with get_config() as conf:
+        if group_id in conf.data:
+            await lang.finish("disabled", user_id)
+
+    hours = min(max(hours, 1), 48)
+    start_time = datetime.now() - timedelta(hours=hours)
+    result = (
+        await session.scalars(
+            select(GroupMessage)
+            .where(GroupMessage.group_id == group_id)
+            .where(GroupMessage.timestamp >= start_time)
+            .order_by(GroupMessage.id_),
+        )
+    ).all()
+
+    if not result:
+        await lang.finish("word_cloud.no_data", user_id, hours)
+
+    image = await generate_word_cloud(result)
+    if image is None:
+        await lang.finish("word_cloud.no_data", user_id, hours)
+
+    await word_cloud.finish(
+        UniMessage().text(await lang.text("word_cloud.title", user_id, hours, len(result))).image(raw=image),
+    )
 
 
 @decision.handle()
