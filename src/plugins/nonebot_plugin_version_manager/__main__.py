@@ -25,17 +25,6 @@ version_alc = Alconna(
 version_cmd = on_alconna(version_alc, permission=SUPERUSER)
 
 
-async def _exec(*cmd: str, cwd: Path) -> tuple[int, str, str]:
-    try:
-        proc = await asyncio.create_subprocess_exec(
-            *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE, cwd=cwd
-        )
-        stdout, stderr = await proc.communicate()
-        return proc.returncode or 0, stdout.decode(errors="ignore").strip(), stderr.decode(errors="ignore").strip()
-    except Exception as e:
-        return -1, "", str(e)
-
-
 async def git_rev_parse_head(cwd: Path) -> tuple[int, str, str]:
     try:
         proc = await asyncio.create_subprocess_exec(
@@ -274,6 +263,7 @@ async def check_migration_changes(cwd: Path) -> tuple[bool, list[str]]:
 
     # 检查远程是否有新的迁移（通过 git diff 比较）
     code, stdout, stderr = await git_diff_migrations(cwd)
+    changed_files = await _parse_diff_output(stdout) if code == 0 else []
 
     new_migrations = []
     for line in changed_files:
