@@ -26,14 +26,8 @@ version_cmd = on_alconna(version_alc, permission=SUPERUSER)
 
 
 async def _exec(*cmd: str, cwd: Path) -> tuple[int, str, str]:
-    """使用硬编码的安全命令执行子进程"""
     try:
-        proc = await asyncio.create_subprocess_exec(
-            *cmd,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-            cwd=cwd,
-        )
+        proc = await asyncio.create_subprocess_exec(*cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE, cwd=cwd)
         stdout, stderr = await proc.communicate()
         return proc.returncode or 0, stdout.decode(errors="ignore").strip(), stderr.decode(errors="ignore").strip()
     except Exception as e:
@@ -41,50 +35,84 @@ async def _exec(*cmd: str, cwd: Path) -> tuple[int, str, str]:
 
 
 async def git_rev_parse_head(cwd: Path) -> tuple[int, str, str]:
-    return await _exec(config.version_manager_git_path, "rev-parse", "--abbrev-ref", "HEAD", cwd=cwd)
+    try:
+        proc = await asyncio.create_subprocess_exec(config.version_manager_git_path, "rev-parse", "--abbrev-ref", "HEAD", stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE, cwd=cwd)
+        stdout, stderr = await proc.communicate()
+        return proc.returncode or 0, stdout.decode(errors="ignore").strip(), stderr.decode(errors="ignore").strip()
+    except Exception as e:
+        return -1, "", str(e)
 
 
 async def git_rev_parse_short(cwd: Path) -> tuple[int, str, str]:
-    return await _exec(config.version_manager_git_path, "rev-parse", "--short", "HEAD", cwd=cwd)
+    try:
+        proc = await asyncio.create_subprocess_exec(config.version_manager_git_path, "rev-parse", "--short", "HEAD", stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE, cwd=cwd)
+        stdout, stderr = await proc.communicate()
+        return proc.returncode or 0, stdout.decode(errors="ignore").strip(), stderr.decode(errors="ignore").strip()
+    except Exception as e:
+        return -1, "", str(e)
 
 
 async def git_log_one(cwd: Path) -> tuple[int, str, str]:
-    return await _exec(config.version_manager_git_path, "log", "-1", "--format=%s", cwd=cwd)
+    try:
+        proc = await asyncio.create_subprocess_exec(config.version_manager_git_path, "log", "-1", "--format=%s", stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE, cwd=cwd)
+        stdout, stderr = await proc.communicate()
+        return proc.returncode or 0, stdout.decode(errors="ignore").strip(), stderr.decode(errors="ignore").strip()
+    except Exception as e:
+        return -1, "", str(e)
 
 
 async def git_status(cwd: Path) -> tuple[int, str, str]:
-    return await _exec(config.version_manager_git_path, "status", "--porcelain", cwd=cwd)
+    try:
+        proc = await asyncio.create_subprocess_exec(config.version_manager_git_path, "status", "--porcelain", stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE, cwd=cwd)
+        stdout, stderr = await proc.communicate()
+        return proc.returncode or 0, stdout.decode(errors="ignore").strip(), stderr.decode(errors="ignore").strip()
+    except Exception as e:
+        return -1, "", str(e)
 
 
 async def git_pull(cwd: Path) -> tuple[int, str, str]:
-    return await _exec(config.version_manager_git_path, "pull", cwd=cwd)
+    try:
+        proc = await asyncio.create_subprocess_exec(config.version_manager_git_path, "pull", stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE, cwd=cwd)
+        stdout, stderr = await proc.communicate()
+        return proc.returncode or 0, stdout.decode(errors="ignore").strip(), stderr.decode(errors="ignore").strip()
+    except Exception as e:
+        return -1, "", str(e)
 
 
 async def git_diff_poetry_lock(cwd: Path) -> tuple[int, str, str]:
-    return await _exec(
-        config.version_manager_git_path, "diff", "--name-only", "HEAD", "origin/HEAD", "--", "poetry.lock", cwd=cwd
-    )
+    try:
+        proc = await asyncio.create_subprocess_exec(config.version_manager_git_path, "diff", "--name-only", "HEAD", "origin/HEAD", "--", "poetry.lock", stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE, cwd=cwd)
+        stdout, stderr = await proc.communicate()
+        return proc.returncode or 0, stdout.decode(errors="ignore").strip(), stderr.decode(errors="ignore").strip()
+    except Exception as e:
+        return -1, "", str(e)
 
 
 async def git_diff_migrations(cwd: Path) -> tuple[int, str, str]:
-    return await _exec(
-        config.version_manager_git_path,
-        "diff",
-        "--name-only",
-        "HEAD",
-        "origin/HEAD",
-        "--",
-        "migrations/versions/",
-        cwd=cwd,
-    )
+    try:
+        proc = await asyncio.create_subprocess_exec(config.version_manager_git_path, "diff", "--name-only", "HEAD", "origin/HEAD", "--", "migrations/versions/", stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE, cwd=cwd)
+        stdout, stderr = await proc.communicate()
+        return proc.returncode or 0, stdout.decode(errors="ignore").strip(), stderr.decode(errors="ignore").strip()
+    except Exception as e:
+        return -1, "", str(e)
 
 
 async def poetry_install(cwd: Path) -> tuple[int, str, str]:
-    return await _exec("poetry", "install", cwd=cwd)
+    try:
+        proc = await asyncio.create_subprocess_exec("poetry", "install", stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE, cwd=cwd)
+        stdout, stderr = await proc.communicate()
+        return proc.returncode or 0, stdout.decode(errors="ignore").strip(), stderr.decode(errors="ignore").strip()
+    except Exception as e:
+        return -1, "", str(e)
 
 
 async def nb_orm_upgrade(cwd: Path) -> tuple[int, str, str]:
-    return await _exec(config.version_manager_nb_path, "orm", "upgrade", cwd=cwd)
+    try:
+        proc = await asyncio.create_subprocess_exec(config.version_manager_nb_path, "orm", "upgrade", stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE, cwd=cwd)
+        stdout, stderr = await proc.communicate()
+        return proc.returncode or 0, stdout.decode(errors="ignore").strip(), stderr.decode(errors="ignore").strip()
+    except Exception as e:
+        return -1, "", str(e)
 
 
 async def get_version_info(root: Optional[Path] = None) -> dict:
