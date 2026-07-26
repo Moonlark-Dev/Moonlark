@@ -82,9 +82,7 @@ def upgrade(name: str = "") -> None:
     if dialect == "mysql":
         created_at_col = func.from_unixtime(note.c.created_time)
     else:
-        created_at_col = func.datetime(
-            note.c.created_time, sa.literal_column("'unixepoch'"), sa.literal_column("'localtime'")
-        )
+        created_at_col = func.datetime(note.c.created_time, "unixepoch", "localtime")
     select_stmt = select(note.c.content, func.coalesce(note.c.keywords, ""), created_at_col, note.c.expire_time).where(
         note.c.context_id == bindparam("context_id")
     )
