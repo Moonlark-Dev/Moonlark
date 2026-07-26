@@ -3,19 +3,12 @@ import base64
 import math
 import random
 from datetime import date
-from typing import Optional
 
 import httpx
 from nonebot import logger
 from nonebot.matcher import Matcher
 from nonebot_plugin_alconna import Alconna, UniMessage, on_alconna
-from nonebot_plugin_bag.config import config as bag_config
-from nonebot_plugin_bag.utils.bag import give_item
-from nonebot_plugin_bag.utils.item import get_bag_items
-from nonebot_plugin_chat.utils.gift_drop import get_gift_drop_manager
 from nonebot_plugin_email.utils.unread import get_unread_email_count
-from nonebot_plugin_items.registry.registry import ResourceLocation
-from nonebot_plugin_items.utils.get import get_item
 from nonebot_plugin_larksetu import get_landscape_image
 from nonebot_plugin_larkuser import get_user
 from nonebot_plugin_larkuser.utils.matcher import patch_matcher
@@ -61,30 +54,6 @@ async def _get_sign_data(session: AsyncSession, user_id: str) -> SignData:
         session.add(SignData(user_id=user_id))
         await session.commit()
         return await _get_sign_data(session, user_id)
-
-
-async def _try_sign_gift_drop(user_id: str) -> Optional[tuple[str, str]]:
-    gift_id = get_gift_drop_manager().select_gift()
-    namespace, path = gift_id.split(":", 1)
-    location = ResourceLocation(namespace, path)
-
-    bag_items = await get_bag_items(user_id)
-    for bag_item in bag_items:
-        if str(bag_item.stack.item.getLocation()) == gift_id:
-            if not bag_item.stack.isAddable():
-                logger.info(f"Sign gift drop skipped (stack full): user={user_id}, gift={gift_id}")
-                return None
-            break
-    else:
-        if len(bag_items) >= bag_config.bag_max_size:
-            logger.info(f"Sign gift drop skipped (bag full): user={user_id}, gift={gift_id}")
-            return None
-
-    stack = await get_item(location, user_id, count=1)
-    await give_item(user_id, stack)
-    item_name = await stack.getName()
-    logger.info(f"Sign gift drop: user={user_id}, gift={gift_id}")
-    return gift_id, item_name
 
 
 async def _get_hitokoto(user_id: str) -> str:
@@ -169,7 +138,6 @@ class SignHandler:
         self._already_signed: bool = False
         self._final_sign_days: int = 0
         self._rank: int = 0
-        self._gift_text: Optional[str] = None
         self._templates: dict = {}
         self._bg_kwargs: dict = {}
 
@@ -231,12 +199,6 @@ class SignHandler:
                 )
                 self._rank = len(signed_today) + 1
 
-                # 第一名礼物掉落
-                if self._rank == 1:
-                    gift = await _try_sign_gift_drop(self.user_id)
-                    if gift:
-                        self._gift_text = gift[1]
-
                 sd.last_sign = date.today()
                 await session.commit()
 
@@ -285,11 +247,7 @@ class SignHandler:
                 "text": await lang.text("image.fortune", self.user_id),
                 "value": await lang.text(f"luck.{await _get_luck(self.user_id)}", self.user_id),
             },
-            "hitokoto": (
-                await lang.text("image.gift", self.user_id, self._gift_text)
-                if self._gift_text
-                else await _get_hitokoto(self.user_id)
-            ),
+            "hitokoto": await _get_hitokoto(self.user_id),
         }
         user = await get_user(self.user_id)
         self._templates["nickname"] = user.nickname

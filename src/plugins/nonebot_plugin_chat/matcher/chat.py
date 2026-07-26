@@ -258,22 +258,6 @@ class CommandHandler:
             else:
                 await lang.finish("command.ignore_mention.not_found", self.user_id, target_id)
 
-    async def handle_dropping(self) -> None:
-        """处理礼物掉落开关命令"""
-        if len(self.argv) < 2:
-            await lang.finish("command.no_argv", self.user_id)
-        action = self.argv[1]
-        if action == "on":
-            self.group_config.dropping_enabled = True
-            await self.merge_group_config()
-            await lang.finish("command.dropping.enabled", self.user_id)
-        elif action == "off":
-            self.group_config.dropping_enabled = False
-            await self.merge_group_config()
-            await lang.finish("command.dropping.disabled", self.user_id)
-        else:
-            await lang.finish("command.no_argv", self.user_id)
-
     async def handle_compact(self) -> None:
         """处理 compact 命令：分析待定笔记并重置消息队列"""
         from nonebot_plugin_larkutils.config import config as lark_config
@@ -330,8 +314,6 @@ class CommandHandler:
                 await self.handle_stop()
             case "stats":
                 await self.handle_stats()
-            case "dropping":
-                await self.handle_dropping()
             case "compact":
                 await self.handle_compact()
             case _:
