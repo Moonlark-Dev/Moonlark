@@ -33,8 +33,7 @@ def format_bind_message(code: str) -> str:
 
 
 BIND_SUCCESS_MESSAGE = (
-    "🎉 群绑定完成！该群已成功关联 OneBot 11 与 QQ 官方机器人。\n"
-    "现在你可以在本群同时使用两种协议的特性喵～"
+    "🎉 群绑定完成！该群已成功关联 OneBot 11 与 QQ 官方机器人。\n" "现在你可以在本群同时使用两种协议的特性喵～"
 )
 
 
