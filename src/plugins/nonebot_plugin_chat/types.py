@@ -20,6 +20,8 @@ class CachedMessage(TypedDict):
     images: list[bytes]
     self: bool
     message_id: str
+    to_me: bool
+    triggered_reply: bool
 
 
 class GetTextFunc(Protocol):
