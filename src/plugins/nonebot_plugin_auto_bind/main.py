@@ -53,13 +53,59 @@ def _get_adapter_type(bot: Bot) -> Optional[str]:
     return None
 
 
-def _hash_avatar(image_bytes: bytes) -> str:
+async def _get_avatar_hash(user_info: UserInfo) -> str:
+    avatar = user_info.user_avatar
+    if avatar is None:
+        return ""
     try:
-        img = Image.open(BytesIO(image_bytes)).convert("RGB")
-        img = img.resize((64, 64), Image.LANCZOS)
-        return hashlib.md5(img.tobytes()).hexdigest()  # ruff:ignore[hashlib-insecure-hash-function]
+        avatar_bytes = await avatar.get_image()
     except Exception:
         return ""
+    if not avatar_bytes:
+        return ""
+    try:
+        img = Image.open(BytesIO(avatar_bytes)).convert("RGB")
+        img = img.resize((64, 64), Image.LANCZOS)
+        return hashlib.md5(img.tobytes(), usedforsecurity=False).hexdigest()
+    except Exception:
+        return ""
+
+
+def _find_cache_match(adapter_type: str, plain_text: str, avatar_hash: str, now: datetime) -> Optional[dict]:
+    for cached in _recent_messages:
+        if cached["adapter"] == adapter_type:
+            continue
+        if now - cached["timestamp"] > _TIME_THRESHOLD:
+            continue
+        if cached["plain_text"] != plain_text:
+            continue
+        if cached["avatar_hash"] != avatar_hash:
+            continue
+        return cached
+    return None
+
+
+async def _try_bind(qq_openid: str, ob11_user_id: str) -> None:
+    if await is_user_registered(qq_openid, include_subaccount=False):
+        return
+    await set_main_account(qq_openid, ob11_user_id)
+    logger.info("Auto-bound QQ OpenID %s to OneBot 11 User ID %s", qq_openid, ob11_user_id)
+
+
+def _add_to_cache(adapter_type: str, user_id: str, plain_text: str, avatar_hash: str, now: datetime) -> None:
+    _recent_messages.append(
+        {
+            "adapter": adapter_type,
+            "user_id": user_id,
+            "plain_text": plain_text,
+            "avatar_hash": avatar_hash,
+            "timestamp": now,
+        },
+    )
+    cutoff = now - _MAX_CACHE_AGE
+    _recent_messages[:] = [m for m in _recent_messages if m["timestamp"] > cutoff]
+    if len(_recent_messages) > _MAX_CACHE_SIZE:
+        _recent_messages[:] = _recent_messages[-_MAX_CACHE_SIZE:]
 
 
 auto_bind_matcher = on_message(block=False, priority=1)
@@ -75,19 +121,7 @@ async def _(bot: Bot, event: Event, user_info: UserInfo = EventUserInfo()) -> No
     if not plain_text:
         return
 
-    avatar = user_info.user_avatar
-    if avatar is None:
-        return
-
-    try:
-        avatar_bytes = await avatar.get_image()
-    except Exception:
-        return
-
-    if not avatar_bytes:
-        return
-
-    avatar_hash = _hash_avatar(avatar_bytes)
+    avatar_hash = await _get_avatar_hash(user_info)
     if not avatar_hash:
         return
 
@@ -95,55 +129,16 @@ async def _(bot: Bot, event: Event, user_info: UserInfo = EventUserInfo()) -> No
     user_id = event.get_user_id()
 
     async with _cache_lock:
-        for cached in _recent_messages:
-            if cached["adapter"] == adapter_type:
-                continue
-            if now - cached["timestamp"] > _TIME_THRESHOLD:
-                continue
-            if cached["plain_text"] != plain_text:
-                continue
-            if cached["avatar_hash"] != avatar_hash:
-                continue
-
-            if adapter_type == "qq":
-                qq_openid = user_id
-                ob11_user_id = cached["user_id"]
-            else:
-                qq_openid = cached["user_id"]
-                ob11_user_id = user_id
-
-            if await is_user_registered(qq_openid, include_subaccount=False):
-                return
-
-            try:
-                await set_main_account(qq_openid, ob11_user_id)
-                logger.info(
-                    "Auto-bound QQ OpenID %s to OneBot 11 User ID %s",
-                    qq_openid,
-                    ob11_user_id,
-                )
-            except Exception:
-                logger.warning(
-                    "Failed to auto-bind QQ OpenID %s to OneBot 11 User ID %s",
-                    qq_openid,
-                    ob11_user_id,
-                )
-
-            _recent_messages.remove(cached)
+        cached = _find_cache_match(adapter_type, plain_text, avatar_hash, now)
+        if cached is None:
+            _add_to_cache(adapter_type, user_id, plain_text, avatar_hash, now)
             return
 
-        _recent_messages.append(
-            {
-                "adapter": adapter_type,
-                "user_id": user_id,
-                "plain_text": plain_text,
-                "avatar_hash": avatar_hash,
-                "timestamp": now,
-            },
-        )
+        if adapter_type == "qq":
+            qq_openid, ob11_user_id = user_id, cached["user_id"]
+        else:
+            qq_openid, ob11_user_id = cached["user_id"], user_id
 
-        cutoff = now - _MAX_CACHE_AGE
-        _recent_messages[:] = [m for m in _recent_messages if m["timestamp"] > cutoff]
+        _recent_messages.remove(cached)
 
-        if len(_recent_messages) > _MAX_CACHE_SIZE:
-            _recent_messages[:] = _recent_messages[-_MAX_CACHE_SIZE:]
+    await _try_bind(qq_openid, ob11_user_id)
