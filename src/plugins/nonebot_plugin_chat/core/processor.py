@@ -838,6 +838,13 @@ class MessageProcessor:
             tiredness,
         ) + (f"\n待定笔记:\n{pending_notes_text}" if pending_notes_text else "")
 
+    async def get_interaction_mode(self) -> str:
+        async with get_session() as db_session:
+            group_config = await db_session.get(ChatGroup, {"group_id": self.session.session_id})
+            if group_config:
+                return group_config.interaction_mode
+        return "standard"
+
     async def generate_system_prompt(self) -> OpenAIMessage:
         is_private = self.session.get_session_type() == "private"
         return await get_message(
@@ -848,6 +855,7 @@ class MessageProcessor:
             is_group_session=not is_private,
             is_private=is_private,
             session_nickname=getattr(self.session, "nickname", None),
+            interaction_mode=await self.get_interaction_mode(),
         )
 
     async def handle_recall(self, message_id: str, message_content: str) -> None:

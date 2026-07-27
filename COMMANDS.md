@@ -317,6 +317,7 @@ Moonlark 投票
 - `/chat stats (查看时间统计数据)`
 - `/chat dropping <on|off> (开关礼物掉落功能)`
 - `/chat compact [会话ID] (压缩消息队列，分析待定笔记后重置[SU])`
+- `/chat mode [passionate|standard|silent] (查看或切换互动模式，切换将重置会话上下文)`
 ## `decision`: 虚假处分通知
 
 根据群内最近 300 条消息，对指定群员生成一份符合公文格式的虚假处分通知（整活用）。

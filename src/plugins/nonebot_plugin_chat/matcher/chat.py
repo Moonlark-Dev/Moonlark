@@ -274,6 +274,25 @@ class CommandHandler:
         else:
             await lang.finish("command.no_argv", self.user_id)
 
+    async def handle_mode(self) -> None:
+        """处理互动模式切换命令"""
+        if len(self.argv) < 2:
+            await lang.finish(
+                "command.mode.current",
+                self.user_id,
+                await lang.text(f"command.mode.name.{self.group_config.interaction_mode}", self.user_id),
+            )
+        mode = self.argv[1]
+        if mode not in ("passionate", "standard", "silent"):
+            await lang.finish("command.no_argv", self.user_id)
+        mode_name = await lang.text(f"command.mode.name.{mode}", self.user_id)
+        if mode == self.group_config.interaction_mode:
+            await lang.finish("command.mode.unchanged", self.user_id, mode_name)
+        self.group_config.interaction_mode = mode
+        await self.merge_group_config()
+        await reset_session(self.group_id)
+        await lang.finish("command.mode.changed", self.user_id, mode_name)
+
     async def handle_compact(self) -> None:
         """处理 compact 命令：分析待定笔记并重置消息队列"""
         from nonebot_plugin_larkutils.config import config as lark_config
@@ -332,6 +351,8 @@ class CommandHandler:
                 await self.handle_stats()
             case "dropping":
                 await self.handle_dropping()
+            case "mode":
+                await self.handle_mode()
             case "compact":
                 await self.handle_compact()
             case _:
