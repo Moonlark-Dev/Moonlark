@@ -24,9 +24,9 @@ from io import BytesIO
 from logging import getLogger
 from typing import TYPE_CHECKING, Optional
 
-from nonebot import on_message
 from nonebot.adapters.onebot.v11 import Bot as V11Bot
 from nonebot.adapters.qq import Bot as QQBot
+from nonebot.message import event_preprocessor
 from nonebot_plugin_larkuser.user.utils import is_user_registered
 from nonebot_plugin_larkutils import set_main_account
 from nonebot_plugin_userinfo import EventUserInfo, UserInfo
@@ -108,16 +108,17 @@ def _add_to_cache(adapter_type: str, user_id: str, plain_text: str, avatar_hash:
         _recent_messages[:] = _recent_messages[-_MAX_CACHE_SIZE:]
 
 
-auto_bind_matcher = on_message(block=False, priority=1)
-
-
-@auto_bind_matcher.handle()
+@event_preprocessor
 async def _(bot: Bot, event: Event, user_info: UserInfo = EventUserInfo()) -> None:
     adapter_type = _get_adapter_type(bot)
     if adapter_type is None:
         return
 
-    plain_text = event.get_plaintext().strip()
+    try:
+        plain_text = event.get_plaintext().strip()
+    except NotImplementedError:
+        return
+
     if not plain_text:
         return
 
