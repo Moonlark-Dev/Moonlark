@@ -282,6 +282,8 @@ class MessageProcessor:
                 "self": True,
                 "message_id": "",
                 "images": [],
+                "to_me": False,
+                "triggered_reply": False,
             }
             self.session.cached_messages.append(event_msg)
             await self.session.on_cache_posted()
@@ -308,6 +310,8 @@ class MessageProcessor:
                 "self": False,
                 "message_id": message_id,
                 "images": images,
+                "to_me": mentioned,
+                "triggered_reply": False,
             }
             await self.process_messages(msg_dict)
             self.session.cached_messages.append(msg_dict)
@@ -326,6 +330,12 @@ class MessageProcessor:
         if (
             trigger_mode == "all" or (trigger_mode == "probability" and not self.session.message_queue)
         ) and not self.blocked:
+            # 标记触发回复的消息
+            if item[0] == "message":
+                for cached_msg in reversed(self.session.cached_messages):
+                    if not cached_msg.get("self", False):
+                        cached_msg["triggered_reply"] = True
+                        break
             asyncio.create_task(self.generate_reply(trigger_mode == "all", item[0] == "event"))
 
     async def handle_timer(self, description: str) -> None:
@@ -511,6 +521,8 @@ class MessageProcessor:
             "self": True,
             "message_id": message_id,
             "images": [],
+            "to_me": False,
+            "triggered_reply": False,
         }
         self.session.cached_messages.append(self_msg)
         await self.session.on_cache_posted()
