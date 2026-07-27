@@ -330,12 +330,6 @@ class MessageProcessor:
         if (
             trigger_mode == "all" or (trigger_mode == "probability" and not self.session.message_queue)
         ) and not self.blocked:
-            # 标记触发回复的消息
-            if item[0] == "message":
-                for cached_msg in reversed(self.session.cached_messages):
-                    if not cached_msg.get("self", False):
-                        cached_msg["triggered_reply"] = True
-                        break
             asyncio.create_task(self.generate_reply(trigger_mode == "all", item[0] == "event"))
 
     async def handle_timer(self, description: str) -> None:
@@ -414,6 +408,11 @@ class MessageProcessor:
                     return
 
         logger.info(f"Generating reply ({important=})...")
+        # 标记触发回复的用户消息
+        for cached_msg in reversed(self.session.cached_messages):
+            if not cached_msg.get("self", False):
+                cached_msg["triggered_reply"] = True
+                break
         self.session.accumulated_text_length = 0
         await self.openai_messages.fetch_reply()
 
