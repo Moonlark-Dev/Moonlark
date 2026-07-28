@@ -6,3 +6,4 @@ commands:
   check-history: help_check_history;2;tools
   group-daily: help_group_daily;1;tools
   decision: help_decision;1;community
+  word-cloud: help_word_cloud;1;tools

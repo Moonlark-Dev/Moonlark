@@ -37,6 +37,7 @@ from nonebot.matcher import Matcher, matchers
 from fastapi import Request, status
 from fastapi.exceptions import HTTPException
 from sqlalchemy import select, func, delete
+from sqlalchemy.exc import IntegrityError
 from .config import config
 from .matcher import simple_run
 from .models import CommandUsage, HandlerResultRecord, ExceptionRecord, OpenAIHistoryRecord
@@ -142,9 +143,17 @@ async def _(matcher: Matcher, state: T_State) -> None:
         record = result.scalar_one_or_none()
         if record:
             record.usage_count += 1
+            await session.commit()
         else:
-            session.add(CommandUsage(command_name=command_name, usage_count=1))
-        await session.commit()
+            try:
+                session.add(CommandUsage(command_name=command_name, usage_count=1))
+                await session.commit()
+            except IntegrityError:
+                await session.rollback()
+                result = await session.execute(select(CommandUsage).where(CommandUsage.command_name == command_name))
+                if record := result.scalar_one_or_none():
+                    record.usage_count += 1
+                await session.commit()
     state["status_report_command_name"] = command_name
     state["original_simple_run_method"] = matcher.simple_run
 

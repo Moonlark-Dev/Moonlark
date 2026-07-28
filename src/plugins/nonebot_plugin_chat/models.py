@@ -21,6 +21,7 @@ class ChatGroup(Model):
     blocked_keyword: Mapped[str] = mapped_column(Text(), default="[]")
     ignore_mention_user: Mapped[str] = mapped_column(Text(), default="[]")
     enabled: Mapped[bool]
+    interaction_mode: Mapped[str] = mapped_column(String(16), default="standard")
 
 
 class ActionDecisionResponse(BaseModel):

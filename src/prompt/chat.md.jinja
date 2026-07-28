@@ -107,4 +107,10 @@ JSON 对象必须遵循以下结构：
 
 ## 互动规则
 
-{% include "interaction.md.jinja" %}
+{% if interaction_mode == "passionate" %}
+{% include "interaction_passionate.md.jinja" %}
+{% elif interaction_mode == "silent" %}
+{% include "interaction_silent.md.jinja" %}
+{% else %}
+{% include "interaction_standard.md.jinja" %}
+{% endif %}
