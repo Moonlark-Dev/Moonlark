@@ -182,7 +182,9 @@ async def _(event: NoticeEvent, bot: OB11Bot, platform_id: str = get_group_id())
     emoji_id = event_dict["likes"][0]["emoji_id"]
     message_sender_name = raw_msg_data.get("sender", {}).get("nickname", "")
     logger.debug(f"emoji like: {emoji_id} {message} {operator_nickname}")
-    await session.processor.handle_reaction(message, operator_nickname, emoji_id, message_sender_is_bot, message_sender_name)
+    await session.processor.handle_reaction(
+        message, operator_nickname, emoji_id, message_sender_is_bot, message_sender_name
+    )
 
 
 @on_notice(block=False).handle()

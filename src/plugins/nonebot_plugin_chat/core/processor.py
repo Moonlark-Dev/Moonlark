@@ -895,12 +895,23 @@ class MessageProcessor:
                 "probability",
             )
 
-    async def handle_reaction(self, message_string: str, operator_name: str, emoji_id: str, message_sender_is_bot: bool = True, message_sender_name: str = "") -> None:
+    async def handle_reaction(
+        self,
+        message_string: str,
+        operator_name: str,
+        emoji_id: str,
+        message_sender_is_bot: bool = True,
+        message_sender_name: str = "",
+    ) -> None:
         self.token_bucket.add(0.5)
         if message_sender_is_bot:
-            event_text = await self.session.text("prompt.reaction", operator_name, message_string, QQ_EMOJI_MAP[emoji_id])
+            event_text = await self.session.text(
+                "prompt.reaction", operator_name, message_string, QQ_EMOJI_MAP[emoji_id]
+            )
         else:
-            event_text = await self.session.text("prompt.reaction_other", operator_name, message_sender_name, message_string, QQ_EMOJI_MAP[emoji_id])
+            event_text = await self.session.text(
+                "prompt.reaction_other", operator_name, message_sender_name, message_string, QQ_EMOJI_MAP[emoji_id]
+            )
         await self.session.add_event(event_text, "probability")
 
     async def _inject_pending_notes_to_openai_messages(self) -> None:
