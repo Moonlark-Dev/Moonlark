@@ -114,7 +114,7 @@ async def _(bot: Bot, event: Event) -> None:
 
     try:
         plain_text = event.get_plaintext().strip()
-    except NotImplementedError:
+    except (NotImplementedError, ValueError):
         return
 
     if not plain_text:
