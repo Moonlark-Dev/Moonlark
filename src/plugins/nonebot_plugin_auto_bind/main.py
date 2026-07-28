@@ -22,8 +22,9 @@ import hashlib
 from datetime import datetime, timedelta, timezone
 from io import BytesIO
 from logging import getLogger
-from typing import TYPE_CHECKING, Optional
+from typing import Optional
 
+from nonebot.adapters import Bot, Event  # ruff:ignore[typing-only-third-party-import]
 from nonebot.adapters.onebot.v11 import Bot as V11Bot
 from nonebot.adapters.qq import Bot as QQBot
 from nonebot.message import event_preprocessor
@@ -31,9 +32,6 @@ from nonebot_plugin_larkuser.user.utils import is_user_registered
 from nonebot_plugin_larkutils import set_main_account
 from nonebot_plugin_userinfo import EventUserInfo, UserInfo
 from PIL import Image
-
-if TYPE_CHECKING:
-    from nonebot.adapters import Bot, Event
 
 logger = getLogger(__name__)
 
