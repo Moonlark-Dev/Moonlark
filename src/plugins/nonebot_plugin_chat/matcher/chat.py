@@ -228,18 +228,18 @@ class CommandHandler:
             await lang.finish("command.no_argv", self.user_id)
 
     async def handle_ignore_mention(self) -> None:
-        if len(self.argv) < 3:
+        if len(self.argv) < 2:
             await lang.finish("command.no_argv", self.user_id)
 
-        action = self.argv[2]
+        action = self.argv[1]
         ignore_list = json.loads(self.group_config.ignore_mention_user)
 
         if action == "list":
             await lang.finish("command.ignore_mention.list", self.user_id, ", ".join(ignore_list))
 
-        if len(self.argv) < 4:
+        if len(self.argv) < 3:
             await lang.finish("command.no_argv", self.user_id)
-        target_id = self.argv[3]
+        target_id = self.argv[2]
 
         if action == "add":
             if target_id not in ignore_list:
@@ -273,6 +273,25 @@ class CommandHandler:
             await lang.finish("command.dropping.disabled", self.user_id)
         else:
             await lang.finish("command.no_argv", self.user_id)
+
+    async def handle_mode(self) -> None:
+        """处理互动模式切换命令"""
+        if len(self.argv) < 2:
+            await lang.finish(
+                "command.mode.current",
+                self.user_id,
+                await lang.text(f"command.mode.name.{self.group_config.interaction_mode}", self.user_id),
+            )
+        mode = self.argv[1]
+        if mode not in ("passionate", "standard", "silent"):
+            await lang.finish("command.no_argv", self.user_id)
+        mode_name = await lang.text(f"command.mode.name.{mode}", self.user_id)
+        if mode == self.group_config.interaction_mode:
+            await lang.finish("command.mode.unchanged", self.user_id, mode_name)
+        self.group_config.interaction_mode = mode
+        await self.merge_group_config()
+        await reset_session(self.group_id)
+        await lang.finish("command.mode.changed", self.user_id, mode_name)
 
     async def handle_compact(self) -> None:
         """处理 compact 命令：分析待定笔记并重置消息队列"""
@@ -332,6 +351,8 @@ class CommandHandler:
                 await self.handle_stats()
             case "dropping":
                 await self.handle_dropping()
+            case "mode":
+                await self.handle_mode()
             case "compact":
                 await self.handle_compact()
             case _:

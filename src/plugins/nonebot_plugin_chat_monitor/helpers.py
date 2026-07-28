@@ -93,4 +93,6 @@ def serialize_cached_message(msg: dict) -> dict:
         "self": msg.get("self", False),
         "message_id": msg.get("message_id", ""),
         "image_count": len(msg.get("images", [])),
+        "to_me": msg.get("to_me", False),
+        "triggered_reply": msg.get("triggered_reply", False),
     }

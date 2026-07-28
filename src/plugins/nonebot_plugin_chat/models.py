@@ -22,6 +22,7 @@ class ChatGroup(Model):
     ignore_mention_user: Mapped[str] = mapped_column(Text(), default="[]")
     enabled: Mapped[bool]
     dropping_enabled: Mapped[bool] = mapped_column(default=True)
+    interaction_mode: Mapped[str] = mapped_column(String(16), default="standard")
 
 
 class ActionDecisionResponse(BaseModel):
