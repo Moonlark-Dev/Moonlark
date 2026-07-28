@@ -125,6 +125,8 @@ async def _(bot: Bot, event: Event) -> None:
         user_info = await get_user_info(bot, event, user_id)
     except (ValueError, NotImplementedError):
         return
+    if user_info is None:
+        return
 
     avatar_hash = await _get_avatar_hash(user_info)
     if not avatar_hash:
@@ -145,4 +147,7 @@ async def _(bot: Bot, event: Event) -> None:
 
         _recent_messages.remove(cached)
 
-    await _try_bind(qq_openid, ob11_user_id)
+    try:
+        await _try_bind(qq_openid, ob11_user_id)
+    except Exception:
+        logger.exception("Failed to auto-bind %s to %s", qq_openid, ob11_user_id)
