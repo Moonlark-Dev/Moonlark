@@ -30,7 +30,7 @@ from nonebot.adapters.qq import Bot as QQBot
 from nonebot.message import event_preprocessor
 from nonebot_plugin_larkuser.user.utils import is_user_registered
 from nonebot_plugin_larkutils import set_main_account
-from nonebot_plugin_userinfo import EventUserInfo, UserInfo
+from nonebot_plugin_userinfo import UserInfo, get_user_info
 from PIL import Image
 
 logger = getLogger(__name__)
@@ -107,7 +107,7 @@ def _add_to_cache(adapter_type: str, user_id: str, plain_text: str, avatar_hash:
 
 
 @event_preprocessor
-async def _(bot: Bot, event: Event, user_info: UserInfo = EventUserInfo()) -> None:
+async def _(bot: Bot, event: Event) -> None:
     adapter_type = _get_adapter_type(bot)
     if adapter_type is None:
         return
@@ -120,12 +120,17 @@ async def _(bot: Bot, event: Event, user_info: UserInfo = EventUserInfo()) -> No
     if not plain_text:
         return
 
+    try:
+        user_id = event.get_user_id()
+        user_info = await get_user_info(bot, event, user_id)
+    except (ValueError, NotImplementedError):
+        return
+
     avatar_hash = await _get_avatar_hash(user_info)
     if not avatar_hash:
         return
 
     now = datetime.now(timezone.utc)
-    user_id = event.get_user_id()
 
     async with _cache_lock:
         cached = _find_cache_match(adapter_type, plain_text, avatar_hash, now)
