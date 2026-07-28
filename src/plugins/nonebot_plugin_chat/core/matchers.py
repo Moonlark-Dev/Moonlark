@@ -25,7 +25,6 @@ from sqlalchemy import select
 
 from ..config import config
 from ..models import PrivateChatSession
-from ..utils.gift_drop import handle_gift_drop
 from ..utils.group import enabled_group, enabled_private_chat
 from .ego import moonlark_main
 from .session import create_group_session, create_private_session, get_session_directly
@@ -77,12 +76,6 @@ async def _(
     await session.handle_message(
         message, user_id, event, state, nickname, event.is_tome(), platform_user_id=platform_user_id
     )
-
-    # 礼物掉落检测
-    try:
-        await handle_gift_drop(bot, event, user_id, session_id, session.is_napcat_bot())
-    except Exception as e:
-        logger.exception(e)
 
 
 @on_message(priority=50, rule=enabled_private_chat, block=False).handle()

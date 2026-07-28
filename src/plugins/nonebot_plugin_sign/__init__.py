@@ -20,7 +20,6 @@ require("nonebot_plugin_larkuser")
 require("nonebot_plugin_render")
 require("nonebot_plugin_bag")
 require("nonebot_plugin_items")
-require("nonebot_plugin_chat")
 require("nonebot_plugin_larksetu")
 
 from .__main__ import is_user_signed
