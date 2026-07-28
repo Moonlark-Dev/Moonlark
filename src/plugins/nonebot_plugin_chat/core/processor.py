@@ -895,17 +895,24 @@ class MessageProcessor:
                 "probability",
             )
 
-    async def handle_reaction(self, message_string: str, operator_name: str, emoji_id: str) -> None:
+    async def handle_reaction(
+        self,
+        message_string: str,
+        operator_name: str,
+        emoji_id: str,
+        message_sender_is_bot: bool = True,
+        message_sender_name: str = "",
+    ) -> None:
         self.token_bucket.add(0.5)
-        await self.session.add_event(
-            await self.session.text(
-                "prompt.reaction",
-                operator_name,
-                message_string,
-                QQ_EMOJI_MAP[emoji_id],
-            ),
-            "probability",
-        )
+        if message_sender_is_bot:
+            event_text = await self.session.text(
+                "prompt.reaction", operator_name, message_string, QQ_EMOJI_MAP[emoji_id]
+            )
+        else:
+            event_text = await self.session.text(
+                "prompt.reaction_other", operator_name, message_sender_name, message_string, QQ_EMOJI_MAP[emoji_id]
+            )
+        await self.session.add_event(event_text, "probability")
 
     async def _inject_pending_notes_to_openai_messages(self) -> None:
         """在上下文重置后，将待定笔记注入到 OpenAI 消息队列中"""
