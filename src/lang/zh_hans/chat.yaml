@@ -203,6 +203,7 @@ prompt:
     to_me: "{} 戳了戳你。"
     to_other: "{} 戳了戳 {}。"
   reaction: "{} 回应了你的消息“{}”: {}"
+  reaction_other: "{} 回应了 {} 的消息“{}”: {}"
   event_template: |
     [{}]: {}
 

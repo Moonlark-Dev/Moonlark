@@ -18,6 +18,8 @@
 
 import hashlib
 import json
+import os
+import shutil
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from nonebot import get_app, get_driver
@@ -50,6 +52,33 @@ app.include_router(ego_router)
 @get_driver().on_startup
 async def _ensure_indexes():
     """创建 Note 和 AgentEvent 表的必要索引（如果不存在）。"""
+    await _deploy_frontend()
+
+
+async def _deploy_frontend():
+    """将 chat-monitor 前端构建产物部署到静态文件目录。"""
+    src_dir = "/vol2/@apphome/trim.openclaw/data/workspace/chat-monitor/dist"
+    dst_dir = "/var/www/monitor"
+    if not os.path.isdir(src_dir):
+        logger.warning(f"[ChatMonitor] 前端构建产物不存在: {src_dir}")
+        return
+    try:
+        # 复制 index.html
+        shutil.copy2(os.path.join(src_dir, "index.html"), os.path.join(dst_dir, "index.html"))
+        # 复制 favicon
+        favicon_src = os.path.join(src_dir, "favicon.svg")
+        if os.path.exists(favicon_src):
+            shutil.copy2(favicon_src, os.path.join(dst_dir, "favicon.svg"))
+        # 复制 assets
+        src_assets = os.path.join(src_dir, "assets")
+        dst_assets = os.path.join(dst_dir, "assets")
+        # 删除旧的 assets 目录（如果存在）并重建
+        if os.path.isdir(dst_assets):
+            shutil.rmtree(dst_assets)
+        shutil.copytree(src_assets, dst_assets)
+        logger.info("[ChatMonitor] 前端产物已部署到 /var/www/monitor")
+    except Exception as exc:
+        logger.warning(f"[ChatMonitor] 前端部署失败: {exc}")
     try:
         async with get_session() as db_session:
             # Note.created_time 用于 ORDER BY DESC
