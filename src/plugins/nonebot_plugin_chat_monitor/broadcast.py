@@ -106,7 +106,7 @@ def _diff_status(current: dict[str, Any], previous: dict[str, Any]) -> dict[str,
         inc["ego_decision_full"] = cur_decisions
 
     # ---- EGO 睡眠/活动状态变化 ----
-    for field in ("sleep_mode", "tiredness", "current_activity", "mood_retention"):
+    for field in ("sleep_mode", "tiredness", "mood_retention"):
         cv = cur_ego.get(field)
         pv = prev_ego.get(field)
         if cv != pv:

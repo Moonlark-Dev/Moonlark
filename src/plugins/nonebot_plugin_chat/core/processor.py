@@ -1,49 +1,43 @@
+import asyncio
 import base64
 import html
-import math
-import random
-
-import aiofiles
-from nonebot.adapters import Event
-from nonebot.typing import T_State
-from nonebot.adapters.onebot.v11 import Bot as OB11Bot
-from nonebot_plugin_alconna import At, Target, UniMessage
-from nonebot_plugin_chat.utils.group import LinkParser
-from nonebot_plugin_chat.utils.token_bucket import TokenBucket
-from ..enums import StateEnum
-from nonebot_plugin_openai import get_message, get_message_text
-from ..config import config
-from nonebot_plugin_openai.types import Message as OpenAIMessage
-from nonebot.log import logger
-from nonebot_plugin_larkuser import get_user
-from nonebot_plugin_openai import generate_message
-from nonebot_plugin_openai.utils.chat import fetch_message, fetch_json
-from nonebot_plugin_orm import get_session
-from sqlalchemy import select
-
-import asyncio
 import json
+import math
 import random
 import re
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any, AsyncGenerator, Literal, Optional
 
-from .message import MessageQueue
+from nonebot.adapters import Event
+from nonebot.adapters.onebot.v11 import Bot as OB11Bot
+from nonebot.log import logger
+from nonebot.typing import T_State
+from nonebot_plugin_alconna import Target, UniMessage
+from nonebot_plugin_larkuser import get_user
+from nonebot_plugin_openai import generate_message, get_message, get_message_text
+from nonebot_plugin_openai.types import Message as OpenAIMessage
+from nonebot_plugin_openai.utils.chat import fetch_json, fetch_message
+from nonebot_plugin_orm import get_session
+from pydantic import BaseModel
+from sqlalchemy import select
+
+from nonebot_plugin_chat.utils.group import LinkParser
+from nonebot_plugin_chat.utils.token_bucket import TokenBucket
+
+from ..config import config
 from ..models import ChatGroup, Sticker, UserProfile
 from ..types import CachedMessage
-
-from ..utils.image import query_image_content
-from ..utils.message import MessageParser, generate_message_string
-from ..utils import parse_message_to_string
 from ..utils.ai_agent import AskAISession
 from ..utils.emoji import QQ_EMOJI_MAP
+from ..utils.image import query_image_content
+from ..utils.message import MessageParser, generate_message_string
 from ..utils.note_manager import get_context_notes
+from ..utils.status_manager import get_status_manager
 from ..utils.sticker_manager import get_sticker_manager
+from ..utils.timing_stats import timing_stats_manager
 from ..utils.tool_manager import ToolManager
 from ..utils.tools.sticker import StickerTools
-from ..utils.status_manager import get_status_manager
-from ..utils.timing_stats import timing_stats_manager
-from pydantic import BaseModel
+from .message import MessageQueue
 
 
 class UnlimitedTokenReviewResult(BaseModel):
@@ -241,7 +235,7 @@ class MessageProcessor:
 
     async def parse_message(self, message: UniMessage, event: Event, state: T_State) -> tuple[str, list[bytes]]:
         parser = MessageParser(
-            message, event, self.session.bot, state, self.session.lang_str, not self.ENABLE_EMBEDDED_IMAGE
+            message, event, self.session.bot, state, self.session.lang_str, not self.ENABLE_EMBEDDED_IMAGE,
         )
         msg_str = await parser.parse()
         return (await LinkParser(msg_str, self.session.lang_str).parse()), parser.images
@@ -268,7 +262,7 @@ class MessageProcessor:
             event_prompt, trigger_mode = item[1]  # type: ignore
             additional_info = await self.generate_event_additional_info()
             content = await self.session.text(
-                "prompt.event_template", datetime.now().strftime("%H:%M:%S"), event_prompt, additional_info
+                "prompt.event_template", datetime.now().strftime("%H:%M:%S"), event_prompt, additional_info,
             )
             await self.openai_messages.append_user_message(content)
 
@@ -297,9 +291,8 @@ class MessageProcessor:
             logger.debug(f"{text=}")
             if not text:
                 return
-            if "@Moonlark" not in text and mentioned:
-                if self.session.get_session_type() == "group":
-                    text = f"@Moonlark {text}"
+            if "@Moonlark" not in text and mentioned and self.session.get_session_type() == "group":
+                text = f"@Moonlark {text}"
 
             msg_dict: CachedMessage = {
                 "content": text,
@@ -325,7 +318,7 @@ class MessageProcessor:
                 ("event", "none"): 0.2,
                 ("message", "probability"): 0.5,
                 ("message", "all"): 1,
-            }[item[0], trigger_mode]
+            }[item[0], trigger_mode],
         )
         if (
             trigger_mode == "all" or (trigger_mode == "probability" and not self.session.message_queue)
@@ -356,7 +349,7 @@ class MessageProcessor:
                 msg
                 for msg in self.session.cached_messages
                 if msg["send_time"] > dt - timedelta(minutes=1) and msg["self"]
-            ]
+            ],
         )
 
         # 如果在冷却期或消息为空，直接返回
@@ -370,7 +363,7 @@ class MessageProcessor:
         if not important:
             base_probability = await self.session.get_probability()
             logger.debug(
-                f"Accumulated length: {self.session.accumulated_text_length}, Trigger probability: {base_probability:.2%}"
+                f"Accumulated length: {self.session.accumulated_text_length}, Trigger probability: {base_probability:.2%}",
             )
             probability = base_probability * min(1, 3 / (recent_message_count or 1))
             if random.random() > probability:
@@ -408,7 +401,7 @@ class MessageProcessor:
                 last_msg = self.session.cached_messages[-1] if self.session.cached_messages else {}
                 nickname = last_msg.get("nickname", "") if isinstance(last_msg, dict) else ""
                 should_wake = await moonlark_main.handle_mention(
-                    recent_msgs, session_name=session_name, nickname=nickname
+                    recent_msgs, session_name=session_name, nickname=nickname,
                 )
                 if not should_wake:
                     return
@@ -439,7 +432,7 @@ class MessageProcessor:
         return True
 
     async def append_tool_call_history(
-        self, call_id: str, name: str, param: dict[str, Any], result: str | None = None
+        self, call_id: str, name: str, param: dict[str, Any], result: str | None = None,
     ) -> None:
         self.session.tool_calls_history.append(
             {
@@ -448,12 +441,12 @@ class MessageProcessor:
                 "params": param,
                 "result": result,
                 "time": datetime.now().isoformat(),
-            }
+            },
         )
         self.session.tool_calls_history = self.session.tool_calls_history[-5:]
 
     async def send_function_call_feedback(
-        self, call_id: str, name: str, param: dict[str, Any]
+        self, call_id: str, name: str, param: dict[str, Any],
     ) -> tuple[str, str, dict[str, Any]]:
         await self.append_tool_call_history(call_id, name, param)
         return call_id, name, param
@@ -500,9 +493,8 @@ class MessageProcessor:
         # 见 https://github.com/AstrBotDevs/AstrBot/issues/4382
         target = self.session.target
         bot = self.session.bot
-        if isinstance(target, Target) and bot.adapter.get_name() == "QQ":
-            if "qq.reply_seq" not in target.extra:
-                target.extra["qq.reply_seq"] = random.randint(1, 1000000)
+        if isinstance(target, Target) and bot.adapter.get_name() == "QQ" and "qq.reply_seq" not in target.extra:
+            target.extra["qq.reply_seq"] = random.randint(1, 1000000)
         receipt = await message.send(target=target, bot=bot)
         # 记录回应用时（使用 reply_message_id 查找对应的原消息）
         self._record_reply_timing(reply_message_id)
@@ -689,7 +681,7 @@ class MessageProcessor:
                 if isinstance(self.session.bot, OB11Bot):
                     try:
                         member_info = await self.session.get_user_info(user_id)
-                    except Exception as e:
+                    except Exception:
                         member_info = None
                 else:
                     member_info = None
@@ -707,11 +699,11 @@ class MessageProcessor:
                             fav_level,
                             datetime.fromtimestamp(member_info["join_time"]).strftime("%Y-%m-%d"),
                             profile,
-                        )
+                        ),
                     )
                 elif fav > 0 or is_profile_found:
                     profiles.append(
-                        await self.session.text("prompt_group.member_info", nickname, fav, fav_level, profile)
+                        await self.session.text("prompt_group.member_info", nickname, fav, fav_level, profile),
                     )
         return profiles
 
@@ -721,8 +713,8 @@ class MessageProcessor:
         async with get_session() as session:
             results = await session.scalars(
                 select(Sticker).where(
-                    Sticker.context_keywords.isnot(None), Sticker.emotion.isnot(None), Sticker.labels.isnot(None)
-                )
+                    Sticker.context_keywords.isnot(None), Sticker.emotion.isnot(None), Sticker.labels.isnot(None),
+                ),
             )
             for sticker in results:
                 if sticker.emotion == emotion_type:
@@ -764,15 +756,6 @@ class MessageProcessor:
             mood_reason,
         )
 
-        # 当前活动
-        current_activity = moonlark_main.self_action.current_activity
-        if moonlark_main.state["sleep_mode"]:
-            current_activity_text = "睡眠中"
-        elif current_activity:
-            current_activity_text = current_activity
-        else:
-            current_activity_text = "空闲"
-
         tiredness = round(moonlark_main.sleep_controller.tiredness * 100)
 
         pending_notes_text = self._get_pending_notes_text()
@@ -785,7 +768,6 @@ class MessageProcessor:
             display_fav=sender.get_display_fav(),
             fav_level=await sender.get_fav_level(),
             note_text=await self.generate_note_text(notes),
-            current_activity=current_activity_text,
             tiredness=tiredness,
             state=state,
             pending_notes=pending_notes_text or None,
@@ -820,7 +802,7 @@ class MessageProcessor:
         return False
 
     async def generate_event_additional_info(self) -> str:
-        """生成事件的 additional_info，包含 token、当前状态和当前活动"""
+        """生成事件的 additional_info，包含 token 和当前状态"""
         from .ego import moonlark_main
 
         status_manager = get_status_manager()
@@ -834,15 +816,6 @@ class MessageProcessor:
             mood_reason,
         )
 
-        # 当前活动
-        current_activity = moonlark_main.self_action.current_activity
-        if moonlark_main.state["sleep_mode"]:
-            current_activity_text = "睡眠中"
-        elif current_activity:
-            current_activity_text = current_activity
-        else:
-            current_activity_text = "空闲"
-
         tiredness = round(moonlark_main.sleep_controller.tiredness * 100)
 
         pending_notes_text = self._get_pending_notes_text()
@@ -851,7 +824,6 @@ class MessageProcessor:
             "prompt.event_additional_info",
             round(self.token_bucket.get(), 2),
             state,
-            current_activity_text,
             tiredness,
         ) + (f"\n待定笔记:\n{pending_notes_text}" if pending_notes_text else "")
 
@@ -912,11 +884,11 @@ class MessageProcessor:
         self.token_bucket.add(0.5)
         if message_sender_is_bot:
             event_text = await self.session.text(
-                "prompt.reaction", operator_name, message_string, QQ_EMOJI_MAP[emoji_id]
+                "prompt.reaction", operator_name, message_string, QQ_EMOJI_MAP[emoji_id],
             )
         else:
             event_text = await self.session.text(
-                "prompt.reaction_other", operator_name, message_sender_name, message_string, QQ_EMOJI_MAP[emoji_id]
+                "prompt.reaction_other", operator_name, message_sender_name, message_string, QQ_EMOJI_MAP[emoji_id],
             )
         await self.session.add_event(event_text, "probability")
 

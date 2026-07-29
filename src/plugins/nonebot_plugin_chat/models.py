@@ -219,7 +219,6 @@ class EgoDecisionResponse(BaseModel):
         None  # "skip" | "continue_draft" | "abort_draft" | {"start_new_topic": "主题"}
     )
     private_chat: Optional[PrivateChatDecision] = None
-    self_action: Optional[str] = None  # 活动描述，不返回即不动作
 
 
 class SleepThinkResponse(BaseModel):
@@ -227,26 +226,6 @@ class SleepThinkResponse(BaseModel):
 
     wake_up: bool = False
     reason: str = ""
-
-
-class SelfActionDurationResponse(BaseModel):
-    """SelfActionController _generate_duration 的 LLM 返回格式"""
-
-    duration_minutes: int = 5
-
-
-class TaskClassificationResponse(BaseModel):
-    """TaskController _classify_task 的 LLM 返回格式"""
-
-    activity_type: Literal["学习", "任务", "消息"]
-
-
-class SelfActionResultProcessResponse(BaseModel):
-    """SelfActionController 结果处理的 LLM 返回格式"""
-
-    compressed_content: str
-    keywords: str
-    expire_hours: float = 168
 
 
 class AgentEvent(Model):

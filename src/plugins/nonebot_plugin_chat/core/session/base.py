@@ -1,25 +1,24 @@
 import asyncio
+import math
+import uuid
+from abc import ABC, abstractmethod
+from datetime import datetime, timedelta
+from typing import Literal, Optional, TypeAlias
 
 from nonebot.adapters import Bot, Event
 from nonebot.adapters.onebot.v11.event import PokeNotifyEvent
 from nonebot.log import logger
 from nonebot.typing import T_State
 from nonebot_plugin_alconna import Target, UniMessage, get_message_id
-from nonebot_plugin_chat.utils.trigger import calculate_trigger_probability
-from nonebot_plugin_chat.lang import lang
-from nonebot_plugin_chat.types import AdapterUserInfo, CachedMessage, PendingInteraction, RuaAction
 from nonebot_plugin_larkuser import get_nickname, get_user
 from nonebot_plugin_orm import get_session
 from sqlalchemy import delete
 
+from nonebot_plugin_chat.lang import lang
+from nonebot_plugin_chat.types import AdapterUserInfo, CachedMessage, PendingInteraction, RuaAction
+from nonebot_plugin_chat.utils.trigger import calculate_trigger_probability
+
 from ...models import Timer
-
-
-import math
-import uuid
-from abc import ABC, abstractmethod
-from datetime import datetime, timedelta
-from typing import Literal, Optional, TypeAlias
 
 # 消息队列项类型定义
 MessageQueueItem: TypeAlias = (
@@ -35,7 +34,7 @@ class BaseSession(ABC):
     @abstractmethod
     def get_session_type() -> Literal["private", "group"]: ...
 
-    def __init__(self, session_id: str, bot: Bot, target: Target, lang_str: str = f"mlsid::--lang=zh_hans") -> None:
+    def __init__(self, session_id: str, bot: Bot, target: Target, lang_str: str = "mlsid::--lang=zh_hans") -> None:
         self.session_id = session_id
         self.target = target
         self.bot = bot
@@ -108,7 +107,7 @@ class BaseSession(ABC):
         favorability_coefficient = 1.0
         if len(self.cached_messages) > 0:
             avg_fav = sum(
-                [(await get_user(msg["user_id"])).get_fav() for msg in self.cached_messages if not msg["self"]]
+                [(await get_user(msg["user_id"])).get_fav() for msg in self.cached_messages if not msg["self"]],
             ) / len(self.cached_messages)
             logger.debug(f"{avg_fav=}")
             favorability_coefficient = 1 + 0.8 * (1 - math.e ** (-5 * avg_fav))
@@ -122,7 +121,7 @@ class BaseSession(ABC):
             interest_coefficient = 0.25 + decayed_interest * 3.75
             logger.debug(
                 f"Applied interest coefficient: {interest_coefficient:.2f} "
-                f"(raw={self.last_interest:.2f}, decayed={decayed_interest:.2f})"
+                f"(raw={self.last_interest:.2f}, decayed={decayed_interest:.2f})",
             )
 
         # 计算最终概率
@@ -165,7 +164,7 @@ class BaseSession(ABC):
         decayed = self.INTEREST_CENTER + (self.last_interest - self.INTEREST_CENTER) * decay_factor
         logger.debug(
             f"Interest decay: {self.last_interest:.2f} -> {decayed:.2f} "
-            f"(elapsed={elapsed:.0f}s, factor={decay_factor:.4f})"
+            f"(elapsed={elapsed:.0f}s, factor={decay_factor:.4f})",
         )
         return decayed
 
@@ -228,11 +227,11 @@ class BaseSession(ABC):
             (
                 "message",
                 (message, event, state, user_id, nickname, datetime.now(), mentioned, message_id, platform_user_id),
-            )
+            ),
         )
 
     async def add_event(
-        self, event_prompt: str, trigger_mode: Literal["probability", "none", "all"] = "probability"
+        self, event_prompt: str, trigger_mode: Literal["probability", "none", "all"] = "probability",
     ) -> None:
         """向消息队列中添加一个事件
 
@@ -317,8 +316,6 @@ class BaseSession(ABC):
             action: 选择的 rua 动作
             message_id: 触发 rua 命令的消息 ID，用于 reaction 和回复
         """
-        import random
-        import asyncio
 
         action_name = action["name"]
 
@@ -344,7 +341,7 @@ class BaseSession(ABC):
         await self.post_event(event_prompt, "all")
 
     async def change_sleep_status(
-        self, deal_type: Literal["ready", "delay"], delay_minutes: Optional[int] = None, reason: Optional[str] = None
+        self, deal_type: Literal["ready", "delay"], delay_minutes: Optional[int] = None, reason: Optional[str] = None,
     ) -> str:
         """
         修改睡觉状态
@@ -393,7 +390,7 @@ class BaseSession(ABC):
         向 Moonlark 申请执行一个动作
 
         Args:
-            type: 动作类型，如 start_self_action、start_blog、sleep
+            type: 动作类型，如 start_blog、sleep
             info: 动作的补充信息
             reason: 申请此动作的原因
 
@@ -438,7 +435,7 @@ class BaseSession(ABC):
                     delete(Timer).where(
                         Timer.session_id == self.session_id,
                         Timer.trigger_time <= dt,
-                    )
+                    ),
                 )
                 await db_session.commit()
 
@@ -458,7 +455,7 @@ class BaseSession(ABC):
                         "id": timer_id,
                         "trigger_time": row.trigger_time,
                         "description": row.description,
-                    }
+                    },
                 )
             if rows:
                 logger.info(f"Restored {len(rows)} timers for session {self.session_id}")
@@ -470,7 +467,7 @@ class BaseSession(ABC):
             if not include_self_message and message.get("self", False):
                 continue
             messages.append(
-                f"[{message['send_time'].strftime('%H:%M:%S')}][{message['nickname']}]: {message['content']}"
+                f"[{message['send_time'].strftime('%H:%M:%S')}][{message['nickname']}]: {message['content']}",
             )
         # 只返回最近的 length 条消息
         return "\n".join(messages[-length:])
@@ -506,7 +503,7 @@ class BaseSession(ABC):
                     session_id=self.session_id,
                     trigger_time=trigger_time,
                     description=description,
-                )
+                ),
             )
             await db_session.commit()
 
