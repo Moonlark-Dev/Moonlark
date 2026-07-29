@@ -281,6 +281,51 @@ async def get_message_detail(
     return result
 
 
+@router.get("/chat-monitor/sessions/{session_id}/messages/{msg_index}/thought")
+async def get_message_thought(session_id: str, msg_index: int, request: Request):
+    """获取触发该消息回复的 thought / reasoning 内容"""
+    await verify_admin_request(request)
+    from nonebot_plugin_chat.core.session import get_session_directly
+
+    try:
+        session = get_session_directly(session_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    if msg_index < 0 or msg_index >= len(session.cached_messages):
+        raise HTTPException(status_code=404, detail="Message not found")
+
+    msg = session.cached_messages[msg_index]
+
+    thought = None
+    reasoning_content = None
+    openai_last_response = None
+
+    # last_thought: LLM 返回的结构化 thought（MessageQueue 上）
+    if hasattr(session.processor, "openai_messages"):
+        thought = getattr(session.processor.openai_messages, "last_thought", None)
+
+    # _latest_reasioning_content_cache: 最近一次 API 返回的原始 reasoning_content
+    if hasattr(session.processor, "_latest_reasioning_content_cache"):
+        rc = session.processor._latest_reasioning_content_cache
+        if rc:
+            reasoning_content = rc
+
+    # last_response: 最近一次 OpenAI API 响应体（可能包含 reasoning_content）
+    oai_mq = session.processor.openai_messages
+    if hasattr(oai_mq, "last_response") and oai_mq.last_response is not None:
+        try:
+            openai_last_response = oai_mq.last_response.model_dump(mode="json")
+        except Exception:
+            pass
+
+    return {
+        "thought": thought,
+        "reasoning_content": reasoning_content,
+        "last_response": openai_last_response,
+    }
+
+
 @router.get("/chat-monitor/sessions/{session_id}/messages/{msg_index}/context")
 async def get_message_context(session_id: str, msg_index: int, request: Request):
     """获取消息的完整上下文格式（与 AI 上下文中插入的格式相同）。"""
