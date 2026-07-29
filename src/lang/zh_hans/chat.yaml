@@ -208,7 +208,6 @@ prompt:
     <additional_info>
     当前 Token: {}
     {}
-    当前活动：{}
     困倦度：{}%
     </additional_info>
   note:
@@ -816,33 +815,6 @@ sleep_decision:
   timeout: "睡眠决策超时，意识会话未在规定时间内做出决定。"
 
 recall_fetch_failed: "消息内容获取失败"
-
-
-self_action:
-  result_process:
-    system: |
-      你是信息压缩助手。请将以下活动结果压缩为简洁的笔记格式。
-
-      **要求：**
-      1. 压缩后的内容应保留核心信息，去除冗余描述，控制在100字以内
-      2. 提取 3~6 个关键词（空格分隔），用于后续检索
-      3. 根据信息时效性估算合理的过期时间（小时）：
-         - 时效性强的资讯（新闻、天气等）：24~72小时
-         - 一般知识/技术信息：168~720小时（1周~1个月）
-         - 长期有效的知识：8760小时（1年）
-         - 永不过期：-1
-
-      输出 JSON：
-      {{
-        "compressed_content": "压缩后的笔记内容",
-        "keywords": "关键词1 关键词2 关键词3",
-        "expire_hours": 168
-      }}
-    user: |
-      活动描述：{0}
-       活动结果：
-       {1}
-       请压缩结果并生成关键词和过期时间。
 
 private_chat_whitelist:
   no_permission: "权限不足：只有 superuser 可以使用此命令"

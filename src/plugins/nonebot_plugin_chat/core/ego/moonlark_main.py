@@ -24,7 +24,6 @@ from .blog_writer import BlogWriter
 from .event_collector import event_collector
 from .planner import Planner
 from .proactive_chat_ctrl import ProactiveChatController
-from .self_action_ctrl import SelfActionController
 from .sleep_controller import SleepController
 
 
@@ -35,7 +34,6 @@ class MoonlarkMain:
         self.sleep_controller = SleepController(self)
         self.blog_writer = BlogWriter(self)
         self.proactive_chat = ProactiveChatController(self)
-        self.self_action = SelfActionController(self)
         self.planner = Planner(self)
 
         self.status_manager = get_status_manager()
@@ -231,8 +229,6 @@ class MoonlarkMain:
         future: Optional[asyncio.Future] = None,
     ) -> None:
         try:
-            if duration and duration > 0:
-                await self.self_action.start_action(do)
             if future and not future.done():
                 future.set_result(f"已批准动作: {do}")
         except Exception as e:

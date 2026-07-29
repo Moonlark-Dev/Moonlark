@@ -23,11 +23,11 @@ from fastapi import APIRouter, Query, Request
 from fastapi.exceptions import HTTPException
 from nonebot.log import logger
 
-from ..auth import verify_admin_request, now_iso
+from ..auth import now_iso, verify_admin_request
 from ..helpers import (
     get_cached_session_name,
-    get_session_state,
     get_session_last_activity,
+    get_session_state,
     serialize_cached_message,
 )
 
@@ -57,7 +57,7 @@ async def build_status() -> dict[str, Any]:
                 "state": get_session_state(session),
                 "last_activity": get_session_last_activity(session),
                 "message_count": len(session.cached_messages),
-            }
+            },
         )
 
     ego_state = {}
@@ -104,7 +104,7 @@ async def list_sessions(request: Request):
                 "last_activity": get_session_last_activity(session),
                 "message_count": len(session.cached_messages),
                 "tool_calls_count": len(session.tool_calls_history),
-            }
+            },
         )
     return result
 
@@ -187,7 +187,7 @@ async def get_session_queue(session_id: str, request: Request):
                     "user_id": details[3],
                     "nickname": details[4],
                     "time": details[5].isoformat(),
-                }
+                },
             )
         elif item[0] == "event":
             _, details = item
@@ -196,7 +196,7 @@ async def get_session_queue(session_id: str, request: Request):
                     "type": "event",
                     "prompt": details[0][:200],
                     "trigger_mode": details[1],
-                }
+                },
             )
     return items
 
@@ -235,7 +235,7 @@ async def get_session_openai_messages(session_id: str, request: Request):
                     "role": msg.get("role", "unknown"),
                     "content": str(msg.get("content", ""))[:2000] if msg.get("content") else None,
                     "tool_calls": msg.get("tool_calls"),
-                }
+                },
             )
         else:
             serialized.append(
@@ -243,7 +243,7 @@ async def get_session_openai_messages(session_id: str, request: Request):
                     "role": getattr(msg, "role", "unknown"),
                     "content": str(getattr(msg, "content", ""))[:2000] if getattr(msg, "content", None) else None,
                     "tool_calls": getattr(msg, "tool_calls", None),
-                }
+                },
             )
     # 将最近一次 OpenAI API 响应体序列化（持久化在 MessageQueue 上）
     oai_mq = session.processor.openai_messages
@@ -334,21 +334,13 @@ async def get_message_context(session_id: str, msg_index: int, request: Request)
             except Exception:
                 pass
 
-        # 当前活动
-        current_activity_text = ""
+        # 困倦度
+        tiredness_text = ""
         try:
             from nonebot_plugin_chat.core.ego import moonlark_main
 
-            current_activity = moonlark_main.self_action.current_activity
-            if moonlark_main.state.get("sleep_mode", False):
-                current_activity_text = "睡眠中"
-            elif current_activity:
-                current_activity_text = f"正在「{current_activity}」"
-            else:
-                current_activity_text = "空闲"
-
             tiredness = round(moonlark_main.sleep_controller.tiredness * 100)
-            current_activity_text = f"当前活动：{current_activity_text}\n困倦度：{tiredness}%"
+            tiredness_text = f"困倦度：{tiredness}%"
         except Exception:
             pass
 
@@ -393,8 +385,8 @@ async def get_message_context(session_id: str, msg_index: int, request: Request)
             info_parts.append(affection)
         if notes_text:
             info_parts.append(notes_text)
-        if current_activity_text:
-            info_parts.append(current_activity_text)
+        if tiredness_text:
+            info_parts.append(tiredness_text)
         info_parts.append(state_text)
         info_parts.append("</additional_info>")
 

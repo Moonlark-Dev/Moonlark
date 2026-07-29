@@ -20,14 +20,11 @@ async def get_ego_status(request: Request):
     mood_intensity = get_status_manager().get_mood_retention()
     state = moonlark_main._collect_state()
     sleep_controller = moonlark_main.sleep_controller
-    self_action = moonlark_main.self_action
 
     return {
         "sleep_mode": moonlark_main.state["sleep_mode"],
         "tiredness": getattr(sleep_controller, "tiredness", 0),
         "sleep_begin_time": getattr(sleep_controller, "sleep_begin_time", None),
-        "current_activity": self_action.current_activity,
-        "activity_start_time": self_action.activity_start_time.isoformat() if self_action.activity_start_time else None,
         "mood_retention": mood_intensity,
         "mood": state.get("mood", {}),
         "blog_status": state.get("blog_status", {}),
