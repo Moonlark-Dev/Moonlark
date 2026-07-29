@@ -297,7 +297,12 @@ async def get_message_context(session_id: str, msg_index: int, request: Request)
 
     msg = session.cached_messages[msg_index]
 
-    # 格式化消息文本
+    # 优先使用投递到 MessageQueue 的完整文本（含完整的 additional_info）
+    mq_text = msg.get("mq_text")
+    if mq_text:
+        return {"context": mq_text}
+
+    # 回退：手动构建格式（旧消息没有 mq_text）
     try:
         from nonebot_plugin_chat.utils.message import generate_message_string
 
@@ -305,16 +310,13 @@ async def get_message_context(session_id: str, msg_index: int, request: Request)
     except ImportError:
         formatted_msg = f"[{msg.get('nickname', '?')}]({msg.get('message_id', '?')}): {msg.get('content', '')}\n"
 
-    # 搜集额外上下文信息
     lines = [formatted_msg]
 
-    # additional_info 块
     try:
         from nonebot_plugin_chat.utils.status_manager import get_status_manager
 
         status_manager = get_status_manager()
 
-        # Token 信息
         token_info = ""
         if hasattr(session, "processor") and hasattr(session.processor, "token_bucket"):
             try:
@@ -323,7 +325,6 @@ async def get_message_context(session_id: str, msg_index: int, request: Request)
             except Exception:
                 pass
 
-        # 好感度（最近一条消息的发送者）
         affection = ""
         user_id = msg.get("user_id", "")
         if user_id and hasattr(session, "processor") and hasattr(session.processor, "affection_manager"):
@@ -334,7 +335,6 @@ async def get_message_context(session_id: str, msg_index: int, request: Request)
             except Exception:
                 pass
 
-        # 困倦度
         tiredness_text = ""
         try:
             from nonebot_plugin_chat.core.ego import moonlark_main
@@ -344,7 +344,6 @@ async def get_message_context(session_id: str, msg_index: int, request: Request)
         except Exception:
             pass
 
-        # 笔记
         notes_text = ""
         try:
             from nonebot_plugin_chat.utils.note_manager import get_context_notes
@@ -368,14 +367,12 @@ async def get_message_context(session_id: str, msg_index: int, request: Request)
         except Exception:
             pass
 
-        # 当前状态
         mood_type, mood_reason = status_manager.get_status()
         mood_label = mood_type.value if hasattr(mood_type, "value") else str(mood_type)
         state_text = (
             f"心情：{mood_label} (情感强度: {status_manager.get_mood_retention()}; 原因: {mood_reason or '无'})"
         )
 
-        # 组装 additional_info
         info_parts = []
         now = now_iso()
         info_parts.append(f"<additional_info>\n当前时间: {now}")
