@@ -3875,6 +3875,7 @@ optional = false
 python-versions = ">=3.6"
 groups = ["main"]
 files = [
+    {file = "opencv_python_headless-4.14.0.94-cp37-abi3-macosx_13_0_arm64.whl", hash = "sha256:bc7db37dc234f7bb3190a158fd9dd750357246fc7d8adb23698843ef721a993b"},
     {file = "opencv_python_headless-4.14.0.94-cp37-abi3-macosx_14_0_x86_64.whl", hash = "sha256:1777f43c9fa064f54b916ad70d944b4fde0a644a17e49f04a966bb24a4b5f1e1"},
     {file = "opencv_python_headless-4.14.0.94-cp37-abi3-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:29714d7716dbfddf9fec20ffb878765e94ccaecd7d3ebd6750877420296e2dc5"},
     {file = "opencv_python_headless-4.14.0.94-cp37-abi3-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:5e02669eac0ba67b2a22d7245af1e8ee1a2ef1185ee526a063d8f0555224bd52"},
