@@ -7,6 +7,7 @@
 
 import json
 import os
+import pathlib
 from datetime import date, timedelta
 from typing import TYPE_CHECKING, Optional
 
@@ -51,7 +52,7 @@ class Planner:
             result = await fetch_json(messages, PlanResponse, identify="Planner - Morning", reasoning_effort="medium")
             self._plan = result.plan
             self._save()
-            await self._notify_sessions("今日计划已更新")
+            await self._notify_sessions(f"今日计划已更新：\n{self.get_plan_text()}")
             logger.info("[Planner] 今日计划已生成")
         except Exception as e:
             logger.exception(f"[Planner] 计划生成失败: {e}")
@@ -76,7 +77,7 @@ class Planner:
             result = await fetch_json(messages, PlanResponse, identify="Planner - Afternoon", reasoning_effort="medium")
             self._plan = result.plan
             self._save()
-            await self._notify_sessions("今日计划已更新")
+            await self._notify_sessions(f"今日计划已更新：\n{self.get_plan_text()}")
             logger.info("[Planner] 下午计划已更新")
         except Exception as e:
             logger.exception(f"[Planner] 计划更新失败: {e}")
@@ -86,7 +87,7 @@ class Planner:
             return self._plan
         path = _today_plan_path()
         try:
-            with open(path, "r", encoding="utf-8") as f:
+            with pathlib.Path(path).open("r", encoding="utf-8") as f:
                 data = json.load(f)
             self._plan = [PlanItem(**item) for item in data.get("plan", [])]
             return self._plan
@@ -106,7 +107,7 @@ class Planner:
         PLAN_DIR.mkdir(parents=True, exist_ok=True)
         path = _today_plan_path()
         data = {"plan": [item.model_dump() for item in self._plan]} if self._plan else {"plan": []}
-        with open(path, "w", encoding="utf-8") as f:
+        with pathlib.Path(path).open("w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
 
     @staticmethod
@@ -124,7 +125,7 @@ class Planner:
                 file_date = date.fromisoformat(date_str)
                 if (today - file_date).days > max_age_days:
                     filepath = str(PLAN_DIR / filename)
-                    os.remove(filepath)
+                    pathlib.Path(filepath).unlink()
                     count += 1
             except (ValueError, OSError):
                 continue
