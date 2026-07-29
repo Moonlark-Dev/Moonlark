@@ -67,6 +67,7 @@ class BaseSession(ABC):
     async def setup(self) -> None:
         await self.processor.setup()
         await self.restore_timers()
+        await self._inject_ego_context()
 
     @abstractmethod
     def is_napcat_bot(self) -> bool:
@@ -187,9 +188,24 @@ class BaseSession(ABC):
         await self.calculate_ghot_coefficient()
         self.clean_cached_message()
         self.last_activate = datetime.now()
+        from ..ego.moonlark_main import moonlark_main
+
+        moonlark_main.on_message_cached(self.session_id)
 
     async def mute(self) -> None:
         self.mute_until = datetime.now() + timedelta(minutes=15)
+
+    async def _inject_ego_context(self) -> None:
+        """注入 EGO 的上下文（计划 + 事件）到 OpenAI 消息队列"""
+        try:
+            from ..ego.moonlark_main import moonlark_main
+
+            context = await moonlark_main.get_session_context(self.session_id)
+            if context.strip():
+                await self.processor.openai_messages.append_user_message(context)
+                logger.info(f"[EGO] 已为会话 {self.session_id} 注入上下文")
+        except Exception as e:
+            logger.debug(f"[EGO] 注入上下文失败: {e}")
 
     @abstractmethod
     async def get_session_name(self) -> str:

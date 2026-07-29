@@ -1,20 +1,4 @@
-#  Moonlark - A new ChatBot
-#  Copyright (C) 2026  Moonlark Development Team
-#
-#  This program is free software: you can redistribute it and/or modify
-#  it under the terms of the GNU Affero General Public License as published
-#  by the Free Software Foundation, either version 3 of the License, or
-#  (at your option) any later version.
-#
-#  This program is distributed in the hope that it will be useful,
-#  but WITHOUT ANY WARRANTY; without even the implied warranty of
-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#  GNU Affero General Public License for more details.
-#
-#  You should have received a copy of the GNU Affero General Public License
-#  along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
-"""EGO 相关的 REST API 路由"""
+"""EGO 相关的 REST API 路由（重写版）"""
 
 from fastapi import APIRouter, Query, Request
 from fastapi.exceptions import HTTPException
@@ -44,12 +28,10 @@ async def get_ego_status(request: Request):
         "sleep_begin_time": getattr(sleep_controller, "sleep_begin_time", None),
         "current_activity": self_action.current_activity,
         "activity_start_time": self_action.activity_start_time.isoformat() if self_action.activity_start_time else None,
-        "decision_history": moonlark_main.state["decision_history"],
-        "last_decision_time": moonlark_main.state.get("last_decision_time"),
         "mood_retention": mood_intensity,
         "mood": state.get("mood", {}),
         "blog_status": state.get("blog_status", {}),
-        "proactive_info": state.get("proactive_info", {}),
+        "plan": moonlark_main.planner.get_plan_text(),
     }
 
 

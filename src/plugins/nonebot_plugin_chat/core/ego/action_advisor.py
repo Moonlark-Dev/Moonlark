@@ -6,7 +6,7 @@
 注意：本模块使用算法生成建议，不调用 LLM。
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -141,7 +141,7 @@ class ActionAdvisor:
             remaining = state.get("current_activity_remaining", 0)
             if remaining > 0:
                 minutes = remaining // 60
-                return f"当前正在「{current_activity}」，还剩约 {minutes} 分钟。" f"建议继续完成当前活动。"
+                return f"当前正在「{current_activity}」，还剩约 {minutes} 分钟。建议继续完成当前活动。"
             return f"当前正在「{current_activity}」，建议继续完成。"
 
         return "当前无自主活动，可以安排一个 self_action（如学习CSS、做拉伸、看番等）。"
