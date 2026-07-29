@@ -283,3 +283,15 @@ class Timer(Model):
     session_id: Mapped[str] = mapped_column(String(128), index=True)
     trigger_time: Mapped[datetime] = mapped_column(DateTime(), index=True)
     description: Mapped[str] = mapped_column(Text())
+
+
+class SessionEvent(Model):
+    """按会话收集的事件和话题记录，每 100 条消息收集一次"""
+
+    __tablename__ = "nonebot_plugin_chat_sessionevent"
+
+    id: Mapped[int] = mapped_column(Integer(), primary_key=True, autoincrement=True)
+    session_id: Mapped[str] = mapped_column(String(128), index=True)
+    date: Mapped[str] = mapped_column(String(16), index=True)  # YYYY-MM-DD
+    content: Mapped[str] = mapped_column(Text())
+    created_at: Mapped[datetime] = mapped_column(DateTime(), default=datetime.now)
