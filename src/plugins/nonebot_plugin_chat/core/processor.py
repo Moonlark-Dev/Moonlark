@@ -235,7 +235,12 @@ class MessageProcessor:
 
     async def parse_message(self, message: UniMessage, event: Event, state: T_State) -> tuple[str, list[bytes]]:
         parser = MessageParser(
-            message, event, self.session.bot, state, self.session.lang_str, not self.ENABLE_EMBEDDED_IMAGE,
+            message,
+            event,
+            self.session.bot,
+            state,
+            self.session.lang_str,
+            not self.ENABLE_EMBEDDED_IMAGE,
         )
         msg_str = await parser.parse()
         return (await LinkParser(msg_str, self.session.lang_str).parse()), parser.images
@@ -262,7 +267,10 @@ class MessageProcessor:
             event_prompt, trigger_mode = item[1]  # type: ignore
             additional_info = await self.generate_event_additional_info()
             content = await self.session.text(
-                "prompt.event_template", datetime.now().strftime("%H:%M:%S"), event_prompt, additional_info,
+                "prompt.event_template",
+                datetime.now().strftime("%H:%M:%S"),
+                event_prompt,
+                additional_info,
             )
             await self.openai_messages.append_user_message(content)
 
@@ -401,7 +409,9 @@ class MessageProcessor:
                 last_msg = self.session.cached_messages[-1] if self.session.cached_messages else {}
                 nickname = last_msg.get("nickname", "") if isinstance(last_msg, dict) else ""
                 should_wake = await moonlark_main.handle_mention(
-                    recent_msgs, session_name=session_name, nickname=nickname,
+                    recent_msgs,
+                    session_name=session_name,
+                    nickname=nickname,
                 )
                 if not should_wake:
                     return
@@ -432,7 +442,11 @@ class MessageProcessor:
         return True
 
     async def append_tool_call_history(
-        self, call_id: str, name: str, param: dict[str, Any], result: str | None = None,
+        self,
+        call_id: str,
+        name: str,
+        param: dict[str, Any],
+        result: str | None = None,
     ) -> None:
         self.session.tool_calls_history.append(
             {
@@ -446,7 +460,10 @@ class MessageProcessor:
         self.session.tool_calls_history = self.session.tool_calls_history[-5:]
 
     async def send_function_call_feedback(
-        self, call_id: str, name: str, param: dict[str, Any],
+        self,
+        call_id: str,
+        name: str,
+        param: dict[str, Any],
     ) -> tuple[str, str, dict[str, Any]]:
         await self.append_tool_call_history(call_id, name, param)
         return call_id, name, param
@@ -713,7 +730,9 @@ class MessageProcessor:
         async with get_session() as session:
             results = await session.scalars(
                 select(Sticker).where(
-                    Sticker.context_keywords.isnot(None), Sticker.emotion.isnot(None), Sticker.labels.isnot(None),
+                    Sticker.context_keywords.isnot(None),
+                    Sticker.emotion.isnot(None),
+                    Sticker.labels.isnot(None),
                 ),
             )
             for sticker in results:
@@ -884,11 +903,18 @@ class MessageProcessor:
         self.token_bucket.add(0.5)
         if message_sender_is_bot:
             event_text = await self.session.text(
-                "prompt.reaction", operator_name, message_string, QQ_EMOJI_MAP[emoji_id],
+                "prompt.reaction",
+                operator_name,
+                message_string,
+                QQ_EMOJI_MAP[emoji_id],
             )
         else:
             event_text = await self.session.text(
-                "prompt.reaction_other", operator_name, message_sender_name, message_string, QQ_EMOJI_MAP[emoji_id],
+                "prompt.reaction_other",
+                operator_name,
+                message_sender_name,
+                message_string,
+                QQ_EMOJI_MAP[emoji_id],
             )
         await self.session.add_event(event_text, "probability")
 
