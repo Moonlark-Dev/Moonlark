@@ -31,7 +31,9 @@ from .decoder import decode_cave
 THURSDAY_KEYWORDS = ("星期四", "50", "KFC")
 
 
-async def _random_keyword_cave(session: async_scoped_session | AsyncSession, require_keywords: bool | None = None) -> CaveData | None:
+async def _random_keyword_cave(
+    session: async_scoped_session | AsyncSession, require_keywords: bool | None = None
+) -> CaveData | None:
     stmt = select(CaveData).where(CaveData.public)
     if require_keywords is not None:
         conditions = [CaveData.content.ilike(f"%{kw}%") for kw in THURSDAY_KEYWORDS]
@@ -61,7 +63,9 @@ async def get_cave(session: async_scoped_session | AsyncSession) -> CaveData:
     cave = await _random_keyword_cave(session)
     if cave is None:
         raise IndexError
-    contains_any = any(kw.lower() in cave.content.lower() for kw in THURSDAY_KEYWORDS) and "[[img" not in cave.content.lower()
+    contains_any = (
+        any(kw.lower() in cave.content.lower() for kw in THURSDAY_KEYWORDS) and "[[img" not in cave.content.lower()
+    )
     if contains_any and random.random() < 0.5:
         cave = await _random_keyword_cave(session) or cave
     return cave
