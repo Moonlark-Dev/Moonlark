@@ -66,6 +66,49 @@ async def get_session_events(request: Request, date: str = Query(default="")):
     return {"date": target_date, "summary": summary}
 
 
+@router.get("/chat-monitor/ego/session-event-list")
+async def list_session_events(
+    request: Request,
+    limit: int = Query(50, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    date: str = Query(default=""),
+):
+    """分页列出会话事件"""
+    await verify_admin_request(request)
+    from nonebot_plugin_chat.models import SessionEvent
+    from sqlalchemy import func, select as sa_select
+
+    target_date = date if date else datetime.now().strftime("%Y-%m-%d")
+
+    async with get_session() as db_session:
+        count_query = sa_select(func.count()).select_from(SessionEvent).where(SessionEvent.date == target_date)
+        total = (await db_session.scalar(count_query)) or 0
+
+        query = (
+            sa_select(SessionEvent)
+            .where(SessionEvent.date == target_date)
+            .order_by(SessionEvent.created_at.desc())
+            .offset(offset)
+            .limit(limit)
+        )
+        result = await db_session.scalars(query)
+        events = result.all()
+
+    return {
+        "date": target_date,
+        "total": total,
+        "events": [
+            {
+                "id": e.id,
+                "session_id": e.session_id,
+                "content": e.content[:500],
+                "created_at": e.created_at.isoformat() if e.created_at else None,
+            }
+            for e in events
+        ],
+    }
+
+
 @router.get("/chat-monitor/ego/diaries")
 async def list_ego_diaries(
     request: Request,

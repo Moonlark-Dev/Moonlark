@@ -23,5 +23,4 @@ async def patch_header(request: Request, call_next):
     response = cast(Response, await call_next(request))
     process_time = time.time() - start_time
     response.headers["X-Process-Time"] = f"{round(process_time*1000, 1)} ms"
-    response.headers["Access-Control-Allow-Origin"] = config.cors_allow_origins[0] if config.cors_allow_origins else "*"
     return response
