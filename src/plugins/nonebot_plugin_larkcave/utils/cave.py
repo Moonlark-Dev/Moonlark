@@ -15,6 +15,7 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
+import datetime
 import random
 
 from nonebot_plugin_orm import AsyncSession, async_scoped_session
@@ -27,11 +28,20 @@ from .comment import get_comments, add_cave_message
 from .cool_down import on_use
 from .decoder import decode_cave
 
+THURSDAY_KEYWORDS = ("星期四", "v50")
+
 
 async def get_cave(session: async_scoped_session | AsyncSession) -> CaveData:
     cave_id_list = (await session.scalars(select(CaveData.id).where(CaveData.public))).all()
     cave_id = random.choice(cave_id_list)
-    return await session.get_one(CaveData, {"id": cave_id})
+    cave_data = await session.get_one(CaveData, {"id": cave_id})
+    is_thursday = datetime.datetime.now().weekday() == 3
+    contains_all = all(keyword in cave_data.content for keyword in THURSDAY_KEYWORDS)
+    contains_any = any(keyword in cave_data.content for keyword in THURSDAY_KEYWORDS)
+    if (is_thursday and not contains_any) or (not is_thursday and contains_all):
+        cave_id = random.choice(cave_id_list)
+        cave_data = await session.get_one(CaveData, {"id": cave_id})
+    return cave_data
 
 
 async def send_cave(session: async_scoped_session, user_id: str, group_id: str, reverse: bool = False) -> None:
