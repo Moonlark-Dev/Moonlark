@@ -19,7 +19,7 @@ import datetime
 import random
 
 from nonebot_plugin_orm import AsyncSession, async_scoped_session
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.exc import NoResultFound
 
 from ..lang import lang
@@ -34,9 +34,11 @@ THURSDAY_KEYWORDS = ("星期四", "50", "KFC")
 async def _random_keyword_cave(session: async_scoped_session | AsyncSession, require_keywords: bool | None = None) -> CaveData | None:
     stmt = select(CaveData).where(CaveData.public)
     if require_keywords is not None:
-        for kw in THURSDAY_KEYWORDS:
-            condition = CaveData.content.ilike(f"%{kw}%")
-            stmt = stmt.where(condition if require_keywords else ~condition)
+        conditions = [CaveData.content.ilike(f"%{kw}%") for kw in THURSDAY_KEYWORDS]
+        if require_keywords:
+            stmt = stmt.where(or_(*conditions), ~CaveData.content.ilike("%[[Img%"))
+        else:
+            stmt = stmt.where(~or_(*conditions))
     result = await session.execute(stmt.order_by(func.random()).limit(1))
     return result.scalar_one_or_none()
 
@@ -59,7 +61,7 @@ async def get_cave(session: async_scoped_session | AsyncSession) -> CaveData:
     cave = await _random_keyword_cave(session)
     if cave is None:
         raise IndexError
-    contains_any = any(kw.lower() in cave.content.lower() for kw in THURSDAY_KEYWORDS)
+    contains_any = any(kw.lower() in cave.content.lower() for kw in THURSDAY_KEYWORDS) and "[[img" not in cave.content.lower()
     if contains_any and random.random() < 0.5:
         cave = await _random_keyword_cave(session) or cave
     return cave
