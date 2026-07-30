@@ -627,6 +627,7 @@ parser:
   forward:
     not_supported: '[合并转发：获取信息失败（不支持）]'
     failed: '[合并转发：获取信息失败（{}）]'
+    too_deep: '[合并转发：嵌套过深，已截断]'
     forward: '[合并转发：{}]'
     summary: '[合并转发（消息过多，已总结）：{}]'
     summary_prompt: |
