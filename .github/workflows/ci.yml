@@ -8,12 +8,16 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
         with:
           ref: ${{ github.head_ref }}
           fetch-depth: 0
+          persist-credentials: false
       
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -44,13 +48,15 @@ jobs:
           poetry run nb larkhelp-generate zh_hans COMMANDS.md
       
       - name: Commit and push changes
+        env:
+          HEAD_REF: ${{ github.head_ref }}
         run: |
           git add .
           if ! git diff --cached --quiet; then
             git config --global user.name "github-actions[bot]"
             git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git commit -m "Auto update from GitHub Actions"
-            git push origin HEAD:${{ github.head_ref }}
+            git push origin "HEAD:$HEAD_REF"
           else
             echo "No changes to commit."
           fi
