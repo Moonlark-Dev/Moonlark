@@ -28,7 +28,7 @@ from .comment import add_cave_message, get_comments
 from .cool_down import on_use
 from .decoder import decode_cave
 
-THURSDAY_KEYWORDS = ("星期四", "v50", "KFC")
+THURSDAY_KEYWORDS = ("星期四", "50", "KFC")
 
 
 async def _random_keyword_cave(session: async_scoped_session | AsyncSession, require_keywords: bool | None = None) -> CaveData | None:
