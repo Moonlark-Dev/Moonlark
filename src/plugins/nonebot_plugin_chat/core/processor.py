@@ -286,6 +286,7 @@ class MessageProcessor:
                 "images": [],
                 "to_me": False,
                 "triggered_reply": False,
+                "mq_text": content,
             }
             self.session.cached_messages.append(event_msg)
             await self.session.on_cache_posted()
@@ -641,6 +642,7 @@ class MessageProcessor:
             if not self.blocked:
                 msg_str = generate_message_string(msg_dict)
                 msg_str += await self.generate_additional_prompt(msg_str, msg_dict["user_id"])
+                msg_dict["mq_text"] = msg_str
                 await self.append_user_message(msg_str, msg_dict["images"])
                 # print(self.openai_messages.messages)
             if not self.blocked and not msg_dict["self"]:
