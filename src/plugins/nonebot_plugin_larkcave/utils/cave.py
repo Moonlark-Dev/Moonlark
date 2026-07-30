@@ -19,29 +19,50 @@ import datetime
 import random
 
 from nonebot_plugin_orm import AsyncSession, async_scoped_session
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import NoResultFound
 
 from ..lang import lang
 from ..models import CaveData
-from .comment import get_comments, add_cave_message
+from .comment import add_cave_message, get_comments
 from .cool_down import on_use
 from .decoder import decode_cave
 
-THURSDAY_KEYWORDS = ("星期四", "v50")
+THURSDAY_KEYWORDS = ("星期四", "v50", "KFC")
+
+
+async def _random_keyword_cave(session: async_scoped_session | AsyncSession, require_keywords: bool | None = None) -> CaveData | None:
+    stmt = select(CaveData).where(CaveData.public)
+    if require_keywords is not None:
+        for kw in THURSDAY_KEYWORDS:
+            condition = CaveData.content.ilike(f"%{kw}%")
+            stmt = stmt.where(condition if require_keywords else ~condition)
+    result = await session.execute(stmt.order_by(func.random()).limit(1))
+    return result.scalar_one_or_none()
 
 
 async def get_cave(session: async_scoped_session | AsyncSession) -> CaveData:
-    cave_id_list = (await session.scalars(select(CaveData.id).where(CaveData.public))).all()
-    cave_id = random.choice(cave_id_list)
-    cave_data = await session.get_one(CaveData, {"id": cave_id})
     is_thursday = datetime.datetime.now().weekday() == 3
-    contains_all = all(keyword in cave_data.content for keyword in THURSDAY_KEYWORDS)
-    contains_any = any(keyword in cave_data.content for keyword in THURSDAY_KEYWORDS)
-    if (is_thursday and not contains_any) or (not is_thursday and contains_all):
-        cave_id = random.choice(cave_id_list)
-        cave_data = await session.get_one(CaveData, {"id": cave_id})
-    return cave_data
+
+    if is_thursday:
+        if random.random() < 0.4:
+            cave = await _random_keyword_cave(session, require_keywords=True)
+            if cave is None:
+                cave = await _random_keyword_cave(session, require_keywords=False)
+        else:
+            cave = await _random_keyword_cave(session, require_keywords=False)
+            if cave is None:
+                cave = await _random_keyword_cave(session, require_keywords=True)
+        if cave is None:
+            raise NoResultFound
+        return cave
+    cave = await _random_keyword_cave(session)
+    if cave is None:
+        raise IndexError
+    contains_any = any(kw.lower() in cave.content.lower() for kw in THURSDAY_KEYWORDS)
+    if contains_any and random.random() < 0.5:
+        cave = await _random_keyword_cave(session) or cave
+    return cave
 
 
 async def send_cave(session: async_scoped_session, user_id: str, group_id: str, reverse: bool = False) -> None:
