@@ -100,6 +100,49 @@ help_setnick:
   description: 修改昵称
   details: "修改自己在 Moonlark 中的昵称，不带参数则解锁昵称锁定"
   usage: "setnick <昵称> (修改昵称，不带参数解锁锁定)"
+help_subaccount:
+  description: 管理子帳號
+  details: "[管理員專用] 管理子帳號綁定關係：查看綁定狀態、綁定/解綁子帳號"
+  usage1: "subaccount view <用戶ID> (查看綁定狀態)"
+  usage2: "subaccount bind <子帳號ID> <主帳號ID> (綁定子帳號)"
+  usage3: "subaccount unbind <子帳號ID> (解綁子帳號)"
+  usage4: "subaccount unbind <主帳號ID> --all (解綁全部子帳號)"
+
+subaccount_admin:
+  permission_denied: "權限不足，只有超級管理員可以使用此命令。"
+  usage: |
+    用法：
+    subaccount view <用戶ID>       - 查看指定 ID 的綁定情況
+    subaccount bind <子帳號ID> <主帳號ID> - 將子帳號綁定到主帳號
+    subaccount unbind <子帳號ID>    - 解綁指定子帳號的主帳號
+    subaccount unbind <主帳號ID> --all - 解綁指定主帳號的所有子帳號
+  view_is_sub: |
+    用戶 {} ({}) 當前是子帳號狀態
+    主帳號: {} ({})
+  view_has_subs: |
+    用戶 {} ({}) 是主帳號，有 {} 個子帳號：
+    {}
+  view_none: "用戶 {} ({}) 沒有綁定任何子帳號，也不是子帳號。"
+  bind_already_bound: |
+    子帳號 {} ({}) 已經綁定到主帳號 {} ({})，無法重複綁定！
+    如需更改請先解綁。
+  bind_target_not_found: "目標主帳號 {} 在系統中不存在，無法綁定。"
+  bind_confirm: |
+    確認將子帳號 {} ({}) 綁定到主帳號 {} ({}) 嗎？
+  confirm_prompt: "請輸入 y/是 確認，或發送 q 取消："
+  bind_success: "子帳號 {} ({}) 已成功綁定到主帳號 {} ({})。"
+  unbind_not_bound: "用戶 {} ({}) 不是子帳號，無法解綁。"
+  unbind_confirm: |
+    確認將子帳號 {} ({}) 從其主帳號 {} ({}) 解綁嗎？
+    解綁後，該子帳號將恢復獨立身份。
+  unbind_success: "子帳號 {} ({}) 已成功從其主帳號 {} ({}) 解綁。"
+  unbind_all_no_subs: "用戶 {} ({}) 沒有子帳號，無需解綁。"
+  unbind_all_confirm: |
+    確認解綁主帳號 {} ({}) 的所有 {} 個子帳號嗎？
+    {}
+    解綁後，這些子帳號將全部恢復獨立身份。
+  unbind_all_success: "已成功將主帳號 {} ({}) 的 {} 個子帳號全部解綁。"
+
 input:
   user_nickname: |
     Moonlark 没有办法读取您的展示名称（昵称）。请发送您的展示名称，也可以发送“q”留空。
