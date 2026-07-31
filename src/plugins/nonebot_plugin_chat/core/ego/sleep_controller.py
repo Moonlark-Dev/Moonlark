@@ -8,6 +8,7 @@
 有疲劳时：12:30(F=1,S=1)达到 SLEEP_THRESHOLD，14:30 恢复到 < WAKE_THRESHOLD
 """
 
+import asyncio
 import math
 import random
 from datetime import datetime
@@ -37,6 +38,7 @@ class SleepController:
         self.consecutive_replies: int = 0
         self.sleep_think_count: int = 0
         self.context_cleared: bool = False
+        self._sleep_tasks: set[asyncio.Task] = set()
 
         scheduler.scheduled_job("interval", minutes=10, id="sleep_controller_process_timer")(self.process_timer)
 
@@ -170,6 +172,10 @@ class SleepController:
         self.moonlark_main.state["sleep_mode"] = True
         self.moonlark_main.state["injected_note_ids"] = []
         logger.info("[SleepController] 进入睡眠模式")
+        # 睡前触发博客生成（后台任务，不阻塞入睡流程）
+        task = asyncio.create_task(self.moonlark_main.run_before_sleep())
+        self._sleep_tasks.add(task)
+        task.add_done_callback(self._sleep_tasks.discard)
 
     async def sleep(self) -> None:
         await self.handle_tired()
