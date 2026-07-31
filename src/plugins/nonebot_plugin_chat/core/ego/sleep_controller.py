@@ -68,7 +68,7 @@ class SleepController:
 
         logger.debug(
             f"[SleepController] hour={hour:.1f} B={b:.3f} S={s:.3f} "
-            f"F={f:.3f} ε={epsilon:.4f} → tiredness={self.tiredness:.4f}"
+            f"F={f:.3f} ε={epsilon:.4f} → tiredness={self.tiredness:.4f}",
         )
         return self.tiredness
 
@@ -194,9 +194,8 @@ class SleepController:
         if deal_type == "ready":
             await self.handle_tired()
             return "已进入睡眠模式。"
-        else:
-            delay = min(delay_minutes, 30)
-            return f"已延迟 {delay} 分钟睡觉。" + (f"原因: {reason}" if reason else "")
+        delay = min(delay_minutes, 30)
+        return f"已延迟 {delay} 分钟睡觉。" + (f"原因: {reason}" if reason else "")
 
     async def wake_up(self, reason: str = "") -> None:
         self.sleep_state = False
