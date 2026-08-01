@@ -37,7 +37,9 @@ async def send_fallback(event: Event, result: bool, target: MsgTarget) -> None:
 
 
 async def check_access(
-    matcher: Matcher, event: Event, subject_list: list[str] = Depends(get_subject_list, use_cache=False),
+    matcher: Matcher,
+    event: Event,
+    subject_list: list[str] = Depends(get_subject_list, use_cache=False),
 ) -> bool:
     if event.get_type() != "message":
         return True
