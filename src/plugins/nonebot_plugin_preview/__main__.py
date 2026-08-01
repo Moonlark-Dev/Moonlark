@@ -3,12 +3,12 @@ import traceback
 from nonebot_plugin_alconna import Alconna, Args, Option, Query, UniMsg, on_alconna
 from nonebot_plugin_alconna.uniseg import UniMessage
 from nonebot_plugin_htmlrender import md_to_pic
-
-from .preview import screenshot
 from nonebot_plugin_larklang import LangHelper
 from nonebot_plugin_larkutils import get_user_id, review_image
-from .checker import check_url_protocol
+
+from .checker import check_url_access, check_url_protocol
 from .exceptions import AccessDenied
+from .preview import screenshot
 
 preview = on_alconna(
     Alconna("preview", Args["url", str], Option("--wait|-w", Args["wait", int, 3])),
@@ -26,6 +26,7 @@ async def _(url: str, msg: UniMsg, wait: Query[int] = Query("wait.wait"), user_i
     try:
         if not check_url_protocol(url):
             url = f"http://{url}"
+        await check_url_access(url)
     except AccessDenied:
         await lang.finish("preview.access_denied", user_id)
     try:

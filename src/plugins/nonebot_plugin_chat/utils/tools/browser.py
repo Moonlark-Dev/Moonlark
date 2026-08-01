@@ -15,16 +15,18 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
-from typing import Literal, Optional, Dict, Any
+import re
+from typing import Any, Dict, Literal, Optional
 from typing_extensions import TypedDict
 from urllib.parse import urlparse
-import html2text
-from nonebot_plugin_chat.types import GetTextFunc
-from nonebot_plugin_htmlrender import get_new_page
-from nonebot.log import logger
-import re
 
-from ..url_validator import is_internal_url
+import html2text
+from nonebot.log import logger
+from nonebot_plugin_htmlrender import get_new_page
+
+from nonebot_plugin_chat.types import GetTextFunc
+
+from ..url_validator import resolve_internal
 
 
 class BrowseResult(TypedDict):
@@ -88,7 +90,6 @@ async def _remove_unwanted_elements(page):
             await page.evaluate(f"() => {{ document.querySelectorAll('{selector}').forEach(el => el.remove()) }}")
         except Exception as e:
             logger.exception(e)
-            pass
 
 
 async def _extract_main_content(page) -> str:
@@ -170,7 +171,7 @@ class AsyncBrowserTool:
         """
         try:
             parsed = urlparse(url)
-            if is_internal_url(parsed):
+            if await resolve_internal(parsed):
                 return {
                     "success": False,
                     "url": url,
@@ -186,7 +187,7 @@ class AsyncBrowserTool:
                     {
                         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
                         "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
-                    }
+                    },
                 )
                 response = await page.goto(url, wait_until=self.wait_until, timeout=self.timeout)
                 logger.debug("页面已打开")
@@ -206,7 +207,7 @@ class AsyncBrowserTool:
 
                 if self.remove_styles:
                     await page.evaluate(
-                        "() => { document.querySelectorAll('style, link[rel=\"stylesheet\"]').forEach(el => el.remove()) }"
+                        "() => { document.querySelectorAll('style, link[rel=\"stylesheet\"]').forEach(el => el.remove()) }",
                     )
 
                 # 移除不必要的元素
@@ -269,5 +270,4 @@ async def browse_webpage(url: str, get_text: GetTextFunc) -> str:
             result["title"],
             result["content"],
         )
-    else:
-        return await get_text("browse_webpage.error", result["error"])
+    return await get_text("browse_webpage.error", result["error"])

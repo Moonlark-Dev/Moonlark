@@ -119,10 +119,11 @@ async def _lookup_bind_by_ob11_group(session_id: str) -> Optional[GroupBind]:
     """通过 OB11 的 session_id 查找 GroupBind"""
     from sqlalchemy import select
 
-    # OB11 session_id 格式: onebot_v11_{qq_group_number}
+    # OB11 session_id 格式: qq_{qq_group_number}（get_group_id 依赖 nonebot_plugin_session，platform 为 qq）
+    # 群号为纯数字，可与 QQ 官方 bot 的 group_openid（字母数字串）区分
     try:
         parts = session_id.rsplit("_", 1)
-        if len(parts) == 2 and parts[0].startswith("onebot"):
+        if len(parts) == 2 and parts[0] == "qq" and parts[1].isdigit():
             group_qq = parts[1]
             async with get_session() as db_session:
                 result = await db_session.execute(select(GroupBind).where(GroupBind.group_qq_number == group_qq))
@@ -137,8 +138,8 @@ async def _lookup_bind_by_qqbot_group(session_id: str) -> Optional[GroupBind]:
     from sqlalchemy import select
 
     try:
-        # QQBot session_id 格式: qq_{group_openid}
-        if session_id.startswith("qq_"):
+        # QQBot session_id 格式: qq_{group_openid}（openid 为字母数字串，非纯数字）
+        if session_id.startswith("qq_") and not session_id[3:].isdigit():
             group_oid = session_id[3:]
             async with get_session() as db_session:
                 result = await db_session.execute(select(GroupBind).where(GroupBind.group_openid == group_oid))
@@ -341,7 +342,7 @@ async def get_group_bot(group_id: str) -> Optional[Bot]:
     try:
         bind = await _lookup_bind_by_qqbot_group(group_id)
         if bind is not None and bind.group_qq_number:
-            ob11_group_id = f"onebot_v11_{bind.group_qq_number}"
+            ob11_group_id = f"qq_{bind.group_qq_number}"
             if ob11_group_id in sessions:
                 return bots.get(sessions[ob11_group_id][0])
     except Exception:

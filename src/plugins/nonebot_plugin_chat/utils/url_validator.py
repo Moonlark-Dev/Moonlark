@@ -15,8 +15,57 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
+import asyncio
 import ipaddress
+import socket
 from urllib.parse import ParseResult
+
+
+def _is_internal_ip(ip: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
+    """
+    检测单个IP地址是否为内网/本地地址
+
+    Args:
+        ip: ipaddress.ip_address() 的返回结果
+
+    Returns:
+        bool: True表示是内网/本地IP，False表示是外网IP
+    """
+
+    # IPv4私有地址范围
+    if isinstance(ip, ipaddress.IPv4Address):
+        # 127.0.0.0/8 - 环回地址
+        if ip.is_loopback:
+            return True
+        # 10.0.0.0/8 - A类私有地址
+        # 172.16.0.0/12 - B类私有地址
+        # 192.168.0.0/16 - C类私有地址
+        if ip.is_private:
+            return True
+        # 169.254.0.0/16 - 链路本地地址
+        if ip.is_link_local:
+            return True
+        # 0.0.0.0/8 - 本网络
+        if str(ip).startswith("0."):
+            return True
+
+    # IPv6私有地址范围
+    elif isinstance(ip, ipaddress.IPv6Address):
+        # ::1 - 环回地址
+        if ip.is_loopback:
+            return True
+        # fe80::/10 - 链路本地地址
+        if ip.is_link_local:
+            return True
+        # fc00::/7 - 唯一本地地址
+        if ip.is_private:
+            return True
+        # ::ffff:0:0/96 - IPv4映射地址
+        if ip.ipv4_mapped:
+            # 递归检查映射的IPv4地址
+            return _is_internal_ip(ip.ipv4_mapped)
+
+    return False
 
 
 def is_internal_url(parsed_url: ParseResult) -> bool:
@@ -55,42 +104,7 @@ def is_internal_url(parsed_url: ParseResult) -> bool:
     # 检查是否为IP地址
     try:
         ip = ipaddress.ip_address(hostname)
-
-        # IPv4私有地址范围
-        if isinstance(ip, ipaddress.IPv4Address):
-            # 127.0.0.0/8 - 环回地址
-            if ip.is_loopback:
-                return True
-            # 10.0.0.0/8 - A类私有地址
-            # 172.16.0.0/12 - B类私有地址
-            # 192.168.0.0/16 - C类私有地址
-            if ip.is_private:
-                return True
-            # 169.254.0.0/16 - 链路本地地址
-            if ip.is_link_local:
-                return True
-            # 0.0.0.0/8 - 本网络
-            if str(ip).startswith("0."):
-                return True
-
-        # IPv6私有地址范围
-        elif isinstance(ip, ipaddress.IPv6Address):
-            # ::1 - 环回地址
-            if ip.is_loopback:
-                return True
-            # fe80::/10 - 链路本地地址
-            if ip.is_link_local:
-                return True
-            # fc00::/7 - 唯一本地地址
-            if ip.is_private:
-                return True
-            # ::ffff:0:0/96 - IPv4映射地址
-            if ip.ipv4_mapped:
-                # 递归检查映射的IPv4地址
-                ipv4_mapped = ip.ipv4_mapped
-                if ipv4_mapped.is_private or ipv4_mapped.is_loopback or ipv4_mapped.is_link_local:
-                    return True
-
+        return _is_internal_ip(ip)
     except ValueError:
         # 不是IP地址，检查域名
         hostname_lower = hostname.lower()
@@ -105,6 +119,45 @@ def is_internal_url(parsed_url: ParseResult) -> bool:
 
         # .internal 等内部域名
         if hostname_lower.endswith((".internal", ".corp", ".home", ".lan")):
+            return True
+
+    return False
+
+
+async def resolve_internal(parsed_url: ParseResult) -> bool:
+    """
+    检测URL是否指向内网地址（含 DNS 解析后的结果）
+
+    在 is_internal_url 的基础上，对域名进行 DNS 解析并检查解析出的 IP，
+    用于拦截 127.0.0.1.nip.io 这类解析到内网地址的域名（DNS rebinding / SSRF）。
+
+    Args:
+        parsed_url: urllib.parse.urlparse() 的返回结果
+
+    Returns:
+        bool: True表示是内网/本地URL，False表示是外网URL
+    """
+
+    if is_internal_url(parsed_url):
+        return True
+
+    hostname = parsed_url.hostname
+    if not hostname:
+        return True
+
+    loop = asyncio.get_running_loop()
+    try:
+        infos = await loop.getaddrinfo(hostname, None, type=socket.SOCK_STREAM)
+    except OSError:
+        # 域名无法解析时，拒绝访问
+        return True
+
+    for _, _, _, _, sockaddr in infos:
+        try:
+            ip = ipaddress.ip_address(sockaddr[0])
+        except ValueError:
+            continue
+        if _is_internal_ip(ip):
             return True
 
     return False
