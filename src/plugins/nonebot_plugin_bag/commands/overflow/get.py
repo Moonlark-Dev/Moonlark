@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 
 from nonebot_plugin_orm import get_session
 
-from ...types import OverflowItem
+from ...models import BagOverflow
 
 from ...utils.bag import give_item
 
@@ -23,12 +23,13 @@ async def _(index: int, count: int, user_id: str = get_user_id()) -> None:
         await lang.finish("overflow_show.not_found", user_id)
     if is_item_takeable(user_id, index):
         count = min(max(0, count), item["item"].count)
-        if item["item"].count - count <= 0:
-            async with get_session() as session:
-                i = await session.get(OverflowItem, item["index"])
-                if i is not None:
+        async with get_session() as session:
+            i = await session.get(BagOverflow, item["index"])
+            if i is not None:
+                i.count -= count
+                if i.count <= 0:
                     await session.delete(i)
-                    await session.commit()
+                await session.commit()
         item["item"].count = count
         await give_item(user_id, item["item"])
         await lang.finish("overflow_get.done", user_id)
