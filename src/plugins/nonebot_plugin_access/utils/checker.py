@@ -36,7 +36,9 @@ async def send_fallback(event: Event, result: bool, target: MsgTarget) -> None:
         await UniMessage().text(await lang.text("access.failed", event.get_user_id())).send(target)
 
 
-async def check_access(matcher: Matcher, event: Event, subject_list: list[str] = Depends(get_subject_list)) -> bool:
+async def check_access(
+    matcher: Matcher, event: Event, subject_list: list[str] = Depends(get_subject_list, use_cache=False),
+) -> bool:
     if event.get_type() != "message":
         return True
     return all(
@@ -76,7 +78,7 @@ async def check_access(matcher: Matcher, event: Event, subject_list: list[str] =
 
 
 @run_preprocessor
-async def handler(event: Event, result: bool = Depends(check_access)) -> None:
+async def handler(event: Event, result: bool = Depends(check_access, use_cache=False)) -> None:
     if config.access_fallback and not result:
         try:
             user_id = await get_main_account(event.get_user_id())
