@@ -37,6 +37,7 @@ from .subaccount import (
     remove_main_account,
     remove_all_sub_accounts,
 )
+from .url_validator import is_internal_url, resolve_internal
 from .user_id import parse_special_user_id
 from .file import open_file, FileManager, FileType
 from .jrrp import get_luck_value

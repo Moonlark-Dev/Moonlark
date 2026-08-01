@@ -23,10 +23,9 @@ from urllib.parse import urlparse
 import html2text
 from nonebot.log import logger
 from nonebot_plugin_htmlrender import get_new_page
+from nonebot_plugin_larkutils.url_validator import resolve_internal
 
 from nonebot_plugin_chat.types import GetTextFunc
-
-from ..url_validator import resolve_internal
 
 
 class BrowseResult(TypedDict):

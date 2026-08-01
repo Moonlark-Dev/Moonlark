@@ -68,21 +68,21 @@ def _infos(*ips: str) -> list[tuple]:
 
 @pytest.mark.parametrize("url", INTERNAL_URLS)
 def test_is_internal_url_true(url: str) -> None:
-    from nonebot_plugin_chat.utils.url_validator import is_internal_url
+    from nonebot_plugin_larkutils.url_validator import is_internal_url
 
     assert is_internal_url(urlparse(url)) is True
 
 
 @pytest.mark.parametrize("url", EXTERNAL_URLS)
 def test_is_internal_url_false(url: str) -> None:
-    from nonebot_plugin_chat.utils.url_validator import is_internal_url
+    from nonebot_plugin_larkutils.url_validator import is_internal_url
 
     assert is_internal_url(urlparse(url)) is False
 
 
 @pytest.mark.asyncio
 async def test_resolve_internal_blocks_nipio_loopback() -> None:
-    from nonebot_plugin_chat.utils.url_validator import resolve_internal
+    from nonebot_plugin_larkutils.url_validator import resolve_internal
 
     loop = asyncio.get_running_loop()
     with patch.object(loop, "getaddrinfo", new=AsyncMock(return_value=_infos("127.0.0.1"))):
@@ -91,7 +91,7 @@ async def test_resolve_internal_blocks_nipio_loopback() -> None:
 
 @pytest.mark.asyncio
 async def test_resolve_internal_blocks_nipio_private() -> None:
-    from nonebot_plugin_chat.utils.url_validator import resolve_internal
+    from nonebot_plugin_larkutils.url_validator import resolve_internal
 
     loop = asyncio.get_running_loop()
     with patch.object(loop, "getaddrinfo", new=AsyncMock(return_value=_infos("10.0.0.1"))):
@@ -100,7 +100,7 @@ async def test_resolve_internal_blocks_nipio_private() -> None:
 
 @pytest.mark.asyncio
 async def test_resolve_internal_allows_public_domain() -> None:
-    from nonebot_plugin_chat.utils.url_validator import resolve_internal
+    from nonebot_plugin_larkutils.url_validator import resolve_internal
 
     loop = asyncio.get_running_loop()
     with patch.object(loop, "getaddrinfo", new=AsyncMock(return_value=_infos("93.184.216.34"))):
@@ -109,7 +109,7 @@ async def test_resolve_internal_allows_public_domain() -> None:
 
 @pytest.mark.asyncio
 async def test_resolve_internal_blocks_when_any_ip_internal() -> None:
-    from nonebot_plugin_chat.utils.url_validator import resolve_internal
+    from nonebot_plugin_larkutils.url_validator import resolve_internal
 
     loop = asyncio.get_running_loop()
     with patch.object(loop, "getaddrinfo", new=AsyncMock(return_value=_infos("93.184.216.34", "192.168.1.1"))):
@@ -118,7 +118,7 @@ async def test_resolve_internal_blocks_when_any_ip_internal() -> None:
 
 @pytest.mark.asyncio
 async def test_resolve_internal_blocks_dns_failure() -> None:
-    from nonebot_plugin_chat.utils.url_validator import resolve_internal
+    from nonebot_plugin_larkutils.url_validator import resolve_internal
 
     loop = asyncio.get_running_loop()
     with patch.object(loop, "getaddrinfo", new=AsyncMock(side_effect=OSError("resolve failed"))):
@@ -127,7 +127,7 @@ async def test_resolve_internal_blocks_dns_failure() -> None:
 
 @pytest.mark.asyncio
 async def test_resolve_internal_blocks_ipv6_internal() -> None:
-    from nonebot_plugin_chat.utils.url_validator import resolve_internal
+    from nonebot_plugin_larkutils.url_validator import resolve_internal
 
     loop = asyncio.get_running_loop()
     with patch.object(loop, "getaddrinfo", new=AsyncMock(return_value=_infos("::1"))):
@@ -136,7 +136,7 @@ async def test_resolve_internal_blocks_ipv6_internal() -> None:
 
 @pytest.mark.asyncio
 async def test_resolve_internal_short_circuits_without_dns() -> None:
-    from nonebot_plugin_chat.utils.url_validator import resolve_internal
+    from nonebot_plugin_larkutils.url_validator import resolve_internal
 
     loop = asyncio.get_running_loop()
     mock_ga = AsyncMock(return_value=_infos("93.184.216.34"))

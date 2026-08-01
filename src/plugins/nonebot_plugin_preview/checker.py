@@ -1,6 +1,6 @@
 from urllib.parse import urlparse
 
-from nonebot_plugin_chat.utils.url_validator import resolve_internal
+from nonebot_plugin_larkutils.url_validator import resolve_internal
 
 from .exceptions import AccessDenied
 

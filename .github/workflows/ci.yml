@@ -44,7 +44,7 @@ jobs:
         env:
           SQLALCHEMY_DATABASE_URL: sqlite+aiosqlite://
           ALEMBIC_STARTUP_CHECK: "False"
-        run: poetry run pytest tests/test_cave.py -v
+        run: poetry run pytest tests/ -v
       
       - name: Generate COMMANDS.md
         run: |
