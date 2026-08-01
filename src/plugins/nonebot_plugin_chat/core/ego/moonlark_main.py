@@ -292,12 +292,20 @@ class MoonlarkMain:
 
     async def run_before_sleep(self) -> None:
         """睡前运行：博客 Decider + Writter"""
-        events_text = await event_collector.get_all_events_summary()
-        plan_text = self.planner.get_plan_text()
+        try:
+            events_text = await event_collector.get_all_events_summary()
+            plan_text = self.planner.get_plan_text()
 
-        decision = await self.blog_writer.decider(events_text, plan_text)
-        if decision is not None:
+            decision = await self.blog_writer.decider(events_text, plan_text)
+            if decision is None:
+                logger.info("[MoonlarkMain] 睡前博客 Decider 返回空，跳过")
+                return
+            if decision.skip:
+                logger.info("[MoonlarkMain] 睡前博客 Decider 决定跳过本次博客")
+                return
             self._blog_content = await self.blog_writer.writter(decision, events_text, plan_text)
+        except Exception as e:
+            logger.exception(f"[MoonlarkMain] 睡前博客生成失败: {e}")
 
 
 moonlark_main = MoonlarkMain()

@@ -8,6 +8,7 @@
 有疲劳时：12:30(F=1,S=1)达到 SLEEP_THRESHOLD，14:30 恢复到 < WAKE_THRESHOLD
 """
 
+import asyncio
 import math
 import random
 from datetime import datetime
@@ -37,6 +38,7 @@ class SleepController:
         self.consecutive_replies: int = 0
         self.sleep_think_count: int = 0
         self.context_cleared: bool = False
+        self._sleep_tasks: set[asyncio.Task] = set()
 
         scheduler.scheduled_job("interval", minutes=10, id="sleep_controller_process_timer")(self.process_timer)
 
@@ -66,7 +68,7 @@ class SleepController:
 
         logger.debug(
             f"[SleepController] hour={hour:.1f} B={b:.3f} S={s:.3f} "
-            f"F={f:.3f} ε={epsilon:.4f} → tiredness={self.tiredness:.4f}"
+            f"F={f:.3f} ε={epsilon:.4f} → tiredness={self.tiredness:.4f}",
         )
         return self.tiredness
 
@@ -170,6 +172,10 @@ class SleepController:
         self.moonlark_main.state["sleep_mode"] = True
         self.moonlark_main.state["injected_note_ids"] = []
         logger.info("[SleepController] 进入睡眠模式")
+        # 睡前触发博客生成（后台任务，不阻塞入睡流程）
+        task = asyncio.create_task(self.moonlark_main.run_before_sleep())
+        self._sleep_tasks.add(task)
+        task.add_done_callback(self._sleep_tasks.discard)
 
     async def sleep(self) -> None:
         await self.handle_tired()
@@ -188,9 +194,8 @@ class SleepController:
         if deal_type == "ready":
             await self.handle_tired()
             return "已进入睡眠模式。"
-        else:
-            delay = min(delay_minutes, 30)
-            return f"已延迟 {delay} 分钟睡觉。" + (f"原因: {reason}" if reason else "")
+        delay = min(delay_minutes, 30)
+        return f"已延迟 {delay} 分钟睡觉。" + (f"原因: {reason}" if reason else "")
 
     async def wake_up(self, reason: str = "") -> None:
         self.sleep_state = False

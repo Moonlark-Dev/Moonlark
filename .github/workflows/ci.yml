@@ -53,7 +53,10 @@ jobs:
       - name: Commit and push changes
         env:
           HEAD_REF: ${{ github.head_ref }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # checkout 使用 persist-credentials: false，需显式配置 token 才能 push
+          git config --global url."https://x-access-token:${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"
           git add .
           if ! git diff --cached --quiet; then
             git config --global user.name "github-actions[bot]"
