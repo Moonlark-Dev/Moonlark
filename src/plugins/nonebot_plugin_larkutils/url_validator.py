@@ -15,10 +15,18 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
+from __future__ import annotations
+
 import asyncio
 import ipaddress
 import socket
-from urllib.parse import ParseResult
+from typing import TYPE_CHECKING
+from urllib.parse import ParseResult, urlparse
+
+from nonebot.log import logger
+
+if TYPE_CHECKING:
+    from playwright.async_api import Request, Route
 
 
 def _is_internal_ip(ip: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
@@ -147,9 +155,12 @@ async def resolve_internal(parsed_url: ParseResult) -> bool:
 
     loop = asyncio.get_running_loop()
     try:
-        infos = await loop.getaddrinfo(hostname, None, type=socket.SOCK_STREAM)
-    except OSError:
-        # 域名无法解析时，拒绝访问
+        infos = await asyncio.wait_for(
+            loop.getaddrinfo(hostname, None, type=socket.SOCK_STREAM),
+            timeout=5,
+        )
+    except (OSError, asyncio.TimeoutError):
+        # 域名无法解析或解析超时时，拒绝访问
         return True
 
     for _, _, _, _, sockaddr in infos:
@@ -161,3 +172,44 @@ async def resolve_internal(parsed_url: ParseResult) -> bool:
             return True
 
     return False
+
+
+def _is_ip_hostname(hostname: str) -> bool:
+    """判断主机名是否为 IP 字面量"""
+    try:
+        ipaddress.ip_address(hostname)
+    except ValueError:
+        return False
+    return True
+
+
+async def block_internal_request(route: Route, request: Request) -> bool:
+    """
+    Playwright 路由处理程序：在请求真正发出前拦截指向内网/本地地址的请求。
+
+    用于防止通过 URL 重定向（如 shorturl.com / bitly 短链重定向到 127.0.0.1）绕过 SSRF
+    限制。页面导航（含重定向目标）和域名形式的子资源请求做完整的内网检测（含 DNS 解析），
+    仅对 IP 字面量的子资源请求走快速字符串级检测，避免无意义的重复 DNS 解析。
+
+    Args:
+        route: Playwright 路由对象。
+        request: Playwright 请求对象。
+
+    Returns:
+        bool: True 表示请求已被拦截（route.abort()），False 表示已放行。
+    """
+
+    parsed = urlparse(request.url)
+    if request.is_navigation_request() or (parsed.hostname and not _is_ip_hostname(parsed.hostname)):
+        blocked = await resolve_internal(parsed)
+    else:
+        blocked = is_internal_url(parsed)
+    try:
+        if blocked:
+            await route.abort()
+        else:
+            await route.continue_()
+    except Exception as e:
+        # 页面可能已关闭或请求已被其他处理器处理，忽略以保持处理器稳定
+        logger.debug("无法中止或放行 Playwright 请求: %s", e, exc_info=True)
+    return blocked

@@ -1,5 +1,6 @@
 import asyncio
 import socket
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 from urllib.parse import urlparse
 
@@ -142,4 +143,104 @@ async def test_resolve_internal_short_circuits_without_dns() -> None:
     mock_ga = AsyncMock(return_value=_infos("93.184.216.34"))
     with patch.object(loop, "getaddrinfo", new=mock_ga):
         assert await resolve_internal(urlparse("http://127.0.0.1:8080/")) is True
+    mock_ga.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_resolve_internal_blocks_dns_timeout() -> None:
+    from nonebot_plugin_larkutils.url_validator import resolve_internal
+
+    with patch("asyncio.wait_for", new=AsyncMock(side_effect=asyncio.TimeoutError())):
+        assert await resolve_internal(urlparse("http://example.com/")) is True
+
+
+class _FakeRoute:
+    def __init__(self) -> None:
+        self.aborted = False
+        self.continued = False
+
+    async def abort(self) -> None:
+        self.aborted = True
+
+    async def continue_(self) -> None:
+        self.continued = True
+
+
+def _fake_request(url: str, is_navigation: bool = True) -> SimpleNamespace:
+    return SimpleNamespace(url=url, is_navigation_request=lambda: is_navigation)
+
+
+@pytest.mark.asyncio
+async def test_block_internal_request_aborts_loopback() -> None:
+    from nonebot_plugin_larkutils.url_validator import block_internal_request
+
+    route = _FakeRoute()
+    request = _fake_request("http://127.0.0.1:8080/api/bots")
+    assert await block_internal_request(route, request) is True
+    assert route.aborted is True
+    assert route.continued is False
+
+
+@pytest.mark.asyncio
+async def test_block_internal_request_aborts_redirect_to_internal() -> None:
+    from nonebot_plugin_larkutils.url_validator import block_internal_request
+
+    route = _FakeRoute()
+    request = _fake_request("http://127.0.0.1.nip.io:8080/api/bots")
+    loop = asyncio.get_running_loop()
+    with patch.object(loop, "getaddrinfo", new=AsyncMock(return_value=_infos("127.0.0.1"))):
+        assert await block_internal_request(route, request) is True
+    assert route.aborted is True
+    assert route.continued is False
+
+
+@pytest.mark.asyncio
+async def test_block_internal_request_continues_public_navigation() -> None:
+    from nonebot_plugin_larkutils.url_validator import block_internal_request
+
+    route = _FakeRoute()
+    request = _fake_request("http://example.com/")
+    loop = asyncio.get_running_loop()
+    with patch.object(loop, "getaddrinfo", new=AsyncMock(return_value=_infos("93.184.216.34"))):
+        assert await block_internal_request(route, request) is False
+    assert route.aborted is False
+    assert route.continued is True
+
+
+@pytest.mark.asyncio
+async def test_block_internal_request_continues_public_subresource() -> None:
+    from nonebot_plugin_larkutils.url_validator import block_internal_request
+
+    route = _FakeRoute()
+    request = _fake_request("https://example.com/style.css", is_navigation=False)
+    loop = asyncio.get_running_loop()
+    with patch.object(loop, "getaddrinfo", new=AsyncMock(return_value=_infos("93.184.216.34"))):
+        assert await block_internal_request(route, request) is False
+    assert route.aborted is False
+    assert route.continued is True
+
+
+@pytest.mark.asyncio
+async def test_block_internal_request_aborts_internal_subresource_domain() -> None:
+    from nonebot_plugin_larkutils.url_validator import block_internal_request
+
+    route = _FakeRoute()
+    request = _fake_request("http://127.0.0.1.nip.io:8080/image.png", is_navigation=False)
+    loop = asyncio.get_running_loop()
+    with patch.object(loop, "getaddrinfo", new=AsyncMock(return_value=_infos("127.0.0.1"))):
+        assert await block_internal_request(route, request) is True
+    assert route.aborted is True
+    assert route.continued is False
+
+
+@pytest.mark.asyncio
+async def test_block_internal_request_ip_subresource_skips_dns() -> None:
+    from nonebot_plugin_larkutils.url_validator import block_internal_request
+
+    route = _FakeRoute()
+    request = _fake_request("http://127.0.0.1:8080/img.png", is_navigation=False)
+    loop = asyncio.get_running_loop()
+    mock_ga = AsyncMock(return_value=_infos("93.184.216.34"))
+    with patch.object(loop, "getaddrinfo", new=mock_ga):
+        assert await block_internal_request(route, request) is True
     mock_ga.assert_not_awaited()
