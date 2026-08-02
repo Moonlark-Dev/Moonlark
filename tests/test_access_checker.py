@@ -14,9 +14,7 @@ async def blocked_user(app: App):
     from nonebot_plugin_access.models import SubjectData
 
     async with get_session() as session:
-        session.add(
-            SubjectData(subject="1619365833", name="plugin_nonebot_plugin_bag", available=False)
-        )
+        session.add(SubjectData(subject="1619365833", name="plugin_nonebot_plugin_bag", available=False))
         await session.commit()
 
 
@@ -32,8 +30,6 @@ async def test_bag_command_sends_single_permission_message(app: App, blocked_use
     ):
         async with app.test_matcher(bag) as ctx:
             bot = ctx.create_bot(base=Bot, self_id="1")
-            event = fake_group_message_event_v11(
-                user_id=1619365833, group_id=10000, message=Message("bag")
-            )
+            event = fake_group_message_event_v11(user_id=1619365833, group_id=10000, message=Message("bag"))
             ctx.receive_event(bot, event)
         assert send.await_count == 1, f"期望 1 条权限失败提示，实际 {send.await_count}"

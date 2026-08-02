@@ -33,6 +33,7 @@ async def screenshot(url: str, wait: int = 1, **kwargs) -> bytes:
     blocked_urls: set[str] = set()
 
     async with get_new_page(**kwargs) as page:
+
         async def _route_handler(route: Route, request: Request) -> None:
             if request.is_navigation_request() and await block_internal_request(route, request):
                 blocked_urls.add(request.url)
