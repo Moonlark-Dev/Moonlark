@@ -22,6 +22,9 @@ help_whoami:
   usage: whoami (查看帐号信息)
 matcher:
   not_registered: 您还没有注册，正在跳转注册流程……
+downed:
+  prompt: "You are down (HP 0) and cannot chat with Moonlark normally... You will revive in about {} (HP resets to 5). You can also @ me to call me."
+  revived: "You have revived! HP restored to 5."
 whoami:
   info: |
     帐号实际ID: {}

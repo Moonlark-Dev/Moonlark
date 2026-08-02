@@ -21,7 +21,10 @@ help_whoami:
   details: 查看用户帐号基本信息
   usage: whoami (查看帐号信息)
 matcher:
-  not_registered: 您还没有注册，正在跳转注册流程……
+  not_registered: 您還沒有註冊，正在跳轉註冊流程……
+downed:
+  prompt: "你已倒地（HP 為 0），暫時無法與 Moonlark 正常交流……約 {} 後復活（HP 將恢復至 5）。也可以 @ 我呼喚我。"
+  revived: "你已復活！HP 已恢復至 5。"
 whoami:
   info: |
     帐号实际ID: {}

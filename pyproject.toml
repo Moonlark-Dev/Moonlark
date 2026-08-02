@@ -95,6 +95,7 @@ plugins = [
     "nonebot_plugin_command_stats",
     "nonebot_plugin_wdym",
     "nonebot_plugin_wakeuprank",
+    "nonebot_plugin_health_recovery",
     "nonebot_plugin_chat_monitor",
     "nonebot_plugin_auto_bind",
 ]
