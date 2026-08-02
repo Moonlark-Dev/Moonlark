@@ -69,7 +69,7 @@ async def get_span_text(span: str, user_id: str) -> str:
 
 
 @splat.assign("$main")
-async def _(
+async def throw_egg(
     bot: Bot,
     event: Event,
     target: Match[At],
@@ -118,7 +118,7 @@ async def _(
 
 
 @splat.assign("rank")
-async def _(span: SpanType = "total", user_id: str = get_user_id()) -> None:
+async def rank(span: SpanType = "total", user_id: str = get_user_id()) -> None:
     rows = await build_ranking(AttackRecord.target_id, span)
     if not rows:
         await lang.finish("rank.no_data", user_id)
@@ -131,7 +131,7 @@ async def _(span: SpanType = "total", user_id: str = get_user_id()) -> None:
 
 
 @splat.assign("throwers")
-async def _(span: SpanType = "total", user_id: str = get_user_id()) -> None:
+async def throwers(span: SpanType = "total", user_id: str = get_user_id()) -> None:
     rows = await build_ranking(AttackRecord.user_id, span)
     if not rows:
         await lang.finish("throwers.no_data", user_id)
@@ -144,7 +144,7 @@ async def _(span: SpanType = "total", user_id: str = get_user_id()) -> None:
 
 
 @splat.assign("info")
-async def _(bot: Bot, event: Event, target: Match[At], user_id: str = get_user_id()) -> None:
+async def info(bot: Bot, event: Event, target: Match[At], user_id: str = get_user_id()) -> None:
     target_id = target.result.target if target.available else user_id
     data = {}
     for span in ("7d", "30d", "total"):
