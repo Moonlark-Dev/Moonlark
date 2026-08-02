@@ -123,11 +123,7 @@ async def _(span: SpanType = "total", user_id: str = get_user_id()) -> None:
     if not rows:
         await lang.finish("rank.no_data", user_id)
     span_text = await get_span_text(span, user_id)
-    ranked_data = [RankingData(
-        user_id=row.target_id,
-        data=row.total_count,
-        info=None
-    ) for row in rows]
+    ranked_data = [RankingData(user_id=row.target_id, data=row.total_count, info=None) for row in rows]
     # TODO 兼容 WebRanking
     title = await lang.text("rank.title", user_id, span_text)
     image = await generate_image(ranked_data, user_id, title)
@@ -141,11 +137,7 @@ async def _(span: SpanType = "total", user_id: str = get_user_id()) -> None:
         await lang.finish("throwers.no_data", user_id)
     span_text = await get_span_text(span, user_id)
     # ranked_data = [{"user_id": row.user_id, "data": row.total_count, "info": None} for row in rows]
-    ranked_data = [RankingData(
-            user_id=row.user_id,
-            data=row.total_count,
-            info=None
-        ) for row in rows]
+    ranked_data = [RankingData(user_id=row.user_id, data=row.total_count, info=None) for row in rows]
     title = await lang.text("throwers.title", user_id, span_text)
     image = await generate_image(ranked_data, user_id, title)
     await splat.finish(await UniMessage().image(raw=image, name="image.png").export())
