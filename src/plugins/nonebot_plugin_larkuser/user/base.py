@@ -92,9 +92,10 @@ class MoonlarkUser(ABC):
         return self.avatar
 
     def get_base64_avatar(self) -> Optional[str]:
-        if self.has_avatar():
-            return base64.b64encode(self.get_avatar()).decode()
-        return None
+        avatar = self.get_avatar()
+        if avatar is None:
+            return None
+        return base64.b64encode(avatar).decode()
 
     def has_avatar(self) -> bool:
         return self.get_avatar() is not None
