@@ -465,14 +465,22 @@ class BaseSession(ABC):
             if rows:
                 logger.info(f"Restored {len(rows)} timers for session {self.session_id}")
 
-    async def get_cached_messages_string(self, length: int = 50, include_self_message: bool = False) -> str:
+    async def get_cached_messages_string(
+        self,
+        length: int = 50,
+        include_self_message: bool = False,
+        exclude_content_prefixes: Optional[tuple[str, ...]] = None,
+    ) -> str:
         messages = []
         for message in self.cached_messages:
             # 根据 include_self_message 参数决定是否包含自己的消息
             if not include_self_message and message.get("self", False):
                 continue
+            content = message.get("content", "")
+            if exclude_content_prefixes and content.startswith(exclude_content_prefixes):
+                continue
             messages.append(
-                f"[{message['send_time'].strftime('%H:%M:%S')}][{message['nickname']}]: {message['content']}",
+                f"[{message['send_time'].strftime('%H:%M:%S')}][{message['nickname']}]: {content}",
             )
         # 只返回最近的 length 条消息
         return "\n".join(messages[-length:])
