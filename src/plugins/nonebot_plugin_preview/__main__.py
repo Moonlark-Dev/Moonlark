@@ -31,6 +31,8 @@ async def _(url: str, msg: UniMsg, wait: Query[int] = Query("wait.wait"), user_i
         await lang.finish("preview.access_denied", user_id)
     try:
         pic = await screenshot(url, wait.result if wait.available else 3)
+    except AccessDenied:
+        await lang.finish("preview.access_denied", user_id)
     except Exception:
         err = traceback.format_exc()
         await preview.finish(

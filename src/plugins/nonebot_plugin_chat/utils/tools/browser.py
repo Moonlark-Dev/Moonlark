@@ -23,7 +23,7 @@ from urllib.parse import urlparse
 import html2text
 from nonebot.log import logger
 from nonebot_plugin_htmlrender import get_new_page
-from nonebot_plugin_larkutils.url_validator import resolve_internal
+from nonebot_plugin_larkutils.url_validator import block_internal_request, resolve_internal
 
 from nonebot_plugin_chat.types import GetTextFunc
 
@@ -182,6 +182,7 @@ class AsyncBrowserTool:
             if not parsed.scheme:
                 url = f"https://{url}"
             async with get_new_page() as page:
+                await page.route("**/*", block_internal_request)
                 await page.set_extra_http_headers(
                     {
                         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
