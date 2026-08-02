@@ -23,6 +23,9 @@ from nonebot_plugin_orm import get_session
 
 sessions: dict[str, tuple[str, float]] = {}
 
+# 共享群 OneBot 11 可用性缓存: group_qq_number -> (可用, 时间戳)
+_ob11_group_availability: dict[str, tuple[bool, float]] = {}
+
 
 async def get_bot_status(user_id: str, all_fields: bool = False) -> BotStatus:
     try:
@@ -184,17 +187,50 @@ def _is_qqbot_at_mentioned_in_ob11(event: Event) -> bool:
     return False
 
 
-def _should_bot_handle_in_shared_group(bot: Bot, event: Event, bind: GroupBind) -> bool:
+async def _is_ob11_available_for_group(group_qq_number: str) -> bool:
+    """检查共享群内是否存在能处理消息的 OneBot 11 bot（带 TTL 缓存）
+
+    无在线 V11 bot 时直接返回 False，不调用 get_group_list。
+    """
+    now = time.time()
+    cached = _ob11_group_availability.get(group_qq_number)
+    if cached is not None and now - cached[1] < config.bots_ob11_availability_ttl:
+        return cached[0]
+
+    available = False
+    for bot_id, bot in get_bots().items():
+        if not isinstance(bot, V11Bot):
+            continue
+        try:
+            if not await is_bot_online(bot_id):
+                continue
+            groups = await bot.get_group_list()
+        except Exception:
+            continue
+        if group_qq_number in {str(g["group_id"]) for g in groups}:
+            available = True
+            break
+
+    _ob11_group_availability[group_qq_number] = available, now
+    return available
+
+
+async def _should_bot_handle_in_shared_group(bot: Bot, event: Event, bind: GroupBind) -> bool:
     """
     在同时含有 OB11 和 QQBot 的群聊中，判断当前 bot 是否应该处理此消息。
 
     规则：
     - 如果 @ 了 QQ bot → QQBot 处理
-    - 否则 → OB11 优先处理
+    - 否则 → OB11 优先处理；若群内没有可用的 OB11 bot，则由 QQBot 兜底处理
     """
     if isinstance(bot, QQBot):
         # QQ bot: 只在被 @ 时处理
-        return bool(event.is_tome())
+        if event.is_tome():
+            return True
+        # 未被 @ 时，仅当群内存在可用的 OB11 bot 才忽略，否则兜底处理
+        if not bind.group_qq_number:
+            return False
+        return not await _is_ob11_available_for_group(bind.group_qq_number)
     elif isinstance(bot, V11Bot):
         # OB11 bot: 只在 QQ bot 未被 @ 时处理
         # 如果 QQ bot 被 @，OB11 不处理
@@ -288,10 +324,13 @@ async def _(bot: Bot, event: Event, session_id: str = get_group_id()) -> None:
     bind = await _get_bound_group(session_id)
     if bind is not None and bind.group_qq_number and bind.group_openid:
         # 此群同时有 OB11 和 QQBot，使用优先级路由
-        if not _should_bot_handle_in_shared_group(bot, event, bind):
+        if not await _should_bot_handle_in_shared_group(bot, event, bind):
             raise IgnoredException(f"此消息由其他 bot 优先处理 (session={session_id})")
         # 如果此 bot 应该处理，分配 session
         assign_session(session_id, bot.self_id)
+        # V11 事件到达即证明 OB11 可用，更新缓存避免后续重复查询
+        if isinstance(bot, V11Bot) and bind.group_qq_number:
+            _ob11_group_availability[bind.group_qq_number] = True, time.time()
     else:
         # 普通群聊：原有逻辑
         # ToMe 处理
@@ -309,6 +348,9 @@ async def _() -> None:
     for key, value in sessions.items():
         if time.time() - value[1] >= config.bots_session_remain or not await is_bot_online(value[0]):
             expired_sessions.append(key)
+            # 若过期的是 OB11 群会话（qq_{群号}），同步失效可用性缓存，加快故障检测
+            if key.startswith("qq_") and key[3:].isdigit():
+                _ob11_group_availability.pop(key[3:], None)
             logger.debug(f"将回收过期或不可用会话: {key} ({value})")
     for key in expired_sessions:
         sessions.pop(key)
