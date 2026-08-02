@@ -22,7 +22,7 @@ from typing import Optional, TypeAlias, TypeGuard, TypeVar
 from abc import ABC, abstractmethod
 from nonebot_plugin_orm import get_session
 from nonebot_plugin_larkuser.utils.level import get_level_by_experience
-from nonebot_plugin_larkuser.models import UserDeathRecord
+from nonebot_plugin_larkuser.models import UserData
 from nonebot_plugin_larkuser.lang import lang
 
 T = TypeVar("T")
@@ -208,19 +208,18 @@ class MoonlarkUser(ABC):
         if self.get_register_time() is None:
             return
         async with get_session() as session:
-            record = await session.get(UserDeathRecord, self.user_id)
-            if record is None:
-                session.add(UserDeathRecord(user_id=self.user_id, death_count=1))
-            else:
-                record.death_count += 1
+            user = await session.get(UserData, self.user_id)
+            if user is None:
+                return
+            user.death_count += 1
             await session.commit()
 
     async def get_death_count(self) -> int:
         if self.get_register_time() is None:
             return 0
         async with get_session() as session:
-            record = await session.get(UserDeathRecord, self.user_id)
-            return record.death_count if record else 0
+            user = await session.get(UserData, self.user_id)
+            return user.death_count if user else 0
 
     @abstractmethod
     async def set_data(

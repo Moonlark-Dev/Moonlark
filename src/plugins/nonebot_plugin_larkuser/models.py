@@ -13,13 +13,9 @@ class UserData(Model):
     vimcoin: Mapped[float] = mapped_column(default=0.0)
     health: Mapped[float] = mapped_column(default=100.0)
     downed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, default=None)
+    death_count: Mapped[int] = mapped_column(default=0)
     favorability: Mapped[float] = mapped_column(default=0.0)
     config: Mapped[str] = mapped_column(Text(), default="{}")
-
-
-class UserDeathRecord(Model):
-    user_id: Mapped[str] = mapped_column(String(128), primary_key=True)
-    death_count: Mapped[int] = mapped_column(default=0)
 
 
 class GuestUser(Model):
