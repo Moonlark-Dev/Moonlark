@@ -98,6 +98,7 @@ plugins = [
     "nonebot_plugin_health_recovery",
     "nonebot_plugin_chat_monitor",
     "nonebot_plugin_auto_bind",
+    "nonebot_plugin_eggstrike",
 ]
 plugin_dirs = []
 builtin_plugins = []

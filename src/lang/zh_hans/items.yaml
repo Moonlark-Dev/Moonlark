@@ -9,6 +9,8 @@ experience:
   name: 探险经验
 pawcoin:
   name: 猫爪币
+egg:
+  name: 鸡蛋
 dice:
   name: 二十面骰子
   result_single:
