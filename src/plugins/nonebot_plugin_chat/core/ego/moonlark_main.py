@@ -186,9 +186,6 @@ class MoonlarkMain:
     def on_message_cached(self, session_id: str) -> None:
         event_collector.on_message_cached(session_id)
 
-    async def on_private_message_replied(self, user_id: str) -> None:
-        await self.proactive_chat.update_reply_status(user_id)
-
     async def submit_sleep_request(self, session_id: str, future: Optional[asyncio.Future] = None) -> None:
         if future and not future.done():
             future.set_result("已提交睡觉申请，等待决策...")

@@ -26,7 +26,6 @@ from sqlalchemy import select
 from ..config import config
 from ..models import PrivateChatSession
 from ..utils.group import enabled_group, enabled_private_chat
-from .ego import moonlark_main
 from .session import create_group_session, create_private_session, get_session_directly
 
 
@@ -89,9 +88,6 @@ async def _(
 ) -> None:
     # 记录私聊会话信息（用于主动消息时获取正确的 bot）
     await record_private_chat_session(user_id, session_key, bot.self_id)
-
-    # 检查是否是主动私聊的回复
-    await moonlark_main.on_private_message_replied(user_id)
 
     target = get_target(event)
     session = await create_private_session(session_key, target, bot)
