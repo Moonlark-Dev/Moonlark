@@ -1,3 +1,5 @@
+from collections import deque
+
 from nonebot import get_driver, logger
 from nonebot.adapters import Bot, Event
 from nonebot.exception import IgnoredException
@@ -14,6 +16,11 @@ from nonebot_plugin_larkutils.user import get_user_id
 from nonebot_plugin_access.config import config
 from nonebot_plugin_access.lang import lang
 from nonebot_plugin_access.models import SubjectData
+
+# run_preprocessor 会对同一事件的每个匹配 matcher 各执行一次，且这些执行共享同一
+# 个事件对象（id 相同）。记录已通知的事件 id，避免同一条消息触发多个被拒绝的
+# matcher 时重复发送权限提示（如用户被全局拒绝时所有 matcher 都会检查失败）
+_notified_event_ids: deque[int] = deque(maxlen=128)
 
 
 async def get_subject_list(bot: Bot, group_id: str = get_group_id(), user_id: str = get_user_id()) -> list[str]:
@@ -36,7 +43,11 @@ async def send_fallback(event: Event, result: bool, target: MsgTarget) -> None:
         await UniMessage().text(await lang.text("access.failed", event.get_user_id())).send(target)
 
 
-async def check_access(matcher: Matcher, event: Event, subject_list: list[str] = Depends(get_subject_list)) -> bool:
+async def check_access(
+    matcher: Matcher,
+    event: Event,
+    subject_list: list[str] = Depends(get_subject_list, use_cache=False),
+) -> bool:
     if event.get_type() != "message":
         return True
     return all(
@@ -76,12 +87,15 @@ async def check_access(matcher: Matcher, event: Event, subject_list: list[str] =
 
 
 @run_preprocessor
-async def handler(event: Event, result: bool = Depends(check_access)) -> None:
+async def handler(event: Event, result: bool = Depends(check_access, use_cache=False)) -> None:
     if config.access_fallback and not result:
-        try:
-            user_id = await get_main_account(event.get_user_id())
-            await UniMessage().text(await lang.text("access.failed", user_id)).send()
-        except ValueError:
-            logger.warning("权限检查反馈失败：无法从事件中获取用户ID")
+        event_id = id(event)
+        if event_id not in _notified_event_ids:
+            _notified_event_ids.append(event_id)
+            try:
+                user_id = await get_main_account(event.get_user_id())
+                await UniMessage().text(await lang.text("access.failed", user_id)).send()
+            except ValueError:
+                logger.warning("权限检查反馈失败：无法从事件中获取用户ID")
     if not result:
         raise IgnoredException("权限检查不通过")
