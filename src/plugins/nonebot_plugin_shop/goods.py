@@ -6,5 +6,5 @@ GOODS: list[tuple[str, int]] = [
     ("moonlark:catnip_pouch", 45),
     ("moonlark:cat_teaser", 60),
     ("moonlark:cat_can", 90),
-    ("moonlark:egg", 10),
+    ("moonlark:egg", 15),
 ]
