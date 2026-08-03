@@ -1943,14 +1943,14 @@ test = ["flaky", "ipyparallel", "pre-commit", "pytest (>=7.0,<10)", "pytest-asyn
 
 [[package]]
 name = "ipython"
-version = "9.16.0"
+version = "9.16.1"
 description = "IPython: Productive Interactive Computing"
 optional = false
 python-versions = ">=3.11"
 groups = ["dev"]
 files = [
-    {file = "ipython-9.16.0-py3-none-any.whl", hash = "sha256:3d02b96de2a59074d153b1ac1c3865de738df114e430e879e6e5ef100a4d470c"},
-    {file = "ipython-9.16.0.tar.gz", hash = "sha256:d2f92587b1ef51d84f934dffe05fabb9255f0038ed0a21426f2ea761e39ad09a"},
+    {file = "ipython-9.16.1-py3-none-any.whl", hash = "sha256:4acae635506f6d352d94c4899a19d5f85f8bc4d230932342dca556fdab1c69b4"},
+    {file = "ipython-9.16.1.tar.gz", hash = "sha256:5a3d1f9a47ff216d6cf9cf863124f6a2c1a198d1354c546a4d24a370a283b64c"},
 ]
 
 [package.dependencies]
@@ -6231,14 +6231,14 @@ telegram = ["envwrap", "requests"]
 
 [[package]]
 name = "traitlets"
-version = "5.16.0"
+version = "5.16.1"
 description = "Traitlets Python configuration system"
 optional = false
 python-versions = ">=3.10"
 groups = ["dev"]
 files = [
-    {file = "traitlets-5.16.0-py3-none-any.whl", hash = "sha256:94a9967ba45e89e837cf9934029c8d019bea9149cfffa115ed8c1900f679beba"},
-    {file = "traitlets-5.16.0.tar.gz", hash = "sha256:7de0a3fabaf5971ff15c8905545f9febfa850309fb8e86e1b42bdb5b46b293ed"},
+    {file = "traitlets-5.16.1-py3-none-any.whl", hash = "sha256:f775618166caa0396c8e337099240f2bd3e5e917d203b2e6fbe21a58d3cb1f6b"},
+    {file = "traitlets-5.16.1.tar.gz", hash = "sha256:ed900c2b631aa3a112811139fa97b8d2c3bad5e989656bba4b7e52c7852c18c1"},
 ]
 
 [package.extras]

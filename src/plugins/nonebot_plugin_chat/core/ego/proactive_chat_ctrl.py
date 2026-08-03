@@ -20,6 +20,22 @@ from ...models import PrivateChatSession
 
 PROACTIVE_CHECK_INTERVAL = 3600
 
+# 分级冷却时间（小时）：好感度越高，冷却越短
+COOLDOWN_TIERS = (0.301, 12.0), (0.151, 24.0), (0.051, 36.0)
+# 连续未回复主动私聊达到该次数后不再发起
+MAX_UNREPLIED_COUNT = 2
+
+
+def get_cooldown_hours(favorability: float) -> float:
+    """根据好感度获取主动私聊冷却时间（小时）
+
+    好感度 < 0.051 时不允许主动私聊，返回无限大。
+    """
+    for threshold, hours in COOLDOWN_TIERS:
+        if favorability >= threshold:
+            return hours
+    return float("inf")
+
 
 class ProactiveDecision(BaseModel):
     skip: bool = True
@@ -60,6 +76,7 @@ class ProactiveChatController:
         from nonebot_plugin_larkuser.utils.user import get_user
 
         candidates = {}
+        now = datetime.now().timestamp()
         async with get_session() as db_session:
             all_sessions = (await db_session.execute(select(PrivateChatSession))).scalars().all()
 
@@ -68,6 +85,18 @@ class ProactiveChatController:
             nickname = user.get_nickname()
             fav = user.get_display_fav()
             if fav <= 0:
+                continue
+            # 好感度过低，不允许主动私聊
+            cooldown_hours = get_cooldown_hours(fav)
+            if cooldown_hours == float("inf"):
+                continue
+            # 处于分级冷却期内，不参与候选
+            if session.last_proactive_message_time is not None:
+                elapsed = now - session.last_proactive_message_time
+                if elapsed < cooldown_hours * 3600:
+                    continue
+            # 连续多次未回复主动私聊，不再发起
+            if session.unreplied_count >= MAX_UNREPLIED_COUNT:
                 continue
             candidates[session.user_id] = {
                 "nickname": nickname,
@@ -118,9 +147,30 @@ class ProactiveChatController:
                     bot = get_bot(chat_session.bot_id)
                     await send_proactive_private_message(bot, chat_session.user_id, decision.topic)
                     logger.info(f"[ProactiveChat] 已向 {decision.target_nickname} 发送主动私聊: {decision.topic}")
-                    return f"已向 {decision.target_nickname} 发送主动私聊"
                 except Exception as e:
                     logger.error(f"[ProactiveChat] 发送失败: {e}")
                     return f"发送失败: {e}"
+                # 连续未回复计数 +1（用户任意回复私聊消息时由 update_reply_status 重置）
+                try:
+                    chat_session.unreplied_count += 1
+                    async with get_session() as db_session:
+                        await db_session.merge(chat_session)
+                        await db_session.commit()
+                except Exception as e:
+                    logger.warning(f"[ProactiveChat] 更新未回复计数失败: {e}")
+                return f"已向 {decision.target_nickname} 发送主动私聊"
 
         return f"未找到用户: {decision.target_nickname}"
+
+    async def update_reply_status(self, user_id: str) -> None:
+        """用户向 bot 发送任意私聊消息时调用，重置连续未回复计数"""
+        try:
+            async with get_session() as db_session:
+                chat_session = (
+                    await db_session.execute(select(PrivateChatSession).where(PrivateChatSession.user_id == user_id))
+                ).scalar_one_or_none()
+                if chat_session is not None and chat_session.unreplied_count > 0:
+                    chat_session.unreplied_count = 0
+                    await db_session.commit()
+        except Exception as e:
+            logger.exception(f"[ProactiveChat] update_reply_status 失败: {e}")
