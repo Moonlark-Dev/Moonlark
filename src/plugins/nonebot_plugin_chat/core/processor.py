@@ -72,6 +72,9 @@ class MessageProcessor:
         self.sticker_tools = StickerTools(self.session)
         self.functions = []
         self.loop_task = None
+        self._processing_task = None
+        self._message_processing = False
+        self._restored = False
         self.consecutive_message_count = 0
         # Token bucket 相关属性
         self.token_bucket = TokenBucket(6, -2)
@@ -92,7 +95,7 @@ class MessageProcessor:
         self.functions = await self.tool_manager.select_tools("group")
         await self.ai_agent.setup()
         if not self.loop_task:
-            self.loop_task = asyncio.create_task(self.loop())
+            self.loop_task = asyncio.create_task(self._startup())
 
     async def send_reaction(self, message_id: str, emoji_id: str, set: bool = True) -> Optional[str]:
         if isinstance(self.session.bot, OB11Bot) and self.session.is_napcat_bot():
@@ -217,14 +220,27 @@ class MessageProcessor:
             except Exception as e:
                 logger.exception(e)
 
-    async def loop(self) -> None:
+    async def _startup(self) -> None:
         await self.openai_messages.restore_from_db()
-        while self.enabled:
-            try:
-                await self.get_message()
-            except Exception as e:
-                logger.exception(e)
-                await asyncio.sleep(5)
+        self._restored = True
+        if self.enabled and self.session.message_queue:
+            self.notify_message_queued()
+
+    def notify_message_queued(self) -> None:
+        if not self._restored or not self.enabled or self._message_processing:
+            return
+        self._message_processing = True
+        self._processing_task = asyncio.create_task(self._process_until_idle())
+
+    async def _process_until_idle(self) -> None:
+        try:
+            while self.enabled and self.session.message_queue:
+                try:
+                    await self.get_message()
+                except Exception as e:
+                    logger.exception(e)
+        finally:
+            self._message_processing = False
 
     async def poke(self, target_name: str) -> Optional[str]:
         target_id = (await self.session.get_users()).get(target_name)
@@ -965,7 +981,11 @@ class MessageProcessor:
 
         async with self._pending_note_lock:
             try:
-                chat_history = await self.session.get_cached_messages_string(length=50, include_self_message=True)
+                chat_history = await self.session.get_cached_messages_string(
+                    length=50,
+                    include_self_message=True,
+                    exclude_content_prefixes=("今日计划已更新",),
+                )
                 if not chat_history.strip():
                     return
 

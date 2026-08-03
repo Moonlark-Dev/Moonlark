@@ -8,6 +8,7 @@
 有疲劳时：12:30(F=1,S=1)达到 SLEEP_THRESHOLD，14:30 恢复到 < WAKE_THRESHOLD
 """
 
+import asyncio
 import math
 import random
 from datetime import datetime
@@ -15,7 +16,7 @@ from typing import TYPE_CHECKING, Optional
 
 from nonebot import logger
 from nonebot_plugin_apscheduler import scheduler
-from nonebot_plugin_openai.utils.chat import fetch_json, fetch_message
+from nonebot_plugin_openai.utils.chat import fetch_message
 from nonebot_plugin_openai.utils.message import get_messages
 
 if TYPE_CHECKING:
@@ -35,8 +36,8 @@ class SleepController:
         self.last_message_time: datetime = datetime.now()
         self.last_reply_time: datetime = datetime.now()
         self.consecutive_replies: int = 0
-        self.sleep_think_count: int = 0
-        self.context_cleared: bool = False
+        self._sleep_tasks: set[asyncio.Task] = set()
+        self._pending_sleep_tasks: set[asyncio.Task] = set()
 
         scheduler.scheduled_job("interval", minutes=10, id="sleep_controller_process_timer")(self.process_timer)
 
@@ -66,60 +67,9 @@ class SleepController:
 
         logger.debug(
             f"[SleepController] hour={hour:.1f} B={b:.3f} S={s:.3f} "
-            f"F={f:.3f} ε={epsilon:.4f} → tiredness={self.tiredness:.4f}"
+            f"F={f:.3f} ε={epsilon:.4f} → tiredness={self.tiredness:.4f}",
         )
         return self.tiredness
-
-    async def request_think(self) -> None:
-        from ...models import SleepThinkResponse
-
-        self.sleep_think_count += 1
-        now = datetime.now()
-        sleep_duration = 0
-        if self.sleep_begin_time:
-            sleep_duration = (now - self.sleep_begin_time).total_seconds() / 60
-
-        try:
-            messages = await get_messages(
-                "sleep_think",
-                current_time=now.strftime("%Y-%m-%d %H:%M:%S"),
-                sleep_duration=str(int(sleep_duration)),
-                tiredness=str(round(self.tiredness, 2)),
-                wake_threshold=str(WAKE_THRESHOLD),
-            )
-
-            result = await fetch_json(
-                messages,
-                SleepThinkResponse,
-                identify="SleepController - Sleep Think",
-                reasoning_effort="low",
-            )
-
-            if result.wake_up:
-                await self.wake_up(result.reason or "睡眠决策")
-            else:
-                await self._maybe_clear_context(sleep_duration)
-
-        except Exception as e:
-            logger.exception(f"[SleepController] 睡眠决策失败: {e}")
-
-    async def _maybe_clear_context(self, sleep_duration: float) -> None:
-        if self.context_cleared:
-            return
-        if sleep_duration < 5:
-            return
-        logger.info("[SleepController] 入睡后首次继续睡决策，重置所有会话消息队列上下文")
-        await self._reset_all_message_queues()
-        self.context_cleared = True
-
-    async def _reset_all_message_queues(self) -> None:
-        from ..session import groups
-
-        for session_id, session in list(groups.items()):
-            try:
-                await session.processor.openai_messages._reset_and_clear_db(session_id)
-            except Exception as e:
-                logger.exception(f"[SleepController] 重置会话 {session_id} 消息队列失败: {e}")
 
     async def handle_mention(self, chat_context: list, session_name: str = "", nickname: str = "") -> bool:
         context_text = "\n".join(chat_context[-5:]) if chat_context else ""
@@ -170,13 +120,23 @@ class SleepController:
         self.moonlark_main.state["sleep_mode"] = True
         self.moonlark_main.state["injected_note_ids"] = []
         logger.info("[SleepController] 进入睡眠模式")
+        # 睡前触发博客生成（后台任务，不阻塞入睡流程）
+        task = asyncio.create_task(self.moonlark_main.run_before_sleep())
+        self._sleep_tasks.add(task)
+        task.add_done_callback(self._sleep_tasks.discard)
 
     async def sleep(self) -> None:
         await self.handle_tired()
 
     async def process_timer(self) -> None:
         if self.sleep_state:
-            await self.request_think()
+            # 睡眠中：由困倦度曲线决定唤醒（不再定时询问 LLM）
+            now = datetime.now()
+            hour = now.hour + now.minute / 60.0
+            curve = self.circadian(hour)
+            if curve < WAKE_THRESHOLD:
+                logger.info(f"[SleepController] 困倦度曲线 {curve:.3f} < {WAKE_THRESHOLD}，自然唤醒")
+                await self.wake_up("困倦度曲线降至唤醒阈值以下")
             return
 
         tiredness = self.calculate_sleepiness_index()
@@ -188,17 +148,34 @@ class SleepController:
         if deal_type == "ready":
             await self.handle_tired()
             return "已进入睡眠模式。"
-        else:
-            delay = min(delay_minutes, 30)
-            return f"已延迟 {delay} 分钟睡觉。" + (f"原因: {reason}" if reason else "")
+        delay = min(delay_minutes, 30)
+        if delay <= 0:
+            await self.handle_tired()
+            return "已进入睡眠模式。"
+        # 真正的延迟入睡：倒计时结束后自动进入睡眠
+        task = asyncio.create_task(self._delayed_sleep(delay))
+        self._pending_sleep_tasks.add(task)
+        task.add_done_callback(self._pending_sleep_tasks.discard)
+        return f"已延迟 {delay} 分钟睡觉。" + (f"原因: {reason}" if reason else "")
+
+    async def _delayed_sleep(self, delay_minutes: int) -> None:
+        """延迟入睡：倒计时结束后进入睡眠（若期间已入睡则跳过）"""
+        await asyncio.sleep(delay_minutes * 60)
+        if self.sleep_state:
+            logger.info("[SleepController] 延迟入睡触发时已在睡眠中，跳过")
+            return
+        logger.info(f"[SleepController] 延迟 {delay_minutes} 分钟结束，进入睡眠")
+        await self.handle_tired()
 
     async def wake_up(self, reason: str = "") -> None:
+        # 唤醒时取消未触发的延迟入睡任务
+        for task in list(self._pending_sleep_tasks):
+            task.cancel()
+        self._pending_sleep_tasks.clear()
         self.sleep_state = False
         self.sleep_begin_time = None
         self.tiredness = 0.0
         self.consecutive_replies = 0
-        self.sleep_think_count = 0
-        self.context_cleared = False
         self.moonlark_main.state["sleep_mode"] = False
         if reason:
             logger.info(f"[SleepController] 已唤醒, 原因: {reason}")

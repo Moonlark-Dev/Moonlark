@@ -63,16 +63,14 @@ async def get_group_id_from_event(bot: Bot, event: Event) -> str | None:
     try:
         if isinstance(bot, V11Bot):
             # onebot 11: group_id 已经是 QQ 群号格式
-            group_id = event.get_session_id()
-            # 格式: onebot_v11_{qq_number}
+            group_id = getattr(event, "group_id", None)
             if group_id:
-                parts = group_id.rsplit("_", 1)
-                if len(parts) == 2:
-                    return parts[1]
+                return str(group_id)
         elif isinstance(bot, QQBot):
             # QQ 官方 bot: group_openid
-            if hasattr(event, "group_openid"):
-                return event.group_openid
+            group_openid = getattr(event, "group_openid", None)
+            if group_openid:
+                return group_openid
     except Exception as e:
         logger.warning(f"获取群 ID 失败: {e}")
     return None
