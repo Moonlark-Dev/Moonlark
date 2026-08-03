@@ -37,6 +37,7 @@ class SleepController:
         self.last_reply_time: datetime = datetime.now()
         self.consecutive_replies: int = 0
         self._sleep_tasks: set[asyncio.Task] = set()
+        self._pending_sleep_tasks: set[asyncio.Task] = set()
 
         scheduler.scheduled_job("interval", minutes=10, id="sleep_controller_process_timer")(self.process_timer)
 
@@ -148,9 +149,29 @@ class SleepController:
             await self.handle_tired()
             return "已进入睡眠模式。"
         delay = min(delay_minutes, 30)
+        if delay <= 0:
+            await self.handle_tired()
+            return "已进入睡眠模式。"
+        # 真正的延迟入睡：倒计时结束后自动进入睡眠
+        task = asyncio.create_task(self._delayed_sleep(delay))
+        self._pending_sleep_tasks.add(task)
+        task.add_done_callback(self._pending_sleep_tasks.discard)
         return f"已延迟 {delay} 分钟睡觉。" + (f"原因: {reason}" if reason else "")
 
+    async def _delayed_sleep(self, delay_minutes: int) -> None:
+        """延迟入睡：倒计时结束后进入睡眠（若期间已入睡则跳过）"""
+        await asyncio.sleep(delay_minutes * 60)
+        if self.sleep_state:
+            logger.info("[SleepController] 延迟入睡触发时已在睡眠中，跳过")
+            return
+        logger.info(f"[SleepController] 延迟 {delay_minutes} 分钟结束，进入睡眠")
+        await self.handle_tired()
+
     async def wake_up(self, reason: str = "") -> None:
+        # 唤醒时取消未触发的延迟入睡任务
+        for task in list(self._pending_sleep_tasks):
+            task.cancel()
+        self._pending_sleep_tasks.clear()
         self.sleep_state = False
         self.sleep_begin_time = None
         self.tiredness = 0.0
