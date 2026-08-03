@@ -1,0 +1,21 @@
+help:
+  description: 指令别名
+  details: 为常用指令设置个人专属的简短别名，之后发送 /别名 即可触发原指令
+  usage1: "alias - 查看指令别名用法"
+  usage2: "alias <原指令> <别名> - 创建指令别名（别名需遵循变量命名规则）"
+  usage3: "alias rm <别名> - 删除指定别名"
+  usage4: "alias list - 查看我的全部别名"
+
+alias:
+  usage: "用法：/alias <原指令> <别名> 创建别名；/alias rm <别名> 删除；/alias list 查看全部喵～"
+  created: "别名创建成功喵～ 以后发送 /{alias} 即可触发 /{command} 喵～"
+  removed: "已删除别名 /{alias} 喵～"
+  removed_not_found: "你没有名为 {alias} 的别名喵～"
+  list_title: "你的指令别名列表（共 {count} 个）："
+  list_item: "/{alias} → /{command}"
+  list_empty: "你还没有设置任何别名喵～ 使用 /alias <原指令> <别名> 创建第一个吧！"
+  command_not_found: "未找到指令 {command}，请通过 /help 或 /menu 查看可用指令喵～"
+  invalid_name: "别名 {alias} 不符合变量命名规则（仅允许字母、数字、下划线，且不能以数字开头）喵～"
+  name_conflict_command: "别名 {alias} 与已有指令名重复，请换一个喵～"
+  name_conflict_alias: "你已经有名为 {alias} 的别名（指向 /{command}）了喵～"
+  same_as_command: "别名不能与原指令 {command} 相同喵～"
