@@ -103,6 +103,8 @@ async def reset_session(session_id: str) -> bool:
     session.processor.unanalyzed_message_count = 0
     if session.processor.loop_task:
         session.processor.loop_task.cancel()
+    if session.processor._processing_task:
+        session.processor._processing_task.cancel()
     if session.processor.openai_messages.fetcher_task:
         session.processor.openai_messages.fetcher_task.cancel()
 
