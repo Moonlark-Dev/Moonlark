@@ -33,14 +33,23 @@ from nonebot_plugin_openai import fetch_message, generate_message
 
 from nonebot_plugin_chat.config import config
 
+MAX_FORWARD_DEPTH = 3
+
 from .image import generate_image_id, get_image_summary
 from .file import get_file_summary
+from .emoji import QQ_EMOJI_MAP
 
 
 class MessageParser:
-
     def __init__(
-        self, message: UniMessage, event: Event, bot: Bot, state: T_State, lang_str: str, describe_image: bool = True
+        self,
+        message: UniMessage,
+        event: Event,
+        bot: Bot,
+        state: T_State,
+        lang_str: str,
+        describe_image: bool = True,
+        _forward_depth: int = 0,
     ) -> None:
         self.message = message
         self.event = event
@@ -49,6 +58,7 @@ class MessageParser:
         self.bot = bot
         self.state = state
         self.images = []
+        self._forward_depth = _forward_depth
 
     async def parse(self) -> str:
         return "".join([await self.parse_segment(segment) for segment in self.message])
@@ -96,11 +106,19 @@ class MessageParser:
     async def parse_special_segment(self, segment: MessageSegment) -> str:
         if segment.type == "poke":
             return await lang.text("parser.poke", self.user_id)
+        if segment.type == "emoji":
+            emoji_id = segment.data.get("id", "")
+            emoji_name = QQ_EMOJI_MAP.get(emoji_id, None)
+            if emoji_name:
+                return await lang.text("parser.emoji", self.user_id, emoji_name)
+            return await lang.text("parser.emoji_unknown", self.user_id, emoji_id)
         return await lang.text("parser.other", self.user_id, segment)
 
     async def parse_forawrd_message(self, ref_id: str) -> str:
         if not isinstance(self.bot, OneBotV11Bot):
             return await lang.text("parser.forward.not_supported", self.user_id)
+        if self._forward_depth >= MAX_FORWARD_DEPTH:
+            return await lang.text("parser.forward.too_deep", self.user_id)
         try:
             message_list_str = await self.get_forawrd_message_list(ref_id)
         except ActionFailed as e:
@@ -138,7 +156,9 @@ class MessageParser:
 
     async def get_parsed_message(self, node_message: list[dict]) -> str:
         uni_message = await parse_dict_message(node_message, self.bot, self.event)
-        return await parse_message_to_string(uni_message, self.event, self.bot, self.state, self.user_id)
+        return await parse_message_to_string(
+            uni_message, self.event, self.bot, self.state, self.user_id, forward_depth=self._forward_depth + 1
+        )
 
     async def parse_mention(self, segment: At) -> str:
         user = await get_user(segment.target)
@@ -191,8 +211,10 @@ async def parse_dict_message(dict_message: list[dict], bot: Bot, event: Optional
     return uni_message
 
 
-async def parse_message_to_string(message: UniMessage, event: Event, bot: Bot, state: T_State, lang_str: str) -> str:
-    parser = MessageParser(message, event, bot, state, lang_str)
+async def parse_message_to_string(
+    message: UniMessage, event: Event, bot: Bot, state: T_State, lang_str: str, forward_depth: int = 0
+) -> str:
+    parser = MessageParser(message, event, bot, state, lang_str, _forward_depth=forward_depth)
     return await parser.parse()
 
 

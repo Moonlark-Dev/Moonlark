@@ -8,15 +8,19 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
         with:
           ref: ${{ github.head_ref }}
           fetch-depth: 0
+          persist-credentials: false
       
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: 3.11
   
@@ -36,21 +40,29 @@ jobs:
           poetry run nb orm check | grep '没有检测到新的升级操作' && exit 0
           exit 1
 
-      # - name: Run pytest
-      #   run: poetry run pytest
+      - name: Run pytest
+        env:
+          SQLALCHEMY_DATABASE_URL: sqlite+aiosqlite://
+          ALEMBIC_STARTUP_CHECK: "False"
+        run: poetry run pytest tests/ -v
       
       - name: Generate COMMANDS.md
         run: |
           poetry run nb larkhelp-generate zh_hans COMMANDS.md
       
       - name: Commit and push changes
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # checkout 使用 persist-credentials: false，需显式配置 token 才能 push
+          git config --global url."https://x-access-token:${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"
           git add .
           if ! git diff --cached --quiet; then
             git config --global user.name "github-actions[bot]"
             git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git commit -m "Auto update from GitHub Actions"
-            git push origin HEAD:${{ github.head_ref }}
+            git push origin "HEAD:$HEAD_REF"
           else
             echo "No changes to commit."
           fi

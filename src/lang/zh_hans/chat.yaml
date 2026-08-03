@@ -113,9 +113,14 @@ command:
   switch:
     enabled: 已启用
     disabled: 已禁用
-  dropping:
-    enabled: 已启用礼物掉落
-    disabled: 已禁用礼物掉落
+  mode:
+    name:
+      passionate: 热情
+      standard: 标准
+      silent: 安静
+    current: 当前互动模式：{}。可用 {__prefix__}chat mode <passionate|standard|silent> 切换。
+    unchanged: 当前已是{}模式，无需切换。
+    changed: 已切换到{}模式，当前会话的所有上下文已重置。
   no_argv: 无效参数，请使用 {__prefix__}help chat 获取该命令的使用方法！
   desire:
     get: |
@@ -163,12 +168,12 @@ help:
   usage8: chat block user <add|remove|list> [用户ID] (管理屏蔽用户)
   usage9: chat block keyword <add|remove|list> [关键词] (管理屏蔽关键词)
   usage10: chat block list (查看所有屏蔽项)
-  usage15: chat dropping <on|off> (开关礼物掉落功能)
   usage11: chat ignore-mention <add|remove|list> [用户ID] (管理提及屏蔽用户)
   usage12: chat reset (清除当前会话所有历史消息并重置会话状态)
   usage13: chat stop (强制停止当前正在生成的响应)
   usage14: chat stats (查看时间统计数据)
-  usage16: chat compact [会话ID] (压缩消息队列，分析待定笔记后重置[SU])
+  usage15: chat compact [会话ID] (压缩消息队列，分析待定笔记后重置[SU])
+  usage16: chat mode [passionate|standard|silent] (查看或切换互动模式，切换将重置会话上下文)
 
 pending_note:
   not_found: 未找到 ID 为 {} 的待定笔记。
@@ -194,6 +199,7 @@ prompt:
     to_me: "{} 戳了戳你。"
     to_other: "{} 戳了戳 {}。"
   reaction: "{} 回应了你的消息“{}”: {}"
+  reaction_other: "{} 回应了 {} 的消息“{}”: {}"
   event_template: |
     [{}]: {}
 
@@ -202,10 +208,8 @@ prompt:
     <additional_info>
     当前 Token: {}
     {}
-    最近做的事:
-    {}
+    困倦度：{}%
     </additional_info>
-  event_additional_info.no_activity: "暂无"
   note:
     format: "- {} (#{}，创建于 {})"
     none: "暂无"
@@ -618,9 +622,12 @@ parser:
   image_failed: '[图片: 获取失败]'
   image_without_desc: '[图片({})]'
   poke: '[戳一戳]'
+  emoji: '[表情: {}]'
+  emoji_unknown: '[emoji:{}]'
   forward:
     not_supported: '[合并转发：获取信息失败（不支持）]'
     failed: '[合并转发：获取信息失败（{}）]'
+    too_deep: '[合并转发：嵌套过深，已截断]'
     forward: '[合并转发：{}]'
     summary: '[合并转发（消息过多，已总结）：{}]'
     summary_prompt: |
@@ -676,17 +683,6 @@ moonlark_main:
     ## 今日已发布
     {}
   tools:
-    start_action:
-      description: |
-        执行一个自主活动（如学习、研究、查找资料等）。
-        **调用时机参考：**
-        - 想要学习新知识或研究某个主题
-        - 需要通过 Agent 工具（搜索、浏览网页等）完成的任务
-        - 活动必须具体，例如"学习 CSS Flexbox 布局"而不是"学习 CSS"
-        - 同一时间只能进行一个活动
-      activity: |
-        活动的具体描述，必须足够具体。
-        例如："学习 CSS Flexbox 布局"、"研究 2024 年最新的自动驾驶算法"、"查找 YoASOBI 新单曲的信息"
     sleep: 
       description: |
         睡觉，醒来后恢复全部精力。
@@ -796,46 +792,10 @@ moonlark_main:
 sleep:
   drowsy_prompt: "[提示]: 你感到有些犯困了。请使用 `change_sleep_status` 工具来决定是否准备睡觉。"
 
-start_action:
-  timeout: "动作请求超时，Moonlark 未在规定时间内做出决定。"
-
-request_action:
-  timeout: "动作申请超时，意识会话未在规定时间内做出决定。"
-
-request_sleep:
-  timeout: "睡觉申请超时，意识会话未在规定时间内做出决定。"
-
 sleep_decision:
   timeout: "睡眠决策超时，意识会话未在规定时间内做出决定。"
 
 recall_fetch_failed: "消息内容获取失败"
-
-
-self_action:
-  result_process:
-    system: |
-      你是信息压缩助手。请将以下活动结果压缩为简洁的笔记格式。
-
-      **要求：**
-      1. 压缩后的内容应保留核心信息，去除冗余描述，控制在100字以内
-      2. 提取 3~6 个关键词（空格分隔），用于后续检索
-      3. 根据信息时效性估算合理的过期时间（小时）：
-         - 时效性强的资讯（新闻、天气等）：24~72小时
-         - 一般知识/技术信息：168~720小时（1周~1个月）
-         - 长期有效的知识：8760小时（1年）
-         - 永不过期：-1
-
-      输出 JSON：
-      {{
-        "compressed_content": "压缩后的笔记内容",
-        "keywords": "关键词1 关键词2 关键词3",
-        "expire_hours": 168
-      }}
-    user: |
-      活动描述：{0}
-       活动结果：
-       {1}
-       请压缩结果并生成关键词和过期时间。
 
 private_chat_whitelist:
   no_permission: "权限不足：只有 superuser 可以使用此命令"

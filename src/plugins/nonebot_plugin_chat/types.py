@@ -20,6 +20,9 @@ class CachedMessage(TypedDict):
     images: list[bytes]
     self: bool
     message_id: str
+    to_me: bool
+    triggered_reply: bool
+    mq_text: str  # 投递到 MessageQueue 的完整文本（含 additional_info）
 
 
 class GetTextFunc(Protocol):

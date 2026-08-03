@@ -25,7 +25,6 @@ from sqlalchemy import select
 
 from ..config import config
 from ..models import PrivateChatSession
-from ..utils.gift_drop import handle_gift_drop
 from ..utils.group import enabled_group, enabled_private_chat
 from .ego import moonlark_main
 from .session import create_group_session, create_private_session, get_session_directly
@@ -78,12 +77,6 @@ async def _(
         message, user_id, event, state, nickname, event.is_tome(), platform_user_id=platform_user_id
     )
 
-    # 礼物掉落检测
-    try:
-        await handle_gift_drop(bot, event, user_id, session_id, session.is_napcat_bot())
-    except Exception as e:
-        logger.exception(e)
-
 
 @on_message(priority=50, rule=enabled_private_chat, block=False).handle()
 async def _(
@@ -93,11 +86,7 @@ async def _(
     state: T_State,
     user_id: str = get_user_id(),
     session_key: str = get_group_id(),
-    ai_enabled: bool = check_ai_enabled(),
 ) -> None:
-    if not ai_enabled:
-        await matcher.finish()
-
     # 记录私聊会话信息（用于主动消息时获取正确的 bot）
     await record_private_chat_session(user_id, session_key, bot.self_id)
 
@@ -156,7 +145,10 @@ async def _(event: NoticeEvent, bot: OB11Bot, platform_id: str = get_group_id())
     group_id = f"{platform_id}_{event_dict['group_id']}"
     user_id = await get_main_account(str(event_dict["user_id"]))
     session = await create_group_session(group_id, get_target(event), bot)
-    raw_msg = (await bot.get_msg(message_id=event_dict["message_id"]))["message"]
+    raw_msg_data = await bot.get_msg(message_id=event_dict["message_id"])
+    raw_msg = raw_msg_data["message"]
+    message_sender_id = str(raw_msg_data.get("sender", {}).get("user_id", ""))
+    message_sender_is_bot = message_sender_id == bot.self_id
     ob11_msg = OB11Message()
     for seg in raw_msg:
         ob11_msg.append(OB11MessageSegment(**seg))
@@ -181,8 +173,11 @@ async def _(event: NoticeEvent, bot: OB11Bot, platform_id: str = get_group_id())
         user_info = await bot.get_group_member_info(group_id=event_dict["group_id"], user_id=int(user_id))
         operator_nickname = user_info["card"] or user_info["nickname"]
     emoji_id = event_dict["likes"][0]["emoji_id"]
+    message_sender_name = raw_msg_data.get("sender", {}).get("nickname", "")
     logger.debug(f"emoji like: {emoji_id} {message} {operator_nickname}")
-    await session.processor.handle_reaction(message, operator_nickname, emoji_id)
+    await session.processor.handle_reaction(
+        message, operator_nickname, emoji_id, message_sender_is_bot, message_sender_name
+    )
 
 
 @on_notice(block=False).handle()

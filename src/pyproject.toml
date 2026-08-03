@@ -24,6 +24,7 @@ aiomysql = ">=0.2.0, <0.3.0"
 cryptography = ">=44.0.0, <45.0.0"
 pyproject-toml = ">=0.0.10, <0.0.11"
 matplotlib = ">=3.10.0, <4.0.0"
+wordcloud = ">=1.9.4, <2.0.0"
 
 py-cpuinfo = ">= 9.0.0, < 10.0.0"
 html2text = ">=2025.4.15, <2026.0.0"
@@ -86,6 +87,7 @@ packages = [
     { include = "nonebot_plugin_ranking", from = "./plugins" },
     { include = "nonebot_plugin_render", from = "./plugins" },
     { include = "nonebot_plugin_sign", from = "./plugins" },
+    { include = "nonebot_plugin_shop", from = "./plugins" },
     { include = "nonebot_plugin_time_progress", from = "./plugins" },
     { include = "nonebot_plugin_translate", from = "./plugins" },
     { include = "nonebot_plugin_vote", from = "./plugins" },
@@ -117,6 +119,10 @@ packages = [
     { include = "nonebot_plugin_command_stats", from = "./plugins" },
     { include = "nonebot_plugin_wdym", from = "./plugins" },
     { include = "nonebot_plugin_wakeuprank", from = "./plugins" },
+    { include = "nonebot_plugin_health_recovery", from = "./plugins" },
+    { include = "nonebot_plugin_chat_monitor", from = "./plugins" },
+    { include = "nonebot_plugin_auto_bind", from = "./plugins" },
+    { include = "nonebot_plugin_eggstrike", from = "./plugins" },
 ]
 
 

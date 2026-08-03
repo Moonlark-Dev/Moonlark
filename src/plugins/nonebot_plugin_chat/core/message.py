@@ -43,6 +43,8 @@ class MessageQueue:
         self.trace_id: str = uuid.uuid4().hex
         self.created_at: datetime = datetime.now()
         self.last_events_summary_time: Optional[datetime] = None
+        self.last_thought: Optional[str] = None
+        self.last_response: Optional[Any] = None
 
     @property
     def messages(self) -> list[OpenAIMessage]:
@@ -60,6 +62,7 @@ class MessageQueue:
             identify="Chat",
             functions=await self.processor.tool_manager.select_tools("group"),
             pre_function_call=self.processor.send_function_call_feedback,
+            post_function_call=self.processor.send_function_call_result,
             reasoning_effort="medium",
         )
         fetcher.session.set_custom_trace_id(self.trace_id)
@@ -351,6 +354,8 @@ class MessageQueue:
                     retry_count += 2
                     continue
                 if analysis is not None:
+                    if analysis.thought:
+                        self.last_thought = analysis.thought
                     if analysis.mood:
                         await self.processor.tool_manager.set_mood(
                             analysis.mood, analysis.mood_reason, analysis.mood_intensity
@@ -378,6 +383,13 @@ class MessageQueue:
         except Exception as e:
             logger.exception(e)
             state = FetchStatus.FAILED
+
+        # 持久化最近一次 API 响应体（以便前端点击消息时查看）
+        if hasattr(self, "fetcher") and self.fetcher is not None:
+            last_resp = getattr(self.fetcher.session, "last_response", None)
+            if last_resp is not None:
+                self.last_response = last_resp
+
         return state
 
     async def _ensure_system_prompt(self) -> None:

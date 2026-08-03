@@ -63,6 +63,7 @@ plugins = [
     "nonebot_plugin_ranking",
     "nonebot_plugin_render",
     "nonebot_plugin_sign",
+    "nonebot_plugin_shop",
     "nonebot_plugin_sudoku",
     "nonebot_plugin_time_progress",
     "nonebot_plugin_translate",
@@ -94,6 +95,10 @@ plugins = [
     "nonebot_plugin_command_stats",
     "nonebot_plugin_wdym",
     "nonebot_plugin_wakeuprank",
+    "nonebot_plugin_health_recovery",
+    "nonebot_plugin_chat_monitor",
+    "nonebot_plugin_auto_bind",
+    "nonebot_plugin_eggstrike",
 ]
 plugin_dirs = []
 builtin_plugins = []
@@ -118,7 +123,7 @@ moonlark-custom-plugins = {path = "./src", develop = true}
 nonebot-plugin-bilichat = {git = "https://github.com/Moonlark-Dev/nonebot-plugin-bilichat.git"}
 bilichat-request = ">=0.4.0"
 bilibili-api-python = "^17.4.1"
-nonebot-adapter-qq = {git = "https://github.com/nonebot/adapter-qq.git"}
+nonebot-adapter-qq = {git = "https://github.com/Moonlark-Dev/adapter-qq.git"}
 
 
 
@@ -184,6 +189,7 @@ ignore = [
     "E501",
     "FBT001",
     "FBT002",
+    "I001",
     "ISC001",
     "PERF203",
     "PGH003",

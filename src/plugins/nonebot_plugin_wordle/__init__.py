@@ -103,7 +103,7 @@ class Wordle:
         await self.fail()
 
     async def win(self, user_id: str) -> None:
-        session = await create_minigame_session(user_id)
+        session = await create_minigame_session(user_id, "wordle")
         session.start_time = self.start_time
         t = await session.finish()
         await session.add_points(round((7 - len(self.history)) * 5000 / t))

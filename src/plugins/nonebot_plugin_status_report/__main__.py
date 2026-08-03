@@ -37,6 +37,7 @@ from nonebot.matcher import Matcher, matchers
 from fastapi import Request, status
 from fastapi.exceptions import HTTPException
 from sqlalchemy import select, func, delete
+from sqlalchemy.exc import IntegrityError
 from .config import config
 from .matcher import simple_run
 from .models import CommandUsage, HandlerResultRecord, ExceptionRecord, OpenAIHistoryRecord
@@ -97,10 +98,10 @@ async def get_exceptions() -> list[ExceptionStatus]:
         ]
 
 
-async def get_openai_history() -> list[OpenAIHistory]:
+async def get_openai_history(limit: int = 10, offset: int = 0) -> list[OpenAIHistory]:
     async with get_session() as session:
         result = await session.execute(
-            select(OpenAIHistoryRecord).order_by(OpenAIHistoryRecord.id.desc()).limit(MAX_OPENAI_HISTORY)
+            select(OpenAIHistoryRecord).order_by(OpenAIHistoryRecord.id.desc()).limit(limit).offset(offset)
         )
         rows = result.scalars().all()
         return [
@@ -111,6 +112,12 @@ async def get_openai_history() -> list[OpenAIHistory]:
             )
             for row in reversed(rows)
         ]
+
+
+async def count_openai_history() -> int:
+    async with get_session() as session:
+        result = await session.execute(select(func.count()).select_from(OpenAIHistoryRecord))
+        return result.scalar()
 
 
 @get_driver().on_startup
@@ -136,9 +143,17 @@ async def _(matcher: Matcher, state: T_State) -> None:
         record = result.scalar_one_or_none()
         if record:
             record.usage_count += 1
+            await session.commit()
         else:
-            session.add(CommandUsage(command_name=command_name, usage_count=1))
-        await session.commit()
+            try:
+                session.add(CommandUsage(command_name=command_name, usage_count=1))
+                await session.commit()
+            except IntegrityError:
+                await session.rollback()
+                result = await session.execute(select(CommandUsage).where(CommandUsage.command_name == command_name))
+                if record := result.scalar_one_or_none():
+                    record.usage_count += 1
+                await session.commit()
     state["status_report_command_name"] = command_name
     state["original_simple_run_method"] = matcher.simple_run
 
@@ -271,20 +286,73 @@ async def cleanup_old_records() -> None:
         await session.commit()
 
 
-@app.get("/admin/status")
-async def get_status_report(request: Request, token: str, salt: str) -> StatusReport:
+async def verify_admin(token: str, salt: str) -> None:
     if token != hashlib.sha256(f"{config.status_report_password}+{salt}".encode()).hexdigest():
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
-    return StatusReport(
-        bots=await bots_status(request),
-        exceptions=await get_exceptions(),
-        plugins=[plugin.name for plugin in get_loaded_plugins()],
-        event_counter=EventCounter(
+
+
+@app.get("/admin/status")
+async def get_status_overview(request: Request, token: str, salt: str) -> dict:
+    await verify_admin(token, salt)
+    return {
+        "bots": await bots_status(request),
+        "plugins": [plugin.name for plugin in get_loaded_plugins()],
+        "event_counter": EventCounter(
             success=event_counter[1],
             total=event_counter[0],
             failed=event_counter[0] - event_counter[1],
         ),
-        openai=await get_openai_history(),
-        command_usage=await get_command_usage(),
-        handler_results=await get_handler_results(),
+    }
+
+
+@app.get("/admin/status/bots")
+async def get_status_bots(request: Request, token: str, salt: str) -> dict:
+    await verify_admin(token, salt)
+    return await bots_status(request)
+
+
+@app.get("/admin/status/exceptions")
+async def get_status_exceptions(token: str, salt: str) -> list[ExceptionStatus]:
+    await verify_admin(token, salt)
+    return await get_exceptions()
+
+
+@app.get("/admin/status/plugins")
+async def get_status_plugins(token: str, salt: str) -> list[str]:
+    await verify_admin(token, salt)
+    return [plugin.name for plugin in get_loaded_plugins()]
+
+
+@app.get("/admin/status/events")
+async def get_status_events(token: str, salt: str) -> EventCounter:
+    await verify_admin(token, salt)
+    return EventCounter(
+        success=event_counter[1],
+        total=event_counter[0],
+        failed=event_counter[0] - event_counter[1],
     )
+
+
+@app.get("/admin/status/openai")
+async def get_status_openai(token: str, salt: str, limit: int = 10, offset: int = 0) -> list[OpenAIHistory]:
+    await verify_admin(token, salt)
+    return await get_openai_history(limit=limit, offset=offset)
+
+
+@app.get("/admin/status/openai/count")
+async def get_status_openai_count(token: str, salt: str) -> dict:
+    await verify_admin(token, salt)
+    total = await count_openai_history()
+    return {"total": total}
+
+
+@app.get("/admin/status/commands")
+async def get_status_commands(token: str, salt: str) -> dict[str, int]:
+    await verify_admin(token, salt)
+    return await get_command_usage()
+
+
+@app.get("/admin/status/handlers")
+async def get_status_handlers(token: str, salt: str) -> list[HandlerResult]:
+    await verify_admin(token, salt)
+    return await get_handler_results()

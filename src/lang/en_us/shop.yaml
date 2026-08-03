@@ -1,0 +1,14 @@
+list:
+  title: "[Moonlark Shop] Balance: {} VimCoin"
+  item: "[{}] {} - {} VimCoin"
+  footer: Use {__prefix__}shop buy <index> [count] to buy goods
+buy:
+  invalid_index: Invalid goods index, use {__prefix__}shop to view the goods list.
+  invalid_count: Count must be greater than 0
+  no_enough_vimcoin: "Not enough VimCoin! Required: {}, current balance: {}."
+  success: "Purchase succeeded! Got {} x{} for {} VimCoin."
+help:
+  description: Shop
+  details: Buy gifts and other goods with VimCoin. Purchased items go to your bag.
+  usage1: shop (view goods list)
+  usage2: shop buy <index> [count] (buy goods)

@@ -68,4 +68,11 @@ help_decision:
   details: 根据群内最近 300 条消息，对指定群员生成一份符合公文格式的虚假处分通知（整活用）。
   usage1: decision @群友 <处分内容>
   example: decision @小明 女装
+word_cloud:
+  no_data: 最近 {} 小时内没有可用于生成词云的消息。
+  title: 本群最近 {} 小时的词云（共 {} 条消息）
+help_word_cloud:
+  description: 群聊词云
+  details: 根据群内最近的消息生成词云图片，时间范围默认为 24 小时，最大为 48 小时。需要先启用群消息总结功能。
+  usage1: word-cloud [小时数]
 analyzing: 正在分析中，请稍候...

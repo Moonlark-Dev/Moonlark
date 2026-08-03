@@ -21,7 +21,7 @@ class ChatGroup(Model):
     blocked_keyword: Mapped[str] = mapped_column(Text(), default="[]")
     ignore_mention_user: Mapped[str] = mapped_column(Text(), default="[]")
     enabled: Mapped[bool]
-    dropping_enabled: Mapped[bool] = mapped_column(default=True)
+    interaction_mode: Mapped[str] = mapped_column(String(16), default="standard")
 
 
 class ActionDecisionResponse(BaseModel):
@@ -219,34 +219,6 @@ class EgoDecisionResponse(BaseModel):
         None  # "skip" | "continue_draft" | "abort_draft" | {"start_new_topic": "主题"}
     )
     private_chat: Optional[PrivateChatDecision] = None
-    self_action: Optional[str] = None  # 活动描述，不返回即不动作
-
-
-class SleepThinkResponse(BaseModel):
-    """SleepController request_think 的 LLM 返回格式"""
-
-    wake_up: bool = False
-    reason: str = ""
-
-
-class SelfActionDurationResponse(BaseModel):
-    """SelfActionController _generate_duration 的 LLM 返回格式"""
-
-    duration_minutes: int = 5
-
-
-class TaskClassificationResponse(BaseModel):
-    """TaskController _classify_task 的 LLM 返回格式"""
-
-    activity_type: Literal["学习", "任务", "消息"]
-
-
-class SelfActionResultProcessResponse(BaseModel):
-    """SelfActionController 结果处理的 LLM 返回格式"""
-
-    compressed_content: str
-    keywords: str
-    expire_hours: float = 168
 
 
 class AgentEvent(Model):
@@ -283,3 +255,15 @@ class Timer(Model):
     session_id: Mapped[str] = mapped_column(String(128), index=True)
     trigger_time: Mapped[datetime] = mapped_column(DateTime(), index=True)
     description: Mapped[str] = mapped_column(Text())
+
+
+class SessionEvent(Model):
+    """按会话收集的事件和话题记录，每 100 条消息收集一次"""
+
+    __tablename__ = "nonebot_plugin_chat_sessionevent"
+
+    id: Mapped[int] = mapped_column(Integer(), primary_key=True, autoincrement=True)
+    session_id: Mapped[str] = mapped_column(String(128), index=True)
+    date: Mapped[str] = mapped_column(String(16), index=True)  # YYYY-MM-DD
+    content: Mapped[str] = mapped_column(Text())
+    created_at: Mapped[datetime] = mapped_column(DateTime(), default=datetime.now)

@@ -24,9 +24,10 @@
 ## `chatterbox`: 群话痨排行
 
 统计群聊中的话痨，该功能不支持 QQ 节点且需要在群聊中手动启用。
-- `/ct (群话痨排行)`
+- `/ct [total|7d|1d] (群话痨排行，默认总榜)`
+- `/ct [total|7d|1d] --global (全局话痨排行)`
 - `/ct -e|-d (功能开关)`
-- `/ct me|<@用户> (查询指定用户的话痨排行)`
+- `/ct [total|7d|1d] me|<@用户> (查询指定用户的话痨排行)`
 ## `defuse-tnt`: 拆除 TNT
 
 运气游戏——通过猜测排列出正确的拆除炸弹的密码。
@@ -48,6 +49,9 @@
 - `/jrrp r (今日幸运星[--rank])`
 - `/jrrp rr (今日倒霉蛋[--rank-r])`
 - `/jrrp reroll (重新计算今日人品值)`
+- `/jrrp t (查看近 7 天人品走势)`
+- `/jrrp t 7d (查看近 7 天人品走势)`
+- `/jrrp t 30d (查看近 30 天人品走势)`
 ## `minigame-rank`: 小游戏积分排名
 
 查看 Moonlark 中游玩玩法的用户的排名
@@ -127,6 +131,14 @@ Moonlark 本地化设置
 
 将背包中的礼物赠送给 Moonlark
 - `/present <INDEX> [-c|--count <count>] (赠送礼物)`
+## `private-chat-whitelist`: 私聊 Chat 白名单管理
+
+管理可在私聊中使用 Chat 功能的用户白名单（仅限超级用户）
+- `/private-chat-whitelist (查看白名单)`
+- `/private-chat-whitelist add <用户ID> (添加用户)`
+- `/private-chat-whitelist remove <用户ID> (移除用户)`
+- `/private-chat-whitelist enable <用户ID> (启用)`
+- `/private-chat-whitelist disable <用户ID> (禁用)`
 ## `setnick`: 修改昵称
 
 修改自己在 Moonlark 中的昵称，不带参数则解锁昵称锁定
@@ -277,6 +289,10 @@ Moonlark 投票
 
 回复一条消息，让 AI 结合上下文解释消息中的晦涩内容、专业术语、梗或缩写。
 - `/wdym (回复一条消息)`
+## `word-cloud`: 群聊词云
+
+根据群内最近的消息生成词云图片，时间范围默认为 24 小时，最大为 48 小时。需要先启用群消息总结功能。
+- `/word-cloud [小时数]`
 ## `cave`: 回声洞
 
 （与漂流瓶类似）投稿或查看其他用户投稿的回声洞，所有内容依照 CC-BY-NC-SA 4.0 许可协议授权
@@ -304,8 +320,8 @@ Moonlark 投票
 - `/chat reset (清除当前会话所有历史消息并重置会话状态)`
 - `/chat stop (强制停止当前正在生成的响应)`
 - `/chat stats (查看时间统计数据)`
-- `/chat dropping <on|off> (开关礼物掉落功能)`
-- `/chat compact [会话ID] (压缩消息队列，生成即时记忆后重置[SU])`
+- `/chat compact [会话ID] (压缩消息队列，分析待定笔记后重置[SU])`
+- `/chat mode [passionate|standard|silent] (查看或切换互动模式，切换将重置会话上下文)`
 ## `decision`: 虚假处分通知
 
 根据群内最近 300 条消息，对指定群员生成一份符合公文格式的虚假处分通知（整活用）。
@@ -361,6 +377,17 @@ Moonlark 投票
 查看每日任务或领取每日任务奖励，每日刷新，部分功能仅在签到后可用。
 - `/schedule (查看每日任务列表)`
 - `/schedule collect (领取可领取的奖励)`
+## `shop`: 商店
+
+使用 VimCoin 购买礼物等商品，购买的物品会存入背包。
+- `/shop (查看商品列表)`
+- `/shop buy <编号> [数量] (购买商品)`
+## `splat`: 砸鸡蛋
+
+向指定用户丢鸡蛋造成伤害，查看被砸 / 丢鸡蛋排行榜和个人砸鸡蛋信息。
+- `/splat <@用户> [数量] (向指定用户丢鸡蛋，每 5 个鸡蛋减 1 HP)`
+- `/splat rank/throwers [7d|30d|total] (被砸 / 丢鸡蛋排行榜)`
+- `/splat info [@用户] (查询砸鸡蛋信息)`
 ## `waifu`: 今日群老婆
 
 匹配你的每日群老婆！（仅支持群聊使用）
@@ -373,6 +400,14 @@ Moonlark 投票
 - `/wakeuprank (早起次数排行)`
 - `/wakeuprank avg (平均起床时间排行)`
 - `/wakeuprank today (今日起床时间排行)`
+## `ai-whitelist`: AI 白名单管理
+
+管理 QQ 节点上允许使用 AI 功能的群聊白名单（仅限超级用户）
+> 此指令仅 Moonlark 管理员可用。
+- `/ai-whitelist (查看白名单)`
+- `/ai-whitelist add <群号> (添加群聊到白名单)`
+- `/ai-whitelist remove <群号> (从白名单移除群聊)`
+- `/ai-whitelist enable <群号> (启用群聊 AI 功能)`
 ## `bcsu`: 广播管理
 
 发送和管理广播消息
@@ -390,3 +425,11 @@ Moonlark 投票
 - `/model <模型名> (更换默认模型)`
 - `/model <模型名> <应用标识> (设置应用专用模型)`
 - `/model :default: <应用标识> (删除应用配置)`
+## `subaccount`: 管理子账号
+
+[管理员专用] 管理子账号绑定关系：查看绑定状态、绑定/解绑子账号
+> 此指令仅 Moonlark 管理员可用。
+- `/subaccount view <用户ID> (查看绑定状态)`
+- `/subaccount bind <子账号ID> <主账号ID> (绑定子账号)`
+- `/subaccount unbind <子账号ID> (解绑子账号)`
+- `/subaccount unbind <主账号ID> --all (解绑全部子账号)`

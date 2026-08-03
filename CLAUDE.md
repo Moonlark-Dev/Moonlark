@@ -77,6 +77,10 @@ poetry run nb run --script larkcave-init-hash
 
 Moonlark uses a modular plugin architecture. All custom plugins are in `src/plugins/` and are registered in `src/pyproject.toml`.
 
+**IMPORTANT**: When adding or removing a plugin, update BOTH registration files:
+- Root `pyproject.toml` (`[tool.nonebot]` `plugins` list)
+- `src/pyproject.toml` (`[tool.poetry]` `packages` list)
+
 **Core Infrastructure Plugins** (use these in new plugins):
 - **LarkUser** (`nonebot_plugin_larkuser`): User information and registration system
 - **LarkUtils** (`nonebot_plugin_larkutils`): User ID and group ID utilities

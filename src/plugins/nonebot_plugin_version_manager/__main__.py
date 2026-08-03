@@ -1,7 +1,6 @@
 import asyncio
 import os
 import signal
-import subprocess
 import sys
 import time
 from pathlib import Path
@@ -26,38 +25,158 @@ version_alc = Alconna(
 version_cmd = on_alconna(version_alc, permission=SUPERUSER)
 
 
-def run_command(cmd: list[str], cwd: Optional[Path] = None) -> tuple[int, str, str]:
-    """运行任意命令并返回结果"""
-    project_root = cwd or config.version_manager_project_root.resolve()
-
+async def git_rev_parse_head(cwd: Path) -> tuple[int, str, str]:
     try:
-        result = subprocess.run(
-            cmd, cwd=project_root, capture_output=True, text=True, encoding="utf-8", errors="ignore"
+        proc = await asyncio.create_subprocess_exec(
+            config.version_manager_git_path,
+            "rev-parse",
+            "--abbrev-ref",
+            "HEAD",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            cwd=cwd,
         )
-        return result.returncode, result.stdout.strip(), result.stderr.strip()
+        stdout, stderr = await proc.communicate()
+        return proc.returncode or 0, stdout.decode(errors="ignore").strip(), stderr.decode(errors="ignore").strip()
     except Exception as e:
         return -1, "", str(e)
 
 
-def run_git_command(args: list[str], cwd: Optional[Path] = None) -> tuple[int, str, str]:
-    """运行 git 命令并返回结果"""
-    git_path = config.version_manager_git_path
-    return run_command([git_path] + args, cwd)
+async def git_rev_parse_short(cwd: Path) -> tuple[int, str, str]:
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            config.version_manager_git_path,
+            "rev-parse",
+            "--short",
+            "HEAD",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            cwd=cwd,
+        )
+        stdout, stderr = await proc.communicate()
+        return proc.returncode or 0, stdout.decode(errors="ignore").strip(), stderr.decode(errors="ignore").strip()
+    except Exception as e:
+        return -1, "", str(e)
 
 
-def run_nb_command(args: list[str], cwd: Optional[Path] = None) -> tuple[int, str, str]:
-    """运行 nb_cli 命令并返回结果"""
-    nb_path = config.version_manager_nb_path
-    return run_command([nb_path] + args, cwd)
+async def git_log_one(cwd: Path) -> tuple[int, str, str]:
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            config.version_manager_git_path,
+            "log",
+            "-1",
+            "--format=%s",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            cwd=cwd,
+        )
+        stdout, stderr = await proc.communicate()
+        return proc.returncode or 0, stdout.decode(errors="ignore").strip(), stderr.decode(errors="ignore").strip()
+    except Exception as e:
+        return -1, "", str(e)
 
 
-def run_poetry_command(args: list[str], cwd: Optional[Path] = None) -> tuple[int, str, str]:
-    """运行 poetry 命令并返回结果"""
-    return run_command(["poetry"] + args, cwd)
+async def git_status(cwd: Path) -> tuple[int, str, str]:
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            config.version_manager_git_path,
+            "status",
+            "--porcelain",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            cwd=cwd,
+        )
+        stdout, stderr = await proc.communicate()
+        return proc.returncode or 0, stdout.decode(errors="ignore").strip(), stderr.decode(errors="ignore").strip()
+    except Exception as e:
+        return -1, "", str(e)
 
 
-async def get_version_info() -> dict:
+async def git_pull(cwd: Path) -> tuple[int, str, str]:
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            config.version_manager_git_path,
+            "pull",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            cwd=cwd,
+        )
+        stdout, stderr = await proc.communicate()
+        return proc.returncode or 0, stdout.decode(errors="ignore").strip(), stderr.decode(errors="ignore").strip()
+    except Exception as e:
+        return -1, "", str(e)
+
+
+async def git_diff_poetry_lock(cwd: Path) -> tuple[int, str, str]:
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            config.version_manager_git_path,
+            "diff",
+            "--name-only",
+            "HEAD",
+            "origin/HEAD",
+            "--",
+            "poetry.lock",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            cwd=cwd,
+        )
+        stdout, stderr = await proc.communicate()
+        return proc.returncode or 0, stdout.decode(errors="ignore").strip(), stderr.decode(errors="ignore").strip()
+    except Exception as e:
+        return -1, "", str(e)
+
+
+async def git_diff_migrations(cwd: Path) -> tuple[int, str, str]:
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            config.version_manager_git_path,
+            "diff",
+            "--name-only",
+            "HEAD",
+            "origin/HEAD",
+            "--",
+            "migrations/versions/",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            cwd=cwd,
+        )
+        stdout, stderr = await proc.communicate()
+        return proc.returncode or 0, stdout.decode(errors="ignore").strip(), stderr.decode(errors="ignore").strip()
+    except Exception as e:
+        return -1, "", str(e)
+
+
+async def poetry_install(cwd: Path) -> tuple[int, str, str]:
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            "poetry", "install", stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE, cwd=cwd
+        )
+        stdout, stderr = await proc.communicate()
+        return proc.returncode or 0, stdout.decode(errors="ignore").strip(), stderr.decode(errors="ignore").strip()
+    except Exception as e:
+        return -1, "", str(e)
+
+
+async def nb_orm_upgrade(cwd: Path) -> tuple[int, str, str]:
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            config.version_manager_nb_path,
+            "orm",
+            "upgrade",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            cwd=cwd,
+        )
+        stdout, stderr = await proc.communicate()
+        return proc.returncode or 0, stdout.decode(errors="ignore").strip(), stderr.decode(errors="ignore").strip()
+    except Exception as e:
+        return -1, "", str(e)
+
+
+async def get_version_info(root: Optional[Path] = None) -> dict:
     """获取版本信息"""
+    cwd = root or config.version_manager_project_root.resolve()
     info = {
         "branch": "unknown",
         "commit": "unknown",
@@ -68,22 +187,22 @@ async def get_version_info() -> dict:
     }
 
     # 获取当前分支
-    code, stdout, stderr = run_git_command(["rev-parse", "--abbrev-ref", "HEAD"])
+    code, stdout, stderr = await git_rev_parse_head(cwd)
     if code == 0:
         info["branch"] = stdout
 
     # 获取最新 commit hash
-    code, stdout, stderr = run_git_command(["rev-parse", "--short", "HEAD"])
+    code, stdout, stderr = await git_rev_parse_short(cwd)
     if code == 0:
         info["commit"] = stdout
 
     # 获取最新提交信息
-    code, stdout, stderr = run_git_command(["log", "-1", "--format=%s"])
+    code, stdout, stderr = await git_log_one(cwd)
     if code == 0:
         info["message"] = stdout
 
     # 检查是否有未提交的改动
-    code, stdout, stderr = run_git_command(["status", "--porcelain"])
+    code, stdout, stderr = await git_status(cwd)
     if code == 0:
         if stdout:
             info["dirty"] = True
@@ -104,43 +223,35 @@ async def get_version_info() -> dict:
     return info
 
 
-async def check_file_changes(file_pattern: str) -> tuple[bool, list[str]]:
-    """检查指定文件是否有改动
-
-    Args:
-        file_pattern: 文件路径模式，如 "poetry.lock" 或 "migrations/versions/"
-
-    Returns:
-        (是否有改动, 改动文件列表)
-    """
-    code, stdout, stderr = run_git_command(["diff", "--name-only", "HEAD", "origin/HEAD", "--", file_pattern])
-
-    changed_files = []
-    if code == 0 and stdout:
+async def _parse_diff_output(stdout: str) -> list[str]:
+    """解析 git diff 的输出为文件列表"""
+    files = []
+    if stdout:
         for line in stdout.split("\n"):
             line = line.strip()
             if line:
-                changed_files.append(line)
+                files.append(line)
+    return files
 
-    return len(changed_files) > 0, changed_files
 
-
-async def check_poetry_lock_changes() -> tuple[bool, list[str]]:
+async def check_poetry_lock_changes(cwd: Path) -> tuple[bool, list[str]]:
     """检查 poetry.lock 是否有改动
 
     Returns:
         (是否有改动, 改动文件列表)
     """
-    return await check_file_changes("poetry.lock")
+    code, stdout, stderr = await git_diff_poetry_lock(cwd)
+    changed_files = await _parse_diff_output(stdout) if code == 0 else []
+    return len(changed_files) > 0, changed_files
 
 
-async def check_migration_changes() -> tuple[bool, list[str]]:
+async def check_migration_changes(cwd: Path) -> tuple[bool, list[str]]:
     """检查是否有新的数据库迁移文件
 
     Returns:
         (是否有新迁移, 新迁移文件列表)
     """
-    migrations_dir = config.version_manager_project_root / "migrations" / "versions"
+    migrations_dir = cwd / "migrations" / "versions"
     if not migrations_dir.exists():
         return False, []
 
@@ -151,7 +262,8 @@ async def check_migration_changes() -> tuple[bool, list[str]]:
             local_files.add(f.name)
 
     # 检查远程是否有新的迁移（通过 git diff 比较）
-    has_changes, changed_files = await check_file_changes("migrations/versions/")
+    code, stdout, stderr = await git_diff_migrations(cwd)
+    changed_files = await _parse_diff_output(stdout) if code == 0 else []
 
     new_migrations = []
     for line in changed_files:
@@ -169,6 +281,7 @@ async def perform_upgrade(user_id: str) -> dict:
     Returns:
         更新结果信息
     """
+    cwd = config.version_manager_project_root.resolve()
     result = {
         "success": False,
         "git_pull_output": "",
@@ -184,7 +297,7 @@ async def perform_upgrade(user_id: str) -> dict:
     }
 
     # 1. 执行 git pull
-    code, stdout, stderr = run_git_command(["pull"])
+    code, stdout, stderr = await git_pull(cwd)
     result["git_pull_output"] = stdout
     result["git_pull_error"] = stderr
 
@@ -193,13 +306,13 @@ async def perform_upgrade(user_id: str) -> dict:
         return result
 
     # 2. 检查 poetry.lock 是否有改动
-    has_poetry_changes, poetry_files = await check_poetry_lock_changes()
+    has_poetry_changes, poetry_files = await check_poetry_lock_changes(cwd)
     result["has_poetry_changes"] = has_poetry_changes
 
     # 3. 如果有 poetry.lock 改动且配置为自动安装依赖，执行 poetry install
     if has_poetry_changes and config.version_manager_auto_install_deps:
         logger.info("Detected poetry.lock changes, installing dependencies...")
-        code, stdout, stderr = run_poetry_command(["install"])
+        code, stdout, stderr = await poetry_install(cwd)
         result["poetry_install_output"] = stdout
         result["poetry_install_error"] = stderr
 
@@ -208,14 +321,14 @@ async def perform_upgrade(user_id: str) -> dict:
             # 依赖安装失败不阻止后续操作，但记录错误
 
     # 4. 检查是否有数据库改动
-    has_db_changes, new_migrations = await check_migration_changes()
+    has_db_changes, new_migrations = await check_migration_changes(cwd)
     result["has_db_changes"] = has_db_changes
     result["new_migrations"] = new_migrations
 
     # 5. 如果有数据库改动且配置为自动升级，执行数据库升级
     if has_db_changes and config.version_manager_auto_upgrade_db:
         logger.info(f"Detected {len(new_migrations)} new migration(s), upgrading database...")
-        code, stdout, stderr = run_nb_command(["orm", "upgrade"])
+        code, stdout, stderr = await nb_orm_upgrade(cwd)
         result["db_upgrade_output"] = stdout
         result["db_upgrade_error"] = stderr
 

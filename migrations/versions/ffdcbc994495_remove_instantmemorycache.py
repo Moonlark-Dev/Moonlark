@@ -12,6 +12,7 @@ from collections.abc import Sequence
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy import inspect
 
 revision: str = "ffdcbc994495"
 down_revision: str | Sequence[str] | None = "ffdcbc994494"
@@ -22,7 +23,11 @@ depends_on: str | Sequence[str] | None = None
 def upgrade(name: str = "") -> None:
     if name:
         return
-    op.drop_table("nonebot_plugin_chat_instantmemorycache")
+    conn = op.get_bind()
+    inspector = inspect(conn)
+    # 表可能尚未创建（如果另一分支尚未迁移），此时跳过避免报错
+    if "nonebot_plugin_chat_instantmemorycache" in inspector.get_table_names():
+        op.drop_table("nonebot_plugin_chat_instantmemorycache")
 
 
 def downgrade(name: str = "") -> None:
