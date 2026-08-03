@@ -965,7 +965,11 @@ class MessageProcessor:
 
         async with self._pending_note_lock:
             try:
-                chat_history = await self.session.get_cached_messages_string(length=50, include_self_message=True)
+                chat_history = await self.session.get_cached_messages_string(
+                    length=50,
+                    include_self_message=True,
+                    exclude_content_prefixes=("今日计划已更新",),
+                )
                 if not chat_history.strip():
                     return
 
