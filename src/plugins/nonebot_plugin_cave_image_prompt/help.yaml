@@ -1,0 +1,10 @@
+plugin: cave_image_prompt
+commands:
+  cave-prompt:
+    description: help.d
+    details: help.i
+    usages:
+      - help.u1
+      - help.u2
+      - help.u3
+    category: setting
