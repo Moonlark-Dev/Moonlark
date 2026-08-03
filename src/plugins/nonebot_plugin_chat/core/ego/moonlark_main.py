@@ -189,10 +189,6 @@ class MoonlarkMain:
     async def on_private_message_replied(self, user_id: str) -> None:
         await self.proactive_chat.update_reply_status(user_id)
 
-    async def submit_sleep_request(self, session_id: str, future: Optional[asyncio.Future] = None) -> None:
-        if future and not future.done():
-            future.set_result("已提交睡觉申请，等待决策...")
-
     async def submit_sleep_decision(
         self,
         session_id: str,
@@ -205,32 +201,6 @@ class MoonlarkMain:
             result = await self.sleep_controller.submit_sleep_decision(deal_type, delay_minutes, reason)
             if future and not future.done():
                 future.set_result(result)
-        except Exception as e:
-            logger.exception(e)
-            if future and not future.done():
-                future.set_result(f"决策失败: {e}")
-
-    async def submit_action_request(
-        self,
-        session_id: str,
-        type: str,
-        info: str,
-        reason: str,
-        future: Optional[asyncio.Future] = None,
-    ) -> None:
-        if future and not future.done():
-            future.set_result(f"已收到动作请求「{type}: {info}」，正在处理")
-
-    async def submit_action_decision(
-        self,
-        session_id: str,
-        do: str,
-        duration: Optional[int] = None,
-        future: Optional[asyncio.Future] = None,
-    ) -> None:
-        try:
-            if future and not future.done():
-                future.set_result(f"已批准动作: {do}")
         except Exception as e:
             logger.exception(e)
             if future and not future.done():

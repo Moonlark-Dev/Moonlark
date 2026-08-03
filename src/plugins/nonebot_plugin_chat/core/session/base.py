@@ -3,7 +3,7 @@ import math
 import uuid
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
-from typing import Literal, Optional, TypeAlias
+from typing import Callable, Literal, Optional, TypeAlias
 
 from nonebot.adapters import Bot, Event
 from nonebot.adapters.onebot.v11.event import PokeNotifyEvent
@@ -26,6 +26,26 @@ MessageQueueItem: TypeAlias = (
     | tuple[Literal["event"], tuple[str, Literal["probability", "none", "all"]]]
 )
 
+
+class SessionQueue:
+    def __init__(self, on_item_queued: Callable[[], None]) -> None:
+        self._items: list[MessageQueueItem] = []
+        self._on_item_queued = on_item_queued
+
+    def append(self, item: MessageQueueItem) -> None:
+        self._items.append(item)
+        self._on_item_queued()
+
+    def pop(self, index: int = 0) -> MessageQueueItem:
+        return self._items.pop(index)
+
+    def __len__(self) -> int:
+        return len(self._items)
+
+    def __bool__(self) -> bool:
+        return bool(self._items)
+
+
 from ..processor import MessageProcessor
 
 
@@ -40,7 +60,6 @@ class BaseSession(ABC):
         self.bot = bot
         self.lang_str = lang_str
         self.tool_calls_history = []
-        self.message_queue: list[MessageQueueItem] = []
         self.cached_messages: list[CachedMessage] = []
         self.message_cache_counter = 0
         self.ghot_coefficient = 1
@@ -53,6 +72,7 @@ class BaseSession(ABC):
         self.last_interest: Optional[float] = None  # 缓存的 interest 值
         self.last_interest_update_time: Optional[datetime] = None  # interest 最后更新时间
         self.processor = MessageProcessor(self)
+        self.message_queue = SessionQueue(self.processor.notify_message_queued)
 
     # interest 衰减配置
     INTEREST_HALF_LIFE = 420  # 半衰期（秒），默认 7 分钟
@@ -389,36 +409,6 @@ class BaseSession(ABC):
             return result
         except asyncio.TimeoutError:
             return await self.text("sleep_decision.timeout")
-
-    async def start_action(self, type: str, info: str, reason: str) -> str:
-        """
-        向 Moonlark 申请执行一个动作
-
-        Args:
-            type: 动作类型，如 start_blog、sleep
-            info: 动作的补充信息
-            reason: 申请此动作的原因
-
-        Returns:
-            Moonlark 的决定结果
-        """
-        from ..ego import moonlark_main
-
-        result_future = asyncio.get_event_loop().create_future()
-
-        await moonlark_main.submit_action_request(
-            session_id=self.session_id,
-            type=type,
-            info=info,
-            reason=reason,
-            future=result_future,
-        )
-
-        try:
-            result = await asyncio.wait_for(result_future, timeout=120)
-            return result
-        except asyncio.TimeoutError:
-            return await self.text("start_action.timeout")
 
     async def process_timer(self) -> None:
         dt = datetime.now()
