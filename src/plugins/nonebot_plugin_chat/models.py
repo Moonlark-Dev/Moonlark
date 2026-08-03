@@ -135,6 +135,9 @@ class PrivateChatSession(Model):
     bot_id: Mapped[str] = mapped_column(String(128))  # 用户最后使用的 bot ID
     last_message_time: Mapped[float] = mapped_column(Float())  # 最后消息时间戳
     last_proactive_message_time: Mapped[Optional[float]] = mapped_column(Float(), nullable=True)  # 最后主动消息时间戳
+    unreplied_count: Mapped[int] = mapped_column(
+        Integer(), default=0
+    )  # 连续未回复主动私聊次数（用户任意私聊消息时重置）
 
 
 class BlogPost(Model):
