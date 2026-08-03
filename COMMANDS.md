@@ -116,6 +116,12 @@ Moonlark 权限控制 (仅 SUPERUSER 可用)
 - `/bag tidy (整理背包)`
 - `/bag move <from> <to> (移动物品)`
 - `/bag use <INDEX> [-c|--count <count>] (兼容旧物品使用入口，不支持礼物)`
+## `cave-prompt`: 私聊图片投稿询问开关
+
+私聊发送单张图片时，询问是否投稿到回声洞。默认关闭，用户可自行开启。
+- `/cave-prompt`
+- `/cave-prompt on`
+- `/cave-prompt off`
 ## `lang`: 本地化
 
 Moonlark 本地化设置
