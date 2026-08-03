@@ -94,6 +94,7 @@ plugins = [
     "nonebot_plugin_last_seen",
     "nonebot_plugin_command_stats",
     "nonebot_plugin_command_alias",
+    "nonebot_plugin_command_helper",
     "nonebot_plugin_wdym",
     "nonebot_plugin_wakeuprank",
     "nonebot_plugin_health_recovery",
