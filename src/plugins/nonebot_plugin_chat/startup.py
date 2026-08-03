@@ -65,6 +65,30 @@ async def blog_list(
 
 @driver.on_startup
 async def _init_moonlark_main():
-    from .core.ego.moonlark_main import init_moonlark_main
+    from .core.ego.moonlark_main import init_moonlark_main, moonlark_main
+    from nonebot_plugin_apscheduler import scheduler
 
     await init_moonlark_main()
+
+    @scheduler.scheduled_job("interval", minutes=5, id="moonlark_main_wake_check")
+    async def _wake_check():
+        """每 5 分钟检查是否是刚醒来，触发计划生成"""
+        if moonlark_main.state["sleep_mode"]:
+            return
+        # 清醒且困倦度低于唤醒阈值时触发计划生成（每天首次，0:00 重置标志）
+        sc = moonlark_main.sleep_controller
+        if sc.tiredness < 0.35 and hasattr(sc, "_morning_plan_scheduled") is False:
+            sc._morning_plan_scheduled = True
+            import asyncio
+
+            asyncio.create_task(moonlark_main.run_morning_plan())
+
+    @scheduler.scheduled_job("cron", hour=0, minute=0, id="moonlark_main_clear_plan_flag")
+    async def _clear_plan_flag():
+        moonlark_main.sleep_controller._morning_plan_scheduled = False
+
+    @scheduler.scheduled_job("cron", hour=3, id="moonlark_main_cleanup_plans")
+    async def _cleanup_plans():
+        from .core.ego.planner import Planner
+
+        Planner.cleanup_expired_plans()

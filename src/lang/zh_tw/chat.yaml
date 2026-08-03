@@ -225,9 +225,6 @@ command:
   switch:
     enabled: 已启用
     disabled: 已禁用
-  dropping:
-    enabled: 已启用礼物掉落
-    disabled: 已禁用礼物掉落
   mode:
     name:
       passionate: 热情
@@ -283,13 +280,12 @@ help:
   usage8: chat block user <add|remove|list> [用户ID] (管理屏蔽用户)
   usage9: chat block keyword <add|remove|list> [关键词] (管理屏蔽关键词)
   usage10: chat block list (查看所有屏蔽项)
-  usage15: chat dropping <on|off> (开关礼物掉落功能)
   usage11: chat ignore-mention <add|remove|list> [用户ID] (管理提及屏蔽用户)
   usage12: chat reset (清除当前会话所有历史消息并重置会话状态)
   usage13: chat stop (强制停止当前正在生成的响应)
   usage14: chat stats (查看时间统计数据)
-  usage16: chat compact [会话ID] (压缩消息队列，生成即时记忆后重置[SU])
-  usage17: chat mode [passionate|standard|silent] (查看或切换互动模式，切换将重置会话上下文)
+  usage15: chat compact [会话ID] (压缩消息队列，生成即时记忆后重置[SU])
+  usage16: chat mode [passionate|standard|silent] (查看或切换互动模式，切换将重置会话上下文)
 help_rua:
   description: 互动
   details: 通过 rua 指令与 Moonlark 进行亲密互动（如戳一戳、摸头、拥抱等）。不同的互动动作需要不同的好感度才能解锁。
@@ -730,12 +726,6 @@ tools_desc:
     nickname: "要查询人品值的群友的昵称。"
     user_not_found: "未找到昵称为 {} 的群友。"
     result: "{} 的人品值是 {}。"
-  request_action:
-    desc: |
-      向你的“EGO”申请执行一个内部行为（如吃饭、工作）。
-      **何时必须调用**：你被要求“去做某事”时调用，例如“去吃点东西”。不要用于机器人回复用户消息或获取外部知识。
-    do: '想要做的事的名字，例如："吃午饭"、"玩一会游戏"'
-    duration: '建议的持续时间（分钟），意识会话会参考这个值但不一定完全采纳。'
   change_sleep_status:
     desc: |
       处理犯困提示，决定是否准备睡觉。
@@ -745,10 +735,6 @@ tools_desc:
     deal_type: "决策类型：'ready' 表示准备睡觉，'delay' 表示延迟。"
     delay_minutes: "延迟的分钟数（仅当 deal_type 为 'delay' 时有效），最大 30 分钟。"
     reason: "延迟的原因（仅当 deal_type 为 'delay' 时可选）。"
-  request_sleep:
-    desc: |
-      向你的"EGO"申请睡觉。
-      **何时必须调用**：当你收到犯困提示时，调用此工具申请去睡觉。
   query_history_message:
     desc: |
       查询其他会话的历史消息和即时记忆。
@@ -1282,10 +1268,6 @@ sleep:
   drowsy_prompt: "[提示]: 你感到有些犯困了。"
 sleep:
   drowsy_prompt: "[提示]: 你感到有些犯困了。请使用 `change_sleep_status` 工具来决定是否准备睡觉。"
-request_action:
-  timeout: "动作申请超时，意识会话未在规定时间内做出决定。"
-request_sleep:
-  timeout: "睡觉申请超时，意识会话未在规定时间内做出决定。"
 sleep_decision:
   timeout: "睡眠决策超时，意识会话未在规定时间内做出决定。"
 recall_fetch_failed: "消息内容获取失败"

@@ -1,20 +1,6 @@
-#  Moonlark - A new ChatBot
-#  Copyright (C) 2026  Moonlark Development Team
-#
-#  This program is free software: you can redistribute it and/or modify
-#  it under the terms of the GNU Affero General Public License as published
-#  by the Free Software Foundation, either version 3 of the License, or
-#  (at your option) any later version.
-#
-#  This program is distributed in the hope that it will be useful,
-#  but WITHOUT ANY WARRANTY; without even the implied warranty of
-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#  GNU Affero General Public License for more details.
-#
-#  You should have received a copy of the GNU Affero General Public License
-#  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+"""EGO 相关的 REST API 路由（重写版）"""
 
-"""EGO 相关的 REST API 路由"""
+from datetime import datetime
 
 from fastapi import APIRouter, Query, Request
 from fastapi.exceptions import HTTPException
@@ -36,20 +22,155 @@ async def get_ego_status(request: Request):
     mood_intensity = get_status_manager().get_mood_retention()
     state = moonlark_main._collect_state()
     sleep_controller = moonlark_main.sleep_controller
-    self_action = moonlark_main.self_action
 
     return {
         "sleep_mode": moonlark_main.state["sleep_mode"],
         "tiredness": getattr(sleep_controller, "tiredness", 0),
         "sleep_begin_time": getattr(sleep_controller, "sleep_begin_time", None),
-        "current_activity": self_action.current_activity,
-        "activity_start_time": self_action.activity_start_time.isoformat() if self_action.activity_start_time else None,
-        "decision_history": moonlark_main.state["decision_history"],
-        "last_decision_time": moonlark_main.state.get("last_decision_time"),
         "mood_retention": mood_intensity,
         "mood": state.get("mood", {}),
         "blog_status": state.get("blog_status", {}),
-        "proactive_info": state.get("proactive_info", {}),
+        "plan": moonlark_main.planner.get_plan_text(),
+    }
+
+
+@router.get("/chat-monitor/ego/plan")
+async def get_ego_plan(request: Request):
+    """获取今日计划详情（时间段+内容列表）"""
+    await verify_admin_request(request)
+    from nonebot_plugin_chat.core.ego.moonlark_main import moonlark_main
+
+    plan_items = moonlark_main.planner.get_plan()
+    if not plan_items:
+        return {"items": []}
+
+    return {
+        "items": [
+            {
+                "period": item.period,
+                "content": item.content,
+            }
+            for item in plan_items
+        ],
+    }
+
+
+@router.get("/chat-monitor/ego/session-events")
+async def get_session_events(request: Request, date: str = Query(default="")):
+    """获取 EventCollector 收集的会话事件摘要"""
+    await verify_admin_request(request)
+    from nonebot_plugin_chat.core.ego.event_collector import event_collector
+
+    target_date = date if date else datetime.now().strftime("%Y-%m-%d")
+    summary = await event_collector.get_all_events_summary(date=target_date)
+    return {"date": target_date, "summary": summary}
+
+
+@router.get("/chat-monitor/ego/session-event-list")
+async def list_session_events(
+    request: Request,
+    limit: int = Query(50, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    date: str = Query(default=""),
+):
+    """分页列出会话事件"""
+    await verify_admin_request(request)
+    from nonebot_plugin_chat.models import SessionEvent
+    from sqlalchemy import func, select as sa_select
+
+    target_date = date if date else datetime.now().strftime("%Y-%m-%d")
+
+    async with get_session() as db_session:
+        count_query = sa_select(func.count()).select_from(SessionEvent).where(SessionEvent.date == target_date)
+        total = (await db_session.scalar(count_query)) or 0
+
+        query = (
+            sa_select(SessionEvent)
+            .where(SessionEvent.date == target_date)
+            .order_by(SessionEvent.created_at.desc())
+            .offset(offset)
+            .limit(limit)
+        )
+        result = await db_session.scalars(query)
+        events = result.all()
+
+    return {
+        "date": target_date,
+        "total": total,
+        "events": [
+            {
+                "id": e.id,
+                "session_id": e.session_id,
+                "content": e.content[:500],
+                "created_at": e.created_at.isoformat() if e.created_at else None,
+            }
+            for e in events
+        ],
+    }
+
+
+@router.get("/chat-monitor/ego/diaries")
+async def list_ego_diaries(
+    request: Request,
+    limit: int = Query(10, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+):
+    """列出日记记录（替代废弃的 AgentEvent）"""
+    await verify_admin_request(request)
+    from nonebot_plugin_chat.models import DiaryPost
+
+    async with get_session() as db_session:
+        count_query = select(func.count()).select_from(DiaryPost)
+        total = (await db_session.scalar(count_query)) or 0
+
+        query = select(DiaryPost).order_by(DiaryPost.created_at.desc()).offset(offset).limit(limit)
+        result = await db_session.scalars(query)
+        diaries = result.all()
+
+    return {
+        "total": total,
+        "diaries": [
+            {
+                "id": d.id,
+                "content": d.content[:500],
+                "keywords": d.keywords,
+                "created_at": d.created_at.isoformat() if d.created_at else None,
+                "expire_at": d.expire_at.isoformat() if d.expire_at else None,
+            }
+            for d in diaries
+        ],
+    }
+
+
+@router.get("/chat-monitor/ego/blogs")
+async def list_ego_blogs(
+    request: Request,
+    limit: int = Query(10, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+):
+    """列出博客记录"""
+    await verify_admin_request(request)
+    from nonebot_plugin_chat.models import BlogPost
+
+    async with get_session() as db_session:
+        count_query = select(func.count()).select_from(BlogPost)
+        total = (await db_session.scalar(count_query)) or 0
+
+        query = select(BlogPost).order_by(BlogPost.create_at.desc()).offset(offset).limit(limit)
+        result = await db_session.scalars(query)
+        blogs = result.all()
+
+    return {
+        "total": total,
+        "blogs": [
+            {
+                "id": b.id,
+                "title": b.title,
+                "content": b.content[:300],
+                "created_at": b.create_at.isoformat() if b.create_at else None,
+            }
+            for b in blogs
+        ],
     }
 
 
@@ -59,7 +180,7 @@ async def list_ego_events(
     limit: int = Query(100, ge=1, le=500),
     offset: int = Query(0, ge=0),
 ):
-    """列出 EGO 的智能体事件记录"""
+    """列出 EGO 的智能体事件记录（废弃中，保留兼容）"""
     await verify_admin_request(request)
     from nonebot_plugin_chat.models import AgentEvent
 
@@ -86,7 +207,7 @@ async def list_ego_events(
 
 @router.get("/chat-monitor/ego/events/{event_id}")
 async def get_ego_event(event_id: int, request: Request):
-    """获取单条 EGO 事件详情"""
+    """获取单条 EGO 事件详情（废弃中，保留兼容）"""
     await verify_admin_request(request)
     from nonebot_plugin_chat.models import AgentEvent
 

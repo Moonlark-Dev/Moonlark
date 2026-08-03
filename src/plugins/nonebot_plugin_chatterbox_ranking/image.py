@@ -11,7 +11,7 @@ plt.rcParams["font.sans-serif"] = ["Sarasa Gothic SC"]
 plt.rcParams["axes.unicode_minus"] = False
 
 
-async def render_bar(data: list[GroupChatterboxWithNickname], sender_id: str, group_id: str) -> bytes:
+async def render_bar(data: list[GroupChatterboxWithNickname], sender_id: str, title: str, subtitle: str) -> bytes:
     nicknames = [item.nickname for item in data]
     counts = [item.message_count for item in data]
     # 创建条形图
@@ -19,8 +19,8 @@ async def render_bar(data: list[GroupChatterboxWithNickname], sender_id: str, gr
     ax.bar(nicknames, counts)
     ax.set_xlabel(await lang.text("bar.x_label", sender_id))
     ax.set_ylabel(await lang.text("bar.y_label", sender_id))
-    fig.suptitle(await lang.text("bar.main_title", sender_id), fontsize=16, fontweight="bold")  # 主标题
-    ax.set_title(group_id, fontsize=12, pad=20)  # 副标题
+    fig.suptitle(title, fontsize=16, fontweight="bold")  # 主标题
+    ax.set_title(subtitle, fontsize=12, pad=20)  # 副标题
     plt.xticks(rotation=45, ha="right")
     plt.tight_layout()
 

@@ -5,7 +5,7 @@ import random
 import string
 from datetime import datetime, timezone
 
-from nonebot import on_command, logger
+from nonebot import on_command, logger, get_bots
 from nonebot.adapters.onebot.v11 import Bot as V11Bot
 from nonebot.adapters.qq import Bot as QQBot
 from nonebot.adapters import Bot, Event
@@ -32,21 +32,45 @@ def format_bind_message(code: str) -> str:
     return f"[MoonlarkBind:{code}]"
 
 
+BIND_SUCCESS_MESSAGE = (
+    "🎉 群绑定完成！该群已成功关联 OneBot 11 与 QQ 官方机器人。\n" "现在你可以在本群同时使用两种协议的特性喵～"
+)
+
+
+async def _notify_bind_success(bot: Bot, bind_record: GroupBind) -> None:
+    """绑定完成后通过 OneBot 11 Bot 发送成功消息"""
+    try:
+        if isinstance(bot, V11Bot):
+            await bot.send_group_msg(
+                group_id=int(bind_record.group_qq_number),
+                message=BIND_SUCCESS_MESSAGE,
+            )
+        elif isinstance(bot, QQBot):
+            # 当前是 QQBot 完成绑定，查找 OB11 bot 发送通知
+            for other_bot in get_bots().values():
+                if isinstance(other_bot, V11Bot):
+                    await other_bot.send_group_msg(
+                        group_id=int(bind_record.group_qq_number),
+                        message=BIND_SUCCESS_MESSAGE,
+                    )
+                    break
+    except Exception as e:
+        logger.error(f"[Bind] 发送绑定成功消息失败: {e}")
+
+
 async def get_group_id_from_event(bot: Bot, event: Event) -> str | None:
     """从事件中提取群 ID（OB11 用 QQ 号，QQ 官方 bot 用 openid）"""
     try:
         if isinstance(bot, V11Bot):
             # onebot 11: group_id 已经是 QQ 群号格式
-            group_id = event.get_session_id()
-            # 格式: onebot_v11_{qq_number}
+            group_id = getattr(event, "group_id", None)
             if group_id:
-                parts = group_id.rsplit("_", 1)
-                if len(parts) == 2:
-                    return parts[1]
+                return str(group_id)
         elif isinstance(bot, QQBot):
             # QQ 官方 bot: group_openid
-            if hasattr(event, "group_openid"):
-                return event.group_openid
+            group_openid = getattr(event, "group_openid", None)
+            if group_openid:
+                return group_openid
     except Exception as e:
         logger.warning(f"获取群 ID 失败: {e}")
     return None
@@ -113,6 +137,8 @@ async def try_process_bind_code(bot: Bot, event: Event, session_id: str) -> bool
             bind_record.bound_at = datetime.now(timezone.utc)
             bind_record.bind_code = None  # 清除验证码
             logger.info(f"[Bind] 群绑定完成: QQ号={bind_record.group_qq_number} <-> openid={bind_record.group_openid}")
+            # 通过 OneBot 11 Bot 在群中发送绑定成功消息
+            await _notify_bind_success(bot, bind_record)
         else:
             logger.info(f"[Bind] 绑定信息补全中: QQ号={bind_record.group_qq_number}, openid={bind_record.group_openid}")
 

@@ -31,7 +31,7 @@ async def _(session: async_scoped_session, user_id: str = get_user_id()) -> None
 
 class SetuRanking(WebRanking):
 
-    async def get_sorted_data(self) -> list[RankingData]:
+    async def get_sorted_data(self, user_id: str) -> list[RankingData]:
         async with get_session() as session:
             result = (
                 (await session.execute(select(models.UserData).order_by(models.UserData.count.desc()))).scalars().all()

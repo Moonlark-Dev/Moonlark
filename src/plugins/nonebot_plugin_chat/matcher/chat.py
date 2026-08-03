@@ -228,18 +228,18 @@ class CommandHandler:
             await lang.finish("command.no_argv", self.user_id)
 
     async def handle_ignore_mention(self) -> None:
-        if len(self.argv) < 3:
+        if len(self.argv) < 2:
             await lang.finish("command.no_argv", self.user_id)
 
-        action = self.argv[2]
+        action = self.argv[1]
         ignore_list = json.loads(self.group_config.ignore_mention_user)
 
         if action == "list":
             await lang.finish("command.ignore_mention.list", self.user_id, ", ".join(ignore_list))
 
-        if len(self.argv) < 4:
+        if len(self.argv) < 3:
             await lang.finish("command.no_argv", self.user_id)
-        target_id = self.argv[3]
+        target_id = self.argv[2]
 
         if action == "add":
             if target_id not in ignore_list:
@@ -257,22 +257,6 @@ class CommandHandler:
                 await lang.finish("command.ignore_mention.removed", self.user_id, target_id)
             else:
                 await lang.finish("command.ignore_mention.not_found", self.user_id, target_id)
-
-    async def handle_dropping(self) -> None:
-        """处理礼物掉落开关命令"""
-        if len(self.argv) < 2:
-            await lang.finish("command.no_argv", self.user_id)
-        action = self.argv[1]
-        if action == "on":
-            self.group_config.dropping_enabled = True
-            await self.merge_group_config()
-            await lang.finish("command.dropping.enabled", self.user_id)
-        elif action == "off":
-            self.group_config.dropping_enabled = False
-            await self.merge_group_config()
-            await lang.finish("command.dropping.disabled", self.user_id)
-        else:
-            await lang.finish("command.no_argv", self.user_id)
 
     async def handle_mode(self) -> None:
         """处理互动模式切换命令"""
@@ -349,8 +333,6 @@ class CommandHandler:
                 await self.handle_stop()
             case "stats":
                 await self.handle_stats()
-            case "dropping":
-                await self.handle_dropping()
             case "mode":
                 await self.handle_mode()
             case "compact":

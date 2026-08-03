@@ -131,5 +131,9 @@ class LinkParser:
         )
 
 
-async def parse_message_to_string(message: UniMessage, event: Event, bot: Bot, state: T_State, lang_str: str) -> str:
-    return await LinkParser(await _parse_message_to_string(message, event, bot, state, lang_str), lang_str).parse()
+async def parse_message_to_string(
+    message: UniMessage, event: Event, bot: Bot, state: T_State, lang_str: str, forward_depth: int = 0
+) -> str:
+    return await LinkParser(
+        await _parse_message_to_string(message, event, bot, state, lang_str, forward_depth=forward_depth), lang_str
+    ).parse()

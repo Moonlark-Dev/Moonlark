@@ -6,7 +6,7 @@
 注意：本模块使用算法生成建议，不调用 LLM。
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -28,7 +28,6 @@ class ActionAdvisor:
                 - blog_status: str
                 - last_blog_time: Optional[datetime]
                 - proactive_info: dict
-                - current_activity: Optional[str]
                 - mood: dict
             summary: 群聊总结文本
 
@@ -52,12 +51,7 @@ class ActionAdvisor:
         if proactive_suggestion:
             suggestions.append(proactive_suggestion)
 
-        # 4. 自主活动建议
-        self_action_suggestion = self._check_self_action_suggestion(state)
-        if self_action_suggestion:
-            suggestions.append(self_action_suggestion)
-
-        # 5. 心情相关建议
+        # 4. 心情相关建议
         mood_suggestion = self._check_mood_suggestion(state)
         if mood_suggestion:
             suggestions.append(mood_suggestion)
@@ -97,8 +91,7 @@ class ActionAdvisor:
             if cooldown_remaining > 0:
                 minutes = cooldown_remaining // 60
                 return f"博客冷却中，还需等待 {minutes} 分钟。"
-            else:
-                return '可以考虑写一篇博客（blog_action: {"start_new_topic": "主题"}）。'
+            return '可以考虑写一篇博客（blog_action: {"start_new_topic": "主题"}）。'
 
         return ""
 
@@ -133,18 +126,6 @@ class ActionAdvisor:
                         suggestions.append(f"用户 {user_id} 在 {int(minutes_ago)} 分钟前收到私聊但未回复。")
 
         return "\n".join(suggestions)
-
-    def _check_self_action_suggestion(self, state: dict) -> str:
-        """检查自主活动相关建议"""
-        current_activity = state.get("current_activity")
-        if current_activity:
-            remaining = state.get("current_activity_remaining", 0)
-            if remaining > 0:
-                minutes = remaining // 60
-                return f"当前正在「{current_activity}」，还剩约 {minutes} 分钟。" f"建议继续完成当前活动。"
-            return f"当前正在「{current_activity}」，建议继续完成。"
-
-        return "当前无自主活动，可以安排一个 self_action（如学习CSS、做拉伸、看番等）。"
 
     def _check_mood_suggestion(self, state: dict) -> str:
         """检查心情相关建议"""

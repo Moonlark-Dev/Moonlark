@@ -25,6 +25,8 @@ from nonebot import get_driver
 from nonebot_plugin_localstore import get_data_dir
 from nonebot_plugin_orm import get_session
 
+from sqlalchemy import select, delete
+
 from .models import MainAccountMapping
 
 logger = getLogger(__name__)
@@ -56,6 +58,36 @@ async def get_main_account(user_id: str) -> str:
         if mapping is not None:
             return mapping.main_account
     return user_id
+
+
+async def get_sub_accounts(main_account: str) -> list[str]:
+    """获取指定主账号的所有子账号 user_id 列表"""
+    await _ensure_migrated()
+    async with get_session() as session:
+        stmt = select(MainAccountMapping.user_id).where(MainAccountMapping.main_account == main_account)
+        return list(await session.scalars(stmt))
+
+
+async def remove_main_account(user_id: str) -> None:
+    """移除指定子账号的主账号绑定（解绑子账号）"""
+    async with get_session() as session:
+        mapping = await session.get(MainAccountMapping, {"user_id": user_id})
+        if mapping is not None:
+            await session.delete(mapping)
+            await session.commit()
+
+
+async def remove_all_sub_accounts(main_account: str) -> list[str]:
+    """移除指定主账号的所有子账号绑定，返回被移除的子账号 ID 列表"""
+    await _ensure_migrated()
+    async with get_session() as session:
+        stmt = select(MainAccountMapping.user_id).where(MainAccountMapping.main_account == main_account)
+        sub_ids = list(await session.scalars(stmt))
+        if sub_ids:
+            delete_stmt = delete(MainAccountMapping).where(MainAccountMapping.main_account == main_account)
+            await session.execute(delete_stmt)
+            await session.commit()
+    return sub_ids
 
 
 async def _migrate_from_files() -> None:
