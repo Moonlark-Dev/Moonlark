@@ -683,17 +683,6 @@ moonlark_main:
     ## 今日已发布
     {}
   tools:
-    start_action:
-      description: |
-        执行一个自主活动（如学习、研究、查找资料等）。
-        **调用时机参考：**
-        - 想要学习新知识或研究某个主题
-        - 需要通过 Agent 工具（搜索、浏览网页等）完成的任务
-        - 活动必须具体，例如"学习 CSS Flexbox 布局"而不是"学习 CSS"
-        - 同一时间只能进行一个活动
-      activity: |
-        活动的具体描述，必须足够具体。
-        例如："学习 CSS Flexbox 布局"、"研究 2024 年最新的自动驾驶算法"、"查找 YoASOBI 新单曲的信息"
     sleep: 
       description: |
         睡觉，醒来后恢复全部精力。
@@ -802,15 +791,6 @@ moonlark_main:
     error: "睡眠决策处理出错：{}"
 sleep:
   drowsy_prompt: "[提示]: 你感到有些犯困了。请使用 `change_sleep_status` 工具来决定是否准备睡觉。"
-
-start_action:
-  timeout: "动作请求超时，Moonlark 未在规定时间内做出决定。"
-
-request_action:
-  timeout: "动作申请超时，意识会话未在规定时间内做出决定。"
-
-request_sleep:
-  timeout: "睡觉申请超时，意识会话未在规定时间内做出决定。"
 
 sleep_decision:
   timeout: "睡眠决策超时，意识会话未在规定时间内做出决定。"

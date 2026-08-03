@@ -75,10 +75,9 @@ async def _init_moonlark_main():
         """每 5 分钟检查是否是刚醒来，触发计划生成"""
         if moonlark_main.state["sleep_mode"]:
             return
-        # 使用 sleep_controller 的 sleep_think_count 来判断是否刚醒来：
-        # 如果刚醒来（sleep_think_count 刚被重置为 0）且 t=0，触发计划
+        # 清醒且困倦度低于唤醒阈值时触发计划生成（每天首次，0:00 重置标志）
         sc = moonlark_main.sleep_controller
-        if sc.sleep_think_count == 0 and sc.tiredness < 0.35 and hasattr(sc, "_morning_plan_scheduled") is False:
+        if sc.tiredness < 0.35 and hasattr(sc, "_morning_plan_scheduled") is False:
             sc._morning_plan_scheduled = True
             import asyncio
 

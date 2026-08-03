@@ -221,13 +221,6 @@ class EgoDecisionResponse(BaseModel):
     private_chat: Optional[PrivateChatDecision] = None
 
 
-class SleepThinkResponse(BaseModel):
-    """SleepController request_think 的 LLM 返回格式"""
-
-    wake_up: bool = False
-    reason: str = ""
-
-
 class AgentEvent(Model):
     """智能体事件记录表，记录思考、动作、动作结果及外部事件"""
 

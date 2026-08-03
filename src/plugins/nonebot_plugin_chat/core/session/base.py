@@ -390,36 +390,6 @@ class BaseSession(ABC):
         except asyncio.TimeoutError:
             return await self.text("sleep_decision.timeout")
 
-    async def start_action(self, type: str, info: str, reason: str) -> str:
-        """
-        向 Moonlark 申请执行一个动作
-
-        Args:
-            type: 动作类型，如 start_blog、sleep
-            info: 动作的补充信息
-            reason: 申请此动作的原因
-
-        Returns:
-            Moonlark 的决定结果
-        """
-        from ..ego import moonlark_main
-
-        result_future = asyncio.get_event_loop().create_future()
-
-        await moonlark_main.submit_action_request(
-            session_id=self.session_id,
-            type=type,
-            info=info,
-            reason=reason,
-            future=result_future,
-        )
-
-        try:
-            result = await asyncio.wait_for(result_future, timeout=120)
-            return result
-        except asyncio.TimeoutError:
-            return await self.text("start_action.timeout")
-
     async def process_timer(self) -> None:
         dt = datetime.now()
         if self.mute_until and dt > self.mute_until:
