@@ -13,7 +13,7 @@ throwers:
   no_data: "暂无数据。"
 info:
   title: "砸鸡蛋信息"
-  text:
+  data:
     received: 被砸次数
     thrown: 砸鸡蛋次数
     max_attack: 最多攻击
