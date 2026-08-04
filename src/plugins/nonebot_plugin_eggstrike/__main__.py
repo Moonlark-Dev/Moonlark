@@ -17,6 +17,7 @@ from .models import AttackRecord
 from .utils import NotEnoughEggs, deduct_eggs
 
 EGG_ID = "moonlark:egg"
+DAMAGE_PER_EGG = 0.2
 SpanType = Literal["7d", "30d", "total"]
 
 alc = Alconna(
@@ -102,11 +103,10 @@ async def throw_egg(
         await session.commit()
 
     target_user = await get_user(target_id)
-    damage = egg_count // 5
     hp_lost = 0
-    if target_user.is_registered() and damage > 0:
+    if target_user.is_registered():
         before_hp = target_user.get_health()
-        await target_user.damage(damage)
+        await target_user.damage(egg_count * DAMAGE_PER_EGG)
         hp_lost = round(before_hp - target_user.get_health(), 1)
 
     nickname = await get_nickname(target_id, bot, event)

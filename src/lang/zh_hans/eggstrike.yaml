@@ -24,6 +24,6 @@ span_total: 总共
 help:
   description: 砸鸡蛋
   details: 向指定用户丢鸡蛋造成伤害，查看被砸 / 丢鸡蛋排行榜和个人砸鸡蛋信息。
-  usage1: "splat <@用户> [数量] (向指定用户丢鸡蛋，每 5 个鸡蛋减 1 HP)"
+  usage1: "splat <@用户> [数量] (向指定用户丢鸡蛋，每个鸡蛋减 0.2 HP)"
   usage2: "splat rank/throwers [7d|30d|total] (被砸 / 丢鸡蛋排行榜)"
   usage3: "splat info [@用户] (查询砸鸡蛋信息)"
