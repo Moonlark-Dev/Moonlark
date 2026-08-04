@@ -12,6 +12,13 @@ commands:
     usages:
       - help_whoami.usage
     category: setting
+  id:
+    description: help_getid.description
+    details: help_getid.details
+    usages:
+      - help_getid.usage
+      - help_getid.usage1
+    category: setting
   setnick:
     description: help_setnick.description
     details: help_setnick.details
