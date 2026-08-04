@@ -14,3 +14,12 @@ class AttackRecord(Model):
     count: Mapped[int] = mapped_column(default=1)
     egg_id: Mapped[str] = mapped_column(String(128))
     time: Mapped[datetime] = mapped_column(DateTime, index=True)
+
+
+class EggSelection(Model):
+    """用户当前选择的默认鸡蛋种类"""
+
+    __tablename__ = "nonebot_plugin_eggstrike_eggselection"
+
+    user_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    egg_id: Mapped[str] = mapped_column(String(128))
