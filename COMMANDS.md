@@ -122,6 +122,11 @@ Moonlark 权限控制 (仅 SUPERUSER 可用)
 - `/cave-prompt`
 - `/cave-prompt on`
 - `/cave-prompt off`
+## `id`: 查询用户 ID
+
+查看指定用户（或自己）的主账号 ID 和当前账号 ID
+- `/id (查看自己的 ID)`
+- `/id @用户 (查看指定用户的 ID)`
 ## `lang`: 本地化
 
 Moonlark 本地化设置
