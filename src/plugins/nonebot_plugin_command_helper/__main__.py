@@ -7,7 +7,7 @@ from nonebot_plugin_larkhelp.__main__ import get_menu_templates, get_templates, 
 from nonebot_plugin_larkhelp.__main__ import lang as larkhelp_lang
 from nonebot_plugin_larkutils import get_user_id
 from nonebot_plugin_openai import MessageFetcher
-from nonebot_plugin_openai.utils.message import generate_message
+from nonebot_plugin_openai.utils.message import generate_message, get_message_text
 
 commands_markdown: str = ""
 
@@ -91,13 +91,7 @@ async def handle_command(query: tuple[str, ...], user_id: str = get_user_id()) -
     except Exception:
         logger.error(f"获取指令列表失败: {traceback.format_exc()}")
         await lang.finish("commands_error", user_id)
-    system_prompt = (
-        "你是 Moonlark 机器人的指令助手。以下是 Moonlark 的全部指令列表（COMMANDS.md 的内容）：\n\n"
-        f"{markdown}\n\n"
-        "请根据上面的指令列表回答用户的问题。用户会询问某个指令或功能的具体用法，"
-        "请给出相关指令的完整用法、参数说明和示例。如果指令列表中找不到相关指令，请如实告知。"
-        "回答请使用简体中文，简洁清晰。"
-    )
+    system_prompt = await get_message_text("command_helper.md.jinja", markdown=markdown)
     try:
         fetcher = await MessageFetcher.create(
             [
