@@ -137,14 +137,6 @@ Moonlark 本地化设置
 
 将背包中的礼物赠送给 Moonlark
 - `/present <INDEX> [-c|--count <count>] (赠送礼物)`
-## `private-chat-whitelist`: 私聊 Chat 白名单管理
-
-管理可在私聊中使用 Chat 功能的用户白名单（仅限超级用户）
-- `/private-chat-whitelist (查看白名单)`
-- `/private-chat-whitelist add <用户ID> (添加用户)`
-- `/private-chat-whitelist remove <用户ID> (移除用户)`
-- `/private-chat-whitelist enable <用户ID> (启用)`
-- `/private-chat-whitelist disable <用户ID> (禁用)`
 ## `setnick`: 修改昵称
 
 修改自己在 Moonlark 中的昵称，不带参数则解锁昵称锁定
@@ -442,6 +434,15 @@ Moonlark 投票
 - `/model <模型名> (更换默认模型)`
 - `/model <模型名> <应用标识> (设置应用专用模型)`
 - `/model :default: <应用标识> (删除应用配置)`
+## `private-chat-whitelist`: 私聊 Chat 白名单管理
+
+管理可在私聊中使用 Chat 功能的用户白名单（仅限超级用户）
+> 此指令仅 Moonlark 管理员可用。
+- `/private-chat-whitelist (查看白名单)`
+- `/private-chat-whitelist add <用户ID> (添加用户)`
+- `/private-chat-whitelist remove <用户ID> (移除用户)`
+- `/private-chat-whitelist enable <用户ID> (启用)`
+- `/private-chat-whitelist disable <用户ID> (禁用)`
 ## `subaccount`: 管理子账号
 
 [管理员专用] 管理子账号绑定关系：查看绑定状态、绑定/解绑子账号
