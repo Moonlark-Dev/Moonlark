@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from typing import Any, Literal
 
 from nonebot.adapters import Bot, Event
-from nonebot_plugin_alconna import Alconna, Args, At, Match, Subcommand, UniMessage, on_alconna
+from nonebot_plugin_alconna import Alconna, Args, At, Match, Option, Subcommand, UniMessage, on_alconna
 from nonebot_plugin_items.utils.string import get_location_by_id
 from nonebot_plugin_larkuser import get_nickname, get_user, patch_matcher
 from nonebot_plugin_larkutils import get_user_id
@@ -14,9 +14,16 @@ from sqlalchemy import Row, func, select
 
 from .lang import lang
 from .models import AttackRecord
-from .utils import NotEnoughEggs, deduct_eggs
+from .utils import (
+    EGG_TYPES,
+    NotEnoughEggs,
+    deduct_eggs,
+    get_egg_type_name,
+    get_selected_egg_type,
+    resolve_egg_type,
+    set_selected_egg_type,
+)
 
-EGG_ID = "moonlark:egg"
 SpanType = Literal["7d", "30d", "total"]
 
 alc = Alconna(
@@ -24,7 +31,9 @@ alc = Alconna(
     Subcommand("rank", Args["span", SpanType, "total"]),
     Subcommand("throwers", Args["span", SpanType, "total"]),
     Subcommand("info", Args["target?", At]),
+    Subcommand("switch", Args["index", int]),
     Args["target?", At]["count?", int],
+    Option("--type|-t", Args["egg_type", str]),
 )
 splat = on_alconna(alc)
 patch_matcher(splat)
@@ -74,47 +83,85 @@ async def throw_egg(
     event: Event,
     target: Match[At],
     count: Match[int],
+    egg_type: Match[str],
     user_id: str = get_user_id(),
 ) -> None:
     if not target.available:
-        await lang.finish("throw.usage", user_id)
+        # /splat 不带参数：展示当前选择的鸡蛋种类和所有可用种类（类似 /present）
+        await show_egg_types(user_id)
+        return
+
     egg_count = count.result if count.available else 1
     if egg_count <= 0:
         await lang.finish("throw.invalid_count", user_id)
-    target_id = target.result.target
 
-    egg_location = get_location_by_id(EGG_ID)
+    # 解析鸡蛋种类：-t/--type 优先（只影响本次，不修改默认选择），否则使用已保存的选择
+    if egg_type.available:
+        egg_key = resolve_egg_type(egg_type.result)
+        if egg_key is None:
+            await lang.finish("throw.invalid_type", user_id, egg_type.result, len(EGG_TYPES), "、".join(EGG_TYPES))
+    else:
+        egg_key = await get_selected_egg_type(user_id)
+
+    target_id = target.result.target
+    egg_item_id, egg_damage = EGG_TYPES[egg_key]
+    egg_location = get_location_by_id(egg_item_id)
+    egg_name = await get_egg_type_name(egg_key, user_id)
+
     async with get_session() as session:
         try:
             await deduct_eggs(session, user_id, egg_location, egg_count)
         except NotEnoughEggs as e:
             await session.rollback()
-            await lang.finish("throw.not_enough", user_id, e.have)
+            await lang.finish("throw.not_enough", user_id, egg_name, e.have)
         session.add(
             AttackRecord(
                 user_id=user_id,
                 target_id=target_id,
                 count=egg_count,
-                egg_id=EGG_ID,
+                egg_id=egg_item_id,
                 time=datetime.now(),
             ),
         )
         await session.commit()
 
     target_user = await get_user(target_id)
-    damage = egg_count // 5
     hp_lost = 0
-    if target_user.is_registered() and damage > 0:
+    if target_user.is_registered():
         before_hp = target_user.get_health()
-        await target_user.damage(damage)
+        await target_user.damage(egg_count * egg_damage)
         hp_lost = round(before_hp - target_user.get_health(), 1)
 
     nickname = await get_nickname(target_id, bot, event)
     if hp_lost > 0:
-        await lang.finish("throw.success_damage", user_id, nickname, egg_count, hp_lost)
+        await lang.finish("throw.success_damage", user_id, nickname, egg_count, egg_name, hp_lost)
     if target_user.is_registered():
-        await lang.finish("throw.success", user_id, nickname, egg_count)
-    await lang.finish("throw.success_unregistered", user_id, nickname, egg_count)
+        await lang.finish("throw.success", user_id, nickname, egg_count, egg_name)
+    await lang.finish("throw.success_unregistered", user_id, nickname, egg_count, egg_name)
+
+
+async def show_egg_types(user_id: str) -> None:
+    """展示当前选择的鸡蛋种类和所有可用种类（类似 /present）"""
+    current = await get_selected_egg_type(user_id)
+    current_name = await get_egg_type_name(current, user_id)
+    lines = [await lang.text("list.title", user_id, current_name)]
+    for index, egg_key in enumerate(EGG_TYPES, start=1):
+        name = await get_egg_type_name(egg_key, user_id)
+        damage = EGG_TYPES[egg_key][1]
+        lines.append(await lang.text("list.item", user_id, index, name, damage))
+    lines.append(await lang.text("list.footer", user_id))
+    await splat.finish("\n".join(lines))
+
+
+@splat.assign("switch")
+async def switch_egg(index: int, user_id: str = get_user_id()) -> None:
+    keys = list(EGG_TYPES)
+    if not 1 <= index <= len(keys):
+        await lang.finish("switch.invalid_index", user_id, len(keys))
+    egg_key = keys[index - 1]
+    await set_selected_egg_type(user_id, egg_key)
+    name = await get_egg_type_name(egg_key, user_id)
+    await lang.finish("switch.success", user_id, name)
 
 
 @splat.assign("rank")

@@ -22,6 +22,16 @@ help_whoami:
   usage: whoami (查看帐号信息)
 matcher:
   not_registered: 您还没有注册，正在跳转注册流程……
+help_getid:
+  description: 查询用户 ID
+  details: 查看指定用户（或自己）的主账号 ID 和当前账号 ID
+  usage: id (查看自己的 ID)
+  usage1: id @用户 (查看指定用户的 ID)
+getid:
+  info: |
+    用户: {}
+    当前账号 ID: {}
+    主账号 ID: {}
 downed:
   prompt: "你已倒地（HP 为 0），暂时无法与 Moonlark 正常交流……约 {} 后复活。"
   revived: "你已复活！HP 已恢复至 5。"

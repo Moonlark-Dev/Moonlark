@@ -122,6 +122,11 @@ Moonlark 权限控制 (仅 SUPERUSER 可用)
 - `/cave-prompt`
 - `/cave-prompt on`
 - `/cave-prompt off`
+## `id`: 查询用户 ID
+
+查看指定用户（或自己）的主账号 ID 和当前账号 ID
+- `/id (查看自己的 ID)`
+- `/id @用户 (查看指定用户的 ID)`
 ## `lang`: 本地化
 
 Moonlark 本地化设置
@@ -394,9 +399,9 @@ Moonlark 投票
 ## `splat`: 砸鸡蛋
 
 向指定用户丢鸡蛋造成伤害，查看被砸 / 丢鸡蛋排行榜和个人砸鸡蛋信息。
-- `/splat <@用户> [数量] (向指定用户丢鸡蛋，每 5 个鸡蛋减 1 HP)`
-- `/splat rank/throwers [7d|30d|total] (被砸 / 丢鸡蛋排行榜)`
-- `/splat info [@用户] (查询砸鸡蛋信息)`
+- `/splat (查看鸡蛋种类及当前选择)`
+- `/splat switch <数字> (切换默认鸡蛋种类)`
+- `/splat <@用户> [数量] [-t/--type <数字|英文id>] (向指定用户丢鸡蛋，每个鸡蛋减 0.2 HP，臭鸡蛋减 1 HP)`
 ## `waifu`: 今日群老婆
 
 匹配你的每日群老婆！（仅支持群聊使用）
