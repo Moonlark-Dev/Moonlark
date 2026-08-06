@@ -1,10 +1,18 @@
 throw:
-  usage: "用法：{__prefix__}splat <@用户> [数量]"
+  usage: "用法：{__prefix__}splat <@用户> [数量] [-t/--type <数字|英文id>]"
   invalid_count: "鸡蛋数量必须大于 0。"
-  not_enough: "你的鸡蛋不够了！当前持有 {} 个鸡蛋。"
-  success_damage: "你向 {} 扔了 {} 个鸡蛋，砸掉了对方 {} 点 HP！"
-  success: "你向 {} 扔了 {} 个鸡蛋，没有造成伤害。"
-  success_unregistered: "你向 {} 扔了 {} 个鸡蛋，对方未注册，没有造成伤害。"
+  invalid_type: "无效的鸡蛋种类：{}。可使用数字 1-{} 或英文 id（{}）。"
+  not_enough: "你的 {} 不够了！当前持有 {} 个。"
+  success_damage: "你向 {} 扔了 {} 个{}，砸掉了对方 {} 点 HP！"
+  success: "你向 {} 扔了 {} 个{}，没有造成伤害。"
+  success_unregistered: "你向 {} 扔了 {} 个{}，对方未注册，没有造成伤害。"
+list:
+  title: "【当前选择的鸡蛋】{}"
+  item: "[{}] {} - 每个造成 {} 点伤害"
+  footer: "使用 {__prefix__}splat switch <数字> 切换默认鸡蛋"
+switch:
+  invalid_index: "无效的鸡蛋编号，可用编号 1-{}。"
+  success: "已将默认鸡蛋切换为 {}。"
 rank:
   title: "被砸排行榜（{}）"
   no_data: "暂无数据。"
@@ -24,6 +32,8 @@ span_total: 总共
 help:
   description: 砸鸡蛋
   details: 向指定用户丢鸡蛋造成伤害，查看被砸 / 丢鸡蛋排行榜和个人砸鸡蛋信息。
-  usage1: "splat <@用户> [数量] (向指定用户丢鸡蛋，每 5 个鸡蛋减 1 HP)"
-  usage2: "splat rank/throwers [7d|30d|total] (被砸 / 丢鸡蛋排行榜)"
-  usage3: "splat info [@用户] (查询砸鸡蛋信息)"
+  usage1: "splat (查看鸡蛋种类及当前选择)"
+  usage2: "splat switch <数字> (切换默认鸡蛋种类)"
+  usage3: "splat <@用户> [数量] [-t/--type <数字|英文id>] (向指定用户丢鸡蛋，每个鸡蛋减 0.2 HP，臭鸡蛋减 1 HP)"
+  usage4: "splat rank/throwers [7d|30d|total] (被砸 / 丢鸡蛋排行榜)"
+  usage5: "splat info [@用户] (查询砸鸡蛋信息)"
