@@ -39,6 +39,9 @@ class SessionQueue:
     def pop(self, index: int = 0) -> MessageQueueItem:
         return self._items.pop(index)
 
+    def __iter__(self):
+        return iter(self._items)
+
     def __len__(self) -> int:
         return len(self._items)
 
