@@ -17,7 +17,7 @@ require("nonebot_plugin_preview")
 require("nonebot_plugin_waiter")
 
 
-from .matchers import recorder, panel, whoami, register, setnick
+from .matchers import recorder, panel, whoami, register, setnick, getid
 from .matchers import subaccount_admin
 from .utils.matcher import patch_matcher
 from .utils.level import get_level_by_experience
