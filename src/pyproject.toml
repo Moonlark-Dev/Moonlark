@@ -103,7 +103,6 @@ packages = [
     { include = "nonebot_plugin_message_summary", from = "./plugins" },
     { include = "nonebot_plugin_chatterbox_ranking", from = "./plugins" },
     { include = "nonebot_plugin_chat", from = "./plugins" },
-    { include = "nonebot_plugin_cave_image_prompt", from = "./plugins" },
     { include = "nonebot_plugin_hkrpg_calendar", from = "./plugins" },
     { include = "nonebot_plugin_ba_calendar", from = "./plugins" },
     { include = "nonebot_plugin_everyday_wife", from = "./plugins" },

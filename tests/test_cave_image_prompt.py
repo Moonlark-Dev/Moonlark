@@ -27,7 +27,7 @@ def _image_with_text_message():
 
 @pytest.fixture
 async def engine():
-    from nonebot_plugin_cave_image_prompt.models import CaveImagePromptConfig
+    from nonebot_plugin_larkcave.models import CaveImagePromptConfig
 
     engine = create_async_engine("sqlite+aiosqlite://", echo=False)
     async with engine.begin() as conn:
@@ -48,7 +48,7 @@ async def db_session(engine):
 @pytest.fixture
 async def patched_get_session(monkeypatch, db_session):
     """把插件内的 get_session 替换为测试专用的 session"""
-    from nonebot_plugin_cave_image_prompt import __main__ as mod
+    from nonebot_plugin_larkcave.commands import prompt as mod
 
     def fake_get_session(**kwargs):
         return db_session
@@ -59,7 +59,7 @@ async def patched_get_session(monkeypatch, db_session):
 @pytest.mark.asyncio
 async def test_message_with_single_image() -> None:
     """单图片消息返回 True，图片+文本返回 False"""
-    from nonebot_plugin_cave_image_prompt.__main__ import message_with_single_image
+    from nonebot_plugin_larkcave.commands.prompt import message_with_single_image
 
     event = fake_group_message_event_v11(message=_image_only_message())
     assert message_with_single_image(event, _fake_bot()) is True
@@ -71,7 +71,7 @@ async def test_message_with_single_image() -> None:
 @pytest.mark.asyncio
 async def test_prompt_disabled_by_default(patched_get_session) -> None:
     """没有配置记录时默认关闭，投稿询问不会触发"""
-    from nonebot_plugin_cave_image_prompt.__main__ import is_prompt_enabled
+    from nonebot_plugin_larkcave.commands.prompt import is_prompt_enabled
 
     assert await is_prompt_enabled(user_id="user-1") is False
 
@@ -79,8 +79,8 @@ async def test_prompt_disabled_by_default(patched_get_session) -> None:
 @pytest.mark.asyncio
 async def test_prompt_enabled_after_user_toggle(patched_get_session, db_session) -> None:
     """用户开启后投稿询问生效"""
-    from nonebot_plugin_cave_image_prompt.__main__ import is_prompt_enabled
-    from nonebot_plugin_cave_image_prompt.models import CaveImagePromptConfig
+    from nonebot_plugin_larkcave.commands.prompt import is_prompt_enabled
+    from nonebot_plugin_larkcave.models import CaveImagePromptConfig
 
     db_session.add(CaveImagePromptConfig(user_id="user-1", enabled=True))
     await db_session.commit()
@@ -91,8 +91,8 @@ async def test_prompt_enabled_after_user_toggle(patched_get_session, db_session)
 @pytest.mark.asyncio
 async def test_prompt_disabled_after_user_toggle_off(patched_get_session, db_session) -> None:
     """用户再次关闭后投稿询问不再生效"""
-    from nonebot_plugin_cave_image_prompt.__main__ import is_prompt_enabled
-    from nonebot_plugin_cave_image_prompt.models import CaveImagePromptConfig
+    from nonebot_plugin_larkcave.commands.prompt import is_prompt_enabled
+    from nonebot_plugin_larkcave.models import CaveImagePromptConfig
 
     db_session.add(CaveImagePromptConfig(user_id="user-1", enabled=True))
     await db_session.commit()
