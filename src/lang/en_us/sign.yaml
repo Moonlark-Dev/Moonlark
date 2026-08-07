@@ -4,7 +4,7 @@ image:
   rank: 排名
   title: 签到成功！
   signdays_text: '{} 天'
-  rank_text: 第 {}
+  rank_text: '{}'
   vim: VimCoin
   exp: 经验
   uid: 'UID: {}'
