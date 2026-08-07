@@ -1131,38 +1131,38 @@ rich = "*"
 
 [[package]]
 name = "cookit"
-version = "0.13.3"
+version = "0.14.0"
 description = "A toolkit for self use."
 optional = false
 python-versions = "<4.0,>=3.10"
 groups = ["main"]
 files = [
-    {file = "cookit-0.13.3-py3-none-any.whl", hash = "sha256:5c30042c2dc2dcac7db5a9faa711a7f7200260a400ea20652327b0d99446d61c"},
-    {file = "cookit-0.13.3.tar.gz", hash = "sha256:5e34bbd24f9ec5cdb89f68bdcbba0f871742e119ce44ee49605363d02b806b3b"},
+    {file = "cookit-0.14.0-py3-none-any.whl", hash = "sha256:74140a0d430da17fef892bd685b2511c50dc8c99653ddb470c9195d7f8559f31"},
+    {file = "cookit-0.14.0.tar.gz", hash = "sha256:202f8fd6324dd8914df5fbbad780b64b10b1b7dc14dbda8bca3d540cf8217576"},
 ]
 
 [package.dependencies]
-anyio = {version = ">=4.8.0", optional = true, markers = "extra == \"playwright\""}
-jinja2 = {version = ">=3.1.5", optional = true, markers = "extra == \"jinja\""}
+anyio = {version = ">=4.14.2", optional = true, markers = "extra == \"playwright\""}
+jinja2 = {version = ">=3.1.6", optional = true, markers = "extra == \"jinja\""}
 loguru = {version = ">=0.7.3", optional = true, markers = "extra == \"loguru\""}
 nonebot-plugin-localstore = {version = ">=0.7.4", optional = true, markers = "extra == \"nonebot-localstore\""}
-nonebot2 = {version = ">=2.4.1", optional = true, markers = "extra == \"nonebot-localstore\""}
-playwright = {version = ">=1.50.0", optional = true, markers = "extra == \"playwright\""}
+nonebot2 = {version = ">=2.5.0", optional = true, markers = "extra == \"nonebot-localstore\""}
+playwright = {version = ">=1.62.0", optional = true, markers = "extra == \"playwright\""}
 pydantic = {version = ">=1.10.0,<2.5.0 || >2.5.0,<2.5.1 || >2.5.1,<3.0.0", optional = true, markers = "extra == \"pydantic\""}
-typing-extensions = ">=4.14.1"
-yarl = {version = ">=1.18.3", optional = true, markers = "extra == \"playwright\""}
+typing-extensions = ">=4.16.0"
+yarl = {version = ">=1.24.5", optional = true, markers = "extra == \"playwright\""}
 
 [package.extras]
-all = ["anyio (>=4.8.0)", "fleep (>=1.0.1)", "jinja2 (>=3.1.5)", "loguru (>=0.7.3)", "nonebot-plugin-alconna (>=0.54.2)", "nonebot-plugin-localstore (>=0.7.4)", "nonebot2 (>=2.4.1)", "playwright (>=1.50.0)", "pydantic (>=1.10.0,!=2.5.0,!=2.5.1,<3.0.0)", "yarl (>=1.18.3)"]
+all = ["anyio (>=4.14.2)", "fleep (>=1.0.1)", "jinja2 (>=3.1.6)", "loguru (>=0.7.3)", "nonebot-plugin-alconna (>=0.62.1)", "nonebot-plugin-localstore (>=0.7.4)", "nonebot2 (>=2.5.0)", "playwright (>=1.62.0)", "pydantic (>=1.10.0,!=2.5.0,!=2.5.1,<3.0.0)", "yarl (>=1.24.5)"]
 common = ["fleep (>=1.0.1)"]
-jinja = ["jinja2 (>=3.1.5)"]
+jinja = ["jinja2 (>=3.1.6)"]
 loguru = ["loguru (>=0.7.3)"]
-nonebot = ["nonebot-plugin-alconna (>=0.54.2)", "nonebot-plugin-localstore (>=0.7.4)", "nonebot2 (>=2.4.1)"]
-nonebot-alconna = ["nonebot-plugin-alconna (>=0.54.2)", "nonebot2 (>=2.4.1)"]
-nonebot-base = ["nonebot2 (>=2.4.1)"]
-nonebot-localstore = ["nonebot-plugin-localstore (>=0.7.4)", "nonebot2 (>=2.4.1)"]
-playwright = ["anyio (>=4.8.0)", "playwright (>=1.50.0)", "yarl (>=1.18.3)"]
-pw = ["anyio (>=4.8.0)", "playwright (>=1.50.0)", "yarl (>=1.18.3)"]
+nonebot = ["nonebot-plugin-alconna (>=0.62.1)", "nonebot-plugin-localstore (>=0.7.4)", "nonebot2 (>=2.5.0)"]
+nonebot-alconna = ["nonebot-plugin-alconna (>=0.62.1)", "nonebot2 (>=2.5.0)"]
+nonebot-base = ["nonebot2 (>=2.5.0)"]
+nonebot-localstore = ["nonebot-plugin-localstore (>=0.7.4)", "nonebot2 (>=2.5.0)"]
+playwright = ["anyio (>=4.14.2)", "playwright (>=1.62.0)", "yarl (>=1.24.5)"]
+pw = ["anyio (>=4.14.2)", "playwright (>=1.62.0)", "yarl (>=1.24.5)"]
 pyd = ["pydantic (>=1.10.0,!=2.5.0,!=2.5.1,<3.0.0)"]
 pydantic = ["pydantic (>=1.10.0,!=2.5.0,!=2.5.1,<3.0.0)"]
 
@@ -2601,14 +2601,14 @@ htmlsoup = ["BeautifulSoup4"]
 
 [[package]]
 name = "mako"
-version = "1.4.0"
+version = "1.4.1"
 description = "A super-fast templating language that borrows the best ideas from the existing templating languages."
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "mako-1.4.0-py3-none-any.whl", hash = "sha256:49473fd7145702c7b6f5c61ada3967c42ced4b1d27fb24deb43d61ffee2e8fca"},
-    {file = "mako-1.4.0.tar.gz", hash = "sha256:61aac9619e1325fa6e7be2f8dd463caef61247b3cd32a41a8692684548269ce3"},
+    {file = "mako-1.4.1-py3-none-any.whl", hash = "sha256:a359d9a94a541213958742b2698d0a7757bb83551767bc468a74b9905aba9617"},
+    {file = "mako-1.4.1.tar.gz", hash = "sha256:d7904710b662996425a21627710c4777c45053146942cf8a7aebf757c92b8c27"},
 ]
 
 [package.dependencies]
@@ -5940,14 +5940,14 @@ tests = ["cython", "littleutils", "pygments", "pytest", "typeguard"]
 
 [[package]]
 name = "starlette"
-version = "1.3.1"
+version = "1.4.1"
 description = "The little ASGI library that shines."
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "starlette-1.3.1-py3-none-any.whl", hash = "sha256:c7372aae11c3c3f26a42df7bd626cec2f47d03483d261d369516a615a53714c6"},
-    {file = "starlette-1.3.1.tar.gz", hash = "sha256:05d0213193f2fbaae60e2ecb593b4add4262ad4e46536b54abe36f11a71724e0"},
+    {file = "starlette-1.4.1-py3-none-any.whl", hash = "sha256:7d078e0fbefae0d2cecfb80a799d6fb84b1c0c6acd4f14ac79d17d0e7ec27f19"},
+    {file = "starlette-1.4.1.tar.gz", hash = "sha256:b7332de6e9375593a29ba9eee1e6ecfeb3eb2043e2e19a13b4b71da73ff35540"},
 ]
 
 [package.dependencies]
