@@ -4,7 +4,7 @@
 """
 
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Optional
 
 from nonebot import logger
@@ -83,14 +83,19 @@ class EventCollector:
         except Exception as e:
             logger.warning(f"[EventCollector] 收集失败: {e}")
 
-    async def get_session_events(self, session_id: str, date: Optional[str] = None) -> list[SessionEvent]:
-        """获取指定会话指定日期的事件"""
-        if date is None:
-            date = datetime.now().strftime("%Y-%m-%d")
+    async def get_session_events(self, session_id: str, start_date: Optional[str] = None) -> list[SessionEvent]:
+        """获取指定会话的事件，范围为 start_date（默认前一天）0:00 至今天"""
+        if start_date is None:
+            start_date = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
+        today = datetime.now().strftime("%Y-%m-%d")
         async with get_session() as db_session:
             result = await db_session.execute(
                 select(SessionEvent)
-                .where(SessionEvent.session_id == session_id, SessionEvent.date == date)
+                .where(
+                    SessionEvent.session_id == session_id,
+                    SessionEvent.date >= start_date,
+                    SessionEvent.date <= today,
+                )
                 .order_by(SessionEvent.created_at)
             )
             return list(result.scalars().all())

@@ -533,6 +533,18 @@ web_search:
   failed: "搜索请求失败，状态码: {}"
   error: "搜索过程中发生错误: {}"
 
+weather:
+  unavailable: "❌ 天气服务未配置（缺少和风天气 API Key），无法查询天气。"
+  location_not_found: "未找到城市「{}」的位置信息。"
+  failed: "查询「{}」的天气失败，请稍后再试。"
+  now: |
+    📍 {} 当前天气
+    天气：{}
+    温度：{}℃（体感 {}℃）
+    风向：{} {}级
+    湿度：{}%
+    数据更新时间：{}
+
 abbreviation:
   success: "可能的含义如下：\n{}"
   not_found: "未找到该缩写的含义"
