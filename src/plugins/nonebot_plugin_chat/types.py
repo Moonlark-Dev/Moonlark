@@ -22,7 +22,9 @@ class CachedMessage(TypedDict):
     message_id: str
     to_me: bool
     triggered_reply: bool
-    mq_text: NotRequired[str]  # 投递到 MessageQueue 的完整文本（含 additional_info），仅在 process_messages 中未阻塞时写入
+    mq_text: NotRequired[
+        str
+    ]  # 投递到 MessageQueue 的完整文本（含 additional_info），仅在 process_messages 中未阻塞时写入
 
 
 class GetTextFunc(Protocol):

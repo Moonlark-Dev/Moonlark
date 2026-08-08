@@ -365,7 +365,6 @@ class BaseSession(ABC):
         # 向会话发送事件，强制触发回复
         await self.post_event(event_prompt, "all")
 
-
     async def change_sleep_status(
         self,
         deal_type: Literal["ready", "delay"],
@@ -402,8 +401,8 @@ class BaseSession(ABC):
         await moonlark_main.submit_sleep_decision(
             session_id=self.session_id,
             deal_type=deal_type,
-            delay_minutes=delay_minutes, # type: ignore
-            reason=reason, # type: ignore
+            delay_minutes=delay_minutes,  # type: ignore
+            reason=reason,  # type: ignore
             future=result_future,
         )
 
