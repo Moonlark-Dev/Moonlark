@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Any, AsyncGenerator, Literal, Optional
 
 from nonebot.adapters import Event
 from nonebot.adapters.onebot.v11 import Bot as OB11Bot
+from nonebot.exception import ActionFailed
 from nonebot.log import logger
 from nonebot.typing import T_State
 from nonebot_plugin_alconna import Target, UniMessage
@@ -507,12 +508,6 @@ class MessageProcessor:
                 token_cost = math.ceil(text_length / 7)  # 向上取整
         else:
             token_cost = 0
-        # 扣除 token
-        if token_cost > 0:
-            self.token_bucket.consume(token_cost)
-
-        self.session.last_activate = datetime.now()
-        self.consecutive_message_count += 1
         message = await self.session.format_message(message_content)
         if reply_message_id is not None:
             reply_message_id = str(reply_message_id)
@@ -523,7 +518,20 @@ class MessageProcessor:
         bot = self.session.bot
         if isinstance(target, Target) and bot.adapter.get_name() == "QQ" and "qq.reply_seq" not in target.extra:
             target.extra["qq.reply_seq"] = random.randint(1, 1000000)
-        receipt = await message.send(target=target, bot=bot)
+        try:
+            receipt = await message.send(target=target, bot=bot)
+            # 扣除 token
+            if token_cost > 0:
+                self.token_bucket.consume(token_cost)
+            self.session.last_activate = datetime.now()
+            self.consecutive_message_count += 1
+        except ActionFailed as e:
+            # 回复消息 msg_id 已过期等错误：去掉 reply 后重试
+            # 注意：code 仅 QQ 适配器提供，其他适配器没有该字段
+            if reply_message_id is not None and getattr(e, "code", None) == 40034005:
+                await self.send_message(message_content, None)
+            else:
+                raise
         # 记录回应用时（使用 reply_message_id 查找对应的原消息）
         self._record_reply_timing(reply_message_id)
 
@@ -572,6 +580,7 @@ class MessageProcessor:
                 ),
             )
             + pending_notes_text
+            + (await self.session.text("message.reply_skipped", reply_message_id) if reply_skipped else "")
         )
 
     def _record_reply_timing(self, reply_message_id: str | None = None) -> None:
