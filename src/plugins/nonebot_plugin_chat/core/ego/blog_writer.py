@@ -82,7 +82,11 @@ class BlogWriter:
                 identify="BlogWriter - Writter",
                 reasoning_effort="medium",
             )
-            title = decision.topic.strip() if decision.topic and decision.topic.strip() else await self._generate_title(content)
+            title = (
+                decision.topic.strip()
+                if decision.topic and decision.topic.strip()
+                else await self._generate_title(content)
+            )
             await self._publish(title, content)
             return content
         except Exception as e:
