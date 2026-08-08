@@ -580,7 +580,6 @@ class MessageProcessor:
                 ),
             )
             + pending_notes_text
-            + (await self.session.text("message.reply_skipped", reply_message_id) if reply_skipped else "")
         )
 
     def _record_reply_timing(self, reply_message_id: str | None = None) -> None:

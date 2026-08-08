@@ -412,7 +412,6 @@ message:
     消息发送成功(消息ID: {})。
     本条消息字数: {}
     已连续发送消息数: {}{}
-  reply_skipped: "\n[警告] 消息已发送，但是 reply_message_id {} 未能应用（由于上游错误）。"
   stop_response: "[错误] 你已连续发送 {} 条消息，超过系统限制，本次发送已被阻止。请等待用户回复后再继续发言。"
   reaction_success: "已发送回应：{}"
   token_insufficient: 发送这条消息所需的 Token 不足，请等待用户回复后再继续发言。
