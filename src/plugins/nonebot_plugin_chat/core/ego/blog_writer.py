@@ -26,6 +26,10 @@ class BlogDecision(BaseModel):
     outline: str = ""
 
 
+class BlogTitle(BaseModel):
+    title: str
+
+
 class BlogWriter:
     def __init__(self, moonlark_main: "MoonlarkMain") -> None:
         self.moonlark_main = moonlark_main
@@ -78,11 +82,32 @@ class BlogWriter:
                 identify="BlogWriter - Writter",
                 reasoning_effort="medium",
             )
-            await self._publish(decision.topic, content)
+            title = (
+                decision.topic.strip()
+                if decision.topic and decision.topic.strip()
+                else await self._generate_title(content)
+            )
+            await self._publish(title, content)
             return content
         except Exception as e:
             logger.exception(f"[BlogWriter] Writter 失败: {e}")
             return None
+
+    async def _generate_title(self, content: str) -> str:
+        messages = await get_messages("blog_title", content=content)
+        try:
+            result = await fetch_json(
+                messages,
+                BlogTitle,
+                identify="BlogWriter - Title",
+                reasoning_effort="low",
+            )
+            title = result.title.strip()
+            if title:
+                return title
+        except Exception as e:
+            logger.exception(f"[BlogWriter] 标题生成失败: {e}")
+        return "今日的博客"
 
     async def _publish(self, title: str, content: str) -> None:
         try:
