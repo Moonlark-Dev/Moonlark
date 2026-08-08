@@ -3,7 +3,7 @@ import math
 import uuid
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
-from typing import Callable, Literal, Optional, TypeAlias
+from typing import Callable, Literal, Optional, TypeAlias, overload
 
 from nonebot.adapters import Bot, Event
 from nonebot.adapters.onebot.v11.event import PokeNotifyEvent
@@ -22,7 +22,7 @@ from ...models import Timer
 
 # 消息队列项类型定义
 MessageQueueItem: TypeAlias = (
-    tuple[Literal["message"], tuple[UniMessage, Event, T_State, str, str, datetime, bool, str]]
+    tuple[Literal["message"], tuple[UniMessage, Event, T_State, str, str, datetime, bool, str, str]]
     | tuple[Literal["event"], tuple[str, Literal["probability", "none", "all"]]]
 )
 
@@ -401,8 +401,8 @@ class BaseSession(ABC):
         await moonlark_main.submit_sleep_decision(
             session_id=self.session_id,
             deal_type=deal_type,
-            delay_minutes=delay_minutes,
-            reason=reason,
+            delay_minutes=delay_minutes,  # type: ignore
+            reason=reason,  # type: ignore
             future=result_future,
         )
 
