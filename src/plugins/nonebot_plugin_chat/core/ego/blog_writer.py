@@ -65,12 +65,16 @@ class BlogWriter:
             return None
 
     async def writter(self, decision: BlogDecision, events_text: str, plan_text: str) -> Optional[str]:
+        from ...utils.weather import get_daily_weather_text, get_weekday_text
+
         messages = await get_messages(
             "blog_writter",
             topic=decision.topic,
             outline=decision.outline,
             events=events_text,
             plan=plan_text,
+            weather=(await get_daily_weather_text()) or "",
+            weekday=get_weekday_text(),
         )
         try:
             content = await fetch_message(

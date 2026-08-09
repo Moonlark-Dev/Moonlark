@@ -52,10 +52,14 @@ class MessageQueue:
             return []
         return self.fetcher.session.messages
 
-    async def _create_fetcher(self) -> MessageFetcher:
+    async def _create_fetcher(self, inject_session_info: bool = True) -> MessageFetcher:
         messages = list(self.messages) if self.fetcher is not None else []
         if not messages or get_role(messages[0]) != "system":
             messages.insert(0, await self.processor.generate_system_prompt())
+            if inject_session_info:
+                session_info = await self.processor.generate_session_info()
+                if session_info:
+                    messages.insert(1, generate_message(session_info, "user"))
         fetcher = await MessageFetcher.create(
             messages,
             False,
@@ -136,7 +140,7 @@ class MessageQueue:
                         context_reset = True
                     else:
                         logger.info(f"群 {session_id} 的 system prompt 验证通过")
-                        self.fetcher = await self._create_fetcher()
+                        self.fetcher = await self._create_fetcher(inject_session_info=False)
                         self.fetcher.session.messages = restored_messages
             else:
                 context_reset = True
