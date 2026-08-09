@@ -23,6 +23,7 @@ from nonebot_plugin_openai.utils.image_generation import generate_image
 from nonebot_plugin_openai.utils.chat import fetch_message
 from nonebot_plugin_alconna import UniMessage
 from nonebot.log import logger
+from ..config import config
 from ..enums import MoodEnum
 from ..lang import lang
 from nonebot_plugin_openai.types import AsyncFunction, FunctionParameter, FunctionParameterWithEnum
@@ -44,6 +45,7 @@ from .tools import (
     vm_stop_task,
     is_vm_available,
     fetch_history_messages,
+    get_weather,
 )
 from ..utils.emoji import QQ_EMOJI_MAP
 from .note_manager import check_note, get_context_notes
@@ -69,6 +71,10 @@ class ToolManager:
 
     async def web_search(self, keyword: str) -> str:
         return await web_search(keyword, self.text)
+
+    async def get_weather(self, city: str) -> str:
+        """获取指定城市的实时天气（和风天气）"""
+        return await get_weather(city, self.text)
 
     async def search_abbreviation(self, text: str) -> str:
         return await search_abbreviation(text, self.text)
@@ -198,6 +204,10 @@ class ToolManager:
 
         # web_search
         tools.append(self.web_search)
+
+        # get_weather (仅在配置了和风天气 API Key 时启用)
+        if config.qweather_api_key:
+            tools.append(self.get_weather)
 
         # request_wolfram_alpha
         tools.append(request_wolfram_alpha)

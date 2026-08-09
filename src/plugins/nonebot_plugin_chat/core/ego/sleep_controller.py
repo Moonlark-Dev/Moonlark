@@ -71,7 +71,9 @@ class SleepController:
         )
         return self.tiredness
 
-    async def handle_mention(self, chat_context: list, session_name: str = "", nickname: str = "") -> bool:
+    async def handle_mention(
+        self, chat_context: list, session_name: str = "", nickname: str = "", session_id: str = ""
+    ) -> bool:
         context_text = "\n".join(chat_context[-5:]) if chat_context else ""
 
         try:
@@ -97,7 +99,7 @@ class SleepController:
                     if nickname:
                         parts.append(f"用户: {nickname}")
                     reason += f" ({', '.join(parts)})"
-                await self.wake_up(reason)
+                await self.wake_up(reason, exclude_session_id=session_id)
                 return True
             return False
 
@@ -167,7 +169,7 @@ class SleepController:
         logger.info(f"[SleepController] 延迟 {delay_minutes} 分钟结束，进入睡眠")
         await self.handle_tired()
 
-    async def wake_up(self, reason: str = "") -> None:
+    async def wake_up(self, reason: str = "", exclude_session_id: str = "") -> None:
         # 唤醒时取消未触发的延迟入睡任务
         for task in list(self._pending_sleep_tasks):
             task.cancel()
@@ -181,3 +183,19 @@ class SleepController:
             logger.info(f"[SleepController] 已唤醒, 原因: {reason}")
         else:
             logger.info("[SleepController] 已唤醒")
+        # 唤醒后重置各会话上下文，视为新一轮会话创建（重新生成会话信息）
+        # 排除正在处理唤醒的会话，避免清空触发唤醒的上下文
+        await self._reset_all_sessions(exclude_session_id=exclude_session_id)
+
+    async def _reset_all_sessions(self, exclude_session_id: str = "") -> None:
+        """重置所有活动会话的消息队列（内存 + 数据库），可排除指定会话"""
+        from ..session import groups
+
+        for session_id, session in groups.items():
+            if session_id == exclude_session_id:
+                continue
+            try:
+                await session.processor.openai_messages._reset_and_clear_db(session_id)
+                logger.info(f"[SleepController] 唤醒后已重置会话 {session_id} 的上下文")
+            except Exception as e:
+                logger.warning(f"[SleepController] 唤醒后重置会话 {session_id} 失败: {e}")
