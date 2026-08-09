@@ -75,10 +75,17 @@ class MoonlarkMain:
             logger.warning(f"[MoonlarkMain] 获取备忘录失败: {e}")
             return "获取备忘录失败。"
 
-    async def handle_mention(self, chat_context: list, session_name: str = "", nickname: str = "") -> bool:
+    async def handle_mention(
+        self, chat_context: list, session_name: str = "", nickname: str = "", session_id: str = ""
+    ) -> bool:
         if not self.state["sleep_mode"]:
             return False
-        return await self.sleep_controller.handle_mention(chat_context, session_name=session_name, nickname=nickname)
+        return await self.sleep_controller.handle_mention(
+            chat_context,
+            session_name=session_name,
+            nickname=nickname,
+            session_id=session_id,
+        )
 
     def _collect_state(self) -> dict:
         mood, mood_reason = self.status_manager.get_status()
@@ -104,9 +111,16 @@ class MoonlarkMain:
 
             from nonebot_plugin_openai.utils.chat import fetch_json, fetch_message
             from nonebot_plugin_openai.utils.message import get_messages
+            from ...utils.weather import get_daily_weather_text, get_weekday_text
 
             diary_time_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            diary_messages = await get_messages("diary", context=context, current_time=diary_time_str)
+            diary_messages = await get_messages(
+                "diary",
+                context=context,
+                current_time=diary_time_str,
+                weather=(await get_daily_weather_text()) or "",
+                weekday=get_weekday_text(),
+            )
             diary_text = await fetch_message(
                 diary_messages,
                 identify="MoonlarkMain - Generate Diary",

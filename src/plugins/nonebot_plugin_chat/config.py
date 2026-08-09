@@ -1,5 +1,7 @@
+from typing import Any, Optional
+
 from nonebot import get_plugin_config
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 
 class RuaReactionConfig(BaseModel):
@@ -30,6 +32,18 @@ class Config(BaseModel):
     forward_summary_threshold: int = 2000
     # Meme-Search 外部梗图源配置
     meme_search_base_url: str = "https://meme-search.xxtg666.top"
+    # 和风天气 API Key（https://dev.qweather.com），不填写则天气相关功能不启用
+    qweather_api_key: str = ""
+    # Moonlark 所在地区的经纬度，不填写则不启用所在地每日天气
+    moonlark_latitude: Optional[float] = None
+    moonlark_longitude: Optional[float] = None
+
+    @field_validator("moonlark_latitude", "moonlark_longitude", mode="before")
+    @classmethod
+    def _empty_str_to_none(cls, value: Any) -> Any:
+        if value == "":
+            return None
+        return value
 
 
 config = get_plugin_config(Config)

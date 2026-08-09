@@ -411,7 +411,7 @@ class MessageProcessor:
                 # 重要事件：强制唤醒，使用事件文本作为原因
                 message_contents = self.get_message_content_list()
                 event_reason = message_contents[-1] if message_contents else "重要事件"
-                await moonlark_main.sleep_controller.wake_up(event_reason)
+                await moonlark_main.sleep_controller.wake_up(event_reason, exclude_session_id=self.session.session_id)
                 logger.info(f"[Processor] 重要事件强制唤醒: {event_reason[:100]}")
             else:
                 # 被提及：通过 LLM 决策是否唤醒
@@ -424,6 +424,7 @@ class MessageProcessor:
                     recent_msgs,
                     session_name=session_name,
                     nickname=nickname,
+                    session_id=self.session.session_id,
                 )
                 if not should_wake:
                     return
@@ -878,13 +879,41 @@ class MessageProcessor:
         return await get_message(
             "system",
             "chat.md.jinja",
-            session_name=await self.session.get_session_name(),
             image_placeholder=self.ENABLE_EMBEDDED_IMAGE,
             is_group_session=not is_private,
             is_private=is_private,
             session_nickname=getattr(self.session, "nickname", None),
             interaction_mode=await self.get_interaction_mode(),
         )
+
+    async def generate_session_info(self) -> str:
+        """生成会话信息（紧随 system prompt 注入，仅在会话创建/重置时生成）
+
+        包含：会话名称、当前日期与星期、所在地每日天气（已配置时）、
+        此前的事件（前一天 0:00 至今）与当天的计划。
+        """
+        try:
+            from ..utils.weather import get_daily_weather_text, get_weekday_text
+
+            parts = []
+            if self.session.get_session_type() == "group":
+                session_name = (await self.session.get_session_name()) or "未知名称群聊"
+                parts.append(f"会话名称：{session_name}")
+            now = datetime.now()
+            parts.append(f"当前日期：{now.strftime('%Y-%m-%d')} {get_weekday_text(now)}")
+            weather_text = await get_daily_weather_text()
+            if weather_text:
+                parts.append(f"今日天气：{weather_text}")
+
+            from .ego.moonlark_main import moonlark_main
+
+            context = await moonlark_main.get_session_context(self.session_id)
+            if context:
+                parts.append(context)
+            return "\n\n".join(parts)
+        except Exception as e:
+            logger.debug(f"生成会话信息失败: {e}")
+            return ""
 
     async def handle_recall(self, message_id: str, message_content: str) -> None:
         await self.session.add_event(

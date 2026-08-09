@@ -8,5 +8,9 @@
 
 ## 当天各会话的事件和话题
 {{ events }}
+{% if weather %}
+## 当天的天气
+{{ weather }}
+{% endif %}
 
-请以 Moonlark 的第一人称视角写一篇生动有趣的博客。
+今天是{{ weekday }}，请以 Moonlark 的第一人称视角写一篇生动有趣的博客。
