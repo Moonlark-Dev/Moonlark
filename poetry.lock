@@ -52,14 +52,14 @@ docs = ["sphinx (==7.2.6)", "sphinx-mdinclude (==0.5.3)"]
 
 [[package]]
 name = "alembic"
-version = "1.19.0"
+version = "1.19.1"
 description = "A database migration tool for SQLAlchemy."
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "alembic-1.19.0-py3-none-any.whl", hash = "sha256:cf839d3849116aab3cc047e09c6968b9bd6b2fde61b6bb7c1e97352fe5503580"},
-    {file = "alembic-1.19.0.tar.gz", hash = "sha256:6487c612fc719dcfa22b17d2dd5b2b458929641e6aa2f0b65b135727f5e6d501"},
+    {file = "alembic-1.19.1-py3-none-any.whl", hash = "sha256:b39018cb3d9413a19cbd54cf3c02ad33998641f0538eb77413a488a21c3e14be"},
+    {file = "alembic-1.19.1.tar.gz", hash = "sha256:e0fca0518118c78acc493e31bcb5402f190057aaf6df8b5b95ce94c4789cf648"},
 ]
 
 [package.dependencies]
@@ -5677,14 +5677,14 @@ unleash = ["UnleashClient (>=6.0.1)"]
 
 [[package]]
 name = "setuptools"
-version = "83.0.0"
+version = "84.0.0"
 description = "Most extensible Python build backend with support for C/C++ extension modules"
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "setuptools-83.0.0-py3-none-any.whl", hash = "sha256:29b23c360f22f414dc7336bb39178cc7bcbf6021ed2733cde173f09dba19abb3"},
-    {file = "setuptools-83.0.0.tar.gz", hash = "sha256:025bccbbf0fa05b6192bc64ae1e7b16e001fd6d6d4d5de03c97b1c1ade523bef"},
+    {file = "setuptools-84.0.0-py3-none-any.whl", hash = "sha256:51a52592b3b99e102b609654876bd65f19f999935166d1352678931132b0c670"},
+    {file = "setuptools-84.0.0.tar.gz", hash = "sha256:f4695c21257f0d9b537ec2692c941d02ee143b7cc1276941349a546573b2ef73"},
 ]
 
 [package.extras]
@@ -5940,14 +5940,14 @@ tests = ["cython", "littleutils", "pygments", "pytest", "typeguard"]
 
 [[package]]
 name = "starlette"
-version = "1.5.0"
+version = "1.6.0"
 description = "The little ASGI library that shines."
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "starlette-1.5.0-py3-none-any.whl", hash = "sha256:9ca76b47375e56f279d7c66651e801ef11167e58557c429be7ec55702d81d4bb"},
-    {file = "starlette-1.5.0.tar.gz", hash = "sha256:7d5f63a7e4981a9587fc2a0fbc44cfb6cc4c9181d8c26d7e948871ed5da8c3df"},
+    {file = "starlette-1.6.0-py3-none-any.whl", hash = "sha256:a86dd39d14bb45f85a3d18525215a9ef0cfd1f192ac793220e72598c90335f0c"},
+    {file = "starlette-1.6.0.tar.gz", hash = "sha256:d4e3ac5e546444960c710297a3c9fc3f7ebae1b7e963f3d36173b49da535be9b"},
 ]
 
 [package.dependencies]
@@ -6429,14 +6429,14 @@ test = ["aiohttp (>=3.10.5)", "flake8 (>=6.1,<7.0)", "mypy (>=0.800)", "psutil",
 
 [[package]]
 name = "virtualenv"
-version = "21.7.2"
+version = "21.7.3"
 description = "Virtual Python Environment builder"
 optional = false
 python-versions = ">=3.9"
 groups = ["dev"]
 files = [
-    {file = "virtualenv-21.7.2-py3-none-any.whl", hash = "sha256:7c7f4638881064cc57edd2dd55b307cf4da35bb3f6df6f036b5e8b658f6b5bf5"},
-    {file = "virtualenv-21.7.2.tar.gz", hash = "sha256:8bf688bd159b32c3bd6966555c5a2605a07724b93671c32cfe3e45ac28058987"},
+    {file = "virtualenv-21.7.3-py3-none-any.whl", hash = "sha256:26dfda3c34f29bf1a3ca167426a67658d59979b9954e705aef60a5f724ce1773"},
+    {file = "virtualenv-21.7.3.tar.gz", hash = "sha256:5e9e287f5c808070eea3b40403d3368248e64b24f1b60bd9a36e85ac841d2c3e"},
 ]
 
 [package.dependencies]
