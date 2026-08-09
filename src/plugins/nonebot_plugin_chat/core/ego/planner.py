@@ -48,7 +48,13 @@ class Planner:
         try:
             events_text = await self._gather_context()
             notes_text = await self.moonlark_main.get_relevant_notes()
-            messages = await get_messages("planner_morning", events=events_text, notes=notes_text)
+            messages = await get_messages(
+                "planner_morning",
+                events=events_text,
+                notes=notes_text,
+                weather=(await self._get_weather_text()),
+                weekday=self._get_weekday_text(),
+            )
             result = await fetch_json(messages, PlanResponse, identify="Planner - Morning", reasoning_effort="medium")
             self._plan = result.plan
             self._save()
@@ -73,6 +79,8 @@ class Planner:
                 plan=plan_json,
                 events=events_text,
                 notes=notes_text,
+                weather=(await self._get_weather_text()),
+                weekday=self._get_weekday_text(),
             )
             result = await fetch_json(messages, PlanResponse, identify="Planner - Afternoon", reasoning_effort="medium")
             self._plan = result.plan
@@ -139,6 +147,18 @@ class Planner:
         if day is None:
             day = (date.today() - timedelta(days=1)).isoformat()
         return await event_collector.get_all_events_summary(date=day)
+
+    @staticmethod
+    async def _get_weather_text() -> str:
+        from ...utils.weather import get_daily_weather_text
+
+        return (await get_daily_weather_text()) or ""
+
+    @staticmethod
+    def _get_weekday_text() -> str:
+        from ...utils.weather import get_weekday_text
+
+        return get_weekday_text()
 
     async def _notify_sessions(self, event_text: str) -> None:
         from ..session import groups
