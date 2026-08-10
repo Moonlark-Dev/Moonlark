@@ -3,8 +3,9 @@
 在困倦度低于阈值时，每小时检查一次，使用 LLM 寻找发送者和主题。
 """
 
-from datetime import datetime
-from typing import TYPE_CHECKING, Optional
+from collections import deque
+from datetime import datetime, timezone
+from typing import TYPE_CHECKING, Any, Optional
 
 from nonebot import logger
 from nonebot_plugin_openai.utils.chat import fetch_json
@@ -24,6 +25,8 @@ PROACTIVE_CHECK_INTERVAL = 3600
 COOLDOWN_TIERS = (0.301, 12.0), (0.151, 24.0), (0.051, 36.0)
 # 连续未回复主动私聊达到该次数后不再发起
 MAX_UNREPLIED_COUNT = 2
+# 决策历史保留条数（供 chat-monitor 展示）
+DECISION_HISTORY_LIMIT = 100
 
 
 def get_cooldown_hours(favorability: float) -> float:
@@ -47,6 +50,14 @@ class ProactiveChatController:
     def __init__(self, moonlark_main: "MoonlarkMain") -> None:
         self.moonlark_main = moonlark_main
         self._last_check_time: Optional[datetime] = None
+        # 每次检查的决策记录（供 chat-monitor 展示与调试）
+        self.decision_history: deque[dict[str, Any]] = deque(maxlen=DECISION_HISTORY_LIMIT)
+
+    def _record(self, **info: Any) -> None:
+        """记录一次主动私聊检查的决策过程，供 chat-monitor 展示。"""
+        self.decision_history.append(
+            {"time": datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds"), **info},
+        )
 
     async def check_and_send(self) -> None:
         now = datetime.now()
@@ -55,22 +66,49 @@ class ProactiveChatController:
         self._last_check_time = now
 
         if self.moonlark_main.state["sleep_mode"]:
+            self._record(stage="sleep_mode")
             return
         if self.moonlark_main.sleep_controller.tiredness >= 0.74:
+            self._record(stage="tiredness", tiredness=round(self.moonlark_main.sleep_controller.tiredness, 3))
             return
 
         try:
             candidates = await self._get_candidates()
             if not candidates:
+                self._record(stage="no_candidates")
                 return
 
+            candidate_names = [info["nickname"] for info in candidates.values()]
             decision = await self._llm_decide(candidates)
-            if decision is None or decision.skip:
+            if decision is None:
+                self._record(
+                    stage="decision",
+                    error="LLM 决策失败",
+                    candidates_count=len(candidates),
+                    candidates=candidate_names,
+                )
+                return
+            if decision.skip:
+                self._record(
+                    stage="decision",
+                    skip=True,
+                    candidates_count=len(candidates),
+                    candidates=candidate_names,
+                )
                 return
 
-            await self._send_proactive(decision)
+            result = await self._send_proactive(decision)
+            self._record(
+                stage="send",
+                skip=False,
+                target_nickname=decision.target_nickname,
+                topic=decision.topic,
+                candidates_count=len(candidates),
+                result=result,
+            )
         except Exception as e:
             logger.exception(f"[ProactiveChat] 检查失败: {e}")
+            self._record(stage="error", error=str(e))
 
     async def _get_candidates(self) -> dict[str, dict]:
         from nonebot_plugin_larkuser.utils.user import get_user
