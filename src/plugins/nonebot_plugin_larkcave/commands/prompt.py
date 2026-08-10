@@ -1,19 +1,34 @@
+#  Moonlark - A new ChatBot
+#  Copyright (C) 2026  Moonlark Development Team
+#
+#  This program is free software: you can redistribute it and/or modify
+#  it under the terms of the GNU Affero General Public License as published
+#  by the Free Software Foundation, either version 3 of the License, or
+#  (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU Affero General Public License for more details.
+#
+#  You should have received a copy of the GNU Affero General Public License
+#  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+# ##############################################################################
+
 from nonebot import on_message
 from nonebot.adapters import Event
 from nonebot.adapters.qq import Bot
 from nonebot.rule import Rule
-from nonebot_plugin_alconna import Alconna, Args, Image, UniMessage, Text, on_alconna
-from nonebot_plugin_larklang import LangHelper
+from nonebot.typing import T_State
+from nonebot_plugin_alconna import Alconna, Args, Image, Text, UniMessage, on_alconna
 from nonebot_plugin_larkutils import get_user_id
 from nonebot_plugin_larkutils.user import private_message as is_private_message
 from nonebot_plugin_larkuser import prompt
-from nonebot_plugin_larkcave.utils.post import post_cave
-from nonebot.typing import T_State
 from nonebot_plugin_orm import async_scoped_session, get_session
 
-from .models import CaveImagePromptConfig
-
-lang = LangHelper()
+from ..lang import lang
+from ..models import CaveImagePromptConfig
+from ..utils.post import post_cave
 
 
 def message_with_single_image(event: Event, bot: Bot) -> bool:
@@ -52,26 +67,29 @@ async def handle_cave_prompt(action: str, user_id: str = get_user_id()) -> None:
             else:
                 entry.enabled = True
             await session.commit()
-            await lang.finish("enabled", user_id)
+            await lang.finish("prompt.enabled", user_id)
         elif action == "off":
             if entry is None:
                 session.add(CaveImagePromptConfig(user_id=user_id, enabled=False))
             else:
                 entry.enabled = False
             await session.commit()
-            await lang.finish("disabled", user_id)
+            await lang.finish("prompt.disabled", user_id)
         elif action == "":
-            await lang.finish("status_on" if entry is not None and entry.enabled else "status_off", user_id)
+            await lang.finish(
+                "prompt.status_on" if entry is not None and entry.enabled else "prompt.status_off",
+                user_id,
+            )
         else:
-            await lang.finish("usage", user_id)
+            await lang.finish("prompt.usage", user_id)
 
 
 async def ask_cave_submission(user_id: str) -> bool:
     """询问用户是否要投稿到 Cave"""
-    yes_text = await lang.text("yes", user_id)
-    no_text = await lang.text("no", user_id)
+    yes_text = await lang.text("prompt.yes", user_id)
+    no_text = await lang.text("prompt.no", user_id)
     return await prompt(
-        await lang.text("ask", user_id),
+        await lang.text("prompt.ask", user_id),
         user_id,
         checker=lambda text: text.strip() in [yes_text, no_text] or text.strip().lower() in ["y", "yes", "n", "no"],
         parser=lambda text: text.strip() == yes_text or text.strip().lower() in ["y", "yes"],
@@ -82,7 +100,11 @@ async def ask_cave_submission(user_id: str) -> bool:
 
 @image_prompt.handle()
 async def handle_image_prompt(
-    session: async_scoped_session, event: Event, bot: Bot, state: T_State, user_id: str = get_user_id()
+    session: async_scoped_session,
+    event: Event,
+    bot: Bot,
+    state: T_State,
+    user_id: str = get_user_id(),
 ) -> None:
     """处理单图片消息，询问是否投稿到 Cave"""
     image = UniMessage.generate_without_reply(event=event)[0]
@@ -92,4 +114,4 @@ async def handle_image_prompt(
     if await ask_cave_submission(user_id):
         content: list[Image | Text] = [image]
         await post_cave(content, user_id, event, bot, state, session)
-    await lang.finish("cancelled", user_id)
+    await lang.finish("prompt.cancelled", user_id)

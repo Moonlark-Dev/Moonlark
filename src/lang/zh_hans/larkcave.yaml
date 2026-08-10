@@ -30,6 +30,8 @@ help:
   u5: cave-g <ID> (查看自己投稿的条目)
   u6: cave-s (统计投稿者)
   u7: cave-n <回复合并转发> (投稿合并转发消息)
+  u8: cave-prompt (查看私聊图片投稿询问开关状态)
+  u9: cave-prompt on|off (开启/关闭私聊图片投稿询问)
 remove:
   no_result: 回声洞不存在或已删除！
   no_permission: 权限不足！
@@ -73,3 +75,15 @@ node:
   invalid: 无效的合并转发
   check_failed_1: '不支持解析此类合并转发：存在多个不同的发送者'
   check_failed_2: '不支持解析此类合并转发：存在不被支持的消息段'
+prompt:
+  ask: |
+    检测到您发送了一张图片！是否要投稿到回声洞？
+    请回复 "是"、"否"、"y" 或 "n"
+  "yes": "是"
+  "no": "否"
+  cancelled: "已取消投稿"
+  enabled: "已开启私聊图片投稿询问喵～之后私聊发送单张图片时，会询问是否投稿到回声洞"
+  disabled: "已关闭私聊图片投稿询问喵～私聊发图将正常交给 AI 聊天处理"
+  status_on: "当前已开启私聊图片投稿询问喵～发送 /cave-prompt off 可关闭"
+  status_off: "当前已关闭私聊图片投稿询问喵～发送 /cave-prompt on 可开启"
+  usage: "用法：/cave-prompt on|off（不带参数可查看当前状态）"
