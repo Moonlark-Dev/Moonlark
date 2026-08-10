@@ -31,6 +31,7 @@ async def get_ego_status(request: Request):
         "mood": state.get("mood", {}),
         "blog_status": state.get("blog_status", {}),
         "plan": moonlark_main.planner.get_plan_text(),
+        "decision_history": list(moonlark_main.proactive_chat.decision_history),
     }
 
 
