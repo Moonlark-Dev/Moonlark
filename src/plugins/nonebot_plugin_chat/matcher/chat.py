@@ -18,7 +18,7 @@
 import json
 
 from nonebot import on_command
-from nonebot.adapters import Bot, Message
+from nonebot.adapters import Bot, Event, Message
 from nonebot.matcher import Matcher
 from nonebot.params import CommandArg
 from nonebot_plugin_larkutils import get_group_id, get_user_id
@@ -39,12 +39,14 @@ class CommandHandler:
         bot: Bot,
         session: async_scoped_session,
         message: Message,
+        event: Event,
         group_id: str,
         user_id: str,
     ):
         self.matcher = mathcer
         self.bot = bot
         self.session = session
+        self.event = event
         self.group_id = group_id
         self.user_id = user_id
         self.argv = message.extract_plain_text().split(" ")
@@ -54,7 +56,11 @@ class CommandHandler:
         from nonebot_plugin_openai import is_ai_enabled_for_group
 
         if not await is_ai_enabled_for_group(self.bot, self.group_id):
-            await lang.finish("command.not_available", self.user_id)
+            # 私聊白名单用户（如 QQ 适配器 C2C）：允许使用 chat 指令（reset 等）
+            from ..utils.group import enabled_private_chat
+
+            if not await enabled_private_chat(self.event, self.user_id):
+                await lang.finish("command.not_available", self.user_id)
         self.group_config = (await self.session.get(ChatGroup, {"group_id": self.group_id})) or ChatGroup(
             group_id=self.group_id,
             enabled=False,
@@ -356,9 +362,10 @@ async def _(
     bot: Bot,
     session: async_scoped_session,
     message: Message = CommandArg(),
+    event: Event = Event(),
     group_id: str = get_group_id(),
     user_id: str = get_user_id(),
 ) -> None:
-    handler = CommandHandler(matcher, bot, session, message, group_id, user_id)
+    handler = CommandHandler(matcher, bot, session, message, event, group_id, user_id)
     await handler.setup()
     await handler.handle()
