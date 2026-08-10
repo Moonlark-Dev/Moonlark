@@ -361,8 +361,8 @@ async def _(
     matcher: Matcher,
     bot: Bot,
     session: async_scoped_session,
+    event: Event,
     message: Message = CommandArg(),
-    event: Event = Event(),
     group_id: str = get_group_id(),
     user_id: str = get_user_id(),
 ) -> None:
