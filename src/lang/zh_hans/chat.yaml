@@ -364,6 +364,13 @@ rua:
   action_list_item: "[{}] {}"
   rank_title: rua 次数排行榜
   rank_no_data: 暂无 rua 数据。
+  chat_disabled_only_poke: 当前群未启用 Chat，本群只能使用「戳一戳」动作喵～
+  chat_disabled_replies:
+    - 你戳了戳 Moonlark。(´,,•ω•,,)♡
+    - 喵呜～被戳到啦！(=ↀωↀ=)
+    - 戳戳戳！Moonlark 的耳朵抖了抖 ฅ^•ﻌ•^ฅ
+    - 哎呀，又被戳了喵～(,,•﹏•,,)
+    - Moonlark 歪头看着你：还要再戳一下吗？
   refusable_hint: "（该动作可被拒绝，交互 ID: {}。如果你不喜欢，可以通过 `deal_interaction_request` 工具躲开。）"
   reply_hint: "[供回复的消息ID: {}]"
   bite_msg: "*Moonlark 躲开了你的手，并咬了一口"

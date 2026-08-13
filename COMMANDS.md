@@ -116,12 +116,6 @@ Moonlark 权限控制 (仅 SUPERUSER 可用)
 - `/bag tidy (整理背包)`
 - `/bag move <from> <to> (移动物品)`
 - `/bag use <INDEX> [-c|--count <count>] (兼容旧物品使用入口，不支持礼物)`
-## `cave-prompt`: 私聊图片投稿询问开关
-
-私聊发送单张图片时，询问是否投稿到回声洞。默认关闭，用户可自行开启。
-- `/cave-prompt`
-- `/cave-prompt on`
-- `/cave-prompt off`
 ## `id`: 查询用户 ID
 
 查看指定用户（或自己）的主账号 ID 和当前账号 ID
@@ -317,6 +311,8 @@ Moonlark 投票
 - `/cave-g <ID> (查看自己投稿的条目)`
 - `/cave-s (统计投稿者)`
 - `/cave-n <回复合并转发> (投稿合并转发消息)`
+- `/cave-prompt (查看私聊图片投稿询问开关状态)`
+- `/cave-prompt on|off (开启/关闭私聊图片投稿询问)`
 ## `chat`: 主动水群
 
 基于 LLM 的主动水群功能，可以尝试用于活跃群气氛。（启用后将会收集、处理、并储存启用群聊的聊天记录和群员的昵称，仅支持非 QQ 官方节点）

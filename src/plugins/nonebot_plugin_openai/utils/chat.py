@@ -103,7 +103,17 @@ class LLMRequestSession(Generic[T2]):
             self._in_request = False
             await report_openai_history(self.messages, self.identify, self.model)
 
+    def _sanitize_messages(self) -> None:
+        """清理消息中的空 tool_calls 数组（部分 Provider 会拒绝 tool_calls=[]）"""
+        for msg in self.messages:
+            if isinstance(msg, dict):
+                if msg.get("tool_calls") == []:
+                    msg.pop("tool_calls", None)
+            elif getattr(msg, "tool_calls", None) == []:
+                msg.tool_calls = None
+
     async def create_completion(self) -> ChatCompletion:
+        self._sanitize_messages()
         tool_choice = self.tool_choice if self.func_list else "none"
         if not self.response_format:
             completion = await client.chat.completions.create(
@@ -155,6 +165,8 @@ class LLMRequestSession(Generic[T2]):
             logger.warning(f"请求取得了空回复")
             return
         logger.debug(f"{response=}")
+        if response.message.tool_calls == []:
+            response.message.tool_calls = None
         self.messages.append(response.message)
         self._content_yielded = False
         if response.message.content:

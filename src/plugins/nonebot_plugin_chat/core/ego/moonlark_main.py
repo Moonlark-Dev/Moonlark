@@ -98,6 +98,7 @@ class MoonlarkMain:
                 "intensity": self.status_manager.get_mood_retention(),
                 "reason": mood_reason or "",
             },
+            "decision_history": list(self.proactive_chat.decision_history),
         }
 
     async def generate_diary(self) -> None:
