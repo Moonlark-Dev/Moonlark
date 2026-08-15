@@ -24,12 +24,13 @@ from nonebot_plugin_orm import async_scoped_session
 
 from nonebot_plugin_larkcave.__main__ import cave
 from nonebot_plugin_larkutils import get_user_id, get_group_id
+from nonebot_plugin_larkuser import prompt
 from nonebot_plugin_larkcave.lang import lang
 from nonebot_plugin_larkcave.utils.post import post_cave
 
 
-@cave.assign("add.content")
-async def _(
+@cave.assign("add")
+async def handle_add(
     session: async_scoped_session,
     event: Event,
     bot: Bot,
@@ -41,8 +42,15 @@ async def _(
     try:
         content = cast(list[Image | Text], list(result.subcommands["add"].args["content"]))
     except KeyError:
-        await lang.finish("add.empty", user_id)
-        return
+        content_text = await prompt(
+            await lang.text("add.prompt", user_id),
+            user_id,
+            timeout=60,
+        )
+        if not content_text.strip():
+            await lang.finish("add.empty", user_id)
+            return
+        content = [Text(content_text)]
     await post_cave(content, user_id, event, bot, state, session, group_id=group_id)
 
 
