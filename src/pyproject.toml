@@ -86,6 +86,7 @@ packages = [
     { include = "nonebot_plugin_quick_math", from = "./plugins" },
     { include = "nonebot_plugin_ranking", from = "./plugins" },
     { include = "nonebot_plugin_render", from = "./plugins" },
+    { include = "nonebot_plugin_roll", from = "./plugins" },
     { include = "nonebot_plugin_sign", from = "./plugins" },
     { include = "nonebot_plugin_shop", from = "./plugins" },
     { include = "nonebot_plugin_time_progress", from = "./plugins" },

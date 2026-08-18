@@ -7,6 +7,7 @@ GOODS: list[tuple[str, int]] = [
     ("moonlark:cat_teaser", 60),
     ("moonlark:cat_can", 90),
     ("moonlark:egg", 15),
+    ("moonlark:dice", 30),
 ]
 
 # 购买时的随机替换表：物品 ID -> [(概率, 替换物品 ID), ...]
