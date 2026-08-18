@@ -14,6 +14,9 @@ class Dice(Item):
     async def getDefaultName(self, stack: ItemStack) -> str:
         return await self.getText("dice.name", stack.user_id)
 
+    async def getDescription(self, stack: ItemStack) -> str:
+        return await self.getText("dice.description", stack.user_id)
+
 
 LOCATION = ResourceLocation("moonlark", "dice")
 

@@ -15,17 +15,17 @@ patch_matcher(roll)
 
 def get_dice_value() -> int:
     """掷一个加权二十面骰子，返回点数（1-20）"""
-    c = randint(0, 200)
+    c = randint(0, 200)  # nosec B311
     if 193 <= c <= 200:  # 20
         return 20
     if 183 <= c <= 192:  # 18-19
-        return randint(18, 19)
+        return randint(18, 19)  # nosec B311
     if 153 <= c <= 182:  # 15-17
-        return randint(15, 17)
+        return randint(15, 17)  # nosec B311
     if 106 <= c <= 152:  # 10-14
-        return randint(10, 14)
+        return randint(10, 14)  # nosec B311
     if 16 <= c <= 105:  # 2-9
-        return randint(2, 9)
+        return randint(2, 9)  # nosec B311
     if c <= 15:  # 1
         return 1
     return 0

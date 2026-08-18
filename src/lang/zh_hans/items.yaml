@@ -15,6 +15,7 @@ rotten_egg:
   name: 臭鸡蛋
 dice:
   name: 二十面骰子
+  description: "命运的二十面体，掷出的每一面都可能是惊喜或惊吓！"
 
 fav:
   name: Moonlark 的好感
