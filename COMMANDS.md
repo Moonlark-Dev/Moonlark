@@ -35,6 +35,7 @@
 数独解谜游戏，提供不同难度级别的数独谜题。游戏可以错误检查功能，帮助用户学习数独技巧。- `/sudoku new <num-holes> (生成指定空格数的数独)`- `/sudoku change <row> <column> <value> (修改数独指定行列数字)`- `/sudoku erase <row> <column> (去除数独指定行列数字)`- `/sudoku hint (提供第一个空格的提示)`- `/sudoku reset (重置数独为初始状态)`- `/sudoku answer (展示答案)`- `/sudoku undo (撤销操作)`- `/sudoku redo (重做操作)`## `team`: 设置战斗队伍
 
 （该功能仍在测试中）设置战斗有关模块使用的队伍，配合 character 指令使用。- `/team (查看当前队伍)`- `/team set <位置> <index> (成员入队)`## `tol`: 关灯挑战
+
 尝试关掉所有的灯_一盏灯被开启或关闭时它上、下、左、右边的灯的状态也会发生改变。- `/tol`## `wordle`: WORDLE
 
 猜单词的游戏，支持多人游玩。
@@ -43,7 +44,7 @@
 
 Moonlark 权限控制 (仅 SUPERUSER 可用)- `/access {ban|pardon} <主体ID> (封禁/解封用户)`- `/access {block|unblock} <权限> <主体ID> (添加/移除权限)`## `bag`: 背包
 
-查看，处理，使用背包中的物品- `/bag (查看背包)`- `/bag overflow list (查看 overflow 区物品列表)`- `/bag overflow show <INDEX> (查看 overflow 区物品)`- `/bag overflow get <INDEX> [count] (获取 overflow 区物品)`- `/bag show <INDEX> (查看物品)`- `/bag drop <INDEX> [count] (丢弃物品)`- `/bag tidy (整理背包)`- `/bag move <from> <to> (移动物品)`- `/bag use <INDEX> [-c|--count <count>] (兼容旧物品使用入口，不支持礼物)`## `id`: 查询用户 ID
+查看，处理，使用背包中的物品- `/bag (查看背包)`- `/bag overflow list (查看 overflow 区物品列表)`- `/bag overflow show <INDEX> (查看 overflow 区物品)`- `/bag overflow get <INDEX> [count] (获取 overflow 区物品)`- `/bag show <INDEX> (查看物品)`- `/bag drop <INDEX> [count] (丢弃物品)`- `/bag tidy (整理背包)`- `/bag move <from> <to> (移动物品)`## `id`: 查询用户 ID
 
 查看指定用户（或自己）的主账号 ID 和当前账号 ID- `/id (查看自己的 ID)`- `/id @用户 (查看指定用户的 ID)`## `lang`: 本地化
 
