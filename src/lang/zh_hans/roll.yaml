@@ -1,0 +1,17 @@
+help:
+  description: 掷骰子
+  details: 掷出二十面骰子，点数越高奖励越多，掷出 1 还会倒扣 vi！
+  usage1: roll (掷 1 个二十面骰子)
+  usage2: roll <count> (掷多个二十面骰子，并显示每个骰子的点数与总和)
+invalid_count: 掷骰数量必须大于 0
+too_many: 一次最多只能掷 {} 个骰子
+result_single: 你掷出了一个二十面骰子，点数为 {}。{}
+result_multi: 你掷出了 {} 个二十面骰子，点数分别为 {}，总和为 {}。{}
+outcome:
+  gain: 获得了 {}vi！
+  loss: 损失了 {}vi！
+  none: 一无所获……
+effect:
+  crit: 大成功！
+  success: 成功！
+  fail: 大失败！

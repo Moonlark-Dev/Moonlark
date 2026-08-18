@@ -18,8 +18,6 @@
 
 import hashlib
 import json
-import os
-import shutil
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from nonebot import get_app, get_driver
@@ -52,50 +50,29 @@ app.include_router(ego_router)
 @get_driver().on_startup
 async def _ensure_indexes():
     """创建 Note 和 AgentEvent 表的必要索引（如果不存在）。"""
-    await _deploy_frontend()
-
-
-async def _deploy_frontend():
-    """将 chat-monitor 前端构建产物部署到静态文件目录。"""
-    src_dir = "/vol2/@apphome/trim.openclaw/data/workspace/chat-monitor/dist"
-    dst_dir = "/var/www/monitor"
-    if not os.path.isdir(src_dir):
-        logger.warning(f"[ChatMonitor] 前端构建产物不存在: {src_dir}")
-        return
-    try:
-        # 复制 index.html
-        shutil.copy2(os.path.join(src_dir, "index.html"), os.path.join(dst_dir, "index.html"))
-        # 复制 favicon
-        favicon_src = os.path.join(src_dir, "favicon.svg")
-        if os.path.exists(favicon_src):
-            shutil.copy2(favicon_src, os.path.join(dst_dir, "favicon.svg"))
-        # 复制 assets
-        src_assets = os.path.join(src_dir, "assets")
-        dst_assets = os.path.join(dst_dir, "assets")
-        # 删除旧的 assets 目录（如果存在）并重建
-        if os.path.isdir(dst_assets):
-            shutil.rmtree(dst_assets)
-        shutil.copytree(src_assets, dst_assets)
-        logger.info("[ChatMonitor] 前端产物已部署到 /var/www/monitor")
-    except Exception as exc:
-        logger.warning(f"[ChatMonitor] 前端部署失败: {exc}")
-    try:
-        async with get_session() as db_session:
-            # Note.created_time 用于 ORDER BY DESC
-            await db_session.execute(
-                text("CREATE INDEX IF NOT EXISTS ix_note_created_time " "ON nonebot_plugin_chat_note (created_time)")
-            )
-            # AgentEvent.created_at 已有 index=True，但确保它存在
-            await db_session.execute(
-                text(
-                    "CREATE INDEX IF NOT EXISTS ix_agent_event_created_at "
-                    "ON nonebot_plugin_chat_diaryentry (created_at)"
+    indexes = [
+        ("nonebot_plugin_chat_note", "ix_note_created_time", "created_time"),
+        ("nonebot_plugin_chat_diaryentry", "ix_agent_event_created_at", "created_at"),
+    ]
+    async with get_session() as db_session:
+        for table, index_name, column in indexes:
+            try:
+                # 通过 information_schema 检查索引是否存在（兼容 MySQL 8.0+）
+                result = await db_session.execute(
+                    text(
+                        "SELECT COUNT(*) FROM information_schema.statistics "
+                        "WHERE table_schema = DATABASE() "
+                        f"AND table_name = '{table}' "
+                        f"AND index_name = '{index_name}'"
+                    )
                 )
-            )
-            await db_session.commit()
-            logger.info("[ChatMonitor] 数据库索引已确认")
-    except Exception as exc:
-        logger.warning(f"[ChatMonitor] 创建索引失败（可忽略）: {exc}")
+                if result.scalar() == 0:
+                    await db_session.execute(text(f"CREATE INDEX {index_name} ON {table} ({column})"))
+                    logger.info(f"[ChatMonitor] 创建索引 {index_name}")
+            except Exception as exc:
+                logger.warning(f"[ChatMonitor] 处理索引 {index_name} 失败（可忽略）: {exc}")
+        await db_session.commit()
+    logger.info("[ChatMonitor] 数据库索引已确认")
 
 
 # ========================================================================

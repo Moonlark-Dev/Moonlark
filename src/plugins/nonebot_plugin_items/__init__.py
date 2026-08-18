@@ -14,6 +14,5 @@ from . import items
 from .base.item import Item
 from .base.stack import ItemStack
 from .base.properties import ItemProperties, get_properties
-from .base.useable import UseableItem
 from .base.gift import GiftItem
 from .registry import registry
