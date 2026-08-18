@@ -907,7 +907,7 @@ class MessageProcessor:
 
             from .ego.moonlark_main import moonlark_main
 
-            context = await moonlark_main.get_session_context(self.session_id)
+            context = await moonlark_main.get_session_context(self.session.session_id)
             if context:
                 parts.append(context)
             return "\n\n".join(parts)
