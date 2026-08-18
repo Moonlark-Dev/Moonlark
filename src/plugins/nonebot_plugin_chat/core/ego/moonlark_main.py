@@ -278,7 +278,8 @@ class MoonlarkMain:
     async def run_before_sleep(self) -> None:
         """睡前运行：博客 Decider + Writter"""
         try:
-            events_text = await event_collector.get_all_events_summary()
+            last_blog_time = await self.blog_writer.get_last_blog_time()
+            events_text = await event_collector.get_all_events_summary(since=last_blog_time)
             plan_text = self.planner.get_plan_text()
 
             decision = await self.blog_writer.decider(events_text, plan_text)

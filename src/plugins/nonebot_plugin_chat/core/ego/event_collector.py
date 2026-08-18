@@ -100,14 +100,20 @@ class EventCollector:
             )
             return list(result.scalars().all())
 
-    async def get_all_events_summary(self, date: Optional[str] = None) -> str:
-        """获取所有会话的事件摘要"""
+    async def get_all_events_summary(self, date: Optional[str] = None, since: Optional[datetime] = None) -> str:
+        """获取所有会话的事件摘要
+
+        Args:
+            date: 日期字符串 (YYYY-MM-DD)，默认今天
+            since: 只获取此时间之后的事件，用于确保博客写完后的新事件归入下一天
+        """
         if date is None:
             date = datetime.now().strftime("%Y-%m-%d")
         async with get_session() as db_session:
-            result = await db_session.execute(
-                select(SessionEvent).where(SessionEvent.date == date).order_by(SessionEvent.created_at)
-            )
+            stmt = select(SessionEvent).where(SessionEvent.date == date).order_by(SessionEvent.created_at)
+            if since is not None:
+                stmt = stmt.where(SessionEvent.created_at > since)
+            result = await db_session.execute(stmt)
             events = list(result.scalars().all())
 
         from ..session import groups
