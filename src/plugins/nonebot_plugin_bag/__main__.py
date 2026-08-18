@@ -1,5 +1,5 @@
 from typing import Any
-from nonebot_plugin_alconna import Alconna, Args, Option, Subcommand, on_alconna
+from nonebot_plugin_alconna import Alconna, Args, Subcommand, on_alconna
 
 from nonebot_plugin_larklang.__main__ import LangHelper
 
@@ -17,11 +17,6 @@ alc = Alconna(
     Subcommand("drop", Args["index", int], Args["count", int, 0]),
     Subcommand("tidy"),
     Subcommand("move", Args["origin", int], Args["target", int], Args["count", int, 0]),
-    Subcommand(
-        "use",
-        Args["index", int],
-        Option("--count|-c", Args["count", int, 1]),
-    ),
 )
 bag = on_alconna(alc)
 patch_matcher(bag)
