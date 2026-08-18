@@ -334,6 +334,9 @@ class MessageQueue:
         system_prompt = self.messages[0] if self.messages else None
 
         self.fetcher = await self._create_fetcher()
+        if self.fetcher is None:
+            logger.error("Failed to create fetcher: _create_fetcher() returned None")
+            return FetchStatus.FAILED
         retry_count = 0
         analysis = None  # 跟踪是否已成功解析 JSON
         try:
@@ -346,15 +349,19 @@ class MessageQueue:
                     analysis = type_validate_json(ModelResponse, strip_json_codeblock(message))
                 except Exception as e:
                     # 如果当前轮次含有工具调用，忽略输出解析失败提示
-                    last_msg = self.fetcher.session.messages[-1] if self.fetcher.session.messages else None
+                    if self.fetcher is not None and self.fetcher.session and self.fetcher.session.messages:
+                        last_msg = self.fetcher.session.messages[-1]
+                    else:
+                        last_msg = None
                     if last_msg and getattr(last_msg, "tool_calls", None):
                         continue
                     # 如果已成功解析过 JSON，忽略同一调用后续轮次的解析失败
                     if analysis is not None:
                         continue
-                    self.fetcher.session.insert_message(
-                        generate_message(await self.processor.session.text("fetcher.parse_failed", str(e)), "user")
-                    )
+                    if self.fetcher is not None and self.fetcher.session:
+                        self.fetcher.session.insert_message(
+                            generate_message(await self.processor.session.text("fetcher.parse_failed", str(e)), "user")
+                        )
                     retry_count += 2
                     continue
                 if analysis is not None:
@@ -371,6 +378,9 @@ class MessageQueue:
                         await self.processor.judge_user_behavior(judge.target, judge.score, judge.reason)
                     if (
                         analysis.reply_required
+                        and self.fetcher is not None
+                        and self.fetcher.session
+                        and self.fetcher.session.messages
                         and isinstance(self.fetcher.session.messages[-1], ChatCompletionMessage)
                         and not self.fetcher.session.messages[-1].tool_calls
                     ):
@@ -379,11 +389,12 @@ class MessageQueue:
                         )
                         retry_count += 1
 
-            fetcher_messages = self.fetcher.get_messages()
-            if fetcher_messages and get_role(fetcher_messages[0]) == "system":
-                pass
-            elif system_prompt:
-                self.fetcher.session.messages.insert(0, system_prompt)
+            if self.fetcher is not None:
+                fetcher_messages = self.fetcher.get_messages()
+                if fetcher_messages and get_role(fetcher_messages[0]) == "system":
+                    pass
+                elif system_prompt:
+                    self.fetcher.session.messages.insert(0, system_prompt)
         except Exception as e:
             logger.exception(e)
             state = FetchStatus.FAILED

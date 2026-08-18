@@ -24,7 +24,9 @@
 
 查看 Moonlark 中游玩玩法的用户的排名- `/minigame-rank`## `quick-math`: 快速数学
 
-以计算为核心的玩法。找到问题的答案，并在排行榜中获取更高的积分。（指令别名：qm）- `/quick-math [--level <开始的等级>] (开始挑战)`- `/quick-math rank [--total] (积分排行榜)`- `/quick-math points (查看总分详情)`- `/quick-math zen <等级> (禅模式)`## `sandbox`: 战斗沙箱
+以计算为核心的玩法。找到问题的答案，并在排行榜中获取更高的积分。（指令别名：qm）- `/quick-math [--level <开始的等级>] (开始挑战)`- `/quick-math rank [--total] (积分排行榜)`- `/quick-math points (查看总分详情)`- `/quick-math zen <等级> (禅模式)`## `roll`: 掷骰子
+
+掷出二十面骰子，点数越高奖励越多，掷出 1 还会倒扣 vi！- `/roll (掷 1 个二十面骰子)`- `/roll <count> (掷多个二十面骰子，并显示每个骰子的点数与总和)`## `sandbox`: 战斗沙箱
 
 （该功能仍在测试中）启动战斗沙箱，进行模拟战斗。- `/sandbox [标靶等级] [标靶数量]`## `setu`: 随机图片
 
@@ -33,7 +35,6 @@
 数独解谜游戏，提供不同难度级别的数独谜题。游戏可以错误检查功能，帮助用户学习数独技巧。- `/sudoku new <num-holes> (生成指定空格数的数独)`- `/sudoku change <row> <column> <value> (修改数独指定行列数字)`- `/sudoku erase <row> <column> (去除数独指定行列数字)`- `/sudoku hint (提供第一个空格的提示)`- `/sudoku reset (重置数独为初始状态)`- `/sudoku answer (展示答案)`- `/sudoku undo (撤销操作)`- `/sudoku redo (重做操作)`## `team`: 设置战斗队伍
 
 （该功能仍在测试中）设置战斗有关模块使用的队伍，配合 character 指令使用。- `/team (查看当前队伍)`- `/team set <位置> <index> (成员入队)`## `tol`: 关灯挑战
-
 尝试关掉所有的灯_一盏灯被开启或关闭时它上、下、左、右边的灯的状态也会发生改变。- `/tol`## `wordle`: WORDLE
 
 猜单词的游戏，支持多人游玩。
@@ -120,7 +121,7 @@ Moonlark 投票- `/vote [-a|--all] (获取投票列表)`- `/vote create [-g|--gl
 
 在 Moonlark 上查看 WakaTime 时长并参与排行- `/wakatime (查看我的 WakaTime 信息)`- `/wakatime login (绑定 WakaTime 账户)`- `/wakatime rank (查看 WakaTime 排行榜)`## `wdym`: 请问什么意思
 
-回复一条消息，让 AI 结合上下文解释消息中的晦涩内容、专业术语、梗或缩写。- `/wdym (回复一条消息)`## `word-cloud`: 群聊词云
+回复一条消息，让 AI 结合上下文解释消息中的晦涩内容、专业术语、梗或缩写。在无法回复消息的平台上（如部分 QQ 适配器），也可以使用 /wdym N 指定指令之前的第 N 条消息。- `/wdym (回复一条消息)`- `/wdym N (指令消息记为 0，解释之前的第 N 条消息)`## `word-cloud`: 群聊词云
 
 根据群内最近的消息生成词云图片，时间范围默认为 24 小时，最大为 48 小时。需要先启用群消息总结功能。- `/word-cloud [小时数]`## `cave`: 回声洞
 

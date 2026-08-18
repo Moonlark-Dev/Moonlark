@@ -12,7 +12,7 @@ from nonebot_plugin_openai.utils.chat import fetch_json, fetch_message
 from nonebot_plugin_openai.utils.message import get_messages
 from nonebot_plugin_orm import get_session
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 if TYPE_CHECKING:
     from .moonlark_main import MoonlarkMain
@@ -34,29 +34,48 @@ class BlogWriter:
     def __init__(self, moonlark_main: "MoonlarkMain") -> None:
         self.moonlark_main = moonlark_main
         self.last_blog_time: Optional[datetime] = None
-        self.cooldown_seconds: int = 7200
 
     def get_status(self) -> dict:
         return {
             "last_blog_time": self.last_blog_time,
-            "cooldown_remaining": self._get_cooldown_remaining(),
         }
 
-    def _get_cooldown_remaining(self) -> int:
-        if not self.last_blog_time:
-            return 0
-        elapsed = (datetime.now() - self.last_blog_time).total_seconds()
-        return max(0, int(self.cooldown_seconds - elapsed))
+    async def _has_blog_today(self) -> bool:
+        """检查今天是否已经写过博客（基于数据库，跨重启也生效）"""
+        today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        try:
+            async with get_session() as session:
+                count = (
+                    await session.scalar(
+                        select(func.count()).select_from(BlogPost).where(BlogPost.create_at >= today_start)
+                    )
+                ) or 0
+                return count > 0
+        except Exception as e:
+            logger.warning(f"[BlogWriter] 查询今日博客失败: {e}")
+            return False
 
-    def _in_cooldown(self) -> bool:
-        return self._get_cooldown_remaining() > 0
-
-    async def decider(self, events_text: str, plan_text: str) -> Optional[BlogDecision]:
-        if self._in_cooldown():
-            logger.info("[BlogWriter] 冷却中，跳过 Decider")
+    async def get_last_blog_time(self) -> Optional[datetime]:
+        """获取最近一次博客的发布时间"""
+        try:
+            async with get_session() as session:
+                post = await session.scalar(select(BlogPost).order_by(BlogPost.create_at.desc()).limit(1))
+                return post.create_at if post else None
+        except Exception as e:
+            logger.warning(f"[BlogWriter] 查询最近博客时间失败: {e}")
             return None
 
-        messages = await get_messages("blog_decider", events=events_text, plan=plan_text)
+    async def decider(
+        self, events_text: str, plan_text: str, current_time: Optional[str] = None
+    ) -> Optional[BlogDecision]:
+        if await self._has_blog_today():
+            logger.info("[BlogWriter] 今天已写过博客，跳过 Decider")
+            return None
+
+        kwargs = {"events": events_text, "plan": plan_text}
+        if current_time:
+            kwargs["current_time"] = current_time
+        messages = await get_messages("blog_decider", **kwargs)
         try:
             return await fetch_json(
                 messages,
@@ -68,18 +87,22 @@ class BlogWriter:
             logger.exception(f"[BlogWriter] Decider 失败: {e}")
             return None
 
-    async def writter(self, decision: BlogDecision, events_text: str, plan_text: str) -> Optional[str]:
+    async def writter(
+        self, decision: BlogDecision, events_text: str, plan_text: str, current_time: Optional[str] = None
+    ) -> Optional[str]:
         from ...utils.weather import get_daily_weather_text, get_weekday_text
 
-        messages = await get_messages(
-            "blog_writter",
-            topic=decision.topic,
-            outline=decision.outline,
-            events=events_text,
-            plan=plan_text,
-            weather=(await get_daily_weather_text()) or "",
-            weekday=get_weekday_text(),
-        )
+        kwargs = {
+            "topic": decision.topic,
+            "outline": decision.outline,
+            "events": events_text,
+            "plan": plan_text,
+            "weather": (await get_daily_weather_text()) or "",
+            "weekday": get_weekday_text(),
+        }
+        if current_time:
+            kwargs["current_time"] = current_time
+        messages = await get_messages("blog_writter", **kwargs)
         try:
             content = await fetch_message(
                 messages,

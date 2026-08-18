@@ -4,6 +4,9 @@ render:
 failed_to_send: '消息被平台屏蔽，请稍后重试。'
 add:
   empty: 投稿失败：无效内容
+  prompt: |
+    投稿内容为空！请直接发送您要投稿到回声洞的内容。
+    发送 q 可取消本次投稿。
   similarity_title: "发现相似的回声洞: \n\n"
   similarity_footer: "\n\n 相似度: {}%"
   review_fail: |
