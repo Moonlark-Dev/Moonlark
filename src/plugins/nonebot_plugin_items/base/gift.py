@@ -13,16 +13,12 @@ class GiftItem(Item, ABC):
     礼物物品基类
 
     继承此类的物品可以作为礼物赠送给机器人，会触发好感度增加和 AI 回复。
-    不再继承 UseableItem，不能通过 /bag use 使用。
     """
 
     fav_value: float = 0.005
 
     def __init__(self, properties: ItemProperties = get_properties()):
         super().__init__(properties)
-
-    def isUseable(self, stack: "ItemStack") -> bool:
-        return False
 
     @abstractmethod
     async def on_gift_used(self, stack: "ItemStack", **kwargs: Any) -> Any: ...

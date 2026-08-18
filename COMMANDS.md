@@ -24,7 +24,9 @@
 
 查看 Moonlark 中游玩玩法的用户的排名- `/minigame-rank`## `quick-math`: 快速数学
 
-以计算为核心的玩法。找到问题的答案，并在排行榜中获取更高的积分。（指令别名：qm）- `/quick-math [--level <开始的等级>] (开始挑战)`- `/quick-math rank [--total] (积分排行榜)`- `/quick-math points (查看总分详情)`- `/quick-math zen <等级> (禅模式)`## `sandbox`: 战斗沙箱
+以计算为核心的玩法。找到问题的答案，并在排行榜中获取更高的积分。（指令别名：qm）- `/quick-math [--level <开始的等级>] (开始挑战)`- `/quick-math rank [--total] (积分排行榜)`- `/quick-math points (查看总分详情)`- `/quick-math zen <等级> (禅模式)`## `roll`: 掷骰子
+
+掷出二十面骰子，点数越高奖励越多，掷出 1 还会倒扣 vi！- `/roll (掷 1 个二十面骰子)`- `/roll <count> (掷多个二十面骰子，并显示每个骰子的点数与总和)`## `sandbox`: 战斗沙箱
 
 （该功能仍在测试中）启动战斗沙箱，进行模拟战斗。- `/sandbox [标靶等级] [标靶数量]`## `setu`: 随机图片
 
@@ -33,7 +35,6 @@
 数独解谜游戏，提供不同难度级别的数独谜题。游戏可以错误检查功能，帮助用户学习数独技巧。- `/sudoku new <num-holes> (生成指定空格数的数独)`- `/sudoku change <row> <column> <value> (修改数独指定行列数字)`- `/sudoku erase <row> <column> (去除数独指定行列数字)`- `/sudoku hint (提供第一个空格的提示)`- `/sudoku reset (重置数独为初始状态)`- `/sudoku answer (展示答案)`- `/sudoku undo (撤销操作)`- `/sudoku redo (重做操作)`## `team`: 设置战斗队伍
 
 （该功能仍在测试中）设置战斗有关模块使用的队伍，配合 character 指令使用。- `/team (查看当前队伍)`- `/team set <位置> <index> (成员入队)`## `tol`: 关灯挑战
-
 尝试关掉所有的灯_一盏灯被开启或关闭时它上、下、左、右边的灯的状态也会发生改变。- `/tol`## `wordle`: WORDLE
 
 猜单词的游戏，支持多人游玩。
