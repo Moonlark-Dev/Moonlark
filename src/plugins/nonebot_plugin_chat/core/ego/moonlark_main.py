@@ -303,6 +303,7 @@ class MoonlarkMain:
     async def _get_last_event_time(self, since: Optional[datetime] = None) -> Optional[str]:
         """获取最近一个事件的时间字符串"""
         from ...models import SessionEvent
+
         try:
             async with get_session() as session:
                 stmt = select(SessionEvent).order_by(SessionEvent.created_at.desc()).limit(1)
