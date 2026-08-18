@@ -37,13 +37,6 @@ move:
   target_locked: 目标物品被锁定，请稍候重试。
   ok: 已移动 {} 个 {} 到位置 {}
   target_item_error: 只有同类物品可以堆叠
-use:
-  invalid_count: 使用数量必须大于 0
-  not_enough: 您没有足够的物品，当前持有数量：{}
-  unsupported_count: 此物品不支持 --count 参数
-  not_useable: 此物品不可使用
-  success: 物品使用成功。
-  failed: 物品使用失败，请稍后重试。
 present:
   list_title: "【礼物列表】"
   list_empty: 背包中没有礼物。
@@ -65,7 +58,6 @@ help:
   usage6: bag drop <INDEX> [count] (丢弃物品)
   usage7: bag tidy (整理背包)
   usage8: bag move <from> <to> (移动物品)
-  usage9: bag use <INDEX> [-c|--count <count>] (兼容旧物品使用入口，不支持礼物)
 present_help:
   description: 赠送礼物
   details: 将背包中的礼物赠送给 Moonlark
