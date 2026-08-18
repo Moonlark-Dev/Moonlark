@@ -47,6 +47,8 @@ class MoonlarkMain:
         scheduler.scheduled_job("cron", hour=13, minute=30, id="ego_afternoon_plan")(self._run_afternoon_plan)
         scheduler.scheduled_job("cron", hour=2, id="moonlark_diary")(self.generate_diary)
         scheduler.scheduled_job("cron", minute="0", id="ego_proactive_chat")(self._check_proactive_chat)
+        scheduler.scheduled_job("cron", hour=2, minute=0, id="blog_writer_daily")(self.run_before_sleep)
+        scheduler.scheduled_job("cron", hour=2, minute=0, id="blog_writer_daily")(self.run_before_sleep)
 
     async def get_relevant_notes(self) -> str:
         from ...utils.note_manager import NoteManager
@@ -276,21 +278,43 @@ class MoonlarkMain:
         await self.planner.run_morning_plan()
 
     async def run_before_sleep(self) -> None:
-        """睡前运行：博客 Decider + Writter"""
+        """博客 Decider + Writter（凌晨 2 点 cron 触发）"""
         try:
-            events_text = await event_collector.get_all_events_summary()
+            last_blog_time = await self.blog_writer.get_last_blog_time()
+            events_text = await event_collector.get_all_events_summary(since=last_blog_time)
             plan_text = self.planner.get_plan_text()
 
-            decision = await self.blog_writer.decider(events_text, plan_text)
+            # 获取最后一个事件的时间作为 current_time
+            last_event_time = await self._get_last_event_time(last_blog_time)
+
+            decision = await self.blog_writer.decider(events_text, plan_text, current_time=last_event_time)
             if decision is None:
-                logger.info("[MoonlarkMain] 睡前博客 Decider 返回空，跳过")
+                logger.info("[MoonlarkMain] 博客 Decider 返回空，跳过")
                 return
             if decision.skip:
-                logger.info("[MoonlarkMain] 睡前博客 Decider 决定跳过本次博客")
+                logger.info("[MoonlarkMain] 博客 Decider 决定跳过本次博客")
                 return
-            self._blog_content = await self.blog_writer.writter(decision, events_text, plan_text)
+            self._blog_content = await self.blog_writer.writter(
+                decision, events_text, plan_text, current_time=last_event_time
+            )
         except Exception as e:
-            logger.exception(f"[MoonlarkMain] 睡前博客生成失败: {e}")
+            logger.exception(f"[MoonlarkMain] 博客生成失败: {e}")
+
+    async def _get_last_event_time(self, since: Optional[datetime] = None) -> Optional[str]:
+        """获取最近一个事件的时间字符串"""
+        from ...models import SessionEvent
+
+        try:
+            async with get_session() as session:
+                stmt = select(SessionEvent).order_by(SessionEvent.created_at.desc()).limit(1)
+                if since is not None:
+                    stmt = stmt.where(SessionEvent.created_at > since)
+                last_event = await session.scalar(stmt)
+                if last_event:
+                    return last_event.created_at.strftime("%Y-%m-%d %H:%M:%S")
+        except Exception as e:
+            logger.warning(f"[MoonlarkMain] 获取最后事件时间失败: {e}")
+        return None
 
 
 moonlark_main = MoonlarkMain()

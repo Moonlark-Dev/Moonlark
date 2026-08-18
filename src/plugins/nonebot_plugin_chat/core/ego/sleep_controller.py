@@ -122,10 +122,6 @@ class SleepController:
         self.moonlark_main.state["sleep_mode"] = True
         self.moonlark_main.state["injected_note_ids"] = []
         logger.info("[SleepController] 进入睡眠模式")
-        # 睡前触发博客生成（后台任务，不阻塞入睡流程）
-        task = asyncio.create_task(self.moonlark_main.run_before_sleep())
-        self._sleep_tasks.add(task)
-        task.add_done_callback(self._sleep_tasks.discard)
 
     async def sleep(self) -> None:
         await self.handle_tired()
