@@ -123,7 +123,6 @@ class SleepController:
         self.moonlark_main.state["injected_note_ids"] = []
         logger.info("[SleepController] 进入睡眠模式")
 
-
     async def sleep(self) -> None:
         await self.handle_tired()
 

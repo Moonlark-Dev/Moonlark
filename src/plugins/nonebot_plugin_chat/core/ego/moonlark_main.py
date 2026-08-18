@@ -308,6 +308,7 @@ class MoonlarkMain:
                 if since is not None:
                     stmt = stmt.where(SessionEvent.created_at > since)
                 from ...models import SessionEvent
+
                 last_event = await session.scalar(stmt)
                 if last_event:
                     return last_event.created_at.strftime("%Y-%m-%d %H:%M:%S")

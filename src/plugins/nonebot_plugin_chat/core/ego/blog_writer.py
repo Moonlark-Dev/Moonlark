@@ -65,7 +65,9 @@ class BlogWriter:
             logger.warning(f"[BlogWriter] 查询最近博客时间失败: {e}")
             return None
 
-    async def decider(self, events_text: str, plan_text: str, current_time: Optional[str] = None) -> Optional[BlogDecision]:
+    async def decider(
+        self, events_text: str, plan_text: str, current_time: Optional[str] = None
+    ) -> Optional[BlogDecision]:
         if await self._has_blog_today():
             logger.info("[BlogWriter] 今天已写过博客，跳过 Decider")
             return None
@@ -85,7 +87,9 @@ class BlogWriter:
             logger.exception(f"[BlogWriter] Decider 失败: {e}")
             return None
 
-    async def writter(self, decision: BlogDecision, events_text: str, plan_text: str, current_time: Optional[str] = None) -> Optional[str]:
+    async def writter(
+        self, decision: BlogDecision, events_text: str, plan_text: str, current_time: Optional[str] = None
+    ) -> Optional[str]:
         from ...utils.weather import get_daily_weather_text, get_weekday_text
 
         kwargs = {
