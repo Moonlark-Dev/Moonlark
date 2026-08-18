@@ -27,6 +27,15 @@ poetry run nb run
 nb run
 ```
 
+### Server Environment
+
+The production server (`xdnas`) runs:
+- Python 3.11.2
+- Poetry 2.3.2
+- MySQL 9.3.0 (MySQL Community Server)
+
+**Note**: MySQL does not support `CREATE INDEX IF NOT EXISTS` in all versions. Use `information_schema.statistics` to check index existence before creating indexes in plugin code.
+
 ## Essential Commands
 
 ### Code Quality
