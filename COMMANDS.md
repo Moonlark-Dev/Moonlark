@@ -121,7 +121,7 @@ Moonlark 投票- `/vote [-a|--all] (获取投票列表)`- `/vote create [-g|--gl
 
 在 Moonlark 上查看 WakaTime 时长并参与排行- `/wakatime (查看我的 WakaTime 信息)`- `/wakatime login (绑定 WakaTime 账户)`- `/wakatime rank (查看 WakaTime 排行榜)`## `wdym`: 请问什么意思
 
-回复一条消息，让 AI 结合上下文解释消息中的晦涩内容、专业术语、梗或缩写。- `/wdym (回复一条消息)`## `word-cloud`: 群聊词云
+回复一条消息，让 AI 结合上下文解释消息中的晦涩内容、专业术语、梗或缩写。在无法回复消息的平台上（如部分 QQ 适配器），也可以使用 /wdym N 指定指令之前的第 N 条消息。- `/wdym (回复一条消息)`- `/wdym N (指令消息记为 0，解释之前的第 N 条消息)`## `word-cloud`: 群聊词云
 
 根据群内最近的消息生成词云图片，时间范围默认为 24 小时，最大为 48 小时。需要先启用群消息总结功能。- `/word-cloud [小时数]`## `cave`: 回声洞
 

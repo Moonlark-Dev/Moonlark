@@ -15,18 +15,17 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
-from datetime import datetime, timedelta
 from typing import Optional
 
 from nonebot import logger, on_command
-from nonebot.adapters import Bot, Event
+from nonebot.adapters import Bot, Event, Message
 from nonebot.adapters.onebot.v11 import (
     Bot as OB11Bot,
     Message as OB11Message,
     MessageEvent as OB11MessageEvent,
     MessageSegment as OB11Segment,
 )
-from nonebot.params import Depends
+from nonebot.params import CommandArg
 from nonebot.typing import T_State
 from nonebot_plugin_alconna import UniMessage
 from nonebot_plugin_chat.utils import parse_message_to_string
@@ -63,14 +62,14 @@ async def _get_replied_message_hash(
     state: T_State,
     lang_str: str,
     session: async_scoped_session,
-) -> tuple[bytes | None, str | None]:
+) -> tuple[bytes | None, str | None, int | None]:
     """获取被回复消息的 hash 和原始文本
 
     Returns:
-        (message_hash, raw_text) - hash 和原始文本
+        (message_hash, raw_text, message_id) - hash、原始文本以及收集器中的记录 id
     """
     if not isinstance(bot, OB11Bot):
-        return None, None
+        return None, None, None
     try:
         result = await bot.get_msg(message_id=reply_msg_id)
         raw_message = result["raw_message"]
@@ -87,24 +86,48 @@ async def _get_replied_message_hash(
             raw_text = group_msg.message
         else:
             raw_text = await parse_message_to_string(
-                UniMessage.generate_without_reply(message=message, bot=bot), event, bot, state, lang_str
+                UniMessage.generate_without_reply(message=message, bot=bot),
+                event,
+                bot,
+                state,
+                lang_str,
             )
-        return message_hash, raw_text
     except Exception as e:
         logger.exception(f"Failed to get replied message hash: {e}")
-        return None, None
+        return None, None, None
+    return message_hash, raw_text, group_msg.id_ if group_msg is not None else None
 
 
 async def _query_context_messages(
     session: async_scoped_session,
     group_id: str,
-    replied_message_hash: bytes | None,
+    target_id: int | None = None,
+    replied_message_hash: bytes | None = None,
 ) -> list[GroupMessage]:
     """获取上下文消息
 
-    1. 有原文 hash 时：最近 2 天内按 hash 匹配，取目标 id_ 的前 5 条
-    2. 匹配失败或无法获取原文时：回退到最近 10 条
+    1. 指定目标 id_ 时：取目标 id_ 的前 5 条 + 目标本身（/wdym N 使用）
+    2. 有原文 hash 时：按 hash 匹配，取目标 id_ 的前 5 条 + 目标本身
+    3. 匹配失败或无法获取原文时：回退到最近 10 条
     """
+    if target_id is not None:
+        before = (
+            await session.scalars(
+                select(GroupMessage)
+                .where(
+                    GroupMessage.group_id == group_id,
+                    GroupMessage.id_ < target_id,
+                )
+                .order_by(GroupMessage.id_.desc())
+                .limit(5),
+            )
+        ).all()
+        target_msg = await session.get(GroupMessage, target_id)
+        messages = [*reversed(before)]
+        if target_msg is not None:
+            messages.append(target_msg)
+        return messages
+
     if replied_message_hash:
         target_id = await session.scalar(
             select(GroupMessage.id_)
@@ -139,6 +162,49 @@ async def _query_context_messages(
     return list(recent)[::-1]
 
 
+async def _get_offset_message(
+    session: async_scoped_session,
+    group_id: str,
+    offset: int,
+) -> GroupMessage | None:
+    """按偏移量从 Message Summary 收集器的记录中获取目标消息
+
+    指令消息记为 0，offset 表示向之前计数得到的第几条消息。指令消息本身
+    尚未被收集器记录（收集器为 on_message 优先级 3，晚于指令处理），因此
+    第 1 条即为收集器记录的最新一条消息。参与计数的消息序列由收集器决定
+    （未被 access 插件屏蔽且被成功记录的消息）。
+    """
+    return await session.scalar(
+        select(GroupMessage)
+        .where(GroupMessage.group_id == group_id)
+        .order_by(GroupMessage.id_.desc())
+        .offset(offset - 1)
+        .limit(1),
+    )
+
+
+async def get_offset_replied_raw(
+    state: T_State,
+    event: Event,
+    session: async_scoped_session,
+    user_id: str,
+    group_id: str,
+    offset: int,
+) -> str:
+    """根据 /wdym N 的偏移量获取目标消息文本（指令消息记为 0）"""
+    if offset == 0:
+        # 指令消息本身：尚未被收集器记录，直接使用事件中的消息内容
+        state["replied_id"] = None
+        state["replied_hash"] = None
+        return event.get_plaintext()
+    target = await _get_offset_message(session, group_id, offset)
+    if target is None:
+        await lang.finish("no_message_found", user_id, offset)
+    state["replied_id"] = target.id_
+    state["replied_hash"] = target.message_hash
+    return target.message
+
+
 async def get_replied_raw(
     state: T_State,
     bot: Bot,
@@ -151,35 +217,73 @@ async def get_replied_raw(
     if reply_msg_id is None:
         await lang.finish("no_reply", user_id)
     # 2. 获取被回复消息的 hash 和原始文本
-    replied_hash, replied_raw = await _get_replied_message_hash(bot, reply_msg_id, event, state, user_id, session)
+    replied_hash, replied_raw, replied_id = await _get_replied_message_hash(
+        bot,
+        reply_msg_id,
+        event,
+        state,
+        user_id,
+        session,
+    )
     if replied_hash is None:
         await lang.finish("get_reply_failed", user_id)
     state["replied_hash"] = replied_hash
+    state["replied_id"] = replied_id
     return replied_raw or ""
 
 
-async def get_context_str(state: T_State, session: async_scoped_session, group_id) -> Optional[str]:
+async def get_context_str(state: T_State, session: async_scoped_session, group_id: str) -> Optional[str]:
+    replied_id = state.get("replied_id")
     replied_hash = state.get("replied_hash")
     context_messages: list[GroupMessage] = []
     try:
-        context_messages = await _query_context_messages(session, group_id, replied_hash)
+        context_messages = await _query_context_messages(
+            session,
+            group_id,
+            target_id=replied_id,
+            replied_message_hash=replied_hash,
+        )
     except Exception as e:
         logger.exception(f"Failed to fetch context messages: {e}")
     state["context_length"] = len(context_messages)
-    if context_messages:
-        context_lines = [f"[{msg.sender_nickname}]: {msg.message}" for msg in context_messages]
-        return "\n".join(context_lines)
+    if not context_messages:
+        return None
+    context_lines = [f"[{msg.sender_nickname}]: {msg.message}" for msg in context_messages]
+    return "\n".join(context_lines)
 
 
 @wdym.handle()
 async def handle_wdym(
     state: T_State,
+    bot: Bot,
+    event: Event,
     session: async_scoped_session,
+    args: Message = CommandArg(),
     group_id: str = get_group_id(),
     user_id: str = get_user_id(),
-    replied_text: str = Depends(get_replied_raw),
 ) -> None:
-    """处理 /wdym 命令 - 解释消息中的晦涩内容"""
+    """处理 /wdym 命令 - 解释消息中的晦涩内容
+
+    支持两种用法：
+    - /wdym（回复一条消息）：解释被回复的消息
+    - /wdym N：指令消息记为 0，向之前计数第 N 条消息作为分析目标（QQ 适配器无法回复时使用）
+    """
+    offset = None
+    arg_text = args.extract_plain_text().strip()
+    if arg_text:
+        try:
+            offset = int(arg_text)
+        except ValueError:
+            offset = None
+        else:
+            if offset < 0:
+                await lang.finish("invalid_offset", user_id)
+
+    if offset is not None:
+        replied_text = await get_offset_replied_raw(state, event, session, user_id, group_id, offset)
+    else:
+        replied_text = await get_replied_raw(state, bot, event, session, user_id)
+
     context_str = await get_context_str(state, session, group_id)
     messages = await get_messages(
         "wdym",
