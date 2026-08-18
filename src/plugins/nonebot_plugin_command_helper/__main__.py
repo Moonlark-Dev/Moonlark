@@ -27,7 +27,7 @@ async def generate_commands_markdown() -> str:
     await setup_help_list()
     await load_languages()
     user_id = "mlsid::--lang=zh_hans"
-    text = await larkhelp_lang.text("markdown.title", user_id)
+    text = await larkhelp_lang.text("markdown.title", user_id) + "\n"
     # 普通指令（不含 superuser）
     commands = []
     for command_list in [category["commands"] for category in (await get_templates(user_id))]:
@@ -39,9 +39,9 @@ async def generate_commands_markdown() -> str:
             command["name"],
             command["description"],
             command["details"],
-        )
+        ) + "\n"
         for usage in command["usages"]:
-            text += await larkhelp_lang.text("markdown.usage", user_id, usage)
+            text += await larkhelp_lang.text("markdown.usage", user_id, usage) + "\n"
     # superuser 指令（带管理员警告）
     for category in await get_menu_templates(user_id):
         if category["id"] == "superuser":
@@ -52,10 +52,10 @@ async def generate_commands_markdown() -> str:
                     command["name"],
                     command["description"],
                     command["details"],
-                )
+                ) + "\n"
                 text += await larkhelp_lang.text("markdown.superuser_warning", user_id) + "\n"
                 for usage in command["usages"]:
-                    text += await larkhelp_lang.text("markdown.usage", user_id, usage)
+                    text += await larkhelp_lang.text("markdown.usage", user_id, usage) + "\n"
             break
     return text
 
