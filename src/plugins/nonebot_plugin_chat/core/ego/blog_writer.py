@@ -59,9 +59,7 @@ class BlogWriter:
         """获取最近一次博客的发布时间"""
         try:
             async with get_session() as session:
-                post = await session.scalar(
-                    select(BlogPost).order_by(BlogPost.create_at.desc()).limit(1)
-                )
+                post = await session.scalar(select(BlogPost).order_by(BlogPost.create_at.desc()).limit(1))
                 return post.create_at if post else None
         except Exception as e:
             logger.warning(f"[BlogWriter] 查询最近博客时间失败: {e}")
