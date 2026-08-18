@@ -65,12 +65,15 @@ class BlogWriter:
             logger.warning(f"[BlogWriter] 查询最近博客时间失败: {e}")
             return None
 
-    async def decider(self, events_text: str, plan_text: str) -> Optional[BlogDecision]:
+    async def decider(self, events_text: str, plan_text: str, current_time: Optional[str] = None) -> Optional[BlogDecision]:
         if await self._has_blog_today():
             logger.info("[BlogWriter] 今天已写过博客，跳过 Decider")
             return None
 
-        messages = await get_messages("blog_decider", events=events_text, plan=plan_text)
+        kwargs = {"events": events_text, "plan": plan_text}
+        if current_time:
+            kwargs["current_time"] = current_time
+        messages = await get_messages("blog_decider", **kwargs)
         try:
             return await fetch_json(
                 messages,
@@ -82,18 +85,20 @@ class BlogWriter:
             logger.exception(f"[BlogWriter] Decider 失败: {e}")
             return None
 
-    async def writter(self, decision: BlogDecision, events_text: str, plan_text: str) -> Optional[str]:
+    async def writter(self, decision: BlogDecision, events_text: str, plan_text: str, current_time: Optional[str] = None) -> Optional[str]:
         from ...utils.weather import get_daily_weather_text, get_weekday_text
 
-        messages = await get_messages(
-            "blog_writter",
-            topic=decision.topic,
-            outline=decision.outline,
-            events=events_text,
-            plan=plan_text,
-            weather=(await get_daily_weather_text()) or "",
-            weekday=get_weekday_text(),
-        )
+        kwargs = {
+            "topic": decision.topic,
+            "outline": decision.outline,
+            "events": events_text,
+            "plan": plan_text,
+            "weather": (await get_daily_weather_text()) or "",
+            "weekday": get_weekday_text(),
+        }
+        if current_time:
+            kwargs["current_time"] = current_time
+        messages = await get_messages("blog_writter", **kwargs)
         try:
             content = await fetch_message(
                 messages,
