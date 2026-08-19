@@ -26,10 +26,7 @@
 
 以计算为核心的玩法。找到问题的答案，并在排行榜中获取更高的积分。（指令别名：qm）- `/quick-math [--level <开始的等级>] (开始挑战)`- `/quick-math rank [--total] (积分排行榜)`- `/quick-math points (查看总分详情)`- `/quick-math zen <等级> (禅模式)`## `roll`: 掷骰子
 
-掷出二十面骰子，点数越高奖励越多，掷出 1 还会倒扣 vi！- `/roll (掷 1 个二十面骰子)`- `/roll <count> (掷多个二十面骰子，并显示每个骰子的点数与总和)`## `liang`: 查看当前是梁文峰还是梁文谷
-
-查看当前是梁文峰还是梁文谷，以及距离切换还有多久
-- `/liang (查看当前状态)`## `sandbox`: 战斗沙箱
+掷出二十面骰子，点数越高奖励越多，掷出 1 还会倒扣 vi！- `/roll (掷 1 个二十面骰子)`- `/roll <count> (掷多个二十面骰子，并显示每个骰子的点数与总和)`## `sandbox`: 战斗沙箱
 
 （该功能仍在测试中）启动战斗沙箱，进行模拟战斗。- `/sandbox [标靶等级] [标靶数量]`## `setu`: 随机图片
 
@@ -38,6 +35,7 @@
 数独解谜游戏，提供不同难度级别的数独谜题。游戏可以错误检查功能，帮助用户学习数独技巧。- `/sudoku new <num-holes> (生成指定空格数的数独)`- `/sudoku change <row> <column> <value> (修改数独指定行列数字)`- `/sudoku erase <row> <column> (去除数独指定行列数字)`- `/sudoku hint (提供第一个空格的提示)`- `/sudoku reset (重置数独为初始状态)`- `/sudoku answer (展示答案)`- `/sudoku undo (撤销操作)`- `/sudoku redo (重做操作)`## `team`: 设置战斗队伍
 
 （该功能仍在测试中）设置战斗有关模块使用的队伍，配合 character 指令使用。- `/team (查看当前队伍)`- `/team set <位置> <index> (成员入队)`## `tol`: 关灯挑战
+
 尝试关掉所有的灯_一盏灯被开启或关闭时它上、下、左、右边的灯的状态也会发生改变。- `/tol`## `wordle`: WORDLE
 
 猜单词的游戏，支持多人游玩。
@@ -46,7 +44,7 @@
 
 Moonlark 权限控制 (仅 SUPERUSER 可用)- `/access {ban|pardon} <主体ID> (封禁/解封用户)`- `/access {block|unblock} <权限> <主体ID> (添加/移除权限)`## `bag`: 背包
 
-查看，处理，使用背包中的物品- `/bag (查看背包)`- `/bag overflow list (查看 overflow 区物品列表)`- `/bag overflow show <INDEX> (查看 overflow 区物品)`- `/bag overflow get <INDEX> [count] (获取 overflow 区物品)`- `/bag show <INDEX> (查看物品)`- `/bag drop <INDEX> [count] (丢弃物品)`- `/bag tidy (整理背包)`- `/bag move <from> <to> (移动物品)`- `/bag use <INDEX> [-c|--count <count>] (兼容旧物品使用入口，不支持礼物)`## `id`: 查询用户 ID
+查看，处理，使用背包中的物品- `/bag (查看背包)`- `/bag overflow list (查看 overflow 区物品列表)`- `/bag overflow show <INDEX> (查看 overflow 区物品)`- `/bag overflow get <INDEX> [count] (获取 overflow 区物品)`- `/bag show <INDEX> (查看物品)`- `/bag drop <INDEX> [count] (丢弃物品)`- `/bag tidy (整理背包)`- `/bag move <from> <to> (移动物品)`## `id`: 查询用户 ID
 
 查看指定用户（或自己）的主账号 ID 和当前账号 ID- `/id (查看自己的 ID)`- `/id @用户 (查看指定用户的 ID)`## `lang`: 本地化
 
@@ -158,7 +156,9 @@ Moonlark 投票- `/vote [-a|--all] (获取投票列表)`- `/vote create [-g|--gl
 
 匹配你的每日群老婆！（仅支持群聊使用）- `/waifu (今日群老婆)`- `/waifu divorce (离婚)`- `/waifu force-marry <@群员> (强娶)`## `wakeuprank`: 早起排行
 
-在每日 4:00-14:00 间首次发消息记录早起时间，可进行早起次数排行、平均起床时间排行和今日排行。- `/wakeuprank (早起次数排行)`- `/wakeuprank avg (平均起床时间排行)`- `/wakeuprank today (今日起床时间排行)`## `ai-whitelist`: AI 白名单管理
+在每日 4:00-14:00 间首次发消息记录早起时间，可进行早起次数排行、平均起床时间排行和今日排行。- `/wakeuprank (早起次数排行)`- `/wakeuprank avg (平均起床时间排行)`- `/wakeuprank today (今日起床时间排行)`## `liang`: 查看当前是梁文峰还是梁文谷
+
+查看当前是梁文峰还是梁文谷，以及距离切换还有多久- `/liang (查看当前状态)`## `ai-whitelist`: AI 白名单管理
 
 管理 QQ 节点上允许使用 AI 功能的群聊白名单（仅限超级用户）> 此指令仅 Moonlark 管理员可用。
 - `/ai-whitelist (查看白名单)`- `/ai-whitelist add <群号> (添加群聊到白名单)`- `/ai-whitelist remove <群号> (从白名单移除群聊)`- `/ai-whitelist enable <群号> (启用群聊 AI 功能)`## `bcsu`: 广播管理
