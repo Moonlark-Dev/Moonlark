@@ -4,5 +4,4 @@ review_failed: 生成内容未通过审核，请稍后再试~
 help:
   description: 生草机
   details: 将输入文本进行同义词随机替换，生成搞笑的"生草"版本
-  usage1: grass <文本> - 对文本进行生草处理
-  usage2: grass <文本> - 每次生成的结果可能不同
+  usage1: grass <文本> - 对文本进行同义词随机替换（每次结果可能不同）
