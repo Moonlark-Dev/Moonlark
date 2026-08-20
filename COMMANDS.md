@@ -1,6 +1,7 @@
 # Moonlark 指令列表
 
-> 由 Moonlark & nonebot-plugin-larkhelp 生成## `2048`: 2048 小游戏
+> 由 Moonlark & nonebot-plugin-larkhelp 生成
+## `2048`: 2048 小游戏
 
 数字合成游戏 —— 2048
 - `/2048`
