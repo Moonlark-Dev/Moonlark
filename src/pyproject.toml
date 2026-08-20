@@ -125,6 +125,7 @@ packages = [
     { include = "nonebot_plugin_chat_monitor", from = "./plugins" },
     { include = "nonebot_plugin_auto_bind", from = "./plugins" },
     { include = "nonebot_plugin_eggstrike", from = "./plugins" },
+    { include = "nonebot_plugin_shengcao", from = "./plugins" },
 ]
 
 

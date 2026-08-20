@@ -101,6 +101,7 @@ plugins = [
     "nonebot_plugin_chat_monitor",
     "nonebot_plugin_auto_bind",
     "nonebot_plugin_eggstrike",
+    "nonebot_plugin_shengcao",
 ]
 plugin_dirs = []
 builtin_plugins = []
