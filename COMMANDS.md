@@ -82,7 +82,9 @@ Moonlark 本地化设置- `/lang (查看语言列表)`- `/lang view <语言> (�
 
 分析群聊中的争议或辩论，提供客观的双方观点摘要。- `/debate [读取长度]`## `github`: GitHub 链接解析
 
-预览 GitHub 链接内容- `/github <链接/仓库>`## `group-daily`: 每日群聊总结
+预览 GitHub 链接内容- `/github <链接/仓库>`## `grass`: 生草机
+
+将输入文本进行同义词随机替换，生成搞笑的"生草"版本- `/grass <文本> - 对文本进行同义词随机替换（每次结果可能不同）`## `group-daily`: 每日群聊总结
 
 获取当日群聊的总结报告，需要先启用群消息总结功能。- `/group-daily (获取当日群聊总结)`## `help`: 命令帮助
 
@@ -106,13 +108,9 @@ Linux 手册 (ManPage) 查询- `/man <名称> [章节] (查询 ManPage)`## `menu
 
 搜索 Arch Linux 包- `/pacman <关键词>`## `preview`: 预览网页
 
-截图一个网页 (加载不完全请尝试指定 wait)- `/preview <URL> [-w|--wait <等待时间>] (截图URL)`## `raw`: 生草机
+截图一个网页 (加载不完全请尝试指定 wait)- `/preview <URL> [-w|--wait <等待时间>] (截图URL)`## `summary`: 历史消息总结
 
-基于翻译，一键生草（一种植物），仅支持中文。- `/raw <文本...>`## `summary`: 历史消息总结
-
-使用 AI 总结群聊中的历史消息。读取长度默认为 200 条消息，最大为 270，该功能不支持 QQ 节点且需要在群聊中手动启用。- `/summary [读取长度] (总结历史消息)`- `/summary -s broadcast (广播风格总结)`- `/summary -s topic (话题梳理)`- `/summary -e|-d (功能开关)`- `/summary --everyday-summary <on/off> (每日总结开关)`## `t`: 翻译器
-
-翻译文本（默认英到中）- `/t <文本...> [-s|--sorce <源语言>] [-t|--target <目标语言>]`## `time-progress`: 时间进度
+使用 AI 总结群聊中的历史消息。读取长度默认为 200 条消息，最大为 270，该功能不支持 QQ 节点且需要在群聊中手动启用。- `/summary [读取长度] (总结历史消息)`- `/summary -s broadcast (广播风格总结)`- `/summary -s topic (话题梳理)`- `/summary -e|-d (功能开关)`- `/summary --everyday-summary <on/off> (每日总结开关)`## `time-progress`: 时间进度
 
 查看本年/月/日的进度，支持年进度推送订阅- `/time-progress - 查看时间进度
 time-progress sub - 查看订阅状态
