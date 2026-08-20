@@ -41,7 +41,7 @@ async def generate_commands_markdown() -> str:
                 command["description"],
                 command["details"],
             )
-            + "\n"
+            + "\n\n"
         )
         for usage in command["usages"]:
             text += await larkhelp_lang.text("markdown.usage", user_id, usage) + "\n"
@@ -57,7 +57,7 @@ async def generate_commands_markdown() -> str:
                         command["description"],
                         command["details"],
                     )
-                    + "\n"
+                    + "\n\n"
                 )
                 text += await larkhelp_lang.text("markdown.superuser_warning", user_id) + "\n"
                 for usage in command["usages"]:

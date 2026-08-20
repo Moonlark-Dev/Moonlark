@@ -62,6 +62,7 @@ plugins = [
     "nonebot_plugin_quick_math",
     "nonebot_plugin_ranking",
     "nonebot_plugin_render",
+    "nonebot_plugin_liang",
     "nonebot_plugin_roll",
     "nonebot_plugin_sign",
     "nonebot_plugin_shop",

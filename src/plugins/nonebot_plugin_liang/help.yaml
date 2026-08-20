@@ -1,0 +1,8 @@
+plugin: liang
+commands:
+  liang:
+    description: help.description
+    details: help.details
+    usages:
+      - help.usage
+    category: fun
