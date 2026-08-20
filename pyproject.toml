@@ -67,7 +67,6 @@ plugins = [
     "nonebot_plugin_shop",
     "nonebot_plugin_sudoku",
     "nonebot_plugin_time_progress",
-    "nonebot_plugin_translate",
     "nonebot_plugin_vote",
     "nonebot_plugin_wakatime",
     "nonebot_plugin_wolfram_alpha",
@@ -101,6 +100,7 @@ plugins = [
     "nonebot_plugin_chat_monitor",
     "nonebot_plugin_auto_bind",
     "nonebot_plugin_eggstrike",
+    "nonebot_plugin_shengcao",
 ]
 plugin_dirs = []
 builtin_plugins = []
