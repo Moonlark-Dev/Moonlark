@@ -98,25 +98,23 @@ async def generate_markdown() -> str:
     for command_list in [category["commands"] for category in (await get_templates(user_id))]:
         commands.extend(command_list)
     for command in commands:
-        text += (
-            await lang.text("markdown.command", user_id, command["name"], command["description"], command["details"])
-            + "\n"
-        )
+        text += await lang.text(
+            "markdown.command", user_id, command["name"], command["description"], command["details"]
+        ) + "\n"
         for usage in command["usages"]:
             text += await lang.text("markdown.usage", user_id, usage)
+        text += "\n"  # 最后一个 usage 的末尾 \n 会被 remove_trailing_blank_lines 吃掉
     # Superuser commands with warning
     for category in await get_menu_templates(user_id):
         if category["id"] == "superuser":
             for command in category["commands"]:
-                text += (
-                    await lang.text(
-                        "markdown.command", user_id, command["name"], command["description"], command["details"]
-                    )
-                    + "\n"
-                )
+                text += await lang.text(
+                    "markdown.command", user_id, command["name"], command["description"], command["details"]
+                ) + "\n"
                 text += await lang.text("markdown.superuser_warning", user_id) + "\n"
                 for usage in command["usages"]:
                     text += await lang.text("markdown.usage", user_id, usage)
+                text += "\n"
             break
     return text
 
