@@ -100,7 +100,7 @@ async def generate_markdown() -> str:
     for command in commands:
         text += await lang.text(
             "markdown.command", user_id, command["name"], command["description"], command["details"]
-        )
+        ) + "\n"
         for usage in command["usages"]:
             text += await lang.text("markdown.usage", user_id, usage)
     # Superuser commands with warning
@@ -109,7 +109,7 @@ async def generate_markdown() -> str:
             for command in category["commands"]:
                 text += await lang.text(
                     "markdown.command", user_id, command["name"], command["description"], command["details"]
-                )
+                ) + "\n"
                 text += await lang.text("markdown.superuser_warning", user_id) + "\n"
                 for usage in command["usages"]:
                     text += await lang.text("markdown.usage", user_id, usage)
