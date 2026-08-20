@@ -90,7 +90,6 @@ packages = [
     { include = "nonebot_plugin_sign", from = "./plugins" },
     { include = "nonebot_plugin_shop", from = "./plugins" },
     { include = "nonebot_plugin_time_progress", from = "./plugins" },
-    { include = "nonebot_plugin_translate", from = "./plugins" },
     { include = "nonebot_plugin_vote", from = "./plugins" },
     { include = "nonebot_plugin_wakatime", from = "./plugins" },
     { include = "nonebot_plugin_wolfram_alpha", from = "./plugins" },
