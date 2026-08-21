@@ -215,7 +215,7 @@ Linux 手册 (ManPage) 查询
 - `/raw <文本...>`
 ## `summary`: 历史消息总结
 
-使用 AI 总结群聊中的历史消息。读取长度默认为 200 条消息，最大为 270，该功能不支持 QQ 节点且需要在群聊中手动启用。
+使用 AI 总结群聊中的历史消息。读取长度默认为 200 条消息，最大为 270，需要在群聊中手动启用。
 - `/summary [读取长度] (总结历史消息)`- `/summary -s broadcast (广播风格总结)`- `/summary -s topic (话题梳理)`- `/summary -e|-d (功能开关)`- `/summary --everyday-summary <on/off> (每日总结开关)`
 ## `t`: 翻译器
 
@@ -249,7 +249,7 @@ Moonlark 投票
 - `/cave (随机条目)`- `/cave-a <内容...> (投稿条目)`- `/cave-r [-c] <ID> (删除条目或评论)`- `/cave-s <ID> (恢复 7 天内删除的条目)`- `/cave-g <ID> (查看自己投稿的条目)`- `/cave-s (统计投稿者)`- `/cave-n <回复合并转发> (投稿合并转发消息)`- `/cave-prompt (查看私聊图片投稿询问开关状态)`- `/cave-prompt on|off (开启/关闭私聊图片投稿询问)`
 ## `chat`: 主动水群
 
-基于 LLM 的主动水群功能，可以尝试用于活跃群气氛。（启用后将会收集、处理、并储存启用群聊的聊天记录和群员的昵称，仅支持非 QQ 官方节点）
+基于 LLM 的主动水群功能，可以尝试用于活跃群气氛。（启用后将会收集、处理、并储存启用群聊的聊天记录和群员的昵称；在私聊中使用 chat on / chat off 可以开关私聊 Chat）
 - `/chat switch (切换功能启用状态)`- `/chat on (启用功能)`- `/chat off (禁用功能)`- `/chat desire (查看触发概率信息)`- `/chat mute (临时禁用水群功能 15 分钟)`- `/chat unmute (取消临时禁用)`- `/chat calls (查看最近的工具调用记录)`- `/chat block user <add|remove|list> [用户ID] (管理屏蔽用户)`- `/chat block keyword <add|remove|list> [关键词] (管理屏蔽关键词)`- `/chat block list (查看所有屏蔽项)`- `/chat ignore-mention <add|remove|list> [用户ID] (管理提及屏蔽用户)`- `/chat reset (清除当前会话所有历史消息并重置会话状态)`- `/chat stop (强制停止当前正在生成的响应)`- `/chat stats (查看时间统计数据)`- `/chat compact [会话ID] (压缩消息队列，分析待定笔记后重置[SU])`- `/chat mode [passionate|standard|silent] (查看或切换互动模式，切换将重置会话上下文)`
 ## `decision`: 虚假处分通知
 
@@ -311,11 +311,6 @@ Moonlark 投票
 
 查看当前是梁文峰还是梁文谷，以及距离切换还有多久
 - `/liang (查看当前状态)`
-## `ai-whitelist`: AI 白名单管理
-
-管理 QQ 节点上允许使用 AI 功能的群聊白名单（仅限超级用户）
-> 此指令仅 Moonlark 管理员可用。
-- `/ai-whitelist (查看白名单)`- `/ai-whitelist add <群号> (添加群聊到白名单)`- `/ai-whitelist remove <群号> (从白名单移除群聊)`- `/ai-whitelist enable <群号> (启用群聊 AI 功能)`
 ## `bcsu`: 广播管理
 
 发送和管理广播消息
@@ -326,11 +321,6 @@ Moonlark 投票
 管理 OpenAI 模型配置（仅限超级用户）
 > 此指令仅 Moonlark 管理员可用。
 - `/model (查看模型配置信息)`- `/model <模型名> (更换默认模型)`- `/model <模型名> <应用标识> (设置应用专用模型)`- `/model :default: <应用标识> (删除应用配置)`
-## `private-chat-whitelist`: 私聊 Chat 白名单管理
-
-管理可在私聊中使用 Chat 功能的用户白名单（仅限超级用户）
-> 此指令仅 Moonlark 管理员可用。
-- `/private-chat-whitelist (查看白名单)`- `/private-chat-whitelist add <用户ID> (添加用户)`- `/private-chat-whitelist remove <用户ID> (移除用户)`- `/private-chat-whitelist enable <用户ID> (启用)`- `/private-chat-whitelist disable <用户ID> (禁用)`
 ## `subaccount`: 管理子账号
 
 [管理员专用] 管理子账号绑定关系：查看绑定状态、绑定/解绑子账号

@@ -121,10 +121,10 @@ class ModelResponse(BaseModel, extra="forbid"):
 
 
 class PrivateChatConfig(Model):
-    """记录用户私聊 Chat 功能的开关状态，默认关闭"""
+    """记录用户私聊 Chat 功能的开关状态，默认开启"""
 
     user_id: Mapped[str] = mapped_column(String(128), primary_key=True)
-    enabled: Mapped[bool] = mapped_column(default=False)
+    enabled: Mapped[bool] = mapped_column(default=True)
 
 
 class PrivateChatSession(Model):
