@@ -3,12 +3,18 @@ import base64
 import math
 import random
 from datetime import date
+from typing import Any, Optional
 
 import httpx
 from nonebot import logger
 from nonebot.matcher import Matcher
-from nonebot_plugin_alconna import Alconna, UniMessage, on_alconna
+from nonebot_plugin_alconna import Alconna, Args, Subcommand, UniMessage, on_alconna
+from nonebot_plugin_bag.models import Bag
+from nonebot_plugin_bag.utils.bag import give_item
 from nonebot_plugin_email.utils.unread import get_unread_email_count
+from nonebot_plugin_items.utils.get import get_item
+from nonebot_plugin_items.utils.string import get_location_by_id
+from nonebot_plugin_items.registry.registry import ResourceLocation
 from nonebot_plugin_larksetu import get_landscape_image
 from nonebot_plugin_larkuser import get_user
 from nonebot_plugin_larkuser.utils.matcher import patch_matcher
@@ -17,18 +23,42 @@ from nonebot_plugin_larkutils import get_user_id
 from nonebot_plugin_larkutils.jrrp import get_luck_value
 from nonebot_plugin_orm import AsyncSession, get_session
 from nonebot_plugin_render.render import render_template
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import NoResultFound
 
 from .config import config
 from .lang import lang
 from .models import SignData
 
-sign = on_alconna(Alconna("签到"), aliases={"签到", "sign"})
+alc = Alconna(
+    "签到",
+    Subcommand("auto", Args["action?", ["on", "off", "limit"]], Args["limit?", int]),
+)
+sign = on_alconna(alc, aliases={"签到", "sign"})
 patch_matcher(sign)
 
 # 全局锁，保护 SignData 数据操作
 _global_sign_lock = asyncio.Lock()
+
+# 自动签到券物品 ID 与连续签到奖励周期（天）
+AUTO_SIGN_TICKET_ID = "moonlark:auto_sign_ticket"
+AUTO_SIGN_TICKET_REWARD_DAYS = 5
+
+
+def get_auto_sign_ticket_location() -> ResourceLocation:
+    return get_location_by_id(AUTO_SIGN_TICKET_ID)
+
+
+async def get_auto_sign_ticket_count(user_id: str) -> int:
+    """获取用户背包中自动签到券的数量"""
+    async with get_session() as session:
+        count = await session.scalar(
+            select(func.sum(Bag.count)).where(
+                Bag.user_id == user_id,
+                Bag.item_id == AUTO_SIGN_TICKET_ID,
+            ),
+        )
+    return count or 0
 
 
 async def _get_luck(user_id: str) -> str:
@@ -130,14 +160,101 @@ async def _is_user_signed(user_id: str) -> bool:
         return (date.today() - data.last_sign).days < 1
 
 
+async def _give_auto_sign_tickets(user_id: str, count: int) -> None:
+    """向用户发放自动签到券"""
+    item = await get_item(get_auto_sign_ticket_location(), user_id, count, {})
+    await give_item(user_id, item)
+
+
+async def perform_sign(user_id: str, missed_days: int = 0, auto: bool = False) -> Optional[dict[str, Any]]:
+    """执行签到：更新 SignData 并按正常流程发放奖励（不包含补签询问与结果渲染）
+
+    Args:
+        user_id (str): 用户 ID
+        missed_days (int, optional): 补签天数，仅普通签到的补签流程会传入. Defaults to 0.
+        auto (bool, optional): 是否为自动签到（累计自动签到数据）. Defaults to False.
+
+    Returns:
+        Optional[dict[str, Any]]: 签到结果；当天已签到时返回 None
+    """
+    do_resign = missed_days > 0
+
+    # ====== 全局锁保护——操作 SignData 表 ======
+    async with _global_sign_lock:
+        async with get_session() as session:
+            sd = await _get_sign_data(session, user_id)
+            days_since = (date.today() - sd.last_sign).days
+            if days_since < 1:
+                return None
+
+            # 计算新签到天数
+            if days_since == 1:
+                sd.sign_days += 1
+            elif do_resign:
+                sd.sign_days += missed_days + 1  # 补签天数 + 当天
+            else:
+                sd.sign_days = 1
+            final_sign_days = sd.sign_days
+
+            # 自动签到计数
+            if auto:
+                sd.auto_count += 1
+                sd.auto_used += 1
+
+            # 排名（基于当前已签到人数）
+            signed_today = (
+                (await session.execute(select(SignData.user_id).where(SignData.last_sign == date.today())))
+                .scalars()
+                .all()
+            )
+            rank = len(signed_today) + 1
+
+            sd.last_sign = date.today()
+            await session.commit()
+
+    # ====== 当天奖励（用户数据，不涉及 SignData 锁） ======
+    exp = await _calc_sign_exp(user_id, final_sign_days)
+    vim = await _calc_sign_vim(user_id, final_sign_days)
+    fav = await _calc_sign_fav(user_id)
+
+    # ====== 补签奖励：逐天累加 ======
+    resign_result = None
+    if do_resign:
+        got_vim = 0.0
+        got_exp = 0
+        for offset in range(missed_days):
+            day_count = offset + 1  # 第一天从 1 开始计
+            got_vim += (await _calc_sign_vim(user_id, day_count))["add"]
+            got_exp += (await _calc_sign_exp(user_id, day_count))["add"]
+        user = await get_user(user_id)
+        await user.add_fav(0.001 * missed_days)
+        resign_result = {"days": missed_days, "vim": round(got_vim, 1), "exp": got_exp}
+
+    # ====== 连续签到奖励：每连续签到 5 天奖励一张自动签到券 ======
+    ticket_gained = 0
+    if final_sign_days % AUTO_SIGN_TICKET_REWARD_DAYS == 0:
+        ticket_gained = 1
+        await _give_auto_sign_tickets(user_id, ticket_gained)
+
+    return {
+        "sign_days": final_sign_days,
+        "rank": rank,
+        "exp": exp,
+        "vim": vim,
+        "fav": fav,
+        "ticket_gained": ticket_gained,
+        "resign": resign_result,
+    }
+
+
 class SignHandler:
     """签到处理类：数据操作与渲染分离"""
 
     def __init__(self, user_id: str) -> None:
         self.user_id = user_id
-        self._already_signed: bool = False
-        self._final_sign_days: int = 0
-        self._rank: int = 0
+        self._result: Optional[dict[str, Any]] = None
+        self._do_resign: bool = False
+        self._missed_days: int = 0
         self._templates: dict = {}
         self._bg_kwargs: dict = {}
 
@@ -145,14 +262,12 @@ class SignHandler:
         """收集信息并操作数据（SignData 表操作由全局锁保护）"""
 
         # ====== Phase 1: 预检查 ======
-        async with get_session() as session:
-            data = await _get_sign_data(session, self.user_id)
-
-        if (date.today() - data.last_sign).days < 1:
-            self._already_signed = True
+        if await _is_user_signed(self.user_id):
             return
 
         # ====== Phase 2: 判断补签（涉及用户交互，不可放锁内） ======
+        async with get_session() as session:
+            data = await _get_sign_data(session, self.user_id)
         days_since = (date.today() - data.last_sign).days
         self._do_resign = False
         self._missed_days = 0
@@ -174,56 +289,20 @@ class SignHandler:
                     except (PromptTimeout, PromptRetryTooMuch):
                         pass
 
-        # ====== Phase 3: 全局锁保护——操作 SignData 表 ======
-        async with _global_sign_lock:
-            async with get_session() as session:
-                sd = await session.get_one(SignData, {"user_id": self.user_id})
-                if (date.today() - sd.last_sign).days < 1:
-                    self._already_signed = True
-                    return
-
-                # 计算新签到天数
-                if days_since == 1:
-                    sd.sign_days += 1
-                elif self._do_resign:
-                    sd.sign_days += self._missed_days + 1  # 补签天数 + 当天
-                else:
-                    sd.sign_days = 1
-                self._final_sign_days = sd.sign_days
-
-                # 排名（基于当前已签到人数）
-                signed_today = (
-                    (await session.execute(select(SignData.user_id).where(SignData.last_sign == date.today())))
-                    .scalars()
-                    .all()
-                )
-                self._rank = len(signed_today) + 1
-
-                sd.last_sign = date.today()
-                await session.commit()
-
-        # ====== Phase 4: 补签奖励（用户数据，不涉及 SignData 锁） ======
-        if self._do_resign:
-            got_vim = 0.0
-            got_exp = 0
-            # 每日补签奖励：逐天累加
-            for offset in range(self._missed_days):
-                day_count = offset + 1  # 第一天从 1 开始计
-                got_vim += (await _calc_sign_vim(self.user_id, day_count))["add"]
-                got_exp += (await _calc_sign_exp(self.user_id, day_count))["add"]
-            user = await get_user(self.user_id)
-            await user.add_fav(0.001 * self._missed_days)
+        # ====== Phase 3+4: 签到数据操作与奖励发放 ======
+        self._result = await perform_sign(self.user_id, self._missed_days if self._do_resign else 0)
+        if self._result is not None and (resign := self._result["resign"]):
             await lang.send(
                 "resign.success",
                 self.user_id,
-                self._missed_days,
-                round(got_vim, 1),
-                got_exp,
+                resign["days"],
+                resign["vim"],
+                resign["exp"],
             )
 
     async def render_result(self, matcher: Matcher) -> None:
         """渲染并发送处理结果"""
-        if self._already_signed:
+        if self._result is None:
             await lang.finish("sign.signed", self.user_id)
 
         self._templates = {
@@ -233,22 +312,27 @@ class SignHandler:
                 "value": await lang.text(
                     "image.signdays_text",
                     self.user_id,
-                    self._final_sign_days,
+                    self._result["sign_days"],
                 ),
             },
             "rank": {
                 "text": await lang.text("image.rank", self.user_id),
-                "value": await lang.text("image.rank_text", self.user_id, self._rank),
+                "value": await lang.text("image.rank_text", self.user_id, self._result["rank"]),
             },
-            "exp": await _calc_sign_exp(self.user_id, self._final_sign_days),
-            "vim": await _calc_sign_vim(self.user_id, self._final_sign_days),
-            "fav": await _calc_sign_fav(self.user_id),
+            "exp": self._result["exp"],
+            "vim": self._result["vim"],
+            "fav": self._result["fav"],
             "fortune": {
                 "text": await lang.text("image.fortune", self.user_id),
                 "value": await lang.text(f"luck.{await _get_luck(self.user_id)}", self.user_id),
             },
             "hitokoto": await _get_hitokoto(self.user_id),
         }
+        if self._result["ticket_gained"]:
+            self._templates["ticket"] = {
+                "text": await lang.text("image.ticket", self.user_id),
+                "value": await lang.text("image.ticket_text", self.user_id, self._result["ticket_gained"]),
+            }
         user = await get_user(self.user_id)
         self._templates["nickname"] = user.nickname
         self._templates["uid"] = await lang.text("image.uid", self.user_id, self.user_id)
@@ -278,11 +362,68 @@ class SignHandler:
         await matcher.finish(await msg.export(), at_sender=True)
 
 
-@sign.handle()
+@sign.assign("$main")
 async def _(matcher: Matcher, user_id: str = get_user_id()) -> None:
     handler = SignHandler(user_id)
     await handler.process_data()
     await handler.render_result(matcher)
+
+
+async def _set_auto_sign(user_id: str, *, enabled: bool) -> None:
+    """开启或关闭自动签到"""
+    async with get_session() as session:
+        data = await _get_sign_data(session, user_id)
+        if data.auto_enabled == enabled:
+            await lang.finish("auto.on_already" if enabled else "auto.off_already", user_id)
+        data.auto_enabled = enabled
+        await session.commit()
+    await lang.finish("auto.on_done" if enabled else "auto.off_done", user_id)
+
+
+async def _set_auto_sign_limit(user_id: str, limit: Optional[int]) -> None:
+    """重置使用计数并设定允许使用的自动签到券个数（<= 0 为不限制）"""
+    if limit is None:
+        await lang.finish("auto.limit_usage", user_id)
+    async with get_session() as session:
+        data = await _get_sign_data(session, user_id)
+        data.auto_limit = limit
+        data.auto_used = 0
+        await session.commit()
+    if limit <= 0:
+        await lang.finish("auto.limit_unlimited_done", user_id)
+    await lang.finish("auto.limit_done", user_id, limit)
+
+
+async def _show_auto_sign_status(user_id: str) -> None:
+    """查看自动签到情况"""
+    async with get_session() as session:
+        data = await _get_sign_data(session, user_id)
+        enabled, count, limit, used = data.auto_enabled, data.auto_count, data.auto_limit, data.auto_used
+    tickets = await get_auto_sign_ticket_count(user_id)
+    if limit <= 0:
+        limit_text = await lang.text("auto.limit_unlimited", user_id)
+    else:
+        limit_text = await lang.text("auto.limit_text", user_id, limit, used)
+    await lang.finish(
+        "auto.status",
+        user_id,
+        status=await lang.text("auto.status_on" if enabled else "auto.status_off", user_id),
+        count=count,
+        tickets=tickets,
+        limit=limit_text,
+    )
+
+
+@sign.assign("auto")
+async def _(action: Optional[str] = None, limit: Optional[int] = None, user_id: str = get_user_id()) -> None:
+    if action == "on":
+        await _set_auto_sign(user_id, enabled=True)
+    elif action == "off":
+        await _set_auto_sign(user_id, enabled=False)
+    elif action == "limit":
+        await _set_auto_sign_limit(user_id, limit)
+    else:
+        await _show_auto_sign_status(user_id)
 
 
 # 暴露给外部使用的接口

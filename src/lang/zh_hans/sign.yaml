@@ -10,6 +10,8 @@ image:
   uid: 'UID: {}'
   fortune: 运势
   fav: 好感
+  ticket: 自动签到券
+  ticket_text: 'x{}'
   hitokoto: 剑阁峥嵘而崔嵬，一夫当关，万夫莫开。
   email_unread: 您有 {} 封未读邮件，请使用 {__prefix__}email 查看。
 sign:
@@ -29,3 +31,25 @@ resign:
   success: |
     已成功补签 {} 天！
     收回了 {}vi 和 {} 经验
+auto:
+  status_on: 已开启
+  status_off: 已关闭
+  limit_unlimited: 不限制
+  limit_text: '{} 张（自上次重置后已使用 {} 张）'
+  status: |
+    【自动签到情况】
+    状态：{status}
+    自动签到次数：{count}
+    背包剩余自动签到券：{tickets}
+    可使用数量：{limit}
+  on_done: 自动签到已开启！每天 23:55 将在满足条件时自动为您签到。
+  on_already: 自动签到已经是开启状态了~
+  off_done: 自动签到已关闭。
+  off_already: 自动签到本来就是关闭的哦~
+  limit_usage: 用法：{__prefix__}sign auto limit <数字>（数字 <= 0 为不限制）
+  limit_done: |
+    已重置自动签到券使用计数。
+    本次允许自动签到使用 {} 张自动签到券。
+  limit_unlimited_done: |
+    已重置自动签到券使用计数。
+    本次不限制自动签到券的使用数量。

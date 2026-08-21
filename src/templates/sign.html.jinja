@@ -201,6 +201,15 @@
                 <td class="col-new">{{ fav.now }}</td>
                 <td class="col-diff">(+{{ fav.add }})</td>
             </tr>
+            {% if ticket %}
+            <tr>
+                <td class="col-label">{{ ticket.text }}</td>
+                <td class="col-old"></td>
+                <td class="col-arrow">+</td>
+                <td class="col-new">{{ ticket.value }}</td>
+                <td class="col-diff"></td>
+            </tr>
+            {% endif %}
         </table>
 
         {# 分割线 #}

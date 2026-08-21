@@ -89,6 +89,7 @@ packages = [
     { include = "nonebot_plugin_liang", from = "./plugins" },
     { include = "nonebot_plugin_roll", from = "./plugins" },
     { include = "nonebot_plugin_sign", from = "./plugins" },
+    { include = "nonebot_plugin_auto_sign", from = "./plugins" },
     { include = "nonebot_plugin_shop", from = "./plugins" },
     { include = "nonebot_plugin_time_progress", from = "./plugins" },
     { include = "nonebot_plugin_vote", from = "./plugins" },
