@@ -12,6 +12,7 @@ from collections.abc import Sequence
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy import inspect
 
 revision: str = "d4e5f6a7b8c9"
 down_revision: str | Sequence[str] | None = "7eb8cd37d8ae"
@@ -25,19 +26,26 @@ RECORD_TABLE = "nonebot_plugin_larkuser_userdeathrecord"
 def upgrade(name: str = "") -> None:
     if name:
         return
-    with op.batch_alter_table(DATA_TABLE, schema=None) as batch_op:
-        batch_op.add_column(sa.Column("death_count", sa.Integer(), nullable=False, server_default="0"))
-    bind = op.get_bind()
-    bind.execute(
-        sa.text(
-            "UPDATE nonebot_plugin_larkuser_userdata SET death_count = "
-            "(SELECT r.death_count FROM nonebot_plugin_larkuser_userdeathrecord r "
-            "WHERE r.user_id = nonebot_plugin_larkuser_userdata.user_id) "
-            "WHERE EXISTS (SELECT 1 FROM nonebot_plugin_larkuser_userdeathrecord r "
-            "WHERE r.user_id = nonebot_plugin_larkuser_userdata.user_id)",
-        ),
-    )
-    op.drop_table(RECORD_TABLE)
+    conn = op.get_bind()
+    inspector = inspect(conn)
+
+    columns = [c["name"] for c in inspector.get_columns(DATA_TABLE)]
+    if "death_count" not in columns:
+        with op.batch_alter_table(DATA_TABLE, schema=None) as batch_op:
+            batch_op.add_column(sa.Column("death_count", sa.Integer(), nullable=False, server_default="0"))
+        conn.execute(
+            sa.text(
+                "UPDATE nonebot_plugin_larkuser_userdata SET death_count = "
+                "(SELECT r.death_count FROM nonebot_plugin_larkuser_userdeathrecord r "
+                "WHERE r.user_id = nonebot_plugin_larkuser_userdata.user_id) "
+                "WHERE EXISTS (SELECT 1 FROM nonebot_plugin_larkuser_userdeathrecord r "
+                "WHERE r.user_id = nonebot_plugin_larkuser_userdata.user_id)",
+            ),
+        )
+
+    existing_tables = inspector.get_table_names()
+    if RECORD_TABLE in existing_tables:
+        op.drop_table(RECORD_TABLE)
 
 
 def downgrade(name: str = "") -> None:
