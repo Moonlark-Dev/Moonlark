@@ -70,5 +70,6 @@ async def _(user_id: str = get_user_id()) -> None:
     current_name = "梁文峰" if current_wenfeng else "梁文谷"
     next_name = "梁文峰" if next_is_wenfeng else "梁文谷"
     countdown = format_countdown(delta)
+    emoji = "🔴" if current_wenfeng else "🔵"
 
-    await lang.finish("result", user_id, current_name, next_name, countdown)
+    await lang.finish("result", user_id, emoji, current_name, next_name, countdown)
