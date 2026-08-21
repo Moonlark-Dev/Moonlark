@@ -12,6 +12,7 @@ from collections.abc import Sequence
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy import inspect
 
 revision: str = "a8f3c1d2e4b5"
 down_revision: str | Sequence[str] | None = "ffdcbc994499"
@@ -22,10 +23,14 @@ depends_on: str | Sequence[str] | None = None
 def upgrade(name: str = "") -> None:
     if name:
         return
-    with op.batch_alter_table("nonebot_plugin_chat_chatgroup", schema=None) as batch_op:
-        batch_op.add_column(
-            sa.Column("interaction_mode", sa.String(length=16), nullable=False, server_default="standard")
-        )
+    conn = op.get_bind()
+    inspector = inspect(conn)
+    columns = [c["name"] for c in inspector.get_columns("nonebot_plugin_chat_chatgroup")]
+    if "interaction_mode" not in columns:
+        with op.batch_alter_table("nonebot_plugin_chat_chatgroup", schema=None) as batch_op:
+            batch_op.add_column(
+                sa.Column("interaction_mode", sa.String(length=16), nullable=False, server_default="standard")
+            )
 
 
 def downgrade(name: str = "") -> None:
