@@ -24,10 +24,8 @@ depends_on: str | Sequence[str] | None = None
 
 def _index_exists(connection, table_name: str, index_name: str) -> bool:
     """检查索引是否存在（兼容全新部署）"""
-    bind = connection
-    if hasattr(connection, "connection"):
-        bind = connection.connection
-    insp = sa.inspect(bind)
+    engine = getattr(connection, "engine", connection)
+    insp = sa.inspect(engine)
     indexes = [idx["name"] for idx in insp.get_indexes(table_name)]
     return index_name in indexes
 
