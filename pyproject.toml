@@ -79,6 +79,7 @@ plugins = [
     "nonebot_plugin_schedule",
     "nonebot_plugin_wordle",
     "nonebot_plugin_message_summary",
+    "nonebot_plugin_menupanel",
     "nonebot_plugin_chatterbox_ranking",
     "nonebot_plugin_chat",
     "nonebot_plugin_hkrpg_calendar",
