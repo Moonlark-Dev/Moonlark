@@ -2,15 +2,16 @@ import json
 import random
 from pathlib import Path
 
+from nonebot import on_command
+from nonebot.params import CommandArg
+from nonebot.adapters import Message
 import jieba
-from nonebot_plugin_alconna import Alconna, Args, on_alconna
 from nonebot_plugin_larklang import LangHelper
 from nonebot_plugin_larkutils import get_user_id, review_text
 
 lang = LangHelper()
 
-alc = Alconna("grass", Args["text?", str])
-grass_cmd = on_alconna(alc)
+grass_cmd = on_command("grass")
 
 _dict_data: dict = {}
 
@@ -51,7 +52,8 @@ def shengcao_text(text: str) -> str:
 
 
 @grass_cmd.handle()
-async def _(text: str | None = None, user_id: str = get_user_id()) -> None:
+async def _(user_id: str = get_user_id(), message: Message = CommandArg()) -> None:
+    text = message.extract_plain_text()
     if not text or not text.strip():
         await lang.finish("empty", user_id)
     output_text = shengcao_text(text)
