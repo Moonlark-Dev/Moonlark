@@ -5,4 +5,4 @@ commands:
     details: help.details
     usages:
       - help.usage
-    category: fun
+    category: game
