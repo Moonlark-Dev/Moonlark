@@ -1,7 +1,6 @@
 from nonebot import on_message, on_command, logger
 from nonebot.typing import T_State
 from nonebot.adapters import Event, Bot, Message
-from nonebot.adapters.qq import Bot as Bot_QQ
 from nonebot.adapters.onebot.v11 import GroupMessageEvent
 from nonebot.adapters.onebot.v11 import Bot as OB11Bot
 from nonebot.params import CommandArg
@@ -14,7 +13,6 @@ from datetime import datetime, timedelta
 from nonebot_plugin_larkutils import get_user_id, get_group_id, open_file, FileType
 from nonebot_plugin_larkutils.file import FileManager
 from nonebot_plugin_larkuser import get_user
-from nonebot_plugin_openai import is_ai_enabled_for_group
 from nonebot_plugin_ranking import generate_image
 from nonebot_plugin_chat.utils.group import parse_message_to_string
 from nonebot_plugin_chat.models import ChatGroup
@@ -138,9 +136,7 @@ async def handle_main(
 
 
 @summary.assign("enable")
-async def _(bot: Bot, user_id: str = get_user_id(), group_id: str = get_group_id()) -> None:
-    if isinstance(bot, Bot_QQ):
-        await lang.finish("switch.unsupported", user_id)
+async def _(user_id: str = get_user_id(), group_id: str = get_group_id()) -> None:
     async with get_config() as conf:
         if group_id in conf.data:
             conf.data.remove(group_id)
@@ -156,9 +152,7 @@ async def _(user_id: str = get_user_id(), group_id: str = get_group_id()) -> Non
 
 
 @summary.assign("everyday-summary")
-async def _(status: str, bot: Bot, user_id: str = get_user_id(), group_id: str = get_group_id()) -> None:
-    if isinstance(bot, Bot_QQ):
-        await lang.finish("switch.unsupported", user_id)
+async def _(status: str, user_id: str = get_user_id(), group_id: str = get_group_id()) -> None:
     everyday_config = get_everyday_summary_config()
     async with everyday_config as conf:
         if status == "on":
@@ -328,13 +322,11 @@ async def _(
 
 @recorder.handle()
 async def _(
-    event: Event, session: async_scoped_session, bot: Bot, group_id: str = get_group_id(), user_id: str = get_user_id()
+    event: Event, session: async_scoped_session, group_id: str = get_group_id(), user_id: str = get_user_id()
 ) -> None:
     async with get_config() as conf:
         if group_id in conf.data:
             await recorder.finish()
-    if isinstance(bot, Bot_QQ) and not await is_ai_enabled_for_group(bot, group_id):
-        await recorder.finish()
     await clean_recorded_message(session)
     session.add(
         GroupMessage(

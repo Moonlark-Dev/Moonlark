@@ -269,7 +269,7 @@ Linux 手册 (ManPage) 查询
 - `/preview <URL> [-w|--wait <等待时间>] (截图URL)`
 ## `summary`: 历史消息总结
 
-使用 AI 总结群聊中的历史消息。读取长度默认为 200 条消息，最大为 270，该功能不支持 QQ 节点且需要在群聊中手动启用。
+使用 AI 总结群聊中的历史消息。读取长度默认为 200 条消息，最大为 270，需要在群聊中手动启用。
 - `/summary [读取长度] (总结历史消息)`
 - `/summary -s broadcast (广播风格总结)`
 - `/summary -s topic (话题梳理)`
@@ -318,7 +318,7 @@ Moonlark 投票
 - `/cave-prompt on|off (开启/关闭私聊图片投稿询问)`
 ## `chat`: 主动水群
 
-基于 LLM 的主动水群功能，可以尝试用于活跃群气氛。（启用后将会收集、处理、并储存启用群聊的聊天记录和群员的昵称，仅支持非 QQ 官方节点）
+基于 LLM 的主动水群功能，可以尝试用于活跃群气氛。（启用后将会收集、处理、并储存启用群聊的聊天记录和群员的昵称；在私聊中使用 chat on / chat off 可以开关私聊 Chat）
 - `/chat switch (切换功能启用状态)`
 - `/chat on (启用功能)`
 - `/chat off (禁用功能)`
@@ -413,14 +413,6 @@ Moonlark 投票
 - `/wakeuprank (早起次数排行)`
 - `/wakeuprank avg (平均起床时间排行)`
 - `/wakeuprank today (今日起床时间排行)`
-## `ai-whitelist`: AI 白名单管理
-
-管理 QQ 节点上允许使用 AI 功能的群聊白名单（仅限超级用户）
-> 此指令仅 Moonlark 管理员可用。
-- `/ai-whitelist (查看白名单)`
-- `/ai-whitelist add <群号> (添加群聊到白名单)`
-- `/ai-whitelist remove <群号> (从白名单移除群聊)`
-- `/ai-whitelist enable <群号> (启用群聊 AI 功能)`
 ## `bcsu`: 广播管理
 
 发送和管理广播消息
@@ -438,15 +430,6 @@ Moonlark 投票
 - `/model <模型名> (更换默认模型)`
 - `/model <模型名> <应用标识> (设置应用专用模型)`
 - `/model :default: <应用标识> (删除应用配置)`
-## `private-chat-whitelist`: 私聊 Chat 白名单管理
-
-管理可在私聊中使用 Chat 功能的用户白名单（仅限超级用户）
-> 此指令仅 Moonlark 管理员可用。
-- `/private-chat-whitelist (查看白名单)`
-- `/private-chat-whitelist add <用户ID> (添加用户)`
-- `/private-chat-whitelist remove <用户ID> (移除用户)`
-- `/private-chat-whitelist enable <用户ID> (启用)`
-- `/private-chat-whitelist disable <用户ID> (禁用)`
 ## `subaccount`: 管理子账号
 
 [管理员专用] 管理子账号绑定关系：查看绑定状态、绑定/解绑子账号

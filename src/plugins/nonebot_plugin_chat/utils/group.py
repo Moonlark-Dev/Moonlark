@@ -51,9 +51,7 @@ async def enabled_group(event: Event, group_id: str = get_group_id()) -> bool:
 async def enabled_private_chat(event: Event, user_id: str = get_user_id()) -> bool:
     try:
         if event.get_user_id() == event.get_session_id():
-            async with get_session() as session:
-                g = await session.get(PrivateChatConfig, {"user_id": user_id})
-                return g is not None and g.enabled
+            return await get_private_chat_enabled(user_id)
     except (ValueError, NotImplementedError):
         pass
     # QQ adapter C2C messages: get_user_id() returns openid, get_session_id() returns "friend_{openid}"
@@ -61,10 +59,15 @@ async def enabled_private_chat(event: Event, user_id: str = get_user_id()) -> bo
         from nonebot.adapters.qq.event import C2CMessageCreateEvent
 
         if isinstance(event, C2CMessageCreateEvent):
-            async with get_session() as session:
-                g = await session.get(PrivateChatConfig, {"user_id": user_id})
-                return g is not None and g.enabled
+            return await get_private_chat_enabled(user_id)
     return False
+
+
+async def get_private_chat_enabled(user_id: str) -> bool:
+    """私聊 Chat 开关，未创建过配置的用户默认开启"""
+    async with get_session() as session:
+        g = await session.get(PrivateChatConfig, {"user_id": user_id})
+        return g.enabled if g is not None else True
 
 
 class BrowserErrorOccurred(Exception):

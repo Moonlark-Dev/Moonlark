@@ -22,14 +22,17 @@ from nonebot.adapters import Bot, Event, Message
 from nonebot.matcher import Matcher
 from nonebot.params import CommandArg
 from nonebot_plugin_larkutils import get_group_id, get_user_id
+from nonebot_plugin_larkutils.user import private_message
 from nonebot_plugin_orm import async_scoped_session
 
 from nonebot_plugin_chat.core.session import get_session_directly, group_disable, groups, reset_session
 from nonebot_plugin_chat.core.session.base import BaseSession
 
 from ..lang import lang
-from ..models import ChatGroup
+from ..models import ChatGroup, PrivateChatConfig
 from ..utils.timing_stats import timing_stats_manager
+
+PRIVATE_CHAT_COMMANDS = ("switch", "on", "off", "reset")
 
 
 class CommandHandler:
@@ -50,17 +53,15 @@ class CommandHandler:
         self.group_id = group_id
         self.user_id = user_id
         self.argv = message.extract_plain_text().split(" ")
+        self.is_private_chat = False
         self.group_config = ChatGroup(group_id=self.group_id, enabled=False)
+        self.private_config: PrivateChatConfig | None = None
 
     async def setup(self) -> "CommandHandler":
-        from nonebot_plugin_openai import is_ai_enabled_for_group
-
-        if not await is_ai_enabled_for_group(self.bot, self.group_id):
-            # 私聊白名单用户（如 QQ 适配器 C2C）：允许使用 chat 指令（reset 等）
-            from ..utils.group import enabled_private_chat
-
-            if not await enabled_private_chat(self.event, self.user_id):
-                await lang.finish("command.not_available", self.user_id)
+        self.is_private_chat = await private_message(self.event)
+        if self.is_private_chat:
+            self.private_config = await self.session.get(PrivateChatConfig, {"user_id": self.user_id})
+            return self
         self.group_config = (await self.session.get(ChatGroup, {"group_id": self.group_id})) or ChatGroup(
             group_id=self.group_id,
             enabled=False,
@@ -68,6 +69,9 @@ class CommandHandler:
         return self
 
     def is_group_enabled(self) -> bool:
+        if self.is_private_chat:
+            # 私聊 Chat 默认开启，未创建过配置的用户视为已启用
+            return self.private_config.enabled if self.private_config is not None else True
         return self.group_config.enabled
 
     async def handle_switch(self) -> None:
@@ -81,15 +85,31 @@ class CommandHandler:
         await self.session.commit()
 
     async def handle_off(self) -> None:
+        if self.is_private_chat:
+            await self.handle_private_switch(False)
+            return
         self.group_config.enabled = False
         await self.merge_group_config()
         await group_disable(self.group_id)
         await lang.finish("command.switch.disabled", self.user_id)
 
     async def handle_on(self) -> None:
+        if self.is_private_chat:
+            await self.handle_private_switch(True)
+            return
         self.group_config.enabled = True
         await self.merge_group_config()
         await lang.finish("command.switch.enabled", self.user_id)
+
+    async def handle_private_switch(self, enabled: bool) -> None:
+        if self.private_config is None:
+            self.private_config = PrivateChatConfig(user_id=self.user_id, enabled=enabled)
+        else:
+            self.private_config.enabled = enabled
+        await self.session.merge(self.private_config)
+        await self.session.commit()
+        key = "command.switch_private.enabled" if enabled else "command.switch_private.disabled"
+        await lang.finish(key, self.user_id)
 
     async def handle_desire(self) -> None:
         session = await self.get_group_session()
@@ -314,6 +334,10 @@ class CommandHandler:
         await lang.finish("command.compact.success", self.user_id, target_session_id)
 
     async def handle(self) -> None:
+        if not self.argv or not self.argv[0]:
+            await lang.finish("command.no_argv", self.user_id)
+        if self.is_private_chat and self.argv[0] not in PRIVATE_CHAT_COMMANDS:
+            await lang.finish("command.private_only_switch", self.user_id)
         match self.argv[0]:
             case "switch":
                 await self.handle_switch()
