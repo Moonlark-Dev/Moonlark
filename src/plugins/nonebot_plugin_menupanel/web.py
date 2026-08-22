@@ -33,19 +33,21 @@ MAX_COMMANDS = 8
 
 
 @app.get("/api/menupanel/permission")
-async def _(request: Request, user_id: str = get_user_id()) -> dict[str, bool]:
+async def get_permission(request: Request, user_id: str = get_user_id()) -> dict[str, bool]:
     return {"superuser": user_id in config.superusers}
 
 
 @app.get("/api/menupanel/settings")
-async def _(request: Request, user_id: str = get_user_id()) -> MenuPanelSettings:
+async def read_settings(request: Request, user_id: str = get_user_id()) -> MenuPanelSettings:
     if user_id not in config.superusers:
         raise HTTPException(status.HTTP_403_FORBIDDEN)
     return await load_settings()
 
 
 @app.put("/api/menupanel/settings")
-async def _(request: Request, settings: MenuPanelSettings, user_id: str = get_user_id()) -> dict[str, bool]:
+async def update_settings(
+    request: Request, settings: MenuPanelSettings, user_id: str = get_user_id()
+) -> dict[str, bool]:
     if user_id not in config.superusers:
         raise HTTPException(status.HTTP_403_FORBIDDEN)
     from nonebot_plugin_larkhelp.__main__ import get_help_list
@@ -65,7 +67,7 @@ async def _(request: Request, settings: MenuPanelSettings, user_id: str = get_us
 
 
 @app.post("/api/menupanel/sync")
-async def _(request: Request, user_id: str = get_user_id()) -> dict:
+async def trigger_sync(request: Request, user_id: str = get_user_id()) -> dict:
     if user_id not in config.superusers:
         raise HTTPException(status.HTTP_403_FORBIDDEN)
     from .sync import sync_all

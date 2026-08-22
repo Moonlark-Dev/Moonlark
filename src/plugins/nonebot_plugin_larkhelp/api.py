@@ -31,7 +31,7 @@ async def _() -> list[str]:
 
 
 @app.get("/api/help/list")
-async def _(user_id: str = get_user_id("-1")) -> list[dict]:
+async def get_help_list_by_category(user_id: str = get_user_id("-1")) -> list[dict]:
     """按分类聚合的全部指令帮助数据，供在线帮助页面使用"""
     try:
         return await get_templates(user_id)
