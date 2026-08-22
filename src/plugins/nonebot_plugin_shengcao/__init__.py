@@ -7,7 +7,6 @@ __plugin_meta__ = PluginMetadata(
     usage="/grass <文本>",
 )
 
-require("nonebot_plugin_alconna")
 require("nonebot_plugin_larklang")
 require("nonebot_plugin_larkutils")
 
