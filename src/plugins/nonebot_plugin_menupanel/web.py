@@ -55,7 +55,9 @@ async def _(request: Request, settings: MenuPanelSettings, user_id: str = get_us
     if unknown:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, f"未知指令: {', '.join(unknown)}")
     # 去重保序，且不允许展示超管专属指令
-    commands = list(dict.fromkeys(command for command in settings.commands if help_list[command].category != "superuser"))
+    commands = list(
+        dict.fromkeys(command for command in settings.commands if help_list[command].category != "superuser")
+    )
     if len(commands) > MAX_COMMANDS:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, f"最多选择 {MAX_COMMANDS} 个指令")
     await save_settings(MenuPanelSettings(commands=commands, updated_at=time.time()))

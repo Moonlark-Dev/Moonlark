@@ -103,9 +103,7 @@ async def sync_panels(bot: QQBot, commands: list[str]) -> str:
         try:
             panel_id = await find_panel_id(bot, scope)
             if panel_id is None:
-                await qq_request(
-                    bot, "POST", "/v2/panels", {"scope": scope, "target_type": "all", "panel": panel}
-                )
+                await qq_request(bot, "POST", "/v2/panels", {"scope": scope, "target_type": "all", "panel": panel})
                 messages.append(f"{scope_name}面板已创建")
             else:
                 await qq_request(bot, "PUT", f"/v2/panels/{panel_id}", {"panel": panel})
