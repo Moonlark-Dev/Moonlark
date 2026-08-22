@@ -1,6 +1,7 @@
 import uuid
 import hashlib
 from datetime import datetime, timedelta
+from enum import Enum
 from typing import Optional
 from fastapi import Depends, HTTPException, Request, status
 from nonebot.log import logger
@@ -14,10 +15,40 @@ from nonebot_plugin_larkuser.user.base import MoonlarkUser
 from .models import SessionData
 
 
+class SessionState(Enum):
+    """Web 会话状态：已激活、待激活、无效（不存在 / 已过期 / 标识不匹配）。"""
+
+    ACTIVATED = "activated"
+    PENDING = "pending"
+    INVALID = "invalid"
+
+
 def get_identifier(request: Request) -> str:
     return hashlib.sha256(
         f"{request.headers.get('User-Agent')}{request.client.host if request.client else ''}".encode()
     ).hexdigest()
+
+
+async def check_session_state(request: Request) -> SessionState:
+    """按 Bearer Token 检查会话状态（主键查询，开销极小，供登录等待轮询使用）。
+
+    与 `_get_user_id` 不同：待激活的会话返回 PENDING 而不是 401；
+    无效 / 过期 / 标识不匹配的会话会被删除并返回 INVALID。
+    """
+    session_id = (request.headers.get("Authorization") or "")[6:].strip()
+    if not session_id:
+        return SessionState.INVALID
+    async with get_session() as session:
+        try:
+            data = await session.get_one(SessionData, session_id)
+        except NoResultFound:
+            return SessionState.INVALID
+        expired = data.expiration_time is not None and data.expiration_time <= datetime.now()
+        if data.identifier != get_identifier(request) or expired:
+            await session.delete(data)
+            await session.commit()
+            return SessionState.INVALID
+        return SessionState.ACTIVATED if data.activate_code is None else SessionState.PENDING
 
 
 async def create_session(user_id: str, identifier: str, expiration_time: int) -> tuple[str, str]:

@@ -8,6 +8,7 @@ class Config(BaseModel):
     command_start: list[str]
     session_retention_days: int = 3
     unused_session_remove_delay: int = 300
+    login_pending_max_wait: int = 25
     cors_allow_origins: list[str] = ["*"]
 
 
