@@ -16,6 +16,9 @@ rotten_egg:
 dice:
   name: 二十面骰子
   description: "命运的二十面体，掷出的每一面都可能是惊喜或惊吓！"
+auto_sign_ticket:
+  name: 自动签到券
+  description: "持有并开启自动签到后，每天 23:55 会消耗一张自动签到券代替您完成签到。每连续签到 5 天可获得一张。"
 
 fav:
   name: Moonlark 的好感

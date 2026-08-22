@@ -1,2 +1,2 @@
 from .special import experience, vimcoin
-from .moonlark import pawcoin, dice, gifts, egg, rotten_egg
+from .moonlark import pawcoin, dice, gifts, egg, rotten_egg, auto_sign_ticket
