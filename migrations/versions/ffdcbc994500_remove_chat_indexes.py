@@ -12,9 +12,13 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from typing import TYPE_CHECKING
 
 import sqlalchemy as sa
 from alembic import op
+
+if TYPE_CHECKING:
+    from sqlalchemy.engine import Connection
 
 revision: str = "ffdcbc994500"
 down_revision: str | Sequence[str] | None = "ffdcbc994499"
@@ -22,10 +26,15 @@ branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
 
-def _index_exists(connection, table_name: str, index_name: str) -> bool:
-    """检查索引是否存在（兼容全新部署）"""
-    engine = getattr(connection, "engine", connection)
-    insp = sa.inspect(engine)
+def _index_exists(connection: Connection, table_name: str, index_name: str) -> bool:
+    """检查索引是否存在（兼容全新部署）
+
+    `op.get_bind()` 返回的 `sqlalchemy.engine.Connection` 自带 `.connection`
+    属性（指向底层 DBAPI 连接），不能以此判断对象类型；应直接交给
+    `sa.inspect()`。原先的写法总是命中 hasattr 分支，导致对裸 DBAPI
+    连接调用 inspect 而抛出 NoInspectionAvailable。
+    """
+    insp = sa.inspect(connection)
     indexes = [idx["name"] for idx in insp.get_indexes(table_name)]
     return index_name in indexes
 
