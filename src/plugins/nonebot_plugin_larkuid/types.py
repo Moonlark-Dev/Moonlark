@@ -7,6 +7,11 @@ class LoginResponse(TypedDictExtension):
     session_id: str
     activate_code: str
     effective_time: int
+    command_prefix: str
+
+
+class LoginPendingResponse(TypedDictExtension):
+    activated: bool
 
 
 class VerifyResponse(TypedDictExtension):
