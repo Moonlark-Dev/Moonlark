@@ -20,7 +20,7 @@ from typing import cast
 from fastapi import FastAPI, HTTPException, status
 
 from nonebot_plugin_larkuid.session import get_user_id
-from .__main__ import lang, get_help_list, get_help_dict
+from .__main__ import lang, get_help_list, get_help_dict, get_templates
 
 app = cast(FastAPI, get_app())
 
@@ -28,6 +28,15 @@ app = cast(FastAPI, get_app())
 @app.get("/api/help/commands")
 async def _() -> list[str]:
     return list(get_help_list().keys())
+
+
+@app.get("/api/help/list")
+async def get_help_list_by_category(user_id: str = get_user_id("-1")) -> list[dict]:
+    """按分类聚合的全部指令帮助数据，供在线帮助页面使用"""
+    try:
+        return await get_templates(user_id)
+    except ValueError:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE)
 
 
 @app.get("/api/help/commands/{name}")
