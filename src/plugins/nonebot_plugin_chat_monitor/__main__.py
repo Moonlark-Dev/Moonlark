@@ -20,11 +20,9 @@ import hashlib
 import json
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from nonebot import get_app, get_driver
+from nonebot import get_app
 from nonebot.log import logger
 from nonebot_plugin_apscheduler import scheduler
-from nonebot_plugin_orm import get_session
-from sqlalchemy import text
 
 from .auth import verify_admin
 from .broadcast import _start_ws_broadcast  # noqa: F401 -- 注册启动时广播
@@ -40,40 +38,6 @@ app: FastAPI = get_app()  # type: ignore[assignment]
 app.include_router(sessions_router)
 app.include_router(notes_router)
 app.include_router(ego_router)
-
-
-# ========================================================================
-# 启动时创建数据库索引
-# ========================================================================
-
-
-@get_driver().on_startup
-async def _ensure_indexes():
-    """创建 Note 和 AgentEvent 表的必要索引（如果不存在）。"""
-    indexes = [
-        ("nonebot_plugin_chat_note", "ix_note_created_time", "created_time"),
-        ("nonebot_plugin_chat_diaryentry", "ix_agent_event_created_at", "created_at"),
-    ]
-    async with get_session() as db_session:
-        for table, index_name, column in indexes:
-            try:
-                # 通过 information_schema 检查索引是否存在（兼容 MySQL 8.0+）
-                result = await db_session.execute(
-                    text(
-                        "SELECT COUNT(*) FROM information_schema.statistics "
-                        "WHERE table_schema = DATABASE() "
-                        f"AND table_name = '{table}' "
-                        f"AND index_name = '{index_name}'"
-                    )
-                )
-                if result.scalar() == 0:
-                    await db_session.execute(text(f"CREATE INDEX {index_name} ON {table} ({column})"))
-                    logger.info(f"[ChatMonitor] 创建索引 {index_name}")
-            except Exception as exc:
-                logger.warning(f"[ChatMonitor] 处理索引 {index_name} 失败（可忽略）: {exc}")
-        await db_session.commit()
-    logger.info("[ChatMonitor] 数据库索引已确认")
-
 
 # ========================================================================
 # WebSocket 端点
