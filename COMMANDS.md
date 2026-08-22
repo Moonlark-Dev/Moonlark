@@ -413,10 +413,6 @@ Moonlark 投票
 - `/wakeuprank (早起次数排行)`
 - `/wakeuprank avg (平均起床时间排行)`
 - `/wakeuprank today (今日起床时间排行)`
-## `liang`: 查看当前是梁文峰还是梁文谷
-
-查看当前是梁文峰还是梁文谷，以及距离切换还有多久
-- `/liang (查看当前状态)`
 ## `bcsu`: 广播管理
 
 发送和管理广播消息
