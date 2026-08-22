@@ -16,4 +16,4 @@
 # ##############################################################################
 
 # from . import profile
-from . import chat as chat, private_chat_whitelist as private_chat_whitelist, rua as rua
+from . import chat as chat, rua as rua

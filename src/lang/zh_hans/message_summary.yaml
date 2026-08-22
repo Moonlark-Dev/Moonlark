@@ -1,12 +1,11 @@
 switch:
   disable: 群消息总结已禁用，将不再记录本群消息。
   enable: 群消息总结已启用。注意：此功能会保存本群最后 2 天的消息。
-  unsupported: 不支持在此节点使用该功能。
 disabled: 该功能未在此群启用。
 
 help:
   description: 历史消息总结
-  details: 使用 AI 总结群聊中的历史消息。读取长度默认为 200 条消息，最大为 270，该功能不支持 QQ 节点且需要在群聊中手动启用。
+  details: 使用 AI 总结群聊中的历史消息。读取长度默认为 200 条消息，最大为 270，需要在群聊中手动启用。
   usage1: summary [读取长度] (总结历史消息)
   usage2: summary -s broadcast (广播风格总结)
   usage3: summary -s topic (话题梳理)

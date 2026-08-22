@@ -19,7 +19,6 @@ from nonebot_plugin_larkutils import get_group_id, get_user_id
 from nonebot_plugin_larkutils.subaccount import get_main_account
 from nonebot_plugin_message_summary.hash_utils import compute_message_hash
 from nonebot_plugin_message_summary.models import GroupMessage
-from nonebot_plugin_openai import check_ai_enabled
 from nonebot_plugin_orm import get_session
 from sqlalchemy import select
 
@@ -57,10 +56,7 @@ async def _(
     state: T_State,
     user_id: str = get_user_id(),
     session_id: str = get_group_id(),
-    ai_enabled: bool = check_ai_enabled(),
 ) -> None:
-    if not ai_enabled:
-        await matcher.finish()
     target = get_target(event)
     session = await create_group_session(session_id, target, bot)
     session.set_target(target, bot)
