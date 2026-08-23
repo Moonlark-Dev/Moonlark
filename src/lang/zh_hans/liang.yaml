@@ -1,10 +1,14 @@
 help:
   description: 查看当前是梁文峰还是梁文谷
-  details: 查看当前是梁文峰还是梁文谷，以及距离切换还有多久
+  details: 查看当前是梁文峰还是梁文谷，以及距离切换还有多久。周六周日全天为梁文谷时段。
   usage: liang (查看当前状态)
 result: "{} 现在是{}\n距离切换到{}还有 {}"
+name_wenfeng: 梁文峰
+name_wengu: 梁文谷
 time_wenfeng: 梁文峰（{}:00~{}:00, {}:00~{}:00）
 time_wengu: 梁文谷（其余时间）
+time_wengu_weekend: 梁文谷（周末全天）
 suffix_minutes: "{} 分钟"
 suffix_hours: "{} 小时"
 suffix_hours_minutes: "{} 小时 {} 分钟"
+suffix_days_hours: "{} 天 {} 小时"
