@@ -156,9 +156,7 @@ async def authenticate(request: Request, *, allow_pending: bool = False) -> Auth
             raise InvalidSessionError()
         if data.activate_code is not None and not allow_pending:
             raise InvalidSessionError()
-        context = AuthContext(
-            session_id=data.session_id, user_id=data.user_id, pending=data.activate_code is not None
-        )
+        context = AuthContext(session_id=data.session_id, user_id=data.user_id, pending=data.activate_code is not None)
         await _apply_activity(data, now)
         await session.commit()
         return context
