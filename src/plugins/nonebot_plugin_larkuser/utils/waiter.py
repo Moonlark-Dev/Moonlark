@@ -15,11 +15,11 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
-from nonebot_plugin_waiter import prompt as waiter_prompt
 from typing import Optional, Callable, TypeVar
 from nonebot_plugin_alconna import UniMessage
 from ..lang import lang
 from ..exceptions import PromptRetryTooMuch, PromptTimeout
+from .waiter2 import WaitUserInput
 
 T = TypeVar("T")
 
@@ -39,16 +39,16 @@ async def prompt(
             await lang.finish("prompt.retry_too_much", user_id)
         else:
             raise PromptRetryTooMuch
-    if isinstance(message, UniMessage):
-        message = await message.export()
-    resp = await waiter_prompt(message, timeout=timeout)
-    if resp is None:
+    waiter = WaitUserInput(message if isinstance(message, UniMessage) else UniMessage(message), user_id)
+    try:
+        await waiter.wait(timeout=timeout, auto_finish=False)
+    except TimeoutError:
         if ignore_error_details:
             await lang.finish("prompt.timeout", user_id)
         else:
             raise PromptTimeout
-    text = resp.extract_plain_text()
-    if text.lower() == "q" and allow_quit:
+    text = waiter.get()
+    if allow_quit and text.lower() == "q":
         await lang.finish("prompt.quited", user_id)
     if checker is not None and not checker(text):
         return await prompt(
@@ -59,5 +59,6 @@ async def prompt(
             timeout,
             parser,
             ignore_error_details,
+            allow_quit,
         )
     return parser(text)
