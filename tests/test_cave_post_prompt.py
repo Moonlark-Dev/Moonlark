@@ -1,3 +1,5 @@
+from typing import ClassVar
+
 import pytest
 
 
@@ -11,95 +13,164 @@ class _FakeResult:
         self.subcommands = {"add": _FakeSubcommand(add_args)}
 
 
-@pytest.mark.asyncio
-async def test_cave_a_without_content_prompts_then_posts(monkeypatch):
-    """/cave-a 未携带内容时，先通过 LarkUser prompt 询问投稿内容，再以回复内容投稿"""
-    from nonebot_plugin_alconna import Text
-    from nonebot_plugin_larkcave.commands.post import handle_add
+class _FakeCaveWaiter:
+    """替换 nonebot_plugin_larkcave.commands.post.Waiter 的测试替身"""
 
-    prompt_message = "投稿内容为空！请直接发送您要投稿到回声洞的内容。\n发送 q 可取消本次投稿。"
-    prompted: list[tuple[str, str, dict]] = []
+    created: ClassVar[list] = []
+    responses: ClassVar[list] = []
+
+    def __init__(self, prompt_text, user_id, **kwargs) -> None:
+        self.prompt_text = prompt_text
+        self.user_id = user_id
+        self.kwargs = kwargs
+        type(self).created.append(self)
+
+    async def wait(self, timeout: int = 210, auto_finish: bool = True) -> None:
+        self.timeout = timeout
+        self.auto_finish = auto_finish
+        response = type(self).responses.pop(0)
+        if isinstance(response, Exception):
+            raise response
+        self._message = response
+
+    def get(self, parser=lambda message: message):
+        return parser(self._message)
+
+
+@pytest.fixture
+def cave_post_env(monkeypatch):
+    """隔离 post 模块的外部依赖：Waiter、post_cave 与 lang"""
+    from nonebot.exception import FinishedException
+    import nonebot_plugin_larkcave.commands.post as post_mod
+
     posted: list[tuple[list, str]] = []
-
-    async def fake_prompt(message, user_id, **kwargs):
-        prompted.append((message, user_id, kwargs))
-        return "用户回复的投稿内容"
+    finished: list[tuple[str, str]] = []
 
     async def fake_post_cave(content, user_id, event, bot, state, session, group_id=None):
         posted.append((content, user_id))
 
     async def fake_lang_text(key: str, user_id, *args, **kwargs) -> str:
-        return prompt_message
+        return f"text::{key}"
 
-    monkeypatch.setattr("nonebot_plugin_larkcave.commands.post.prompt", fake_prompt)
-    monkeypatch.setattr("nonebot_plugin_larkcave.commands.post.post_cave", fake_post_cave)
-    monkeypatch.setattr("nonebot_plugin_larkcave.commands.post.lang.text", fake_lang_text)
+    async def fake_lang_finish(key: str, user_id, *args, **kwargs):
+        finished.append((key, str(user_id)))
+        raise FinishedException
+
+    monkeypatch.setattr(post_mod, "post_cave", fake_post_cave)
+    monkeypatch.setattr(post_mod.lang, "text", fake_lang_text)
+    monkeypatch.setattr(post_mod.lang, "finish", fake_lang_finish)
+    monkeypatch.setattr(post_mod, "Waiter", _FakeCaveWaiter)
+
+    _FakeCaveWaiter.created.clear()
+    _FakeCaveWaiter.responses.clear()
+    return {"posted": posted, "finished": finished}
+
+
+@pytest.mark.asyncio
+async def test_cave_a_rich_reply_posts_image_and_text(cave_post_env):
+    """/cave-a 未携带内容时，补发的图片+文本富文本内容应完整投稿"""
+    from nonebot_plugin_alconna import Image, Text, UniMessage
+    from nonebot_plugin_larkcave.commands.post import handle_add
+
+    _FakeCaveWaiter.responses.append(UniMessage([Text("  "), Image("https://example.com/a.png"), Text("看图")]))
 
     result = _FakeResult({})  # add 子命令存在但没有 content 参数
     await handle_add(None, None, None, None, result, user_id="user-1", group_id="group-1")
 
-    assert prompted == [
-        (prompt_message, "user-1", {"timeout": 60}),
-    ]
-    assert len(posted) == 1
-    content, user_id = posted[0]
+    assert len(_FakeCaveWaiter.created) == 1
+    waiter = _FakeCaveWaiter.created[0]
+    assert waiter.user_id == "user-1"
+    assert waiter.prompt_text.extract_plain_text() == "text::add.prompt"
+    assert waiter.timeout == 60
+    assert waiter.auto_finish is False
+
+    assert len(cave_post_env["posted"]) == 1
+    content, user_id = cave_post_env["posted"][0]
+    assert user_id == "user-1"
+    # 空白文本段被过滤，图片与有效文本完整保留
+    assert len([seg for seg in content if isinstance(seg, Image)]) == 1
+    assert [seg.text for seg in content if isinstance(seg, Text)] == ["看图"]
+
+
+@pytest.mark.asyncio
+async def test_cave_a_plain_reply_posts_text(cave_post_env):
+    """/cave-a 补发纯文本时按原逻辑投稿"""
+    from nonebot_plugin_alconna import Text, UniMessage
+    from nonebot_plugin_larkcave.commands.post import handle_add
+
+    _FakeCaveWaiter.responses.append(UniMessage([Text("用户回复的投稿内容")]))
+
+    result = _FakeResult({})
+    await handle_add(None, None, None, None, result, user_id="user-1", group_id="group-1")
+
+    assert cave_post_env["finished"] == []
+    assert len(cave_post_env["posted"]) == 1
+    content, user_id = cave_post_env["posted"][0]
     assert user_id == "user-1"
     assert [seg.text for seg in content if isinstance(seg, Text)] == ["用户回复的投稿内容"]
 
 
 @pytest.mark.asyncio
-async def test_cave_a_with_content_posts_directly(monkeypatch):
-    """/cave-a 携带内容时直接投稿，不触发询问"""
-    from nonebot_plugin_alconna import Text
+async def test_cave_a_whitespace_reply_falls_back_to_empty(cave_post_env):
+    """/cave-a 未携带内容且用户回复空白内容时，按无效内容结束投稿"""
+    from nonebot.exception import FinishedException
+    from nonebot_plugin_alconna import Text, UniMessage
     from nonebot_plugin_larkcave.commands.post import handle_add
 
-    prompted = []
-    posted: list[tuple[list, str]] = []
+    _FakeCaveWaiter.responses.append(UniMessage([Text("   ")]))
+    result = _FakeResult({})
+    with pytest.raises(FinishedException):
+        await handle_add(None, None, None, None, result, user_id="user-1", group_id="group-1")
 
-    async def fake_prompt(message, user_id, **kwargs):
-        prompted.append(message)
-        return ""
+    assert cave_post_env["posted"] == []
+    assert cave_post_env["finished"] == [("add.empty", "user-1")]
 
-    async def fake_post_cave(content, user_id, event, bot, state, session, group_id=None):
-        posted.append((content, user_id))
 
-    monkeypatch.setattr("nonebot_plugin_larkcave.commands.post.prompt", fake_prompt)
-    monkeypatch.setattr("nonebot_plugin_larkcave.commands.post.post_cave", fake_post_cave)
+@pytest.mark.asyncio
+async def test_cave_a_q_reply_cancels(cave_post_env):
+    """/cave-a 补发 q 时取消投稿"""
+    from nonebot.exception import FinishedException
+    from nonebot_plugin_alconna import Text, UniMessage
+    from nonebot_plugin_larkcave.commands.post import handle_add
+
+    _FakeCaveWaiter.responses.append(UniMessage([Text("Q")]))
+    result = _FakeResult({})
+    with pytest.raises(FinishedException):
+        await handle_add(None, None, None, None, result, user_id="user-1", group_id="group-1")
+
+    assert cave_post_env["posted"] == []
+    assert cave_post_env["finished"] == [("prompt.cancelled", "user-1")]
+
+
+@pytest.mark.asyncio
+async def test_cave_a_timeout_finishes(cave_post_env):
+    """/cave-a 等待补发内容超时时结束会话"""
+    from nonebot.exception import FinishedException
+    from nonebot_plugin_larkcave.commands.post import handle_add
+
+    _FakeCaveWaiter.responses.append(TimeoutError())
+    result = _FakeResult({})
+    with pytest.raises(FinishedException):
+        await handle_add(None, None, None, None, result, user_id="user-1", group_id="group-1")
+
+    assert cave_post_env["posted"] == []
+    assert cave_post_env["finished"] == [("add.timeout", "user-1")]
+
+
+@pytest.mark.asyncio
+async def test_cave_a_with_content_posts_directly(cave_post_env):
+    """/cave-a 携带内容时直接投稿，不触发富文本询问"""
+    from nonebot_plugin_alconna import Text
+    from nonebot_plugin_larkcave.commands.post import handle_add
 
     result = _FakeResult({"content": (Text("直接投稿内容"),)})
     await handle_add(None, None, None, None, result, user_id="user-1", group_id="group-1")
 
-    assert prompted == []
-    assert len(posted) == 1
-    content, user_id = posted[0]
+    assert _FakeCaveWaiter.created == []
+    assert len(cave_post_env["posted"]) == 1
+    content, user_id = cave_post_env["posted"][0]
     assert user_id == "user-1"
     assert [seg.text for seg in content if isinstance(seg, Text)] == ["直接投稿内容"]
-
-
-@pytest.mark.asyncio
-async def test_cave_a_empty_reply_falls_back_to_invalid(monkeypatch):
-    """/cave-a 未携带内容且用户回复空内容时，按无效内容结束投稿"""
-    from nonebot_plugin_larkcave.commands.post import handle_add
-
-    finished = []
-
-    async def fake_prompt(message, user_id, **kwargs):
-        return "   "
-
-    async def fake_lang_finish(key: str, user_id, *args, **kwargs):
-        finished.append((key, user_id))
-
-    async def fake_post_cave(content, user_id, event, bot, state, session, group_id=None):
-        raise AssertionError("不应投稿空内容")
-
-    monkeypatch.setattr("nonebot_plugin_larkcave.commands.post.prompt", fake_prompt)
-    monkeypatch.setattr("nonebot_plugin_larkcave.commands.post.post_cave", fake_post_cave)
-    monkeypatch.setattr("nonebot_plugin_larkcave.commands.post.lang.finish", fake_lang_finish)
-
-    result = _FakeResult({})
-    await handle_add(None, None, None, None, result, user_id="user-1", group_id="group-1")
-
-    assert finished == [("add.empty", "user-1")]
 
 
 @pytest.mark.asyncio

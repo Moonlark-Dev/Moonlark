@@ -1,12 +1,22 @@
 from random import randint
 
 from nonebot_plugin_alconna import Alconna, Args, on_alconna
+from nonebot_plugin_bag.utils.reduce import ItemNotEnough, remove_item_from_bag
+from nonebot_plugin_items.registry.registry import ResourceLocation
+from nonebot_plugin_items.utils.string import get_location_by_id
 from nonebot_plugin_larkuser import MoonlarkUser, get_user, patch_matcher
 from nonebot_plugin_larkutils import get_user_id
 
 from .lang import lang
 
 MAX_COUNT = 100
+DICE_ITEM_ID = "moonlark:dice"
+
+
+def get_dice_location() -> ResourceLocation:
+    """获取二十面骰子的物品 location"""
+    return get_location_by_id(DICE_ITEM_ID)
+
 
 alc = Alconna("roll", Args["count?", int, 1])
 roll = on_alconna(alc)
@@ -70,6 +80,11 @@ async def _(user_id: str = get_user_id(), count: int = 1) -> None:
         await lang.finish("too_many", user_id, MAX_COUNT)
 
     user = await get_user(user_id)
+    try:
+        # 消耗背包中对应数量的二十面骰子
+        await remove_item_from_bag(user_id, get_dice_location(), count)
+    except ItemNotEnough as e:
+        await lang.finish("not_enough", user_id, e.need, e.have)
     values = [get_dice_value() for _ in range(count)]
     delta = 0
     for value in values:

@@ -24,9 +24,27 @@ from nonebot_plugin_orm import async_scoped_session
 
 from nonebot_plugin_larkcave.__main__ import cave
 from nonebot_plugin_larkutils import get_user_id, get_group_id
-from nonebot_plugin_larkuser import prompt
+from nonebot_plugin_larkuser import Waiter
 from nonebot_plugin_larkcave.lang import lang
 from nonebot_plugin_larkcave.utils.post import post_cave
+
+
+async def ask_cave_content(user_id: str) -> list[Image | Text]:
+    """提示用户补发投稿内容，支持图片等富文本内容"""
+    waiter = Waiter(prompt_text=UniMessage(await lang.text("add.prompt", user_id)), user_id=user_id)
+    try:
+        await waiter.wait(timeout=60, auto_finish=False)
+    except TimeoutError:
+        await lang.finish("add.timeout", user_id)
+    message = waiter.get()
+    if message.extract_plain_text().strip().lower() == "q":
+        await lang.finish("prompt.cancelled", user_id)
+    content: list[Image | Text] = [
+        seg for seg in message if isinstance(seg, Image) or (isinstance(seg, Text) and bool(seg.text.strip()))
+    ]
+    if not content:
+        await lang.finish("add.empty", user_id)
+    return content
 
 
 @cave.assign("add")
@@ -42,15 +60,7 @@ async def handle_add(
     try:
         content = cast(list[Image | Text], list(result.subcommands["add"].args["content"]))
     except KeyError:
-        content_text = await prompt(
-            await lang.text("add.prompt", user_id),
-            user_id,
-            timeout=60,
-        )
-        if not content_text.strip():
-            await lang.finish("add.empty", user_id)
-            return
-        content = [Text(content_text)]
+        content = await ask_cave_content(user_id)
     await post_cave(content, user_id, event, bot, state, session, group_id=group_id)
 
 
