@@ -473,6 +473,16 @@ tools_desc:
   calculate_luck_value:
     user_not_found: "未找到昵称为 {} 的群友。"
     result: "{} 的人品值是 {}。"
+
+ask_ai:
+  processing: "[系统] ask_ai 任务仍在后台处理中（已运行 {} 秒）。"
+  result_prompt: |
+    [事件] 你之前使用 ask_ai 工具处理的请求「{}」已在后台完成，结果如下：
+
+    {}
+  failed_prompt: |
+    [事件] 你之前使用 ask_ai 工具处理的请求「{}」在后台处理失败（错误信息：{}）。
+
 status:
   info: |
     心情：{}
