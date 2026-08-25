@@ -8,6 +8,8 @@ __plugin_meta__ = PluginMetadata(
 )
 
 require("nonebot_plugin_alconna")
+require("nonebot_plugin_bag")
+require("nonebot_plugin_items")
 require("nonebot_plugin_larklang")
 require("nonebot_plugin_larkuser")
 require("nonebot_plugin_larkutils")
