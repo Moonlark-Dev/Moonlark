@@ -14,6 +14,13 @@ image:
   ticket_text: 'x{}'
   hitokoto: 剑阁峥嵘而崔嵬，一夫当关，万夫莫开。
   email_unread: 您有 {} 封未读邮件，请使用 {__prefix__}email 查看。
+help:
+  description: 签到
+  details: 每日签到，获取经验、VimCoin 和好感度奖励，连续签到可获得自动签到券
+  usage1: sign (签到并查看签到结果)
+  usage2: sign auto (查看自动签到情况)
+  usage3: sign auto on|off (开启或关闭自动签到)
+  usage4: sign auto limit <数字> (重置自动签到券使用计数并设定可用张数，数字 <= 0 为不限制)
 sign:
   signed: 您今天已经签到过了！
 luck:
