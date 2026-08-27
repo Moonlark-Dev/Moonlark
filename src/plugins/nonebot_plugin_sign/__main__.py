@@ -28,7 +28,7 @@ from nonebot_plugin_larkuser.utils.register import register_user
 from nonebot_plugin_alconna import Button
 from nonebot_plugin_larkuser.utils.waiter import PromptRetryTooMuch, PromptTimeout, prompt
 from nonebot_plugin_larkutils import get_user_id
-from nonebot_plugin_larkutils.cache import add_image_to_cache, create_image_markdown
+from nonebot_plugin_larkutils.cache import create_image_markdown
 from nonebot_plugin_larkutils.jrrp import get_luck_value
 from nonebot_plugin_orm import AsyncSession, get_session
 from nonebot_plugin_render.render import render_template
@@ -53,6 +53,7 @@ _global_sign_lock = asyncio.Lock()
 # 自动签到券物品 ID 与连续签到奖励周期（天）
 AUTO_SIGN_TICKET_ID = "moonlark:auto_sign_ticket"
 AUTO_SIGN_TICKET_REWARD_DAYS = 5
+
 
 def get_auto_sign_ticket_location() -> ResourceLocation:
     return get_location_by_id(AUTO_SIGN_TICKET_ID)
@@ -398,11 +399,17 @@ class SignHandler:
             msg = UniMessage().image(raw=image)
             await self.matcher.finish(await msg.export(), at_sender=True)
 
-
     async def format_markdown(self, image_raw: bytes) -> None:
         if self._result is None:
             await lang.finish("sign.signed", self.user_id)
-        await UniMessage().style(f'<qqbot-at-user id="{self.event.get_user_id()}" />{await create_image_markdown(image_raw)}', "markdown").keyboard(await self.build_button()).send()
+        await (
+            UniMessage()
+            .style(
+                f'<qqbot-at-user id="{self.event.get_user_id()}" />{await create_image_markdown(image_raw)}', "markdown"
+            )
+            .keyboard(await self.build_button())
+            .send()
+        )
         await self.matcher.finish()
 
     async def build_button(self) -> Button:
@@ -411,7 +418,6 @@ class SignHandler:
             await lang.text("button.invite", self.user_id),
             text=f"{config.command_start[0]}sign",
         )
-
 
 
 @sign.assign("$main")

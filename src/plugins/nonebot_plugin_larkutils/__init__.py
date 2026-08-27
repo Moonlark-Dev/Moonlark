@@ -43,5 +43,4 @@ from .file import open_file, FileManager, FileType
 from .jrrp import get_luck_value
 from .gift_session import get_or_create_session, trigger_gift_event
 from . import mention_cache
-from .cache import add_image_to_cache as add_image_to_cache
 from .cache import create_image_markdown as create_image_markdown

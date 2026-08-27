@@ -8,8 +8,15 @@ class Config(BaseModel):
     baidu_api_key: str
     baidu_secret_key: str
     superusers: set[str]
-    moonlark_api_base: str = "http://localhost:8080"
-    image_cache_ttl: int = 600
+    # Cloudflare R2 图床配置（create_image_markdown 使用）
+    r2_account_id: str = ""
+    r2_access_key_id: str = ""
+    r2_secret_access_key: str = ""
+    r2_bucket_name: str = ""
+    r2_public_base_url: str = ""
+    r2_region: str = "auto"
+    # R2 对象自动清理过期时间（秒），默认 7 天
+    r2_object_ttl: int = 604800
 
 
 config = get_plugin_config(Config)
