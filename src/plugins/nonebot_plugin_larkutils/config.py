@@ -8,6 +8,8 @@ class Config(BaseModel):
     baidu_api_key: str
     baidu_secret_key: str
     superusers: set[str]
+    moonlark_api_base: str = "http://localhost:8080"
+    image_cache_ttl: int = 600
 
 
 config = get_plugin_config(Config)
