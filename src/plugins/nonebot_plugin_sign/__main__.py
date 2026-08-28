@@ -144,9 +144,9 @@ async def _calc_sign_vim(user_id: str, sign_days: int) -> dict:
     await user.add_vimcoin(vim)
     return {
         "text": await lang.text("image.vim", user_id),
-        "add": round(vim, 1),
+        "add": vim,
         "origin": round(origin, 1),
-        "now": user.get_vimcoin(),
+        "now": round(user.get_vimcoin(), 1),
     }
 
 
