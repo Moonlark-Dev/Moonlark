@@ -1,4 +1,8 @@
 import asyncio
+import re
+
+from nonebot.adapters import Bot
+from nonebot.adapters.qq import Bot as QQBot
 import random
 from nonebot.log import logger
 import traceback
@@ -9,9 +13,10 @@ import sys
 from typing import Any, Optional
 
 from nonebot import get_driver
-from nonebot_plugin_alconna import Alconna, Args, on_alconna
+from nonebot_plugin_alconna import Alconna, Args, Button, on_alconna
 from nonebot_plugin_alconna.uniseg import UniMessage
 
+from nonebot_plugin_larkutils.command import get_command_prefix
 from nonebot_plugin_render.render import render_template
 from nonebot_plugin_render.cache import creator
 
@@ -39,20 +44,40 @@ def get_help_list() -> dict[str, CommandHelp]:
 
 
 @help_cmd.assign("command")
-async def _(command: str, user_id: str = get_user_id()) -> None:
+async def _(bot: Bot, command: str, user_id: str = get_user_id()) -> None:
     if command not in help_list:
         await lang.finish("command.not_found", user_id, command)
     data = help_list[command]
     helper = LangHelper(data.plugin)
-    await lang.reply(
-        "command.info",
-        user_id,
-        command,
-        await helper.text(data.details, user_id),
-        "\n".join(
-            [await lang.text("command.usage", user_id, await helper.text(usage, user_id)) for usage in data.usages]
-        ),
-    )
+    if isinstance(bot, QQBot):
+        await UniMessage().style(
+            await lang.text(
+                "command.info_md",
+                user_id,
+                await lang.text(f"menu.category_emoji.{data.category}", user_id),
+                command,
+                await helper.text(data.details, user_id),
+                len(data.usages),
+                "\n".join([
+                    await lang.text("command.usage_item", user_id, re.sub(r'\(.*?\)', "", usage_str := await helper.text(usage, user_id)).strip(), usage_str)
+                    for usage in data.usages
+                ])
+            ),
+            "markdown"
+        ).send()
+
+    else:
+
+        await lang.reply(
+            "command.info",
+            user_id,
+            command,
+            await helper.text(data.details, user_id),
+            "\n".join(
+                [await lang.text("command.usage", user_id, await helper.text(usage, user_id)) for usage in data.usages]
+            ),
+        )
+
     await help_cmd.finish()
 
 
@@ -223,11 +248,26 @@ menu_cmd = on_alconna(Alconna("menu", Args["category?", str]))
 
 
 @menu_cmd.assign("category")
-async def menu_category_handler(category: str, user_id: str = get_user_id()) -> None:
+async def menu_category_handler(bot: Bot, category: str, user_id: str = get_user_id()) -> None:
     cat_data = await get_category_commands(category, user_id)
     if cat_data is None:
         await lang.finish("menu.category_not_found", user_id, category)
-    try:
+    if isinstance(bot, QQBot):
+        await UniMessage().style(
+            await lang.text(
+                "menu_cat.md",
+                user_id,
+                await lang.text(f"menu.category_emoji.{category}", user_id),
+                cat_data["name"],
+                "\n".join([
+                    await lang.text("menu_cat.item", user_id, command["name"], command["name"], command["description"])
+                    for command in cat_data["commands"]
+                ])
+            ),
+            "markdown"
+        ).send()
+        await menu_cmd.finish()
+    else:
         await menu_cmd.finish(
             UniMessage().image(
                 raw=await render_template(
@@ -242,24 +282,63 @@ async def menu_category_handler(category: str, user_id: str = get_user_id()) -> 
                 name="image.png",
             )
         )
-    except FinishedException:
-        raise
-    except Exception:
-        logger.error(traceback.format_exc())
-        await menu_cmd.finish(await lang.text("command.error", user_id))
+
+
+
+
+async def send_markdown_menu(user_id: str) -> None:
+    categories = await get_menu_templates(user_id)
+    random_cmd = await get_random_command(user_id)
+    await UniMessage().style(
+        await lang.text(
+            "menu.markdown",
+            user_id,
+            "\n".join([
+                await lang.text(
+                    "menu.category_item",
+                    user_id,
+                    c['id'],
+                    await lang.text(f"menu.category_emoji.{c['id']}", user_id),
+                    c["name"],
+                    c["count"]
+                )
+                for c in categories
+            ]),
+            random_cmd["name"],
+            random_cmd["description"]
+        ),
+        "markdown"
+    ).keyboard(
+        # *[
+        #     Button(
+        #         "enter",
+        #         (await lang.text(f"menu.category_emoji.{c['id']}", user_id)) + c["name"],
+        #         text=f"{get_command_prefix()}menu {c['id']}"
+        #     )
+        #     for c in categories
+        # ],
+        Button(
+            "enter",
+            await lang.text(f"menu.try", user_id),
+            text=f"{get_command_prefix()}help {random_cmd['name']}"
+        ),
+        Button(
+            "enter",
+            await lang.text(f"menu.list", user_id),
+            text=f"{get_command_prefix()}help"
+        )
+    ).send()
 
 
 @menu_cmd.assign("$main")
-async def menu_main_handler(user_id: str = get_user_id()) -> None:
-    try:
+async def menu_main_handler(bot: Bot, user_id: str = get_user_id()) -> None:
+    if isinstance(bot, QQBot):
+        await send_markdown_menu(user_id)
+    else:
         await menu_cmd.finish(
             UniMessage().image(
                 raw=await render_menu(user_id),
                 name="image.png",
             )
         )
-    except FinishedException:
-        raise
-    except Exception:
-        logger.error(traceback.format_exc())
-        await menu_cmd.finish(await lang.text("command.error", user_id))
+    await menu_cmd.finish()

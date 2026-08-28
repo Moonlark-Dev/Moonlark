@@ -40,6 +40,7 @@ from .subaccount import (
 from .url_validator import block_internal_request, is_internal_url, resolve_internal
 from .user_id import parse_special_user_id
 from .file import open_file, FileManager, FileType
+from .command import get_command_prefix
 from .jrrp import get_luck_value
 from .gift_session import get_or_create_session, trigger_gift_event
 from . import mention_cache

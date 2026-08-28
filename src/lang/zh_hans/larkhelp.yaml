@@ -19,6 +19,17 @@ command:
     
     用法:
     {}
+  info_md: |
+    {} **{}**
+    
+    {}
+
+    > 提示：用法中的 <XXX> 为必要参数，[XXX] 为可选参数，AA|BB 表示选择。(XXX) 为用法解释，不包括在用法内。所有参数均不需要包含最外面的括号。
+
+    **用法**({}):
+    {}
+  usage_item: |
+    <qqbot-cmd-input text="{__prefix__}{}" show="{__prefix__}{}" reference="false" />
   usage: '{__prefix__}{}'
   not_found:
     - 命令 {} 不存在，或无可用的帮助信息
@@ -37,6 +48,34 @@ menu:
   menu_cat_help_hint: '使用 help <指令名> 查看指令的具体用法'
   description: 分级菜单
   details: 显示分类菜单和随机指令
+
+  markdown: |
+    **Moonlark 功能导航**
+    从下方选择一个分类查看指令列表喵~
+    {}
+    💡 **试试这个？**
+    `{}`: {}
+  category_item: |
+    <qqbot-cmd-input text="{__prefix__}menu {}" show="{} {}({} 个指令)" reference="false" />
+  try: 查看随机指令
+  list: 指令列表
+  category_emoji:
+    tools: 🛠️
+    game: 🎮
+    setting: ⚙️
+    community: 💬
+    new: ✨
+    superuser: 👑
+menu_cat:
+  md: |
+    {} **{}**的指令列表
+    {}
+
+    点击指令可以查看帮助！
+  item: |
+    - <qqbot-cmd-input text="{__prefix__}help {}" show="`{}`: {}" reference="false" />
+
+
 
 help:
   description: 命令帮助

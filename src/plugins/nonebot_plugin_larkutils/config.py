@@ -22,6 +22,7 @@ class Config(BaseModel):
     r2_region: str = "auto"
     # R2 对象自动清理过期时间（秒），默认 7 天
     r2_object_ttl: int = 604800
+    command_start: list[str]
 
 
 config = get_plugin_config(Config)
