@@ -58,12 +58,19 @@ async def _(bot: Bot, command: str, user_id: str = get_user_id()) -> None:
                 command,
                 await helper.text(data.details, user_id),
                 len(data.usages),
-                "\n".join([
-                    await lang.text("command.usage_item", user_id, re.sub(r'\(.*?\)', "", usage_str := await helper.text(usage, user_id)).strip(), usage_str)
-                    for usage in data.usages
-                ])
+                "\n".join(
+                    [
+                        await lang.text(
+                            "command.usage_item",
+                            user_id,
+                            re.sub(r"\(.*?\)", "", usage_str := await helper.text(usage, user_id)).strip(),
+                            usage_str,
+                        )
+                        for usage in data.usages
+                    ]
+                ),
             ),
-            "markdown"
+            "markdown",
         ).send()
 
     else:
@@ -259,12 +266,16 @@ async def menu_category_handler(bot: Bot, category: str, user_id: str = get_user
                 user_id,
                 await lang.text(f"menu.category_emoji.{category}", user_id),
                 cat_data["name"],
-                "\n".join([
-                    await lang.text("menu_cat.item", user_id, command["name"], command["name"], command["description"])
-                    for command in cat_data["commands"]
-                ])
+                "\n".join(
+                    [
+                        await lang.text(
+                            "menu_cat.item", user_id, command["name"], command["name"], command["description"]
+                        )
+                        for command in cat_data["commands"]
+                    ]
+                ),
             ),
-            "markdown"
+            "markdown",
         ).send()
         await menu_cmd.finish()
     else:
@@ -284,8 +295,6 @@ async def menu_category_handler(bot: Bot, category: str, user_id: str = get_user
         )
 
 
-
-
 async def send_markdown_menu(user_id: str) -> None:
     categories = await get_menu_templates(user_id)
     random_cmd = await get_random_command(user_id)
@@ -293,21 +302,23 @@ async def send_markdown_menu(user_id: str) -> None:
         await lang.text(
             "menu.markdown",
             user_id,
-            "\n".join([
-                await lang.text(
-                    "menu.category_item",
-                    user_id,
-                    c['id'],
-                    await lang.text(f"menu.category_emoji.{c['id']}", user_id),
-                    c["name"],
-                    c["count"]
-                )
-                for c in categories
-            ]),
+            "\n".join(
+                [
+                    await lang.text(
+                        "menu.category_item",
+                        user_id,
+                        c["id"],
+                        await lang.text(f"menu.category_emoji.{c['id']}", user_id),
+                        c["name"],
+                        c["count"],
+                    )
+                    for c in categories
+                ]
+            ),
             random_cmd["name"],
-            random_cmd["description"]
+            random_cmd["description"],
         ),
-        "markdown"
+        "markdown",
     ).keyboard(
         # *[
         #     Button(
@@ -317,16 +328,8 @@ async def send_markdown_menu(user_id: str) -> None:
         #     )
         #     for c in categories
         # ],
-        Button(
-            "enter",
-            await lang.text(f"menu.try", user_id),
-            text=f"{get_command_prefix()}help {random_cmd['name']}"
-        ),
-        Button(
-            "enter",
-            await lang.text(f"menu.list", user_id),
-            text=f"{get_command_prefix()}help"
-        )
+        Button("enter", await lang.text(f"menu.try", user_id), text=f"{get_command_prefix()}help {random_cmd['name']}"),
+        Button("enter", await lang.text(f"menu.list", user_id), text=f"{get_command_prefix()}help"),
     ).send()
 
 
