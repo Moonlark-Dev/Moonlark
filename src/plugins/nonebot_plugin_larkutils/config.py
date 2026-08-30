@@ -1,6 +1,7 @@
+from typing import Any, Literal
+
 from nonebot import get_plugin_config
-from pydantic import BaseModel
-from typing import Literal
+from pydantic import BaseModel, field_validator
 
 
 class Config(BaseModel):
@@ -23,6 +24,14 @@ class Config(BaseModel):
     # R2 对象自动清理过期时间（秒），默认 7 天
     r2_object_ttl: int = 604800
     command_start: list[str]
+
+    @field_validator("r2_addressing_style", mode="before")
+    @classmethod
+    def _empty_addressing_style_to_default(cls, value: Any) -> Any:
+        # `.env` 中该行留空（R2_ADDRESSING_STYLE=）时应回退到默认 path 寻址
+        if value == "":
+            return "path"
+        return value
 
 
 config = get_plugin_config(Config)
