@@ -1,3 +1,5 @@
+from typing import Optional
+
 from nonebot import get_plugin_config
 from pydantic import BaseModel
 
@@ -21,6 +23,19 @@ class Config(BaseModel):
     # /api/login 限流（滑动窗口）：窗口秒数内每 IP+UA 最多 times 次
     login_rate_limit_times: int = 10
     login_rate_limit_window_seconds: int = 60
+    # ── Passkey (WebAuthn) ──
+    # PASSKEY_ORIGIN：网页前端的完整 origin，如 https://moonlark.example.com。
+    # WebAuthn 以它校验浏览器回传的 clientDataJSON.origin，生产环境必须显式配置；
+    # 未配置时回退到创建挑战请求的 Origin 头（仅建议本地开发）。
+    passkey_origin: Optional[str] = None
+    # PASSKEY_RP_ID：Relying Party ID，默认取 PASSKEY_ORIGIN 的主机名（不包含端口）。
+    passkey_rp_id: Optional[str] = None
+    # PASSKEY_RP_NAME：注册时展示给用户的站点名称。
+    passkey_rp_name: str = "Moonlark"
+    # 挑战有效期（秒），超过即失效，须重新发起。
+    passkey_challenge_ttl: int = 120
+    # 每个用户最多可注册的 Passkey 数量。
+    passkey_max_credentials: int = 10
 
 
 config = get_plugin_config(Config)
