@@ -16,12 +16,12 @@ def get_qq_user_id(bot: Bot, event: Event) -> Optional[str]:
 
 
 @quick_math.assign("max_level")
-async def _(bot: Bot, event: Event, max_level: int, user_id: str = get_user_id()) -> None:
+async def max_level_handler(bot: Bot, event: Event, max_level: int, user_id: str = get_user_id()) -> None:
     await handle(bot, event, max_level, user_id)
 
 
 @quick_math.assign("zen")
-async def _(bot: Bot, event: Event, zen_level: int, user_id: str = get_user_id()) -> None:
+async def zen_handler(bot: Bot, event: Event, zen_level: int, user_id: str = get_user_id()) -> None:
     session = QuickMathZenSession(user_id, zen_level, bot, get_qq_user_id(bot, event))
     await session.loop()
 
