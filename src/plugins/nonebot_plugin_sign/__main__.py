@@ -6,7 +6,12 @@ from datetime import date
 from typing import Any, Optional
 
 import httpx
-from nonebot import logger
+from nonebot import logger, on_type
+from nonebot.adapters import Bot, Event
+from nonebot.adapters.qq.bot import Bot as QQBot
+from nonebot.adapters.qq.event import InteractionCreateEvent
+from nonebot.adapters.qq.message import Message
+from nonebot.exception import FinishedException
 from nonebot.matcher import Matcher
 from nonebot_plugin_alconna import Alconna, Args, Subcommand, UniMessage, on_alconna
 from nonebot_plugin_bag.models import Bag
@@ -17,12 +22,17 @@ from nonebot_plugin_items.utils.string import get_location_by_id
 from nonebot_plugin_items.registry.registry import ResourceLocation
 from nonebot_plugin_larksetu import get_landscape_image
 from nonebot_plugin_larkuser import get_user
+from nonebot_plugin_larkuser.user.utils import is_user_registered
 from nonebot_plugin_larkuser.utils.matcher import patch_matcher
+from nonebot_plugin_larkuser.utils.register import register_user
+from nonebot_plugin_alconna import Button
 from nonebot_plugin_larkuser.utils.waiter import PromptRetryTooMuch, PromptTimeout, prompt
 from nonebot_plugin_larkutils import get_user_id
+from nonebot_plugin_larkutils.cache import create_image_markdown
 from nonebot_plugin_larkutils.jrrp import get_luck_value
 from nonebot_plugin_orm import AsyncSession, get_session
 from nonebot_plugin_render.render import render_template
+from nonebot_plugin_userinfo import get_user_info
 from sqlalchemy import func, select
 from sqlalchemy.exc import NoResultFound
 
@@ -135,8 +145,8 @@ async def _calc_sign_vim(user_id: str, sign_days: int) -> dict:
     return {
         "text": await lang.text("image.vim", user_id),
         "add": vim,
-        "origin": origin,
-        "now": user.get_vimcoin(),
+        "origin": round(origin, 1),
+        "now": round(user.get_vimcoin(), 1),
     }
 
 
@@ -250,16 +260,32 @@ async def perform_sign(user_id: str, missed_days: int = 0, auto: bool = False) -
 class SignHandler:
     """签到处理类：数据操作与渲染分离"""
 
-    def __init__(self, user_id: str) -> None:
+    def __init__(self, user_id: str, bot: Bot, event: Event, matcher: Matcher) -> None:
         self.user_id = user_id
+        self.bot = bot
+        self.event = event
         self._result: Optional[dict[str, Any]] = None
+        self.matcher = matcher
         self._do_resign: bool = False
         self._missed_days: int = 0
         self._templates: dict = {}
         self._bg_kwargs: dict = {}
 
+    async def process_register(self) -> None:
+        """判断用户是否注册，如果未注册就触发注册流程。"""
+        bot = self.bot
+        event = self.event
+        user = await get_user(self.user_id)
+        if not user.is_registered():
+            if not (user_info := await get_user_info(bot, event, self.user_id)):
+                await lang.finish("sign.get_userinfo_failed", self.user_id)
+            async with get_session() as session:
+                await register_user(session, self.user_id, user_info)
+
     async def process_data(self) -> None:
         """收集信息并操作数据（SignData 表操作由全局锁保护）"""
+
+        await self.process_register()
 
         # ====== Phase 1: 预检查 ======
         if await _is_user_signed(self.user_id):
@@ -300,8 +326,13 @@ class SignHandler:
                 resign["exp"],
             )
 
-    async def render_result(self, matcher: Matcher) -> None:
-        """渲染并发送处理结果"""
+    async def render_result(self) -> None:
+        """渲染并发送处理结果
+
+        Args:
+            matcher: Nonebot 匹配器
+            invite_button: 是否附带"我也要签到"按钮（仅 QQ 官方机器人）
+        """
         if self._result is None:
             await lang.finish("sign.signed", self.user_id)
 
@@ -356,17 +387,44 @@ class SignHandler:
             self.user_id,
             self._templates,
             viewport={"width": 380, "height": 10},
+            resize=True,
             **self._bg_kwargs,
         )
-        msg = UniMessage().image(raw=image)
-        await matcher.finish(await msg.export(), at_sender=True)
+        await self.send_card(image)
+
+    async def send_card(self, image: bytes) -> None:
+        if isinstance(self.bot, QQBot):
+            await self.format_markdown(image)
+        else:
+            msg = UniMessage().image(raw=image)
+            await self.matcher.finish(await msg.export(), at_sender=True)
+
+    async def format_markdown(self, image_raw: bytes) -> None:
+        if self._result is None:
+            await lang.finish("sign.signed", self.user_id)
+        await (
+            UniMessage()
+            .style(
+                f'<qqbot-at-user id="{self.event.get_user_id()}" />{await create_image_markdown(image_raw)}', "markdown"
+            )
+            .keyboard(await self.build_button())
+            .send()
+        )
+        await self.matcher.finish()
+
+    async def build_button(self) -> Button:
+        return Button(
+            "enter",
+            await lang.text("button.invite", self.user_id),
+            text=f"{config.command_start[0]}sign",
+        )
 
 
 @sign.assign("$main")
-async def _(matcher: Matcher, user_id: str = get_user_id()) -> None:
-    handler = SignHandler(user_id)
+async def _(matcher: Matcher, bot: Bot, event: Event, user_id: str = get_user_id()) -> None:
+    handler = SignHandler(user_id, bot, event, matcher)
     await handler.process_data()
-    await handler.render_result(matcher)
+    await handler.render_result()
 
 
 async def _set_auto_sign(user_id: str, *, enabled: bool) -> None:
