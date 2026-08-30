@@ -19,7 +19,9 @@ import random
 from datetime import datetime
 from typing import NoReturn, Optional, overload
 
-from nonebot_plugin_alconna import UniMessage
+from nonebot.adapters import Bot
+from nonebot.adapters.qq import Bot as QQBot
+from nonebot_plugin_alconna import Button, UniMessage
 from nonebot_plugin_htmlrender import md_to_pic
 
 from nonebot_plugin_achievement.utils.unlock import unlock_achievement
@@ -37,9 +39,10 @@ from nonebot_plugin_quick_math.utils.user import update_user_data
 
 
 class QuickMathSession:
-
-    def __init__(self, user_id: str) -> None:
+    def __init__(self, user_id: str, bot: Bot, qq_user_id: Optional[str] = None) -> None:
         self.user_id = user_id
+        self.bot = bot
+        self.qq_user_id = qq_user_id
         self.point = 0
         self.passed = 0
         self.total_answered = 0
@@ -53,7 +56,7 @@ class QuickMathSession:
     async def loop(self) -> NoReturn:
         while await self.send_question():
             await self.on_question_finished()
-        await self.send_result_image()
+        await self.send_result()
 
     def set_max_level(self, max_level: int) -> LevelMode:
         self.level = self.level[0], min(7, max(max_level, 1))
@@ -96,12 +99,14 @@ class QuickMathSession:
 
     async def get_question(self, **kwargs) -> tuple[UniMessage, QuestionData]:
         return await get_question(
+            self.bot,
             self.get_level(),
             self.user_id,
             self.passed,
             self.point,
             self.available_skip_count,
             self.skipped_question,
+            qq_user_id=self.qq_user_id,
             **kwargs,
         )
 
@@ -149,48 +154,72 @@ class QuickMathSession:
             self.user_id, self.passed, self.point, self.passed / self.total_answered, self.skipped_question
         )
 
-    async def send_result_image(self) -> NoReturn:
-        image = await self.get_result_image()
-        if image:
-            await quick_math.finish(UniMessage().image(raw=image))
+    async def send_result(self) -> NoReturn:
+        if isinstance(self.bot, QQBot):
+            message = await self.get_result_message()
+            if message is None:
+                await quick_math.finish()
+            await quick_math.finish(message)
         else:
-            await quick_math.finish()
+            image = await self.get_result_image()
+            if image:
+                await quick_math.finish(UniMessage().image(raw=image))
+            else:
+                await quick_math.finish()
 
-    async def get_result_image(self) -> Optional[bytes]:
+    async def get_result_text(self) -> Optional[str]:
         if self.passed == 0:
             return None
         total_seconds = (self.end_time - self.start_time).total_seconds()
         diff, record = await update_user_data(self.user_id, self.point)
         await self.update_achievement()
-        return await md_to_pic(
-            await lang.text(
-                "main.checkout",
-                self.user_id,
-                self.passed,
-                int(total_seconds // 60),
-                total_seconds % 60,
-                self.point,
-                self.skipped_question,
-                total_seconds / self.passed,
-                self.point / self.passed,
-                self.point / total_seconds,
-                self.passed / self.total_answered * 100,
-                record,
-                self.point,
-                diff,
+        return await lang.text(
+            "main.checkout",
+            self.user_id,
+            self.passed,
+            int(total_seconds // 60),
+            total_seconds % 60,
+            self.point,
+            self.skipped_question,
+            total_seconds / self.passed,
+            self.point / self.passed,
+            self.point / total_seconds,
+            self.passed / self.total_answered * 100,
+            record,
+            self.point,
+            diff,
+        )
+
+    async def get_result_image(self) -> Optional[bytes]:
+        if (text := await self.get_result_text()) is None:
+            return None
+        return await md_to_pic(text)
+
+    async def get_result_message(self) -> Optional[UniMessage]:
+        """获取 QQ 官方机器人的 markdown 结算卡片（附带“再来一局”按钮）。"""
+        if (text := await self.get_result_text()) is None:
+            return None
+        return (
+            UniMessage()
+            .style(text, "markdown")
+            .keyboard(
+                Button(
+                    "enter",
+                    await lang.text("button.restart", self.user_id),
+                    text=f"{config.command_start[0]}qm",
+                ),
             )
         )
 
 
 class QuickMathZenSession(QuickMathSession):
-
-    def __init__(self, user_id: str, difficulty: int) -> None:
-        super().__init__(user_id)
+    def __init__(self, user_id: str, difficulty: int, bot: Bot, qq_user_id: Optional[str] = None) -> None:
+        super().__init__(user_id, bot, qq_user_id)
         self.set_level_mode("lock")
         self.set_max_level(difficulty)
 
     async def get_question(self) -> tuple[UniMessage, QuestionData]:
-        return await super().get_question(override_time_limitation=300)
+        return await super().get_question(override_time_limitation=300, enable_leave_button=True)
 
     async def send_question(self) -> bool:
         image, question = await self.get_question()
