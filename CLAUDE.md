@@ -210,6 +210,56 @@ Supported chat platforms:
 - OneBot V12
 - QQ Official (uses custom fork `github.com/Moonlark-Dev/adapter-qq`, imported as `nonebot.adapters.qq`)
 
+## Frontend (moonlark-frontend)
+
+The web frontend is maintained in a separate repository: <https://github.com/Moonlark-Dev/moonlark-frontend>. It is a Vue 3 + TypeScript single-page application built with Vite, using MDUI 2 for UI components, and deployed to GitHub Pages.
+
+### Tech Stack
+
+- Vue 3 + TypeScript, Vue Router 4
+- Vite 7 (`@vitejs/plugin-vue`, `@vitejs/plugin-vue-jsx`)
+- MDUI 2 + Sass for styling
+- `@vueuse/core` utilities
+- ESLint 9 (`eslint-plugin-vue`, `@vue/eslint-config-typescript`) for linting
+
+### Commands
+
+```bash
+npm install        # Install dependencies
+npm run dev        # Start Vite dev server with hot reload
+npm run build      # Production build (outputs to dist/)
+npm run preview    # Preview the production build
+npm run lint       # Lint with ESLint
+npm run lint-fix   # Auto-fix lint issues
+```
+
+### Project Structure
+
+```
+moonlark-frontend/
+├── src/
+│   ├── pages/         # Route views (LoginView, HomeView, UserView, SettingsView, RankingsView, HelpView, AdminMenuPanelView)
+│   ├── components/    # Shared components (Navbar, SessionManager, BindMainAccount, ChangeNickName, Toast, ...)
+│   ├── utils/         # API client (api.ts), cookie/session helpers, cache, toast, etc.
+│   ├── styles/        # Global styles (index.scss)
+│   ├── App.vue        # Root component
+│   ├── main.ts        # App entry (MDUI setup, color scheme, auth error handler)
+│   └── routes.ts      # Route definitions
+└── public/            # Static assets (favicon.ico, CNAME)
+```
+
+### API & Auth
+
+- API base URLs are hardcoded in `src/utils/utils.ts`: `BASE_URL = "https://moonlark-api.itcdt.top"` and `API_URL = BASE_URL + "/api"`.
+- Requests go through `apiRequest`/`apiRequestFull` in `src/utils/api.ts`; authenticated requests send the `sessionID` cookie as `Authorization: Bearer <sessionID>`.
+- 401 responses trigger a global handler (registered in `main.ts`) that redirects to `/login` with the current route as a `redirect` query parameter.
+
+### CI/CD
+
+- GitHub Actions workflows in `.github/workflows/`:
+  - `ci.yaml`: runs `npm run lint` on Node 22 for pushes and PRs
+  - `deloy.yaml`: on push to `main`, builds and deploys `dist/` to GitHub Pages (`peaceiris/actions-gh-pages`)
+
 ## Project Structure
 
 ```
