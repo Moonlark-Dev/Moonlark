@@ -53,7 +53,8 @@ class SlidingWindowRateLimiter:
 def request_limit_key(request: Request) -> str:
     """默认限流维度：IP + User-Agent。UA 变化会重置配额，但登录接口本就要求同浏览器，可接受。"""
     ip = request.client.host if request.client else "unknown"
-    return f"{ip}|{request.headers.get('User-Agent', '')}"
+    user_agent = request.headers.get("User-Agent", "")
+    return ip + "|" + user_agent
 
 
 def rate_limit(times: int, window_seconds: float, key_func: Callable[[Request], str] = request_limit_key):
