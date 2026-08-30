@@ -11,6 +11,8 @@ from .generator import generate_question
 from .image import generate_image
 from .latex import latex_to_plain
 
+_OPTION_LETTERS = "ABCDEFGHIJKL"
+
 
 async def get_question(
     bot: Bot,
@@ -67,7 +69,8 @@ async def build_markdown_message(
     qq_user_id: Optional[str] = None,
     enable_leave_button: bool = False,
 ) -> tuple[UniMessage, QuestionData]:
-    """构建 QQ 官方机器人的 markdown 题目卡片，并附带操作按钮。"""
+    """构建 QQ 官方机器人的 markdown 题目卡片，并附带选项/操作按钮。"""
+    options = question["question"].get("options") or []
     content = await lang.text(
         "main.markdown",
         user_id,
@@ -79,14 +82,26 @@ async def build_markdown_message(
         skipped_question,
         total_skipping_count,
     )
+    if len(options) > 1:
+        choices = await lang.text(
+            "main.choices",
+            user_id,
+            "\n".join(
+                [
+                    await lang.text("main.choice_item", user_id, _OPTION_LETTERS[index], latex_to_plain(option))
+                    for index, option in enumerate(options)
+                ],
+            ),
+        )
+        content += choices
     if qq_user_id:
         content = f'<qqbot-at-user id="{qq_user_id}" />\n' + content
     message = UniMessage().style(content, "markdown")
-    buttons: list[Button] = []
+    buttons: list[Button] = [Button("enter", latex_to_plain(option), text=option) for option in options]
     if total_skipping_count > skipped_question:
         buttons.append(Button("enter", await lang.text("button.skip", user_id), text="skip"))
     if enable_leave_button:
         buttons.append(Button("enter", await lang.text("button.leave", user_id), text="leave"))
     if buttons:
-        message.keyboard(*buttons)
+        message.keyboard(*buttons, row=4)
     return message, question

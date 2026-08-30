@@ -35,6 +35,11 @@ main:
     ## 题目信息
 
     {0}
+  choices: |
+    ## 请选择答案
+
+    {}
+  choice_item: '{}. {}'
 
 question:
   l1-1: '$${} + {} = ?$$'

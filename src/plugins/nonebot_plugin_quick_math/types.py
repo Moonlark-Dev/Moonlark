@@ -1,11 +1,12 @@
 from enum import Enum
 from typing import Awaitable, Callable, Literal
-from typing_extensions import TypedDict
+from typing_extensions import NotRequired, TypedDict
 
 
 class Question(TypedDict):
     question: str
     answer: Callable[[str], Awaitable[bool]]
+    options: NotRequired[list[str]]
 
 
 class QuestionData(TypedDict):

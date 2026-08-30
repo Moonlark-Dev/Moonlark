@@ -1,6 +1,7 @@
 import random
 import sympy as sp
 
+from .options import build_options
 from .utils import parse_int, get_verify_function
 from ....types import Question
 from ....__main__ import lang
@@ -28,6 +29,14 @@ def quadratic_solver(a: int, b: int, c: int) -> str:
         return ", ".join([f"x_{i+1} = {sol}" for i, sol in enumerate(formatted_solutions)])
 
 
+def quadratic_variants(a: int, b: int, c: int) -> list[str]:
+    """通过扰动态 a / b / c 生成若干不同的（错误）解式作为干扰项。"""
+    variants = [quadratic_solver(a, b, c + k) for k in range(1, 4)]
+    variants.extend(quadratic_solver(a + k, b, c) for k in range(1, 4))
+    variants.extend(quadratic_solver(a, b + k, c) for k in range(1, 4))
+    return variants
+
+
 async def generate_question(user_id: str) -> Question:
     a = random.randint(-10, 10)
     b = random.randint(-20, 20)
@@ -42,4 +51,8 @@ async def generate_question(user_id: str) -> Question:
         question = question.replace(t, await lang.text("question.l5-o", user_id, t))
     right_answer = quadratic_solver(a, b, c)
     question = await lang.text("question.l5", user_id, question)
-    return {"question": question, "answer": get_verify_function(right_answer, user_id)}
+    return {
+        "question": question,
+        "answer": get_verify_function(right_answer, user_id),
+        "options": build_options(right_answer, quadratic_variants(a, b, c)),
+    }
