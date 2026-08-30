@@ -23,6 +23,11 @@ help:
   usage4: sign auto limit <数字> (重置自动签到券使用计数并设定可用张数，数字 <= 0 为不限制)
 sign:
   signed: 您今天已经签到过了！
+  get_userinfo_failed: 获取用户信息失败。
+button:
+  invite: 我也要签到
+  invite_markdown: 点击下方按钮即可一键签到喵~
+  not_registered: 您还未注册喵~请先发送 {__prefix__}register 完成注册后再来签到！
 luck:
   a: 大吉
   b: 吉
@@ -60,3 +65,5 @@ auto:
   limit_unlimited_done: |
     已重置自动签到券使用计数。
     本次不限制自动签到券的使用数量。
+
+
