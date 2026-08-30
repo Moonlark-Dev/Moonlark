@@ -46,7 +46,7 @@ async def generate_question(user_id: str) -> Question:
             case 3:
                 a = random.choice([i for i in range(-5, 6) if i != 0])
                 # 排除 90°（tan 无定义，sympy 会给出 zoo）
-                b = 15 * random.choice([i for i in range(1, 13) if i != 6])
+                b = 15 * random.choice([i for i in range(1, 13) if i != 6])  # nosec
                 question += f"{parse_int(a)}\\tan {b}^\\circ"
                 answer += evaluate_trig_functions(b)[2] * a
             case _:
