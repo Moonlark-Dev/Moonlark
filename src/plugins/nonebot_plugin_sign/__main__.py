@@ -305,7 +305,7 @@ class SignHandler:
                 if await user.has_vimcoin(needed):
                     try:
                         self._do_resign = await prompt(
-                            await lang.text("resign.prompt", self.user_id, self._missed_days, needed),
+                            await self.build_resign_prompt(needed),
                             self.user_id,
                             retry=1,
                             parser=lambda message: not message.lower().startswith("n"),
@@ -325,6 +325,22 @@ class SignHandler:
                 resign["vim"],
                 resign["exp"],
             )
+
+    async def build_resign_prompt(self, needed: int) -> str | UniMessage:
+        """构建补签询问消息：QQ 官方机器人使用 markdown 与键盘按钮，其余平台保持文本 [y/n]。"""
+        if isinstance(self.bot, QQBot):
+            return (
+                UniMessage()
+                .style(
+                    await lang.text("resign.prompt_markdown", self.user_id, self._missed_days, needed),
+                    "markdown",
+                )
+                .keyboard(
+                    Button("enter", await lang.text("resign.button_yes", self.user_id), text="y"),
+                    Button("enter", await lang.text("resign.button_no", self.user_id), text="n"),
+                )
+            )
+        return await lang.text("resign.prompt", self.user_id, self._missed_days, needed)
 
     async def render_result(self) -> None:
         """渲染并发送处理结果

@@ -1,0 +1,55 @@
+from unittest.mock import MagicMock
+
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def patched_lang(monkeypatch: pytest.MonkeyPatch) -> None:
+    """替换 sign 插件的 LangHelper.text，避免依赖数据库读取语言文本
+
+    注意：插件导入必须在函数/fixture 内部进行（collection 阶段 nonebot 插件尚未加载）。
+    """
+    from nonebot_plugin_sign.lang import lang
+
+    async def fake_text(key: str, _user_id: str, *_args: object, **_kwargs: object) -> str:
+        return f"text::{key}"
+
+    monkeypatch.setattr(lang, "text", fake_text)
+
+
+def _make_handler(bot: MagicMock):
+    from nonebot_plugin_sign.__main__ import SignHandler
+
+    handler = SignHandler(user_id="10", bot=bot, event=MagicMock(), matcher=MagicMock())
+    handler._missed_days = 3  # ruff: ignore[private-member-access]
+    return handler
+
+
+@pytest.mark.asyncio
+async def test_build_resign_prompt_qq_uses_markdown_keyboard() -> None:
+    """QQ 官方机器人应返回 markdown 消息并附带是/否键盘按钮，替代文本 [y/n] 提示"""
+    from nonebot.adapters.qq import Bot as QQBot
+    from nonebot_plugin_alconna import Keyboard, Text, UniMessage
+
+    handler = _make_handler(bot=MagicMock(spec=QQBot))
+    message = await handler.build_resign_prompt(needed=90)
+
+    assert isinstance(message, UniMessage)
+    # 消息体为 markdown 样式的补签提示
+    text = next(seg for seg in message if isinstance(seg, Text))
+    assert text.text == "text::resign.prompt_markdown"
+    assert any("markdown" in styles for styles in text.styles.values())
+    # 键盘包含 是(y) / 否(n) 两个 enter 按钮
+    keyboard = next(seg for seg in message if isinstance(seg, Keyboard))
+    buttons = list(keyboard.children)
+    assert [button.text for button in buttons] == ["y", "n"]
+    assert [str(button.label) for button in buttons] == ["text::resign.button_yes", "text::resign.button_no"]
+
+
+@pytest.mark.asyncio
+async def test_build_resign_prompt_plain_text_on_other_adapters() -> None:
+    """非 QQ 平台应保持原有文本 [y/n] 提示"""
+    handler = _make_handler(bot=MagicMock())
+    message = await handler.build_resign_prompt(needed=90)
+
+    assert message == "text::resign.prompt"
