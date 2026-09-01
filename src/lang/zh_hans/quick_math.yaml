@@ -35,6 +35,11 @@ main:
     ## 题目信息
 
     {0}
+  choices: |
+    ## 请选择答案
+
+    {}
+  choice_item: '{}. {}'
 
 question:
   l1-1: '$${} + {} = ?$$'
@@ -79,9 +84,19 @@ answer:
   no_question: 请等待题目生成！
   right: 回答正确！获得 {} 积分
   wrong: 回答错误，您还可以重试 {} 次
+button:
+  skip: 跳过本题
+  leave: 退出挑战
+  restart: 再来一局
+  rank-record: 记录排行
+  rank-total: 总分排行
 rank:
   title-1:  QuickMath 记录排行
   title-2:  QuickMath 总分排行
+  md-item: '{}. **{}** — {}'
+  md-info: 'UID: {}'
+  md-me: '**我的排名：第 {} 名**'
+  default_nickname: 用户
 achievements:
   getting_started: 新手上路
   showing_off: 初露锋芒
