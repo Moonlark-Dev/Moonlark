@@ -34,11 +34,23 @@ class Config(BaseModel):
     meme_search_base_url: str = "https://meme-search.xxtg666.top"
     # 和风天气 API Key（https://dev.qweather.com），不填写则天气相关功能不启用
     qweather_api_key: str = ""
+    # 和风天气 API Host：标准订阅为账号专属域名（如 https://xxxx.re.qweatherapi.com），
+    # 不填写则使用公共地址 devapi.qweather.com（公共地址自 2026 年起逐步停用）
+    qweather_api_host: Optional[str] = None
+    # 和风天气 GeoAPI Host（城市搜索）：专属 Host 通常不提供城市搜索接口，
+    # 需要时可单独指定；不填写则使用公共地址 geoapi.qweather.com
+    qweather_geo_api_host: Optional[str] = None
     # Moonlark 所在地区的经纬度，不填写则不启用所在地每日天气
     moonlark_latitude: Optional[float] = None
     moonlark_longitude: Optional[float] = None
 
-    @field_validator("moonlark_latitude", "moonlark_longitude", mode="before")
+    @field_validator(
+        "qweather_api_host",
+        "qweather_geo_api_host",
+        "moonlark_latitude",
+        "moonlark_longitude",
+        mode="before",
+    )
     @classmethod
     def _empty_str_to_none(cls, value: Any) -> Any:
         if value == "":
