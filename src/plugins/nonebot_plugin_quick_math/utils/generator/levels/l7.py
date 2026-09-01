@@ -1,20 +1,30 @@
 from nonebot.log import logger
 from random import randint, choice
+from typing import Any
 from sympy import Symbol, diff, limit, latex
 
+from .options import build_options
 from .utils import get_verify_function
 from ....types import Question
 from ....__main__ import lang
 
 
-async def generate_limit_question(user_id: str):
+def _diff_text(expr: Any, x: Symbol, order: int = 1) -> str:
+    result = expr
+    for _ in range(order):
+        result = diff(result, x)
+    return str(result).replace(" ", "")
+
+
+async def generate_limit_question(user_id: str) -> tuple[str, str, list[str]]:
     x = Symbol("x")
     f = choice([x**2 + 3 * x - 2, x**3 - 2 * x + 1, x**4 - 4 * x**3 + 5 * x**2 + 2 * x - 1])
     a = randint(-10, 10)
     _limit = limit(f, x, a)
     question = await lang.text("question.l7-limit", user_id, a, latex(f))
     answer = latex(_limit)
-    return question, answer
+    variants = [latex(limit(f + k, x, a)) for k in range(1, 7)]
+    return question, answer, variants
 
 
 async def generate_question(user_id: str) -> Question:
@@ -23,19 +33,27 @@ async def generate_question(user_id: str) -> Question:
     b = randint(1, 10)
     c = randint(1, 10)
     d = randint(1, 10)
-    f = a * x**3 + b * x**2 + c * x + d
     match randint(1, 4):
         case 1:
-            answer = str(diff(f, x)).replace(" ", "")
+            f = a * x**3 + b * x**2 + c * x + d
+            answer = _diff_text(f, x)
             question = await lang.text("question.l7-diff", user_id, latex(f))
+            variants = [_diff_text((a + k) * x**3 + (b - k) * x**2 + c * x + d, x) for k in range(1, 7)]
         case 2:
-            answer = str(diff(diff(f, x), x)).replace(" ", "")
+            f = a * x**3 + b * x**2 + c * x + d
+            answer = _diff_text(f, x, 2)
             question = await lang.text("question.l7-diff-diff", user_id, latex(f))
+            variants = [_diff_text((a + k) * x**3 + (b - k) * x**2 + c * x + d, x, 2) for k in range(1, 7)]
         case 3:
             f = a * x**2 + b * x + c
-            answer = str(object=diff(f, x)).replace(" ", "")
+            answer = _diff_text(f, x)
             question = await lang.text("question.l7-diff", user_id, latex(f))
+            variants = [_diff_text((a + k) * x**2 + (b - k) * x + c, x) for k in range(1, 7)]
         case _:
-            question, answer = await generate_limit_question(user_id)
+            question, answer, variants = await generate_limit_question(user_id)
     logger.debug(answer)
-    return {"question": question, "answer": get_verify_function(answer, user_id)}
+    return {
+        "question": question,
+        "answer": get_verify_function(answer, user_id),
+        "options": build_options(answer, variants),
+    }

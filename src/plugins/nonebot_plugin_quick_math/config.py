@@ -10,6 +10,8 @@ class Config(BaseModel):
     qm_retry_count: int = 1
     qm_change_max_level_count: int = 7
     qm_gpt_max_retry: int = 5
+    qm_choice_options: int = 3
+    command_start: list[str]
 
 
 config = get_plugin_config(Config)

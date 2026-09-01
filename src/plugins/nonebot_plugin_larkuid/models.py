@@ -1,13 +1,18 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from pydantic import Field
 from nonebot_plugin_orm import Model
 from openai import BaseModel
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy import String
+from sqlalchemy import Integer, LargeBinary, String
 
 from .config import config
+
+
+def _utcnow() -> datetime:
+    """UTC naive 时间基准（与 SessionData 的时间口径一致）。"""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 class SessionData(Model):
@@ -21,6 +26,30 @@ class SessionData(Model):
     created_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
     last_active_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
     device: Mapped[Optional[str]] = mapped_column(String(256), nullable=True)
+
+
+class PasskeyCredential(Model):
+    """用户注册的 Passkey（WebAuthn）公钥凭据。"""
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[str] = mapped_column(String(128), index=True)
+    credential_id: Mapped[bytes] = mapped_column(LargeBinary, unique=True)
+    public_key: Mapped[bytes] = mapped_column(LargeBinary)
+    sign_count: Mapped[int] = mapped_column(Integer, default=0)
+    device_name: Mapped[str] = mapped_column(String(128))
+    created_at: Mapped[datetime] = mapped_column(default=_utcnow)
+    last_used_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
+
+
+class PasskeyChallenge(Model):
+    """一次 WebAuthn 仪式使用的挑战（一次性、有过期时间）。"""
+
+    challenge: Mapped[str] = mapped_column(String(64), primary_key=True)  # 32 字节随机数的 hex
+    purpose: Mapped[str] = mapped_column(String(16))  # register / login
+    user_id: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)  # 注册时为该用户，登录时可空
+    origin: Mapped[str] = mapped_column(String(256))  # 期望的 WebAuthn origin
+    rp_id: Mapped[str] = mapped_column(String(256))  # 期望的 Relying Party ID
+    expires_at: Mapped[datetime] = mapped_column()
 
 
 class LoginRequest(BaseModel):
