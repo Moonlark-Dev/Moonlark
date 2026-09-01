@@ -96,10 +96,21 @@ async def _evict_excess_sessions(user_id: str, keep: int) -> None:
         await session.commit()
 
 
-async def create_session(user_id: str, request: Request, retention_days: int) -> tuple[str, str]:
+async def create_session(
+    user_id: str,
+    request: Request,
+    retention_days: int,
+    activated: bool = False,
+) -> tuple[str, str]:
+    """创建 Web 会话。
+
+    `activated=True` 时直接创建已激活会话（不生成激活码），用于 Passkey 等
+    已完成身份验证的登录方式。
+    """
     days = max(1, min(retention_days, config.session_max_lifetime_days))
     await _evict_excess_sessions(user_id, config.max_sessions_per_user - 1)
     session_id = uuid.uuid4().hex
+    activate_code = None if activated else str(uuid.uuid4()).split("-")[0]
     async with get_session() as session:
         session.add(
             SessionData(
@@ -107,13 +118,13 @@ async def create_session(user_id: str, request: Request, retention_days: int) ->
                 user_id=user_id,
                 identifier=get_identifier(request),
                 expiration_time=utcnow() + timedelta(days=days),
-                activate_code=(activate_code := str(uuid.uuid4()).split("-")[0]),
+                activate_code=activate_code,
                 created_at=utcnow(),
                 device=get_device(request),
             )
         )
         await session.commit()
-    return session_id, activate_code
+    return session_id, activate_code or ""
 
 
 async def _apply_activity(data: SessionData, now: datetime) -> None:
