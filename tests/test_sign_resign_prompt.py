@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -53,3 +53,33 @@ async def test_build_resign_prompt_plain_text_on_other_adapters() -> None:
     message = await handler.build_resign_prompt(needed=90)
 
     assert message == "text::resign.prompt"
+
+
+@pytest.mark.asyncio
+async def test_build_button_invite_and_jrrp(monkeypatch: pytest.MonkeyPatch) -> None:
+    """签到结果键盘应始终包含 我也要签到 与 今日人品 按钮"""
+    from nonebot_plugin_sign.__main__ import config
+
+    handler = _make_handler(bot=MagicMock())
+    monkeypatch.setattr("nonebot_plugin_sign.__main__.get_unread_email_count", AsyncMock(return_value=0))
+    monkeypatch.setattr(config, "command_start", ["/"])
+    buttons = await handler.build_button()
+
+    assert isinstance(buttons, list)
+    assert [str(button.label) for button in buttons] == ["text::button.invite", "text::button.jrrp"]
+    assert [button.text for button in buttons] == ["/sign", "/jrrp"]
+
+
+@pytest.mark.asyncio
+async def test_build_button_adds_email_when_unread(monkeypatch: pytest.MonkeyPatch) -> None:
+    """存在未读邮件时键盘应额外包含 查看邮件 按钮"""
+    from nonebot_plugin_sign.__main__ import config
+
+    handler = _make_handler(bot=MagicMock())
+    monkeypatch.setattr("nonebot_plugin_sign.__main__.get_unread_email_count", AsyncMock(return_value=2))
+    monkeypatch.setattr(config, "command_start", ["/"])
+    buttons = await handler.build_button()
+
+    assert len(buttons) == 3
+    assert str(buttons[-1].label) == "text::button.email"
+    assert buttons[-1].text == "/email"

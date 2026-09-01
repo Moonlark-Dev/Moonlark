@@ -423,17 +423,33 @@ class SignHandler:
             .style(
                 f'<qqbot-at-user id="{self.event.get_user_id()}" />{await create_image_markdown(image_raw)}', "markdown"
             )
-            .keyboard(await self.build_button())
+            .keyboard(*await self.build_button())
             .send()
         )
         await self.matcher.finish()
 
-    async def build_button(self) -> Button:
-        return Button(
-            "enter",
-            await lang.text("button.invite", self.user_id),
-            text=f"{config.command_start[0]}sign",
-        )
+    async def build_button(self) -> list[Button]:
+        buttons = [
+            Button(
+                "enter",
+                await lang.text("button.invite", self.user_id),
+                text=f"{config.command_start[0]}sign",
+            ),
+            Button(
+                "enter",
+                await lang.text("button.jrrp", self.user_id),
+                text=f"{config.command_start[0]}jrrp",
+            ),
+        ]
+        if await get_unread_email_count(self.user_id) > 0:
+            buttons.append(
+                Button(
+                    "enter",
+                    await lang.text("button.email", self.user_id),
+                    text=f"{config.command_start[0]}email",
+                ),
+            )
+        return buttons
 
 
 @sign.assign("$main")

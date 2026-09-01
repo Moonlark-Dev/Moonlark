@@ -28,6 +28,8 @@ button:
   invite: 我也要签到
   invite_markdown: 点击下方按钮即可一键签到喵~
   not_registered: 您还未注册喵~请先发送 {__prefix__}register 完成注册后再来签到！
+  jrrp: 今日人品
+  email: 查看邮件
 luck:
   a: 大吉
   b: 吉
