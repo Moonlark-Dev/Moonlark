@@ -203,9 +203,7 @@
             </tr>
             {% if ticket %}
             <tr>
-                <td class="col-label">{{ ticket.text }}</td>
-                <td class="col-old"></td>
-                <td class="col-arrow">+</td>
+                <td class="col-label" colspan="3">{{ ticket.text }}</td>
                 <td class="col-new">{{ ticket.value }}</td>
                 <td class="col-diff"></td>
             </tr>
