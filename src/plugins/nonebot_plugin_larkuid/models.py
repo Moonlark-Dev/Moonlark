@@ -33,7 +33,7 @@ class PasskeyCredential(Model):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     user_id: Mapped[str] = mapped_column(String(128), index=True)
-    credential_id: Mapped[bytes] = mapped_column(LargeBinary, unique=True)
+    credential_id: Mapped[bytes] = mapped_column(LargeBinary(length=768), unique=True)
     public_key: Mapped[bytes] = mapped_column(LargeBinary)
     sign_count: Mapped[int] = mapped_column(Integer, default=0)
     device_name: Mapped[str] = mapped_column(String(128))
