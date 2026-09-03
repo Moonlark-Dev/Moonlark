@@ -3143,6 +3143,13 @@ files = [
     {file = "lxml-6.1.3-cp315-cp315t-win32.whl", hash = "sha256:ace1d2c83b2bd24db5940600541140e87a325e119cb32d5fa9ad720d7e76648e"},
     {file = "lxml-6.1.3-cp315-cp315t-win_amd64.whl", hash = "sha256:b49638355ea3bebba70da783ccbc630fd72afa16bc46c54474bfa1f9a915bbc6"},
     {file = "lxml-6.1.3-cp315-cp315t-win_arm64.whl", hash = "sha256:5a721a98c649855963811b59b55755b30566e7f7fc40bdc9803d66dee9f811cf"},
+    {file = "lxml-6.1.3-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:13a620a3fcc20023f9e6ed5c383e00e826f1c2d5db554df2f67240760f9118e8"},
+    {file = "lxml-6.1.3-cp38-cp38-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:fbfb70ba01355251faf6b293171df49f73a88a1b6494db109ffea85442574458"},
+    {file = "lxml-6.1.3-cp38-cp38-manylinux_2_26_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:302f72413251c03f671e063c9414bed5dc8c927069e5abb69245521e51a4e81b"},
+    {file = "lxml-6.1.3-cp38-cp38-manylinux_2_28_i686.whl", hash = "sha256:ce1f220114959941170e22b8ad44279f6dee2dcef7591814d01ae805dc058889"},
+    {file = "lxml-6.1.3-cp38-cp38-musllinux_1_2_x86_64.whl", hash = "sha256:170773d8a3cdc76259065523ddd978c44f9806e28605f08812e8f86783e44ac6"},
+    {file = "lxml-6.1.3-cp38-cp38-win32.whl", hash = "sha256:92d96586376fb79a33474797186bf993250152ee5c32650b67db78d54b92e6f3"},
+    {file = "lxml-6.1.3-cp38-cp38-win_amd64.whl", hash = "sha256:d44442effeb8781f392340c5dc8c6716fba41dbeacb82fd4c0f09026fb5ff682"},
     {file = "lxml-6.1.3-cp39-cp39-macosx_10_9_universal2.whl", hash = "sha256:869dfcd4d381cb0ea87085cc4f011b9171b494ef21e76ad8665f6d5e2d1dc8a1"},
     {file = "lxml-6.1.3-cp39-cp39-macosx_10_9_x86_64.whl", hash = "sha256:6ba4fe5bfbef6811a8e49b3719cde373ad399006c0c1ac184b7297116ecbba5d"},
     {file = "lxml-6.1.3-cp39-cp39-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:61116cec57ed69aebc70f37a545eec095339bb829efbdabcfb97c51e9536e158"},
@@ -3433,14 +3440,14 @@ test = ["flake8", "matplotlib", "nbdime", "nbval", "notebook", "pytest"]
 
 [[package]]
 name = "mcstatus"
-version = "12.2.1"
+version = "14.2.0"
 description = "A library to query Minecraft Servers for their status and capabilities."
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "mcstatus-12.2.1-py3-none-any.whl", hash = "sha256:9da6b8b6c1a43521f13cc50f312501091c1e7437c3ad2d65b9ccb534d70b1244"},
-    {file = "mcstatus-12.2.1.tar.gz", hash = "sha256:0c6fb84c96685bb02189951ba895afbaca22b65bfe74e7fc55ef73a1c6e8a9ce"},
+    {file = "mcstatus-14.2.0-py3-none-any.whl", hash = "sha256:6099f9d6ae5c68eb5230cd3063b0888ea1ba4e9ae17189bf4c0f919c1ff673d1"},
+    {file = "mcstatus-14.2.0.tar.gz", hash = "sha256:ab1a3145dc6b22b8051ea087a87e5b26cf91abfb8e1808539a2526bbfaaa0167"},
 ]
 
 [package.dependencies]
@@ -4130,19 +4137,23 @@ description = "A NoneBot2 plugin generates a pic from a Minecraft server's MOTD"
 optional = false
 python-versions = "<4.0,>=3.10"
 groups = ["main"]
-files = [
-    {file = "nonebot_plugin_picmcstat-0.8.1-py3-none-any.whl", hash = "sha256:6b3ebabea5617fe26d04e1e94446449a05ab7f371019c7a676a403fc9d92a5e5"},
-    {file = "nonebot_plugin_picmcstat-0.8.1.tar.gz", hash = "sha256:211ea4687393f673fac3bf7aaf85c76f14e71c65eeca61099fed0e7a9365a19f"},
-]
+files = []
+develop = false
 
 [package.dependencies]
 cookit = {version = ">=0.13.0", extras = ["pydantic"]}
 dnspython = ">=2.7.0"
-mcstatus = ">=12.0.5"
+mcstatus = ">=14.0.0,<15"
 nonebot-plugin-alconna = ">=0.59.4"
 nonebot2 = ">=2.4.3"
 pil-utils = ">=0.2.2"
 punycode = ">=0.2.1"
+
+[package.source]
+type = "git"
+url = "https://github.com/Moonlark-Dev/nonebot-plugin-picmcstat.git"
+reference = "HEAD"
+resolved_reference = "055906deb327a4005170cb3f0335a1a04757744f"
 
 [[package]]
 name = "nonebot-plugin-picstatus"
@@ -7708,4 +7719,4 @@ type = ["pytest-mypy (>=1.0.1) ; platform_python_implementation != \"PyPy\""]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11, <4.0"
-content-hash = "aaa4b0f3b8fc3096e33d07b8dae02a3ed50e9d067dcf07f94d2f77a4a24b6386"
+content-hash = "2bedcd0f8fbdb9e9b474d89d3090022fb94ffb4f0d5d2c262acaa9d4becc68d6"
