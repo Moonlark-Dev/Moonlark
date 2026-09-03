@@ -17,12 +17,9 @@ view:
     {}
   info_md: |
     **语言详细信息**
-
-    | 项目 | 内容 |
-    | --- | --- |
-    | 名称 | {} |
-    | 作者 | {} |
-    | 版本 | {} |
+    名称：{}
+    作者：{}
+    版本：{}
 
     {}
 lang:
@@ -36,6 +33,8 @@ lang:
     {}
 
     使用 `{__prefix__}lang view <语言>` 获取更多信息
+  item_md: |
+    <qqbot-cmd-input text="{__prefix__}lang view {}" show="{}" reference="false" />
 reload:
   success: 已成功重载语言列表
   success_md: |

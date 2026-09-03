@@ -6,7 +6,7 @@ list:
     {}
   item: "[{}] {} - {} VimCoin"
   item_md: |
-    - [{}] **{}** - {} VimCoin
+    <qqbot-cmd-input text="{__prefix__}shop buy {}" show="{} - {} VimCoin" reference="false" />
   footer: 使用 {__prefix__}shop buy <编号> [数量] 购买商品
 buy:
   invalid_index: 无效的商品编号，请使用 {__prefix__}shop 查看商品列表。

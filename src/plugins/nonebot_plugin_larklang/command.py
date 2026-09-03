@@ -116,17 +116,18 @@ async def _(bot: Bot, language: str, user_id: str = get_user_id()) -> None:
 @lang_cmd.assign("$main")
 async def _(bot: Bot, user_id: str = get_user_id()) -> None:
     if isinstance(bot, QQBot):
+        items = [await lang.text("lang.item_md", user_id, lang_code, lang_code) for lang_code in main.get_languages()]
         await lang_cmd.finish(
             UniMessage()
             .style(
                 await lang.text(
                     "lang.list_md",
                     user_id,
-                    "\n".join(list(main.get_languages().keys())),
+                    "\n".join(items),
                 ),
                 "markdown",
             )
             .send(),
         )
     else:
-        await lang.reply("lang.list", user_id, "\n".join(list(main.get_languages().keys())))
+        await lang.reply("lang.list", user_id, "\n".join(list(main.get_languages())))

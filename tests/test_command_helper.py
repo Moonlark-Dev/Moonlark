@@ -2,6 +2,10 @@ import pytest
 from unittest.mock import AsyncMock, patch
 
 
+class _FakeBot:
+    """模拟非 QQBot 的 Bot 实例"""
+
+
 @pytest.fixture(autouse=True)
 def _clean_markdown_cache():
     """每个用例前清空全局指令列表缓存，避免用例间互相污染"""
@@ -128,7 +132,7 @@ async def test_handle_command_with_query() -> None:
         ) as mocked_create,
     ):
         with pytest.raises(RuntimeError):
-            await handle_command(("jrrp", "怎么用"), user_id="user-1")
+            await handle_command(_FakeBot(), ("jrrp", "怎么用"), user_id="user-1")
 
     fake_lang.send.assert_awaited_once_with("thinking", "user-1")
     fake_lang.finish.assert_awaited_once()
@@ -156,7 +160,7 @@ async def test_handle_command_without_query() -> None:
 
     with patch("nonebot_plugin_command_helper.__main__.lang", fake_lang):
         with pytest.raises(RuntimeError):
-            await handle_command((), user_id="user-1")
+            await handle_command(_FakeBot(), (), user_id="user-1")
 
     fake_lang.finish.assert_awaited_once_with("usage", "user-1")
 
@@ -182,7 +186,7 @@ async def test_handle_command_llm_error() -> None:
         ),
     ):
         with pytest.raises(RuntimeError):
-            await handle_command(("jrrp",), user_id="user-1")
+            await handle_command(_FakeBot(), ("jrrp",), user_id="user-1")
 
     fake_lang.finish.assert_awaited_once_with("llm_error", "user-1")
 
@@ -204,6 +208,6 @@ async def test_handle_command_commands_error() -> None:
         ),
     ):
         with pytest.raises(RuntimeError):
-            await handle_command(("jrrp",), user_id="user-1")
+            await handle_command(_FakeBot(), ("jrrp",), user_id="user-1")
 
     fake_lang.finish.assert_awaited_once_with("commands_error", "user-1")
