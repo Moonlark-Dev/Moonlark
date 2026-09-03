@@ -6,7 +6,11 @@ from nonebot.adapters.qq import Bot as QQBot
 from nonebot_plugin_alconna import Alconna, Args, MultiVar, on_alconna
 from nonebot_plugin_alconna.uniseg import UniMessage
 from nonebot_plugin_larklang.__main__ import LangHelper, load_languages
-from nonebot_plugin_larkhelp.__main__ import get_menu_templates, get_templates, setup_help_list
+from nonebot_plugin_larkhelp.__main__ import (
+    get_menu_templates,
+    get_templates,
+    setup_help_list,
+)
 from nonebot_plugin_larkhelp.__main__ import lang as larkhelp_lang
 from nonebot_plugin_larkutils import get_user_id
 from nonebot_plugin_openai import MessageFetcher
