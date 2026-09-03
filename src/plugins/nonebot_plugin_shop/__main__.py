@@ -1,8 +1,9 @@
+import random
+
 from nonebot.adapters import Bot
 from nonebot.adapters.qq import Bot as QQBot
 from nonebot_plugin_alconna import Alconna, Args, Subcommand, on_alconna
 from nonebot_plugin_alconna.uniseg import UniMessage
-import random
 
 from nonebot_plugin_bag.utils.bag import give_item
 from nonebot_plugin_items.utils.get import get_item
