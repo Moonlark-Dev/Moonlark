@@ -12,8 +12,9 @@ import httpx
 
 from ..config import config
 
-GEO_API_BASE = "https://geoapi.qweather.com"
-DEV_API_BASE = "https://devapi.qweather.com"
+# API Host：标准订阅为账号专属域名；未配置时回退到公共地址（公共地址自 2026 年起逐步停用）
+DEV_API_BASE = (config.qweather_api_host or "https://devapi.qweather.com").rstrip("/")
+GEO_API_BASE = (config.qweather_geo_api_host or "https://geoapi.qweather.com").rstrip("/")
 
 WEEKDAYS = ["星期一", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日"]
 
