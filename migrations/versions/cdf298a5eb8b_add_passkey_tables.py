@@ -28,7 +28,7 @@ def upgrade(name: str = "") -> None:
         "nonebot_plugin_larkuid_passkeycredential",
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
         sa.Column("user_id", sa.String(length=128), nullable=False),
-        sa.Column("credential_id", sa.LargeBinary(), nullable=False),
+        sa.Column("credential_id", sa.LargeBinary(length=768), nullable=False),
         sa.Column("public_key", sa.LargeBinary(), nullable=False),
         sa.Column("sign_count", sa.Integer(), nullable=False),
         sa.Column("device_name", sa.String(length=128), nullable=False),
