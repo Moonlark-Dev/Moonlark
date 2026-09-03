@@ -2,6 +2,12 @@ global:
   not_found: '语言 {} 不存在！'
 set:
   success: '成功将语言修改为: {}'
+  success_md: |
+    **成功将语言修改为：{}**
+  group:
+    success: '成功将群聊语言修改为: {}'
+    success_md: |
+      **成功将群聊语言修改为：{}**
 view:
   info: |
     「语言详细信息」
@@ -9,14 +15,34 @@ view:
     作者: {}
     版本: {}
     {}
+  info_md: |
+    **语言详细信息**
+
+    | 项目 | 内容 |
+    | --- | --- |
+    | 名称 | {} |
+    | 作者 | {} |
+    | 版本 | {} |
+
+    {}
 lang:
   list: |
     「本地化语言列表」
     {}
     使用「{__prefix__}lang view <语言>」获取更多信息
+  list_md: |
+    **本地化语言列表**
+
+    {}
+
+    使用 `{__prefix__}lang view <语言>` 获取更多信息
 reload:
   success: 已成功重载语言列表
+  success_md: |
+    **已成功重载语言列表**
   no_permission: 无权限！
+  no_permission_md: |
+    **无权限！**
 help:
   description: 本地化
   details: Moonlark 本地化设置

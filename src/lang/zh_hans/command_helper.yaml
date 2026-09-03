@@ -8,3 +8,5 @@ usage: "用法: command <查询内容>，例如「command 如何查看今日人�
 commands_error: 指令列表生成失败了唔…… 请稍后再试喵～
 llm_error: 生成失败了唔…… 请稍后再试喵～
 result: "{}"
+result_md: |
+  {}

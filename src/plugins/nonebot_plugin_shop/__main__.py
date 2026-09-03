@@ -1,4 +1,7 @@
+from nonebot.adapters import Bot
+from nonebot.adapters.qq import Bot as QQBot
 from nonebot_plugin_alconna import Alconna, Args, Subcommand, on_alconna
+from nonebot_plugin_alconna.uniseg import UniMessage
 import random
 
 from nonebot_plugin_bag.utils.bag import give_item
@@ -26,18 +29,37 @@ async def get_goods_name(item_id: str, user_id: str) -> str:
 
 
 @shop.assign("$main")
-async def handle_main(user_id: str = get_user_id()) -> None:
+async def handle_main(bot: Bot, user_id: str = get_user_id()) -> None:
     user = await get_user(user_id)
-    lines = [await lang.text("list.title", user_id, round(user.get_vimcoin(), 1))]
-    for index, (item_id, price) in enumerate(GOODS, start=1):
-        name = await get_goods_name(item_id, user_id)
-        lines.append(await lang.text("list.item", user_id, index, name, price))
-    lines.append(await lang.text("list.footer", user_id))
-    await shop.finish("\n".join(lines))
+    if isinstance(bot, QQBot):
+        lines = []
+        for index, (item_id, price) in enumerate(GOODS, start=1):
+            name = await get_goods_name(item_id, user_id)
+            lines.append(await lang.text("list.item_md", user_id, index, name, price))
+        await shop.finish(
+            UniMessage()
+            .style(
+                await lang.text(
+                    "list.title_md",
+                    user_id,
+                    round(user.get_vimcoin(), 1),
+                    "\n".join(lines),
+                ),
+                "markdown",
+            )
+            .send(),
+        )
+    else:
+        lines = [await lang.text("list.title", user_id, round(user.get_vimcoin(), 1))]
+        for index, (item_id, price) in enumerate(GOODS, start=1):
+            name = await get_goods_name(item_id, user_id)
+            lines.append(await lang.text("list.item", user_id, index, name, price))
+        lines.append(await lang.text("list.footer", user_id))
+        await shop.finish("\n".join(lines))
 
 
 @shop.assign("buy")
-async def handle_buy(index: int, count: int = 1, user_id: str = get_user_id()) -> None:
+async def handle_buy(bot: Bot, index: int, count: int = 1, user_id: str = get_user_id()) -> None:
     if not 1 <= index <= len(GOODS):
         await lang.finish("buy.invalid_index", user_id)
     if count <= 0:
@@ -56,7 +78,17 @@ async def handle_buy(index: int, count: int = 1, user_id: str = get_user_id()) -
     if not alternatives:
         stack = await get_item(location, user_id, count)
         await give_item(user_id, stack)
-        await lang.finish("buy.success", user_id, name, count, total_price)
+        if isinstance(bot, QQBot):
+            await shop.finish(
+                UniMessage()
+                .style(
+                    await lang.text("buy.success_md", user_id, name, count, total_price),
+                    "markdown",
+                )
+                .send(),
+            )
+        else:
+            await lang.finish("buy.success", user_id, name, count, total_price)
 
     # 逐单位随机判定：例如买鸡蛋时有概率获得臭鸡蛋
     got: dict[str, int] = {}
@@ -76,10 +108,30 @@ async def handle_buy(index: int, count: int = 1, user_id: str = get_user_id()) -
         await give_item(user_id, stack)
 
     if got.get(item_id, 0) == count:
-        await lang.finish("buy.success", user_id, name, count, total_price)
+        if isinstance(bot, QQBot):
+            await shop.finish(
+                UniMessage()
+                .style(
+                    await lang.text("buy.success_md", user_id, name, count, total_price),
+                    "markdown",
+                )
+                .send(),
+            )
+        else:
+            await lang.finish("buy.success", user_id, name, count, total_price)
 
     parts = []
     for got_id, got_count in got.items():
         got_name = await get_goods_name(got_id, user_id)
         parts.append(await lang.text("buy.item_part", user_id, got_name, got_count))
-    await lang.finish("buy.success_alt", user_id, "、".join(parts), total_price)
+    if isinstance(bot, QQBot):
+        await shop.finish(
+            UniMessage()
+            .style(
+                await lang.text("buy.success_alt_md", user_id, "、".join(parts), total_price),
+                "markdown",
+            )
+            .send(),
+        )
+    else:
+        await lang.finish("buy.success_alt", user_id, "、".join(parts), total_price)

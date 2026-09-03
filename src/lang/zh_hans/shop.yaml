@@ -1,14 +1,24 @@
 list:
   title: "【Moonlark 商店】当前持有：{} VimCoin"
+  title_md: |
+    **【Moonlark 商店】** 当前持有：**{}** VimCoin
+
+    {}
   item: "[{}] {} - {} VimCoin"
+  item_md: |
+    - [{}] **{}** - {} VimCoin
   footer: 使用 {__prefix__}shop buy <编号> [数量] 购买商品
 buy:
   invalid_index: 无效的商品编号，请使用 {__prefix__}shop 查看商品列表。
   invalid_count: 购买数量必须大于 0
   no_enough_vimcoin: "VimCoin 不足！需要 {}，当前持有 {}。"
   success: "购买成功！获得 {} x{}，花费 {} VimCoin。"
+  success_md: |
+    **购买成功！** 获得 **{}** x{}，花费 **{}** VimCoin。
   item_part: "{} ×{}"
   success_alt: "购买成功！获得了 {}，花费 {} VimCoin。"
+  success_alt_md: |
+    **购买成功！** 获得了 **{}**，花费 **{}** VimCoin。
 help:
   description: 商店
   details: 使用 VimCoin 购买礼物等商品，购买的物品会存入背包。

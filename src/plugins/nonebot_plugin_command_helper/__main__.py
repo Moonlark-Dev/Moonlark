@@ -1,7 +1,10 @@
 import traceback
 
 from nonebot import get_driver, logger
+from nonebot.adapters import Bot
+from nonebot.adapters.qq import Bot as QQBot
 from nonebot_plugin_alconna import Alconna, Args, MultiVar, on_alconna
+from nonebot_plugin_alconna.uniseg import UniMessage
 from nonebot_plugin_larklang.__main__ import LangHelper, load_languages
 from nonebot_plugin_larkhelp.__main__ import get_menu_templates, get_templates, setup_help_list
 from nonebot_plugin_larkhelp.__main__ import lang as larkhelp_lang
@@ -87,7 +90,7 @@ command_cmd = on_alconna(
 
 
 @command_cmd.handle()
-async def handle_command(query: tuple[str, ...], user_id: str = get_user_id()) -> None:
+async def handle_command(bot: Bot, query: tuple[str, ...], user_id: str = get_user_id()) -> None:
     if not query:
         await lang.finish("usage", user_id)
     query_text = " ".join(query)
@@ -111,4 +114,14 @@ async def handle_command(query: tuple[str, ...], user_id: str = get_user_id()) -
     except Exception:
         logger.error(f"LLM 生成指令用法失败: {traceback.format_exc()}")
         await lang.finish("llm_error", user_id)
-    await lang.finish("result", user_id, result)
+    if isinstance(bot, QQBot):
+        await command_cmd.finish(
+            UniMessage()
+            .style(
+                await lang.text("result_md", user_id, result),
+                "markdown",
+            )
+            .send(),
+        )
+    else:
+        await lang.finish("result", user_id, result)
