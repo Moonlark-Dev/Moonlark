@@ -5,7 +5,7 @@ from pydantic import Field
 from nonebot_plugin_orm import Model
 from openai import BaseModel
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy import Integer, LargeBinary, String
+from sqlalchemy import Integer, LargeBinary, String, VARBINARY
 
 from .config import config
 
@@ -33,7 +33,9 @@ class PasskeyCredential(Model):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     user_id: Mapped[str] = mapped_column(String(128), index=True)
-    credential_id: Mapped[bytes] = mapped_column(LargeBinary(length=768), unique=True)
+    credential_id: Mapped[bytes] = mapped_column(
+        LargeBinary().with_variant(VARBINARY(768), "mysql"), unique=True
+    )
     public_key: Mapped[bytes] = mapped_column(LargeBinary)
     sign_count: Mapped[int] = mapped_column(Integer, default=0)
     device_name: Mapped[str] = mapped_column(String(128))
