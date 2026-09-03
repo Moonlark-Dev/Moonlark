@@ -22,6 +22,10 @@ patch_matcher(shop)
 lang = LangHelper()
 
 
+def _is_qq(bot: Bot) -> bool:
+    return isinstance(bot, QQBot)
+
+
 async def get_goods_name(item_id: str, user_id: str) -> str:
     location = get_location_by_id(item_id)
     stack = await get_item(location, user_id)
@@ -31,7 +35,7 @@ async def get_goods_name(item_id: str, user_id: str) -> str:
 @shop.assign("$main")
 async def handle_main(bot: Bot, user_id: str = get_user_id()) -> None:
     user = await get_user(user_id)
-    if isinstance(bot, QQBot):
+    if _is_qq(bot):
         lines = []
         for index, (item_id, price) in enumerate(GOODS, start=1):
             name = await get_goods_name(item_id, user_id)
@@ -58,6 +62,34 @@ async def handle_main(bot: Bot, user_id: str = get_user_id()) -> None:
         await shop.finish("\n".join(lines))
 
 
+async def _send_buy_success(bot: Bot, user_id: str, name: str, count: int, total_price: float) -> None:
+    if _is_qq(bot):
+        await shop.finish(
+            UniMessage()
+            .style(
+                await lang.text("buy.success_md", user_id, name, count, total_price),
+                "markdown",
+            )
+            .send(),
+        )
+    else:
+        await lang.finish("buy.success", user_id, name, count, total_price)
+
+
+async def _send_buy_success_alt(bot: Bot, user_id: str, parts: str, total_price: float) -> None:
+    if _is_qq(bot):
+        await shop.finish(
+            UniMessage()
+            .style(
+                await lang.text("buy.success_alt_md", user_id, parts, total_price),
+                "markdown",
+            )
+            .send(),
+        )
+    else:
+        await lang.finish("buy.success_alt", user_id, parts, total_price)
+
+
 @shop.assign("buy")
 async def handle_buy(bot: Bot, index: int, count: int = 1, user_id: str = get_user_id()) -> None:
     if not 1 <= index <= len(GOODS):
@@ -78,17 +110,7 @@ async def handle_buy(bot: Bot, index: int, count: int = 1, user_id: str = get_us
     if not alternatives:
         stack = await get_item(location, user_id, count)
         await give_item(user_id, stack)
-        if isinstance(bot, QQBot):
-            await shop.finish(
-                UniMessage()
-                .style(
-                    await lang.text("buy.success_md", user_id, name, count, total_price),
-                    "markdown",
-                )
-                .send(),
-            )
-        else:
-            await lang.finish("buy.success", user_id, name, count, total_price)
+        await _send_buy_success(bot, user_id, name, count, total_price)
 
     # 逐单位随机判定：例如买鸡蛋时有概率获得臭鸡蛋
     got: dict[str, int] = {}
@@ -108,30 +130,10 @@ async def handle_buy(bot: Bot, index: int, count: int = 1, user_id: str = get_us
         await give_item(user_id, stack)
 
     if got.get(item_id, 0) == count:
-        if isinstance(bot, QQBot):
-            await shop.finish(
-                UniMessage()
-                .style(
-                    await lang.text("buy.success_md", user_id, name, count, total_price),
-                    "markdown",
-                )
-                .send(),
-            )
-        else:
-            await lang.finish("buy.success", user_id, name, count, total_price)
+        await _send_buy_success(bot, user_id, name, count, total_price)
 
     parts = []
     for got_id, got_count in got.items():
         got_name = await get_goods_name(got_id, user_id)
         parts.append(await lang.text("buy.item_part", user_id, got_name, got_count))
-    if isinstance(bot, QQBot):
-        await shop.finish(
-            UniMessage()
-            .style(
-                await lang.text("buy.success_alt_md", user_id, "、".join(parts), total_price),
-                "markdown",
-            )
-            .send(),
-        )
-    else:
-        await lang.finish("buy.success_alt", user_id, "、".join(parts), total_price)
+    await _send_buy_success_alt(bot, user_id, "、".join(parts), total_price)

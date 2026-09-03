@@ -22,11 +22,15 @@ lang_cmd = on_alconna(
 lang = main.LangHelper()
 
 
+def _is_qq(bot: Bot) -> bool:
+    return isinstance(bot, QQBot)
+
+
 @lang_cmd.assign("reload")
 async def _(bot: Bot, user_id: str = get_user_id(), superuser: bool = is_user_superuser()) -> None:
     if superuser:
         await main.load_languages()
-        if isinstance(bot, QQBot):
+        if _is_qq(bot):
             await lang_cmd.finish(
                 UniMessage()
                 .style(
@@ -37,7 +41,7 @@ async def _(bot: Bot, user_id: str = get_user_id(), superuser: bool = is_user_su
             )
         else:
             await lang.finish("reload.success", user_id)
-    if isinstance(bot, QQBot):
+    if _is_qq(bot):
         await lang_cmd.finish(
             UniMessage()
             .style(
@@ -61,7 +65,7 @@ async def _(
         await lang.send("global.not_found", user_id, language)
     if group:
         await main.set_group_language(group_id, language)
-        if isinstance(bot, QQBot):
+        if _is_qq(bot):
             await lang_cmd.finish(
                 UniMessage()
                 .style(
@@ -74,7 +78,7 @@ async def _(
             await lang.send("set.group.success", user_id, language)
     else:
         await main.set_user_language(user_id, language)
-        if isinstance(bot, QQBot):
+        if _is_qq(bot):
             await lang_cmd.finish(
                 UniMessage()
                 .style(
@@ -93,7 +97,7 @@ async def _(bot: Bot, language: str, user_id: str = get_user_id()) -> None:
     if language not in main.get_languages():
         await lang.send("global.not_found", user_id, language)
     data = main.get_languages()[language]
-    if isinstance(bot, QQBot):
+    if _is_qq(bot):
         await lang_cmd.finish(
             UniMessage()
             .style(
@@ -115,7 +119,7 @@ async def _(bot: Bot, language: str, user_id: str = get_user_id()) -> None:
 
 @lang_cmd.assign("$main")
 async def _(bot: Bot, user_id: str = get_user_id()) -> None:
-    if isinstance(bot, QQBot):
+    if _is_qq(bot):
         items = [await lang.text("lang.item_md", user_id, lang_code, lang_code) for lang_code in main.get_languages()]
         await lang_cmd.finish(
             UniMessage()
