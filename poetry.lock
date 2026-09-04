@@ -3440,14 +3440,14 @@ test = ["flake8", "matplotlib", "nbdime", "nbval", "notebook", "pytest"]
 
 [[package]]
 name = "mcstatus"
-version = "12.2.1"
+version = "14.2.0"
 description = "A library to query Minecraft Servers for their status and capabilities."
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "mcstatus-12.2.1-py3-none-any.whl", hash = "sha256:9da6b8b6c1a43521f13cc50f312501091c1e7437c3ad2d65b9ccb534d70b1244"},
-    {file = "mcstatus-12.2.1.tar.gz", hash = "sha256:0c6fb84c96685bb02189951ba895afbaca22b65bfe74e7fc55ef73a1c6e8a9ce"},
+    {file = "mcstatus-14.2.0-py3-none-any.whl", hash = "sha256:6099f9d6ae5c68eb5230cd3063b0888ea1ba4e9ae17189bf4c0f919c1ff673d1"},
+    {file = "mcstatus-14.2.0.tar.gz", hash = "sha256:ab1a3145dc6b22b8051ea087a87e5b26cf91abfb8e1808539a2526bbfaaa0167"},
 ]
 
 [package.dependencies]
@@ -4137,19 +4137,23 @@ description = "A NoneBot2 plugin generates a pic from a Minecraft server's MOTD"
 optional = false
 python-versions = "<4.0,>=3.10"
 groups = ["main"]
-files = [
-    {file = "nonebot_plugin_picmcstat-0.8.1-py3-none-any.whl", hash = "sha256:6b3ebabea5617fe26d04e1e94446449a05ab7f371019c7a676a403fc9d92a5e5"},
-    {file = "nonebot_plugin_picmcstat-0.8.1.tar.gz", hash = "sha256:211ea4687393f673fac3bf7aaf85c76f14e71c65eeca61099fed0e7a9365a19f"},
-]
+files = []
+develop = false
 
 [package.dependencies]
 cookit = {version = ">=0.13.0", extras = ["pydantic"]}
 dnspython = ">=2.7.0"
-mcstatus = ">=12.0.5"
+mcstatus = ">=14.0.0,<15"
 nonebot-plugin-alconna = ">=0.59.4"
 nonebot2 = ">=2.4.3"
 pil-utils = ">=0.2.2"
 punycode = ">=0.2.1"
+
+[package.source]
+type = "git"
+url = "https://github.com/Moonlark-Dev/nonebot-plugin-picmcstat.git"
+reference = "HEAD"
+resolved_reference = "055906deb327a4005170cb3f0335a1a04757744f"
 
 [[package]]
 name = "nonebot-plugin-picstatus"
@@ -7715,4 +7719,4 @@ type = ["pytest-mypy (>=1.0.1) ; platform_python_implementation != \"PyPy\""]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11, <4.0"
-content-hash = "aaa4b0f3b8fc3096e33d07b8dae02a3ed50e9d067dcf07f94d2f77a4a24b6386"
+content-hash = "2bedcd0f8fbdb9e9b474d89d3090022fb94ffb4f0d5d2c262acaa9d4becc68d6"
