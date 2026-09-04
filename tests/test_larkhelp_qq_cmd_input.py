@@ -10,8 +10,6 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from nonebot_plugin_larkhelp.models import CommandHelp
-
 _SHOP_TEXT = {
     "help.usage1": "shop (查看商品列表)",
     "help.usage2": "shop buy <编号> [数量] (购买商品)",
@@ -44,9 +42,12 @@ class _FakeUniMessage:
 
 @pytest.fixture
 def larkhelp_env(monkeypatch: pytest.MonkeyPatch) -> tuple[Any, list[tuple[str, tuple[object, ...]]]]:
-    """写入手工 help_list，打桩 LangHelper.text（含真实模板渲染）与消息发送"""
+    """写入手工 help_list，打桩 LangHelper.text（含真实模板渲染）与消息发送
+
+    注意：插件导入必须在 fixture 内部进行（collection 阶段 nonebot 尚未初始化）。"""
     import nonebot_plugin_larkhelp.__main__ as module
     from nonebot_plugin_larklang.__main__ import LangHelper
+    from nonebot_plugin_larkhelp.models import CommandHelp
 
     module.help_list = {
         "shop": CommandHelp(
