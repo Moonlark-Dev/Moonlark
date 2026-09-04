@@ -163,6 +163,47 @@ All user-facing text must be localized using LarkLang:
 4. **Commands**: Use Alconna for command parsing
 5. **User Data**: Access user info through LarkUser, not directly
 6. **Localization**: All user-visible text must use LarkLang
+7. **Message Sending**: Use `UniMessage.send()` when the message carries a keyboard/buttons (e.g. QQ official bot interactive messages) and read the returned `Receipt` for message ids. `UniMessage.send()` only sends — after it you must separately call `matcher.finish()` to end the handler. Plain text messages without a keyboard keep using `matcher.send(text, at_sender=...)`:
+   ```python
+   # Keyboard/button message (QQ official bot): UniMessage.send + separate matcher.finish
+   receipt = await UniMessage().style("text", "markdown").keyboard(...).send(target=event, bot=bot)
+   msg_id = receipt.msg_ids[0]["message_id"]  # msg_ids[0] may be a dict or a pydantic model
+   await matcher.finish()
+
+   # Plain text without keyboard: matcher.send(at_sender=True) is fine
+   await matcher.send("text", at_sender=True)
+   ```
+
+### QQ Official Bot Interactive Buttons (Keyboard)
+
+The QQ official bot adapter (`nonebot.adapters.qq`, imported as `QQBot`) supports keyboard buttons attached to messages. Follow this convention (see `nonebot_plugin_sign`, `nonebot_plugin_larkhelp`, `nonebot_plugin_quick_math`, `nonebot_plugin_jrrp`):
+
+```python
+from nonebot.adapters.qq import Bot as QQBot
+from nonebot_plugin_alconna import Button, UniMessage
+from nonebot_plugin_larkutils.command import get_command_prefix
+
+# Inside an alconna handler (bot/event are injected)
+if isinstance(bot, QQBot):
+    message = (
+        UniMessage()
+        .style('消息文本', "markdown")
+        .keyboard(
+            Button("enter", "按钮名称", text=f"{get_command_prefix()}jrrp r"),
+            Button("enter", "按钮名称", text=f"{get_command_prefix()}jrrp rr"),
+        )
+    )
+    await message.send(target=event, bot=bot)
+    # UniMessage.send 只负责发送，必须单独调用 matcher.finish 结束处理器
+    await matcher.finish()
+```
+
+Guidelines:
+- A `Button("enter", label, text=...)` sends the `text` back into the chat when clicked, so it should be a full command like `f"{get_command_prefix()}jrrp r"` (use `get_command_prefix()` from `nonebot_plugin_larkutils.command`).
+- Attach the keyboard with `.keyboard(*buttons)`; the button "enter" type triggers a normal message that the alconna matcher will match.
+- `UniMessage.send()` is for messages that carry a keyboard — it does NOT finish the handler, so always write `matcher.finish()` separately afterwards; extract the message id from the returned `Receipt.msg_ids` when needed.
+- To mention a user, prepend `<qqbot-at-user id="{user_id}" />` inside the markdown content.
+- Non-QQ platforms (no keyboard) keep plain text: `matcher.send(text, at_sender=True)`.
 
 ### Code Style
 
