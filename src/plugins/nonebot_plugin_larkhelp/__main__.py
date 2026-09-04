@@ -77,7 +77,9 @@ async def help_command_handler(bot: Bot, command: str, user_id: str = get_user_i
                         await lang.text(
                             "command.usage_item",
                             user_id,
-                            urlencode_cmd(re.sub(r"\(.*?\)", "", usage_str := await helper.text(usage, user_id)).strip()),
+                            urlencode_cmd(
+                                re.sub(r"\(.*?\)", "", usage_str := await helper.text(usage, user_id)).strip()
+                            ),
                             urlencode_cmd(usage_str),
                         )
                         for usage in data.usages
