@@ -48,11 +48,16 @@ async def test_build_jrrp_message_qq_prepends_at_and_adds_buttons(monkeypatch: p
 
 @pytest.mark.asyncio
 async def test_build_jrrp_message_plain_text_on_other_adapters(monkeypatch: pytest.MonkeyPatch) -> None:
-    """非 QQ 平台应保持原有纯文本消息"""
+    """非 QQ 平台应保持原有纯文本消息（由 send(at_sender=True) 附加 @）"""
+    from nonebot_plugin_alconna import Keyboard, Text, UniMessage
     from nonebot_plugin_jrrp.__main__ import build_jrrp_message
 
     monkeypatch.setattr("nonebot_plugin_jrrp.__main__.get_luck_message", AsyncMock(return_value="你今天的人品值是: 66"))
 
     message = await build_jrrp_message(bot=MagicMock(), user_id="10")
 
-    assert message == "你今天的人品值是: 66"
+    assert isinstance(message, UniMessage)
+    text = next(seg for seg in message if isinstance(seg, Text))
+    assert text.text == "你今天的人品值是: 66"
+    # 非 QQ 平台不附带键盘按钮
+    assert not any(isinstance(seg, Keyboard) for seg in message)

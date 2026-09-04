@@ -163,6 +163,39 @@ All user-facing text must be localized using LarkLang:
 4. **Commands**: Use Alconna for command parsing
 5. **User Data**: Access user info through LarkUser, not directly
 6. **Localization**: All user-visible text must use LarkLang
+7. **Message Sending**: Send messages with `UniMessage.send()` and read the returned `Receipt` — do NOT use `matcher.send(message)`. Example:
+   ```python
+   receipt = await UniMessage().text("hello").send(target=event, bot=bot, at_sender=True)
+   msg_id = receipt.msg_ids[0]["message_id"]  # msg_ids[0] may be a dict or a pydantic model
+   ```
+
+### QQ Official Bot Interactive Buttons (Keyboard)
+
+The QQ official bot adapter (`nonebot.adapters.qq`, imported as `QQBot`) supports keyboard buttons attached to messages. Follow this convention (see `nonebot_plugin_sign`, `nonebot_plugin_larkhelp`, `nonebot_plugin_quick_math`, `nonebot_plugin_jrrp`):
+
+```python
+from nonebot.adapters.qq import Bot as QQBot
+from nonebot_plugin_alconna import Button, UniMessage
+from nonebot_plugin_larkutils.command import get_command_prefix
+
+# Inside an alconna handler (bot/event are injected)
+if isinstance(bot, QQBot):
+    message = (
+        UniMessage()
+        .style('消息文本', "markdown")
+        .keyboard(
+            Button("enter", "按钮名称", text=f"{get_command_prefix()}jrrp r"),
+            Button("enter", "按钮名称", text=f"{get_command_prefix()}jrrp rr"),
+        )
+    )
+    await message.send(target=event, bot=bot)
+```
+
+Guidelines:
+- A `Button("enter", label, text=...)` sends the `text` back into the chat when clicked, so it should be a full command like `f"{get_command_prefix()}jrrp r"` (use `get_command_prefix()` from `nonebot_plugin_larkutils.command`).
+- Attach the keyboard with `.keyboard(*buttons)`; the button "enter" type triggers a normal message that the alconna matcher will match.
+- To mention a user, prepend `<qqbot-at-user id="{user_id}" />` inside the markdown content; for non-QQ platforms keep plain text with `at_sender=True` instead.
+- Always send with `UniMessage.send()` (never `matcher.send()`); extract the message id from the returned `Receipt.msg_ids` when needed.
 
 ### Code Style
 
