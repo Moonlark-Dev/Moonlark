@@ -26,6 +26,20 @@ from .models import CommandHelp
 from .collector import collect_command_help
 from nonebot.exception import FinishedException
 
+
+def urlencode_cmd(text: str) -> str:
+    """对传入 `<qqbot-cmd-input>` 标签的 text/show 属性值进行 urlencode。
+
+    QQ 官方要求指令组件的 text/show 属性值需 urlencode 后传递，否则带上
+    尖括号占位符（如 `shop buy <编号> [数量]`）的用法会导致平台返回
+    "qqbot-cmd-input参数解析失败"。整体百分号编码会使较长中文用法远超官方
+    100 字符限制，因此仅编码会破坏标签解析的保留字符，中文及常规字符保持原样，
+    平台按 urlencode 解码后即可还原原文。
+    """
+    text = text.replace("\r\n", " ").replace("\n", " ").replace("\r", " ")
+    return re.sub(r"[<>&\"'%]", lambda m: f"%{ord(m.group()):02X}", text)
+
+
 help_list = {}
 
 
@@ -44,7 +58,7 @@ def get_help_list() -> dict[str, CommandHelp]:
 
 
 @help_cmd.assign("command")
-async def _(bot: Bot, command: str, user_id: str = get_user_id()) -> None:
+async def help_command_handler(bot: Bot, command: str, user_id: str = get_user_id()) -> None:
     if command not in help_list:
         await lang.finish("command.not_found", user_id, command)
     data = help_list[command]
@@ -63,8 +77,10 @@ async def _(bot: Bot, command: str, user_id: str = get_user_id()) -> None:
                         await lang.text(
                             "command.usage_item",
                             user_id,
-                            re.sub(r"\(.*?\)", "", usage_str := await helper.text(usage, user_id)).strip(),
-                            usage_str,
+                            urlencode_cmd(
+                                re.sub(r"\(.*?\)", "", usage_str := await helper.text(usage, user_id)).strip()
+                            ),
+                            urlencode_cmd(usage_str),
                         )
                         for usage in data.usages
                     ]
@@ -269,7 +285,11 @@ async def menu_category_handler(bot: Bot, category: str, user_id: str = get_user
                 "\n".join(
                     [
                         await lang.text(
-                            "menu_cat.item", user_id, command["name"], command["name"], command["description"]
+                            "menu_cat.item",
+                            user_id,
+                            urlencode_cmd(command["name"]),
+                            urlencode_cmd(command["name"]),
+                            urlencode_cmd(command["description"]),
                         )
                         for command in cat_data["commands"]
                     ]
@@ -307,9 +327,9 @@ async def send_markdown_menu(user_id: str) -> None:
                     await lang.text(
                         "menu.category_item",
                         user_id,
-                        c["id"],
+                        urlencode_cmd(c["id"]),
                         await lang.text(f"menu.category_emoji.{c['id']}", user_id),
-                        c["name"],
+                        urlencode_cmd(c["name"]),
                         c["count"],
                     )
                     for c in categories
