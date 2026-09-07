@@ -24,9 +24,9 @@ help:
   usage6: jrrp t 7d (查看近 7 天人品走势)
   usage7: jrrp t 30d (查看近 30 天人品走势)
 template:
-  reverse_title: 🌚 今日倒霉蛋
+  reverse_title: 今日倒霉蛋
   unregistered: 未注册用户无法参与排名
-  title: 🌟 今日幸运星
+  title: 今日幸运星
 forward: 领先 {}% 的用户
 chat_event: '{} 在今日运势中得到了: {}/100'
 group_event_prompt: |
@@ -50,6 +50,6 @@ reroll:
     今日已重算: {}/{} 次
     本次消耗: {} vi
 button:
-  lucky_star: 幸运星
-  unlucky_one: 倒霉蛋
+  lucky_star: 🌟 幸运星
+  unlucky_one: 🌚 倒霉蛋
   reroll: 重新抽取
