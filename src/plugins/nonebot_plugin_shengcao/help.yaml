@@ -1,3 +1,4 @@
 plugin: shengcao
 commands:
-  grass: help;1;tools
+  grass: help;2;tools
+  grass-fury: help;2;tools
