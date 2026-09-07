@@ -121,11 +121,7 @@ class LLMRequestSession(Generic[T2]):
                 model=self.model,
                 tools=self.func_list,
                 tool_choice=tool_choice,
-                extra_headers={
-                    config.openai_thread_header: (t := f"{config.identify_prefix} - {self.identify}"),
-                    config.openai_trace_header: self.trace_id,
-                    "HTTP-Referer": f"https://{hashlib.sha256(t.encode()).hexdigest()}.moonlark.itcdt.top",
-                },
+                extra_headers=self._build_extra_headers(),
                 timeout=self.timeout_per_request,
                 reasoning_effort=self.reasoning_effort or openai.omit,  # type: ignore
                 **self.kwargs,
@@ -136,11 +132,7 @@ class LLMRequestSession(Generic[T2]):
                 model=self.model,
                 tools=self.func_list,
                 tool_choice=tool_choice,
-                extra_headers={
-                    config.openai_thread_header: (t := f"{config.identify_prefix} - {self.identify}"),
-                    config.openai_trace_header: self.trace_id,
-                    "HTTP-Referer": f"https://{hashlib.sha256(t.encode()).hexdigest()}.moonlark.itcdt.top",
-                },
+                extra_headers=self._build_extra_headers(),
                 timeout=self.timeout_per_request,
                 reasoning_effort=self.reasoning_effort or openai.omit,  # type: ignore
                 response_format=self.response_format,
@@ -148,6 +140,17 @@ class LLMRequestSession(Generic[T2]):
             )
         self.last_response = completion
         return completion
+
+    def _build_extra_headers(self) -> dict[str, str]:
+        """构建请求头：Thread/Trace 标识 + 多个 Trace Id 头 + 溯源 Referer"""
+        thread = f"{config.identify_prefix} - {self.identify}"
+        headers: dict[str, str] = {
+            config.openai_thread_header: thread,
+            "HTTP-Referer": f"https://{hashlib.sha256(thread.encode()).hexdigest()}.moonlark.itcdt.top",
+        }
+        for header in config.openai_trace_headers:
+            headers[header] = self.trace_id
+        return headers
 
     async def request(self) -> AsyncGenerator[T2 | str, None]:
         self._this_round_success = False
