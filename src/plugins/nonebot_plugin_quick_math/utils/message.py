@@ -16,8 +16,9 @@
 # ##############################################################################
 
 import asyncio
-from typing import Literal, overload
+from typing import Literal, Optional, overload
 
+from nonebot.adapters import Event
 from nonebot_plugin_alconna import UniMessage
 
 from nonebot_plugin_larkuser import prompt
@@ -29,23 +30,41 @@ from nonebot_plugin_quick_math.types import QuestionData, ReplyType, ExtendReply
 
 @overload
 async def wait_answer(
-    question: QuestionData, image: UniMessage, user_id: str, enable_leave_command: Literal[False] = False
+    question: QuestionData,
+    image: UniMessage,
+    user_id: str,
+    events: Optional[list[Event]] = None,
+    enable_leave_command: Literal[False] = False,
 ) -> ReplyType: ...
 
 
 @overload
 async def wait_answer(
-    question: QuestionData, image: UniMessage, user_id: str, enable_leave_command: Literal[True] = False
+    question: QuestionData,
+    image: UniMessage,
+    user_id: str,
+    events: Optional[list[Event]] = None,
+    enable_leave_command: Literal[True] = False,
 ) -> ReplyType | ExtendReplyType: ...
 
 
 async def wait_answer(
-    question: QuestionData, image: UniMessage, user_id: str, enable_leave_command: bool = False
+    question: QuestionData,
+    image: UniMessage,
+    user_id: str,
+    events: Optional[list[Event]] = None,
+    enable_leave_command: bool = False,
 ) -> ReplyType | ExtendReplyType:
     message = image
     for i in range(config.qm_retry_count + 1):
         try:
-            r: str = await prompt(message, user_id, timeout=question["limit_in_sec"])
+            r: str = await prompt(
+                message,
+                user_id,
+                timeout=question["limit_in_sec"],
+                event=events[-1] if events else None,
+                events=events,
+            )
         except PromptTimeout:
             return ReplyType.TIMEOUT
         if r.lower() in ["skip", "tg"]:

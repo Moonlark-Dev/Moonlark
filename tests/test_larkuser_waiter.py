@@ -62,6 +62,16 @@ def patched_lang(monkeypatch):
     return {"sent": sent, "finished": finished}
 
 
+@pytest.fixture
+def patched_unimessage_send(monkeypatch):
+    """拦截 UniMessage.send，捕获发送目标事件"""
+    from nonebot_plugin_alconna import UniMessage
+
+    send = AsyncMock()
+    monkeypatch.setattr(UniMessage, "send", send)
+    return send
+
+
 # ---------------------------------------------------------------- Waiter --
 
 
@@ -92,25 +102,39 @@ async def test_waiter_captures_rich_text_message(fake_matcher_factory, patched_l
 
 
 @pytest.mark.asyncio
-async def test_waiter_rejects_invalid_input(fake_matcher_factory, patched_lang):
-    """checker 不通过时不记录答案，并回复未知输入提示"""
+async def test_waiter_updates_event_on_message(fake_matcher_factory, patched_lang):
+    """handle_message 应无条件记录最新事件，且可经 get_event 取回"""
+    from nonebot_plugin_alconna import UniMessage
+    from nonebot_plugin_larkuser.utils.waiter2 import Waiter
+
+    waiter = Waiter(prompt_text=UniMessage("请发送内容"), user_id="10")
+    event = fake_group_message_event_v11(message=_rich_message())
+    await waiter.handle_message(MagicMock(), event, _fake_bot(), "10")
+
+    assert waiter.get_event() is event
+
+
+@pytest.mark.asyncio
+async def test_waiter_rejects_invalid_input(fake_matcher_factory, patched_lang, patched_unimessage_send):
+    """checker 不通过时不记录答案，并针对最新事件回复未知输入提示"""
     from nonebot_plugin_alconna import UniMessage
     from nonebot_plugin_larkuser.utils.waiter2 import Waiter
 
     waiter = Waiter(prompt_text=UniMessage("请发送内容"), user_id="10", checker=lambda _: False)
     event = fake_group_message_event_v11(message=_rich_message())
-    matcher = MagicMock()
-    matcher.send = AsyncMock()
-    await waiter.handle_message(matcher, event, _fake_bot(), "10")
+    await waiter.handle_message(MagicMock(), event, _fake_bot(), "10")
 
     assert waiter.answer is None
-    assert patched_lang["sent"] == [("prompt.unknown", "10")]
+    assert waiter.get_event() is event
+    patched_unimessage_send.assert_awaited_once()
+    target = patched_unimessage_send.await_args.kwargs["target"]
+    assert target is event
     with pytest.raises(ValueError):
         waiter.get()
 
 
 @pytest.mark.asyncio
-async def test_waiter_checker_exception_treated_as_invalid(fake_matcher_factory, patched_lang):
+async def test_waiter_checker_exception_treated_as_invalid(fake_matcher_factory, patched_lang, patched_unimessage_send):
     """checker 抛出异常时应视为无效输入而不是崩溃"""
     from nonebot_plugin_alconna import UniMessage
     from nonebot_plugin_larkuser.utils.waiter2 import Waiter
@@ -120,12 +144,11 @@ async def test_waiter_checker_exception_treated_as_invalid(fake_matcher_factory,
 
     waiter = Waiter(prompt_text=UniMessage("请发送内容"), user_id="10", checker=broken_checker)
     event = fake_group_message_event_v11(message=_rich_message())
-    matcher = MagicMock()
-    matcher.send = AsyncMock()
-    await waiter.handle_message(matcher, event, _fake_bot(), "10")
+    await waiter.handle_message(MagicMock(), event, _fake_bot(), "10")
 
     assert waiter.answer is None
-    assert patched_lang["sent"] == [("prompt.unknown", "10")]
+    assert waiter.get_event() is event
+    patched_unimessage_send.assert_awaited_once()
 
 
 @pytest.mark.asyncio
@@ -158,6 +181,25 @@ async def test_waiter_wait_timeout_raises_and_destroys_matcher(fake_matcher_fact
 
     stub_prompt.send.assert_awaited_once()
     waiter.message_matcher.destroy.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_waiter_wait_sends_prompt_to_event(fake_matcher_factory, patched_lang):
+    """传入 event 时，wait 应将 prompt 显式发送到该事件"""
+    from nonebot_plugin_alconna import UniMessage
+    from nonebot_plugin_larkuser.utils.waiter2 import Waiter
+
+    waiter = Waiter(prompt_text=UniMessage("请发送内容"), user_id="10", event=None)
+    event = fake_group_message_event_v11(message="hi")
+    waiter.event = event
+    stub_prompt = MagicMock()
+    stub_prompt.send = AsyncMock()
+    waiter.prompt_text = stub_prompt
+
+    with pytest.raises(TimeoutError):
+        await waiter.wait(timeout=0, auto_finish=False)
+
+    stub_prompt.send.assert_awaited_once_with(target=event)
 
 
 @pytest.mark.asyncio
@@ -225,7 +267,7 @@ async def test_user_input_default_stays_plain_text(fake_matcher_factory, patched
 
 
 @pytest.mark.asyncio
-async def test_user_input_rejects_invalid_plain_text(fake_matcher_factory, patched_lang):
+async def test_user_input_rejects_invalid_plain_text(fake_matcher_factory, patched_lang, patched_unimessage_send):
     """纯文本检查不通过时同样回复未知输入并保持等待"""
     from nonebot_plugin_alconna import UniMessage
     from nonebot_plugin_larkuser.utils.waiter2 import WaitUserInput
@@ -235,7 +277,8 @@ async def test_user_input_rejects_invalid_plain_text(fake_matcher_factory, patch
     await waiter.handle_message(MagicMock(), event, _fake_bot(), "10")
 
     assert waiter.answer is None
-    assert patched_lang["sent"] == [("prompt.unknown", "10")]
+    assert waiter.get_event() is event
+    patched_unimessage_send.assert_awaited_once()
 
 
 # ---------------------------------------------------------------- prompt --
@@ -260,6 +303,14 @@ def _make_fake_waiter_class(script: list):
 
         def get(self, parser=lambda message: message):
             return parser(self._answer)
+
+        def get_event(self):
+            return getattr(self, "_event", None)
+
+        async def finish(self, key, user_id=None):
+            from nonebot_plugin_larkuser.lang import lang
+
+            await lang.finish(key, user_id or self.user_id)
 
     return FakeWaitUserInput
 
@@ -295,6 +346,52 @@ async def test_prompt_keeps_uni_message_instance(monkeypatch, fake_matcher_facto
     await waiter_module.prompt(message, "u1")
 
     assert fake_cls.created[0].prompt_text is message
+
+
+@pytest.mark.asyncio
+async def test_prompt_passes_event_and_returns_latest(monkeypatch, fake_matcher_factory, patched_lang):
+    """prompt 应将 event 传入 waiter，并在结束后通过 events 回传最新事件"""
+    import nonebot_plugin_larkuser.utils.waiter as waiter_module
+
+    received_event = fake_group_message_event_v11(message="new")
+    fake_cls = _make_fake_waiter_class(["hello"])
+
+    class FakeWithEvent(fake_cls):
+        def get_event(self):
+            return received_event
+
+    monkeypatch.setattr(waiter_module, "WaitUserInput", FakeWithEvent)
+    event = fake_group_message_event_v11(message="hi")
+
+    events: list = []
+    result = await waiter_module.prompt("说点什么", "u1", event=event, events=events)
+
+    assert result == "hello"
+    assert FakeWithEvent.created[0].kwargs["event"] is event
+    assert events == [received_event]
+
+
+@pytest.mark.asyncio
+async def test_prompt_invalid_input_refreshes_event(monkeypatch, fake_matcher_factory, patched_lang):
+    """递归重试时，最新事件应传给下一轮 waiter，避免依旧回复旧事件"""
+    import nonebot_plugin_larkuser.utils.waiter as waiter_module
+
+    received_events = iter([fake_group_message_event_v11(message="bad"), fake_group_message_event_v11(message="good")])
+
+    class FakeWaitUserInput(_make_fake_waiter_class(["bad", "good"])):
+        def get_event(self):
+            return next(received_events)
+
+        async def finish(self, key, user_id=None):
+            from nonebot_plugin_larkuser.lang import lang
+
+            await lang.finish(key, user_id or self.user_id)
+
+    monkeypatch.setattr(waiter_module, "WaitUserInput", FakeWaitUserInput)
+
+    await waiter_module.prompt("说点什么", "u1", checker=lambda text: text == "good")
+
+    assert FakeWaitUserInput.created[1].kwargs["event"] is not None
 
 
 @pytest.mark.asyncio
