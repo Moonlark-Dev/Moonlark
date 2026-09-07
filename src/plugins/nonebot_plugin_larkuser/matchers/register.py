@@ -16,6 +16,7 @@
 # ##############################################################################
 
 from nonebot import on_command
+from nonebot.adapters import Bot
 from nonebot_plugin_orm import async_scoped_session
 
 
@@ -31,9 +32,10 @@ register = on_command("register")
 @register.handle()
 async def _(
     session: async_scoped_session,
+    bot: Bot,
     # message: Message = CommandArg(),
     user: UserInfo = EventUserInfo(),
     user_id: str = get_user_id(),
 ) -> None:
-    nickname = await register_user(session, user_id, user)
+    nickname = await register_user(session, user_id, user, bot)
     await lang.finish("welcome", user_id, nickname or f"用户-{user_id}")

@@ -21,8 +21,10 @@ from datetime import datetime
 from typing import Optional
 
 from nonebot import logger
+from nonebot.adapters import Bot
+from nonebot.adapters.qq.bot import Bot as QQBot
 from nonebot.exception import ActionFailed
-from nonebot_plugin_alconna import UniMessage
+from nonebot_plugin_alconna import Button, UniMessage
 from nonebot_plugin_orm import async_scoped_session
 from nonebot_plugin_userinfo import UserInfo
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -39,7 +41,7 @@ from ..user.utils import is_user_registered
 async def send_eula_screenshot(user_id: str) -> None:
     try:
         await UniMessage().text(await lang.text("command.tip_without_url", user_id)).image(
-            raw=await screenshot("https://github.com/orgs/Moonlark-Dev/discussions/3", 1), name="image.png"
+            raw=await screenshot("https://github.com/orgs/Moonlark-Dev/discussions/3", 1), name="image.png",
         ).send()
     except Exception:
         await lang.send("command.tip_failed_to_send_content", user_id)
@@ -50,10 +52,10 @@ async def get_nickname(user: UserInfo, user_id: str) -> tuple[Optional[str], boo
     if user.user_name:
         return user.user_name, False
     prompt_text = await lang.text("input.user_nickname", user_id, user_id)
-    for i in range(3):
+    for _ in range(3):
         try:
             nickname = await prompt(
-                prompt_text, user_id, checker=lambda msg: len(msg) <= 27, ignore_error_details=False, allow_quit=False
+                prompt_text, user_id, checker=lambda msg: len(msg) <= 27, ignore_error_details=False, allow_quit=False,
             )
         except PromptTimeout:
             return None, False
@@ -65,7 +67,7 @@ async def get_nickname(user: UserInfo, user_id: str) -> tuple[Optional[str], boo
     return None, False
 
 
-async def register_user(session: AsyncSession | async_scoped_session, user_id: str, user: UserInfo) -> str:
+async def register_user(session: AsyncSession | async_scoped_session, user_id: str, user: UserInfo, bot: Bot | None = None) -> str:
     if await is_user_registered(user_id):
         await lang.finish("command.registered", user_id)
     try:
@@ -73,8 +75,21 @@ async def register_user(session: AsyncSession | async_scoped_session, user_id: s
     except ActionFailed:
         logger.warning("发送最终许可协议 URL 失败，尝试以截图形式发送")
         await send_eula_screenshot(user_id)
+    if isinstance(bot, QQBot):
+        confirm_msg = (
+            UniMessage()
+            .style(
+                await lang.text("command.confirm_eula_markdown", user_id), "markdown",
+            )
+            .keyboard(
+                Button("enter", await lang.text("command.button_yes", user_id), text="y"),
+                Button("enter", await lang.text("command.button_no", user_id), text="n"),
+            )
+        )
+    else:
+        confirm_msg = await lang.text("command.confirm_eula", user_id)
     if not await prompt(
-        await lang.text("command.confirm_eula", user_id), user_id, parser=lambda t: t.strip().lower().startswith("y")
+        confirm_msg, user_id, parser=lambda t: t.strip().lower().startswith("y"),
     ):
         await lang.finish("command.cancel", user_id)
     u = UserData(

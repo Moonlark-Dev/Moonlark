@@ -100,6 +100,14 @@ command:
     协议内容发送失败，请自行前往 GitHub 搜索 Moonlark-Dev/Moonlark 仓库后进入 Discussions 阅读 《Moonlark 最终许可协议》。
   cancel: 已取消
   confirm_eula: 您是否接受《Moonlark 最终许可协议》中的所有条款？[y/N]
+  confirm_eula_markdown: |
+    ## 最终许可协议确认
+
+    您是否接受《Moonlark 最终许可协议》中的所有条款？
+
+    请点击下方按钮选择喵~
+  button_yes: 是
+  button_no: 否
 welcome:
   - 注册成功。你就是我的 Master 吗，{}？
   - 注册成功。很高兴认识你，{}！
