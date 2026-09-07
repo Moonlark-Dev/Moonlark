@@ -137,6 +137,8 @@ Shorthand format:
 
 The **middle number is the usage count** (number of `help.usage<N>` entries in the lang file). For example, `rise-rank: help;3;community` expands to `description: help.description`, `details: help.details`, `usages: [help.usage1, help.usage2, help.usage3]`, `category: community`.
 
+Every `help.usage<N>` text must follow the format `指令名 <子命令> <args...> [options] (说明)`: the explanation part is wrapped in **half-width (ASCII) parentheses** `( )`, e.g. `jrrp (查看今日人品值)` — do NOT use a ` - ` separator or full-width parentheses `（）` around the explanation.
+
 See `docs/plugins/larkhelp.md` for full documentation.
 
 ### Localization
