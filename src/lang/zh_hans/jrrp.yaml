@@ -49,3 +49,7 @@ reroll:
   success: |
     今日已重算: {}/{} 次
     本次消耗: {} vi
+button:
+  lucky_star: 幸运星
+  unlucky_one: 倒霉蛋
+  reroll: 重新抽取
