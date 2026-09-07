@@ -22,12 +22,12 @@ async def max_level_handler(bot: Bot, event: Event, max_level: int, user_id: str
 
 @quick_math.assign("zen")
 async def zen_handler(bot: Bot, event: Event, zen_level: int, user_id: str = get_user_id()) -> None:
-    session = QuickMathZenSession(user_id, zen_level, bot, get_qq_user_id(bot, event))
+    session = QuickMathZenSession(user_id, zen_level, bot, get_qq_user_id(bot, event), event)
     await session.loop()
 
 
 @quick_math.assign("$main")
 async def handle(bot: Bot, event: Event, max_level: int = 1, user_id: str = get_user_id()) -> None:
-    session = QuickMathSession(user_id, bot, get_qq_user_id(bot, event))
+    session = QuickMathSession(user_id, bot, get_qq_user_id(bot, event), event)
     session.set_max_level(max_level)
     await session.loop()

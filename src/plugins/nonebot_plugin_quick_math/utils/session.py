@@ -19,7 +19,7 @@ import random
 from datetime import datetime
 from typing import NoReturn, Optional, overload
 
-from nonebot.adapters import Bot
+from nonebot.adapters import Bot, Event
 from nonebot.adapters.qq import Bot as QQBot
 from nonebot_plugin_alconna import Button, UniMessage
 from nonebot_plugin_htmlrender import md_to_pic
@@ -39,10 +39,14 @@ from nonebot_plugin_quick_math.utils.user import update_user_data
 
 
 class QuickMathSession:
-    def __init__(self, user_id: str, bot: Bot, qq_user_id: Optional[str] = None) -> None:
+    def __init__(self, user_id: str, bot: Bot, qq_user_id: Optional[str] = None, event: Optional[Event] = None) -> None:
         self.user_id = user_id
         self.bot = bot
         self.qq_user_id = qq_user_id
+        # 最新收到的事件，用于显式指定回复目标，避免 QQ 被动消息回复数量超限
+        self.event = event
+        # 接收 waiter 回传的最新事件
+        self.events: list[Event] = []
         self.point = 0
         self.passed = 0
         self.total_answered = 0
@@ -52,6 +56,13 @@ class QuickMathSession:
         self.start_time = datetime.now()
         self.end_time = datetime.now()
         self.level: LevelMode = "random", 1
+
+    async def send_lang(self, key: str, *args: object) -> None:
+        """发送本地化文本；QQ 官方机器人下显式针对最新事件回复，避免被动消息回复数量超限。"""
+        if isinstance(self.bot, QQBot):
+            await UniMessage(await lang.text(key, self.user_id, *args)).send(target=self.event)
+        else:
+            await lang.send(key, self.user_id, *args)
 
     async def loop(self) -> NoReturn:
         while await self.send_question():
@@ -69,7 +80,9 @@ class QuickMathSession:
     async def send_question(self) -> bool:
         image, question = await self.get_question()
         send_time = datetime.now()
-        result = await wait_answer(question, image, self.user_id)
+        result = await wait_answer(question, image, self.user_id, self.events, enable_leave_command=False)
+        if self.events:
+            self.event = self.events[-1]
         return await self.process_answer_result(result, send_time, question)
 
     async def process_answer_result(self, result: ReplyType, send_time: datetime, question: QuestionData) -> bool:
@@ -90,7 +103,7 @@ class QuickMathSession:
             add_point = int(add_point * 0.8)
         self.passed += 1
         self.point += add_point
-        await lang.send("answer.right", self.user_id, add_point)
+        await self.send_lang("answer.right", add_point)
 
     @overload
     async def get_question(
@@ -124,10 +137,16 @@ class QuickMathSession:
     async def ask_respawn(self) -> bool:
         try:
             respawn: str = await prompt(
-                await lang.text("main.respawn_prompt", self.user_id, self.point // 2), self.user_id, timeout=20
+                await lang.text("main.respawn_prompt", self.user_id, self.point // 2),
+                self.user_id,
+                timeout=20,
+                event=self.event,
+                events=self.events,
             )
         except PromptTimeout:
             return False
+        if self.events:
+            self.event = self.events[-1]
         if respawn.startswith("y"):
             self.point -= self.point // 2
             self.respawned = True
@@ -137,7 +156,7 @@ class QuickMathSession:
     async def on_skip(self, question: QuestionData, send_time: datetime) -> None:
         self.skipped_question += 1
         self.point += get_point(question, send_time) // 2
-        await lang.send("main.skipped", self.user_id)
+        await self.send_lang("main.skipped")
 
     async def on_question_finished(self) -> None:
         if (
@@ -159,7 +178,8 @@ class QuickMathSession:
             message = await self.get_result_message()
             if message is None:
                 await quick_math.finish()
-            await quick_math.finish(message)
+            await message.send(target=self.event, bot=self.bot)
+            await quick_math.finish()
         else:
             image = await self.get_result_image()
             if image:
@@ -213,8 +233,10 @@ class QuickMathSession:
 
 
 class QuickMathZenSession(QuickMathSession):
-    def __init__(self, user_id: str, difficulty: int, bot: Bot, qq_user_id: Optional[str] = None) -> None:
-        super().__init__(user_id, bot, qq_user_id)
+    def __init__(
+        self, user_id: str, difficulty: int, bot: Bot, qq_user_id: Optional[str] = None, event: Optional[Event] = None
+    ) -> None:
+        super().__init__(user_id, bot, qq_user_id, event)
         self.set_level_mode("lock")
         self.set_max_level(difficulty)
 
@@ -228,8 +250,11 @@ class QuickMathZenSession(QuickMathSession):
             question,
             image.text(text=await lang.text("main.zen_mode", self.user_id)),
             self.user_id,
+            self.events,
             enable_leave_command=True,
         )
+        if self.events:
+            self.event = self.events[-1]
         if result == ExtendReplyType.LEAVE:
             self.point *= 0.75
             return False

@@ -280,7 +280,7 @@ class SignHandler:
             if not (user_info := await get_user_info(bot, event, self.user_id)):
                 await lang.finish("sign.get_userinfo_failed", self.user_id)
             async with get_session() as session:
-                await register_user(session, self.user_id, user_info)
+                await register_user(session, self.user_id, user_info, self.bot, self.event)
 
     async def process_data(self) -> None:
         """收集信息并操作数据（SignData 表操作由全局锁保护）"""

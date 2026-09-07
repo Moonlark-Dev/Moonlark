@@ -15,8 +15,10 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
+from typing import Optional
+
 from nonebot import on_command
-from nonebot.adapters import Bot
+from nonebot.adapters import Bot, Event
 from nonebot_plugin_orm import async_scoped_session
 
 
@@ -36,6 +38,7 @@ async def _(
     # message: Message = CommandArg(),
     user: UserInfo = EventUserInfo(),
     user_id: str = get_user_id(),
+    event: Optional[Event] = None,
 ) -> None:
-    nickname = await register_user(session, user_id, user, bot)
+    nickname = await register_user(session, user_id, user, bot, event)
     await lang.finish("welcome", user_id, nickname or f"用户-{user_id}")
