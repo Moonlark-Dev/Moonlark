@@ -71,6 +71,16 @@ async def test_fury_text_replaces_all_matched_words_deterministically() -> None:
     assert "一" not in first
 
 
+def test_escape_markdown_escapes_special_characters() -> None:
+    """集中到 larkutils 的 escape_markdown 应转义 markdown 特殊字符"""
+    from nonebot_plugin_larkutils import escape_markdown
+
+    assert escape_markdown("草*草 _x_ [a](b) <tag> #h |p| `c`!") == (
+        "草\\*草 \\_x\\_ \\[a\\]\\(b\\) \\<tag\\> \\#h \\|p\\| \\`c\\`\\!"
+    )
+    assert escape_markdown("普通文本，没有特殊字符 🐾") == "普通文本，没有特殊字符 🐾"
+
+
 @pytest.mark.asyncio
 async def test_shengcao_text_furry_applies_extra_dictionary() -> None:
     """福瑞模式应用额外词典："我" -> "本兽"，语气词 -> "嗷呜~" """

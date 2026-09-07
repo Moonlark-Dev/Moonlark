@@ -1,6 +1,5 @@
 import json
 import random
-import re
 from pathlib import Path
 from typing import Literal
 
@@ -12,7 +11,7 @@ from nonebot.matcher import Matcher
 from nonebot.params import CommandArg
 from nonebot_plugin_alconna import Button, UniMessage
 from nonebot_plugin_larklang import LangHelper
-from nonebot_plugin_larkutils import get_user_id, review_text
+from nonebot_plugin_larkutils import escape_markdown, get_user_id, review_text
 from nonebot_plugin_larkutils.command import get_command_prefix
 
 lang = LangHelper()
@@ -51,9 +50,6 @@ _FURRY_PARTICLES = {
 }
 FURRY_DICT = {"我": "本兽", **dict.fromkeys(_FURRY_PARTICLES, "嗷呜~")}
 
-# QQ 官方机器人 markdown 消息中的特殊字符，用于转义生草结果
-_MARKDOWN_ESCAPE_RE = re.compile(r"([\\`*_\[\]{}()#+\-!.<>|])")
-
 GrassMode = Literal["grass", "fury", "furry"]
 
 _dict_data: dict = {}
@@ -67,11 +63,6 @@ def _load_dict() -> None:
 
 
 _load_dict()
-
-
-def escape_markdown(text: str) -> str:
-    """转义文本中的 Markdown 特殊字符，避免生草结果破坏 QQ markdown 消息渲染。"""
-    return _MARKDOWN_ESCAPE_RE.sub(r"\\\1", text)
 
 
 def shengcao_text(text: str, furrified: bool = False) -> str:
