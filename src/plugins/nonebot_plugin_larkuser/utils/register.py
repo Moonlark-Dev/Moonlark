@@ -41,7 +41,8 @@ from ..user.utils import is_user_registered
 async def send_eula_screenshot(user_id: str) -> None:
     try:
         await UniMessage().text(await lang.text("command.tip_without_url", user_id)).image(
-            raw=await screenshot("https://github.com/orgs/Moonlark-Dev/discussions/3", 1), name="image.png",
+            raw=await screenshot("https://github.com/orgs/Moonlark-Dev/discussions/3", 1),
+            name="image.png",
         ).send()
     except Exception:
         await lang.send("command.tip_failed_to_send_content", user_id)
@@ -55,7 +56,11 @@ async def get_nickname(user: UserInfo, user_id: str) -> tuple[Optional[str], boo
     for _ in range(3):
         try:
             nickname = await prompt(
-                prompt_text, user_id, checker=lambda msg: len(msg) <= 27, ignore_error_details=False, allow_quit=False,
+                prompt_text,
+                user_id,
+                checker=lambda msg: len(msg) <= 27,
+                ignore_error_details=False,
+                allow_quit=False,
             )
         except PromptTimeout:
             return None, False
@@ -67,7 +72,9 @@ async def get_nickname(user: UserInfo, user_id: str) -> tuple[Optional[str], boo
     return None, False
 
 
-async def register_user(session: AsyncSession | async_scoped_session, user_id: str, user: UserInfo, bot: Bot | None = None) -> str:
+async def register_user(
+    session: AsyncSession | async_scoped_session, user_id: str, user: UserInfo, bot: Bot | None = None
+) -> str:
     if await is_user_registered(user_id):
         await lang.finish("command.registered", user_id)
     try:
@@ -79,7 +86,8 @@ async def register_user(session: AsyncSession | async_scoped_session, user_id: s
         confirm_msg = (
             UniMessage()
             .style(
-                await lang.text("command.confirm_eula_markdown", user_id), "markdown",
+                await lang.text("command.confirm_eula_markdown", user_id),
+                "markdown",
             )
             .keyboard(
                 Button("enter", await lang.text("command.button_yes", user_id), text="y"),
@@ -89,7 +97,9 @@ async def register_user(session: AsyncSession | async_scoped_session, user_id: s
     else:
         confirm_msg = await lang.text("command.confirm_eula", user_id)
     if not await prompt(
-        confirm_msg, user_id, parser=lambda t: t.strip().lower().startswith("y"),
+        confirm_msg,
+        user_id,
+        parser=lambda t: t.strip().lower().startswith("y"),
     ):
         await lang.finish("command.cancel", user_id)
     u = UserData(
