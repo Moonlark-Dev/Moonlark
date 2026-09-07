@@ -6,13 +6,15 @@ from statistics import mean
 from logging import getLogger
 
 from nonebot.adapters import Bot, Event
+from nonebot.adapters.qq import Bot as QQBot
 from nonebot_plugin_larkuser import get_user
 from nonebot_plugin_larkutils import get_user_id
+from nonebot_plugin_larkutils.command import get_command_prefix
 from nonebot_plugin_larkutils.group import get_group_id
 from nonebot_plugin_schedule.utils import complete_schedule
 from nonebot_plugin_chat.core.session import post_group_event
 from nonebot_plugin_larkuser.utils.nickname import get_nickname
-from nonebot_plugin_alconna import Args, Alconna, Subcommand, UniMessage, on_alconna
+from nonebot_plugin_alconna import Args, Alconna, Button, Subcommand, UniMessage, on_alconna
 from nonebot_plugin_larkutils.jrrp import get_luck_value, reroll_luck_value, get_luck_value_with_reroll_count
 
 from .lang import lang
@@ -42,6 +44,28 @@ def _extract_msg_id(result: Any) -> str | None:
     return getattr(result, "message_id", None)
 
 
+async def build_jrrp_message(bot: Bot, user_id: str) -> str | UniMessage:
+    """构建 jrrp 回复消息。
+
+    QQ 官方机器人: 保持原有文本不变，在最前面附加 @ (qqbot-at-user)，
+    并附带 幸运星/倒霉蛋/重新抽取 键盘按钮。带 keyboard 的消息使用
+    UniMessage.send 发送，且需在末尾单独调用 matcher.finish 结束处理器；
+    其余平台: 返回原有纯文本, 由 matcher.send(at_sender=True) 附加 @。
+    """
+    if not isinstance(bot, QQBot):
+        return await get_luck_message(user_id)
+    prefix = get_command_prefix()
+    return (
+        UniMessage()
+        .style(f'<qqbot-at-user id="{user_id}" />{await get_luck_message(user_id)}', "markdown")
+        .keyboard(
+            Button("enter", await lang.text("button.lucky_star", user_id), text=f"{prefix}jrrp r"),
+            Button("enter", await lang.text("button.unlucky_one", user_id), text=f"{prefix}jrrp rr"),
+            Button("enter", await lang.text("button.reroll", user_id), text=f"{prefix}jrrp reroll"),
+        )
+    )
+
+
 async def process_jrrp_command(group_id: str, user_id: str, bot: Bot, event: Event) -> None:
     luck_value = await get_luck_value(user_id)
 
@@ -51,8 +75,13 @@ async def process_jrrp_command(group_id: str, user_id: str, bot: Bot, event: Eve
 
     event_text = await lang.text("chat_event", user_id, await get_nickname(user_id, bot, event), luck_value)
 
-    result = await jrrp.send(await get_luck_message(user_id), at_sender=True)
-    msg_id = _extract_msg_id(result)
+    message = await build_jrrp_message(bot, user_id)
+    if isinstance(message, UniMessage):
+        # 带 keyboard 的消息使用 UniMessage.send 发送，结束后单独调用 matcher.finish
+        receipt = await message.send(target=event, bot=bot)
+        msg_id = _extract_msg_id(receipt.msg_ids)
+    else:
+        msg_id = _extract_msg_id(await jrrp.send(message, at_sender=True))
 
     if msg_id:
         event_text += f"\n[供回复的消息ID：{msg_id}]"
