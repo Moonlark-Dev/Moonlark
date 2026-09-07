@@ -96,8 +96,8 @@ def shengcao_text(text: str, furrified: bool = False) -> str:
 def fury_text(text: str) -> str:
     """狂怒模式：尽可能全量替换所有文本。
 
-    没有随机是否替换机制，也没有按释义来源（同义/近义）分配替换概率的机制，
-    每个命中词典的词一律合并释义池后取首个结果进行替换。
+    没有随机是否替换机制（命中词典必替换），也没有按释义来源（同义/近义）
+    分配替换概率的机制（无 60/40 分配），合并释义池后所有可选释义等概率随机选取。
     """
     words = list(jieba.cut(text))
     result = []
@@ -106,7 +106,7 @@ def fury_text(text: str) -> str:
             entry = _dict_data[w]
             pool = [*entry.get("same_word", []), *entry.get("similar_word", [])]
             if pool:
-                result.append(pool[0])
+                result.append(random.choice(pool))
                 continue
         result.append(w)
     return "".join(result)

@@ -61,14 +61,20 @@ async def test_build_qq_message_furry_uses_uwu_and_owo_labels(monkeypatch: pytes
 
 
 @pytest.mark.asyncio
-async def test_fury_text_replaces_all_matched_words_deterministically() -> None:
-    """狂怒模式：命中词典的词必须全部被替换，且结果确定（无随机）"""
-    from nonebot_plugin_shengcao.main import fury_text
+async def test_fury_text_replaces_all_with_uniform_random_pool() -> None:
+    """狂怒模式：命中词典的词必须全部被替换；合并释义池等概率随机选取（同义/近义均可能出现）"""
+    from nonebot_plugin_shengcao.main import _dict_data, fury_text
 
-    first = fury_text("一 一 一")
-    second = fury_text("一 一 一")
-    assert first == second
-    assert "一" not in first
+    # 命中词典的词一律被替换（无随机是否替换机制）
+    assert "一" not in fury_text("一 一 一")
+    # “数字”同时具有同义与近义释义：多次采样应出现来自两种来源的结果（无 60/40 来源分配）
+    same = set(_dict_data["数字"]["same_word"])
+    similar = set(_dict_data["数字"]["similar_word"])
+    expected = same | similar
+    seen = {fury_text("数字") for _ in range(500)}
+    assert seen <= expected  # 所有输出均来自合并释义池
+    assert len(seen) > 1  # 存在随机性
+    assert seen & similar  # 近义来源同样可能被选到
 
 
 def test_escape_markdown_escapes_special_characters() -> None:
