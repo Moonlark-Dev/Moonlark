@@ -1,10 +1,10 @@
 help:
   description: 指令别名
   details: 为常用指令设置个人专属的简短别名，之后发送 /别名 即可触发原指令
-  usage1: "alias - 查看指令别名用法"
-  usage2: "alias <原指令> <别名> - 创建指令别名（别名需遵循变量命名规则）"
-  usage3: "alias rm <别名> - 删除指定别名"
-  usage4: "alias list - 查看我的全部别名"
+  usage1: "alias (查看指令别名用法)"
+  usage2: "alias <原指令> <别名> (创建指令别名(别名需遵循变量命名规则))"
+  usage3: "alias rm <别名> (删除指定别名)"
+  usage4: "alias list (查看我的全部别名)"
 
 alias:
   usage: "用法：/alias <原指令> <别名> 创建别名；/alias rm <别名> 删除；/alias list 查看全部喵～"
