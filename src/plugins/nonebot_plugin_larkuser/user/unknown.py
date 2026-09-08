@@ -1,5 +1,5 @@
 #  Moonlark - A new ChatBot
-#  Copyright (C) 2024  Moonlark Development Team
+#  Copyright (C) 2026  Moonlark Development Team
 #
 #  This program is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU Affero General Public License as published
@@ -17,11 +17,10 @@
 
 from typing import Optional, NoReturn
 
-from nonebot_plugin_larkuser.user.base import MoonlarkUser
+from nonebot_plugin_larkuser.user.base import MoonlarkUser, _UNSET, UnsetValue
 
 
 class MoonlarkUnknownUser(MoonlarkUser):
-
     async def set_data(
         self,
         user_id: str,
@@ -30,6 +29,7 @@ class MoonlarkUnknownUser(MoonlarkUser):
         health: Optional[float] = None,
         favorability: Optional[float] = None,
         config: Optional[dict] = None,
+        downed_at: UnsetValue = _UNSET,
     ) -> NoReturn:
         raise TypeError("无法对未知用户（-1）执行此操作！")
 

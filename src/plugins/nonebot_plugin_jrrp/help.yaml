@@ -8,4 +8,7 @@ commands:
       - help.usage2
       - help.usage3
       - help.usage4
+      - help.usage5
+      - help.usage6
+      - help.usage7
     category: game

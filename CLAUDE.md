@@ -27,6 +27,15 @@ poetry run nb run
 nb run
 ```
 
+### Server Environment
+
+The production server (`xdnas`) runs:
+- Python 3.11.2
+- Poetry 2.3.2
+- MySQL 9.3.0 (MySQL Community Server)
+
+**Note**: MySQL does not support `CREATE INDEX IF NOT EXISTS` in all versions. Use `information_schema.statistics` to check index existence before creating indexes in plugin code.
+
 ## Essential Commands
 
 ### Code Quality
@@ -77,6 +86,10 @@ poetry run nb run --script larkcave-init-hash
 
 Moonlark uses a modular plugin architecture. All custom plugins are in `src/plugins/` and are registered in `src/pyproject.toml`.
 
+**IMPORTANT**: When adding or removing a plugin, update BOTH registration files:
+- Root `pyproject.toml` (`[tool.nonebot]` `plugins` list)
+- `src/pyproject.toml` (`[tool.poetry]` `packages` list)
+
 **Core Infrastructure Plugins** (use these in new plugins):
 - **LarkUser** (`nonebot_plugin_larkuser`): User information and registration system
 - **LarkUtils** (`nonebot_plugin_larkutils`): User ID and group ID utilities
@@ -99,6 +112,34 @@ nonebot_plugin_example/
 ├── matchers/            # Command handlers
 └── utils/               # Utility functions
 ```
+
+### Help YAML Format (`help.yaml`)
+
+Each plugin registers command help in a `help.yaml` file. Standard format:
+
+```yaml
+plugin: <plugin_name>
+commands:
+  <command_name>:
+    description: help.description     # LarkLang.text key
+    details: help.details             # LarkLang.text key
+    usages:                           # list of LarkLang.text keys
+      - help.usage1
+      - help.usage2
+    category: game|tools|community|setting
+```
+
+Shorthand format:
+
+```yaml
+<command_name>: <localization_key>;<usage_count>;<category>
+```
+
+The **middle number is the usage count** (number of `help.usage<N>` entries in the lang file). For example, `rise-rank: help;3;community` expands to `description: help.description`, `details: help.details`, `usages: [help.usage1, help.usage2, help.usage3]`, `category: community`.
+
+Every `help.usage<N>` text must follow the format `指令名 <子命令> <args...> [options] (说明)`: the explanation part is wrapped in **half-width (ASCII) parentheses** `( )`, e.g. `jrrp (查看今日人品值)` — do NOT use a ` - ` separator or full-width parentheses `（）` around the explanation.
+
+See `docs/plugins/larkhelp.md` for full documentation.
 
 ### Localization
 
@@ -124,6 +165,47 @@ All user-facing text must be localized using LarkLang:
 4. **Commands**: Use Alconna for command parsing
 5. **User Data**: Access user info through LarkUser, not directly
 6. **Localization**: All user-visible text must use LarkLang
+7. **Message Sending**: Use `UniMessage.send()` when the message carries a keyboard/buttons (e.g. QQ official bot interactive messages) and read the returned `Receipt` for message ids. `UniMessage.send()` only sends — after it you must separately call `matcher.finish()` to end the handler. Plain text messages without a keyboard keep using `matcher.send(text, at_sender=...)`:
+   ```python
+   # Keyboard/button message (QQ official bot): UniMessage.send + separate matcher.finish
+   receipt = await UniMessage().style("text", "markdown").keyboard(...).send(target=event, bot=bot)
+   msg_id = receipt.msg_ids[0]["message_id"]  # msg_ids[0] may be a dict or a pydantic model
+   await matcher.finish()
+
+   # Plain text without keyboard: matcher.send(at_sender=True) is fine
+   await matcher.send("text", at_sender=True)
+   ```
+
+### QQ Official Bot Interactive Buttons (Keyboard)
+
+The QQ official bot adapter (`nonebot.adapters.qq`, imported as `QQBot`) supports keyboard buttons attached to messages. Follow this convention (see `nonebot_plugin_sign`, `nonebot_plugin_larkhelp`, `nonebot_plugin_quick_math`, `nonebot_plugin_jrrp`):
+
+```python
+from nonebot.adapters.qq import Bot as QQBot
+from nonebot_plugin_alconna import Button, UniMessage
+from nonebot_plugin_larkutils.command import get_command_prefix
+
+# Inside an alconna handler (bot/event are injected)
+if isinstance(bot, QQBot):
+    message = (
+        UniMessage()
+        .style('消息文本', "markdown")
+        .keyboard(
+            Button("enter", "按钮名称", text=f"{get_command_prefix()}jrrp r"),
+            Button("enter", "按钮名称", text=f"{get_command_prefix()}jrrp rr"),
+        )
+    )
+    await message.send(target=event, bot=bot)
+    # UniMessage.send 只负责发送，必须单独调用 matcher.finish 结束处理器
+    await matcher.finish()
+```
+
+Guidelines:
+- A `Button("enter", label, text=...)` sends the `text` back into the chat when clicked, so it should be a full command like `f"{get_command_prefix()}jrrp r"` (use `get_command_prefix()` from `nonebot_plugin_larkutils.command`).
+- Attach the keyboard with `.keyboard(*buttons)`; the button "enter" type triggers a normal message that the alconna matcher will match.
+- `UniMessage.send()` is for messages that carry a keyboard — it does NOT finish the handler, so always write `matcher.finish()` separately afterwards; extract the message id from the returned `Receipt.msg_ids` when needed.
+- To mention a user, prepend `<qqbot-at-user id="{user_id}" />` inside the markdown content.
+- Non-QQ platforms (no keyboard) keep plain text: `matcher.send(text, at_sender=True)`.
 
 ### Code Style
 
@@ -170,6 +252,56 @@ Supported chat platforms:
 - OneBot V11 (QQ)
 - OneBot V12
 - QQ Official (uses custom fork `github.com/Moonlark-Dev/adapter-qq`, imported as `nonebot.adapters.qq`)
+
+## Frontend (moonlark-frontend)
+
+The web frontend is maintained in a separate repository: <https://github.com/Moonlark-Dev/moonlark-frontend>. It is a Vue 3 + TypeScript single-page application built with Vite, using MDUI 2 for UI components, and deployed to GitHub Pages.
+
+### Tech Stack
+
+- Vue 3 + TypeScript, Vue Router 4
+- Vite 7 (`@vitejs/plugin-vue`, `@vitejs/plugin-vue-jsx`)
+- MDUI 2 + Sass for styling
+- `@vueuse/core` utilities
+- ESLint 9 (`eslint-plugin-vue`, `@vue/eslint-config-typescript`) for linting
+
+### Commands
+
+```bash
+npm install        # Install dependencies
+npm run dev        # Start Vite dev server with hot reload
+npm run build      # Production build (outputs to dist/)
+npm run preview    # Preview the production build
+npm run lint       # Lint with ESLint
+npm run lint-fix   # Auto-fix lint issues
+```
+
+### Project Structure
+
+```
+moonlark-frontend/
+├── src/
+│   ├── pages/         # Route views (LoginView, HomeView, UserView, SettingsView, RankingsView, HelpView, AdminMenuPanelView)
+│   ├── components/    # Shared components (Navbar, SessionManager, BindMainAccount, ChangeNickName, Toast, ...)
+│   ├── utils/         # API client (api.ts), cookie/session helpers, cache, toast, etc.
+│   ├── styles/        # Global styles (index.scss)
+│   ├── App.vue        # Root component
+│   ├── main.ts        # App entry (MDUI setup, color scheme, auth error handler)
+│   └── routes.ts      # Route definitions
+└── public/            # Static assets (favicon.ico, CNAME)
+```
+
+### API & Auth
+
+- API base URLs are hardcoded in `src/utils/utils.ts`: `BASE_URL = "https://moonlark-api.itcdt.top"` and `API_URL = BASE_URL + "/api"`.
+- Requests go through `apiRequest`/`apiRequestFull` in `src/utils/api.ts`; authenticated requests send the `sessionID` cookie as `Authorization: Bearer <sessionID>`.
+- 401 responses trigger a global handler (registered in `main.ts`) that redirects to `/login` with the current route as a `redirect` query parameter.
+
+### CI/CD
+
+- GitHub Actions workflows in `.github/workflows/`:
+  - `ci.yaml`: runs `npm run lint` on Node 22 for pushes and PRs
+  - `deloy.yaml`: on push to `main`, builds and deploys `dist/` to GitHub Pages (`peaceiris/actions-gh-pages`)
 
 ## Project Structure
 

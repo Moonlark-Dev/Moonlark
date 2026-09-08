@@ -1,0 +1,9 @@
+description: |
+  拒绝来自某个会话的动作请求。
+  当你认为请求的动作不合适、不应该当前执行时，使用此工具拒绝。
+  **注意**：如果你决定执行请求的动作，直接调用相应的动作工具（如 start_self_action、sleep、start_new_blog 等）即可。
+parameters:
+  - name: reason
+    description: "拒绝的原因"
+    type: string
+    required: true

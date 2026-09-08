@@ -1,12 +1,12 @@
 from datetime import datetime
-from typing import Any, Literal, Optional, Union
+from typing import Literal, Optional, Union
 from typing_extensions import TypedDict
 
 from nonebot_plugin_orm import Model
 from pydantic import BaseModel, Field
-from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy import BLOB, JSON, DateTime, LargeBinary, String, Text, Float, Integer, BINARY, func
+from sqlalchemy import BINARY, DateTime, Float, Integer, LargeBinary, String, Text, func
 from sqlalchemy.dialects.mysql import MEDIUMBLOB, MEDIUMTEXT
+from sqlalchemy.orm import Mapped, mapped_column
 
 # 创建跨数据库兼容的二进制类型：MySQL 使用 MEDIUMBLOB (16MB)，其他数据库使用 LargeBinary
 CompatibleBlob = LargeBinary().with_variant(MEDIUMBLOB(), "mysql")
@@ -21,7 +21,7 @@ class ChatGroup(Model):
     blocked_keyword: Mapped[str] = mapped_column(Text(), default="[]")
     ignore_mention_user: Mapped[str] = mapped_column(Text(), default="[]")
     enabled: Mapped[bool]
-    dropping_enabled: Mapped[bool] = mapped_column(default=True)
+    interaction_mode: Mapped[str] = mapped_column(String(16), default="standard")
 
 
 class ActionDecisionResponse(BaseModel):
@@ -84,7 +84,7 @@ class MessageQueueCache(Model):
     message_json: Mapped[str] = mapped_column(CompatibleMediumText)  # JSON 序列化的消息列表
     updated_time: Mapped[datetime] = mapped_column(DateTime(), default=datetime.now)  # 最后更新时间戳
     message_hash: Mapped[bytes] = mapped_column(
-        BINARY(32).with_variant(LargeBinary(32), "sqlite")
+        BINARY(32).with_variant(LargeBinary(32), "sqlite"),
     )  # 消息哈希，用于去重
 
 
@@ -120,6 +120,13 @@ class ModelResponse(BaseModel, extra="forbid"):
     thought: Optional[str] = None
 
 
+class PrivateChatConfig(Model):
+    """记录用户私聊 Chat 功能的开关状态，默认开启"""
+
+    user_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    enabled: Mapped[bool] = mapped_column(default=True)
+
+
 class PrivateChatSession(Model):
     """记录用户私聊会话信息，用于主动消息时获取正确的 bot"""
 
@@ -128,26 +135,9 @@ class PrivateChatSession(Model):
     bot_id: Mapped[str] = mapped_column(String(128))  # 用户最后使用的 bot ID
     last_message_time: Mapped[float] = mapped_column(Float())  # 最后消息时间戳
     last_proactive_message_time: Mapped[Optional[float]] = mapped_column(Float(), nullable=True)  # 最后主动消息时间戳
-
-
-class InstantMemoryCache(Model):
-    """即时记忆持久化缓存"""
-
-    id: Mapped[int] = mapped_column(Integer(), primary_key=True, autoincrement=True)
-    session_id: Mapped[str] = mapped_column(String(128), index=True)  # 会话 ID
-    content: Mapped[str] = mapped_column(Text())  # 记忆内容
-    name: Mapped[str] = mapped_column(String(128), default="")  # 记忆名称
-    created_time: Mapped[datetime] = mapped_column(DateTime(), default=datetime.now)  # 创建时间
-    expire_time: Mapped[datetime] = mapped_column(DateTime())  # 过期时间
-
-
-class MainSessionActionHistory(Model):
-    """MainSession 数据持久化存储，用于保存 action_history"""
-
-    id_: Mapped[int] = mapped_column(Integer(), primary_key=True, autoincrement=True)
-    start_time: Mapped[datetime] = mapped_column(DateTime())
-    end_time: Mapped[Optional[datetime]] = mapped_column(DateTime(), nullable=True)
-    action: Mapped[dict[str, Any]] = mapped_column(JSON())
+    unreplied_count: Mapped[int] = mapped_column(
+        Integer(), default=0
+    )  # 连续未回复主动私聊次数（用户任意私聊消息时重置）
 
 
 class BlogPost(Model):
@@ -232,37 +222,12 @@ class EgoDecisionResponse(BaseModel):
         None  # "skip" | "continue_draft" | "abort_draft" | {"start_new_topic": "主题"}
     )
     private_chat: Optional[PrivateChatDecision] = None
-    self_action: Optional[str] = None  # 活动描述，不返回即不动作
 
 
-class SleepThinkResponse(BaseModel):
-    """SleepController request_think 的 LLM 返回格式"""
+class AgentEvent(Model):
+    """智能体事件记录表，记录思考、动作、动作结果及外部事件"""
 
-    sleep_decision: Literal["stay_sleep", "wake_up"]
-
-
-class SelfActionDurationResponse(BaseModel):
-    """SelfActionController _generate_duration 的 LLM 返回格式"""
-
-    duration_minutes: int = 5
-
-
-class TaskClassificationResponse(BaseModel):
-    """TaskController _classify_task 的 LLM 返回格式"""
-
-    activity_type: Literal["学习", "任务", "消息"]
-
-
-class SelfActionResultProcessResponse(BaseModel):
-    """SelfActionController 结果处理的 LLM 返回格式"""
-
-    compressed_content: str
-    keywords: str
-    expire_hours: float = 168
-
-
-class DiaryEntry(Model):
-    """日记录入表，记录有意义的文本消息"""
+    __tablename__ = "nonebot_plugin_chat_diaryentry"
 
     id: Mapped[int] = mapped_column(Integer(), primary_key=True, autoincrement=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(), server_default=func.now(), index=True)
@@ -293,3 +258,15 @@ class Timer(Model):
     session_id: Mapped[str] = mapped_column(String(128), index=True)
     trigger_time: Mapped[datetime] = mapped_column(DateTime(), index=True)
     description: Mapped[str] = mapped_column(Text())
+
+
+class SessionEvent(Model):
+    """按会话收集的事件和话题记录，每 100 条消息收集一次"""
+
+    __tablename__ = "nonebot_plugin_chat_sessionevent"
+
+    id: Mapped[int] = mapped_column(Integer(), primary_key=True, autoincrement=True)
+    session_id: Mapped[str] = mapped_column(String(128), index=True)
+    date: Mapped[str] = mapped_column(String(16), index=True)  # YYYY-MM-DD
+    content: Mapped[str] = mapped_column(Text())
+    created_at: Mapped[datetime] = mapped_column(DateTime(), default=datetime.now)

@@ -18,6 +18,7 @@ require("nonebot_plugin_larkutils")
 require("nonebot_plugin_render")
 require("nonebot_plugin_alconna")
 require("nonebot_plugin_schedule")
+require("nonebot_plugin_waiter")
 
 
 from . import comment, archiver, api, commands

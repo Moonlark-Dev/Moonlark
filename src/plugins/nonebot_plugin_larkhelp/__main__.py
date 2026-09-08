@@ -1,4 +1,9 @@
 import asyncio
+import re
+
+from nonebot.adapters import Bot
+from nonebot.adapters.qq import Bot as QQBot
+import random
 from nonebot.log import logger
 import traceback
 from unittest.util import sorted_list_difference
@@ -8,9 +13,10 @@ import sys
 from typing import Any, Optional
 
 from nonebot import get_driver
-from nonebot_plugin_alconna import Alconna, Args, on_alconna
+from nonebot_plugin_alconna import Alconna, Args, Button, on_alconna
 from nonebot_plugin_alconna.uniseg import UniMessage
 
+from nonebot_plugin_larkutils.command import get_command_prefix
 from nonebot_plugin_render.render import render_template
 from nonebot_plugin_render.cache import creator
 
@@ -19,6 +25,20 @@ from nonebot_plugin_larkutils import get_user_id
 from .models import CommandHelp
 from .collector import collect_command_help
 from nonebot.exception import FinishedException
+
+
+def urlencode_cmd(text: str) -> str:
+    """对传入 `<qqbot-cmd-input>` 标签的 text/show 属性值进行 urlencode。
+
+    QQ 官方要求指令组件的 text/show 属性值需 urlencode 后传递，否则带上
+    尖括号占位符（如 `shop buy <编号> [数量]`）的用法会导致平台返回
+    "qqbot-cmd-input参数解析失败"。整体百分号编码会使较长中文用法远超官方
+    100 字符限制，因此仅编码会破坏标签解析的保留字符，中文及常规字符保持原样，
+    平台按 urlencode 解码后即可还原原文。
+    """
+    text = text.replace("\r\n", " ").replace("\n", " ").replace("\r", " ")
+    return re.sub(r"[<>&\"'%]", lambda m: f"%{ord(m.group()):02X}", text)
+
 
 help_list = {}
 
@@ -38,20 +58,49 @@ def get_help_list() -> dict[str, CommandHelp]:
 
 
 @help_cmd.assign("command")
-async def _(command: str, user_id: str = get_user_id()) -> None:
+async def help_command_handler(bot: Bot, command: str, user_id: str = get_user_id()) -> None:
     if command not in help_list:
         await lang.finish("command.not_found", user_id, command)
     data = help_list[command]
     helper = LangHelper(data.plugin)
-    await lang.reply(
-        "command.info",
-        user_id,
-        command,
-        await helper.text(data.details, user_id),
-        "\n".join(
-            [await lang.text("command.usage", user_id, await helper.text(usage, user_id)) for usage in data.usages]
-        ),
-    )
+    if isinstance(bot, QQBot):
+        await UniMessage().style(
+            await lang.text(
+                "command.info_md",
+                user_id,
+                await lang.text(f"menu.category_emoji.{data.category}", user_id),
+                command,
+                await helper.text(data.details, user_id),
+                len(data.usages),
+                "\n".join(
+                    [
+                        await lang.text(
+                            "command.usage_item",
+                            user_id,
+                            urlencode_cmd(
+                                re.sub(r"\(.*?\)", "", usage_str := await helper.text(usage, user_id)).strip()
+                            ),
+                            urlencode_cmd(usage_str),
+                        )
+                        for usage in data.usages
+                    ]
+                ),
+            ),
+            "markdown",
+        ).send()
+
+    else:
+
+        await lang.reply(
+            "command.info",
+            user_id,
+            command,
+            await helper.text(data.details, user_id),
+            "\n".join(
+                [await lang.text("command.usage", user_id, await helper.text(usage, user_id)) for usage in data.usages]
+            ),
+        )
+
     await help_cmd.finish()
 
 
@@ -73,7 +122,9 @@ async def get_templates(user_id: str) -> list[dict[str, Any]]:
         raise ValueError("No Command")
     sorted_help_list = sorted(list(help_list.items()), key=lambda x: x[0])
     commands = []
-    for command in [await get_help_dict(name, user_id, data) for name, data in sorted_help_list]:
+    for command in [
+        await get_help_dict(name, user_id, data) for name, data in sorted_help_list if data.category != "superuser"
+    ]:
         for category in commands:
             if category["name"] == command["category"]:
                 category["commands"].append(command)
@@ -89,16 +140,32 @@ async def generate_markdown() -> str:
     await setup_help_list()
     await load_languages()
     user_id = f"mlsid::--lang={sys.argv[1]}"
-    text = await lang.text("markdown.title", user_id)
+    text = await lang.text("markdown.title", user_id) + "\n"
+    # Regular commands (excluding superuser)
     commands = []
     for command_list in [category["commands"] for category in (await get_templates(user_id))]:
         commands.extend(command_list)
     for command in commands:
-        text += await lang.text(
-            "markdown.command", user_id, command["name"], command["description"], command["details"]
+        text += (
+            await lang.text("markdown.command", user_id, command["name"], command["description"], command["details"])
+            + "\n"
         )
         for usage in command["usages"]:
-            text += await lang.text("markdown.usage", user_id, usage)
+            text += await lang.text("markdown.usage", user_id, usage) + "\n"
+    # Superuser commands with warning
+    for category in await get_menu_templates(user_id):
+        if category["id"] == "superuser":
+            for command in category["commands"]:
+                text += (
+                    await lang.text(
+                        "markdown.command", user_id, command["name"], command["description"], command["details"]
+                    )
+                    + "\n"
+                )
+                text += await lang.text("markdown.superuser_warning", user_id) + "\n"
+                for usage in command["usages"]:
+                    text += await lang.text("markdown.usage", user_id, usage) + "\n"
+            break
     return text
 
 
@@ -135,3 +202,166 @@ async def _(user_id: str = get_user_id()) -> None:
     except Exception:
         logger.error(traceback.format_exc())
         await help_cmd.finish(await lang.text("command.error", user_id))
+
+
+async def get_menu_templates(user_id: str) -> list[dict[str, Any]]:
+    """获取菜单所需的所有分类数据，包括 superuser"""
+    if not help_list:
+        raise ValueError("No Command")
+    sorted_help_list = sorted(list(help_list.items()), key=lambda x: x[0])
+    categories: dict[str, dict] = {}
+    for name, data in sorted_help_list:
+        cat_id = data.category
+        if cat_id not in categories:
+            categories[cat_id] = {"id": cat_id, "commands": []}
+        cmd_dict = await get_help_dict(name, user_id, data)
+        categories[cat_id]["commands"].append(cmd_dict)
+
+    result = []
+    for cat_id, cat_data in categories.items():
+        cat_data["name"] = await lang.text(f"list.category.{cat_id}", user_id)
+        cat_data["count"] = len(cat_data["commands"])
+        result.append(cat_data)
+    return result
+
+
+async def get_random_command(user_id: str) -> dict:
+    """随机指令（排除 superuser）"""
+    non_super = {name: data for name, data in help_list.items() if data.category != "superuser"}
+    if not non_super:
+        raise ValueError("No non-superuser commands")
+    name = random.choice(list(non_super.keys()))
+    return await get_help_dict(name, user_id, non_super[name])
+
+
+async def get_category_commands(category_id: str, user_id: str) -> Optional[dict]:
+    """获取指定分类的指令数据"""
+    commands = []
+    for name, data in sorted(help_list.items(), key=lambda x: x[0]):
+        if data.category == category_id:
+            commands.append(await get_help_dict(name, user_id, data))
+    if not commands:
+        return None
+    return {
+        "id": category_id,
+        "name": await lang.text(f"list.category.{category_id}", user_id),
+        "commands": commands,
+        "count": len(commands),
+    }
+
+
+async def render_menu(user_id: str) -> bytes:
+    categories = await get_menu_templates(user_id)
+    random_cmd = await get_random_command(user_id)
+    return await render_template(
+        "menu.html.jinja",
+        await lang.text("menu.title", user_id),
+        user_id,
+        {"categories": categories, "random_command": random_cmd},
+        {
+            "menu_category_hint": await lang.text("menu.menu_category_hint", user_id),
+            "random_title": await lang.text("menu.random_title", user_id),
+        },
+        True,
+        True,
+    )
+
+
+menu_cmd = on_alconna(Alconna("menu", Args["category?", str]))
+
+
+@menu_cmd.assign("category")
+async def menu_category_handler(bot: Bot, category: str, user_id: str = get_user_id()) -> None:
+    cat_data = await get_category_commands(category, user_id)
+    if cat_data is None:
+        await lang.finish("menu.category_not_found", user_id, category)
+    if isinstance(bot, QQBot):
+        await UniMessage().style(
+            await lang.text(
+                "menu_cat.md",
+                user_id,
+                await lang.text(f"menu.category_emoji.{category}", user_id),
+                cat_data["name"],
+                "\n".join(
+                    [
+                        await lang.text(
+                            "menu_cat.item",
+                            user_id,
+                            urlencode_cmd(command["name"]),
+                            urlencode_cmd(command["name"]),
+                            urlencode_cmd(command["description"]),
+                        )
+                        for command in cat_data["commands"]
+                    ]
+                ),
+            ),
+            "markdown",
+        ).send()
+        await menu_cmd.finish()
+    else:
+        await menu_cmd.finish(
+            UniMessage().image(
+                raw=await render_template(
+                    "menu_category.html.jinja",
+                    cat_data["name"],
+                    user_id,
+                    cat_data,
+                    {"help_hint": await lang.text("menu.menu_cat_help_hint", user_id)},
+                    False,
+                    True,
+                ),
+                name="image.png",
+            )
+        )
+
+
+async def send_markdown_menu(user_id: str) -> None:
+    categories = await get_menu_templates(user_id)
+    random_cmd = await get_random_command(user_id)
+    await UniMessage().style(
+        await lang.text(
+            "menu.markdown",
+            user_id,
+            "\n".join(
+                [
+                    await lang.text(
+                        "menu.category_item",
+                        user_id,
+                        urlencode_cmd(c["id"]),
+                        await lang.text(f"menu.category_emoji.{c['id']}", user_id),
+                        urlencode_cmd(c["name"]),
+                        c["count"],
+                    )
+                    for c in categories
+                ]
+            ),
+            random_cmd["name"],
+            random_cmd["description"],
+        ),
+        "markdown",
+    ).keyboard(
+        # *[
+        #     Button(
+        #         "enter",
+        #         (await lang.text(f"menu.category_emoji.{c['id']}", user_id)) + c["name"],
+        #         text=f"{get_command_prefix()}menu {c['id']}"
+        #     )
+        #     for c in categories
+        # ],
+        Button("enter", await lang.text(f"menu.try", user_id), text=f"{get_command_prefix()}help {random_cmd['name']}"),
+        Button("enter", await lang.text(f"menu.list", user_id), text=f"{get_command_prefix()}help"),
+    ).send()
+
+
+@menu_cmd.assign("$main")
+async def menu_main_handler(bot: Bot, user_id: str = get_user_id()) -> None:
+    if isinstance(bot, QQBot):
+        await send_markdown_menu(user_id)
+    else:
+        await menu_cmd.finish(
+            UniMessage().image(
+                raw=await render_menu(user_id),
+                name="image.png",
+            )
+        )
+    await menu_cmd.finish()

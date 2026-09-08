@@ -1,48 +1,44 @@
-import base64
-import math
-
-import aiofiles
-from nonebot.adapters import Event
-from nonebot.typing import T_State
-from nonebot.adapters.onebot.v11 import Bot as OB11Bot
-from nonebot_plugin_alconna import At, UniMessage
-from nonebot_plugin_chat.utils.group import LinkParser
-from nonebot_plugin_chat.utils.token_bucket import TokenBucket
-from ..enums import StateEnum
-from nonebot_plugin_openai import get_message, get_message_text
-from ..config import config
-from nonebot_plugin_openai.types import Message as OpenAIMessage
-from nonebot.log import logger
-from nonebot_plugin_larkuser import get_user
-from nonebot_plugin_openai import generate_message
-from nonebot_plugin_openai.utils.chat import fetch_message, fetch_json
-from nonebot_plugin_orm import get_session
-from sqlalchemy import select
-
 import asyncio
+import base64
+import html
 import json
+import math
 import random
 import re
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any, AsyncGenerator, Literal, Optional
 
-from .message import MessageQueue
+from nonebot.adapters import Event
+from nonebot.adapters.onebot.v11 import Bot as OB11Bot
+from nonebot.exception import ActionFailed
+from nonebot.log import logger
+from nonebot.typing import T_State
+from nonebot_plugin_alconna import Target, UniMessage
+from nonebot_plugin_larkuser import get_user
+from nonebot_plugin_openai import generate_message, get_message, get_message_text
+from nonebot_plugin_openai.types import Message as OpenAIMessage
+from nonebot_plugin_openai.utils.chat import fetch_json, fetch_message
+from nonebot_plugin_orm import get_session
+from pydantic import BaseModel
+from sqlalchemy import select
+
+from nonebot_plugin_chat.utils.group import LinkParser
+from nonebot_plugin_chat.utils.token_bucket import TokenBucket
+
+from ..config import config
 from ..models import ChatGroup, Sticker, UserProfile
 from ..types import CachedMessage
-
-from ..utils.image import query_image_content
-from ..utils.message import MessageParser, generate_message_string
-from ..utils import parse_message_to_string
 from ..utils.ai_agent import AskAISession
 from ..utils.emoji import QQ_EMOJI_MAP
+from ..utils.image import query_image_content
+from ..utils.message import MessageParser, generate_message_string
 from ..utils.note_manager import get_context_notes
+from ..utils.status_manager import get_status_manager
 from ..utils.sticker_manager import get_sticker_manager
+from ..utils.timing_stats import timing_stats_manager
 from ..utils.tool_manager import ToolManager
 from ..utils.tools.sticker import StickerTools
-from ..utils.status_manager import get_status_manager
-from ..utils.timing_stats import timing_stats_manager
-from ..utils.instant_mem import get_memories_for_display
-from pydantic import BaseModel
+from .message import MessageQueue
 
 
 class UnlimitedTokenReviewResult(BaseModel):
@@ -77,12 +73,21 @@ class MessageProcessor:
         self.sticker_tools = StickerTools(self.session)
         self.functions = []
         self.loop_task = None
+        self._processing_task = None
+        self._message_processing = False
+        self._restored = False
         self.consecutive_message_count = 0
         # Token bucket 相关属性
         self.token_bucket = TokenBucket(6, -2)
         # Unlimited tokens 相关属性
         self.unlimited_tokens_remaining = 0
         self.unlimited_tokens_active = False
+        # Pending notes 相关属性
+        self.pending_notes: dict[int, dict[str, Any]] = {}
+        self._next_pending_note_id: int = 0
+        self.unanalyzed_message_count: int = 0
+        self._pending_note_lock = asyncio.Lock()
+        self._shown_pending_note_ids: set[int] = set()
 
     async def query_image(self, image_id: str, query_prompt: str) -> str:
         return await query_image_content(image_id, query_prompt, self.session.lang_str)
@@ -91,7 +96,7 @@ class MessageProcessor:
         self.functions = await self.tool_manager.select_tools("group")
         await self.ai_agent.setup()
         if not self.loop_task:
-            self.loop_task = asyncio.create_task(self.loop())
+            self.loop_task = asyncio.create_task(self._startup())
 
     async def send_reaction(self, message_id: str, emoji_id: str, set: bool = True) -> Optional[str]:
         if isinstance(self.session.bot, OB11Bot) and self.session.is_napcat_bot():
@@ -216,14 +221,27 @@ class MessageProcessor:
             except Exception as e:
                 logger.exception(e)
 
-    async def loop(self) -> None:
+    async def _startup(self) -> None:
         await self.openai_messages.restore_from_db()
-        while self.enabled:
-            try:
-                await self.get_message()
-            except Exception as e:
-                logger.exception(e)
-                await asyncio.sleep(5)
+        self._restored = True
+        if self.enabled and self.session.message_queue:
+            self.notify_message_queued()
+
+    def notify_message_queued(self) -> None:
+        if not self._restored or not self.enabled or self._message_processing:
+            return
+        self._message_processing = True
+        self._processing_task = asyncio.create_task(self._process_until_idle())
+
+    async def _process_until_idle(self) -> None:
+        try:
+            while self.enabled and self.session.message_queue:
+                try:
+                    await self.get_message()
+                except Exception as e:
+                    logger.exception(e)
+        finally:
+            self._message_processing = False
 
     async def poke(self, target_name: str) -> Optional[str]:
         target_id = (await self.session.get_users()).get(target_name)
@@ -234,7 +252,12 @@ class MessageProcessor:
 
     async def parse_message(self, message: UniMessage, event: Event, state: T_State) -> tuple[str, list[bytes]]:
         parser = MessageParser(
-            message, event, self.session.bot, state, self.session.lang_str, not self.ENABLE_EMBEDDED_IMAGE
+            message,
+            event,
+            self.session.bot,
+            state,
+            self.session.lang_str,
+            not self.ENABLE_EMBEDDED_IMAGE,
         )
         msg_str = await parser.parse()
         return (await LinkParser(msg_str, self.session.lang_str).parse()), parser.images
@@ -249,7 +272,7 @@ class MessageProcessor:
 
     async def get_message(self) -> None:
         if not self.session.message_queue:
-            await asyncio.sleep(3)
+            await asyncio.sleep(1)
             return
         trigger_mode: Literal["none", "probability", "all"] = "none"
         self.consecutive_message_count = 0
@@ -261,31 +284,53 @@ class MessageProcessor:
             event_prompt, trigger_mode = item[1]  # type: ignore
             additional_info = await self.generate_event_additional_info()
             content = await self.session.text(
-                "prompt.event_template", datetime.now().strftime("%H:%M:%S"), event_prompt, additional_info
+                "prompt.event_template",
+                datetime.now().strftime("%H:%M:%S"),
+                event_prompt,
+                additional_info,
             )
             await self.openai_messages.append_user_message(content)
 
+            # 缓存事件消息以便前端展示
+            event_msg: CachedMessage = {
+                "content": event_prompt,
+                "nickname": "Moonlark",
+                "send_time": datetime.now(),
+                "user_id": "",
+                "platform_user_id": "",
+                "self": True,
+                "message_id": "",
+                "images": [],
+                "to_me": False,
+                "triggered_reply": False,
+                "mq_text": content,
+            }
+            self.session.cached_messages.append(event_msg)
+            await self.session.on_cache_posted()
+
         elif item[0] == "message":
             # 处理消息类型队列项
-            message, event, state, user_id, nickname, dt, mentioned, message_id = item[1]
+            message, event, state, user_id, nickname, dt, mentioned, message_id, platform_user_id = item[1]
             mentioned = mentioned and not await self.should_ignore_mention(user_id)
 
             text, images = await self.parse_message(message, event, state)
             logger.debug(f"{text=}")
             if not text:
                 return
-            if "@Moonlark" not in text and mentioned:
-                if self.session.get_session_type() == "group":
-                    text = f"@Moonlark {text}"
+            if "@Moonlark" not in text and mentioned and self.session.get_session_type() == "group":
+                text = f"@Moonlark {text}"
 
             msg_dict: CachedMessage = {
                 "content": text,
                 "nickname": nickname,
                 "send_time": dt,
                 "user_id": user_id,
+                "platform_user_id": platform_user_id,
                 "self": False,
                 "message_id": message_id,
                 "images": images,
+                "to_me": mentioned,
+                "triggered_reply": False,
             }
             await self.process_messages(msg_dict)
             self.session.cached_messages.append(msg_dict)
@@ -299,7 +344,7 @@ class MessageProcessor:
                 ("event", "none"): 0.2,
                 ("message", "probability"): 0.5,
                 ("message", "all"): 1,
-            }[item[0], trigger_mode]
+            }[item[0], trigger_mode],
         )
         if (
             trigger_mode == "all" or (trigger_mode == "probability" and not self.session.message_queue)
@@ -313,6 +358,8 @@ class MessageProcessor:
         await self.session.mute()
 
     async def generate_reply(self, important: bool = False, is_event: bool = False) -> None:
+        if not important:
+            await asyncio.sleep(5)
         # 延迟导入以避免循环导入
         from .ego import moonlark_main
 
@@ -322,20 +369,12 @@ class MessageProcessor:
                 msg
                 for msg in self.session.cached_messages
                 if msg["send_time"] > dt - timedelta(minutes=1) and msg["self"]
-            ]
+            ],
         )
 
         # 如果在冷却期或消息为空，直接返回
         token_check_passed = self.token_bucket.get() > 0 or self.unlimited_tokens_active
-        if (
-            self.cold_until > datetime.now()
-            or len(self.openai_messages.messages) <= 0
-            or (not self.openai_messages.is_last_message_from_user())
-            or (len(self.openai_messages.messages) < 5 and not important)
-            or (recent_message_count > 12 and not important)
-            or (not token_check_passed and not important)
-        ):
-            logger.info("规则检查不通过，跳过 ...")
+        if not await self._check_rules(important, token_check_passed, recent_message_count):
             return
         self.cold_until = datetime.now() + timedelta(seconds=3)
 
@@ -344,7 +383,7 @@ class MessageProcessor:
         if not important:
             base_probability = await self.session.get_probability()
             logger.debug(
-                f"Accumulated length: {self.session.accumulated_text_length}, Trigger probability: {base_probability:.2%}"
+                f"Accumulated length: {self.session.accumulated_text_length}, Trigger probability: {base_probability:.2%}",
             )
             probability = base_probability * min(1, 3 / (recent_message_count or 1))
             if random.random() > probability:
@@ -363,41 +402,91 @@ class MessageProcessor:
         if self.session.get_session_type() == "group":
             self.openai_messages.continuous_response = self.openai_messages.continuous_response or important
 
-        # 使用新的 handle_mention 接口处理睡眠唤醒
+        # 处理睡眠唤醒
         if moonlark_main.state["sleep_mode"]:
             if not important:
                 return
-            # 获取最近消息作为上下文
-            recent_text = await self.session.get_cached_messages_string(length=5)
-            recent_msgs = recent_text.splitlines() if recent_text else []
-            should_wake = await moonlark_main.handle_mention(recent_msgs)
-            if not should_wake:
-                return
+
+            if is_event:
+                # 重要事件：强制唤醒，使用事件文本作为原因
+                message_contents = self.get_message_content_list()
+                event_reason = message_contents[-1] if message_contents else "重要事件"
+                await moonlark_main.sleep_controller.wake_up(event_reason, exclude_session_id=self.session.session_id)
+                logger.info(f"[Processor] 重要事件强制唤醒: {event_reason[:100]}")
+            else:
+                # 被提及：通过 LLM 决策是否唤醒
+                recent_text = await self.session.get_cached_messages_string(length=5)
+                recent_msgs = recent_text.splitlines() if recent_text else []
+                session_name = await self.session.get_session_name()
+                last_msg = self.session.cached_messages[-1] if self.session.cached_messages else {}
+                nickname = last_msg.get("nickname", "") if isinstance(last_msg, dict) else ""
+                should_wake = await moonlark_main.handle_mention(
+                    recent_msgs,
+                    session_name=session_name,
+                    nickname=nickname,
+                    session_id=self.session.session_id,
+                )
+                if not should_wake:
+                    return
 
         logger.info(f"Generating reply ({important=})...")
+        # 标记触发回复的用户消息
+        for cached_msg in reversed(self.session.cached_messages):
+            if not cached_msg.get("self", False):
+                cached_msg["triggered_reply"] = True
+                break
         self.session.accumulated_text_length = 0
         await self.openai_messages.fetch_reply()
 
-    async def append_tool_call_history(self, call_string: str) -> None:
+    async def _check_rules(self, important: bool, token_check_passed: bool, recent_message_count: int) -> bool:
+        checks = [
+            ("cold_until", self.cold_until > datetime.now(), "冷却期"),
+            ("messages_empty", len(self.openai_messages.messages) <= 0, "消息为空"),
+            ("last_message_not_user", not self.openai_messages.is_last_message_from_user(), "最后一条消息不是用户"),
+            ("min_messages", len(self.openai_messages.messages) < 5 and not important, "消息数量不足 5 条"),
+            ("excessive_self_reply", recent_message_count > 12 and not important, "近期自回复过多"),
+            ("token_insufficient", not token_check_passed and not important, "Token 不足"),
+        ]
+        for name, result, desc in checks:
+            logger.debug(f"规则检查 [{name}]: {desc} -> {'阻塞' if result else '通过'}")
+        if any(result for _, result, _ in checks):
+            logger.info("规则检查不通过，跳过 ...")
+            return False
+        return True
+
+    async def append_tool_call_history(
+        self,
+        call_id: str,
+        name: str,
+        param: dict[str, Any],
+        result: str | None = None,
+    ) -> None:
         self.session.tool_calls_history.append(
-            await self.session.text("tools.template", datetime.now().strftime("%H:%M"), call_string)
+            {
+                "call_id": call_id,
+                "name": name,
+                "params": param,
+                "result": result,
+                "time": datetime.now().isoformat(),
+            },
         )
         self.session.tool_calls_history = self.session.tool_calls_history[-5:]
 
     async def send_function_call_feedback(
-        self, call_id: str, name: str, param: dict[str, Any]
+        self,
+        call_id: str,
+        name: str,
+        param: dict[str, Any],
     ) -> tuple[str, str, dict[str, Any]]:
-        match name:
-            case "browse_webpage":
-                text = await self.session.text("tools.browse", param.get("url"))
-            case "request_wolfram_alpha":
-                text = await self.session.text("tools.wolfram", param.get("question"))
-            case "web_search":
-                text = await self.session.text("tools.search", param.get("keyword"))
-            case _:
-                return call_id, name, param
-        await self.append_tool_call_history(text)
+        await self.append_tool_call_history(call_id, name, param)
         return call_id, name, param
+
+    async def send_function_call_result(self, result: Any) -> Any:
+        if self.session.tool_calls_history:
+            self.session.tool_calls_history[-1]["result"] = (
+                result if isinstance(result, str) else json.dumps(result, ensure_ascii=False)
+            )
+        return result
 
     async def send_message(self, message_content: str, reply_message_id: str | None = None) -> str:
         # 仅在群聊中启用 token bucket 功能
@@ -420,29 +509,78 @@ class MessageProcessor:
                 token_cost = math.ceil(text_length / 7)  # 向上取整
         else:
             token_cost = 0
-        # 扣除 token
-        if token_cost > 0:
-            self.token_bucket.consume(token_cost)
-
-        self.session.last_activate = datetime.now()
-        self.consecutive_message_count += 1
         message = await self.session.format_message(message_content)
-        if reply_message_id:
+        if reply_message_id is not None:
+            reply_message_id = str(reply_message_id)
             message = message.reply(reply_message_id)
-        receipt = await message.send(target=self.session.target, bot=self.session.bot)
+        # QQ 官方机器人适配器特殊处理：设置 msg_seq 防止消息去重
+        # 见 https://github.com/AstrBotDevs/AstrBot/issues/4382
+        target = self.session.target
+        bot = self.session.bot
+        if isinstance(target, Target) and bot.adapter.get_name() == "QQ" and "qq.reply_seq" not in target.extra:
+            target.extra["qq.reply_seq"] = random.randint(1, 1000000)
+        try:
+            receipt = await message.send(target=target, bot=bot)
+            # 扣除 token
+            if token_cost > 0:
+                self.token_bucket.consume(token_cost)
+            self.session.last_activate = datetime.now()
+            self.consecutive_message_count += 1
+        except ActionFailed as e:
+            # 回复消息 msg_id 已过期等错误：去掉 reply 后重试
+            # 注意：code 仅 QQ 适配器提供，其他适配器没有该字段
+            if reply_message_id is not None and getattr(e, "code", None) == 40034005:
+                await self.send_message(message_content, None)
+            else:
+                raise
         # 记录回应用时（使用 reply_message_id 查找对应的原消息）
         self._record_reply_timing(reply_message_id)
 
-        return await self.session.text(
-            "message.sent",
-            receipt.msg_ids[0].get("message_id"),
-            len(message_content),
-            self.consecutive_message_count,
-            (
-                await self.session.text("message.token", self.token_bucket.get(), token_cost)
-                if self.session.get_session_type() == "group"
-                else ""
-            ),
+        # 兼容处理：msg_ids[0] 可能是 dict 或 pydantic model
+        msg_first = receipt.msg_ids[0]
+        if isinstance(msg_first, dict):
+            message_id = msg_first.get("message_id", "")
+            sent_msg_id = msg_first.get("message_id")
+        else:
+            message_id = getattr(msg_first, "id", "")
+            sent_msg_id = getattr(msg_first, "id", None)
+
+        # 记录 Moonlark 自己发送的消息到缓存
+        self_msg: CachedMessage = {
+            "content": message_content,
+            "nickname": "Moonlark",
+            "send_time": datetime.now(),
+            "user_id": "",
+            "platform_user_id": "",
+            "self": True,
+            "message_id": message_id,
+            "images": [],
+            "to_me": False,
+            "triggered_reply": False,
+        }
+        self.session.cached_messages.append(self_msg)
+        await self.session.on_cache_posted()
+
+        # 检查待定笔记是否有新内容
+        pending_notes_text = self._format_pending_notes_for_tool_result()
+
+        # 发送消息后检查是否需要分析待定笔记
+        if self.unanalyzed_message_count > 5:
+            asyncio.create_task(self._analyze_pending_notes())
+
+        return (
+            await self.session.text(
+                "message.sent",
+                sent_msg_id or "",
+                len(message_content),
+                self.consecutive_message_count,
+                (
+                    await self.session.text("message.token", self.token_bucket.get(), token_cost)
+                    if self.session.get_session_type() == "group"
+                    else ""
+                ),
+            )
+            + pending_notes_text
         )
 
     def _record_reply_timing(self, reply_message_id: str | None = None) -> None:
@@ -497,15 +635,14 @@ class MessageProcessor:
         logger.info(f"Unlimited tokens denied: reason: {reason}, denial: {result.reason}")
         return await self.session.text("apply_unlimited_tokens.denied", result.reason)
 
-    def append_user_message(self, msg_str: str, images: list[bytes]) -> None:
+    async def append_user_message(self, msg_str: str, images: list[bytes]) -> None:
         content: list = [
             {"type": "text", "text": msg_str},
         ]
         for img in images:
             image_base64 = base64.b64encode(img).decode("utf-8")
             content.append({"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_base64}"}})
-        message = generate_message(content, "user")
-        self.openai_messages.messages.append(message)
+        await self.openai_messages.append_user_message(content)
 
     async def process_messages(self, msg_dict: CachedMessage) -> None:
         async with get_session() as session:
@@ -530,7 +667,8 @@ class MessageProcessor:
             if not self.blocked:
                 msg_str = generate_message_string(msg_dict)
                 msg_str += await self.generate_additional_prompt(msg_str, msg_dict["user_id"])
-                self.append_user_message(msg_str, msg_dict["images"])
+                msg_dict["mq_text"] = msg_str
+                await self.append_user_message(msg_str, msg_dict["images"])
                 # print(self.openai_messages.messages)
             if not self.blocked and not msg_dict["self"]:
                 content = msg_dict.get("content", "")
@@ -545,9 +683,11 @@ class MessageProcessor:
 
                 moonlark_main.on_message_received()
 
-            # 消息入队后异步检查是否需要生成即时记忆
-            if not self.blocked:
-                asyncio.create_task(self._maybe_generate_instant_memory())
+            # 消息入队后更新未分析计数并检查是否需要分析待定笔记
+            if not self.blocked and not msg_dict["self"]:
+                self.unanalyzed_message_count += 1
+                if self.unanalyzed_message_count >= 20:
+                    asyncio.create_task(self._analyze_pending_notes())
 
     def get_message_content_list(self) -> list[str]:
         l = []
@@ -562,8 +702,14 @@ class MessageProcessor:
     async def _get_user_profiles(self) -> list[str]:
         """根据昵称获取用户的 profile 信息"""
         profiles = []
+        seen_nicknames: set[str] = set()
         async with get_session() as session:
-            for nickname, user_id in (await self.session._get_users_in_cached_message()).items():
+            for msg in self.session.cached_messages:
+                if msg["self"] or msg["nickname"] in seen_nicknames:
+                    continue
+                seen_nicknames.add(msg["nickname"])
+                nickname = msg["nickname"]
+                user_id = msg["user_id"]  # 使用主账户ID用于数据库查询
                 if not (profile := await session.get(UserProfile, {"user_id": user_id})):
                     profile = await self.session.text("prompt_group.user_profile_not_found")
                     is_profile_found = False
@@ -573,7 +719,7 @@ class MessageProcessor:
                 if isinstance(self.session.bot, OB11Bot):
                     try:
                         member_info = await self.session.get_user_info(user_id)
-                    except Exception as e:
+                    except Exception:
                         member_info = None
                 else:
                     member_info = None
@@ -591,11 +737,11 @@ class MessageProcessor:
                             fav_level,
                             datetime.fromtimestamp(member_info["join_time"]).strftime("%Y-%m-%d"),
                             profile,
-                        )
+                        ),
                     )
                 elif fav > 0 or is_profile_found:
                     profiles.append(
-                        await self.session.text("prompt_group.member_info", nickname, fav, fav_level, profile)
+                        await self.session.text("prompt_group.member_info", nickname, fav, fav_level, profile),
                     )
         return profiles
 
@@ -605,8 +751,10 @@ class MessageProcessor:
         async with get_session() as session:
             results = await session.scalars(
                 select(Sticker).where(
-                    Sticker.context_keywords.isnot(None), Sticker.emotion.isnot(None), Sticker.labels.isnot(None)
-                )
+                    Sticker.context_keywords.isnot(None),
+                    Sticker.emotion.isnot(None),
+                    Sticker.labels.isnot(None),
+                ),
             )
             for sticker in results:
                 if sticker.emotion == emotion_type:
@@ -648,41 +796,53 @@ class MessageProcessor:
             mood_reason,
         )
 
-        recent_activities = "\n".join(
-            await self.filter_info_lines(moonlark_main._get_recent_actions_text().splitlines())
-        )
+        tiredness = round(moonlark_main.sleep_controller.tiredness * 100)
+
+        pending_notes_text = self._get_pending_notes_text()
+
         return await get_message_text(
             "chat_message.md.jinja",
             current_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            token=round(self.token_bucket.get(), 2),
+            token=round(self.token_bucket.get(), 2) if self.session.get_session_type() == "group" else None,
             nickname=sender.get_nickname(),
             display_fav=sender.get_display_fav(),
             fav_level=await sender.get_fav_level(),
             note_text=await self.generate_note_text(notes),
-            recent_activities=recent_activities or None,
+            tiredness=tiredness,
             state=state,
+            pending_notes=pending_notes_text or None,
         )
 
     async def filter_info_lines(self, lines: list[str]) -> list[str]:
         return [line for line in lines if not await self.is_additional_info_line_showed(line)]
 
+    def _normalize_line(self, text: str) -> str:
+        """归一化行文本：去除时间戳前缀并解码 HTML 实体"""
+        # 去除 [ISO时间戳] 前缀
+        result = text
+        if result.startswith("[") and "] " in result:
+            result = result.split("] ", 1)[1]
+        return html.unescape(result)
+
     async def is_additional_info_line_showed(self, line: str) -> bool:
+        norm_line = self._normalize_line(line)
         async with self.openai_messages.fetcher_lock:
             for message in self.openai_messages.messages:
                 content = message.get("content") if isinstance(message, dict) else getattr(message, "content", None)
                 if content is None:
                     continue
                 if isinstance(content, str):
-                    if line in content:
+                    if norm_line in self._normalize_line(content):
                         return True
                 elif isinstance(content, list):
                     for part in content:
-                        if isinstance(part, dict) and "text" in part and line in part["text"]:
+                        text = part.get("text") if isinstance(part, dict) else getattr(part, "text", None)
+                        if text and isinstance(text, str) and norm_line in self._normalize_line(text):
                             return True
         return False
 
     async def generate_event_additional_info(self) -> str:
-        """生成事件的 additional_info，包含 token、当前状态和正在做的事"""
+        """生成事件的 additional_info，包含 token 和当前状态"""
         from .ego import moonlark_main
 
         status_manager = get_status_manager()
@@ -696,29 +856,64 @@ class MessageProcessor:
             mood_reason,
         )
 
-        # 获取正在做的事（查重）
-        recent_activities = "\n".join(
-            await self.filter_info_lines(moonlark_main._get_recent_actions_text().splitlines())
-        )
+        tiredness = round(moonlark_main.sleep_controller.tiredness * 100)
+
+        pending_notes_text = self._get_pending_notes_text()
 
         return await self.session.text(
             "prompt.event_additional_info",
             round(self.token_bucket.get(), 2),
             state,
-            recent_activities or await self.session.text("prompt.event_additional_info.no_activity"),
-        )
+            tiredness,
+        ) + (f"\n待定笔记:\n{pending_notes_text}" if pending_notes_text else "")
+
+    async def get_interaction_mode(self) -> str:
+        async with get_session() as db_session:
+            group_config = await db_session.get(ChatGroup, {"group_id": self.session.session_id})
+            if group_config:
+                return group_config.interaction_mode
+        return "standard"
 
     async def generate_system_prompt(self) -> OpenAIMessage:
         is_private = self.session.get_session_type() == "private"
         return await get_message(
             "system",
             "chat.md.jinja",
-            session_name=await self.session.get_session_name(),
             image_placeholder=self.ENABLE_EMBEDDED_IMAGE,
             is_group_session=not is_private,
             is_private=is_private,
             session_nickname=getattr(self.session, "nickname", None),
+            interaction_mode=await self.get_interaction_mode(),
         )
+
+    async def generate_session_info(self) -> str:
+        """生成会话信息（紧随 system prompt 注入，仅在会话创建/重置时生成）
+
+        包含：会话名称、当前日期与星期、所在地每日天气（已配置时）、
+        此前的事件（前一天 0:00 至今）与当天的计划。
+        """
+        try:
+            from ..utils.weather import get_daily_weather_text, get_weekday_text
+
+            parts = []
+            if self.session.get_session_type() == "group":
+                session_name = (await self.session.get_session_name()) or "未知名称群聊"
+                parts.append(f"会话名称：{session_name}")
+            now = datetime.now()
+            parts.append(f"当前日期：{now.strftime('%Y-%m-%d')} {get_weekday_text(now)}")
+            weather_text = await get_daily_weather_text()
+            if weather_text:
+                parts.append(f"今日天气：{weather_text}")
+
+            from .ego.moonlark_main import moonlark_main
+
+            context = await moonlark_main.get_session_context(self.session.session_id)
+            if context:
+                parts.append(context)
+            return "\n\n".join(parts)
+        except Exception as e:
+            logger.debug(f"生成会话信息失败: {e}")
+            return ""
 
     async def handle_recall(self, message_id: str, message_content: str) -> None:
         await self.session.add_event(
@@ -746,57 +941,160 @@ class MessageProcessor:
                 "probability",
             )
 
-    async def handle_reaction(self, message_string: str, operator_name: str, emoji_id: str) -> None:
+    async def handle_reaction(
+        self,
+        message_string: str,
+        operator_name: str,
+        emoji_id: str,
+        message_sender_is_bot: bool = True,
+        message_sender_name: str = "",
+    ) -> None:
         self.token_bucket.add(0.5)
-        await self.session.add_event(
-            await self.session.text(
+        if message_sender_is_bot:
+            event_text = await self.session.text(
                 "prompt.reaction",
                 operator_name,
                 message_string,
                 QQ_EMOJI_MAP[emoji_id],
-            ),
-            "probability",
-        )
+            )
+        else:
+            event_text = await self.session.text(
+                "prompt.reaction_other",
+                operator_name,
+                message_sender_name,
+                message_string,
+                QQ_EMOJI_MAP[emoji_id],
+            )
+        await self.session.add_event(event_text, "probability")
 
-    async def generate_instant_memory(self) -> None:
-        manager = self.session.instant_memory_manager
-
-        messages = [
-            f"[{msg['send_time'].strftime('%H:%M:%S')}][{msg['nickname']}]({msg['message_id']}): {msg['content']}"
-            for msg in self.session.get_message_for_instant_memory()
-        ]
-
-        if not messages:
+    async def _inject_pending_notes_to_openai_messages(self) -> None:
+        """在上下文重置后，将待定笔记注入到 OpenAI 消息队列中"""
+        if not self.pending_notes:
             return
 
-        manager.add_messages_to_cache(messages)
-        manager.cursor = len(self.session.cached_messages)
+        lines = ["以下是需要在对话中注意的待定笔记："]
+        for note_id, note in self.pending_notes.items():
+            line = f"  [#{note_id}] {note['content']}"
+            if note.get("keywords"):
+                line += f" (关键词: {note['keywords']})"
+            lines.append(line)
 
-        if manager.should_generate():
-            await manager.generate()
+        self._shown_pending_note_ids.update(self.pending_notes.keys())
+        injected_text = "\n".join(lines)
+        await self.openai_messages.append_user_message(injected_text)
+        logger.info(f"[PendingNotes] 已注入 {len(self.pending_notes)} 条待定笔记到 {self.session.session_id}")
 
-    async def _maybe_generate_instant_memory(self) -> None:
-        """在消息处理流程中条件触发即时记忆生成。
+    def _get_pending_notes_text(self) -> str:
+        """获取未展示过的待定笔记文本（用于附加信息）"""
+        unshown = {nid: note for nid, note in self.pending_notes.items() if nid not in self._shown_pending_note_ids}
+        if not unshown:
+            return ""
+        self._shown_pending_note_ids.update(unshown.keys())
+        lines = []
+        for note_id, note in unshown.items():
+            line = f"  [#{note_id}] {note['content']}"
+            if note.get("name"):
+                line += f" (来源: {note['name']})"
+            lines.append(line)
+        return "\n".join(lines)
 
-        复用 InstantMemoryManager 的缓存和锁机制，
-        避免与 generate_instant_memory() 重复处理消息。
-        """
-        manager = self.session.instant_memory_manager
+    def _format_pending_notes_for_tool_result(self) -> str:
+        """格式化未展示过的待定笔记，作为 send_message 工具结果的附加信息"""
+        unshown = {nid: note for nid, note in self.pending_notes.items() if nid not in self._shown_pending_note_ids}
+        if not unshown:
+            return ""
+        self._shown_pending_note_ids.update(unshown.keys())
+        lines = ["\n\n[待定笔记]"]
+        for note_id, note in unshown.items():
+            line = f"  #{note_id}: {note['content']}"
+            if note.get("keywords"):
+                line += f" (关键词: {note['keywords']})"
+            lines.append(line)
+        return "\n".join(lines)
 
-        messages = [
-            f"[{msg['send_time'].strftime('%H:%M:%S')}][{msg['nickname']}]({msg['message_id']}): {msg['content']}"
-            for msg in self.session.get_message_for_instant_memory()
-        ]
-
-        if not messages:
-            # 没有新消息，直接尝试用已有缓存触发
-            await manager.maybe_generate(min_messages=5, cooldown_seconds=600)
+    async def _analyze_pending_notes(self) -> None:
+        if self._pending_note_lock.locked():
             return
 
-        manager.add_messages_to_cache(messages)
-        manager.cursor = len(self.session.cached_messages)
+        async with self._pending_note_lock:
+            try:
+                chat_history = await self.session.get_cached_messages_string(
+                    length=50,
+                    include_self_message=True,
+                    exclude_content_prefixes=("今日计划已更新",),
+                )
+                if not chat_history.strip():
+                    return
 
-        await manager.maybe_generate(min_messages=5, cooldown_seconds=600)
+                identity_text = await get_message_text("identity.md.jinja")
+
+                note_manager = await get_context_notes(self.session.session_id)
+                existing_notes = await note_manager.get_notes()
+                existing_notes_text = ""
+                if existing_notes:
+                    existing_notes_text = "\n".join(
+                        f"- [{n.id}] {n.content}{f' (关键词: {n.keywords})' if n.keywords else ''}"
+                        for n in existing_notes[-20:]
+                    )
+
+                messages = [
+                    await get_message_text(
+                        "pending_note_generator.md.jinja",
+                        identity=identity_text,
+                        current_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                        existing_notes=existing_notes_text,
+                    ),
+                    generate_message(chat_history, "user"),
+                ]
+
+                response = await fetch_message(
+                    [
+                        generate_message(messages[0], "system"),
+                        messages[1],
+                    ],
+                    reasoning_effort="medium",
+                    identify="PendingNotes",
+                )
+
+                cleaned_response = re.sub(r"`{1,3}([a-zA-Z0-9]+)?", "", response).strip()
+                note_list = json.loads(cleaned_response)
+
+                if not isinstance(note_list, list):
+                    logger.warning(f"[PendingNotes] LLM 返回格式异常: {type(note_list)}")
+                    return
+
+                new_count = 0
+                for note_data in note_list:
+                    if not isinstance(note_data, dict) or "content" not in note_data:
+                        continue
+
+                    content = note_data["content"].strip()
+                    if not content:
+                        continue
+
+                    expire_hours = float(note_data.get("expire_hours", 72))
+                    expire_hours = min(87600, max(0.5, expire_hours))
+
+                    note_id = self._next_pending_note_id
+                    self._next_pending_note_id += 1
+
+                    self.pending_notes[note_id] = {
+                        "content": content,
+                        "keywords": note_data.get("keywords", ""),
+                        "expire_hours": expire_hours,
+                        "name": note_data.get("name", ""),
+                        "created_time": datetime.now(),
+                    }
+                    new_count += 1
+
+                self.unanalyzed_message_count = 0
+                if new_count > 0:
+                    logger.info(f"[PendingNotes:{self.session.session_id}] 生成了 {new_count} 条待定笔记")
+
+            except json.JSONDecodeError as e:
+                logger.warning(f"[PendingNotes] LLM 返回非 JSON 格式: {e}")
+            except Exception as e:
+                logger.exception(f"[PendingNotes:{self.session.session_id}] 分析失败: {e}")
 
     async def analyze_pre_trigger_signals(self) -> PreTriggerSignals | None:
         chat_history = await self.session.get_cached_messages_string(length=10, include_self_message=False)

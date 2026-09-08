@@ -3,58 +3,75 @@ import base64
 import math
 import random
 from datetime import date
-from typing import Optional
-from typing_extensions import TypedDict
+from typing import Any, Optional
 
 import httpx
-from nonebot import logger, on_fullmatch
+from nonebot import logger, on_type
+from nonebot.adapters import Bot, Event
+from nonebot.adapters.qq.bot import Bot as QQBot
+from nonebot.adapters.qq.event import InteractionCreateEvent
+from nonebot.adapters.qq.message import Message
+from nonebot.exception import FinishedException
 from nonebot.matcher import Matcher
-from nonebot_plugin_alconna import Alconna, UniMessage, on_alconna
-from nonebot_plugin_bag.config import config as bag_config
+from nonebot_plugin_alconna import Alconna, Args, Subcommand, UniMessage, on_alconna
+from nonebot_plugin_bag.models import Bag
 from nonebot_plugin_bag.utils.bag import give_item
-from nonebot_plugin_bag.utils.item import get_bag_items
-from nonebot_plugin_chat.utils.gift_drop import get_gift_drop_manager
 from nonebot_plugin_email.utils.unread import get_unread_email_count
-from nonebot_plugin_items.registry.registry import ResourceLocation
 from nonebot_plugin_items.utils.get import get_item
+from nonebot_plugin_items.utils.string import get_location_by_id
+from nonebot_plugin_items.registry.registry import ResourceLocation
 from nonebot_plugin_larksetu import get_landscape_image
 from nonebot_plugin_larkuser import get_user
-from nonebot_plugin_larkuser.user.base import MoonlarkUser
+from nonebot_plugin_larkuser.user.utils import is_user_registered
 from nonebot_plugin_larkuser.utils.matcher import patch_matcher
+from nonebot_plugin_larkuser.utils.register import register_user
+from nonebot_plugin_alconna import Button
 from nonebot_plugin_larkuser.utils.waiter import PromptRetryTooMuch, PromptTimeout, prompt
 from nonebot_plugin_larkutils import get_user_id
+from nonebot_plugin_larkutils.cache import create_image_markdown
 from nonebot_plugin_larkutils.jrrp import get_luck_value
 from nonebot_plugin_orm import AsyncSession, get_session
 from nonebot_plugin_render.render import render_template
-from sqlalchemy import select
+from nonebot_plugin_userinfo import get_user_info
+from sqlalchemy import func, select
 from sqlalchemy.exc import NoResultFound
 
 from .config import config
 from .lang import lang
 from .models import SignData
 
-sign = on_alconna(Alconna("签到"), aliases={"签到", "sign"})
+alc = Alconna(
+    "签到",
+    Subcommand("auto", Args["action?", ["on", "off", "limit"]], Args["limit?", int]),
+)
+sign = on_alconna(alc, aliases={"签到", "sign"})
 patch_matcher(sign)
 
-# 用户级别的异步锁字典
-_user_locks: dict[str, asyncio.Lock] = {}
+# 全局锁，保护 SignData 数据操作
+_global_sign_lock = asyncio.Lock()
+
+# 自动签到券物品 ID 与连续签到奖励周期（天）
+AUTO_SIGN_TICKET_ID = "moonlark:auto_sign_ticket"
+AUTO_SIGN_TICKET_REWARD_DAYS = 5
 
 
-def get_user_lock(user_id: str) -> asyncio.Lock:
-    """获取或创建用户的异步锁"""
-    if user_id not in _user_locks:
-        _user_locks[user_id] = asyncio.Lock()
-    return _user_locks[user_id]
+def get_auto_sign_ticket_location() -> ResourceLocation:
+    return get_location_by_id(AUTO_SIGN_TICKET_ID)
 
 
-class SignClaimData(TypedDict):
-    text: str
-    origin: float | int
-    add: float | int
-    now: float | int
+async def get_auto_sign_ticket_count(user_id: str) -> int:
+    """获取用户背包中自动签到券的数量"""
+    async with get_session() as session:
+        count = await session.scalar(
+            select(func.sum(Bag.count)).where(
+                Bag.user_id == user_id,
+                Bag.item_id == AUTO_SIGN_TICKET_ID,
+            ),
+        )
+    return count or 0
 
 
-async def get_luck(user_id: str) -> str:
+async def _get_luck(user_id: str) -> str:
     value = await get_luck_value(user_id)
     if 80 < value:
         return "a"
@@ -70,105 +87,16 @@ async def get_luck(user_id: str) -> str:
         return "f"
 
 
-async def get_sign_data(session: AsyncSession, user_id: str) -> SignData:
+async def _get_sign_data(session: AsyncSession, user_id: str) -> SignData:
     try:
         return await session.get_one(SignData, {"user_id": user_id})
     except NoResultFound:
         session.add(SignData(user_id=user_id))
         await session.commit()
-        return await get_sign_data(session, user_id)
+        return await _get_sign_data(session, user_id)
 
 
-async def get_sign_exp(user: MoonlarkUser, sign_data: SignData) -> SignClaimData:
-    level = user.get_level()
-    origin_exp = user.get_experience()
-    exp = round(random.random() * level / 2 * max(user.get_fav(), 0.1) * min(sign_data.sign_days + 1, 15) + 1)
-    if level <= 4:
-        exp = round(exp * 1.3)
-    await user.add_experience(exp)
-    return {
-        "text": await lang.text("image.exp", user.user_id),
-        "now": user.get_experience(),
-        "add": exp,
-        "origin": origin_exp,
-    }
-
-
-async def get_sign_vim(user_data: MoonlarkUser, sign_data: SignData) -> SignClaimData:
-    level = user_data.get_level()
-    origin = user_data.get_vimcoin()
-    vim = round(
-        1
-        + math.sqrt(
-            math.sqrt(
-                (1000 + random.random()) * level * max(user_data.get_fav(), 0.1) / 5 * min(sign_data.sign_days, 15) / 8
-                + 1
-            )
-        )
-        * 25
-        * random.random(),
-        1,
-    )
-    await user_data.add_vimcoin(vim)
-    return {
-        "text": await lang.text("image.vim", user_data.user_id),
-        "add": vim,
-        "origin": origin,
-        "now": user_data.get_vimcoin(),
-    }
-
-
-async def get_sign_fav(user_data: MoonlarkUser) -> SignClaimData:
-    origin = user_data.get_display_fav()
-    fav = 0.001
-    await user_data.add_fav(fav)
-    return {
-        "text": await lang.text("image.fav", user_data.user_id),
-        "add": round(fav * 1000),
-        "now": user_data.get_display_fav(),
-        "origin": origin,
-    }
-
-
-async def resign(sign_data: SignData, user: MoonlarkUser) -> bool:
-    if (days := (date.today() - sign_data.last_sign).days - 1) >= 15:
-        return False
-    needed_vimcoin = days * 30
-    if not await user.has_vimcoin(needed_vimcoin):
-        return False
-    try:
-        if not await prompt(
-            await lang.text("resign.prompt", sign_data.user_id, days, needed_vimcoin),
-            sign_data.user_id,
-            retry=1,
-            parser=lambda message: not message.lower().startswith("n"),
-            ignore_error_details=False,
-            allow_quit=False,
-        ):
-            return False
-    except (PromptTimeout, PromptRetryTooMuch):
-        return False
-    got_vimcoin = 0
-    got_experience = 0
-    for _ in range(days):
-        sign_data.sign_days += 1
-        got_vimcoin += (await get_sign_vim(user, sign_data))["add"]
-        got_experience += (await get_sign_exp(user, sign_data))["add"]
-    await lang.send("resign.success", user.user_id, days, got_vimcoin, got_experience)
-    await user.add_fav(0.001)
-    sign_data.sign_days += 1
-    return True
-
-
-async def get_sign_days(sign_data: SignData, user: MoonlarkUser) -> int:
-    if (date.today() - sign_data.last_sign).days == 1:
-        sign_data.sign_days += 1
-    elif not await resign(sign_data, user):
-        sign_data.sign_days = 1
-    return sign_data.sign_days
-
-
-async def get_hitokoto(user_id: str) -> str:
+async def _get_hitokoto(user_id: str) -> str:
     try:
         if (count := await get_unread_email_count(user_id)) > 0:
             return await lang.text("image.email_unread", user_id, count)
@@ -182,102 +110,411 @@ async def get_hitokoto(user_id: str) -> str:
         return await lang.text("image.hitokoto", user_id)
 
 
-async def is_user_signed(user_id: str) -> bool:
+async def _calc_sign_exp(user_id: str, sign_days: int) -> dict:
+    """计算并增加签到经验值。返回 (text, origin, add, now)。"""
+    user = await get_user(user_id)
+    level = user.get_level()
+    origin_exp = user.get_experience()
+    exp = round(random.random() * level / 2 * max(user.get_fav(), 0.1) * min(sign_days + 1, 15) + 1)
+    if level <= 4:
+        exp = round(exp * 1.3)
+    await user.add_experience(exp)
+    return {
+        "text": await lang.text("image.exp", user_id),
+        "now": user.get_experience(),
+        "add": exp,
+        "origin": origin_exp,
+    }
+
+
+async def _calc_sign_vim(user_id: str, sign_days: int) -> dict:
+    """计算并增加签到虚拟币。返回 (text, origin, add, now)。"""
+    user = await get_user(user_id)
+    level = user.get_level()
+    origin = user.get_vimcoin()
+    vim = round(
+        1
+        + math.sqrt(
+            math.sqrt((1000 + random.random()) * level * max(user.get_fav(), 0.1) / 5 * min(sign_days, 15) / 8 + 1)
+        )
+        * 25
+        * random.random(),
+        1,
+    )
+    await user.add_vimcoin(vim)
+    return {
+        "text": await lang.text("image.vim", user_id),
+        "add": vim,
+        "origin": round(origin, 1),
+        "now": round(user.get_vimcoin(), 1),
+    }
+
+
+async def _calc_sign_fav(user_id: str) -> dict:
+    """计算并增加签到好感度。返回 (text, origin, add, now)。"""
+    user = await get_user(user_id)
+    origin = user.get_display_fav()
+    fav = 0.001
+    await user.add_fav(fav)
+    return {
+        "text": await lang.text("image.fav", user_id),
+        "add": round(fav * 1000),
+        "now": user.get_display_fav(),
+        "origin": origin,
+    }
+
+
+async def _is_user_signed(user_id: str) -> bool:
     async with get_session() as session:
-        data = await get_sign_data(session, user_id)
+        data = await _get_sign_data(session, user_id)
         return (date.today() - data.last_sign).days < 1
 
 
-async def try_sign_gift_drop(user_id: str) -> Optional[tuple[str, str]]:
-    gift_id = get_gift_drop_manager().select_gift()
-    namespace, path = gift_id.split(":", 1)
-    location = ResourceLocation(namespace, path)
-
-    bag_items = await get_bag_items(user_id)
-    for bag_item in bag_items:
-        if str(bag_item.stack.item.getLocation()) == gift_id:
-            if not bag_item.stack.isAddable():
-                logger.info(f"Sign gift drop skipped (stack full): user={user_id}, gift={gift_id}")
-                return None
-            break
-    else:
-        if len(bag_items) >= bag_config.bag_max_size:
-            logger.info(f"Sign gift drop skipped (bag full): user={user_id}, gift={gift_id}")
-            return None
-
-    stack = await get_item(location, user_id, count=1)
-    await give_item(user_id, stack)
-    item_name = await stack.getName()
-    logger.info(f"Sign gift drop: user={user_id}, gift={gift_id}")
-    return gift_id, item_name
+async def _give_auto_sign_tickets(user_id: str, count: int) -> None:
+    """向用户发放自动签到券"""
+    item = await get_item(get_auto_sign_ticket_location(), user_id, count, {})
+    await give_item(user_id, item)
 
 
-@sign.handle()
-@patch_matcher(on_fullmatch(("sign", "签到"))).handle()
-async def _(matcher: Matcher, user_id: str = get_user_id()) -> None:
-    # 使用用户级别的异步锁防止同一用户并发签到
-    async with get_user_lock(user_id):
+async def perform_sign(user_id: str, missed_days: int = 0, auto: bool = False) -> Optional[dict[str, Any]]:
+    """执行签到：更新 SignData 并按正常流程发放奖励（不包含补签询问与结果渲染）
+
+    Args:
+        user_id (str): 用户 ID
+        missed_days (int, optional): 补签天数，仅普通签到的补签流程会传入. Defaults to 0.
+        auto (bool, optional): 是否为自动签到（累计自动签到数据）. Defaults to False.
+
+    Returns:
+        Optional[dict[str, Any]]: 签到结果；当天已签到时返回 None
+    """
+    do_resign = missed_days > 0
+
+    # ====== 全局锁保护——操作 SignData 表 ======
+    async with _global_sign_lock:
         async with get_session() as session:
-            data = await get_sign_data(session, user_id)
-            user = await get_user(user_id)
-            if (date.today() - data.last_sign).days < 1:
-                await lang.finish("sign.signed", user_id)
-            templates = {
-                "date": date.today().strftime("%d"),
-                "signdays": {
-                    "text": await lang.text("image.signdays", user_id),
-                    "value": await lang.text("image.signdays_text", user_id, await get_sign_days(data, user)),
-                },
-                "nickname": user.nickname,
-                "uid": await lang.text("image.uid", user_id, user_id),
-                "hitokoto": await get_hitokoto(user_id),
-                "exp": await get_sign_exp(user, data),
-                "vim": await get_sign_vim(user, data),
-                "fav": await get_sign_fav(user),
-                "fortune": {
-                    "text": await lang.text("image.fortune", user_id),
-                    "value": await lang.text(f"luck.{await get_luck(user_id)}", user_id),
-                },
-                "avatar": base64.b64encode(user.avatar).decode() if user.avatar is not None else None,
-            }
-            rank_count = len(
+            sd = await _get_sign_data(session, user_id)
+            days_since = (date.today() - sd.last_sign).days
+            if days_since < 1:
+                return None
+
+            # 计算新签到天数
+            if days_since == 1:
+                sd.sign_days += 1
+            elif do_resign:
+                sd.sign_days += missed_days + 1  # 补签天数 + 当天
+            else:
+                sd.sign_days = 1
+            final_sign_days = sd.sign_days
+
+            # 自动签到计数
+            if auto:
+                sd.auto_count += 1
+                sd.auto_used += 1
+
+            # 排名（基于当前已签到人数）
+            signed_today = (
                 (await session.execute(select(SignData.user_id).where(SignData.last_sign == date.today())))
                 .scalars()
                 .all()
             )
-            templates["rank"] = {
-                "text": await lang.text("image.rank", user_id),
-                "value": await lang.text("image.rank_text", user_id, rank_count + 1),
-            }
-            if rank_count == 0:
-                gift_drop = await try_sign_gift_drop(user_id)
-                if gift_drop:
-                    _, item_name = gift_drop
-                    gift_text = await lang.text("image.gift", user_id, item_name)
-                    templates["hitokoto"] = f"{gift_text}"
-            data.last_sign = date.today()
+            rank = len(signed_today) + 1
+
+            sd.last_sign = date.today()
             await session.commit()
-            # 获取横版 setu 图片作为背景
-            bg_kwargs = {}
-            try:
-                setu_img = await get_landscape_image()
-                if setu_img:
-                    b64 = base64.b64encode(setu_img["image"]).decode()
-                    ext = setu_img["data"].ext
-                    mime = "image/png" if ext == "png" else "image/jpeg"
-                    bg_kwargs["background_url"] = f"data:{mime};base64,{b64}"
-                else:
-                    logger.info("无横版 setu 图片，使用默认背景")
-            except Exception as e:
-                logger.warning(f"获取 setu 背景图失败，使用默认背景: {e}")
-            image = await render_template(
-                "sign.html.jinja",
-                await lang.text("image.title", user_id),
-                user_id,
-                templates,
-                viewport={"width": 380, "height": 10},
-                **bg_kwargs,
+
+    # ====== 当天奖励（用户数据，不涉及 SignData 锁） ======
+    exp = await _calc_sign_exp(user_id, final_sign_days)
+    vim = await _calc_sign_vim(user_id, final_sign_days)
+    fav = await _calc_sign_fav(user_id)
+
+    # ====== 补签奖励：逐天累加 ======
+    resign_result = None
+    if do_resign:
+        got_vim = 0.0
+        got_exp = 0
+        for offset in range(missed_days):
+            day_count = offset + 1  # 第一天从 1 开始计
+            got_vim += (await _calc_sign_vim(user_id, day_count))["add"]
+            got_exp += (await _calc_sign_exp(user_id, day_count))["add"]
+        user = await get_user(user_id)
+        await user.add_fav(0.001 * missed_days)
+        resign_result = {"days": missed_days, "vim": round(got_vim, 1), "exp": got_exp}
+
+    # ====== 连续签到奖励：每连续签到 5 天奖励一张自动签到券 ======
+    ticket_gained = 0
+    if final_sign_days % AUTO_SIGN_TICKET_REWARD_DAYS == 0:
+        ticket_gained = 1
+        await _give_auto_sign_tickets(user_id, ticket_gained)
+
+    return {
+        "sign_days": final_sign_days,
+        "rank": rank,
+        "exp": exp,
+        "vim": vim,
+        "fav": fav,
+        "ticket_gained": ticket_gained,
+        "resign": resign_result,
+    }
+
+
+class SignHandler:
+    """签到处理类：数据操作与渲染分离"""
+
+    def __init__(self, user_id: str, bot: Bot, event: Event, matcher: Matcher) -> None:
+        self.user_id = user_id
+        self.bot = bot
+        self.event = event
+        self._result: Optional[dict[str, Any]] = None
+        self.matcher = matcher
+        self._do_resign: bool = False
+        self._missed_days: int = 0
+        self._templates: dict = {}
+        self._bg_kwargs: dict = {}
+
+    async def process_register(self) -> None:
+        """判断用户是否注册，如果未注册就触发注册流程。"""
+        bot = self.bot
+        event = self.event
+        user = await get_user(self.user_id)
+        if not user.is_registered():
+            if not (user_info := await get_user_info(bot, event, self.user_id)):
+                await lang.finish("sign.get_userinfo_failed", self.user_id)
+            async with get_session() as session:
+                await register_user(session, self.user_id, user_info, self.bot, self.event)
+
+    async def process_data(self) -> None:
+        """收集信息并操作数据（SignData 表操作由全局锁保护）"""
+
+        await self.process_register()
+
+        # ====== Phase 1: 预检查 ======
+        if await _is_user_signed(self.user_id):
+            return
+
+        # ====== Phase 2: 判断补签（涉及用户交互，不可放锁内） ======
+        async with get_session() as session:
+            data = await _get_sign_data(session, self.user_id)
+        days_since = (date.today() - data.last_sign).days
+        self._do_resign = False
+        self._missed_days = 0
+        if days_since > 1:
+            self._missed_days = days_since - 1
+            if self._missed_days < 15:
+                user = await get_user(self.user_id)
+                needed = self._missed_days * 30
+                if await user.has_vimcoin(needed):
+                    try:
+                        self._do_resign = await prompt(
+                            await self.build_resign_prompt(needed),
+                            self.user_id,
+                            retry=1,
+                            parser=lambda message: not message.lower().startswith("n"),
+                            ignore_error_details=False,
+                            allow_quit=False,
+                        )
+                    except (PromptTimeout, PromptRetryTooMuch):
+                        pass
+
+        # ====== Phase 3+4: 签到数据操作与奖励发放 ======
+        self._result = await perform_sign(self.user_id, self._missed_days if self._do_resign else 0)
+        if self._result is not None and (resign := self._result["resign"]):
+            await lang.send(
+                "resign.success",
+                self.user_id,
+                resign["days"],
+                resign["vim"],
+                resign["exp"],
             )
+
+    async def build_resign_prompt(self, needed: int) -> str | UniMessage:
+        """构建补签询问消息：QQ 官方机器人使用 markdown 与键盘按钮，其余平台保持文本 [y/n]。"""
+        if isinstance(self.bot, QQBot):
+            return (
+                UniMessage()
+                .style(
+                    await lang.text("resign.prompt_markdown", self.user_id, self._missed_days, needed),
+                    "markdown",
+                )
+                .keyboard(
+                    Button("enter", await lang.text("resign.button_yes", self.user_id), text="y"),
+                    Button("enter", await lang.text("resign.button_no", self.user_id), text="n"),
+                )
+            )
+        return await lang.text("resign.prompt", self.user_id, self._missed_days, needed)
+
+    async def render_result(self) -> None:
+        """渲染并发送处理结果
+
+        Args:
+            matcher: Nonebot 匹配器
+            invite_button: 是否附带"我也要签到"按钮（仅 QQ 官方机器人）
+        """
+        if self._result is None:
+            await lang.finish("sign.signed", self.user_id)
+
+        self._templates = {
+            "date": date.today().strftime("%d"),
+            "signdays": {
+                "text": await lang.text("image.signdays", self.user_id),
+                "value": await lang.text(
+                    "image.signdays_text",
+                    self.user_id,
+                    self._result["sign_days"],
+                ),
+            },
+            "rank": {
+                "text": await lang.text("image.rank", self.user_id),
+                "value": await lang.text("image.rank_text", self.user_id, self._result["rank"]),
+            },
+            "exp": self._result["exp"],
+            "vim": self._result["vim"],
+            "fav": self._result["fav"],
+            "fortune": {
+                "text": await lang.text("image.fortune", self.user_id),
+                "value": await lang.text(f"luck.{await _get_luck(self.user_id)}", self.user_id),
+            },
+            "hitokoto": await _get_hitokoto(self.user_id),
+        }
+        if self._result["ticket_gained"]:
+            self._templates["ticket"] = {
+                "text": await lang.text("image.ticket", self.user_id),
+                "value": await lang.text("image.ticket_text", self.user_id, self._result["ticket_gained"]),
+            }
+        user = await get_user(self.user_id)
+        self._templates["nickname"] = user.nickname
+        self._templates["uid"] = await lang.text("image.uid", self.user_id, self.user_id)
+        self._templates["avatar"] = base64.b64encode(user.avatar).decode() if user.avatar is not None else None
+
+        # 横版 setu 背景
+        try:
+            setu_img = await get_landscape_image()
+            if setu_img:
+                b64 = base64.b64encode(setu_img["image"]).decode()
+                ext = setu_img["data"].ext
+                self._bg_kwargs["background_url"] = (
+                    f"data:image/png;base64,{b64}" if ext == "png" else f"data:image/jpeg;base64,{b64}"
+                )
+        except Exception as e:
+            logger.warning(f"获取 setu 背景图失败: {e}")
+
+        image = await render_template(
+            "sign.html.jinja",
+            await lang.text("image.title", self.user_id),
+            self.user_id,
+            self._templates,
+            viewport={"width": 380, "height": 10},
+            resize=True,
+            **self._bg_kwargs,
+        )
+        await self.send_card(image)
+
+    async def send_card(self, image: bytes) -> None:
+        if isinstance(self.bot, QQBot):
+            await self.format_markdown(image)
+        else:
             msg = UniMessage().image(raw=image)
-            _user_locks.pop(user_id, None)
-            await matcher.finish(await msg.export(), at_sender=True)
+            await self.matcher.finish(await msg.export(), at_sender=True)
+
+    async def format_markdown(self, image_raw: bytes) -> None:
+        if self._result is None:
+            await lang.finish("sign.signed", self.user_id)
+        await (
+            UniMessage()
+            .style(
+                f'<qqbot-at-user id="{self.event.get_user_id()}" />{await create_image_markdown(image_raw)}', "markdown"
+            )
+            .keyboard(*await self.build_button())
+            .send()
+        )
+        await self.matcher.finish()
+
+    async def build_button(self) -> list[Button]:
+        buttons = [
+            Button(
+                "enter",
+                await lang.text("button.invite", self.user_id),
+                text=f"{config.command_start[0]}sign",
+            ),
+            Button(
+                "enter",
+                await lang.text("button.jrrp", self.user_id),
+                text=f"{config.command_start[0]}jrrp",
+            ),
+        ]
+        if await get_unread_email_count(self.user_id) > 0:
+            buttons.append(
+                Button(
+                    "enter",
+                    await lang.text("button.email", self.user_id),
+                    text=f"{config.command_start[0]}email",
+                ),
+            )
+        return buttons
+
+
+@sign.assign("$main")
+async def _(matcher: Matcher, bot: Bot, event: Event, user_id: str = get_user_id()) -> None:
+    handler = SignHandler(user_id, bot, event, matcher)
+    await handler.process_data()
+    await handler.render_result()
+
+
+async def _set_auto_sign(user_id: str, *, enabled: bool) -> None:
+    """开启或关闭自动签到"""
+    async with get_session() as session:
+        data = await _get_sign_data(session, user_id)
+        if data.auto_enabled == enabled:
+            await lang.finish("auto.on_already" if enabled else "auto.off_already", user_id)
+        data.auto_enabled = enabled
+        await session.commit()
+    await lang.finish("auto.on_done" if enabled else "auto.off_done", user_id)
+
+
+async def _set_auto_sign_limit(user_id: str, limit: Optional[int]) -> None:
+    """重置使用计数并设定允许使用的自动签到券个数（<= 0 为不限制）"""
+    if limit is None:
+        await lang.finish("auto.limit_usage", user_id)
+    async with get_session() as session:
+        data = await _get_sign_data(session, user_id)
+        data.auto_limit = limit
+        data.auto_used = 0
+        await session.commit()
+    if limit <= 0:
+        await lang.finish("auto.limit_unlimited_done", user_id)
+    await lang.finish("auto.limit_done", user_id, limit)
+
+
+async def _show_auto_sign_status(user_id: str) -> None:
+    """查看自动签到情况"""
+    async with get_session() as session:
+        data = await _get_sign_data(session, user_id)
+        enabled, count, limit, used = data.auto_enabled, data.auto_count, data.auto_limit, data.auto_used
+    tickets = await get_auto_sign_ticket_count(user_id)
+    if limit <= 0:
+        limit_text = await lang.text("auto.limit_unlimited", user_id)
+    else:
+        limit_text = await lang.text("auto.limit_text", user_id, limit, used)
+    await lang.finish(
+        "auto.status",
+        user_id,
+        status=await lang.text("auto.status_on" if enabled else "auto.status_off", user_id),
+        count=count,
+        tickets=tickets,
+        limit=limit_text,
+    )
+
+
+@sign.assign("auto")
+async def _(action: Optional[str] = None, limit: Optional[int] = None, user_id: str = get_user_id()) -> None:
+    if action == "on":
+        await _set_auto_sign(user_id, enabled=True)
+    elif action == "off":
+        await _set_auto_sign(user_id, enabled=False)
+    elif action == "limit":
+        await _set_auto_sign_limit(user_id, limit)
+    else:
+        await _show_auto_sign_status(user_id)
+
+
+# 暴露给外部使用的接口
+is_user_signed = _is_user_signed

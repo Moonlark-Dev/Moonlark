@@ -9,7 +9,7 @@ alc = Alconna(
     ),
     Subcommand(
         "a|add",
-        Args["content", MultiVar(Union[Image, Text])],  # type: ignore
+        Args["content?", MultiVar(Union[Image, Text])],  # type: ignore
     ),
     Subcommand(
         "s|restore",

@@ -1,7 +1,6 @@
 from nonebot import on_message, on_command, logger
 from nonebot.typing import T_State
 from nonebot.adapters import Event, Bot, Message
-from nonebot.adapters.qq import Bot as Bot_QQ
 from nonebot.adapters.onebot.v11 import GroupMessageEvent
 from nonebot.adapters.onebot.v11 import Bot as OB11Bot
 from nonebot.params import CommandArg
@@ -21,7 +20,9 @@ from nonebot_plugin_broadcast import get_available_groups
 from nonebot_plugin_htmlrender import md_to_pic
 
 from .models import GroupMessage, GroupDailySummary, MVPRecord
+from .hash_utils import compute_message_hash
 from .lang import lang
+from .word_cloud import generate_word_cloud
 from .__main__ import get_cached_daily_summary, send_daily_summary_to_group
 from .ai_utils import (
     fetch_broadcast_summary,
@@ -68,6 +69,7 @@ decision = on_alconna(
         Args["reason", str, ""],
     )
 )
+word_cloud = on_alconna(Alconna("word-cloud", Args["hours", int, 24]))
 
 
 # --- Config Helpers ---
@@ -134,9 +136,7 @@ async def handle_main(
 
 
 @summary.assign("enable")
-async def _(bot: Bot, user_id: str = get_user_id(), group_id: str = get_group_id()) -> None:
-    if isinstance(bot, Bot_QQ):
-        await lang.finish("switch.unsupported", user_id)
+async def _(user_id: str = get_user_id(), group_id: str = get_group_id()) -> None:
     async with get_config() as conf:
         if group_id in conf.data:
             conf.data.remove(group_id)
@@ -152,9 +152,7 @@ async def _(user_id: str = get_user_id(), group_id: str = get_group_id()) -> Non
 
 
 @summary.assign("everyday-summary")
-async def _(status: str, bot: Bot, user_id: str = get_user_id(), group_id: str = get_group_id()) -> None:
-    if isinstance(bot, Bot_QQ):
-        await lang.finish("switch.unsupported", user_id)
+async def _(status: str, user_id: str = get_user_id(), group_id: str = get_group_id()) -> None:
     everyday_config = get_everyday_summary_config()
     async with everyday_config as conf:
         if status == "on":
@@ -310,7 +308,13 @@ async def _(
     else:
         msg = event.raw_message
     session.add(
-        GroupMessage(message=msg, sender_nickname=event.sender.nickname, user_id=event.get_user_id(), group_id=group_id)
+        GroupMessage(
+            message=msg,
+            message_hash=compute_message_hash(event.message),
+            sender_nickname=event.sender.nickname,
+            user_id=event.get_user_id(),
+            group_id=group_id,
+        )
     )
     await session.commit()
     await recorder.finish()
@@ -327,6 +331,7 @@ async def _(
     session.add(
         GroupMessage(
             message=event.get_plaintext(),
+            message_hash=compute_message_hash(event.get_message()),
             sender_nickname=(await get_user(user_id)).get_nickname(),
             user_id=user_id,
             group_id=group_id,
@@ -382,6 +387,41 @@ async def handle_group_daily(
     else:
         await send_daily_summary_to_group(group_id)
         await group_daily.finish()
+
+
+@word_cloud.handle()
+async def handle_word_cloud(
+    hours: int,
+    session: async_scoped_session,
+    user_id: str = get_user_id(),
+    group_id: str = get_group_id(),
+) -> None:
+    """处理 .word-cloud 指令，生成群聊词云"""
+    async with get_config() as conf:
+        if group_id in conf.data:
+            await lang.finish("disabled", user_id)
+
+    hours = min(max(hours, 1), 48)
+    start_time = datetime.now() - timedelta(hours=hours)
+    result = (
+        await session.scalars(
+            select(GroupMessage)
+            .where(GroupMessage.group_id == group_id)
+            .where(GroupMessage.timestamp >= start_time)
+            .order_by(GroupMessage.id_),
+        )
+    ).all()
+
+    if not result:
+        await lang.finish("word_cloud.no_data", user_id, hours)
+
+    image = await generate_word_cloud(result)
+    if image is None:
+        await lang.finish("word_cloud.no_data", user_id, hours)
+
+    await word_cloud.finish(
+        UniMessage().text(await lang.text("word_cloud.title", user_id, hours, len(result))).image(raw=image),
+    )
 
 
 @decision.handle()

@@ -11,4 +11,6 @@ commands:
       - help.u5
       - help.u6
       - help.u7
+      - help.u8
+      - help.u9
     category: community

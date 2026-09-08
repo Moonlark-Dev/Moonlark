@@ -1,34 +1,32 @@
 from datetime import datetime
 
-from nonebot import on_message
-from nonebot.adapters.onebot.v11 import NoticeEvent
-from nonebot.adapters.qq import Bot as BotQQ
-from nonebot.typing import T_State
-from nonebot_plugin_alconna import UniMessage, get_target
-from nonebot.adapters.onebot.v11.event import FriendRecallNoticeEvent
-from nonebot_plugin_chat.utils.message import parse_dict_message
-from nonebot_plugin_larkuser import get_nickname
-from nonebot_plugin_orm import get_session
-
-from nonebot_plugin_larkuser import get_user
 from nonebot import on_message, on_notice
-from nonebot.adapters.onebot.v11 import Bot as OB11Bot
-from nonebot.adapters import Event, Bot
-from nonebot.adapters.onebot.v11.event import PokeNotifyEvent
-from nonebot_plugin_larkutils import get_user_id, get_group_id
-from nonebot_plugin_larkutils.subaccount import get_main_account
-from nonebot_plugin_larkutils.user import private_message
+from nonebot.adapters import Bot, Event
+from nonebot.adapters.onebot.v11 import (
+    Bot as OB11Bot,
+    GroupRecallNoticeEvent,
+    Message as OB11Message,
+    MessageSegment as OB11MessageSegment,
+    NoticeEvent,
+)
+from nonebot.adapters.onebot.v11.event import FriendRecallNoticeEvent, PokeNotifyEvent
 from nonebot.log import logger
 from nonebot.matcher import Matcher
-from nonebot.adapters.onebot.v11 import GroupRecallNoticeEvent
+from nonebot.typing import T_State
+from nonebot_plugin_alconna import UniMessage, get_target
+from nonebot_plugin_larkuser import get_nickname, get_user
+from nonebot_plugin_larkutils import get_group_id, get_user_id
+from nonebot_plugin_larkutils.subaccount import get_main_account
+from nonebot_plugin_message_summary.hash_utils import compute_message_hash
+from nonebot_plugin_message_summary.models import GroupMessage
+from nonebot_plugin_orm import get_session
+from sqlalchemy import select
 
-from .session import create_group_session, create_private_session, get_session_directly
-from .ego import moonlark_main
-
-from ..utils.group import enabled_group, parse_message_to_string
-from ..utils.gift_drop import handle_gift_drop
 from ..config import config
 from ..models import PrivateChatSession
+from ..utils.group import enabled_group, enabled_private_chat
+from .ego import moonlark_main
+from .session import create_group_session, create_private_session, get_session_directly
 
 
 async def record_private_chat_session(user_id: str, session_key: str, bot_id: str) -> None:
@@ -59,9 +57,9 @@ async def _(
     user_id: str = get_user_id(),
     session_id: str = get_group_id(),
 ) -> None:
-    if isinstance(bot, BotQQ):
-        await matcher.finish()
-    session = await create_group_session(session_id, get_target(event), bot)
+    target = get_target(event)
+    session = await create_group_session(session_id, target, bot)
+    session.set_target(target, bot)
     if session.mute_until is not None:
         await matcher.finish()
     plaintext = event.get_plaintext().strip()
@@ -70,16 +68,13 @@ async def _(
     platform_message = event.get_message()
     message = await UniMessage.of(message=platform_message, bot=bot).attach_reply(event, bot)
     nickname = await get_nickname(user_id, bot, event)
-    await session.handle_message(message, user_id, event, state, nickname, event.is_tome())
-
-    # 礼物掉落检测
-    try:
-        await handle_gift_drop(bot, event, user_id, session_id, session.is_napcat_bot())
-    except Exception as e:
-        logger.exception(e)
+    platform_user_id = event.get_user_id()
+    await session.handle_message(
+        message, user_id, event, state, nickname, event.is_tome(), platform_user_id=platform_user_id
+    )
 
 
-@on_message(priority=50, rule=private_message, block=False).handle()
+@on_message(priority=50, rule=enabled_private_chat, block=False).handle()
 async def _(
     event: Event,
     matcher: Matcher,
@@ -88,16 +83,15 @@ async def _(
     user_id: str = get_user_id(),
     session_key: str = get_group_id(),
 ) -> None:
-    if isinstance(bot, BotQQ):
-        await matcher.finish()
-
     # 记录私聊会话信息（用于主动消息时获取正确的 bot）
     await record_private_chat_session(user_id, session_key, bot.self_id)
 
     # 检查是否是主动私聊的回复
     await moonlark_main.on_private_message_replied(user_id)
 
-    session = await create_private_session(session_key, get_target(event), bot)
+    target = get_target(event)
+    session = await create_private_session(session_key, target, bot)
+    session.set_target(target, bot)
     if session.mute_until is not None:
         await matcher.finish()
     plaintext = event.get_plaintext().strip()
@@ -107,7 +101,8 @@ async def _(
     platform_message = event.get_message()
     message = await UniMessage.of(message=platform_message, bot=bot).attach_reply(event, bot)
     nickname = await get_nickname(user_id, bot, event)
-    await session.handle_message(message, user_id, event, state, nickname, True)
+    platform_user_id = event.get_user_id()
+    await session.handle_message(message, user_id, event, state, nickname, True, platform_user_id=platform_user_id)
 
 
 @on_notice(block=False).handle()
@@ -146,13 +141,27 @@ async def _(event: NoticeEvent, bot: OB11Bot, platform_id: str = get_group_id())
     group_id = f"{platform_id}_{event_dict['group_id']}"
     user_id = await get_main_account(str(event_dict["user_id"]))
     session = await create_group_session(group_id, get_target(event), bot)
-    message = await parse_message_to_string(
-        await parse_dict_message((await bot.get_msg(message_id=event_dict["message_id"]))["message"], bot),
-        event,
-        bot,
-        {},
-        session.lang_str,
-    )
+    raw_msg_data = await bot.get_msg(message_id=event_dict["message_id"])
+    raw_msg = raw_msg_data["message"]
+    message_sender_id = str(raw_msg_data.get("sender", {}).get("user_id", ""))
+    message_sender_is_bot = message_sender_id == bot.self_id
+    ob11_msg = OB11Message()
+    for seg in raw_msg:
+        ob11_msg.append(OB11MessageSegment(**seg))
+    msg_hash = compute_message_hash(ob11_msg)
+    async with get_session() as db_session:
+        result = await db_session.scalars(
+            select(GroupMessage)
+            .where(GroupMessage.group_id == group_id)
+            .where(GroupMessage.message_hash == msg_hash)
+            .limit(1),
+        )
+        cached = result.first()
+        message = (
+            cached.message
+            if cached is not None
+            else "".join(seg["data"].get("text", "") for seg in raw_msg if seg["type"] == "text")
+        )
     user = await get_user(user_id)
     if user.has_nickname():
         operator_nickname = user.nickname
@@ -160,13 +169,19 @@ async def _(event: NoticeEvent, bot: OB11Bot, platform_id: str = get_group_id())
         user_info = await bot.get_group_member_info(group_id=event_dict["group_id"], user_id=int(user_id))
         operator_nickname = user_info["card"] or user_info["nickname"]
     emoji_id = event_dict["likes"][0]["emoji_id"]
+    message_sender_name = raw_msg_data.get("sender", {}).get("nickname", "")
     logger.debug(f"emoji like: {emoji_id} {message} {operator_nickname}")
-    await session.processor.handle_reaction(message, operator_nickname, emoji_id)
+    await session.processor.handle_reaction(
+        message, operator_nickname, emoji_id, message_sender_is_bot, message_sender_name
+    )
 
 
 @on_notice(block=False).handle()
 async def _(
-    bot: Bot, event: FriendRecallNoticeEvent, user_id: str = get_user_id(), session_key: str = get_group_id()
+    bot: Bot,
+    event: FriendRecallNoticeEvent,
+    user_id: str = get_user_id(),
+    session_key: str = get_group_id(),
 ) -> None:
     message_id = str(event.message_id)
     session = await create_private_session(session_key, get_target(event), bot)

@@ -1,32 +1,53 @@
 import asyncio
+import math
+import uuid
+from abc import ABC, abstractmethod
+from datetime import datetime, timedelta
+from typing import Callable, Literal, Optional, TypeAlias, overload
 
 from nonebot.adapters import Bot, Event
 from nonebot.adapters.onebot.v11.event import PokeNotifyEvent
 from nonebot.log import logger
 from nonebot.typing import T_State
 from nonebot_plugin_alconna import Target, UniMessage, get_message_id
-from nonebot_plugin_chat.utils.trigger import calculate_trigger_probability
-from nonebot_plugin_chat.lang import lang
-from nonebot_plugin_chat.types import AdapterUserInfo, CachedMessage, PendingInteraction, RuaAction
 from nonebot_plugin_larkuser import get_nickname, get_user
-from nonebot_plugin_chat.utils.instant_mem import InstantMemoryManager
 from nonebot_plugin_orm import get_session
 from sqlalchemy import delete
 
+from nonebot_plugin_chat.lang import lang
+from nonebot_plugin_chat.types import AdapterUserInfo, CachedMessage, PendingInteraction, RuaAction
+from nonebot_plugin_chat.utils.trigger import calculate_trigger_probability
+
 from ...models import Timer
-
-
-import math
-import uuid
-from abc import ABC, abstractmethod
-from datetime import datetime, timedelta
-from typing import Literal, Optional, TypeAlias
 
 # 消息队列项类型定义
 MessageQueueItem: TypeAlias = (
-    tuple[Literal["message"], tuple[UniMessage, Event, T_State, str, str, datetime, bool, str]]
+    tuple[Literal["message"], tuple[UniMessage, Event, T_State, str, str, datetime, bool, str, str]]
     | tuple[Literal["event"], tuple[str, Literal["probability", "none", "all"]]]
 )
+
+
+class SessionQueue:
+    def __init__(self, on_item_queued: Callable[[], None]) -> None:
+        self._items: list[MessageQueueItem] = []
+        self._on_item_queued = on_item_queued
+
+    def append(self, item: MessageQueueItem) -> None:
+        self._items.append(item)
+        self._on_item_queued()
+
+    def pop(self, index: int = 0) -> MessageQueueItem:
+        return self._items.pop(index)
+
+    def __iter__(self):
+        return iter(self._items)
+
+    def __len__(self) -> int:
+        return len(self._items)
+
+    def __bool__(self) -> bool:
+        return bool(self._items)
+
 
 from ..processor import MessageProcessor
 
@@ -36,16 +57,14 @@ class BaseSession(ABC):
     @abstractmethod
     def get_session_type() -> Literal["private", "group"]: ...
 
-    def __init__(self, session_id: str, bot: Bot, target: Target, lang_str: str = f"mlsid::--lang=zh_hans") -> None:
+    def __init__(self, session_id: str, bot: Bot, target: Target, lang_str: str = "mlsid::--lang=zh_hans") -> None:
         self.session_id = session_id
         self.target = target
         self.bot = bot
         self.lang_str = lang_str
         self.tool_calls_history = []
-        self.message_queue: list[MessageQueueItem] = []
         self.cached_messages: list[CachedMessage] = []
         self.message_cache_counter = 0
-        self.last_message_for_instant_memory_generation: Optional[CachedMessage] = None
         self.ghot_coefficient = 1
         self.accumulated_text_length = 0  # 累计文本长度
         self.last_activate = datetime.now()
@@ -54,25 +73,17 @@ class BaseSession(ABC):
         self.llm_timers = []  # 定时器列表
         self.pending_interactions: dict[str, PendingInteraction] = {}  # 待处理的交互请求
         self.last_interest: Optional[float] = None  # 缓存的 interest 值
+        self.last_interest_update_time: Optional[datetime] = None  # interest 最后更新时间
         self.processor = MessageProcessor(self)
-        self.instant_memory_manager = InstantMemoryManager(session_id, lang_str)
+        self.message_queue = SessionQueue(self.processor.notify_message_queued)
+
+    # interest 衰减配置
+    INTEREST_HALF_LIFE = 420  # 半衰期（秒），默认 7 分钟
+    INTEREST_CENTER = 0.5  # 回正中心值
 
     def set_target(self, target: Target, bot: Bot) -> None:
         self.target = target
         self.bot = bot
-
-    def get_message_for_instant_memory(self) -> list[CachedMessage]:
-        if (
-            self.last_message_for_instant_memory_generation
-            and self.last_message_for_instant_memory_generation in self.cached_messages
-            and self.cached_messages
-        ):
-            index = self.cached_messages.index(self.last_message_for_instant_memory_generation)
-            self.last_message_for_instant_memory_generation = self.cached_messages[-1]
-            return self.cached_messages[index + 1 :]
-        if self.cached_messages:
-            self.last_message_for_instant_memory_generation = self.cached_messages[-1]
-        return self.cached_messages
 
     @abstractmethod
     async def setup(self) -> None:
@@ -118,18 +129,21 @@ class BaseSession(ABC):
         favorability_coefficient = 1.0
         if len(self.cached_messages) > 0:
             avg_fav = sum(
-                [(await get_user(msg["user_id"])).get_fav() for msg in self.cached_messages if not msg["self"]]
+                [(await get_user(msg["user_id"])).get_fav() for msg in self.cached_messages if not msg["self"]],
             ) / len(self.cached_messages)
             logger.debug(f"{avg_fav=}")
             favorability_coefficient = 1 + 0.8 * (1 - math.e ** (-5 * avg_fav))
 
         # 计算 interest 系数映射 (0-1) -> (0.25-4)
         interest_coefficient = 1.0
-        interest_value = self.last_interest
-        if self.last_interest is not None:
-            interest_coefficient = 0.25 + self.last_interest * 3.75
+        # 应用时间衰减获取回正后的 interest 值
+        decayed_interest = self._get_decayed_interest()
+        interest_value = decayed_interest
+        if decayed_interest is not None:
+            interest_coefficient = 0.25 + decayed_interest * 3.75
             logger.debug(
-                f"Applied interest coefficient: {interest_coefficient:.2f} (interest={self.last_interest:.2f})"
+                f"Applied interest coefficient: {interest_coefficient:.2f} "
+                f"(raw={self.last_interest:.2f}, decayed={decayed_interest:.2f})",
             )
 
         # 计算最终概率
@@ -159,9 +173,28 @@ class BaseSession(ABC):
         details = await self.get_probability_details(length_adjustment)
         return details["final_probability"]
 
+    def _get_decayed_interest(self) -> Optional[float]:
+        """获取经过时间衰减后的 interest 值"""
+        if self.last_interest is None or self.last_interest_update_time is None:
+            return self.last_interest
+        elapsed = (datetime.now() - self.last_interest_update_time).total_seconds()
+        if elapsed <= 0:
+            return self.last_interest
+        # 指数衰减公式：向中心值回正
+        # decayed = center + (original - center) * 0.5 ^ (elapsed / half_life)
+        decay_factor = math.pow(0.5, elapsed / self.INTEREST_HALF_LIFE)
+        decayed = self.INTEREST_CENTER + (self.last_interest - self.INTEREST_CENTER) * decay_factor
+        logger.debug(
+            f"Interest decay: {self.last_interest:.2f} -> {decayed:.2f} "
+            f"(elapsed={elapsed:.0f}s, factor={decay_factor:.4f})",
+        )
+        return decayed
+
     def set_interest(self, interest: Optional[float]) -> None:
         """缓存 interest 值用于后续概率计算"""
         self.last_interest = interest
+        if interest is not None:
+            self.last_interest_update_time = datetime.now()
 
     @abstractmethod
     async def calculate_ghot_coefficient(self) -> None:
@@ -169,34 +202,16 @@ class BaseSession(ABC):
 
     def clean_cached_message(self) -> None:
         if len(self.cached_messages) > 50:
-            removed_count = len(self.cached_messages) - 50
-            removed_messages = self.cached_messages[:removed_count]
-            self.cached_messages = self.cached_messages[removed_count:]
-
-            cursor = self.instant_memory_manager.cursor
-            if cursor <= removed_count:
-                # 游标指向的消息已被移除，说明被移除的消息中包含未总结的部分
-                # 将游标之后的被移除消息加入缓存
-                start = max(cursor, 0)
-                unsummarized = removed_messages[start:]
-                if unsummarized:
-                    cache_messages = [
-                        f"[{msg['send_time'].strftime('%H:%M:%S')}][{msg['nickname']}]: {msg['content']}"
-                        for msg in unsummarized
-                    ]
-                    self.instant_memory_manager.add_messages_to_cache(cache_messages)
-                # 游标已失效，重置为0
-                self.instant_memory_manager.cursor = 0
-            else:
-                # 游标指向的消息仍在 cached_messages 中，被移除的消息已经过总结位置
-                # 更新游标索引
-                self.instant_memory_manager.cursor = cursor - removed_count
+            self.cached_messages = self.cached_messages[-50:]
 
     async def on_cache_posted(self) -> None:
         self.message_cache_counter += 1
         await self.calculate_ghot_coefficient()
         self.clean_cached_message()
         self.last_activate = datetime.now()
+        from ..ego.moonlark_main import moonlark_main
+
+        moonlark_main.on_message_cached(self.session_id)
 
     async def mute(self) -> None:
         self.mute_until = datetime.now() + timedelta(minutes=15)
@@ -206,15 +221,29 @@ class BaseSession(ABC):
         pass
 
     async def handle_message(
-        self, message: UniMessage, user_id: str, event: Event, state: T_State, nickname: str, mentioned: bool = False
+        self,
+        message: UniMessage,
+        user_id: str,
+        event: Event,
+        state: T_State,
+        nickname: str,
+        mentioned: bool = False,
+        platform_user_id: str = "",
     ) -> None:
         message_id = get_message_id(event)
+        if not platform_user_id:
+            platform_user_id = user_id
         self.message_queue.append(
-            ("message", (message, event, state, user_id, nickname, datetime.now(), mentioned, message_id))
+            (
+                "message",
+                (message, event, state, user_id, nickname, datetime.now(), mentioned, message_id, platform_user_id),
+            ),
         )
 
     async def add_event(
-        self, event_prompt: str, trigger_mode: Literal["probability", "none", "all"] = "probability"
+        self,
+        event_prompt: str,
+        trigger_mode: Literal["probability", "none", "all"] = "probability",
     ) -> None:
         """向消息队列中添加一个事件
 
@@ -235,7 +264,7 @@ class BaseSession(ABC):
         users = {}
         for message in self.cached_messages:
             if not message["self"]:
-                users[message["nickname"]] = message["user_id"]
+                users[message["nickname"]] = message.get("platform_user_id", message["user_id"])
         return users
 
     @abstractmethod
@@ -299,8 +328,6 @@ class BaseSession(ABC):
             action: 选择的 rua 动作
             message_id: 触发 rua 命令的消息 ID，用于 reaction 和回复
         """
-        import random
-        import asyncio
 
         action_name = action["name"]
 
@@ -326,7 +353,10 @@ class BaseSession(ABC):
         await self.post_event(event_prompt, "all")
 
     async def change_sleep_status(
-        self, deal_type: Literal["ready", "delay"], delay_minutes: Optional[int] = None, reason: Optional[str] = None
+        self,
+        deal_type: Literal["ready", "delay"],
+        delay_minutes: Optional[int] = None,
+        reason: Optional[str] = None,
     ) -> str:
         """
         修改睡觉状态
@@ -358,8 +388,8 @@ class BaseSession(ABC):
         await moonlark_main.submit_sleep_decision(
             session_id=self.session_id,
             deal_type=deal_type,
-            delay_minutes=delay_minutes,
-            reason=reason,
+            delay_minutes=delay_minutes,  # type: ignore
+            reason=reason,  # type: ignore
             future=result_future,
         )
 
@@ -369,56 +399,6 @@ class BaseSession(ABC):
             return result
         except asyncio.TimeoutError:
             return await self.text("sleep_decision.timeout")
-
-    async def request_action(self, do: str, duration: Optional[int] = None) -> str:
-        """
-        向意识会话申请执行一个动作
-
-        Args:
-            do: 想要做的事的名字
-            duration: 建议的持续时间（分钟），可选
-
-        Returns:
-            意识会话的决定结果
-        """
-        from ..ego import moonlark_main
-
-        result_future = asyncio.get_event_loop().create_future()
-
-        await moonlark_main.submit_action_decision(
-            session_id=self.session_id,
-            do=do,
-            duration=duration,
-            future=result_future,
-        )
-
-        try:
-            result = await asyncio.wait_for(result_future, timeout=120)
-            return result
-        except asyncio.TimeoutError:
-            return await self.text("request_action.timeout")
-
-    async def request_sleep(self) -> str:
-        """
-        向意识会话申请睡觉
-
-        Returns:
-            意识会话的决定结果
-        """
-        from ..ego import moonlark_main
-
-        result_future = asyncio.get_event_loop().create_future()
-
-        await moonlark_main.submit_sleep_request(
-            session_id=self.session_id,
-            future=result_future,
-        )
-
-        try:
-            result = await asyncio.wait_for(result_future, timeout=120)
-            return result
-        except asyncio.TimeoutError:
-            return await self.text("request_sleep.timeout")
 
     async def process_timer(self) -> None:
         dt = datetime.now()
@@ -440,7 +420,7 @@ class BaseSession(ABC):
                     delete(Timer).where(
                         Timer.session_id == self.session_id,
                         Timer.trigger_time <= dt,
-                    )
+                    ),
                 )
                 await db_session.commit()
 
@@ -460,19 +440,27 @@ class BaseSession(ABC):
                         "id": timer_id,
                         "trigger_time": row.trigger_time,
                         "description": row.description,
-                    }
+                    },
                 )
             if rows:
                 logger.info(f"Restored {len(rows)} timers for session {self.session_id}")
 
-    async def get_cached_messages_string(self, length: int = 50, include_self_message: bool = False) -> str:
+    async def get_cached_messages_string(
+        self,
+        length: int = 50,
+        include_self_message: bool = False,
+        exclude_content_prefixes: Optional[tuple[str, ...]] = None,
+    ) -> str:
         messages = []
         for message in self.cached_messages:
             # 根据 include_self_message 参数决定是否包含自己的消息
             if not include_self_message and message.get("self", False):
                 continue
+            content = message.get("content", "")
+            if exclude_content_prefixes and content.startswith(exclude_content_prefixes):
+                continue
             messages.append(
-                f"[{message['send_time'].strftime('%H:%M:%S')}][{message['nickname']}]: {message['content']}"
+                f"[{message['send_time'].strftime('%H:%M:%S')}][{message['nickname']}]: {content}",
             )
         # 只返回最近的 length 条消息
         return "\n".join(messages[-length:])
@@ -508,7 +496,7 @@ class BaseSession(ABC):
                     session_id=self.session_id,
                     trigger_time=trigger_time,
                     description=description,
-                )
+                ),
             )
             await db_session.commit()
 

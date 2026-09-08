@@ -1,14 +1,26 @@
 description: |
-  执行一个自主活动（如学习、研究、查找资料等）。
-  **调用时机参考：**
-  - 想要学习新知识或研究某个主题
-  - 需要通过 Agent 工具（搜索、浏览网页等）完成的任务
-  - 活动必须具体，例如"学习 CSS Flexbox 布局"而不是"学习 CSS"
-  - 同一时间只能进行一个活动
+  执行一个自主的动作，这些动作在聊天之外，大多指向你在现实中想要做的事（如睡觉、自主活动、写博客等）。
+  **何时调用**：当你被要求"去做某事"时、或感到犯困需要睡觉时调用。
+  
+  使用 type 参数指定要请求的动作类型：
+  - start_self_action：让 Moonlark 进行一段时间的自主活动
+  - start_blog：让 Moonlark 写一篇博客日记
+  - sleep：让 Moonlark 去睡觉休息
+  提交请求后会等待 Moonlark 决定是否接受。
 parameters:
-  - name: activity
-    description: |
-      活动的具体描述，必须足够具体。
-      例如："学习 CSS Flexbox 布局"、"研究 2024 年最新的自动驾驶算法"、"查找 YoASOBI 新单曲的信息"
+  - name: type
+    description: "要请求的动作类型"
+    type: string
+    required: true
+    enum:
+      - start_self_action
+      - start_blog
+      - sleep
+  - name: info
+    description: "动作的补充说明。例如 sleep 时写打算睡多久，start_self_action 时写想做什么。"
+    type: string
+    required: true
+  - name: reason
+    description: "请求此动作的原因"
     type: string
     required: true

@@ -2,6 +2,7 @@ import random
 from fractions import Fraction
 from ....types import Question
 from ....__main__ import lang
+from .options import build_options, fraction_distractors, int_distractors
 
 
 async def generate_question(user_id: str) -> Question:
@@ -17,16 +18,27 @@ async def generate_question(user_id: str) -> Question:
     match question_type:
         case 1 | 3:
             answer = a * b
+            int_answer = True
         case _:
             answer = a / b
-    if int(answer) != answer:
-        fraction = Fraction(answer).limit_denominator()
-        answer = str(answer).replace(".", r"\.")
-        answer = f"({answer}|{fraction})"
+            int_answer = False
+    if int_answer:
+        answer_value: int = int(answer)
+        distractors = int_distractors(answer_value)
+
+        async def verify(string: str) -> bool:
+            return string.strip() == str(answer_value)
+
     else:
-        answer = int(answer)
+        answer_value = Fraction(answer).limit_denominator()
+        distractors = fraction_distractors(answer_value)
 
-    async def verify(string: str) -> bool:
-        return string.strip() == str(answer)
+        async def verify(string: str) -> bool:
+            # 同时接受小数与最简分数形式
+            return string.strip() in {str(answer_value), str(answer)}
 
-    return {"question": question, "answer": verify}
+    return {
+        "question": question,
+        "answer": verify,
+        "options": build_options(str(answer_value), distractors),
+    }

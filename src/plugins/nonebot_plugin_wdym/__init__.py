@@ -1,5 +1,5 @@
 #  Moonlark - A new ChatBot
-#  Copyright (C) 2025  Moonlark Development Team
+#  Copyright (C) 2026  Moonlark Development Team
 #
 #  This program is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU Affero General Public License as published
@@ -31,7 +31,6 @@ require("nonebot_plugin_larkuser")
 require("nonebot_plugin_htmlrender")
 require("nonebot_plugin_openai")
 require("nonebot_plugin_orm")
-require("nonebot_plugin_alconna")
 require("nonebot_plugin_message_summary")
 require("nonebot_plugin_chat")
 

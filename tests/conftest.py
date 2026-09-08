@@ -1,3 +1,5 @@
+import os
+
 import pytest
 import nonebot
 from pytest_asyncio import is_async_test
@@ -5,6 +7,9 @@ from pytest_asyncio import is_async_test
 # 导入适配器
 from nonebot.adapters.console import Adapter as ConsoleAdapter
 from nonebot.adapters.onebot.v11 import Adapter as OneBotV11Adapter
+
+os.environ["SQLALCHEMY_DATABASE_URL"] = "sqlite+aiosqlite://"
+os.environ["ALEMBIC_STARTUP_CHECK"] = "False"
 
 
 def pytest_collection_modifyitems(items: list[pytest.Item]):

@@ -1,5 +1,5 @@
 #  Moonlark - A new ChatBot
-#  Copyright (C) 2025  Moonlark Development Team
+#  Copyright (C) 2026  Moonlark Development Team
 #
 #  This program is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU Affero General Public License as published
@@ -29,3 +29,4 @@ from .vm import (
 )
 from .bilibili import describe_bilibili_video, resolve_b23_url
 from .query_history import fetch_history_messages
+from .weather import get_weather

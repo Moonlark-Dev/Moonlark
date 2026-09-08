@@ -14,7 +14,7 @@ from nonebot_plugin_alconna import (
 )
 from nonebot_plugin_chat.config import config
 from nonebot_plugin_chat.core.session import create_private_session, get_group_session_forced, get_session_directly
-from nonebot_plugin_chat.models import RuaData
+from nonebot_plugin_chat.models import ChatGroup, RuaData
 from nonebot_plugin_chat.types import RuaAction
 from nonebot_plugin_larkuser.utils.nickname import get_nickname
 from nonebot_plugin_larkuser.utils.user import get_user
@@ -73,6 +73,12 @@ async def _get_target(event: Event) -> Target:
     return get_target(event)
 
 
+async def is_chat_group_enabled(group_id: str) -> bool:
+    """检查群聊是否启用了 Chat 功能"""
+    async with get_session() as session:
+        return bool((chat_group := await session.get(ChatGroup, {"group_id": group_id})) and chat_group.enabled)
+
+
 async def execute_rua(
     bot: Bot,
     event: Event,
@@ -82,6 +88,13 @@ async def execute_rua(
     action: RuaAction,
     is_private: bool = False,
 ) -> None:
+    if not is_private and not await is_chat_group_enabled(group_id):
+        # Chat 未启用的群：只允许「戳一戳」动作，使用随机默认回复（不请求 LLM）
+        if action["name"] != "poke":
+            await lang.finish("rua.chat_disabled_only_poke", user_id)
+        await lang.send("rua.chat_disabled_replies", user_id)
+        await increment_rua_count(user_id)
+        return
     nickname = await get_nickname(user_id, bot, event)
     message_id = get_message_id(event)
 

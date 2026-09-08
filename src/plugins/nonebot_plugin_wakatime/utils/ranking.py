@@ -33,7 +33,7 @@ async def get_sorted_ranking_data() -> list[RankingData]:
 
 class WakaTimeRanking(WebRanking):
 
-    async def get_sorted_data(self) -> list[RankingData]:
+    async def get_sorted_data(self, user_id: str) -> list[RankingData]:
         return await get_sorted_ranking_data()
 
 

@@ -12,7 +12,6 @@ commands:
       - help.usage6
       - help.usage7
       - help.usage8
-      - help.usage9
     category: setting
   present:
     description: present_help.description

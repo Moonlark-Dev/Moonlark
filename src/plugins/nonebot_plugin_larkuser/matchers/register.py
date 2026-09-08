@@ -1,5 +1,5 @@
 #  Moonlark - A new ChatBot
-#  Copyright (C) 2025  Moonlark Development Team
+#  Copyright (C) 2026  Moonlark Development Team
 #
 #  This program is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU Affero General Public License as published
@@ -15,7 +15,10 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
+from typing import Optional
+
 from nonebot import on_command
+from nonebot.adapters import Bot, Event
 from nonebot_plugin_orm import async_scoped_session
 
 
@@ -31,9 +34,11 @@ register = on_command("register")
 @register.handle()
 async def _(
     session: async_scoped_session,
+    bot: Bot,
     # message: Message = CommandArg(),
     user: UserInfo = EventUserInfo(),
     user_id: str = get_user_id(),
+    event: Optional[Event] = None,
 ) -> None:
-    nickname = await register_user(session, user_id, user)
+    nickname = await register_user(session, user_id, user, bot, event)
     await lang.finish("welcome", user_id, nickname or f"用户-{user_id}")

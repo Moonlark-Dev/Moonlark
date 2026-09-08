@@ -13,6 +13,22 @@ bcsu:
   broadcast_sent: "广播已发送至 {0} 个群聊"
   start: 已开始推送广播内容
 
+help:
+  description: 广播管理
+  details: 发送和管理广播消息
+  usage1: bcsu (查看广播管理菜单)
+  usage2: bcsu <内容> (设置广播内容)
+  usage3: bcsu clear (清除广播内容)
+  usage4: bcsu preview (预览广播内容)
+  usage5: bcsu submit (提交并发送广播)
+
+bc_help:
+  description: 广播设置
+  details: 开启或关闭所在群聊的广播接收
+  usage1: bc (查看广播状态)
+  usage2: bc on (开启广播)
+  usage3: bc off (关闭广播)
+
 bc:
   group_only: "此命令只能在群聊中使用"
   enabled: "广播功能已启用"

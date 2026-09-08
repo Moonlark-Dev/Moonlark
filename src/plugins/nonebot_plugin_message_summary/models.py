@@ -1,13 +1,17 @@
 from datetime import datetime
 from nonebot_plugin_orm import Model
 from sqlalchemy.orm import mapped_column, Mapped
-from sqlalchemy import String, Text, Integer, DateTime
+from sqlalchemy import String, Text, Integer, DateTime, BINARY, LargeBinary
 from typing_extensions import TypedDict
 
 
 class GroupMessage(Model):
     id_: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     message: Mapped[str] = mapped_column(Text())
+    message_hash: Mapped[bytes] = mapped_column(
+        BINARY(32).with_variant(LargeBinary(32), "sqlite"),
+        nullable=True,
+    )
     sender_nickname: Mapped[str] = mapped_column(String(128))
     user_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
     group_id: Mapped[str] = mapped_column(String(128))

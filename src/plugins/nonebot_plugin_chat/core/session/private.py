@@ -37,7 +37,7 @@ class PrivateSession(BaseSession):
             else:
                 self.nickname = user_info["nickname"]
             self.user_info = AdapterUserInfo(
-                nickname=self.nickname, sex=user_info["sex"], role="user", join_time=0, card=None
+                nickname=self.nickname, sex=user_info.get("sex", "unknown"), role="user", join_time=0, card=None
             )
         else:
             self.nickname = ml_user.get_nickname()

@@ -1,5 +1,5 @@
 #  Moonlark - A new ChatBot
-#  Copyright (C) 2025  Moonlark Development Team
+#  Copyright (C) 2026  Moonlark Development Team
 #
 #  This program is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU Affero General Public License as published
@@ -17,43 +17,61 @@
 
 import json
 
-from nonebot_plugin_chat.core.session import get_session_directly, group_disable, reset_session, groups
-from nonebot_plugin_chat.core.session.base import BaseSession
-from nonebot.adapters.qq import Bot as BotQQ
-from nonebot.params import CommandArg
-
 from nonebot import on_command
-from nonebot.adapters import Bot, Message
-from nonebot_plugin_larkutils import get_user_id, get_group_id
-from nonebot_plugin_orm import async_scoped_session
+from nonebot.adapters import Bot, Event, Message
 from nonebot.matcher import Matcher
+from nonebot.params import CommandArg
+from nonebot_plugin_larkutils import get_group_id, get_user_id
+from nonebot_plugin_larkutils.user import private_message
+from nonebot_plugin_orm import async_scoped_session
+
+from nonebot_plugin_chat.core.session import get_session_directly, group_disable, groups, reset_session
+from nonebot_plugin_chat.core.session.base import BaseSession
+
 from ..lang import lang
-from ..models import ChatGroup
+from ..models import ChatGroup, PrivateChatConfig
 from ..utils.timing_stats import timing_stats_manager
+
+PRIVATE_CHAT_COMMANDS = ("switch", "on", "off", "reset")
 
 
 class CommandHandler:
-
     def __init__(
-        self, mathcer: Matcher, bot: Bot, session: async_scoped_session, message: Message, group_id: str, user_id: str
+        self,
+        mathcer: Matcher,
+        bot: Bot,
+        session: async_scoped_session,
+        message: Message,
+        event: Event,
+        group_id: str,
+        user_id: str,
     ):
         self.matcher = mathcer
         self.bot = bot
         self.session = session
+        self.event = event
         self.group_id = group_id
         self.user_id = user_id
         self.argv = message.extract_plain_text().split(" ")
+        self.is_private_chat = False
         self.group_config = ChatGroup(group_id=self.group_id, enabled=False)
+        self.private_config: PrivateChatConfig | None = None
 
     async def setup(self) -> "CommandHandler":
-        if isinstance(self.bot, BotQQ):
-            await lang.finish("command.not_available", self.user_id)
+        self.is_private_chat = await private_message(self.event)
+        if self.is_private_chat:
+            self.private_config = await self.session.get(PrivateChatConfig, {"user_id": self.user_id})
+            return self
         self.group_config = (await self.session.get(ChatGroup, {"group_id": self.group_id})) or ChatGroup(
-            group_id=self.group_id, enabled=False
+            group_id=self.group_id,
+            enabled=False,
         )
         return self
 
     def is_group_enabled(self) -> bool:
+        if self.is_private_chat:
+            # 私聊 Chat 默认开启，未创建过配置的用户视为已启用
+            return self.private_config.enabled if self.private_config is not None else True
         return self.group_config.enabled
 
     async def handle_switch(self) -> None:
@@ -67,15 +85,31 @@ class CommandHandler:
         await self.session.commit()
 
     async def handle_off(self) -> None:
+        if self.is_private_chat:
+            await self.handle_private_switch(False)
+            return
         self.group_config.enabled = False
         await self.merge_group_config()
         await group_disable(self.group_id)
         await lang.finish("command.switch.disabled", self.user_id)
 
     async def handle_on(self) -> None:
+        if self.is_private_chat:
+            await self.handle_private_switch(True)
+            return
         self.group_config.enabled = True
         await self.merge_group_config()
         await lang.finish("command.switch.enabled", self.user_id)
+
+    async def handle_private_switch(self, enabled: bool) -> None:
+        if self.private_config is None:
+            self.private_config = PrivateChatConfig(user_id=self.user_id, enabled=enabled)
+        else:
+            self.private_config.enabled = enabled
+        await self.session.merge(self.private_config)
+        await self.session.commit()
+        key = "command.switch_private.enabled" if enabled else "command.switch_private.disabled"
+        await lang.finish(key, self.user_id)
 
     async def handle_desire(self) -> None:
         session = await self.get_group_session()
@@ -220,18 +254,18 @@ class CommandHandler:
             await lang.finish("command.no_argv", self.user_id)
 
     async def handle_ignore_mention(self) -> None:
-        if len(self.argv) < 3:
+        if len(self.argv) < 2:
             await lang.finish("command.no_argv", self.user_id)
 
-        action = self.argv[2]
+        action = self.argv[1]
         ignore_list = json.loads(self.group_config.ignore_mention_user)
 
         if action == "list":
             await lang.finish("command.ignore_mention.list", self.user_id, ", ".join(ignore_list))
 
-        if len(self.argv) < 4:
+        if len(self.argv) < 3:
             await lang.finish("command.no_argv", self.user_id)
-        target_id = self.argv[3]
+        target_id = self.argv[2]
 
         if action == "add":
             if target_id not in ignore_list:
@@ -250,24 +284,27 @@ class CommandHandler:
             else:
                 await lang.finish("command.ignore_mention.not_found", self.user_id, target_id)
 
-    async def handle_dropping(self) -> None:
-        """处理礼物掉落开关命令"""
+    async def handle_mode(self) -> None:
+        """处理互动模式切换命令"""
         if len(self.argv) < 2:
+            await lang.finish(
+                "command.mode.current",
+                self.user_id,
+                await lang.text(f"command.mode.name.{self.group_config.interaction_mode}", self.user_id),
+            )
+        mode = self.argv[1]
+        if mode not in ("passionate", "standard", "silent"):
             await lang.finish("command.no_argv", self.user_id)
-        action = self.argv[1]
-        if action == "on":
-            self.group_config.dropping_enabled = True
-            await self.merge_group_config()
-            await lang.finish("command.dropping.enabled", self.user_id)
-        elif action == "off":
-            self.group_config.dropping_enabled = False
-            await self.merge_group_config()
-            await lang.finish("command.dropping.disabled", self.user_id)
-        else:
-            await lang.finish("command.no_argv", self.user_id)
+        mode_name = await lang.text(f"command.mode.name.{mode}", self.user_id)
+        if mode == self.group_config.interaction_mode:
+            await lang.finish("command.mode.unchanged", self.user_id, mode_name)
+        self.group_config.interaction_mode = mode
+        await self.merge_group_config()
+        await reset_session(self.group_id)
+        await lang.finish("command.mode.changed", self.user_id, mode_name)
 
     async def handle_compact(self) -> None:
-        """处理 compact 命令：生成即时记忆并重置消息队列"""
+        """处理 compact 命令：分析待定笔记并重置消息队列"""
         from nonebot_plugin_larkutils.config import config as lark_config
 
         # 验证 superuser
@@ -283,20 +320,24 @@ class CommandHandler:
 
         session = groups[target_session_id]
 
-        # 如果有缓存消息，先生成即时记忆
+        # 如果有缓存消息，先分析待定笔记
         if session.cached_messages:
-            await session.instant_memory_manager.generate()
-            await lang.send("command.compact.memory_generated", self.user_id)
+            await session.processor._analyze_pending_notes()
+            await lang.send("command.compact.pending_notes_analyzed", self.user_id)
 
         # 重置消息队列
         await session.processor.openai_messages._reset_and_clear_db(target_session_id)
 
-        # 重新注入即时记忆
-        await session.processor.openai_messages._inject_instant_memories(target_session_id)
+        # 重新注入待定笔记
+        await session.processor._inject_pending_notes_to_openai_messages()
 
         await lang.finish("command.compact.success", self.user_id, target_session_id)
 
     async def handle(self) -> None:
+        if not self.argv or not self.argv[0]:
+            await lang.finish("command.no_argv", self.user_id)
+        if self.is_private_chat and self.argv[0] not in PRIVATE_CHAT_COMMANDS:
+            await lang.finish("command.private_only_switch", self.user_id)
         match self.argv[0]:
             case "switch":
                 await self.handle_switch()
@@ -322,8 +363,8 @@ class CommandHandler:
                 await self.handle_stop()
             case "stats":
                 await self.handle_stats()
-            case "dropping":
-                await self.handle_dropping()
+            case "mode":
+                await self.handle_mode()
             case "compact":
                 await self.handle_compact()
             case _:
@@ -344,10 +385,11 @@ async def _(
     matcher: Matcher,
     bot: Bot,
     session: async_scoped_session,
+    event: Event,
     message: Message = CommandArg(),
     group_id: str = get_group_id(),
     user_id: str = get_user_id(),
 ) -> None:
-    handler = CommandHandler(matcher, bot, session, message, group_id, user_id)
+    handler = CommandHandler(matcher, bot, session, message, event, group_id, user_id)
     await handler.setup()
     await handler.handle()

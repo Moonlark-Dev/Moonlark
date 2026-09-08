@@ -17,6 +17,7 @@ async def create_blog_post(title: str, content: str) -> BlogPost:
     Returns:
         The created BlogPost object
     """
+    title = title.strip() if title and title.strip() else "今日的博客"
     blog_post = BlogPost(title=title, content=content, create_at=datetime.now())
 
     async with get_session() as session:

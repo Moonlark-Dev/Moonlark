@@ -1,0 +1,30 @@
+{% extends base %}
+
+{% block body %}
+<div class="row">
+    <div class="col-12" style="text-align:center;font-size:20px;margin-bottom:10px;">
+        ฅ^•ﻌ•^ฅ Moonlark 在这里喵~！
+    </div>
+</div>
+<hr>
+<div class="row">
+    <div class="col-12">
+        {% for c in categories %}
+        <div style="margin: 8px 0; display: flex; align-items: center; gap: 8px;">
+            <span class="badge bg-secondary" style="font-size: 14px;">{{ c.id }}</span>
+            <span style="flex-grow: 1;">{{ c.name }}</span>
+            <span class="badge bg-info rounded-pill" style="font-size: 12px;">{{ c.count }} 个指令</span>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+<hr>
+<p style="color: #666;">{{ text.menu_category_hint }}</p>
+<hr>
+<div class="row">
+    <div class="col-12">
+        <h5>{{ text.random_title }}</h5>
+        <p><span class="badge bg-info">{{ random_command.name }}</span> {{ random_command.description }}</p>
+    </div>
+</div>
+{% endblock body %}

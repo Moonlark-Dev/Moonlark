@@ -12,6 +12,15 @@ from collections.abc import Sequence
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy import (
+    bindparam,
+    column,
+    delete as sa_delete,
+    func,
+    insert as sa_insert,
+    select,
+    table,
+)
 
 # revision identifiers, used by Alembic.
 revision: str = "b4c5d6e7f8a9"
@@ -31,10 +40,10 @@ def upgrade(name: str = "") -> None:
     bind = op.get_bind()
     dialect = bind.dialect.name
     if dialect == "mysql":
-        table_check = f"SHOW TABLES LIKE '{DIARYPOST_TABLE}'"
+        table_check = sa.text("SHOW TABLES LIKE :table_name")
     else:
-        table_check = f"SELECT name FROM sqlite_master WHERE type='table' AND name='{DIARYPOST_TABLE}'"
-    result = bind.execute(sa.text(table_check)).fetchall()
+        table_check = sa.text("SELECT name FROM sqlite_master WHERE type='table' AND name=:table_name")
+    result = bind.execute(table_check, {"table_name": DIARYPOST_TABLE}).fetchall()
     if result:
         # 表已存在（之前迁移部分执行过），跳过
         return
@@ -55,23 +64,37 @@ def upgrade(name: str = "") -> None:
     # 2. 将 note 表中 context_id='moonlark_diary' 的数据迁移到 diarypost
     # created_time 是 Float 类型的 Unix 时间戳，需要转换为 DateTime
     # MySQL 用 FROM_UNIXTIME()，SQLite 用 datetime(..., 'unixepoch', 'localtime')
+    diarypost = table(
+        DIARYPOST_TABLE,
+        column("content"),
+        column("keywords"),
+        column("created_at"),
+        column("expire_at"),
+    )
+    note = table(
+        NOTE_TABLE,
+        column("content"),
+        column("keywords"),
+        column("created_time"),
+        column("expire_time"),
+        column("context_id"),
+    )
     if dialect == "mysql":
-        created_at_expr = "FROM_UNIXTIME(created_time)"
+        created_at_col = func.from_unixtime(note.c.created_time)
     else:
-        created_at_expr = "datetime(created_time, 'unixepoch', 'localtime')"
-    op.execute(f"""
-        INSERT INTO {DIARYPOST_TABLE} (content, keywords, created_at, expire_at)
-        SELECT
-            content,
-            COALESCE(keywords, ''),
-            {created_at_expr},
-            expire_time
-        FROM {NOTE_TABLE}
-        WHERE context_id = '{DIARY_CONTEXT_ID}'
-    """)
+        created_at_col = func.datetime(note.c.created_time, "unixepoch", "localtime")
+    select_stmt = select(note.c.content, func.coalesce(note.c.keywords, ""), created_at_col, note.c.expire_time).where(
+        note.c.context_id == bindparam("context_id")
+    )
+    insert_stmt = sa_insert(diarypost).from_select(
+        ["content", "keywords", "created_at", "expire_at"],
+        select_stmt,
+    )
+    bind.execute(insert_stmt, {"context_id": DIARY_CONTEXT_ID})
 
     # 3. 删除已迁移的 note 记录
-    op.execute(f"DELETE FROM {NOTE_TABLE} WHERE context_id = '{DIARY_CONTEXT_ID}'")
+    delete_stmt = sa_delete(note).where(note.c.context_id == bindparam("context_id"))
+    bind.execute(delete_stmt, {"context_id": DIARY_CONTEXT_ID})
 
 
 def downgrade(name: str = "") -> None:

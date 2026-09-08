@@ -1,5 +1,5 @@
 #  Moonlark - A new ChatBot
-#  Copyright (C) 2025  Moonlark Development Team
+#  Copyright (C) 2026  Moonlark Development Team
 #
 #  This program is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU Affero General Public License as published
@@ -74,7 +74,7 @@ def reverse_cave_message(message: UniMessage) -> UniMessage:
 async def decode_cave(
     cave: CaveData, session: async_scoped_session, user_id: str, use_special: bool = False
 ) -> UniMessage:
-    message = UniMessage(await lang.text("render.header", user_id, cave.id))
+    message = UniMessage([Text(await lang.text("render.header", user_id, cave.id)), Text("\n")])
     message.extend(await parse_content(cave.content, session))
     message.append(Text(await lang.text("render.footer", user_id, (await get_user(cave.author)).get_nickname())))
     if use_special:

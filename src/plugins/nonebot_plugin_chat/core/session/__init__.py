@@ -98,14 +98,20 @@ async def reset_session(session_id: str) -> bool:
 
     session = groups.pop(session_id)
     session.processor.enabled = False
+    session.processor.pending_notes.clear()
+    session.processor._shown_pending_note_ids.clear()
+    session.processor.unanalyzed_message_count = 0
     if session.processor.loop_task:
         session.processor.loop_task.cancel()
+    if session.processor._processing_task:
+        session.processor._processing_task.cancel()
     if session.processor.openai_messages.fetcher_task:
         session.processor.openai_messages.fetcher_task.cancel()
 
     # 清除消息队列中的所有消息
-    session.processor.openai_messages.messages.clear()
-    session.processor.openai_messages.inserted_messages.clear()
+    if session.processor.openai_messages.fetcher is not None:
+        session.processor.openai_messages.fetcher.session.messages.clear()
+        session.processor.openai_messages.fetcher.session.insert_message_queue.clear()
 
     # 删除数据库中的缓存
     async with get_session() as db_session:

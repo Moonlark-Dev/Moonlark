@@ -1,3 +1,0 @@
-plugin: 'wtfis'
-commands:
-  'wtfis': help;1;community

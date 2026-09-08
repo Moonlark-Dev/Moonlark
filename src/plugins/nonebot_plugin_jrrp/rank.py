@@ -22,7 +22,11 @@ async def get_user_list() -> AsyncGenerator[tuple[str, int], None]:
 async def get_rank(sender_id: str, reverse: bool = False) -> NoReturn:
     data = sorted([data async for data in get_user_list()], key=lambda x: x[1], reverse=not reverse)
     templates = {}
-    for i in range(min(3, len(data))):
+    for i in range(3):
+        if i >= len(data):
+            # Templates always render three podium slots; fill missing ones with empty placeholders
+            templates[f"luckiest_{i + 1}"] = {"user_id": "", "value": "", "avatar": None, "nickname": ""}
+            continue
         user_id = data[i][0]
         user = await get_user(user_id)
         templates[f"luckiest_{i + 1}"] = {

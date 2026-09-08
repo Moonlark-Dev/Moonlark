@@ -1,0 +1,9 @@
+plugin: shop
+commands:
+  shop:
+    description: help.description
+    details: help.details
+    usages:
+      - help.usage1
+      - help.usage2
+    category: community

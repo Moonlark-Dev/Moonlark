@@ -1,6 +1,7 @@
 import random
 from ....types import Question
 from ....__main__ import lang
+from .options import build_options, int_distractors
 
 
 async def generate_question(user_id: str) -> Question:
@@ -26,4 +27,8 @@ async def generate_question(user_id: str) -> Question:
     async def verify(string: str) -> bool:
         return string.strip() == str(answer)
 
-    return {"question": question, "answer": verify}
+    return {
+        "question": question,
+        "answer": verify,
+        "options": build_options(answer, int_distractors(answer)),
+    }

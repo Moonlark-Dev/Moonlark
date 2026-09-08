@@ -1,5 +1,5 @@
 #  Moonlark - A new ChatBot
-#  Copyright (C) 2025  Moonlark Development Team
+#  Copyright (C) 2026  Moonlark Development Team
 #
 #  This program is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU Affero General Public License as published
@@ -15,4 +15,4 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
-from . import cave, get, post, remove, restore, statisics
+from . import cave, get, post, prompt, remove, restore, statisics

@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Any, Literal, Optional, Protocol
-from typing_extensions import TypedDict
+from typing_extensions import NotRequired, TypedDict
 
 from nonebot_plugin_chat.enums import MoodEnum
 
@@ -15,10 +15,16 @@ class CachedMessage(TypedDict):
     content: str
     nickname: str
     user_id: str
+    platform_user_id: str
     send_time: datetime
     images: list[bytes]
     self: bool
     message_id: str
+    to_me: bool
+    triggered_reply: bool
+    mq_text: NotRequired[
+        str
+    ]  # 投递到 MessageQueue 的完整文本（含 additional_info），仅在 process_messages 中未阻塞时写入
 
 
 class GetTextFunc(Protocol):

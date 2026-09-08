@@ -17,7 +17,7 @@ description: |
 
   使用提示: 把你需要记住的核心信息整理成简洁的句子放进 text 参数里，这个工具的目的是帮助你更好地维系和群友的关系。
 parameters:
-  - name: text_arg
+  - name: text
     description: "要添加的笔记内容。"
     type: string
     required: true

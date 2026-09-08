@@ -1,5 +1,5 @@
 #  Moonlark - A new ChatBot
-#  Copyright (C) 2025  Moonlark Development Team
+#  Copyright (C) 2026  Moonlark Development Team
 #
 #  This program is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU Affero General Public License as published
@@ -21,8 +21,10 @@ from datetime import datetime
 from typing import Optional
 
 from nonebot import logger
+from nonebot.adapters import Bot, Event
+from nonebot.adapters.qq.bot import Bot as QQBot
 from nonebot.exception import ActionFailed
-from nonebot_plugin_alconna import UniMessage
+from nonebot_plugin_alconna import Button, UniMessage
 from nonebot_plugin_orm import async_scoped_session
 from nonebot_plugin_userinfo import UserInfo
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -39,24 +41,34 @@ from ..user.utils import is_user_registered
 async def send_eula_screenshot(user_id: str) -> None:
     try:
         await UniMessage().text(await lang.text("command.tip_without_url", user_id)).image(
-            raw=await screenshot("https://github.com/orgs/Moonlark-Dev/discussions/3", 1), name="image.png"
+            raw=await screenshot("https://github.com/orgs/Moonlark-Dev/discussions/3", 1),
+            name="image.png",
         ).send()
     except Exception:
         await lang.send("command.tip_failed_to_send_content", user_id)
         logger.error(f"以截图形式发送 EUAL 失败: {traceback.format_exc()}")
 
 
-async def get_nickname(user: UserInfo, user_id: str) -> tuple[Optional[str], bool]:
+async def get_nickname(user: UserInfo, user_id: str, event: Optional[Event] = None) -> tuple[Optional[str], bool]:
     if user.user_name:
         return user.user_name, False
     prompt_text = await lang.text("input.user_nickname", user_id, user_id)
-    for i in range(3):
+    events: list[Event] = []
+    for _ in range(3):
         try:
             nickname = await prompt(
-                prompt_text, user_id, checker=lambda msg: len(msg) <= 27, ignore_error_details=False, allow_quit=False
+                prompt_text,
+                user_id,
+                checker=lambda msg: len(msg) <= 27,
+                ignore_error_details=False,
+                allow_quit=False,
+                event=event,
+                events=events,
             )
         except PromptTimeout:
             return None, False
+        if events:
+            event = events[-1]
         review_result = await review_text(nickname)
         if review_result["conclusion"]:
             return nickname, True
@@ -65,7 +77,13 @@ async def get_nickname(user: UserInfo, user_id: str) -> tuple[Optional[str], boo
     return None, False
 
 
-async def register_user(session: AsyncSession | async_scoped_session, user_id: str, user: UserInfo) -> str:
+async def register_user(
+    session: AsyncSession | async_scoped_session,
+    user_id: str,
+    user: UserInfo,
+    bot: Bot | None = None,
+    event: Optional[Event] = None,
+) -> str:
     if await is_user_registered(user_id):
         await lang.finish("command.registered", user_id)
     try:
@@ -73,13 +91,34 @@ async def register_user(session: AsyncSession | async_scoped_session, user_id: s
     except ActionFailed:
         logger.warning("发送最终许可协议 URL 失败，尝试以截图形式发送")
         await send_eula_screenshot(user_id)
+    if isinstance(bot, QQBot):
+        confirm_msg = (
+            UniMessage()
+            .style(
+                await lang.text("command.confirm_eula_markdown", user_id),
+                "markdown",
+            )
+            .keyboard(
+                Button("enter", await lang.text("command.button_yes", user_id), text="y"),
+                Button("enter", await lang.text("command.button_no", user_id), text="n"),
+            )
+        )
+    else:
+        confirm_msg = await lang.text("command.confirm_eula", user_id)
+    events: list[Event] = []
     if not await prompt(
-        await lang.text("command.confirm_eula", user_id), user_id, parser=lambda t: t.strip().lower().startswith("y")
+        confirm_msg,
+        user_id,
+        parser=lambda t: t.strip().lower().startswith("y"),
+        event=event,
+        events=events,
     ):
         await lang.finish("command.cancel", user_id)
+    if events:
+        event = events[-1]
     u = UserData(
         user_id=user_id,
-        nickname=(d := await get_nickname(user, user_id))[0],
+        nickname=(d := await get_nickname(user, user_id, event))[0],
         register_time=datetime.now(),
         config=json.dumps({"lock_nickname": d[1]}),
     )

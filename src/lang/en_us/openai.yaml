@@ -29,3 +29,35 @@ model:
       /model <模型名> - 更换默认模型
       /model <模型名> <应用标识> - 设置应用模型
       /model :default: <应用标识> - 删除应用配置
+
+ai_whitelist:
+  no_permission: "权限不足：只有 superuser 可以使用此命令"
+  usage: |
+    📝 AI 白名单管理
+
+    使用方法:
+      /ai_whitelist - 查看白名单列表
+      /ai_whitelist add <群号> - 添加群聊到白名单
+      /ai_whitelist remove <群号> - 从白名单移除群聊
+      /ai_whitelist enable <群号> - 启用群聊 AI 功能
+      /ai_whitelist disable <群号> - 禁用群聊 AI 功能
+  empty: "📋 白名单为空"
+  list: |
+    📋 AI 白名单列表
+
+    {0}
+
+    共 {1} 个群聊
+  already_exists: "⚠️ 群聊 {0} 已在白名单中"
+  added: "✅ 已将群聊 {0} 添加到白名单"
+  not_found: "⚠️ 未找到群聊 {0}"
+  removed: "✅ 已将群聊 {0} 从白名单移除"
+  enabled: "✅ 已启用群聊 {0} 的 AI 功能"
+  disabled: "✅ 已禁用群聊 {0} 的 AI 功能"
+
+help_ai_whitelist:
+  description: AI 白名单管理
+  details: 管理可使用 AI 功能的群聊白名单（仅限超级用户）
+  usage1: ai_whitelist (查看白名单)
+  usage2: "ai_whitelist add <群号> (添加)"
+  usage3: "ai_whitelist remove <群号> (移除)"

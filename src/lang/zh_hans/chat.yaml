@@ -113,9 +113,18 @@ command:
   switch:
     enabled: 已启用
     disabled: 已禁用
-  dropping:
-    enabled: 已启用礼物掉落
-    disabled: 已禁用礼物掉落
+  switch_private:
+    enabled: 私聊 Chat 功能已启用
+    disabled: 私聊 Chat 功能已禁用
+  private_only_switch: 私聊中仅支持 chat on / chat off / chat switch / chat reset 命令。
+  mode:
+    name:
+      passionate: 热情
+      standard: 标准
+      silent: 安静
+    current: 当前互动模式：{}。可用 {__prefix__}chat mode <passionate|standard|silent> 切换。
+    unchanged: 当前已是{}模式，无需切换。
+    changed: 已切换到{}模式，当前会话的所有上下文已重置。
   no_argv: 无效参数，请使用 {__prefix__}help chat 获取该命令的使用方法！
   desire:
     get: |
@@ -132,13 +141,12 @@ command:
   mute: 🤐(15min)
   unmute: 🔊✔
   done: 完成
-  not_available: 该功能在此节点不可用！
   stop: 已强制停止响应。
   compact:
     no_permission: 权限不足，仅超级用户可以使用此命令。
     not_found: 未找到会话 {}，请确认会话 ID 是否正确。
-    memory_generated: 已生成即时记忆，正在重置消息队列……
-    success: 已压缩会话 {} 的消息队列（即时记忆已保留）。
+    pending_notes_analyzed: 已分析待定笔记，正在重置消息队列……
+    success: 已压缩会话 {} 的消息队列（待定笔记已保留）。
   stats:
     result: |
       📊 Chat 时间统计
@@ -151,7 +159,7 @@ command:
       • 平均抓取用时: {} ({} 次)
       • 平均回应用时: {} ({} 次)
 help:
-  details: 基于 LLM 的主动水群功能，可以尝试用于活跃群气氛。（启用后将会收集、处理、并储存启用群聊的聊天记录和群员的昵称，仅支持非 QQ 官方节点）
+  details: 基于 LLM 的主动水群功能，可以尝试用于活跃群气氛。（启用后将会收集、处理、并储存启用群聊的聊天记录和群员的昵称；在私聊中使用 chat on / chat off 可以开关私聊 Chat）
   description: 主动水群
   usage1: chat switch (切换功能启用状态)
   usage2: chat on (启用功能)
@@ -163,12 +171,16 @@ help:
   usage8: chat block user <add|remove|list> [用户ID] (管理屏蔽用户)
   usage9: chat block keyword <add|remove|list> [关键词] (管理屏蔽关键词)
   usage10: chat block list (查看所有屏蔽项)
-  usage15: chat dropping <on|off> (开关礼物掉落功能)
   usage11: chat ignore-mention <add|remove|list> [用户ID] (管理提及屏蔽用户)
   usage12: chat reset (清除当前会话所有历史消息并重置会话状态)
   usage13: chat stop (强制停止当前正在生成的响应)
   usage14: chat stats (查看时间统计数据)
-  usage16: chat compact [会话ID] (压缩消息队列，生成即时记忆后重置[SU])
+  usage15: chat compact [会话ID] (压缩消息队列，分析待定笔记后重置[SU])
+  usage16: chat mode [passionate|standard|silent] (查看或切换互动模式，切换将重置会话上下文)
+
+pending_note:
+  not_found: 未找到 ID 为 {} 的待定笔记。
+  applied: "已应用待定笔记 #{}: {}"
 
 help_rua:
   description: 互动
@@ -190,6 +202,7 @@ prompt:
     to_me: "{} 戳了戳你。"
     to_other: "{} 戳了戳 {}。"
   reaction: "{} 回应了你的消息“{}”: {}"
+  reaction_other: "{} 回应了 {} 的消息“{}”: {}"
   event_template: |
     [{}]: {}
 
@@ -198,10 +211,8 @@ prompt:
     <additional_info>
     当前 Token: {}
     {}
-    最近做的事:
-    {}
+    困倦度：{}%
     </additional_info>
-  event_additional_info.no_activity: "暂无"
   note:
     format: "- {} (#{}，创建于 {})"
     none: "暂无"
@@ -356,6 +367,13 @@ rua:
   action_list_item: "[{}] {}"
   rank_title: rua 次数排行榜
   rank_no_data: 暂无 rua 数据。
+  chat_disabled_only_poke: 当前群未启用 Chat，本群只能使用「戳一戳」动作喵～
+  chat_disabled_replies:
+    - 你戳了戳 Moonlark。(´,,•ω•,,)♡
+    - 喵呜～被戳到啦！(=ↀωↀ=)
+    - 戳戳戳！Moonlark 的耳朵抖了抖 ฅ^•ﻌ•^ฅ
+    - 哎呀，又被戳了喵～(,,•﹏•,,)
+    - Moonlark 歪头看着你：还要再戳一下吗？
   refusable_hint: "（该动作可被拒绝，交互 ID: {}。如果你不喜欢，可以通过 `deal_interaction_request` 工具躲开。）"
   reply_hint: "[供回复的消息ID: {}]"
   bite_msg: "*Moonlark 躲开了你的手，并咬了一口"
@@ -455,6 +473,16 @@ tools_desc:
   calculate_luck_value:
     user_not_found: "未找到昵称为 {} 的群友。"
     result: "{} 的人品值是 {}。"
+
+ask_ai:
+  processing: "[系统] ask_ai 任务仍在后台处理中（已运行 {} 秒）。"
+  result_prompt: |
+    [事件] 你之前使用 ask_ai 工具处理的请求「{}」已在后台完成，结果如下：
+
+    {}
+  failed_prompt: |
+    [事件] 你之前使用 ask_ai 工具处理的请求「{}」在后台处理失败（错误信息：{}）。
+
 status:
   info: |
     心情：{}
@@ -524,6 +552,18 @@ web_search:
   no_result: "未找到相关搜索结果"
   failed: "搜索请求失败，状态码: {}"
   error: "搜索过程中发生错误: {}"
+
+weather:
+  unavailable: "❌ 天气服务未配置（缺少和风天气 API Key），无法查询天气。"
+  location_not_found: "未找到城市「{}」的位置信息。"
+  failed: "查询「{}」的天气失败，请稍后再试。"
+  now: |
+    📍 {} 当前天气
+    天气：{}
+    温度：{}℃（体感 {}℃）
+    风向：{} {}级
+    湿度：{}%
+    数据更新时间：{}
 
 abbreviation:
   success: "可能的含义如下：\n{}"
@@ -614,9 +654,12 @@ parser:
   image_failed: '[图片: 获取失败]'
   image_without_desc: '[图片({})]'
   poke: '[戳一戳]'
+  emoji: '[表情: {}]'
+  emoji_unknown: '[emoji:{}]'
   forward:
     not_supported: '[合并转发：获取信息失败（不支持）]'
     failed: '[合并转发：获取信息失败（{}）]'
+    too_deep: '[合并转发：嵌套过深，已截断]'
     forward: '[合并转发：{}]'
     summary: '[合并转发（消息过多，已总结）：{}]'
     summary_prompt: |
@@ -624,119 +667,6 @@ parser:
   reply: '[回复: {}]'
   reply_with_sender: '[回复: {} (来自 {})]'
   reply_failed: '[回复: 获取信息失败]'
-
-memory_cache:
-  creator: |
-    你是一位专业的聊天记录总结员，需要以群成员 **Moonlark** 的视角，从群聊记录中提取并记录重要信息。这些记录将作为即时记忆存档，因此必须足够详细，即使脱离原聊天记录也能清晰理解事件全貌。
-
-    **当前时间**：{}
-
-    ---
-
-    ### 输入格式
-    每条消息格式如下（时间格式为 `HH:MM:SS`）：
-    ```
-    [时间][发送者昵称](消息ID): 消息内容
-    ```
-
-    ---
-
-    ### 记录要求
-    你需要从聊天记录中识别并提取重要信息，包括但不限于：
-    - Moonlark 提及的关于自身的事情（喜好、性格、承诺、经历等）
-    - 群员对某事物的看法或评价
-    - 群员的心情及原因
-    - 群员提及的目标或承诺
-    - 群内发生的重要事件
-
-    所有记录必须符合实际情况，仅在合理时进行有限的推测。
-
-    ---
-
-    ### 输出格式
-    请严格按照以下 JSON 格式输出，**不要包含任何 Markdown 标记或额外说明**。输出应为一个 JSON 列表：
-
-    [
-        {{
-            "content": "xxx",      // 记录内容，需详细且完整
-            "expire_hours": 1,     // 过期时间（小时），最多 16 小时。根据信息重要性设定：
-                                   // - 短暂情绪/闲聊：0.5-1 小时
-                                   // - 一般事件/观点：2-6 小时
-                                   // - 重要目标/承诺：8-16 小时
-            "name": "xxx"          // 可选，相关群员昵称
-        }}
-    ]
-
-    ---
-
-    ### 示例
-    假设有以下聊天记录：
-    ```
-    [14:20][XiaoDeng3386](msg1): 我刚看了 OpenClaw 的代码，真是一团糟。
-    [14:22][Moonlark](msg2): 我最喜欢吃小鱼干了！
-    [14:25][春华秋实](msg3): 安全周报出来了，OpenClaw 有个高危漏洞。
-    [14:30][XiaoDeng3386](msg5): 我周五晚上 6 点从学校回家，到时候可以联机。
-    ```
-
-    则可能生成的输出为：
-    ```json
-    [
-        {{
-            "content": "XiaoDeng3386 觉得 OpenClaw 的代码很糟糕。",
-            "expire_hours": 4,
-            "name": "XiaoDeng3386"
-        }},
-        {{
-            "content": "我提到自己最喜欢的食物是小鱼干。",
-            "expire_hours": 8,
-            "name": ""
-        }},
-        {{
-            "content": "春华秋实发现 OpenClaw 存在高危漏洞，感到担忧。",
-            "expire_hours": 6,
-            "name": "春华秋实"
-        }},
-        {{
-            "content": "XiaoDeng3386 提到他会在周五晚上 6:00 从学校回家，到时候可以联机。",
-            "expire_hours": 12,
-            "name": "XiaoDeng3386"
-        }}
-    ]
-    ```
-
-    ---
-
-    ### 注意事项
-    - 所有记录必须以 Moonlark 的视角提取，但内容描述应客观。
-    - 推测要合理，不得凭空捏造；若信息不足，可不记录。
-    - 确保 JSON 格式正确，无多余逗号或换行符。
-conflict_detection:
-  system_prompt: |
-    你是一个智能记忆管理系统。你的任务是从所有即时记忆中筛选出仍然有效的记忆。
-
-    ### 筛选规则
-    请从上述记忆中筛选出**仍然有效**的记忆，返回它们的索引。
-
-    **保留条件**（满足任一即可保留）：
-    1. 信息仍然准确且未过时
-    2. 信息有持续参考价值
-
-    **移除条件**（满足任一应移除）：
-    1. 内容矛盾：两条记忆描述的事实相互矛盾（如"喜欢苹果" vs "讨厌苹果"），保留**创建时间较新**的那条
-    2. 状态冲突：同一对象的不同状态（如"正在吃饭" vs "正在睡觉"），保留**创建时间较新**的那条
-    3. 信息过时：内容已不再有参考价值（如很久以前的闲聊情绪）
-
-    ### 输出格式
-    只输出 JSON，不要包含其他内容：
-    {{
-        "valid_indices": [保留的记忆索引列表，从0开始]
-    }}
-
-  user_prompt: |
-    **当前时间**：{current_time}
-
-    以下是所有即时记忆（每条包含创建时间和内容）：
-    {existing_memories}
 
 moonlark_main:
   prompt: |
@@ -785,17 +715,6 @@ moonlark_main:
     ## 今日已发布
     {}
   tools:
-    start_action:
-      description: |
-        执行一个自主活动（如学习、研究、查找资料等）。
-        **调用时机参考：**
-        - 想要学习新知识或研究某个主题
-        - 需要通过 Agent 工具（搜索、浏览网页等）完成的任务
-        - 活动必须具体，例如"学习 CSS Flexbox 布局"而不是"学习 CSS"
-        - 同一时间只能进行一个活动
-      activity: |
-        活动的具体描述，必须足够具体。
-        例如："学习 CSS Flexbox 布局"、"研究 2024 年最新的自动驾驶算法"、"查找 YoASOBI 新单曲的信息"
     sleep: 
       description: |
         睡觉，醒来后恢复全部精力。
@@ -905,44 +824,8 @@ moonlark_main:
 sleep:
   drowsy_prompt: "[提示]: 你感到有些犯困了。请使用 `change_sleep_status` 工具来决定是否准备睡觉。"
 
-request_action:
-  timeout: "动作申请超时，意识会话未在规定时间内做出决定。"
-
-request_sleep:
-  timeout: "睡觉申请超时，意识会话未在规定时间内做出决定。"
-
 sleep_decision:
   timeout: "睡眠决策超时，意识会话未在规定时间内做出决定。"
 
 recall_fetch_failed: "消息内容获取失败"
-
-
-self_action:
-  result_process:
-    system: |
-      你是信息压缩助手。请将以下活动结果压缩为简洁的笔记格式。
-
-      **要求：**
-      1. 压缩后的内容应保留核心信息，去除冗余描述，控制在100字以内
-      2. 提取 3~6 个关键词（空格分隔），用于后续检索
-      3. 根据信息时效性估算合理的过期时间（小时）：
-         - 时效性强的资讯（新闻、天气等）：24~72小时
-         - 一般知识/技术信息：168~720小时（1周~1个月）
-         - 长期有效的知识：8760小时（1年）
-         - 永不过期：-1
-
-      输出 JSON：
-      {{
-        "compressed_content": "压缩后的笔记内容",
-        "keywords": "关键词1 关键词2 关键词3",
-        "expire_hours": 168
-      }}
-    user: |
-      活动描述：{0}
-      活动结果：
-      {1}
-      请压缩结果并生成关键词和过期时间。
-
-
-
 

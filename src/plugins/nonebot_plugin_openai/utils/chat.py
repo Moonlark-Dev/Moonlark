@@ -76,27 +76,44 @@ class LLMRequestSession(Generic[T2]):
         self.timeout_strategy = timeout_strategy
         self.insert_message_queue = []
         self._content_yielded = False
+        self._in_request: bool = False
+        self._this_round_success = False
+        self.last_response: Optional[ChatCompletion] = None
 
     def set_custom_trace_id(self, trace_id: str) -> None:
         self.trace_id = trace_id
 
     async def fetch_llm_response(self) -> AsyncGenerator[T2 | str, None]:
         retry_count = 0
-        while not self.stop:
-            is_success = False
-            async for message in self.request():
-                yield message
-                is_success = True
-            if not is_success:
-                retry_count += 1
-                if retry_count > 3:
-                    raise Exception("Failed to fetch LLM response after 3 retries")
-                await asyncio.sleep(1)
-            else:
-                retry_count = 0
-        await report_openai_history(self.messages, self.identify, self.model)
+        self._in_request = True
+        try:
+            while not self.stop:
+                content_yielded = False
+                async for message in self.request():
+                    yield message
+                    content_yielded = True
+                if not content_yielded and not self._this_round_success:
+                    retry_count += 1
+                    if retry_count > 3:
+                        raise Exception("Failed to fetch LLM response after 3 retries")
+                    await asyncio.sleep(1)
+                else:
+                    retry_count = 0
+        finally:
+            self._in_request = False
+            await report_openai_history(self.messages, self.identify, self.model)
+
+    def _sanitize_messages(self) -> None:
+        """清理消息中的空 tool_calls 数组（部分 Provider 会拒绝 tool_calls=[]）"""
+        for msg in self.messages:
+            if isinstance(msg, dict):
+                if msg.get("tool_calls") == []:
+                    msg.pop("tool_calls", None)
+            elif getattr(msg, "tool_calls", None) == []:
+                msg.tool_calls = None
 
     async def create_completion(self) -> ChatCompletion:
+        self._sanitize_messages()
         tool_choice = self.tool_choice if self.func_list else "none"
         if not self.response_format:
             completion = await client.chat.completions.create(
@@ -104,11 +121,7 @@ class LLMRequestSession(Generic[T2]):
                 model=self.model,
                 tools=self.func_list,
                 tool_choice=tool_choice,
-                extra_headers={
-                    config.openai_thread_header: (t := f"{config.identify_prefix} - {self.identify}"),
-                    config.openai_trace_header: self.trace_id,
-                    "HTTP-Referer": f"https://{hashlib.sha256(t.encode()).hexdigest()}.moonlark.itcdt.top",
-                },
+                extra_headers=self._build_extra_headers(),
                 timeout=self.timeout_per_request,
                 reasoning_effort=self.reasoning_effort or openai.omit,  # type: ignore
                 **self.kwargs,
@@ -119,19 +132,28 @@ class LLMRequestSession(Generic[T2]):
                 model=self.model,
                 tools=self.func_list,
                 tool_choice=tool_choice,
-                extra_headers={
-                    config.openai_thread_header: (t := f"{config.identify_prefix} - {self.identify}"),
-                    config.openai_trace_header: self.trace_id,
-                    "HTTP-Referer": f"https://{hashlib.sha256(t.encode()).hexdigest()}.moonlark.itcdt.top",
-                },
+                extra_headers=self._build_extra_headers(),
                 timeout=self.timeout_per_request,
                 reasoning_effort=self.reasoning_effort or openai.omit,  # type: ignore
                 response_format=self.response_format,
                 **self.kwargs,
             )
+        self.last_response = completion
         return completion
 
+    def _build_extra_headers(self) -> dict[str, str]:
+        """构建请求头：Thread/Trace 标识 + 多个 Trace Id 头 + 溯源 Referer"""
+        thread = f"{config.identify_prefix} - {self.identify}"
+        headers: dict[str, str] = {
+            config.openai_thread_header: thread,
+            "HTTP-Referer": f"https://{hashlib.sha256(thread.encode()).hexdigest()}.moonlark.itcdt.top",
+        }
+        for header in config.openai_trace_headers:
+            headers[header] = self.trace_id
+        return headers
+
     async def request(self) -> AsyncGenerator[T2 | str, None]:
+        self._this_round_success = False
         try:
             logger.info(f"[{self.identify}] 正在请求模型 {self.model} ...")
             completion = await self.create_completion()
@@ -146,15 +168,19 @@ class LLMRequestSession(Generic[T2]):
             logger.warning(f"请求取得了空回复")
             return
         logger.debug(f"{response=}")
+        if response.message.tool_calls == []:
+            response.message.tool_calls = None
         self.messages.append(response.message)
         self._content_yielded = False
         if response.message.content:
             self._content_yielded = True
+            self._this_round_success = True
             if self.response_format and hasattr(response.message, "parsed"):
                 yield response.message.parsed  # type: ignore
             else:
                 yield response.message.content
         if response.message.tool_calls:
+            self._this_round_success = True
             for request in response.message.tool_calls:
                 if isinstance(request, ChatCompletionMessageFunctionToolCall):
                     await self.call_function(request.id, request.function.name, json.loads(request.function.arguments))
@@ -166,10 +192,16 @@ class LLMRequestSession(Generic[T2]):
         self.insert_message_queue.clear()
 
     def insert_message(self, message: OpenaiMessage) -> None:
-        self.insert_message_queue.append(message)
+        if self._in_request:
+            self.insert_message_queue.append(message)
+        else:
+            self.messages.append(message)
 
     def insert_messages(self, messages: Messages) -> None:
-        self.insert_message_queue.extend(messages)
+        if self._in_request:
+            self.insert_message_queue.extend(messages)
+        else:
+            self.messages.extend(messages)
 
     async def call_function(self, call_id: str, name: str, params: dict[str, Any]) -> None:
         logger.debug(f"[{self.identify}] Calling function {name} with params {params}")

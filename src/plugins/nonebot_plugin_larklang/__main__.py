@@ -43,6 +43,18 @@ def get_module_name(module: ModuleType | None) -> str | None:
     return plugin.name[15:] if plugin.name.startswith("nonebot_plugin_") else plugin.name
 
 
+def remove_trailing_blank_lines(text: str) -> str:
+    """删除文本结尾的空行
+
+    YAML 块标量（如 `|`）会在文本末尾保留换行符，导致渲染或发送时出现多余空行。
+    此函数只清理结尾的空行（含仅含空白字符的行），不影响文本中间内容。
+    """
+    lines = text.splitlines()
+    while lines and not lines[-1].strip():
+        lines.pop()
+    return "\n".join(lines)
+
+
 def apply_template(language: str, plugin: str, key: str, text: str) -> str:
     try:
         return random.choice(languages[language].keys[plugin][key]["__template__"].text).format(text)
@@ -62,9 +74,9 @@ async def get_text(language: Optional[str], plugin: str, key: str, session: Asyn
             return f"[缺失: {plugin}.{key} ({args}; {kwargs})]"
     text = random.choice(json.loads(data))
     try:
-        return text.format(*args, **kwargs, **builtin_format)
+        return remove_trailing_blank_lines(text.format(*args, **kwargs, **builtin_format))
     except IndexError:
-        return text
+        return remove_trailing_blank_lines(text)
 
 
 def get_languages() -> dict[str, LanguageData]:
