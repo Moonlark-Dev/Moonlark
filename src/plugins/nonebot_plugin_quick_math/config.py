@@ -13,7 +13,6 @@ class Config(BaseModel):
     qm_choice_options: int = 3
     qm_pvp_default_max_players: int = 5
     qm_pvp_max_players: int = 10
-    qm_pvp_change_max_level_count: int = 21
     command_start: list[str]
 
 

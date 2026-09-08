@@ -267,10 +267,23 @@ class QuickMathPvpSession(QuickMathSession):
     与普通模式的区别：
 
     - 题目开头会 @ 答题者（QQ markdown 使用 @ 标签，其他适配器前置 At 段）；
-    - 难度升级周期更长（见 ``config.qm_pvp_change_max_level_count``）；
+    - 难度升级周期按参与人数计算（每名玩家答对 ``cycle_count`` 题后升级，
+      默认取房间人数 × 普通模式升级周期），而非写死的固定值；
     - 答错/超时后不可复活，直接淘汰；
     - 题目的等级、限时缩短与跳过次数均按玩家独立计算。
     """
+
+    def __init__(
+        self,
+        user_id: str,
+        bot: Bot,
+        qq_user_id: Optional[str] = None,
+        event: Optional[Event] = None,
+        cycle_count: Optional[int] = None,
+    ) -> None:
+        super().__init__(user_id, bot, qq_user_id, event)
+        # 升级周期按房间人数计算，由房间在开局时传入；未传入时退化为普通模式周期
+        self.cycle_count = cycle_count if cycle_count is not None else config.qm_change_max_level_count
 
     async def get_question(self, **kwargs) -> tuple[UniMessage, QuestionData]:
         message, question = await super().get_question(**kwargs)
@@ -292,7 +305,7 @@ class QuickMathPvpSession(QuickMathSession):
     async def on_question_finished(self) -> None:
         if (
             self.level[0] != "lock"
-            and self.passed % config.qm_pvp_change_max_level_count == 0
+            and self.passed % self.cycle_count == 0
             and self.level[1] != get_max_level()
         ):
             self.set_max_level(self.level[1] + 1)

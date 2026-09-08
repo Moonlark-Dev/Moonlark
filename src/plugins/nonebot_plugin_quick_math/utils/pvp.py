@@ -11,6 +11,7 @@ from nonebot_plugin_larkuser import get_user
 from nonebot_plugin_larkutils.command import get_command_prefix
 
 from ..__main__ import lang
+from ..config import config
 from ..types import ExtendReplyType, ReplyType
 from ..utils.message import wait_answer
 from ..utils.session import QuickMathPvpSession
@@ -120,7 +121,14 @@ class QuickMathRoom:
         self.order = self.players[:]
         self.seat = 0
         for player in self.players:
-            player.session = QuickMathPvpSession(player.user_id, self.bot, player.qq_user_id, player.event)
+            # 升级周期按参与人数计算：人数 × 普通模式升级周期，开局人数固定后不再变化
+            player.session = QuickMathPvpSession(
+                player.user_id,
+                self.bot,
+                player.qq_user_id,
+                player.event,
+                cycle_count=len(self.players) * config.qm_change_max_level_count,
+            )
             # 预置玩家加入时的事件，使首题回复针对该玩家的消息而非统一回复同一事件
             player.session.events = [player.event]
         order_text = " → ".join([await self.get_nickname(player.user_id) for player in self.order])
