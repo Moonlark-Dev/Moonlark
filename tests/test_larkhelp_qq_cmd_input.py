@@ -1,18 +1,24 @@
-"""nonebot_plugin_larkhelp 的 QQ 指令组件（<qqbot-cmd-input>）属性值 urlencode 回归测试
+"""nonebot_plugin_larkhelp 的 QQ 指令组件（<qqbot-cmd-input>）属性值回归测试
 
-QQ 官方要求 <qqbot-cmd-input> 的 text/show 属性值需 urlencode 后传递，否则当用法
-包含尖括号占位符（如 `shop buy <编号> [数量]`）时平台返回
-"qqbot-cmd-input参数解析失败"（ActionFailed），即 /help shop 的线上报错。
+1. urlencode：QQ 官方要求 <qqbot-cmd-input> 的 text/show 属性值需 urlencode 后传递，
+   否则当用法包含尖括号占位符（如 `shop buy <编号> [数量]`）时平台返回
+   "qqbot-cmd-input参数解析失败"（ActionFailed），即 /help shop 的线上报错。
+2. 标签解析：平台解析标签属性时会按 markdown 处理其中文本，用法中 `[可选参数]`
+   后紧跟 `(说明)`（如 `quick-math [--level <开始的等级>] (开始挑战)`）会被识别成
+   链接导致整个标签无法解析、原文直接显示，因此 show 中的方括号需转义，
+   text 只移除用法末尾的 (说明)。
 """
 
 from typing import Any, ClassVar
 from unittest.mock import AsyncMock, MagicMock
+import re
 
 import pytest
 
 _SHOP_TEXT = {
     "help.usage1": "shop (查看商品列表)",
     "help.usage2": "shop buy <编号> [数量] (购买商品)",
+    "help.usage3": "shop rank [--total] (积分排行榜)",
     "help.description": "商店与商品",
     "help.details": "查看商品并购买",
 }
@@ -54,7 +60,7 @@ def larkhelp_env(monkeypatch: pytest.MonkeyPatch) -> tuple[Any, list[tuple[str, 
             plugin="shop",
             description="help.description",
             details="help.details",
-            usages=["help.usage1", "help.usage2"],
+            usages=["help.usage1", "help.usage2", "help.usage3"],
             category="community",
         ),
     }
@@ -98,6 +104,33 @@ def test_urlencode_cmd_encodes_tag_breaking_chars_only() -> None:
     assert urlencode_cmd("line1\nline2\r\nline3") == "line1 line2 line3"
 
 
+def test_escape_show_brackets_escapes_square_brackets_only() -> None:
+    """show 中的方括号需转义，避免 `[...]` 与 `(...)` 组成链接导致标签无法解析、原文显示"""
+    from nonebot_plugin_larkhelp.__main__ import escape_show_brackets
+
+    assert escape_show_brackets("quick-math [--level <开始的等级>] (开始挑战)") == (
+        r"quick-math \[--level <开始的等级>\] (开始挑战)"
+    )
+    assert escape_show_brackets("quick-math rank [--total] (积分排行榜)") == (
+        r"quick-math rank \[--total\] (积分排行榜)"
+    )
+    assert escape_show_brackets("quick-math points (查看总分详情)") == "quick-math points (查看总分详情)"
+    assert escape_show_brackets("quick-math zen <等级> (禅模式)") == "quick-math zen <等级> (禅模式)"
+
+
+def test_strip_usage_explanation_only_strips_trailing_parens() -> None:
+    """text 属性只移除用法末尾的 (说明)，保留占位符内的括号注解（如 <持续(小时)>）"""
+    from nonebot_plugin_larkhelp.__main__ import strip_usage_explanation
+
+    assert strip_usage_explanation("quick-math [--level <开始的等级>] (开始挑战)") == (
+        "quick-math [--level <开始的等级>]"
+    )
+    assert strip_usage_explanation("shop (查看商品列表)") == "shop"
+    assert strip_usage_explanation("vote create [-g|--global] [-l|--last <持续(小时)>] [标题] (创建投票)") == (
+        "vote create [-g|--global] [-l|--last <持续(小时)>] [标题]"
+    )
+
+
 def _assert_no_raw_breaking_chars(args: tuple[object, ...]) -> None:
     for value in args:
         assert not any(ch in str(value) for ch in _TAG_BREAKING_CHARS), args
@@ -114,7 +147,8 @@ async def test_help_shop_qq_usage_item_is_urlencoded(larkhelp_env: object) -> No
     usage_items = [args for key, args in lang_calls if key == "command.usage_item"]
     assert usage_items == [
         ("shop", "shop (查看商品列表)"),
-        ("shop buy %3C编号%3E [数量]", "shop buy %3C编号%3E [数量] (购买商品)"),
+        ("shop buy %3C编号%3E [数量]", "shop buy %3C编号%3E \\[数量\\] (购买商品)"),
+        ("shop rank [--total]", "shop rank \\[--total\\] (积分排行榜)"),
     ]
     for item in usage_items:
         _assert_no_raw_breaking_chars(item)
@@ -123,11 +157,13 @@ async def test_help_shop_qq_usage_item_is_urlencoded(larkhelp_env: object) -> No
     markdown = module.UniMessage.sent[0]
     assert (
         '<qqbot-cmd-input text="/shop buy %3C编号%3E [数量]" '
-        'show="/shop buy %3C编号%3E [数量] (购买商品)" reference="false" />' in markdown
+        'show="/shop buy %3C编号%3E \\[数量\\] (购买商品)" reference="false" />' in markdown
     )
     assert '<qqbot-cmd-input text="/shop" show="/shop (查看商品列表)" reference="false" />' in markdown
     # 属性值内不允许出现未编码的尖括号
     assert 'text="/shop buy <编号>' not in markdown
+    # 标签属性内不允许出现未被转义的 [可选参数] 后跟 (说明)（会被平台当作链接解析导致标签无法解析）
+    assert not re.search(r"(?<!\\)\[[^\n\]]*\]\s*\(", markdown), markdown
 
 
 @pytest.mark.asyncio
