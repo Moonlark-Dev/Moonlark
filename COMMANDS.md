@@ -416,6 +416,11 @@ Moonlark 投票
 - `/bcsu clear (清除广播内容)`
 - `/bcsu preview (预览广播内容)`
 - `/bcsu submit (提交并发送广播)`
+## `md`: Markdown 渲染测试
+
+将参数中的 Markdown 原样发送到当前群聊，用于测试 QQ 官方机器人的 Markdown 渲染效果（仅超管可用）
+> 此指令仅 Moonlark 管理员可用。
+- `/md <Markdown内容> (将 Markdown 原样发送到当前群聊测试渲染效果)`
 ## `model`: 模型管理
 
 管理 OpenAI 模型配置（仅限超级用户）
