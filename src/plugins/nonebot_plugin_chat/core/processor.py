@@ -530,9 +530,8 @@ class MessageProcessor:
             # 回复消息 msg_id 已过期等错误：去掉 reply 后重试
             # 注意：code 仅 QQ 适配器提供，其他适配器没有该字段
             if reply_message_id is not None and getattr(e, "code", None) == 40034005:
-                await self.send_message(message_content, None)
-            else:
-                raise
+                return await self.send_message(message_content, None)
+            raise
         # 记录回应用时（使用 reply_message_id 查找对应的原消息）
         self._record_reply_timing(reply_message_id)
 
