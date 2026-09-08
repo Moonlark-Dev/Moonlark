@@ -54,6 +54,8 @@ async def wait_answer(
     user_id: str,
     events: Optional[list[Event]] = None,
     enable_leave_command: bool = False,
+    allow_quit: bool = True,
+    ignore_error_details: bool = True,
 ) -> ReplyType | ExtendReplyType:
     message = image
     for i in range(config.qm_retry_count + 1):
@@ -64,6 +66,8 @@ async def wait_answer(
                 timeout=question["limit_in_sec"],
                 event=events[-1] if events else None,
                 events=events,
+                allow_quit=allow_quit,
+                ignore_error_details=ignore_error_details,
             )
         except PromptTimeout:
             return ReplyType.TIMEOUT
