@@ -83,3 +83,58 @@ async def test_build_button_adds_email_when_unread(monkeypatch: pytest.MonkeyPat
     assert len(buttons) == 3
     assert str(buttons[-1].label) == "text::button.email"
     assert buttons[-1].text == "/email"
+
+
+def _make_markdown_handler(monkeypatch: pytest.MonkeyPatch, event: MagicMock) -> tuple[object, list]:
+    """构造可调用 format_markdown 的 SignHandler，隔离图片生成/邮件查询/消息发送"""
+    from nonebot_plugin_alconna import UniMessage
+
+    from nonebot_plugin_sign.__main__ import SignHandler
+
+    monkeypatch.setattr("nonebot_plugin_sign.__main__.create_image_markdown", AsyncMock(return_value="![签到卡片]"))
+    monkeypatch.setattr("nonebot_plugin_sign.__main__.get_unread_email_count", AsyncMock(return_value=0))
+
+    sent: list[UniMessage] = []
+
+    async def fake_send(self: UniMessage, *_args: object, **_kwargs: object) -> None:
+        sent.append(self)
+
+    monkeypatch.setattr(UniMessage, "send", fake_send)
+
+    matcher = MagicMock()
+    matcher.finish = AsyncMock()
+    handler = SignHandler(user_id="10", bot=MagicMock(), event=event, matcher=matcher)
+    handler._result = {"sign_days": 1}  # ruff: ignore[private-member-access]
+    return handler, sent
+
+
+@pytest.mark.asyncio
+async def test_format_markdown_c2c_skips_at_user(monkeypatch: pytest.MonkeyPatch) -> None:
+    """C2C 单聊消息不支持 qqbot-at-user 提及，签到卡片应跳过 @ 前缀"""
+    from nonebot.adapters.qq.event import C2CMessageCreateEvent
+    from nonebot_plugin_alconna import Text
+
+    handler, sent = _make_markdown_handler(monkeypatch, event=MagicMock(spec=C2CMessageCreateEvent))
+
+    await handler.format_markdown(b"image")
+
+    text = next(seg for seg in sent[0] if isinstance(seg, Text))
+    assert text.text == "![签到卡片]"
+    handler.matcher.finish.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_format_markdown_group_chat_prepends_at_user(monkeypatch: pytest.MonkeyPatch) -> None:
+    """群聊消息应保留 qqbot-at-user @ 前缀"""
+    from nonebot.adapters.qq.event import GroupAtMessageCreateEvent
+    from nonebot_plugin_alconna import Text
+
+    event = MagicMock(spec=GroupAtMessageCreateEvent)
+    event.get_user_id.return_value = "member_openid_1"
+    handler, sent = _make_markdown_handler(monkeypatch, event=event)
+
+    await handler.format_markdown(b"image")
+
+    text = next(seg for seg in sent[0] if isinstance(seg, Text))
+    assert text.text == '<qqbot-at-user id="member_openid_1" />![签到卡片]'
+    handler.matcher.finish.assert_awaited_once()

@@ -47,6 +47,29 @@ async def test_build_jrrp_message_qq_prepends_at_and_adds_buttons(monkeypatch: p
 
 
 @pytest.mark.asyncio
+async def test_build_jrrp_message_c2c_skips_at_user(monkeypatch: pytest.MonkeyPatch) -> None:
+    """C2C 单聊消息不支持 qqbot-at-user 提及，QQ 官方机器人下应跳过 @ 前缀"""
+    from nonebot.adapters.qq import Bot as QQBot
+    from nonebot.adapters.qq.event import C2CMessageCreateEvent
+    from nonebot_plugin_alconna import Text, UniMessage
+    from nonebot_plugin_jrrp.__main__ import build_jrrp_message
+    from nonebot_plugin_larkutils.command import config
+
+    monkeypatch.setattr("nonebot_plugin_jrrp.__main__.get_luck_message", AsyncMock(return_value="你今天的人品值是: 66"))
+    monkeypatch.setattr(config, "command_start", ["/"])
+
+    message = await build_jrrp_message(
+        bot=MagicMock(spec=QQBot),
+        user_id="10",
+        event=MagicMock(spec=C2CMessageCreateEvent),
+    )
+
+    assert isinstance(message, UniMessage)
+    text = next(seg for seg in message if isinstance(seg, Text))
+    assert text.text == "你今天的人品值是: 66"
+
+
+@pytest.mark.asyncio
 async def test_build_jrrp_message_plain_text_on_other_adapters(monkeypatch: pytest.MonkeyPatch) -> None:
     """非 QQ 平台应保持原有纯文本消息（由 matcher.send(at_sender=True) 附加 @）"""
     from nonebot_plugin_jrrp.__main__ import build_jrrp_message

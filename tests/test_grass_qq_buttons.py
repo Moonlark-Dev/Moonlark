@@ -61,6 +61,26 @@ async def test_build_qq_message_furry_uses_uwu_and_owo_labels(monkeypatch: pytes
 
 
 @pytest.mark.asyncio
+async def test_build_qq_message_c2c_skips_at_user(monkeypatch: pytest.MonkeyPatch) -> None:
+    """C2C 单聊消息不支持 qqbot-at-user 提及，应跳过 @ 前缀"""
+    from unittest.mock import MagicMock
+
+    from nonebot.adapters.qq.event import C2CMessageCreateEvent
+    from nonebot_plugin_alconna import Text, UniMessage
+    from nonebot_plugin_larkutils.command import config
+    from nonebot_plugin_shengcao.main import _build_qq_message
+
+    monkeypatch.setattr(config, "command_start", ["/"])
+
+    message = await _build_qq_message("10", "草*草", "原始文本", "grass", MagicMock(spec=C2CMessageCreateEvent))
+
+    assert isinstance(message, UniMessage)
+    text = next(seg for seg in message if isinstance(seg, Text))
+    assert text.text == "草\\*草"
+    assert any("markdown" in styles for styles in text.styles.values())
+
+
+@pytest.mark.asyncio
 async def test_fury_text_replaces_all_with_uniform_random_pool() -> None:
     """狂怒模式：命中词典的词必须全部被替换；合并释义池等概率随机选取（同义/近义均可能出现）"""
     from nonebot_plugin_shengcao.main import _dict_data, fury_text

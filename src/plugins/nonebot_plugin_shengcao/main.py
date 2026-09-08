@@ -1,12 +1,13 @@
 import json
 import random
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Optional
 
 import jieba
 from nonebot import on_command
 from nonebot.adapters import Bot, Event, Message
 from nonebot.adapters.qq import Bot as QQBot
+from nonebot.adapters.qq.event import C2CMessageCreateEvent
 from nonebot.matcher import Matcher
 from nonebot.params import CommandArg
 from nonebot_plugin_alconna import Button, UniMessage
@@ -112,20 +113,28 @@ def fury_text(text: str) -> str:
     return "".join(result)
 
 
-async def _build_qq_message(user_id: str, output_text: str, original_text: str, mode: GrassMode) -> UniMessage:
+async def _build_qq_message(
+    user_id: str,
+    output_text: str,
+    original_text: str,
+    mode: GrassMode,
+    event: Optional[Event] = None,
+) -> UniMessage:
     """构建 QQ 官方机器人的 markdown + 键盘消息。
 
     - 生草结果以 markdown 渲染，需先转义特殊字符
     - 按钮 "再试一次" 重新生草，按钮 "狂怒模式" 切换到全量替换
     - 福瑞彩蛋下按钮文案替换为 UwU / OwO，再试一次切回 grass-furry
+    - C2C 单聊消息不支持 <qqbot-at-user> 提及语法，跳过 @ 前缀
     """
     prefix = get_command_prefix()
     retry_label = "UwU" if mode == "furry" else await lang.text("button.retry", user_id)
     fury_label = "OwO" if mode == "furry" else await lang.text("button.fury", user_id)
     retry_command = "grass-furry" if mode == "furry" else "grass"
+    at_user = "" if isinstance(event, C2CMessageCreateEvent) else f'<qqbot-at-user id="{user_id}" />'
     return (
         UniMessage()
-        .style(f'<qqbot-at-user id="{user_id}" />{escape_markdown(output_text)}', "markdown")
+        .style(f"{at_user}{escape_markdown(output_text)}", "markdown")
         .keyboard(
             Button("enter", retry_label, text=f"{prefix}{retry_command} {original_text}"),
             Button("enter", fury_label, text=f"{prefix}grass-fury {original_text}"),
@@ -143,7 +152,7 @@ async def _finish_result(
     mode: GrassMode,
 ) -> None:
     if isinstance(bot, QQBot):
-        message = await _build_qq_message(user_id, output_text, original_text, mode)
+        message = await _build_qq_message(user_id, output_text, original_text, mode, event)
         await message.send(target=event, bot=bot)
         await matcher.finish()
         return
