@@ -303,11 +303,7 @@ class QuickMathPvpSession(QuickMathSession):
         return False
 
     async def on_question_finished(self) -> None:
-        if (
-            self.level[0] != "lock"
-            and self.passed % self.cycle_count == 0
-            and self.level[1] != get_max_level()
-        ):
+        if self.level[0] != "lock" and self.passed % self.cycle_count == 0 and self.level[1] != get_max_level():
             self.set_max_level(self.level[1] + 1)
         if self.point >= 200 * self.available_skip_count:
             self.available_skip_count += 1
