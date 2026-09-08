@@ -29,7 +29,7 @@ async def get_menu_markdown(user_id: str, append_commands: bool) -> str:
         weekly_lines.append(await lang.text("menu.weekly_me", user_id, my_points))
     parts = [intro, "\n".join(weekly_lines), await lang.text("menu.modes", user_id)]
     if append_commands:
-        parts.append(await lang.text("menu.commands", user_id, get_command_prefix()))
+        parts.append(await lang.text("menu.commands", user_id))
     return "\n\n".join(parts)
 
 

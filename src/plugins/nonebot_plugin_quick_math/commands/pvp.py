@@ -12,15 +12,7 @@ from ..utils.pvp import QuickMathRoom, QuickMathRoomPlayer, find_room_of_user, g
 
 @quick_math.assign("pvp")
 async def pvp_help_handler(user_id: str = get_user_id()) -> None:
-    prefix = config.command_start[0]
-    await lang.finish(
-        "pvp.help",
-        user_id,
-        f"{prefix}qm pvp create [最大人数]",
-        f"{prefix}qm pvp join <房间码>",
-        f"{prefix}qm pvp quit",
-        f"{prefix}qm pvp start",
-    )
+    await lang.finish("pvp.help", user_id)
 
 
 @quick_math.assign("pvp.create")

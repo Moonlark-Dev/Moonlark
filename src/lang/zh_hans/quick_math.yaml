@@ -63,11 +63,11 @@ menu:
   commands: |
     ## ⌨️ 快速指令
 
-    - `{0}qm start` 开始普通挑战
-    - `{0}qm zen <等级>` 进入禅模式
-    - `{0}qm rank` 查看排行榜
-    - `{0}qm points` 查看积分
-    - `{0}qm pvp create [人数]` 创建 PvP 对战房间
+    - `{__prefix__}qm start` 开始普通挑战
+    - `{__prefix__}qm zen <等级>` 进入禅模式
+    - `{__prefix__}qm rank` 查看排行榜
+    - `{__prefix__}qm points` 查看积分
+    - `{__prefix__}qm pvp create [人数]` 创建 PvP 对战房间
 
 question:
   l1-1: '$${} + {} = ?$$'
@@ -141,17 +141,15 @@ pvp:
 
     群内多人在线对战！互相轮流答题，坚持到最后的人获胜。
 
-    - `{0}` 创建房间
-    - `{1}` 加入房间
-    - `{2}` 退出房间
-    - `{3}` 开始对战（仅房主）
+    - `{__prefix__}qm pvp create [最大人数]` 创建房间
+    - `{__prefix__}qm pvp join <房间码>` 加入房间
+    - `{__prefix__}qm pvp quit` 退出房间
+    - `{__prefix__}qm pvp start` 开始对战（仅房主）
   create: |
-    # ⚔️ Quick Math PvP
-
     房间已创建（{2} 人房）！
-    房间码：`{0}`
+    房间码：{0}
 
-    其他玩家输入 `{1}` 加入房间
+    其他玩家输入 {1} 加入房间
   create_md: |
     # ⚔️ Quick Math PvP
 
@@ -162,7 +160,7 @@ pvp:
     玩家（{1}/{2}）
   room_player: '{}. {}'
   owner_suffix: ' （房主）'
-  join_hint: 其他玩家输入 `{0}` 加入房间
+  join_hint: 其他玩家输入 {0} 加入房间
   started: |
     # ⚔️ 对战开始！
 
