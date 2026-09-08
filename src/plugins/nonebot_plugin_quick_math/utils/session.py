@@ -259,3 +259,42 @@ class QuickMathZenSession(QuickMathSession):
             self.point *= 0.75
             return False
         return await self.process_answer_result(result, send_time, question)
+
+
+class QuickMathPvpSession(QuickMathSession):
+    """PvP 对战模式下的单人会话。
+
+    与普通模式的区别：
+
+    - 题目开头会 @ 答题者（QQ markdown 使用 @ 标签，其他适配器前置 At 段）；
+    - 难度升级周期更长（见 ``config.qm_pvp_change_max_level_count``）；
+    - 答错/超时后不可复活，直接淘汰；
+    - 题目的等级、限时缩短与跳过次数均按玩家独立计算。
+    """
+
+    async def get_question(self, **kwargs) -> tuple[UniMessage, QuestionData]:
+        message, question = await super().get_question(**kwargs)
+        if not isinstance(self.bot, QQBot):
+            # 非 QQ 适配器：在题目最前面 @ 需要答题的玩家
+            message = UniMessage().at(self.user_id) + message
+        return message, question
+
+    async def send_lang(self, key: str, *args: object) -> None:
+        """针对玩家本人最新事件发送本地化文本（不经过 matcher，适配 PvP 群聊场景）。"""
+        text = await lang.text(key, self.user_id, *args)
+        await UniMessage(text).send(target=self.event, bot=self.bot)
+
+    async def on_wrong_answer(self) -> bool:
+        # PvP 模式不可复活：最终答错/超时即淘汰
+        self.end_time = datetime.now()
+        return False
+
+    async def on_question_finished(self) -> None:
+        if (
+            self.level[0] != "lock"
+            and self.passed % config.qm_pvp_change_max_level_count == 0
+            and self.level[1] != get_max_level()
+        ):
+            self.set_max_level(self.level[1] + 1)
+        if self.point >= 200 * self.available_skip_count:
+            self.available_skip_count += 1
