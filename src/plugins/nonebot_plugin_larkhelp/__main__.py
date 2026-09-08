@@ -40,6 +40,27 @@ def urlencode_cmd(text: str) -> str:
     return re.sub(r"[<>&\"'%]", lambda m: f"%{ord(m.group()):02X}", text)
 
 
+def strip_usage_explanation(text: str) -> str:
+    """移除用法字符串末尾的 (说明) 部分，用于生成指令组件的 text 属性。
+
+    仅删除结尾的解释括号组，避免旧的 `\(.*?\)` 实现把参数占位符内的括号注解
+    （如 `[-l|--last <持续(小时)>]` 中的 `(小时)`）一并删掉。
+    """
+    return re.sub(r"\s*\([^)]*\)\s*$", "", text).strip()
+
+
+def escape_show_brackets(text: str) -> str:
+    """转义用法中的方括号，避免 QQ 平台解析 `<qqbot-cmd-input>` 标签时把属性内容当 markdown 链接处理。
+
+    QQ 平台在解析标签属性时会按 markdown 处理其中的文本。当 show 值形如
+    `quick-math [--level <开始的等级>] (开始挑战)` 时，`[...]` 后紧跟 `(...)` 会被
+    识别成链接 `[label](dest)`，导致该标签无法被解析成指令组件，整段
+    `<qqbot-cmd-input ... />` 原文直接显示在消息里。转义为 `\[` `\]` 后不再构成
+    链接，标签正常解析，方括号与说明文字按字面展示。
+    """
+    return text.replace("[", r"\[").replace("]", r"\]")
+
+
 help_list = {}
 
 
@@ -77,10 +98,8 @@ async def help_command_handler(bot: Bot, command: str, user_id: str = get_user_i
                         await lang.text(
                             "command.usage_item",
                             user_id,
-                            urlencode_cmd(
-                                re.sub(r"\(.*?\)", "", usage_str := await helper.text(usage, user_id)).strip()
-                            ),
-                            urlencode_cmd(usage_str),
+                            urlencode_cmd(strip_usage_explanation(usage_str := await helper.text(usage, user_id))),
+                            urlencode_cmd(escape_show_brackets(usage_str)),
                         )
                         for usage in data.usages
                     ]
