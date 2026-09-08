@@ -31,7 +31,7 @@ main:
     | 已答题目 | 本题限时 | 本题难度 | 当前积分 | 跳过   |
     |---------|--------|---------|---------|---------|
     | {1}     | {2}s   | L{3}    | {4}     | {5}/{6} |
-  
+
     ## 题目信息
 
     {0}
@@ -40,6 +40,34 @@ main:
 
     {}
   choice_item: '{}. {}'
+
+menu:
+  intro: |
+    # ⚡ Quick Math
+
+    快速数学挑战！在限时内回答数学题获取积分，答得越快得分越高。挑战结束后积分会计入周积分排行榜，冲击更高的记录！
+
+  weekly: |
+    ## 📊 本周积分排行
+  weekly_item: '{}. **{}** — {} 分'
+  weekly_empty: 本周还没有人参与挑战，快来争当第一名吧！
+  weekly_me: 我的本周积分：{} 分
+  modes: |
+    ## 🎮 模式介绍
+
+    - **普通模式**：连续答题，答对会逐渐提升难度，答错或超时即结束
+    - **禅模式**：指定难度不限时挑战，输入 leave 可随时退出
+    - **PvP 对战**：在群聊中创建房间，多名玩家轮流答题，坚持到最后的人获胜
+    - **排行榜**：查看历史最高与总积分排行
+    - **积分**：查看自己的积分详情
+  commands: |
+    ## ⌨️ 快速指令
+
+    - `{__prefix__}qm start` 开始普通挑战
+    - `{__prefix__}qm zen <等级>` 进入禅模式
+    - `{__prefix__}qm rank` 查看排行榜
+    - `{__prefix__}qm points` 查看积分
+    - `{__prefix__}qm pvp create [人数]` 创建 PvP 对战房间
 
 question:
   l1-1: '$${} + {} = ?$$'
@@ -90,6 +118,65 @@ button:
   restart: 再来一局
   rank-record: 记录排行
   rank-total: 总分排行
+  start: 开始挑战
+  zen: 禅模式
+  rank: 排行榜
+  points: 积分
+  pvp-create: 创建对战
+  pvp-start: 开始
+  pvp-join: 加入
+  pvp-quit: 退出
+pvp:
+  only_group: 请在群聊中创建或加入 PvP 对战！
+  already_in: 您已经在某个 PvP 房间中了！
+  already_in_room: 您已经在该房间中了！
+  not_found: 房间不存在或不在本群！
+  full: 房间已满，无法加入！
+  playing: 游戏已经开始，无法加入！
+  not_in_room: 您不在任何房间中！
+  not_owner: 只有房主可以开始对战！
+  need_more_players: 至少需要 2 名玩家才能开始对战！
+  help: |
+    # ⚔️ Quick Math PvP
+
+    群内多人在线对战！互相轮流答题，坚持到最后的人获胜。
+
+    - `{__prefix__}qm pvp create [最大人数]` 创建房间
+    - `{__prefix__}qm pvp join <房间码>` 加入房间
+    - `{__prefix__}qm pvp quit` 退出房间
+    - `{__prefix__}qm pvp start` 开始对战（仅房主）
+  create: |
+    房间已创建（{2} 人房）！
+    房间码：{0}
+
+    其他玩家输入 {1} 加入房间
+  create_md: |
+    # ⚔️ Quick Math PvP
+
+    房间已创建（{} 人房），快点击下方按钮加入吧！
+  room_title: |
+    ## ⚔️ PvP 房间 {0}
+
+    玩家（{1}/{2}）
+  room_player: '{}. {}'
+  owner_suffix: ' （房主）'
+  join_hint: 其他玩家输入 {0} 加入房间
+  started: |
+    # ⚔️ 对战开始！
+
+    答题顺序：{0}
+
+    {1} 名玩家已就绪，坚持到最后的人获胜！
+  eliminated: '💥 {} 已被淘汰！最终得分：{}'
+  player_quited: '{} 退出了房间'
+  disband: 房间已解散
+  winner: '🏆 获胜者：{}，得分 {}！'
+  result_title: |
+    # ⚔️ PvP 结算
+
+    | 排名 | 玩家 | 积分 | 答对 | 正确率 | 跳过 |
+    |:---:|:---|:---:|:---:|:---:|:---:|
+  result_row: '| {} | {} | {} | {} | {} | {} |'
 rank:
   title-1:  QuickMath 记录排行
   title-2:  QuickMath 总分排行
@@ -110,10 +197,15 @@ achievements:
 help:
   desc: 快速数学
   details: 以计算为核心的玩法。找到问题的答案，并在排行榜中获取更高的积分。（指令别名：qm）
-  u1: quick-math [--level <开始的等级>] (开始挑战)
-  u2: quick-math rank [--total] (积分排行榜)
+  u1: quick-math (查看主界面（玩法介绍、周积分排行、模式介绍）)
+  u2: quick-math start [--level <等级>] (开始普通挑战)
   u3: quick-math zen <等级> (禅模式)
-  u4: quick-math points (查看总分详情)
+  u4: quick-math rank [--total] (积分排行榜)
+  u5: quick-math points (查看总分详情)
+  u6: quick-math pvp create [最大人数] (创建对战房间)
+  u7: quick-math pvp join <房间码> (加入对战房间)
+  u8: quick-math pvp quit (退出对战房间)
+  u9: quick-math pvp start (开始对战（仅房主）)
 award:
   info: |
     # 奖励详情
