@@ -8,7 +8,7 @@ class Config(BaseModel):
     qm_wait_time: int = 3
     qm_min_limit: int = 3
     qm_retry_count: int = 1
-    qm_change_max_level_count: int = 7
+    qm_change_max_level_count: int = 5
     qm_gpt_max_retry: int = 5
     qm_choice_options: int = 3
     qm_pvp_default_max_players: int = 5
