@@ -23,16 +23,17 @@ def _raising_finish() -> AsyncMock:
     return AsyncMock(side_effect=FinishedException())
 
 
-def test_md_command_registered_with_superuser_permission() -> None:
-    """/md 指令应存在，且权限包含 NoneBot 标准 SUPERUSER 检查"""
+def test_md_command_registered_with_larkutils_superuser_permission() -> None:
+    """/md 指令应存在，且使用 larkutils 的 is_superuser 校验超管（先映射主账号再比对 SUPERUSERS）"""
     from nonebot.permission import Permission
+    from nonebot_plugin_larkutils.superuser import is_superuser
     from nonebot_plugin_md.__main__ import md_cmd
 
     assert md_cmd
     permission = md_cmd.permission
     assert isinstance(permission, Permission)
-    # 权限检查器应包含 Superuser()（即 nonebot.permission.SUPERUSER）
-    assert any("Superuser" in str(checker) for checker in permission.checkers)
+    # 权限检查器应包含 larkutils 的 is_superuser
+    assert any(checker.call is is_superuser for checker in permission.checkers)
 
 
 @pytest.mark.asyncio

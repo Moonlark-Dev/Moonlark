@@ -20,14 +20,14 @@ from nonebot.adapters import Bot, Event, Message
 from nonebot.adapters.qq import Bot as QQBot
 from nonebot.matcher import Matcher
 from nonebot.params import CommandArg
-from nonebot.permission import SUPERUSER
 from nonebot_plugin_alconna import UniMessage
 from nonebot_plugin_larklang import LangHelper
 from nonebot_plugin_larkutils import get_user_id
+from nonebot_plugin_larkutils.superuser import is_superuser
 
 lang = LangHelper()
 
-md_cmd = on_command("md", permission=SUPERUSER)
+md_cmd = on_command("md", permission=is_superuser)
 
 
 @md_cmd.handle()
