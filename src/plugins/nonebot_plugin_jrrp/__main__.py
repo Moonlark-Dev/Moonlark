@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Optional
 from datetime import date
 from statistics import mean
 from logging import getLogger
 
 from nonebot.adapters import Bot, Event
 from nonebot.adapters.qq import Bot as QQBot
+from nonebot.adapters.qq.event import C2CMessageCreateEvent
 from nonebot_plugin_larkuser import get_user
 from nonebot_plugin_larkutils import get_user_id
 from nonebot_plugin_larkutils.command import get_command_prefix
@@ -44,7 +45,7 @@ def _extract_msg_id(result: Any) -> str | None:
     return getattr(result, "message_id", None)
 
 
-async def build_jrrp_message(bot: Bot, user_id: str) -> str | UniMessage:
+async def build_jrrp_message(bot: Bot, user_id: str, event: Optional[Event] = None) -> str | UniMessage:
     """构建 jrrp 回复消息。
 
     QQ 官方机器人: 保持原有文本不变，在最前面附加 @ (qqbot-at-user)，
@@ -55,9 +56,10 @@ async def build_jrrp_message(bot: Bot, user_id: str) -> str | UniMessage:
     if not isinstance(bot, QQBot):
         return await get_luck_message(user_id)
     prefix = get_command_prefix()
+    at_user = "" if isinstance(event, C2CMessageCreateEvent) else f'<qqbot-at-user id="{user_id}" />'
     return (
         UniMessage()
-        .style(f'<qqbot-at-user id="{user_id}" />{await get_luck_message(user_id)}', "markdown")
+        .style(f"{at_user}{await get_luck_message(user_id)}", "markdown")
         .keyboard(
             Button("enter", await lang.text("button.lucky_star", user_id), text=f"{prefix}jrrp r"),
             Button("enter", await lang.text("button.unlucky_one", user_id), text=f"{prefix}jrrp rr"),
@@ -75,7 +77,7 @@ async def process_jrrp_command(group_id: str, user_id: str, bot: Bot, event: Eve
 
     event_text = await lang.text("chat_event", user_id, await get_nickname(user_id, bot, event), luck_value)
 
-    message = await build_jrrp_message(bot, user_id)
+    message = await build_jrrp_message(bot, user_id, event)
     if isinstance(message, UniMessage):
         # 带 keyboard 的消息使用 UniMessage.send 发送，结束后单独调用 matcher.finish
         receipt = await message.send(target=event, bot=bot)

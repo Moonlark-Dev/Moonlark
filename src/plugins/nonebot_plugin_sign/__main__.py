@@ -9,7 +9,7 @@ import httpx
 from nonebot import logger, on_type
 from nonebot.adapters import Bot, Event
 from nonebot.adapters.qq.bot import Bot as QQBot
-from nonebot.adapters.qq.event import InteractionCreateEvent
+from nonebot.adapters.qq.event import C2CMessageCreateEvent, InteractionCreateEvent
 from nonebot.adapters.qq.message import Message
 from nonebot.exception import FinishedException
 from nonebot.matcher import Matcher
@@ -418,11 +418,14 @@ class SignHandler:
     async def format_markdown(self, image_raw: bytes) -> None:
         if self._result is None:
             await lang.finish("sign.signed", self.user_id)
+        at_user = (
+            ""
+            if isinstance(self.event, C2CMessageCreateEvent)
+            else f'<qqbot-at-user id="{self.event.get_user_id()}" />'
+        )
         await (
             UniMessage()
-            .style(
-                f'<qqbot-at-user id="{self.event.get_user_id()}" />{await create_image_markdown(image_raw)}', "markdown"
-            )
+            .style(f"{at_user}{await create_image_markdown(image_raw)}", "markdown")
             .keyboard(*await self.build_button())
             .send()
         )
