@@ -57,10 +57,15 @@
 ## `quick-math`: 快速数学
 
 以计算为核心的玩法。找到问题的答案，并在排行榜中获取更高的积分。（指令别名：qm）
-- `/quick-math [--level <开始的等级>] (开始挑战)`
+- `/quick-math (查看主界面（玩法介绍、周积分排行、模式介绍）)`
+- `/quick-math start [--level <等级>] (开始普通挑战)`
+- `/quick-math pvp create [最大人数] (创建对战房间)`
+- `/quick-math pvp join <房间码> (加入对战房间)`
+- `/quick-math pvp start (开始对战（仅房主）)`
+- `/quick-math pvp quit (退出对战房间)`
+- `/quick-math zen <等级> (禅模式)`
 - `/quick-math rank [--total] (积分排行榜)`
 - `/quick-math points (查看总分详情)`
-- `/quick-math zen <等级> (禅模式)`
 ## `roll`: 掷骰子
 
 消耗背包中的二十面骰子进行掷骰，点数越高奖励越多，掷出 1 还会倒扣 vi！
