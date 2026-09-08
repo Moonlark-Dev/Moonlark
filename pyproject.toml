@@ -103,6 +103,7 @@ plugins = [
     "nonebot_plugin_auto_bind",
     "nonebot_plugin_eggstrike",
     "nonebot_plugin_shengcao",
+    "nonebot_plugin_md",
 ]
 plugin_dirs = []
 builtin_plugins = []

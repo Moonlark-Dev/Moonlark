@@ -1,0 +1,6 @@
+empty: 请输入要测试渲染的 Markdown 内容~
+unsupported_platform: 该指令仅支持 QQ 官方机器人使用~
+help:
+  description: Markdown 渲染测试
+  details: 将参数中的 Markdown 原样发送到当前群聊，用于测试 QQ 官方机器人的 Markdown 渲染效果（仅超管可用）
+  usage1: md <Markdown内容> (将 Markdown 原样发送到当前群聊测试渲染效果)
