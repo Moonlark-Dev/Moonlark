@@ -55,7 +55,7 @@ async def wait_answer(
     events: Optional[list[Event]] = None,
     enable_leave_command: bool = False,
     allow_quit: bool = True,
-    ignore_error_details: bool = True,
+    ignore_error_details: bool = False,
 ) -> ReplyType | ExtendReplyType:
     message = image
     for i in range(config.qm_retry_count + 1):
@@ -66,14 +66,18 @@ async def wait_answer(
                 timeout=question["limit_in_sec"],
                 event=events[-1] if events else None,
                 events=events,
-                allow_quit=allow_quit,
+                # 允许退出指令（禅模式）时禁用 prompt 的 q 快捷退出：
+                # 否则输入 q 会以 FinishedException 直接结束整个会话，导致无法结算积分
+                allow_quit=allow_quit and not enable_leave_command,
+                # 超时以 PromptTimeout 返回 ReplyType.TIMEOUT 交给会话结算，
+                # 避免 FinishedException 中断会话导致结算卡片不发送
                 ignore_error_details=ignore_error_details,
             )
         except PromptTimeout:
             return ReplyType.TIMEOUT
         if r.lower() in ["skip", "tg"]:
             return ReplyType.SKIP
-        elif r.lower() in ["leave", "quit"]:
+        elif enable_leave_command and r.lower() in ["leave", "quit", "q"]:
             return ExtendReplyType.LEAVE
         elif await question["question"]["answer"](r):
             return ReplyType.RIGHT

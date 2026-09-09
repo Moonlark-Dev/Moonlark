@@ -142,6 +142,10 @@ class QuickMathSession:
                 timeout=20,
                 event=self.event,
                 events=self.events,
+                # 超时与 q 均视为放弃重生并返回 False 正常结算，
+                # 避免 FinishedException 中断会话导致结算卡片不发送
+                allow_quit=False,
+                ignore_error_details=False,
             )
         except PromptTimeout:
             return False
@@ -256,7 +260,7 @@ class QuickMathZenSession(QuickMathSession):
         if self.events:
             self.event = self.events[-1]
         if result == ExtendReplyType.LEAVE:
-            self.point *= 0.75
+            self.point = int(self.point * 0.75)
             return False
         return await self.process_answer_result(result, send_time, question)
 
