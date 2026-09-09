@@ -19,7 +19,6 @@ from typing import Any
 import pytest
 import yaml
 
-
 _LANG_FILE = Path(__file__).resolve().parents[1] / "src" / "lang" / "zh_hans" / "quick_math.yaml"
 
 
