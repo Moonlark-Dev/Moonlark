@@ -149,12 +149,13 @@ def _build_function(terms: list[tuple[Any, str]], coefficients: list[int]) -> tu
 
 
 async def generate_limit_question(user_id: str) -> tuple[str, str, list[str]]:
+    """求极限题目（暂未启用：过于简单，见 :func:`generate_question`）。"""
     x = Symbol("x")
     f = random.choice([x**2 + 3 * x - 2, x**3 - 2 * x + 1, x**4 - 4 * x**3 + 5 * x**2 + 2 * x - 1])
     a = random.randint(-10, 10)
-    _limit = limit(f, x, a)
+    limit_value = limit(f, x, a)
     question = await lang.text("question.l7-limit", user_id, a, latex(f))
-    answer = latex(_limit)
+    answer = latex(limit_value)
     variants = [latex(limit(f + k, x, a)) for k in range(1, 7)]
     return question, answer, variants
 
@@ -177,13 +178,13 @@ async def generate_derivative_question(user_id: str, order: int = 1) -> tuple[st
 
 
 async def generate_question(user_id: str) -> Question:
-    case = random.randint(1, 5)
+    # 暂时停用 L7 求极限题目（过于简单）：仅保留一阶/二阶求导。
+    # 恢复时改回 random.randint(1, 5) 并重新启用下方的 generate_limit_question 分支。
+    case = random.randint(1, 4)
     if case in (1, 2, 3):
         question, answer, variants = await generate_derivative_question(user_id)
-    elif case == 4:
-        question, answer, variants = await generate_derivative_question(user_id, 2)
     else:
-        question, answer, variants = await generate_limit_question(user_id)
+        question, answer, variants = await generate_derivative_question(user_id, 2)
     return {
         "question": question,
         "answer": get_verify_function(answer, user_id),

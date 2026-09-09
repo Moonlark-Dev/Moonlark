@@ -276,3 +276,17 @@ def test_rank_lang_section_no_stale_keys() -> None:
     assert "default_nickname" in rank_section
     for stale in ("md-item", "md-info", "md-me", "md_item", "md_info", "md_me"):
         assert stale not in rank_section
+
+
+# ---------- L7 题目 ----------
+
+
+@pytest.mark.asyncio
+async def test_l7_generates_no_limit_questions() -> None:
+    """L7 求极限题目已暂时停用（过于简单），只应生成一阶/二阶求导题。"""
+    from nonebot_plugin_quick_math.utils.generator.levels import l7
+
+    for _ in range(30):
+        question = await l7.generate_question("user")
+        assert "极限" not in question["question"]
+        assert "求导" in question["question"] or "导数" in question["question"]
