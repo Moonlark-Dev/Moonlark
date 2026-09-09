@@ -5,8 +5,8 @@
    "qqbot-cmd-input参数解析失败"（ActionFailed），即 /help shop 的线上报错。
 2. 标签解析：平台解析标签属性时会按 markdown 处理其中文本，用法中 `[可选参数]`
    后紧跟 `(说明)`（如 `quick-math [--level <开始的等级>] (开始挑战)`）会被识别成
-   链接导致整个标签无法解析、原文直接显示，因此 show 中的方括号需转义，
-   text 只移除用法末尾的 (说明)。
+   链接导致整个标签无法解析、原文直接显示，因此把 (说明) 用法说明直接渲染在
+   `<qqbot-cmd-input>` 标签外部，text/show 属性只携带指令本体。
 """
 
 from typing import Any, ClassVar
@@ -73,7 +73,7 @@ def larkhelp_env(monkeypatch: pytest.MonkeyPatch) -> tuple[Any, list[tuple[str, 
         if self.plugin_name == "shop":
             return _SHOP_TEXT.get(key, f"shop::{key}")
         if key == "command.usage_item":
-            return '<qqbot-cmd-input text="/{}" show="/{}" reference="false" />'.format(*args)
+            return '<qqbot-cmd-input text="/{}" show="/{}" reference="false" /> {}'.format(*args)
         if key == "command.info_md":
             return "{} **{}**\n{}\n\n**用法**({}):\n{}".format(*args)
         if key == "menu_cat.item":
@@ -104,22 +104,25 @@ def test_urlencode_cmd_encodes_tag_breaking_chars_only() -> None:
     assert urlencode_cmd("line1\nline2\r\nline3") == "line1 line2 line3"
 
 
-def test_escape_show_brackets_escapes_square_brackets_only() -> None:
-    """show 中的方括号需转义，避免 `[...]` 与 `(...)` 组成链接导致标签无法解析、原文显示"""
-    from nonebot_plugin_larkhelp.__main__ import escape_show_brackets
+def test_split_usage_explanation_returns_command_and_explanation() -> None:
+    """用法拆分为指令本体与末尾的 (说明)：说明文字渲染在标签外部"""
+    from nonebot_plugin_larkhelp.__main__ import split_usage_explanation
 
-    assert escape_show_brackets("quick-math [--level <开始的等级>] (开始挑战)") == (
-        r"quick-math \[--level <开始的等级>\] (开始挑战)"
+    assert split_usage_explanation("quick-math [--level <开始的等级>] (开始挑战)") == (
+        "quick-math [--level <开始的等级>]",
+        "(开始挑战)",
     )
-    assert escape_show_brackets("quick-math rank [--total] (积分排行榜)") == (
-        r"quick-math rank \[--total\] (积分排行榜)"
+    assert split_usage_explanation("shop (查看商品列表)") == ("shop", "(查看商品列表)")
+    assert split_usage_explanation("vote create [-g|--global] [-l|--last <持续(小时)>] [标题] (创建投票)") == (
+        "vote create [-g|--global] [-l|--last <持续(小时)>] [标题]",
+        "(创建投票)",
     )
-    assert escape_show_brackets("quick-math points (查看总分详情)") == "quick-math points (查看总分详情)"
-    assert escape_show_brackets("quick-math zen <等级> (禅模式)") == "quick-math zen <等级> (禅模式)"
+    assert split_usage_explanation("help") == ("help", "")
+    assert split_usage_explanation("  shop  (查看商品列表)  ") == ("shop", "(查看商品列表)")
 
 
 def test_strip_usage_explanation_only_strips_trailing_parens() -> None:
-    """text 属性只移除用法末尾的 (说明)，保留占位符内的括号注解（如 <持续(小时)>）"""
+    """text/show 属性只移除用法末尾的 (说明)，保留占位符内的括号注解（如 <持续(小时)>）"""
     from nonebot_plugin_larkhelp.__main__ import strip_usage_explanation
 
     assert strip_usage_explanation("quick-math [--level <开始的等级>] (开始挑战)") == (
@@ -138,7 +141,7 @@ def _assert_no_raw_breaking_chars(args: tuple[object, ...]) -> None:
 
 @pytest.mark.asyncio
 async def test_help_shop_qq_usage_item_is_urlencoded(larkhelp_env: object) -> None:
-    """QQ 平台 /help shop：含尖括号占位符的用法在 <qqbot-cmd-input> 中必须被 urlencode"""
+    """QQ 平台 /help shop：含尖括号占位符的用法在 <qqbot-cmd-input> 中必须被 urlencode，说明在标签外"""
     from nonebot.adapters.qq import Bot as QQBot
 
     module, lang_calls = larkhelp_env
@@ -146,9 +149,9 @@ async def test_help_shop_qq_usage_item_is_urlencoded(larkhelp_env: object) -> No
 
     usage_items = [args for key, args in lang_calls if key == "command.usage_item"]
     assert usage_items == [
-        ("shop", "shop (查看商品列表)"),
-        ("shop buy %3C编号%3E [数量]", "shop buy %3C编号%3E \\[数量\\] (购买商品)"),
-        ("shop rank [--total]", "shop rank \\[--total\\] (积分排行榜)"),
+        ("shop", "shop", "(查看商品列表)"),
+        ("shop buy %3C编号%3E [数量]", "shop buy %3C编号%3E [数量]", "(购买商品)"),
+        ("shop rank [--total]", "shop rank [--total]", "(积分排行榜)"),
     ]
     for item in usage_items:
         _assert_no_raw_breaking_chars(item)
@@ -157,13 +160,14 @@ async def test_help_shop_qq_usage_item_is_urlencoded(larkhelp_env: object) -> No
     markdown = module.UniMessage.sent[0]
     assert (
         '<qqbot-cmd-input text="/shop buy %3C编号%3E [数量]" '
-        'show="/shop buy %3C编号%3E \\[数量\\] (购买商品)" reference="false" />' in markdown
+        'show="/shop buy %3C编号%3E [数量]" reference="false" /> (购买商品)' in markdown
     )
-    assert '<qqbot-cmd-input text="/shop" show="/shop (查看商品列表)" reference="false" />' in markdown
+    assert '<qqbot-cmd-input text="/shop" show="/shop" reference="false" /> (查看商品列表)' in markdown
     # 属性值内不允许出现未编码的尖括号
     assert 'text="/shop buy <编号>' not in markdown
-    # 标签属性内不允许出现未被转义的 [可选参数] 后跟 (说明)（会被平台当作链接解析导致标签无法解析）
-    assert not re.search(r"(?<!\\)\[[^\n\]]*\]\s*\(", markdown), markdown
+    # 标签属性内不允许出现 [可选参数] 后跟 (说明)（会被平台当作链接解析导致标签无法解析），
+    # 说明文字已移到标签外部，因此属性内 [XXX] 之后不再紧跟 (XXX)
+    assert not re.search(r"<qqbot-cmd-input[^>]*\[[^\n\]]*\]\s*\(", markdown), markdown
 
 
 @pytest.mark.asyncio

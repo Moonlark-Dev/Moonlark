@@ -29,7 +29,7 @@ command:
     **用法**({}):
     {}
   usage_item: |
-    <qqbot-cmd-input text="{__prefix__}{}" show="{__prefix__}{}" reference="false" />
+    <qqbot-cmd-input text="{__prefix__}{}" show="{__prefix__}{}" reference="false" /> {}
   usage: '{__prefix__}{}'
   not_found:
     - 命令 {} 不存在，或无可用的帮助信息
