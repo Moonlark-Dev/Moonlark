@@ -17,8 +17,7 @@
 
 from nonebot_plugin_orm import get_session
 from nonebot_plugin_larkutils import get_user_id
-from ..__main__ import quick_math
-from nonebot_plugin_finding_the_trail.__main__ import lang
+from ..__main__ import lang, quick_math
 from ..models import QuickMathUser
 
 
@@ -32,9 +31,8 @@ async def _(user_id: str = get_user_id()) -> None:
         await lang.finish(
             "points.info",
             user_id,
-            user_point.exchanged,
+            user_point.max_point,
             user_point.experience,
-            user_point.exchanged,
             at_sender=False,
             reply_message=True,
         )

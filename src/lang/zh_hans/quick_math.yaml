@@ -110,6 +110,11 @@ answer:
   no_question: 请等待题目生成！
   right: 回答正确！获得 {} 积分
   wrong: 回答错误，您还可以重试 {} 次
+points:
+  no_points: 您还没有参与过 Quick Math 挑战，快来开始一局吧！
+  info: |
+    历史最高：{} 分
+    总积分：{} 分
 button:
   skip: 跳过本题
   leave: 退出挑战

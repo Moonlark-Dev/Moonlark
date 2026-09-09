@@ -10,7 +10,8 @@
 - 退出指令（leave/quit/q）仅在禅模式（``enable_leave_command``）下生效，且
   q 不再被 prompt 的快捷退出吞掉、超时以 ``ReplyType.TIMEOUT`` 返回，保证
   退出/超时后正常发送结算卡片；
-- 结算卡片弃用 QQ 不支持的 markdown 表格，改为 ``> -`` 无序列表。
+- 结算卡片弃用 QQ 不支持的 markdown 表格，改为 ``> -`` 无序列表；
+- 积分命令误用其他插件的 LangHelper 且文案键缺失，导致点击“积分”无响应。
 """
 
 from pathlib import Path
@@ -231,3 +232,22 @@ def test_checkout_template_uses_list_not_table() -> None:
     assert "> - " in checkout
     assert "|" not in checkout
     assert checkout.count("{}") == 12
+
+
+# ---------- 积分详情 ----------
+
+
+def test_points_lang_keys_exist() -> None:
+    """积分详情文案键必须存在于 quick_math 本地化文件中（曾因缺失导致点击积分无响应）。"""
+    no_points = _load_template("points.no_points")
+    assert no_points
+    info = _load_template("points.info")
+    assert info.count("{}") == 2
+
+
+def test_points_command_uses_own_lang() -> None:
+    """积分命令应使用 quick_math 自身的 LangHelper，而非其他插件的（曾误用导致查找不到文案）。"""
+    from nonebot_plugin_quick_math.__main__ import lang as quick_math_lang
+    from nonebot_plugin_quick_math.commands import points
+
+    assert points.lang is quick_math_lang
