@@ -11,7 +11,9 @@
   q 不再被 prompt 的快捷退出吞掉、超时以 ``ReplyType.TIMEOUT`` 返回，保证
   退出/超时后正常发送结算卡片；
 - 结算卡片弃用 QQ 不支持的 markdown 表格，改为 ``> -`` 无序列表；
-- 积分命令误用其他插件的 LangHelper 且文案键缺失，导致点击“积分”无响应。
+- 积分命令误用其他插件的 LangHelper 且文案键缺失，导致点击“积分”无响应；
+- 排行命令手写 markdown 引用了不存在的键（yaml 键名为连字符、代码用下划线），
+  改为使用 nonebot_plugin_ranking 渲染排行。
 """
 
 from pathlib import Path
@@ -251,3 +253,26 @@ def test_points_command_uses_own_lang() -> None:
     from nonebot_plugin_quick_math.commands import points
 
     assert points.lang is quick_math_lang
+
+
+# ---------- 排行 ----------
+
+
+def test_rank_command_uses_ranking_plugin() -> None:
+    """排名命令应使用 nonebot_plugin_ranking 的 generate_image 渲染，而非手写 markdown。"""
+    from nonebot_plugin_quick_math.commands import rank
+
+    assert rank.generate_image.__module__ == "nonebot_plugin_ranking.generator"
+    # 排行渲染不应再引用曾导致键缺失的手写 markdown 键
+    assert not hasattr(rank, "generate_rank_markdown")
+
+
+def test_rank_lang_section_no_stale_keys() -> None:
+    """rank 文案段不应再包含名称不一致的条目键（md-item/md_info 混用曾导致键缺失）。"""
+    data = yaml.safe_load(_LANG_FILE.read_text(encoding="utf-8"))
+    rank_section = data["rank"]
+    assert "title-1" in rank_section
+    assert "title-2" in rank_section
+    assert "default_nickname" in rank_section
+    for stale in ("md-item", "md-info", "md-me", "md_item", "md_info", "md_me"):
+        assert stale not in rank_section
