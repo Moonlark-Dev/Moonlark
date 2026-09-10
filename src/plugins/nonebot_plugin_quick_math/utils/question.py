@@ -93,7 +93,9 @@ async def build_markdown_message(
                 ],
             ),
         )
-        content += choices
+        # 在题目文本与“请选择答案”标题之间补空行，否则 ## 标题与题目粘在同一行
+        # 导致 QQ markdown 无法识别标题，原样显示 ##
+        content += "\n\n" + choices
     if qq_user_id:
         content = f'<qqbot-at-user id="{qq_user_id}" />\n' + content
     message = UniMessage().style(content, "markdown")
