@@ -1,5 +1,5 @@
 description: |
-  根据 Bilibili 视频的 BV 号，下载视频并进行内容总结。
+  根据 Bilibili 视频的 BV 号，下载视频并进行内容总结，也可以针对视频中的某个细节进行查询。
   **何时必须调用**：用户发分享了一个 bilibili 视频链接或者 b23.tv 短链时，你需要使用此工具获取获取视频的信息。
   注意：b23.tv 短链需要先调用 resolve_b23_url 工具解析出 BV 号。
 parameters:
@@ -7,3 +7,11 @@ parameters:
     description: "Bilibili 视频的 BV 号，如 'BV1xx411c7mD'"
     type: string
     required: true
+  - name: query
+    description: |
+      可选的自然语言查询指令，描述本次需要从视频中提取的具体信息。
+      **使用场景**：已有的视频总结信息不足以做出回复（例如你想要知道视频中某个特定细节）时，不要重新请求总结，而是填写本参数。
+      例如：视频总结中提到"介绍了新的 UI 设计"，但你还需要知道具体的配色方案，可以在 query 中填写"视频中展示的 UI 配色方案"。
+      不提供此参数时，工具会总结整个视频的内容。
+    type: string
+    required: false

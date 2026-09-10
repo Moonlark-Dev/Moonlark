@@ -17,6 +17,8 @@
 
 """工具包装器 - 为 WDYM 插件提供 AI 工具调用能力"""
 
+from typing import Optional
+
 from nonebot_plugin_chat.utils.tools.browser import browse_webpage as _browse_webpage
 from nonebot_plugin_chat.utils.tools.search import web_search as _web_search
 from nonebot_plugin_chat.utils.tools.bilibili import describe_bilibili_video as _describe_bilibili_video
@@ -49,9 +51,9 @@ class WdymTools:
         """调用搜索引擎，从网络中搜索信息"""
         return await _web_search(keyword, self._get_text)
 
-    async def describe_bilibili_video(self, bv_id: str) -> str:
-        """根据 Bilibili 视频的 BV 号，下载视频并进行内容总结"""
-        return await _describe_bilibili_video(bv_id, self._get_text)
+    async def describe_bilibili_video(self, bv_id: str, query: Optional[str] = None) -> str:
+        """根据 Bilibili 视频的 BV 号，下载视频并进行内容总结；提供 query 时改为针对性地查询视频中的具体信息"""
+        return await _describe_bilibili_video(bv_id, self._get_text, query)
 
     async def resolve_b23_url(self, b23_url: str) -> str:
         """解析 b23.tv 短链并返回 BV 号"""

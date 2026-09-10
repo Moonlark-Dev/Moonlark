@@ -86,7 +86,7 @@ is_truncated = await self.check_message_truncated()
 | `web_search` | 搜索引擎 |
 | `request_wolfram_alpha` | 数学/科学计算 |
 | `search_abbreviation` | 缩写查询 |
-| `describe_bilibili_video` | B站视频解析 |
+| `describe_bilibili_video` | B站视频解析（可选 `query` 参数用于查询视频中的具体内容） |
 | `resolve_b23_url` | B站短链解析 |
 | `vm_*` | 虚拟机操作（沙箱执行） |
 | `StickerTools` | 表情包推荐和发送 |

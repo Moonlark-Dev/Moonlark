@@ -112,9 +112,17 @@ async def _merge_video_audio(video_path: Path, audio_path: Path, output_path: Pa
         raise RuntimeError("FFmpeg merge failed")
 
 
-async def describe_bilibili_video(bv_id: str, get_text: GetTextFunc) -> str:
+async def describe_bilibili_video(bv_id: str, get_text: GetTextFunc, query: Optional[str] = None) -> str:
     """
     根据 BV 号总结 B 站视频内容
+
+    Args:
+        bv_id: B 站视频的 BV 号
+        get_text: 本地化文本获取函数
+        query: 可选的自然语言查询指令。提供时不再总结整个视频，而是只提取该查询所需的具体信息
+
+    Returns:
+        视频内容总结，或针对 query 的查询结果
     """
     file_name = f"{bv_id}.mp4"
     file_path = VIDEO_DIR / file_name
@@ -155,21 +163,32 @@ async def describe_bilibili_video(bv_id: str, get_text: GetTextFunc) -> str:
         video_base64 = base64.b64encode(video_bytes).decode("utf-8")
         video_data_url = f"data:video/mp4;base64,{video_base64}"
 
+        if query:
+            prompt_dir = "bilibili_query"
+            identify = "Bilibili Video Query"
+            user_prompt = await get_message_text(
+                "bilibili_query/user.md.jinja",
+                title=title,
+                description=desc,
+                query=query,
+            )
+        else:
+            prompt_dir = "bilibili"
+            identify = "Bilibili Video Summary"
+            user_prompt = await get_message_text("bilibili/user.md.jinja", title=title, description=desc)
+
         messages = [
-            await get_message("system", "bilibili/system.md.jinja"),
+            await get_message("system", f"{prompt_dir}/system.md.jinja"),
             generate_message(
                 [
-                    {
-                        "type": "text",
-                        "text": await get_message_text("bilibili/user.md.jinja", title=title, description=desc),
-                    },
+                    {"type": "text", "text": user_prompt},
                     {"type": "video_url", "video_url": {"url": video_data_url}},
                 ],
                 role="user",
             ),
         ]
 
-        result = await fetch_message(messages=messages, identify="Bilibili Video Summary")
+        result = await fetch_message(messages=messages, identify=identify)
         _cleanup_cache_files()
         return result
     except Exception as e:
