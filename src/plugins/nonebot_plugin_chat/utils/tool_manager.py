@@ -79,8 +79,8 @@ class ToolManager:
     async def search_abbreviation(self, text: str) -> str:
         return await search_abbreviation(text, self.text)
 
-    async def describe_bilibili_video(self, bv_id: str) -> str:
-        return await describe_bilibili_video(bv_id, self.text)
+    async def describe_bilibili_video(self, bv_id: str, query: Optional[str] = None) -> str:
+        return await describe_bilibili_video(bv_id, self.text, query)
 
     async def resolve_b23_url(self, b23_url: str) -> str:
         return await resolve_b23_url(b23_url, self.text)
