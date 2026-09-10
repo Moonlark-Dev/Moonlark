@@ -8,10 +8,7 @@ from .options import build_options, fraction_distractors, int_distractors
 async def generate_question(user_id: str) -> Question:
     a = random.randint(-50, 50)
     b = random.randint(-50, 50)
-    if b == 0:
-        question_type = 1
-    else:
-        question_type = random.randint(1, 2)
+    question_type = 1 if b == 0 else random.randint(1, 2)
     if b < 0:
         question_type += 2
     match question_type:
@@ -22,7 +19,7 @@ async def generate_question(user_id: str) -> Question:
         case _:
             # 除法题：随机把分子分母同时乘一个 2~5 的数，
             # 保证展示出的分数总是可被化简的
-            multiplier = random.randint(2, 5)
+            multiplier = random.randint(2, 5)  # nosec
             question = await lang.text(f"question.l3-{question_type}", user_id, a * multiplier, b * multiplier)
             answer = a / b
             int_answer = False
