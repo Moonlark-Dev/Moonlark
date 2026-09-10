@@ -20,6 +20,9 @@ class Config(BaseModel):
     r2_endpoint_url: str = ""
     # S3 寻址风格：path（R2/MinIO 等）或 virtual（腾讯云 COS 等强制虚拟主机域名）
     r2_addressing_style: Literal["path", "virtual", "auto"] = "path"
+    # S3 签名版本：s3v4（AWS SigV4，Cloudflare R2 等默认）或 s3（AWS SigV2，腾讯云 COS 官方文档要求）；
+    # 默认 auto 时自动选择：*.myqcloud.com（腾讯云 COS）端点使用 s3，其余端点使用 s3v4
+    r2_signature_version: Literal["auto", "s3v4", "s3"] = "auto"
     r2_region: str = "auto"
     # R2 对象自动清理过期时间（秒），默认 7 天
     r2_object_ttl: int = 604800
@@ -31,6 +34,14 @@ class Config(BaseModel):
         # `.env` 中该行留空（R2_ADDRESSING_STYLE=）时应回退到默认 path 寻址
         if value == "":
             return "path"
+        return value
+
+    @field_validator("r2_signature_version", mode="before")
+    @classmethod
+    def _empty_signature_version_to_default(cls, value: Any) -> Any:
+        # `.env` 中该行留空（R2_SIGNATURE_VERSION=）时应回退到默认 auto
+        if value == "":
+            return "auto"
         return value
 
 
