@@ -8,7 +8,7 @@ from .options import build_options, fraction_distractors, int_distractors
 async def generate_question(user_id: str) -> Question:
     a = random.randint(-50, 50)
     b = random.randint(-50, 50)
-    question_type = 1 if b == 0 else random.randint(1, 2)
+    question_type = 1 if b == 0 else random.randint(1, 2)  # nosec
     if b < 0:
         question_type += 2
     match question_type:
