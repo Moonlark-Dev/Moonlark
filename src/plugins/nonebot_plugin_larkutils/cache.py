@@ -113,11 +113,9 @@ def _inject_content_md5(params: dict[str, Any], **_: Any) -> None:
     AWS/R2 不要求，补充后无副作用。
     """
     if body := params.get("body"):
-        params.setdefault("headers", {})["Content-MD5"] = base64.b64encode(
-            hashlib.md5(
-                body
-            ).digest(),  # ruff: ignore[hashlib-insecure-hash-function] (Content-MD5 仅用于完整性校验，非安全用途)
-        ).decode()
+        # usedforsecurity=False：Content-MD5 仅为完整性校验，非安全用途（bandit B324 / ruff S324 均放行）
+        digest = hashlib.md5(body, usedforsecurity=False).digest()
+        params.setdefault("headers", {})["Content-MD5"] = base64.b64encode(digest).decode()
 
 
 async def _delete_objects(keys: list[str]) -> None:
