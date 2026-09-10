@@ -1,7 +1,10 @@
+import base64
+import hashlib
 import secrets
 from datetime import datetime, timezone
 from io import BytesIO
 from typing import Any
+from urllib.parse import urlsplit
 
 from aiobotocore.session import AioSession
 from botocore.config import Config
@@ -32,6 +35,21 @@ def _get_endpoint_url() -> str:
     return f"https://{config.r2_account_id}.r2.cloudflarestorage.com"
 
 
+def _is_cos_endpoint() -> bool:
+    # 腾讯云 COS 的 S3 兼容端点域名（cos.<region>.myqcloud.com 等）
+    hostname = urlsplit(_get_endpoint_url()).hostname
+    return bool(hostname and hostname.endswith(".myqcloud.com"))
+
+
+def _get_signature_version() -> str:
+    if config.r2_signature_version != "auto":
+        return config.r2_signature_version
+    # 腾讯云官方文档要求 boto3 访问 COS 时使用 signature_version=s3（AWS SigV2）：
+    # https://cloud.tencent.com/document/product/436/37421 。SigV4 在部分 COS 配置下会报
+    # SignatureDoesNotMatch，因此对 *.myqcloud.com 端点自动选用 s3，其余端点保持默认 s3v4。
+    return "s3" if _is_cos_endpoint() else "s3v4"
+
+
 def _create_client() -> Any:
     return AioSession().create_client(
         "s3",
@@ -39,7 +57,10 @@ def _create_client() -> Any:
         region_name=config.r2_region,
         aws_access_key_id=config.r2_access_key_id,
         aws_secret_access_key=config.r2_secret_access_key,
-        config=Config(s3={"addressing_style": config.r2_addressing_style}),
+        config=Config(
+            signature_version=_get_signature_version(),
+            s3={"addressing_style": config.r2_addressing_style},
+        ),
     )
 
 
@@ -84,10 +105,24 @@ async def _collect_expired_keys(cutoff: float) -> list[str]:
     return expired
 
 
+def _inject_content_md5(params: dict[str, Any], **_: Any) -> None:
+    """为 DeleteObjects 请求补充 Content-MD5 请求头
+
+    腾讯云 COS 的 S3 兼容 API 强制要求该头，缺失时报
+    InvalidRequest: Missing required header for this request: Content-MD5；
+    AWS/R2 不要求，补充后无副作用。
+    """
+    if body := params.get("body"):
+        # usedforsecurity=False：Content-MD5 仅为完整性校验，非安全用途（bandit B324 / ruff S324 均放行）
+        digest = hashlib.md5(body, usedforsecurity=False).digest()
+        params.setdefault("headers", {})["Content-MD5"] = base64.b64encode(digest).decode()
+
+
 async def _delete_objects(keys: list[str]) -> None:
     if not keys:
         return
     async with _create_client() as client:
+        client.meta.events.register("before-call.s3.DeleteObjects", _inject_content_md5)
         for start in range(0, len(keys), 1000):
             chunk = [{"Key": key} for key in keys[start : start + 1000]]
             try:
