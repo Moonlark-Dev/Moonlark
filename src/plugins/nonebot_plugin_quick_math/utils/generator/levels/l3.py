@@ -14,12 +14,16 @@ async def generate_question(user_id: str) -> Question:
         question_type = random.randint(1, 2)
     if b < 0:
         question_type += 2
-    question = await lang.text(f"question.l3-{question_type}", user_id, a, b)
     match question_type:
         case 1 | 3:
+            question = await lang.text(f"question.l3-{question_type}", user_id, a, b)
             answer = a * b
             int_answer = True
         case _:
+            # 除法题：随机把分子分母同时乘一个 2~5 的数，
+            # 保证展示出的分数总是可被化简的
+            multiplier = random.randint(2, 5)
+            question = await lang.text(f"question.l3-{question_type}", user_id, a * multiplier, b * multiplier)
             answer = a / b
             int_answer = False
     if int_answer:
