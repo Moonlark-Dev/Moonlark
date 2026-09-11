@@ -68,11 +68,15 @@ def _make_question() -> dict[str, Any]:
     }
 
 
-def _make_choice_question() -> dict[str, Any]:
-    """构造一个带选项的选择题。"""
+def _make_choice_question(answer_fn: Any = None) -> dict[str, Any]:
+    """构造一个带选项的选择题（默认判定恒为正确）。"""
 
-    async def answer_fn(_: str) -> bool:
-        return True
+    if answer_fn is None:
+
+        async def always_right(_: str) -> bool:
+            return True
+
+        answer_fn = always_right
 
     return {
         "question": {
@@ -84,6 +88,17 @@ def _make_choice_question() -> dict[str, Any]:
         "level": 1,
         "limit_in_sec": 5,
     }
+
+
+def _make_recorded_verify(correct: str = "3") -> tuple[dict[str, Any], list[str]]:
+    """构造“慢速判定”题目：记录判定函数收到的每次输入，便于断言是否绕过慢速路径。"""
+    calls: list[str] = []
+
+    async def answer_fn(string: str) -> bool:
+        calls.append(string)
+        return string == correct
+
+    return _make_choice_question(answer_fn), calls
 
 
 # ---------- 主界面按钮 ----------
@@ -149,6 +164,180 @@ async def test_question_card_leave_button_only_when_enabled() -> None:
     assert isinstance(message, UniMessage)
     keyboard = next(segment for segment in message if isinstance(segment, Keyboard))
     assert all(button.text != "leave" for button in keyboard.children)
+
+
+# ---------- 选项按钮回传选项字母（加快判定） ----------
+
+
+@pytest.mark.asyncio
+async def test_question_card_option_buttons_send_letters() -> None:
+    """选项按钮应显示选项原文，但回传选项字母 A/B/C，而不是选项原文。"""
+    from nonebot_plugin_alconna import Keyboard
+    from nonebot_plugin_quick_math.utils.question import build_markdown_message
+
+    question = _make_choice_question()
+    message, _ = await build_markdown_message("user", question, 0, 0, 0, 0, "qq_openid")
+    keyboard = next(segment for segment in message if isinstance(segment, Keyboard))
+    assert [button.label for button in keyboard.children] == ["1", "2", "3"]
+    assert [button.text for button in keyboard.children] == ["A", "B", "C"]
+
+
+@pytest.mark.asyncio
+async def test_button_letter_answers_without_slow_verify(monkeypatch: pytest.MonkeyPatch) -> None:
+    """点击正确选项按钮（回传字母）应直接答对，且不把字母送进慢速判定函数。"""
+    from nonebot_plugin_alconna import UniMessage
+    from nonebot_plugin_quick_math.types import ReplyType
+    from nonebot_plugin_quick_math.utils import message as message_module
+    from nonebot_plugin_quick_math.utils.question import with_option_letters
+
+    question, calls = _make_recorded_verify("3")
+    question = with_option_letters(question)
+
+    async def prompt_stub(_message: UniMessage, _user_id: str, **_kwargs: object) -> str:
+        return "c"
+
+    monkeypatch.setattr(message_module, "prompt", prompt_stub)
+
+    assert await message_module.wait_answer(question, UniMessage(), "user") is ReplyType.RIGHT
+    # 字母被翻译为选项原文后再判定，慢速判定函数从未收到单个字母
+    assert calls == ["3"]
+
+
+@pytest.mark.asyncio
+async def test_button_letter_answers_accepted_by_generator_questions() -> None:
+    """真实题目生成器（L1）下，选项按钮回传的字母同样应被判定为正确。"""
+    from nonebot_plugin_quick_math.utils.generator.levels import l1
+    from nonebot_plugin_quick_math.utils.question import with_option_letters
+
+    letters = "ABCDEFGHIJKL"
+    for _ in range(20):
+        data = await l1.generate_question("user")
+        options = data.get("options") or []
+        assert len(options) > 1
+        wrapped = with_option_letters({"question": data, "max_point": 10, "level": 1, "limit_in_sec": 5})
+        for index, option in enumerate(options):
+            # 每个选项：字母答案与选项原文答案的判定结果必须一致
+            by_letter = await wrapped["question"]["answer"](letters[index])
+            by_text = await data["answer"](option)
+            assert by_letter is by_text
+
+
+@pytest.mark.asyncio
+async def test_button_letter_answers_are_case_insensitive(monkeypatch: pytest.MonkeyPatch) -> None:
+    """用户手输选项字母时应忽略大小写与首尾空白。"""
+    from nonebot_plugin_alconna import UniMessage
+    from nonebot_plugin_quick_math.types import ReplyType
+    from nonebot_plugin_quick_math.utils import message as message_module
+    from nonebot_plugin_quick_math.utils.question import with_option_letters
+
+    for typed in ("B", "b", " b "):
+        question, calls = _make_recorded_verify("2")
+        question = with_option_letters(question)
+
+        async def prompt_stub(_message: UniMessage, _user_id: str, _typed: str = typed, **_kwargs: object) -> str:
+            return _typed
+
+        monkeypatch.setattr(message_module, "prompt", prompt_stub)
+        assert await message_module.wait_answer(question, UniMessage(), "user") is ReplyType.RIGHT
+        assert calls == ["2"]
+
+
+@pytest.mark.asyncio
+async def test_wrong_button_letter_answers_wrong(monkeypatch: pytest.MonkeyPatch) -> None:
+    """点击错误选项按钮（回传字母）应判定为错误，而不是重试耗尽。"""
+    from nonebot_plugin_alconna import UniMessage
+    from nonebot_plugin_quick_math.types import ReplyType
+    from nonebot_plugin_quick_math.utils import message as message_module
+    from nonebot_plugin_quick_math.utils.question import with_option_letters
+
+    question, calls = _make_recorded_verify("3")
+    question = with_option_letters(question)
+
+    async def prompt_stub(_message: UniMessage, _user_id: str, **_kwargs: object) -> str:
+        return "A"
+
+    monkeypatch.setattr(message_module, "prompt", prompt_stub)
+
+    assert await message_module.wait_answer(question, UniMessage(), "user") is ReplyType.WRONG
+    assert calls == ["1", "1"]
+
+
+@pytest.mark.asyncio
+async def test_typed_option_text_still_works(monkeypatch: pytest.MonkeyPatch) -> None:
+    """用户手动输入选项原文（而非字母）时行为保持不变。"""
+    from nonebot_plugin_alconna import UniMessage
+    from nonebot_plugin_quick_math.types import ReplyType
+    from nonebot_plugin_quick_math.utils import message as message_module
+    from nonebot_plugin_quick_math.utils.question import with_option_letters
+
+    question, calls = _make_recorded_verify("3")
+    question = with_option_letters(question)
+
+    async def prompt_stub(_message: UniMessage, _user_id: str, **_kwargs: object) -> str:
+        return "3"
+
+    monkeypatch.setattr(message_module, "prompt", prompt_stub)
+
+    assert await message_module.wait_answer(question, UniMessage(), "user") is ReplyType.RIGHT
+    assert calls == ["3"]
+
+
+@pytest.mark.asyncio
+async def test_letter_beyond_options_delegates_to_original(monkeypatch: pytest.MonkeyPatch) -> None:
+    """超出选项范围的字母（如 3 个选项却输入 D）应原样交给原始判定函数。"""
+    from nonebot_plugin_alconna import UniMessage
+    from nonebot_plugin_quick_math.types import ReplyType
+    from nonebot_plugin_quick_math.utils import message as message_module
+    from nonebot_plugin_quick_math.utils.question import with_option_letters
+
+    question, calls = _make_recorded_verify("D")
+    question = with_option_letters(question)
+
+    async def prompt_stub(_message: UniMessage, _user_id: str, **_kwargs: object) -> str:
+        return "D"
+
+    monkeypatch.setattr(message_module, "prompt", prompt_stub)
+
+    assert await message_module.wait_answer(question, UniMessage(), "user") is ReplyType.RIGHT
+    assert calls == ["D"]
+
+
+@pytest.mark.asyncio
+async def test_non_choice_question_delegates_to_original() -> None:
+    """无选项（非选择题）的题目不应被包装，判定函数保持原样。"""
+    from nonebot_plugin_quick_math.utils.question import with_option_letters
+
+    async def answer_fn(_: str) -> bool:
+        return True
+
+    question = {
+        "question": {"question": "1 + 1 = ?", "answer": answer_fn},
+        "max_point": 10,
+        "level": 1,
+        "limit_in_sec": 5,
+    }
+    assert with_option_letters(question)["question"]["answer"] is answer_fn
+
+
+@pytest.mark.asyncio
+async def test_non_qq_adapter_questions_keep_original_answer(monkeypatch: pytest.MonkeyPatch) -> None:
+    """非 QQ 官方机器人（图片题目）不携带选项按钮，答案判定应保持原样。"""
+    from nonebot.adapters.console import Bot as ConsoleBot
+    from nonebot_plugin_quick_math.utils import question as question_module
+
+    raw = _make_choice_question()
+
+    async def generate_question(_user_id: str, _level: int) -> dict[str, Any]:
+        return raw
+
+    async def generate_image(*_args: object, **_kwargs: object) -> bytes:
+        return b""
+
+    monkeypatch.setattr(question_module, "generate_question", generate_question)
+    monkeypatch.setattr(question_module, "generate_image", generate_image)
+
+    _, question = await question_module.get_question(ConsoleBot.__new__(ConsoleBot), 1, "user", 0, 0, 0, 0)
+    assert question["question"]["answer"] is raw["question"]["answer"]
 
 
 # ---------- 等待回答 / 退出 / 超时 ----------
