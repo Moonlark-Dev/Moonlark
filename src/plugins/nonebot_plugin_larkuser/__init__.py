@@ -15,6 +15,7 @@ require("nonebot_plugin_localstore")
 require("nonebot_plugin_render")
 require("nonebot_plugin_preview")
 require("nonebot_plugin_waiter")
+require("nonebot_plugin_apscheduler")
 
 
 from .matchers import recorder, panel, whoami, register, setnick, getid
@@ -25,3 +26,14 @@ from .utils.user import get_user, MoonlarkUser, get_registered_users, get_regist
 from .utils.waiter import prompt
 from .utils.nickname import get_nickname
 from .utils.waiter2 import Waiter, WaitUserInput
+from .group import (
+    QQGroupInfo,
+    QQGroupMemberInfo,
+    ensure_group_members,
+    get_cached_group_members,
+    get_group_member,
+    get_group_member_ids,
+    get_group_member_nickname_map,
+    get_group_name,
+    refresh_group_members,
+)

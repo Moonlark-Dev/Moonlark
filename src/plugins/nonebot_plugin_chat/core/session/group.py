@@ -1,12 +1,19 @@
-from typing import Literal, Optional
+from typing import Literal, Optional, cast
 
 from nonebot.adapters import Bot
 from nonebot.adapters.onebot.v11 import Bot as OB11Bot
+from nonebot.adapters.qq import Bot as QQBot
 from nonebot_plugin_alconna import Target, UniMessage
 from nonebot_plugin_chat.config import config
 from nonebot_plugin_chat.types import AdapterUserInfo
 from nonebot_plugin_ghot.function import get_group_hot_score
-from nonebot_plugin_larkuser import get_user
+from nonebot_plugin_larkuser import (
+    ensure_group_members,
+    get_group_member,
+    get_group_member_nickname_map,
+    get_group_name,
+    get_user,
+)
 
 from .base import BaseSession
 
@@ -33,6 +40,17 @@ class GroupSession(BaseSession):
                 **member_info,
                 nickname=adapter_nickname if not user.has_nickname() else user.get_nickname(),
             )
+        if isinstance(self.bot, QQBot):
+            member = await get_group_member(self.adapter_group_id, user_id)
+            if member is not None:
+                user = await get_user(user_id)
+                return AdapterUserInfo(
+                    nickname=member.nickname if not user.has_nickname() else user.get_nickname(),
+                    sex="unknown",
+                    role=member.role if member.role in ("member", "admin", "owner") else "member",
+                    join_time=int(member.joined_at.timestamp()) if member.joined_at else 0,
+                    card=None,
+                )
         cached_users = await self.get_users()
         if user_id in cached_users.values():
             for nickname, uid in cached_users.items():
@@ -42,16 +60,35 @@ class GroupSession(BaseSession):
             nickname=(await get_user(user_id)).get_nickname(), sex="unknown", role="member", join_time=0, card=None
         )
 
+    async def _get_ob11_group_users(self) -> dict[str, str]:
+        """通过 OneBot 11 接口获取「昵称 -> 用户 ID」映射"""
+        bot = cast(OB11Bot, self.bot)
+        users: dict[str, str] = {}
+        for user in await bot.get_group_member_list(group_id=int(self.adapter_group_id)):
+            adapter_nickname = user["nickname"]
+            ml_user = await get_user(str(user["user_id"]))
+            nickname = adapter_nickname if not ml_user.has_nickname() else ml_user.get_nickname()
+            users[nickname] = str(user["user_id"])
+        return users
+
+    async def _get_qq_group_users(self) -> dict[str, str]:
+        """通过 QQ 官方 Bot 的群成员列表（缓存）获取「昵称 -> 成员 openid」映射"""
+        users = await get_group_member_nickname_map(self.adapter_group_id)
+        if users:
+            return users
+        # 缓存尚未建立时同步一次，失败则由调用方回退到消息缓存
+        await ensure_group_members(cast(QQBot, self.bot), self.adapter_group_id)
+        return await get_group_member_nickname_map(self.adapter_group_id)
+
     async def get_users(self) -> dict[str, str]:
         cached_users = await self._get_users_in_cached_message()
         if any([u not in self.group_users for u in cached_users.keys()]):
             if isinstance(self.bot, OB11Bot):
-                self.group_users.clear()
-                for user in await self.bot.get_group_member_list(group_id=int(self.adapter_group_id)):
-                    adapter_nickname = user["nickname"]
-                    ml_user = await get_user(str(user["user_id"]))
-                    nickname = adapter_nickname if not ml_user.has_nickname() else ml_user.get_nickname()
-                    self.group_users[nickname] = str(user["user_id"])
+                self.group_users = await self._get_ob11_group_users()
+            elif isinstance(self.bot, QQBot):
+                # 与 OneBot 11 一致，@ 解析以群成员列表为准，取不到时回退到消息缓存
+                qq_users = await self._get_qq_group_users()
+                self.group_users = qq_users if qq_users else {**self.group_users, **cached_users}
             else:
                 self.group_users = cached_users
         return self.group_users
@@ -84,12 +121,17 @@ class GroupSession(BaseSession):
     async def get_session_name(self) -> Optional[str]:
         if isinstance(self.bot, OB11Bot):
             return (await self.bot.get_group_info(group_id=int(self.adapter_group_id)))["group_name"]
+        if isinstance(self.bot, QQBot):
+            return await get_group_name(self.bot, self.adapter_group_id)
         return None
 
     async def format_message(self, origin_message: str) -> UniMessage:
         message = re.sub(r"\[\d\d:\d\d:\d\d]\[Moonlark]\(\d+\): ?", "", origin_message)
         message = message.strip()
         users = await self.get_users()
+        if not users:
+            # 没有任何已知成员时直接返回，避免空正则匹配到每个字符
+            return UniMessage().text(text=message)
         uni_msg = UniMessage()
         at_list = re.finditer("|".join([f"@{re.escape(user)}" for user in users.keys()]), message)
         cursor_index = 0

@@ -3,6 +3,7 @@ from nonebot.typing import T_State
 from nonebot.adapters import Event, Bot, Message
 from nonebot.adapters.onebot.v11 import GroupMessageEvent
 from nonebot.adapters.onebot.v11 import Bot as OB11Bot
+from nonebot.adapters.qq import Bot as QQBot
 from nonebot.params import CommandArg
 from nonebot_plugin_alconna import on_alconna, Alconna, Subcommand, Args, UniMessage, Reply, At
 from nonebot_plugin_orm import async_scoped_session, get_session
@@ -12,7 +13,7 @@ from datetime import datetime, timedelta
 
 from nonebot_plugin_larkutils import get_user_id, get_group_id, open_file, FileType
 from nonebot_plugin_larkutils.file import FileManager
-from nonebot_plugin_larkuser import get_user
+from nonebot_plugin_larkuser import get_group_name, get_user
 from nonebot_plugin_ranking import generate_image
 from nonebot_plugin_chat.utils.group import parse_message_to_string
 from nonebot_plugin_chat.models import ChatGroup
@@ -448,7 +449,9 @@ async def handle_decision(
             numeric_group_id = int(group_id.split("_")[-1]) if "_" in group_id else int(group_id)
             group_info = await bot.get_group_info(group_id=numeric_group_id)
             group_name = group_info.get("group_name", "群")
-        # QQ 适配器没有直接获取群名称的 API，使用默认值
+        elif isinstance(bot, QQBot) and (group_openid := getattr(event, "group_openid", None)):
+            # QQ 官方 Bot：群名称取自 /v2/groups/{group_openid}/info 的缓存
+            group_name = await get_group_name(bot, str(group_openid)) or group_name
     except Exception as e:
         logger.warning(f"获取群名称失败: {e}")
 
