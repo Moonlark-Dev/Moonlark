@@ -3,8 +3,7 @@ from typing import Any
 
 from sympy import Symbol, diff, exp, latex, limit, log
 
-from .options import build_options
-from .utils import get_verify_function
+from .options import build_choices
 from ....types import Question
 from ....__main__ import lang
 
@@ -185,8 +184,9 @@ async def generate_question(user_id: str) -> Question:
         question, answer, variants = await generate_derivative_question(user_id)
     else:
         question, answer, variants = await generate_derivative_question(user_id, 2)
+    options, answer_letter = build_choices(answer, variants)
     return {
         "question": question,
-        "answer": get_verify_function(answer, user_id),
-        "options": build_options(answer, variants),
+        "answer": answer_letter,
+        "options": options,
     }

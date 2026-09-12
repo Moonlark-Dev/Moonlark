@@ -1,8 +1,8 @@
 import random
 import sympy as sp
 
-from .options import build_options
-from .utils import parse_int, get_verify_function
+from .options import build_choices
+from .utils import parse_int
 from ....types import Question
 from ....__main__ import lang
 
@@ -51,8 +51,9 @@ async def generate_question(user_id: str) -> Question:
         question = question.replace(t, await lang.text("question.l5-o", user_id, t))
     right_answer = quadratic_solver(a, b, c)
     question = await lang.text("question.l5", user_id, question)
+    options, answer_letter = build_choices(right_answer, quadratic_variants(a, b, c))
     return {
         "question": question,
-        "answer": get_verify_function(right_answer, user_id),
-        "options": build_options(right_answer, quadratic_variants(a, b, c)),
+        "answer": answer_letter,
+        "options": options,
     }

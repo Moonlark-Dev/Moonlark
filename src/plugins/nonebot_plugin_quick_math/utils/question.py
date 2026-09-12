@@ -1,4 +1,4 @@
-from typing import Awaitable, Callable, Optional
+from typing import Optional
 
 from nonebot import logger
 from nonebot.adapters import Bot
@@ -11,55 +11,15 @@ from ..__main__ import lang
 from ..config import config
 from ..types import QuestionData
 from .generator import generate_question
+from .generator.levels.options import OPTION_LETTERS
 from .image import generate_image
 from .latex import ensure_math_mode, latex_to_plain
-
-_OPTION_LETTERS = "ABCDEFGHIJKL"
 
 # 仅一元二次方程（L5）的选项由 sympy 生成 LaTeX（\frac、\sqrt），QQ markdown 不解析
 # LaTeX，会把它显示成 "- (9)/(2) - √(57)2" 这类难以辨认的纯文本；因此只有该等级把
 # 题目信息渲染成图片，其余等级继续使用纯文本卡片，避免为简单题目平白增加一次浏览器
 # 渲染与图床上传。
 _QUESTION_IMAGE_LEVELS = frozenset({5})
-
-
-def build_option_answer_matcher(
-    options: list[str], verify: Callable[[str], Awaitable[bool]]
-) -> Callable[[str], Awaitable[bool]]:
-    """包装原始判定函数，使选项按钮发送的选项字母（A/B/C/D）也能被直接判定。
-
-    题目卡片上的选项按钮只回传 ``A``/``B``/``C``/``D``，因此这里先把字母翻译回
-    对应选项文本再交给原始判定函数，避免把字母送进 AI 判定等慢速路径；用户手动
-    输入选项字母或选项原文时同样走这条捷径。
-    """
-
-    async def verify_option(string: str) -> bool:
-        answer = string.strip()
-        if len(answer) == 1:
-            index = _OPTION_LETTERS.find(answer.upper())
-            if 0 <= index < len(options):
-                return await verify(options[index])
-        return await verify(string)
-
-    return verify_option
-
-
-def with_option_letters(question: QuestionData) -> QuestionData:
-    """返回一份新的题目数据：选项按钮回传选项字母，而不是选项原文。
-
-    仅在题目带选项（选择题）时包装判定函数；选项原文仍会被翻译回来交给原始
-    判定函数判定，保证手输答案的行为不变。
-    """
-    options = question["question"].get("options") or []
-    if len(options) < 2:
-        return question
-    return {
-        **question,
-        "question": {
-            **question["question"],
-            "answer": build_option_answer_matcher(options, question["question"]["answer"]),
-        },
-    }
 
 
 async def build_choices_markdown(user_id: str, options: list[str], to_plain: bool = False) -> str:
@@ -77,7 +37,7 @@ async def build_choices_markdown(user_id: str, options: list[str], to_plain: boo
         user_id,
         separator.join(
             [
-                await lang.text("main.choice_item", user_id, _OPTION_LETTERS[index], transform(option))
+                await lang.text("main.choice_item", user_id, OPTION_LETTERS[index], transform(option))
                 for index, option in enumerate(options)
             ],
         ),
@@ -85,14 +45,15 @@ async def build_choices_markdown(user_id: str, options: list[str], to_plain: boo
 
 
 async def build_question_info_markdown(user_id: str, question: QuestionData, to_plain: bool = False) -> str:
-    """构建题目信息（题干 + 选项）的 markdown。"""
+    """构建题目信息（题干 + 选项）的 markdown。
+
+    所有题目都是选择题，选项列表（``A. ...``）一并渲染：QQ 官方机器人把它作为卡片
+    文本，其余适配器则随题干一起渲染进题目图片。
+    """
     content = question["question"]["question"]
     if to_plain:
         content = latex_to_plain(content)
-    options = question["question"].get("options") or []
-    if len(options) > 1:
-        content += "\n\n" + await build_choices_markdown(user_id, options, to_plain=to_plain)
-    return content
+    return content + "\n\n" + await build_choices_markdown(user_id, question["question"]["options"], to_plain=to_plain)
 
 
 async def build_question_info(user_id: str, question: QuestionData) -> str:
@@ -141,11 +102,12 @@ async def get_question(
             qq_user_id,
             enable_leave_button,
         )
+    # 非 QQ 官方机器人没有键盘按钮：选项随题干一起渲染进题目图片，用户同样回复字母
     return (
         UniMessage().image(
             raw=await generate_image(
                 user_id,
-                question["question"]["question"],
+                await build_question_info_markdown(user_id, question),
                 answered,
                 question["limit_in_sec"],
                 question["level"],
@@ -170,7 +132,7 @@ async def build_markdown_message(
     enable_leave_button: bool = False,
 ) -> tuple[UniMessage, QuestionData]:
     """构建 QQ 官方机器人的 markdown 题目卡片，并附带选项/操作按钮。"""
-    options = question["question"].get("options") or []
+    options = question["question"]["options"]
     content = await lang.text(
         "main.qq_markdown",
         user_id,
@@ -185,15 +147,15 @@ async def build_markdown_message(
     )
     message = UniMessage().style(content, "markdown")
     if question["level"] in _QUESTION_IMAGE_LEVELS:
-        # 选项原文已随题目信息渲染进图片，按钮只显示并回传选项字母
+        # L5 的选项原文（LaTeX）已随题目信息渲染进图片，按钮只显示并回传选项字母
         buttons: list[Button] = [
-            Button("enter", _OPTION_LETTERS[index], text=_OPTION_LETTERS[index]) for index in range(len(options))
+            Button("enter", OPTION_LETTERS[index], text=OPTION_LETTERS[index]) for index in range(len(options))
         ]
     else:
-        # 选项仍以文本显示在卡片里，按钮保留选项原文便于直接辨认；回传的仍是字母，
-        # 服务端无需再判定长文本（例如 L7 需要调用 AI 判定），直接按字母取选项即可
+        # 其余等级的选项仍以文本显示在卡片里，按钮保留选项原文便于直接辨认；
+        # 无论按钮显示什么，回传的都是选项字母，判题直接比较字母即可
         buttons = [
-            Button("enter", latex_to_plain(option), text=_OPTION_LETTERS[index]) for index, option in enumerate(options)
+            Button("enter", latex_to_plain(option), text=OPTION_LETTERS[index]) for index, option in enumerate(options)
         ]
     if total_skipping_count > skipped_question:
         buttons.append(Button("enter", await lang.text("button.skip", user_id), text="skip"))
@@ -201,4 +163,4 @@ async def build_markdown_message(
         buttons.append(Button("enter", await lang.text("button.leave", user_id), text="leave"))
     if buttons:
         message.keyboard(*buttons, row=4)
-    return message, with_option_letters(question)
+    return message, question
