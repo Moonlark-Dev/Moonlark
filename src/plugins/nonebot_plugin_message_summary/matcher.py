@@ -439,7 +439,7 @@ async def handle_decision(
     async with get_config() as conf:
         if group_id in conf.data:
             await lang.finish("disabled", user_id)
-    reason = " ".join(reason)
+    reason = " ".join(reason_arg)
 
     # 获取群名称
     group_name = "群"
