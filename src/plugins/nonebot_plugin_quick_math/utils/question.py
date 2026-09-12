@@ -63,10 +63,13 @@ async def build_choices_markdown(user_id: str, options: list[str], to_plain: boo
     否则把裸 LaTeX 选项包进 ``$...$`` 交给 md_to_pic 渲染成公式。
     """
     transform = latex_to_plain if to_plain else ensure_math_mode
+    # 选项要逐行显示：markdown 会把段落内的单个换行折叠成空格，因此渲染图片时用
+    # 行尾双空格产生硬换行；回退的纯文本直接交给 QQ markdown，无需硬换行
+    separator = "\n" if to_plain else "  \n"
     return await lang.text(
         "main.choices",
         user_id,
-        "\n".join(
+        separator.join(
             [
                 await lang.text("main.choice_item", user_id, _OPTION_LETTERS[index], transform(option))
                 for index, option in enumerate(options)

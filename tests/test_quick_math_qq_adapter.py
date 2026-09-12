@@ -179,7 +179,8 @@ async def test_question_card_question_info_is_image(patched_image_renderer: dict
     markdown: str = patched_image_renderer["markdown"]
     assert markdown.startswith("1 + 2 = ?")
     assert "\n\n## 请选择答案\n\n" in markdown
-    assert "A. 1" in markdown
+    # 选项之间使用行尾双空格的硬换行，否则图片里所有选项会被折叠到同一行
+    assert "A. 1  \nB. 2  \nC. 3" in markdown
     assert patched_image_renderer["image"] == b"fake-image"
 
 
@@ -193,8 +194,7 @@ async def test_question_card_wraps_latex_options_in_math_mode(patched_image_rend
 
     await build_markdown_message("user", question, 0, 0, 0, 0)
     markdown: str = patched_image_renderer["markdown"]
-    assert "A. $x_{1} = \\frac{1}{2}$" in markdown
-    assert "B. -3" in markdown
+    assert "A. $x_{1} = \\frac{1}{2}$  \nB. -3" in markdown
 
 
 @pytest.mark.asyncio
@@ -213,7 +213,8 @@ async def test_question_card_falls_back_to_plain_text(monkeypatch: pytest.Monkey
     content = next(segment for segment in message if isinstance(segment, Text)).text
     assert "1 + 2 = ?" in content
     assert "\n\n## 请选择答案\n\n" in content
-    assert "A. 1" in content
+    # 回退的纯文本交给 QQ markdown 渲染，用普通换行分隔选项即可
+    assert "A. 1\nB. 2\nC. 3" in content
 
 
 @pytest.mark.asyncio
