@@ -1,12 +1,14 @@
 from enum import Enum
 from typing import Awaitable, Callable, Literal
-from typing_extensions import NotRequired, TypedDict
+from typing_extensions import TypedDict
 
 
 class Question(TypedDict):
     question: str
-    answer: Callable[[str], Awaitable[bool]]
-    options: NotRequired[list[str]]
+    options: list[str]
+    # 正确选项对应的字母（A/B/C/D…）。所有题目都是选择题，判题直接比较字母，
+    # 不再解析用户输入或调用 AI 判定答案文本。
+    answer: str
 
 
 class QuestionData(TypedDict):

@@ -79,7 +79,8 @@ async def wait_answer(
             return ReplyType.SKIP
         elif enable_leave_command and r.lower() in ["leave", "quit", "q"]:
             return ExtendReplyType.LEAVE
-        elif await question["question"]["answer"](r):
+        elif r.strip().upper() == question["question"]["answer"]:
+            # 所有题目都是选择题，answer 是正确选项字母；直接比较字母，忽略大小写与空白
             return ReplyType.RIGHT
         message = UniMessage.text(await lang.text(f"answer.wrong", user_id, config.qm_retry_count - i))
     return ReplyType.WRONG
