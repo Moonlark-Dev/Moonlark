@@ -1,0 +1,12 @@
+description: |
+  下载指定 URL 的图片并放入当前对话，使你能够直接查看图片内容。
+  **使用场景**:
+  1. 群友发送了图片链接，而你需要看懂图片内容才能回复。
+  2. 你在网页或搜索结果中发现了值得一看的图片地址（截图、插画、表情包等）。
+  **限制**: 仅支持指向图片文件本身的 http/https 链接（jpg/png/webp/gif/bmp 等），
+  普通网页请使用 browse_webpage，不要用本工具访问网页。
+parameters:
+  - name: url
+    description: "图片的 URL 地址（以 http:// 或 https:// 开头）。"
+    type: string
+    required: true

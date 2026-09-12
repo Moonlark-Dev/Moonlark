@@ -46,6 +46,8 @@ from .tools import (
     is_vm_available,
     fetch_history_messages,
     get_weather,
+    download_image,
+    ImageDownloadError,
 )
 from ..utils.emoji import QQ_EMOJI_MAP
 from .note_manager import check_note, get_context_notes
@@ -116,6 +118,32 @@ class ToolManager:
         await message.send(target=self.processor.session.target, bot=self.processor.session.bot)
 
         return "图片已生成并发送"
+
+    async def request_image(self, url: str) -> str:
+        """下载指定 URL 的图片并加入当前对话，以便你直接查看图片内容
+
+        Args:
+            url: 图片的 URL 地址
+
+        Returns:
+            工具执行结果
+        """
+        if self.processor is None:
+            raise RuntimeError("processor is None")
+        if not self.processor.ENABLE_EMBEDDED_IMAGE:
+            return "当前模型不支持图像，无法查看下载的图片"
+
+        try:
+            image, mime_type = await download_image(url)
+        except ImageDownloadError as e:
+            return f"图片获取失败：{e}"
+
+        await self.processor.openai_messages.inject_image(
+            image,
+            mime_type,
+            f"[图片] 这是你通过 request_image 加载的图片（来源：{url}），请查看其内容。",
+        )
+        return "图片已加入当前对话，你可以在接下来的回复中直接查看"
 
     async def calculate_luck_value(self, nickname: str) -> str:
         """计算用户的人品值
@@ -241,8 +269,13 @@ class ToolManager:
 
         # # === Group 模式特有工具 ===
         if processor and mode == "group":
-            # query_image
-            tools.append(processor.query_image)
+            # 图片相关工具二选一：
+            # - 主模型支持多模态：可以直接把 URL 图片拉进上下文（request_image）
+            # - 否则模型看不到原图，只能依赖 VLM 生成的描述，需要 query_image 按需追问细节
+            if processor.ENABLE_EMBEDDED_IMAGE:
+                tools.append(processor.request_image)
+            else:
+                tools.append(processor.query_image)
             tools.append(processor.send_message)
 
             # leave_for_a_while

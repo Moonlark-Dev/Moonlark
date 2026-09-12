@@ -1,3 +1,4 @@
+import base64
 import hashlib
 import re
 import traceback
@@ -426,6 +427,27 @@ class MessageQueue:
                 self.fetcher = await self._create_fetcher()
             await self._ensure_system_prompt()
             self.fetcher.session.insert_message(msg)
+
+    async def inject_image(self, image: bytes, mime_type: str, note: str) -> None:
+        """把图片立即注入当前对话，使主模型能够直接看到图片内容
+
+        工具调用发生在一次请求内部，此时 fetcher_lock 已被持有，append_user_message
+        会把消息放入 waiting_sequence 而无法在本轮生效；这里直接插入正在进行的会话，
+        消息会在本轮工具调用结束后、下一次请求之前送出。
+
+        Args:
+            image: 图片二进制数据
+            mime_type: 图片 MIME 类型，如 image/png
+            note: 随图片一起发送的说明文本
+        """
+        if self.fetcher is None:
+            self.fetcher = await self._create_fetcher()
+        image_base64 = base64.b64encode(image).decode("utf-8")
+        content = [
+            {"type": "text", "text": note},
+            {"type": "image_url", "image_url": {"url": f"data:{mime_type};base64,{image_base64}"}},
+        ]
+        self.fetcher.session.insert_message(generate_message(content, "user"))
 
     def is_last_message_from_user(self) -> bool:
         return get_role(self.messages[-1]) == "user"
