@@ -241,8 +241,10 @@ class ToolManager:
 
         # # === Group 模式特有工具 ===
         if processor and mode == "group":
-            # query_image
-            tools.append(processor.query_image)
+            # query_image：仅在图片未嵌入上下文时才需要
+            # （此时模型看不到原图，只能依赖 VLM 生成的描述，需要该工具按需追问细节）
+            if not processor.ENABLE_EMBEDDED_IMAGE:
+                tools.append(processor.query_image)
             tools.append(processor.send_message)
 
             # leave_for_a_while
