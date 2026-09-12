@@ -6,7 +6,7 @@
 """
 
 from datetime import datetime
-from typing import Any, Optional
+from typing import Optional
 
 import httpx
 
@@ -17,9 +17,6 @@ DEV_API_BASE = (config.qweather_api_host or "https://devapi.qweather.com").rstri
 GEO_API_BASE = (config.qweather_geo_api_host or "https://geoapi.qweather.com").rstrip("/")
 
 WEEKDAYS = ["星期一", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日"]
-
-# 每日天气缓存：成功 30 分钟、失败 5 分钟，避免频繁请求
-_daily_cache: dict[str, Any] = {"time": None, "text": None, "success": False}
 
 
 def is_weather_configured() -> bool:
@@ -59,20 +56,10 @@ async def get_daily_weather_text() -> Optional[str]:
     if not is_weather_configured() or not is_moonlark_location_configured():
         return None
 
-    now = datetime.now()
-    cached = _daily_cache.get("time")
-    if cached is not None:
-        ttl = 1800 if _daily_cache.get("success") else 300
-        if (now - cached).total_seconds() < ttl:
-            return _daily_cache.get("text")
-
     location = f"{config.moonlark_longitude},{config.moonlark_latitude}"
     data = await _qweather_request(DEV_API_BASE, "v7/weather/3d", {"location": location})
     if data is None or not data.get("daily"):
-        _daily_cache.update(time=now, text=None, success=False)
         return None
 
     today = data["daily"][0]
-    text = f"{today.get('textDay', '未知')}，{today.get('tempMin', '?')}℃~{today.get('tempMax', '?')}℃"
-    _daily_cache.update(time=now, text=text, success=True)
-    return text
+    return f"{today.get('textDay', '未知')}，{today.get('tempMin', '?')}℃~{today.get('tempMax', '?')}℃"
