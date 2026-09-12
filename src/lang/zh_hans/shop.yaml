@@ -1,7 +1,13 @@
 list:
   title: "【Moonlark 商店】当前持有：{} VimCoin"
+  title_md: |
+    ## 商店
+    > 当前持有：{} VimCoin
   item: "[{}] {} - {} VimCoin"
+  item_md: |
+    - <qqbot-cmd-input text="{__prefix__}shop buy {} 1" show="{} ({}vi)" reference="false" />
   footer: 使用 {__prefix__}shop buy <编号> [数量] 购买商品
+  footer_md: 点击可以进行购买
 buy:
   invalid_index: 无效的商品编号，请使用 {__prefix__}shop 查看商品列表。
   invalid_count: 购买数量必须大于 0

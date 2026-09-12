@@ -1,5 +1,9 @@
-from nonebot_plugin_alconna import Alconna, Args, Subcommand, on_alconna
 import random
+
+from nonebot.adapters import Bot
+from nonebot.adapters.qq import Bot as QQBot
+from nonebot_plugin_alconna import Alconna, Args, Subcommand, on_alconna
+from nonebot_plugin_alconna.uniseg import UniMessage
 
 from nonebot_plugin_bag.utils.bag import give_item
 from nonebot_plugin_items.utils.get import get_item
@@ -25,10 +29,36 @@ async def get_goods_name(item_id: str, user_id: str) -> str:
     return await stack.getName()
 
 
+async def build_markdown_list(user_id: str, vimcoin: float) -> str:
+    """构建 QQ 官方机器人的商店列表 markdown。
+
+    商品条目使用 <qqbot-cmd-input>：点击即把 `{前缀}shop buy <编号> 1` 填入输入框，
+    编号只用于拼装指令，不展示在商品文本中。
+    """
+    items = []
+    for index, (item_id, price) in enumerate(GOODS, start=1):
+        name = await get_goods_name(item_id, user_id)
+        items.append(await lang.text("list.item_md", user_id, index, name, price))
+    return "\n".join(
+        [
+            await lang.text("list.title_md", user_id, vimcoin),
+            "",
+            *items,
+            "",
+            await lang.text("list.footer_md", user_id),
+        ],
+    )
+
+
 @shop.assign("$main")
-async def handle_main(user_id: str = get_user_id()) -> None:
+async def handle_main(bot: Bot, user_id: str = get_user_id()) -> None:
     user = await get_user(user_id)
-    lines = [await lang.text("list.title", user_id, round(user.get_vimcoin(), 1))]
+    vimcoin = round(user.get_vimcoin(), 1)
+    if isinstance(bot, QQBot):
+        await UniMessage().style(await build_markdown_list(user_id, vimcoin), "markdown").send()
+        await shop.finish()
+
+    lines = [await lang.text("list.title", user_id, vimcoin)]
     for index, (item_id, price) in enumerate(GOODS, start=1):
         name = await get_goods_name(item_id, user_id)
         lines.append(await lang.text("list.item", user_id, index, name, price))
