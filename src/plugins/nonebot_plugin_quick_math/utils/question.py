@@ -172,7 +172,7 @@ async def build_markdown_message(
     """构建 QQ 官方机器人的 markdown 题目卡片，并附带选项/操作按钮。"""
     options = question["question"].get("options") or []
     content = await lang.text(
-        "main.markdown",
+        "main.qq_markdown",
         user_id,
         await build_question_info(user_id, question),
         answered,
@@ -181,9 +181,8 @@ async def build_markdown_message(
         point,
         skipped_question,
         total_skipping_count,
+        qq_user_id=qq_user_id,
     )
-    if qq_user_id:
-        content = f'<qqbot-at-user id="{qq_user_id}" />\n' + content
     message = UniMessage().style(content, "markdown")
     if question["level"] in _QUESTION_IMAGE_LEVELS:
         # 选项原文已随题目信息渲染进图片，按钮只显示并回传选项字母
