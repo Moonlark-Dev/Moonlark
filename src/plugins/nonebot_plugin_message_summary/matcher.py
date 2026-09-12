@@ -5,7 +5,7 @@ from nonebot.adapters.onebot.v11 import GroupMessageEvent
 from nonebot.adapters.onebot.v11 import Bot as OB11Bot
 from nonebot.adapters.qq import Bot as QQBot
 from nonebot.params import CommandArg
-from nonebot_plugin_alconna import on_alconna, Alconna, Subcommand, Args, UniMessage, Reply, At
+from nonebot_plugin_alconna import MultiVar, on_alconna, Alconna, Subcommand, Args, UniMessage, Reply, At
 from nonebot_plugin_orm import async_scoped_session, get_session
 from sqlalchemy import select
 from typing import Literal, Sequence
@@ -67,7 +67,7 @@ decision = on_alconna(
     Alconna(
         "decision",
         Args["target", At],
-        Args["reason", str, ""],
+        Args["reason_arg", MultiVar(str), ""],
     )
 )
 word_cloud = on_alconna(Alconna("word-cloud", Args["hours", int, 24]))
@@ -428,7 +428,7 @@ async def handle_word_cloud(
 @decision.handle()
 async def handle_decision(
     target: At,
-    reason: str,
+    reason_arg: list[str],
     session: async_scoped_session,
     bot: Bot,
     event: Event,
@@ -439,6 +439,7 @@ async def handle_decision(
     async with get_config() as conf:
         if group_id in conf.data:
             await lang.finish("disabled", user_id)
+    reason = " ".join(reason)
 
     # 获取群名称
     group_name = "群"
