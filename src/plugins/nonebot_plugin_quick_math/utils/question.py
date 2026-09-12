@@ -183,7 +183,7 @@ async def build_markdown_message(
         point,
         skipped_question,
         total_skipping_count,
-        qq_user_id=qq_user_id
+        qq_user_id=qq_user_id,
     )
     message = UniMessage().style(content, "markdown")
     if question["level"] in _QUESTION_IMAGE_LEVELS:
