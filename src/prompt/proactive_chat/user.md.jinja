@@ -13,4 +13,9 @@
 
 当前时间：{{ current_time }}
 
-请选择一个人和一个话题。如果不想发送，设置 skip=true。
+请按系统提示中的输出格式，只返回严格的 JSON 对象（不要包含 Markdown 代码块）：
+
+{"skip": false, "target_nickname": "好友列表中的昵称", "topic": "私聊内容"}
+
+如果不想发送，设置 skip=true，并将 target_nickname 与 topic 留空：
+{"skip": true, "target_nickname": "", "topic": ""}
