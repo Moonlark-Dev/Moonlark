@@ -5,8 +5,9 @@
 - 主界面模式按钮分行（keyboard 每行一个按钮），私聊（C2C）下禅模式按钮改为
   input 类型，点击后预填指令供用户自行填入等级，而不是直接发送固定等级 5 的
   ``/qm zen 5``；
-- 题目卡片“请选择答案”标题与题目之间补空行，避免标题与题目粘在同一行导致
-  QQ markdown 无法解析、原样显示 ``##``；
+- 题目信息（题干 + “请选择答案” + 选项）改用 md_to_pic 渲染成图片后经图床发送，
+  避免 QQ markdown 不解析 LaTeX 导致根式、分式显示成 ``√(57)2`` 这类纯文本；
+- 选项按钮内容改为选项字母（A/B/C/D），选项原文已随题目信息进入图片；
 - 退出指令（leave/quit/q）仅在禅模式（``enable_leave_command``）下生效，且
   q 不再被 prompt 的快捷退出吞掉、超时以 ``ReplyType.TIMEOUT`` 返回，保证
   退出/超时后正常发送结算卡片；
@@ -23,6 +24,9 @@ import pytest
 import yaml
 
 _LANG_FILE = Path(__file__).resolve().parents[1] / "src" / "lang" / "zh_hans" / "quick_math.yaml"
+
+# 图床返回的 markdown 图片代码（含 QQ 需要的宽高标注）
+_FAKE_IMAGE_MARKDOWN = "![text #100px #50px](https://example.com/question.jpg)"
 
 
 def _load_template(key: str) -> str:
@@ -52,6 +56,30 @@ def patched_lang(monkeypatch: pytest.MonkeyPatch) -> None:
         return remove_trailing_blank_lines(text.format(*args, **kwargs, **builtin_format))
 
     monkeypatch.setattr(lang, "text", fake_text)
+
+
+@pytest.fixture(autouse=True)
+def patched_image_renderer(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
+    """拦截题目信息渲染与图床上传，避免测试依赖浏览器与对象存储。
+
+    返回的字典记录传给 md_to_pic 的 markdown 与上传的图片数据，便于断言题目信息
+    （题干 + 选项）确实被渲染为图片、而不是继续以纯文本发送。
+    """
+    from nonebot_plugin_quick_math.utils import question as question_module
+
+    captured: dict[str, Any] = {"markdown": None, "image": None}
+
+    async def fake_md_to_pic(markdown: str, **_kwargs: object) -> bytes:
+        captured["markdown"] = markdown
+        return b"fake-image"
+
+    async def fake_create_image_markdown(data: bytes, **_kwargs: object) -> str:
+        captured["image"] = data
+        return _FAKE_IMAGE_MARKDOWN
+
+    monkeypatch.setattr(question_module, "md_to_pic", fake_md_to_pic)
+    monkeypatch.setattr(question_module, "create_image_markdown", fake_create_image_markdown)
+    return captured
 
 
 def _make_question() -> dict[str, Any]:
@@ -133,19 +161,59 @@ async def test_menu_group_zen_button_sends_default_level() -> None:
 
 
 @pytest.mark.asyncio
-async def test_question_card_choices_heading_on_separate_line() -> None:
-    """“请选择答案”标题与题目之间应有空行，不能粘在同一行导致 ## 原样显示。"""
+async def test_question_card_question_info_is_image(patched_image_renderer: dict[str, Any]) -> None:
+    """“题目信息”标题后应是一张图片：题干与选项进图片，不再以纯文本出现在卡片里。"""
     from nonebot_plugin_alconna import Text, UniMessage
     from nonebot_plugin_quick_math.utils.question import build_markdown_message
 
     question = _make_choice_question()
     message, _ = await build_markdown_message("user", question, 0, 0, 0, 0, "qq_openid")
     assert isinstance(message, UniMessage)
-    text = next(segment for segment in message if isinstance(segment, Text))
-    content = text.text
-    assert "## 请选择答案" in content
-    assert "\n\n## 请选择答案" in content
-    assert "?## 请选择答案" not in content
+    content = next(segment for segment in message if isinstance(segment, Text)).text
+    # 图片紧跟在“题目信息”标题之后
+    assert f"## 题目信息\n\n{_FAKE_IMAGE_MARKDOWN}" in content
+    # 题干与选项都不再直接出现在 QQ markdown 里（否则仍会显示成难读的纯文本）
+    assert "1 + 2 = ?" not in content
+    assert "A. 1" not in content
+    # 图片内容包含题干 LaTeX 原文与“请选择答案”+ 选项列表
+    markdown: str = patched_image_renderer["markdown"]
+    assert markdown.startswith("1 + 2 = ?")
+    assert "\n\n## 请选择答案\n\n" in markdown
+    assert "A. 1" in markdown
+    assert patched_image_renderer["image"] == b"fake-image"
+
+
+@pytest.mark.asyncio
+async def test_question_card_wraps_latex_options_in_math_mode(patched_image_renderer: dict[str, Any]) -> None:
+    """裸 LaTeX 选项应包进 $...$（md_to_pic 只渲染该形式），纯数字选项保持原样。"""
+    from nonebot_plugin_quick_math.utils.question import build_markdown_message
+
+    question = _make_choice_question()
+    question["question"]["options"] = ["x_{1} = \\frac{1}{2}", "-3"]
+
+    await build_markdown_message("user", question, 0, 0, 0, 0)
+    markdown: str = patched_image_renderer["markdown"]
+    assert "A. $x_{1} = \\frac{1}{2}$" in markdown
+    assert "B. -3" in markdown
+
+
+@pytest.mark.asyncio
+async def test_question_card_falls_back_to_plain_text(monkeypatch: pytest.MonkeyPatch) -> None:
+    """图床不可用时题目信息应回退为纯文本，保证题目卡片仍可发送。"""
+    from nonebot_plugin_alconna import Text
+    from nonebot_plugin_quick_math.utils import question as question_module
+    from nonebot_plugin_quick_math.utils.question import build_markdown_message
+
+    async def failing_create_image_markdown(_data: bytes, **_kwargs: object) -> str:
+        raise RuntimeError("S3 图床未配置")
+
+    monkeypatch.setattr(question_module, "create_image_markdown", failing_create_image_markdown)
+
+    message, _ = await build_markdown_message("user", _make_choice_question(), 0, 0, 0, 0)
+    content = next(segment for segment in message if isinstance(segment, Text)).text
+    assert "1 + 2 = ?" in content
+    assert "\n\n## 请选择答案\n\n" in content
+    assert "A. 1" in content
 
 
 @pytest.mark.asyncio
@@ -170,15 +238,15 @@ async def test_question_card_leave_button_only_when_enabled() -> None:
 
 
 @pytest.mark.asyncio
-async def test_question_card_option_buttons_send_letters() -> None:
-    """选项按钮应显示选项原文，但回传选项字母 A/B/C，而不是选项原文。"""
+async def test_question_card_option_buttons_show_letters() -> None:
+    """选项按钮内容应为字母 A/B/C（选项原文已渲染进题目信息图片）。"""
     from nonebot_plugin_alconna import Keyboard
     from nonebot_plugin_quick_math.utils.question import build_markdown_message
 
     question = _make_choice_question()
     message, _ = await build_markdown_message("user", question, 0, 0, 0, 0, "qq_openid")
     keyboard = next(segment for segment in message if isinstance(segment, Keyboard))
-    assert [button.label for button in keyboard.children] == ["1", "2", "3"]
+    assert [button.label for button in keyboard.children] == ["A", "B", "C"]
     assert [button.text for button in keyboard.children] == ["A", "B", "C"]
 
 

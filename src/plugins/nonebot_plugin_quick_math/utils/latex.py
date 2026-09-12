@@ -1,14 +1,19 @@
-"""LaTeX 到纯文本的轻量转换。
+"""LaTeX 公式的文本处理工具。
 
-QQ 官方机器人 markdown 消息不解析 LaTeX 数学公式，因此在 QQ 适配器下发送题目卡片时，
-将题目生成器产生的 LaTeX 字符串转换为可读的纯文本（Unicode 符号），
-以便直接嵌入 markdown 消息。转换失败时保持原样，由调用方兜底。
+题目生成器产生的是裸 LaTeX（例如选项 ``x_{1} = \\frac{1}{2}``）。题目信息在
+QQ 官方机器人下通过 md_to_pic 渲染成图片，因此需要 :func:`ensure_math_mode` 把
+裸 LaTeX 包进 ``$...$`` 交给 KaTeX；图床不可用需要回退为纯文本时，则用
+:func:`latex_to_plain` 把公式转换为可读的 Unicode 符号。转换失败时保持原样，
+由调用方兜底。
 """
 
 import re
 
 _SUPERSCRIPT_PATTERN = re.compile(r"\^\{([^{}]*)\}|\^([0-9+\-()a-zA-Z])")
 _SUBSCRIPT_PATTERN = re.compile(r"_\{([^{}]*)\}|_([0-9+\-()a-zA-Z])")
+
+# 裸 LaTeX 的特征：命令反斜杠、上下标、花括号
+_LATEX_HINT_PATTERN = re.compile(r"[\\_^{}]")
 
 _SUPERSCRIPT_MAP = str.maketrans("0123456789+-=()", "⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁼⁽⁾")
 _SUBSCRIPT_MAP = str.maketrans("0123456789+-=()", "₀₁₂₃₄₅₆₇₈₉₊₋₌₍₎")
@@ -34,6 +39,18 @@ _COMMANDS = {
 def _translate_script(match: re.Match, script_map: str) -> str:
     content = match.group(1) or match.group(2)
     return content.translate(script_map)
+
+
+def ensure_math_mode(latex: str) -> str:
+    """把裸 LaTeX 包进 ``$...$``，供 md_to_pic 交给 KaTeX 渲染。
+
+    题目生成器给出的选项是裸 LaTeX（如 ``x_{1} = \\frac{1}{2}``），而 md_to_pic
+    只把 ``$...$``/``$$...$$`` 包裹的内容当作公式；纯数字选项（如 ``1/2``）没有
+    公式特征，保持原样以免平白变成数学字体。
+    """
+    if not latex or latex.lstrip().startswith("$") or _LATEX_HINT_PATTERN.search(latex) is None:
+        return latex
+    return f"${latex}$"
 
 
 def latex_to_plain(latex: str) -> str:
