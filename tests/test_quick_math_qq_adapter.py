@@ -5,9 +5,10 @@
 - 主界面模式按钮分行（keyboard 每行一个按钮），私聊（C2C）下禅模式按钮改为
   input 类型，点击后预填指令供用户自行填入等级，而不是直接发送固定等级 5 的
   ``/qm zen 5``；
-- 题目信息（题干 + “请选择答案” + 选项）改用 md_to_pic 渲染成图片后经图床发送，
-  避免 QQ markdown 不解析 LaTeX 导致根式、分式显示成 ``√(57)2`` 这类纯文本；
-- 选项按钮内容改为选项字母（A/B/C/D），选项原文已随题目信息进入图片；
+- 一元二次方程（L5）的题目信息（题干 + “请选择答案” + 选项）改用 md_to_pic 渲染成
+  图片后经图床发送，避免 QQ markdown 不解析 LaTeX 导致 ``\frac``/``\sqrt`` 显示成
+  ``√(57)2`` 这类纯文本；该等级的选项按钮内容改为选项字母（A/B/C/D），选项原文已随
+  题目信息进入图片。其余等级的题目信息与选项按钮保持原有纯文本表现；
 - 退出指令（leave/quit/q）仅在禅模式（``enable_leave_command``）下生效，且
   q 不再被 prompt 的快捷退出吞掉、超时以 ``ReplyType.TIMEOUT`` 返回，保证
   退出/超时后正常发送结算卡片；
@@ -96,8 +97,11 @@ def _make_question() -> dict[str, Any]:
     }
 
 
-def _make_choice_question(answer_fn: Any = None) -> dict[str, Any]:
-    """构造一个带选项的选择题（默认判定恒为正确）。"""
+def _make_choice_question(answer_fn: Any = None, level: int = 1) -> dict[str, Any]:
+    """构造一个带选项的选择题（默认判定恒为正确）。
+
+    ``level`` 决定题目信息是否渲染为图片：只有 L5（一元二次方程）走图片。
+    """
 
     if answer_fn is None:
 
@@ -113,7 +117,7 @@ def _make_choice_question(answer_fn: Any = None) -> dict[str, Any]:
             "options": ["1", "2", "3"],
         },
         "max_point": 10,
-        "level": 1,
+        "level": level,
         "limit_in_sec": 5,
     }
 
@@ -162,11 +166,11 @@ async def test_menu_group_zen_button_sends_default_level() -> None:
 
 @pytest.mark.asyncio
 async def test_question_card_question_info_is_image(patched_image_renderer: dict[str, Any]) -> None:
-    """“题目信息”标题后应是一张图片：题干与选项进图片，不再以纯文本出现在卡片里。"""
+    """L5（一元二次方程）的“题目信息”标题后应是一张图片，题干与选项都不再以纯文本出现。"""
     from nonebot_plugin_alconna import Text, UniMessage
     from nonebot_plugin_quick_math.utils.question import build_markdown_message
 
-    question = _make_choice_question()
+    question = _make_choice_question(level=5)
     message, _ = await build_markdown_message("user", question, 0, 0, 0, 0, "qq_openid")
     assert isinstance(message, UniMessage)
     content = next(segment for segment in message if isinstance(segment, Text)).text
@@ -185,11 +189,28 @@ async def test_question_card_question_info_is_image(patched_image_renderer: dict
 
 
 @pytest.mark.asyncio
-async def test_question_card_wraps_latex_options_in_math_mode(patched_image_renderer: dict[str, Any]) -> None:
-    """裸 LaTeX 选项应包进 $...$（md_to_pic 只渲染该形式），纯数字选项保持原样。"""
+async def test_question_card_other_levels_stay_plain_text(patched_image_renderer: dict[str, Any]) -> None:
+    """只有 L5 走图片：其余等级仍以纯文本发送题目信息，不触发渲染与图床上传。"""
+    from nonebot_plugin_alconna import Text
     from nonebot_plugin_quick_math.utils.question import build_markdown_message
 
-    question = _make_choice_question()
+    for level in (1, 3, 7):
+        patched_image_renderer["markdown"] = None
+        message, _ = await build_markdown_message("user", _make_choice_question(level=level), 0, 0, 0, 0)
+        content = next(segment for segment in message if isinstance(segment, Text)).text
+        assert "1 + 2 = ?" in content
+        assert "\n\n## 请选择答案\n\n" in content
+        assert "A. 1\nB. 2\nC. 3" in content
+        assert _FAKE_IMAGE_MARKDOWN not in content
+        assert patched_image_renderer["markdown"] is None
+
+
+@pytest.mark.asyncio
+async def test_question_card_wraps_latex_options_in_math_mode(patched_image_renderer: dict[str, Any]) -> None:
+    """L5 的裸 LaTeX 选项应包进 $...$（md_to_pic 只渲染该形式），纯数字选项保持原样。"""
+    from nonebot_plugin_quick_math.utils.question import build_markdown_message
+
+    question = _make_choice_question(level=5)
     question["question"]["options"] = ["x_{1} = \\frac{1}{2}", "-3"]
 
     await build_markdown_message("user", question, 0, 0, 0, 0)
@@ -199,7 +220,7 @@ async def test_question_card_wraps_latex_options_in_math_mode(patched_image_rend
 
 @pytest.mark.asyncio
 async def test_question_card_falls_back_to_plain_text(monkeypatch: pytest.MonkeyPatch) -> None:
-    """图床不可用时题目信息应回退为纯文本，保证题目卡片仍可发送。"""
+    """图床不可用时 L5 的题目信息应回退为纯文本，保证题目卡片仍可发送。"""
     from nonebot_plugin_alconna import Text
     from nonebot_plugin_quick_math.utils import question as question_module
     from nonebot_plugin_quick_math.utils.question import build_markdown_message
@@ -209,7 +230,7 @@ async def test_question_card_falls_back_to_plain_text(monkeypatch: pytest.Monkey
 
     monkeypatch.setattr(question_module, "create_image_markdown", failing_create_image_markdown)
 
-    message, _ = await build_markdown_message("user", _make_choice_question(), 0, 0, 0, 0)
+    message, _ = await build_markdown_message("user", _make_choice_question(level=5), 0, 0, 0, 0)
     content = next(segment for segment in message if isinstance(segment, Text)).text
     assert "1 + 2 = ?" in content
     assert "\n\n## 请选择答案\n\n" in content
@@ -239,15 +260,27 @@ async def test_question_card_leave_button_only_when_enabled() -> None:
 
 
 @pytest.mark.asyncio
-async def test_question_card_option_buttons_show_letters() -> None:
-    """选项按钮内容应为字母 A/B/C（选项原文已渲染进题目信息图片）。"""
+async def test_question_card_option_buttons_show_letters_for_image_level() -> None:
+    """L5 的选项原文已渲染进图片，按钮内容应为字母 A/B/C。"""
     from nonebot_plugin_alconna import Keyboard
     from nonebot_plugin_quick_math.utils.question import build_markdown_message
 
-    question = _make_choice_question()
+    question = _make_choice_question(level=5)
     message, _ = await build_markdown_message("user", question, 0, 0, 0, 0, "qq_openid")
     keyboard = next(segment for segment in message if isinstance(segment, Keyboard))
     assert [button.label for button in keyboard.children] == ["A", "B", "C"]
+    assert [button.text for button in keyboard.children] == ["A", "B", "C"]
+
+
+@pytest.mark.asyncio
+async def test_question_card_option_buttons_keep_text_for_other_levels() -> None:
+    """其余等级的选项仍以文本显示在卡片里，按钮保留选项原文，但回传字母。"""
+    from nonebot_plugin_alconna import Keyboard
+    from nonebot_plugin_quick_math.utils.question import build_markdown_message
+
+    message, _ = await build_markdown_message("user", _make_choice_question(level=1), 0, 0, 0, 0, "qq_openid")
+    keyboard = next(segment for segment in message if isinstance(segment, Keyboard))
+    assert [button.label for button in keyboard.children] == ["1", "2", "3"]
     assert [button.text for button in keyboard.children] == ["A", "B", "C"]
 
 

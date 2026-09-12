@@ -16,6 +16,12 @@ from .latex import ensure_math_mode, latex_to_plain
 
 _OPTION_LETTERS = "ABCDEFGHIJKL"
 
+# 仅一元二次方程（L5）的选项由 sympy 生成 LaTeX（\frac、\sqrt），QQ markdown 不解析
+# LaTeX，会把它显示成 "- (9)/(2) - √(57)2" 这类难以辨认的纯文本；因此只有该等级把
+# 题目信息渲染成图片，其余等级继续使用纯文本卡片，避免为简单题目平白增加一次浏览器
+# 渲染与图床上传。
+_QUESTION_IMAGE_LEVELS = frozenset({5})
+
 
 def build_option_answer_matcher(
     options: list[str], verify: Callable[[str], Awaitable[bool]]
@@ -90,13 +96,15 @@ async def build_question_info_markdown(user_id: str, question: QuestionData, to_
 
 
 async def build_question_info(user_id: str, question: QuestionData) -> str:
-    """构建 QQ 官方机器人的题目信息：用 md_to_pic 渲染成图片，并返回图床 markdown 代码。
+    """构建 QQ 官方机器人的题目信息。
 
-    QQ 官方机器人的 markdown 消息不解析 LaTeX，直接把题干与选项发出去只会显示成
-    ``√(57)2`` 这类难以辨认的纯文本；因此这里先用 md_to_pic 把题目信息（题干 +
-    “请选择答案” + 选项）渲染为图片，再上传图床并返回可供 markdown 引用的图片代码。
-    图床未配置或渲染失败时回退为 ``latex_to_plain`` 的纯文本，保证题目卡片仍可发送。
+    一元二次方程（见 ``_QUESTION_IMAGE_LEVELS``）的选项是 LaTeX，直接用 md_to_pic 把
+    题目信息（题干 + “请选择答案” + 选项）渲染为图片，再上传图床并返回可供 markdown
+    引用的图片代码；图床未配置或渲染失败时回退为 ``latex_to_plain`` 的纯文本。其余
+    等级继续使用纯文本题目信息。
     """
+    if question["level"] not in _QUESTION_IMAGE_LEVELS:
+        return await build_question_info_markdown(user_id, question, to_plain=True)
     markdown = await build_question_info_markdown(user_id, question)
     try:
         image = await create_image_markdown(await md_to_pic(markdown, type="jpeg"))
@@ -177,11 +185,17 @@ async def build_markdown_message(
     if qq_user_id:
         content = f'<qqbot-at-user id="{qq_user_id}" />\n' + content
     message = UniMessage().style(content, "markdown")
-    # 选项原文已随题目信息渲染进图片，按钮只显示选项字母；回传的同样是字母，
-    # 服务端无需再判定长文本（例如 L7 需要调用 AI 判定），直接按字母取选项即可
-    buttons: list[Button] = [
-        Button("enter", _OPTION_LETTERS[index], text=_OPTION_LETTERS[index]) for index in range(len(options))
-    ]
+    if question["level"] in _QUESTION_IMAGE_LEVELS:
+        # 选项原文已随题目信息渲染进图片，按钮只显示并回传选项字母
+        buttons: list[Button] = [
+            Button("enter", _OPTION_LETTERS[index], text=_OPTION_LETTERS[index]) for index in range(len(options))
+        ]
+    else:
+        # 选项仍以文本显示在卡片里，按钮保留选项原文便于直接辨认；回传的仍是字母，
+        # 服务端无需再判定长文本（例如 L7 需要调用 AI 判定），直接按字母取选项即可
+        buttons = [
+            Button("enter", latex_to_plain(option), text=_OPTION_LETTERS[index]) for index, option in enumerate(options)
+        ]
     if total_skipping_count > skipped_question:
         buttons.append(Button("enter", await lang.text("button.skip", user_id), text="skip"))
     if enable_leave_button:
