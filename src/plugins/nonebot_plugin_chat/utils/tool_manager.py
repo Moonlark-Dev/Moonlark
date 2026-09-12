@@ -273,7 +273,7 @@ class ToolManager:
             # - 主模型支持多模态：可以直接把 URL 图片拉进上下文（request_image）
             # - 否则模型看不到原图，只能依赖 VLM 生成的描述，需要 query_image 按需追问细节
             if processor.ENABLE_EMBEDDED_IMAGE:
-                tools.append(processor.request_image)
+                tools.append(self.request_image)
             else:
                 tools.append(processor.query_image)
             tools.append(processor.send_message)
