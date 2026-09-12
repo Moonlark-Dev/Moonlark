@@ -131,8 +131,6 @@ async def get_question(
         config.qm_min_limit, round(override_time_limitation or question["limit_in_sec"] * 0.8 ** (point // 250))
     )
     if isinstance(bot, QQBot):
-        if qq_user_id is None:
-            raise ValueError("qq_user_id is required in QQ adapter.")
         return await build_markdown_message(
             user_id,
             question,
@@ -168,7 +166,7 @@ async def build_markdown_message(
     point: int,
     total_skipping_count: int,
     skipped_question: int,
-    qq_user_id: str,
+    qq_user_id: Optional[str] = None,
     enable_leave_button: bool = False,
 ) -> tuple[UniMessage, QuestionData]:
     """构建 QQ 官方机器人的 markdown 题目卡片，并附带选项/操作按钮。"""
