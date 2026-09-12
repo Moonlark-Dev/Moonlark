@@ -99,10 +99,49 @@ class _FakeMessageQueue:
         self.injected.append((image, mime_type, note))
 
 
+def _async_tool(name: str) -> Any:
+    """构造一个带指定 __name__ 的异步桩函数，供 select_tools 收集"""
+
+    async def tool() -> None:
+        return None
+
+    tool.__name__ = name
+    return tool
+
+
+class _FakeSession:
+    def __init__(self) -> None:
+        self.set_timer = _async_tool("set_timer")
+
+    def is_napcat_bot(self) -> bool:
+        return False
+
+
+class _FakeStickerTools:
+    def __init__(self) -> None:
+        self.save_sticker = _async_tool("save_sticker")
+        self.search_sticker = _async_tool("search_sticker")
+        self.recommend_sticker = _async_tool("recommend_sticker")
+        self.send_sticker = _async_tool("send_sticker")
+
+
+class _FakeAiAgent:
+    def __init__(self) -> None:
+        self.ask_ai = _async_tool("ask_ai")
+
+
 class _FakeProcessor:
+    """只实现 select_tools 需要的成员；刻意不提供 request_image（它属于 ToolManager）"""
+
     def __init__(self, enable_embedded_image: bool = True) -> None:
         self.ENABLE_EMBEDDED_IMAGE = enable_embedded_image
         self.openai_messages = _FakeMessageQueue()
+        self.session = _FakeSession()
+        self.sticker_tools = _FakeStickerTools()
+        self.ai_agent = _FakeAiAgent()
+        self.query_image = _async_tool("query_image")
+        self.send_message = _async_tool("send_message")
+        self.leave_for_a_while = _async_tool("leave_for_a_while")
 
 
 async def test_request_image_injects_into_context(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -140,3 +179,39 @@ async def test_request_image_skipped_for_text_only_model(monkeypatch: pytest.Mon
 
     assert processor.openai_messages.injected == []
     assert "不支持图像" in result
+
+
+async def _selected_tool_names(monkeypatch: pytest.MonkeyPatch, processor: _FakeProcessor) -> list[str]:
+    """执行 select_tools("group")，返回被注册工具的函数名列表"""
+    from nonebot_plugin_chat.utils import tool_manager as tm_mod
+
+    names: list[str] = []
+
+    async def _fake_create_function_list(functions: list[Any], **_kwargs: Any) -> list[Any]:
+        names.extend(func.__name__ for func in functions)
+        return []
+
+    monkeypatch.setattr(tm_mod, "create_function_list", _fake_create_function_list)
+    manager = tm_mod.ToolManager(processor=cast("Any", processor))
+    await manager.select_tools("group")
+    return names
+
+
+async def test_select_tools_registers_tool_manager_request_image(monkeypatch: pytest.MonkeyPatch) -> None:
+    """回归：多模态模型下 select_tools 必须绑定 ToolManager.request_image
+
+    曾经错误地写成 processor.request_image，MessageProcessor 上并无该属性，
+    导致群聊定时任务在首次构建工具列表时抛 AttributeError。
+    """
+    names = await _selected_tool_names(monkeypatch, _FakeProcessor(enable_embedded_image=True))
+
+    assert "request_image" in names
+    assert "query_image" not in names
+
+
+async def test_select_tools_falls_back_to_processor_query_image(monkeypatch: pytest.MonkeyPatch) -> None:
+    """非多模态模型下仍回退到 MessageProcessor.query_image"""
+    names = await _selected_tool_names(monkeypatch, _FakeProcessor(enable_embedded_image=False))
+
+    assert "query_image" in names
+    assert "request_image" not in names
