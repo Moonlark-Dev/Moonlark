@@ -78,39 +78,53 @@ class QuickMathRoom:
 
     # ---------- 房间消息 ----------
 
-    async def build_create_message(self, user_id: str) -> UniMessage:
+    async def build_room_buttons(self, user_id: str) -> list[Button]:
+        """构建房间操作按钮（仅 QQ 官方机器人使用）。"""
         prefix = get_command_prefix()
-        join_command = f"{prefix}qm pvp join {self.room_id}"
-        if isinstance(self.bot, QQBot):
-            return (
-                UniMessage()
-                .style(await lang.text("pvp.create_md", user_id, self.max_players), "markdown")
-                .keyboard(Button("enter", await lang.text("button.pvp-join", user_id), text=join_command))
+        buttons = [Button("enter", await lang.text("button.pvp-start", user_id), text=f"{prefix}qm pvp start")]
+        if not self.is_full:
+            buttons.append(
+                Button(
+                    "enter",
+                    await lang.text("button.pvp-join", user_id),
+                    text=f"{prefix}qm pvp join {self.room_id}",
+                ),
             )
-        return UniMessage(await lang.text("pvp.create", user_id, self.room_id, join_command, self.max_players))
+        buttons.append(Button("enter", await lang.text("button.pvp-quit", user_id), text=f"{prefix}qm pvp quit"))
+        return buttons
 
-    async def build_player_list_message(self, user_id: str) -> UniMessage:
-        lines = [await lang.text("pvp.room_title", user_id, self.room_id, len(self.players), self.max_players)]
+    async def build_room_message(self, user_id: str, header: Optional[str] = None) -> UniMessage:
+        """构建房间信息卡片：房间码、总人数与玩家列表；QQ 下附带操作按钮。
+
+        :param header: 房间码上方的补充说明（例如“房间已创建”），None 时只展示房间信息。
+        """
+        blocks: list[str] = []
+        if header is not None:
+            blocks.append(header)
+        blocks.append(await lang.text("pvp.room_title", user_id, self.room_id, len(self.players), self.max_players))
+        player_lines: list[str] = []
         for index, player in enumerate(self.players, start=1):
             nickname = await self.get_nickname(player.user_id)
             if player.user_id == self.owner:
                 nickname += await lang.text("pvp.owner_suffix", user_id)
-            lines.append(await lang.text("pvp.room_player", user_id, index, nickname))
+            player_lines.append(await lang.text("pvp.room_player", user_id, index, nickname))
+        blocks.append("\n".join(player_lines))
         if isinstance(self.bot, QQBot):
-            prefix = get_command_prefix()
-            buttons = [Button("enter", await lang.text("button.pvp-start", user_id), text=f"{prefix}qm pvp start")]
-            if not self.is_full:
-                buttons.append(
-                    Button(
-                        "enter",
-                        await lang.text("button.pvp-join", user_id),
-                        text=f"{prefix}qm pvp join {self.room_id}",
-                    ),
-                )
-            buttons.append(Button("enter", await lang.text("button.pvp-quit", user_id), text=f"{prefix}qm pvp quit"))
-            return UniMessage().style("\n".join(lines), "markdown").keyboard(*buttons)
-        lines.append(await lang.text("pvp.join_hint", user_id, f"{get_command_prefix()}qm pvp join {self.room_id}"))
-        return UniMessage("\n".join(lines))
+            message = UniMessage().style("\n\n".join(blocks), "markdown")
+            return message.keyboard(*await self.build_room_buttons(user_id))
+        blocks.append(await lang.text("pvp.join_hint", user_id, f"{get_command_prefix()}qm pvp join {self.room_id}"))
+        return UniMessage("\n\n".join(blocks))
+
+    async def build_create_message(self, user_id: str) -> UniMessage:
+        """创建房间后的房间卡片：QQ 下与玩家列表合并展示，其他适配器保持纯文本。"""
+        if isinstance(self.bot, QQBot):
+            return await self.build_room_message(user_id, await lang.text("pvp.create_md", user_id, self.max_players))
+        join_command = f"{get_command_prefix()}qm pvp join {self.room_id}"
+        return UniMessage(await lang.text("pvp.create", user_id, self.room_id, join_command, self.max_players))
+
+    async def build_player_list_message(self, user_id: str) -> UniMessage:
+        """玩家加入后的房间卡片。"""
+        return await self.build_room_message(user_id)
 
     # ---------- 对战流程 ----------
 
