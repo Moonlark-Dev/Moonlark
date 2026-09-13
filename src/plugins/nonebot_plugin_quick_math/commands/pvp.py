@@ -1,7 +1,11 @@
 from nonebot.adapters import Bot, Event
-from nonebot_plugin_alconna import Match
+from nonebot.adapters.qq import Bot as QQBot
+from nonebot.typing import T_State
+from nonebot_plugin_alconna import Arparma, Button, Match, UniMessage
+from nonebot_plugin_htmlrender import md_to_pic
 
 from nonebot_plugin_larkutils import get_group_id, get_user_id
+from nonebot_plugin_larkutils.command import get_command_prefix
 from nonebot_plugin_larkutils.user import is_private_message
 
 from ..__main__ import lang, quick_math
@@ -10,9 +14,45 @@ from ..commands.main import get_qq_user_id
 from ..utils.pvp import QuickMathRoom, QuickMathRoomPlayer, find_room_of_user, generate_room_code, rooms
 
 
-@quick_math.assign("pvp")
-async def pvp_help_handler(user_id: str = get_user_id()) -> None:
-    await lang.finish("pvp.help", user_id)
+async def is_pvp_help_only(_event: Event, _bot: Bot, _state: T_State, result: Arparma) -> bool:
+    """当前输入是否只是 ``pvp`` 本身，而没有跟随任何子命令。
+
+    Alconna 解析 ``pvp create`` 这类输入时会同时匹配 ``pvp`` 与 ``pvp.create``，
+    若不额外限制，先注册的 ``pvp`` 帮助处理器会直接结束事件，
+    导致 ``create``/``join``/``quit``/``start`` 处理器永远不会被执行。
+    """
+    subcommand = result.subcommands.get("pvp")
+    return subcommand is None or not subcommand.subcommands
+
+
+async def build_pvp_help_message(user_id: str) -> UniMessage:
+    """构建 PvP 帮助卡片（QQ 官方机器人的 markdown + 操作按钮）。"""
+    prefix = get_command_prefix()
+    return (
+        UniMessage()
+        .style(await lang.text("pvp.help", user_id), "markdown")
+        .keyboard(
+            Button("enter", await lang.text("button.pvp-create", user_id), text=f"{prefix}qm pvp create"),
+            # 房间码需要用户自行输入，使用 input 类型预填指令前缀
+            Button("input", await lang.text("button.pvp-join", user_id), text=f"{prefix}qm pvp join "),
+            Button("enter", await lang.text("button.pvp-quit", user_id), text=f"{prefix}qm pvp quit"),
+            Button("enter", await lang.text("button.pvp-start", user_id), text=f"{prefix}qm pvp start"),
+            # row=2：四个按钮排成两行，避免挤在同一行
+            row=2,
+        )
+    )
+
+
+@quick_math.assign("pvp", additional=is_pvp_help_only)
+async def pvp_help_handler(bot: Bot, event: Event, user_id: str = get_user_id()) -> None:
+    if isinstance(bot, QQBot):
+        await build_pvp_help_message(user_id).send(target=event, bot=bot)
+        # UniMessage.send 只负责发送，必须单独调用 finish 结束处理器
+        await quick_math.finish()
+    # OneBot 11 等适配器不支持 markdown 卡片与键盘按钮，
+    # 退化为把同一份 markdown 渲染成图片发送，保证排版一致；
+    # 帮助卡片内已经列出了全部指令，用户照常输入指令即可操作。
+    await quick_math.finish(UniMessage().image(raw=await md_to_pic(await lang.text("pvp.help", user_id))))
 
 
 @quick_math.assign("pvp.create")
