@@ -10,12 +10,12 @@ import pytest
 @pytest.mark.parametrize(
     ("favorability", "expected"),
     [
-        (0.5, 12.0),
-        (0.301, 12.0),
-        (0.3, 24.0),
-        (0.151, 24.0),
-        (0.15, 36.0),
-        (0.051, 36.0),
+        (0.5, 24.0),
+        (0.301, 24.0),
+        (0.3, 48.0),
+        (0.151, 48.0),
+        (0.15, 72.0),
+        (0.051, 72.0),
         (0.05, float("inf")),
         (0.0, float("inf")),
         (-0.1, float("inf")),
@@ -35,8 +35,8 @@ async def test_get_candidates_filters_ineligible() -> None:
     # (user_id, nickname, fav, last_proactive_message_time, unreplied_count, 是否应入选)
     cases = [
         ("u_fav_low", "低好感", 0.04, None, 0, False),  # 好感度过低，不允许主动私聊
-        ("u_cooling", "冷却中", 0.5, now - 6 * 3600, 0, False),  # 12h 冷却期内（6h 前）→ 排除
-        ("u_cool_ok", "冷却过", 0.5, now - 13 * 3600, 0, True),  # 超过 12h 冷却 → 入选
+        ("u_cooling", "冷却中", 0.5, now - 12 * 3600, 0, False),  # 24h 冷却期内（12h 前）→ 排除
+        ("u_cool_ok", "冷却过", 0.5, now - 25 * 3600, 0, True),  # 超过 24h 冷却 → 入选
         ("u_unreplied2", "未回复x2", 0.6, now - 48 * 3600, 2, False),  # 连续 2 次未回复 → 排除
         ("u_unreplied1", "未回复x1", 0.6, now - 48 * 3600, 1, True),  # 1 次未回复 → 入选
         ("u_never", "从未私聊", 0.8, None, 0, True),  # 无主动私聊记录 → 入选
@@ -78,3 +78,42 @@ async def test_get_candidates_filters_ineligible() -> None:
     assert set(candidates) == expected_ids
     for user_id in expected_ids:
         assert candidates[user_id]["nickname"] == next(c[1] for c in cases if c[0] == user_id)
+
+
+async def test_get_recent_sends_formats_history() -> None:
+    from nonebot_plugin_chat.core.ego import proactive_chat_ctrl as ctrl
+
+    # 数据库按发送时间倒序返回最近 N 条
+    records = [
+        SimpleNamespace(nickname="", user_id="u2", content="在吗", sent_at=datetime(2026, 9, 16, 10, 0)),
+        SimpleNamespace(nickname="小明", user_id="u1", content="早上好", sent_at=datetime(2026, 9, 16, 9, 0)),
+    ]
+    fake_scalars = SimpleNamespace(all=lambda: records)
+    fake_db_session = SimpleNamespace(scalars=AsyncMock(return_value=fake_scalars))
+    session_cm = AsyncMock()
+    session_cm.__aenter__.return_value = fake_db_session
+
+    with patch.object(ctrl, "get_session", return_value=session_cm):
+        controller = ctrl.ProactiveChatController(moonlark_main=None)  # type: ignore[arg-type]
+        text = await controller._get_recent_sends()  # noqa: SLF001
+
+    # 展示时恢复为时间正序，昵称为空时回退到 user_id
+    assert text.splitlines() == [
+        "- [09-16 09:00] 给 小明: 早上好",
+        "- [09-16 10:00] 给 u2: 在吗",
+    ]
+
+
+async def test_get_recent_sends_empty() -> None:
+    from nonebot_plugin_chat.core.ego import proactive_chat_ctrl as ctrl
+
+    empty: list = []
+    fake_db_session = SimpleNamespace(scalars=AsyncMock(return_value=SimpleNamespace(all=lambda: empty)))
+    session_cm = AsyncMock()
+    session_cm.__aenter__.return_value = fake_db_session
+
+    with patch.object(ctrl, "get_session", return_value=session_cm):
+        controller = ctrl.ProactiveChatController(moonlark_main=None)  # type: ignore[arg-type]
+        text = await controller._get_recent_sends()  # noqa: SLF001
+
+    assert text == "暂无主动私聊发送记录。"
