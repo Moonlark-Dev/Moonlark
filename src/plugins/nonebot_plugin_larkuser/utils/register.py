@@ -49,32 +49,59 @@ async def send_eula_screenshot(user_id: str) -> None:
         logger.error(f"以截图形式发送 EUAL 失败: {traceback.format_exc()}")
 
 
-async def get_nickname(user: UserInfo, user_id: str, event: Optional[Event] = None) -> tuple[Optional[str], bool]:
-    if user.user_name:
-        return user.user_name, False
+NICKNAME_MAX_LENGTH = 27
+NICKNAME_PROMPT_ATTEMPTS = 3
+
+
+def default_nickname(user_id: str) -> str:
+    """返回用户未提供昵称时使用的兜底昵称。
+
+    ``UserData.nickname`` 是非空列，任何情况下都不能写入 ``NULL``，
+    因此注册流程统一使用 ``用户-{user_id}`` 兜底，与
+    :meth:`nonebot_plugin_larkuser.user.registered.MoonlarkRegisteredUser.setup_user`
+    中的展示兜底保持一致。
+    """
+    return f"用户-{user_id}"
+
+
+async def get_nickname(user: UserInfo, user_id: str, event: Optional[Event] = None) -> tuple[str, bool]:
+    """获取注册流程使用的昵称。
+
+    :return: ``(昵称, 是否锁定昵称)``。昵称一定非空：用户留空 / 发送 ``q``、
+    昵称审查连续不通过或等待超时时，回退为 :func:`default_nickname`。
+    """
+    if user.user_name and (platform_nickname := user.user_name.strip()):
+        return platform_nickname, False
+    fallback = default_nickname(user_id)
     prompt_text = await lang.text("input.user_nickname", user_id, user_id)
     events: list[Event] = []
-    for _ in range(3):
+    for _ in range(NICKNAME_PROMPT_ATTEMPTS):
         try:
-            nickname = await prompt(
-                prompt_text,
-                user_id,
-                checker=lambda msg: len(msg) <= 27,
-                ignore_error_details=False,
-                allow_quit=False,
-                event=event,
-                events=events,
-            )
+            nickname = (
+                await prompt(
+                    prompt_text,
+                    user_id,
+                    checker=lambda msg: len(msg) <= NICKNAME_MAX_LENGTH,
+                    ignore_error_details=False,
+                    allow_quit=False,
+                    event=event,
+                    events=events,
+                )
+            ).strip()
         except PromptTimeout:
-            return None, False
+            await lang.send("input.nickname_failed", user_id)
+            return fallback, False
         if events:
             event = events[-1]
+        # 提示文案允许用户发送 “q” 或直接留空来表示不设置昵称
+        if not nickname or nickname.lower() == "q":
+            return fallback, False
         review_result = await review_text(nickname)
         if review_result["conclusion"]:
             return nickname, True
         prompt_text = await lang.text("input.nickname_review_failed", user_id, review_result["message"])
-    await lang.text("input.nickname_failed", user_id)
-    return None, False
+    await lang.send("input.nickname_failed", user_id)
+    return fallback, False
 
 
 async def register_user(
@@ -116,12 +143,17 @@ async def register_user(
         await lang.finish("command.cancel", user_id)
     if events:
         event = events[-1]
+    nickname, lock_nickname = await get_nickname(user, user_id, event)
+    # 兜底保护：nickname 是 NOT NULL 列，写入 None 会触发
+    # IntegrityError: Column 'nickname' cannot be null
+    if not (nickname := (nickname or "").strip()):
+        nickname, lock_nickname = default_nickname(user_id), False
     u = UserData(
         user_id=user_id,
-        nickname=(d := await get_nickname(user, user_id, event))[0],
+        nickname=nickname,
         register_time=datetime.now(),
-        config=json.dumps({"lock_nickname": d[1]}),
+        config=json.dumps({"lock_nickname": lock_nickname}),
     )
     await session.merge(u)
     await session.commit()
-    return d[0]
+    return nickname
