@@ -1,7 +1,7 @@
 """记录私聊会话使用的适配器与适配器原始 user_id
 
 迁移 ID: 8a7b8160f2f7
-父迁移: a7f3c9e21b64
+父迁移: b7d21f4c9a05
 创建时间: 2026-09-17 16:00:44.658020
 
 为 PrivateChatSession 新增两个字段：
@@ -21,7 +21,7 @@ from alembic import op
 import sqlalchemy as sa
 
 revision: str = "8a7b8160f2f7"
-down_revision: str | Sequence[str] | None = "a7f3c9e21b64"
+down_revision: str | Sequence[str] | None = "b7d21f4c9a05"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

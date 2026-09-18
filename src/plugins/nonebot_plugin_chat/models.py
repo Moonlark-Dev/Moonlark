@@ -145,6 +145,16 @@ class PrivateChatSession(Model):
     )  # 连续未回复主动私聊次数（用户任意私聊消息时重置）
 
 
+class ProactiveChatRecord(Model):
+    """主动私聊发送记录，供主动私聊决策（Decide）参考最近若干次发送情况"""
+
+    id: Mapped[int] = mapped_column(Integer(), primary_key=True, autoincrement=True)
+    user_id: Mapped[str] = mapped_column(String(128), index=True)
+    nickname: Mapped[str] = mapped_column(String(128), default="")  # 发送时的用户昵称
+    content: Mapped[str] = mapped_column(Text())  # 实际发送的主动私聊内容
+    sent_at: Mapped[datetime] = mapped_column(DateTime(), default=datetime.now, index=True)
+
+
 class BlogPost(Model):
     """Blog post model for storing Moonlark's blog posts"""
 

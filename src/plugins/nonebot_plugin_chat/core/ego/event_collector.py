@@ -26,6 +26,8 @@ class EventCollector:
 
     def __init__(self) -> None:
         self._session_message_counters: dict[str, int] = {}
+        # 决策游标：记录上一次主动私聊决策的时间，用于只取「上次决策到现在」的新事件
+        self._decision_cursor: Optional[datetime] = None
 
     def on_message_cached(self, session_id: str) -> None:
         self._session_message_counters.setdefault(session_id, 0)
@@ -100,6 +102,71 @@ class EventCollector:
             )
             return list(result.scalars().all())
 
+    def get_decision_cursor(self) -> Optional[datetime]:
+        """获取决策游标（上一次主动私聊决策的时间），尚未决策过时为 None"""
+        return self._decision_cursor
+
+    def advance_decision_cursor(self, cursor: Optional[datetime] = None) -> None:
+        """推进决策游标，默认推进到当前时间"""
+        self._decision_cursor = cursor or datetime.now()
+
+    async def _query_events(self, date: Optional[str], since: Optional[datetime]) -> list[SessionEvent]:
+        """按日期和游标查询会话事件
+
+        Args:
+            date: 日期字符串 (YYYY-MM-DD)，为 None 时不限制日期
+            since: 只获取此时间之后创建的事件，为 None 时不限制
+        """
+        async with get_session() as db_session:
+            stmt = select(SessionEvent).order_by(SessionEvent.created_at)
+            if date is not None:
+                stmt = stmt.where(SessionEvent.date == date)
+            if since is not None:
+                stmt = stmt.where(SessionEvent.created_at > since)
+            result = await db_session.execute(stmt)
+            return list(result.scalars().all())
+
+    async def _format_events(self, events: list[SessionEvent], dedup_sessions: bool = True) -> str:
+        """把事件记录格式化为摘要文本
+
+        Args:
+            events: 事件记录列表（按创建时间升序）
+            dedup_sessions: 是否每个会话只保留第一条事件。游标增量场景下应为 False，
+                否则同一会话在游标区间内的后续新事件会被丢弃。
+        """
+        from ..session import groups
+
+        lines = []
+        seen_sessions = set()
+        session_names: dict[str, str] = {}
+        for event in events:
+            if dedup_sessions:
+                if event.session_id in seen_sessions:
+                    continue
+                seen_sessions.add(event.session_id)
+            session_name = session_names.get(event.session_id)
+            if session_name is None:
+                session_name = event.session_id
+                session = groups.get(event.session_id)
+                if session is not None:
+                    session_name = (await session.get_session_name()) or event.session_id
+                session_names[event.session_id] = session_name
+            lines.append(f"\n## 会话: {session_name}")
+            try:
+                data = json.loads(event.content)
+                if isinstance(data, dict):
+                    topics = data.get("topics", [])
+                    events_list = data.get("events", [])
+                    if topics:
+                        lines.append(f"话题: {', '.join(topics[:5])}")
+                    if events_list:
+                        for evt in events_list[:3]:
+                            lines.append(f"- {evt}")
+            except (json.JSONDecodeError, TypeError):
+                lines.append(event.content[:200])
+
+        return "\n".join(lines) if lines else "暂无事件记录。"
+
     async def get_all_events_summary(self, date: Optional[str] = None, since: Optional[datetime] = None) -> str:
         """获取所有会话的事件摘要
 
@@ -109,39 +176,21 @@ class EventCollector:
         """
         if date is None:
             date = datetime.now().strftime("%Y-%m-%d")
-        async with get_session() as db_session:
-            stmt = select(SessionEvent).where(SessionEvent.date == date).order_by(SessionEvent.created_at)
-            if since is not None:
-                stmt = stmt.where(SessionEvent.created_at > since)
-            result = await db_session.execute(stmt)
-            events = list(result.scalars().all())
+        return await self._format_events(await self._query_events(date=date, since=since), dedup_sessions=True)
 
-        from ..session import groups
+    async def get_events_summary_since(self, cursor: Optional[datetime]) -> str:
+        """获取决策游标之后新产生的所有会话事件摘要
 
-        lines = []
-        seen_sessions = set()
-        for event in events:
-            if event.session_id not in seen_sessions:
-                seen_sessions.add(event.session_id)
-                session_name = event.session_id
-                session = groups.get(event.session_id)
-                if session is not None:
-                    session_name = (await session.get_session_name()) or event.session_id
-                lines.append(f"\n## 会话: {session_name}")
-                try:
-                    data = json.loads(event.content)
-                    if isinstance(data, dict):
-                        topics = data.get("topics", [])
-                        events_list = data.get("events", [])
-                        if topics:
-                            lines.append(f"话题: {', '.join(topics[:5])}")
-                        if events_list:
-                            for evt in events_list[:3]:
-                                lines.append(f"- {evt}")
-                except (json.JSONDecodeError, TypeError):
-                    lines.append(event.content[:200])
+        Args:
+            cursor: 决策游标，为 None（进程重启或首次决策）时退回当天全部事件
 
-        return "\n".join(lines) if lines else "暂无事件记录。"
+        与 get_all_events_summary 不同，游标区间内不做会话去重，
+        保证同一会话的每条新事件都会被交给决策。
+        """
+        if cursor is None:
+            return await self.get_all_events_summary()
+        events = await self._query_events(date=None, since=cursor)
+        return await self._format_events(events, dedup_sessions=False)
 
 
 event_collector = EventCollector()

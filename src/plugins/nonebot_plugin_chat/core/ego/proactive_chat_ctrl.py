@@ -17,16 +17,18 @@ from sqlalchemy import select
 if TYPE_CHECKING:
     from .moonlark_main import MoonlarkMain
 
-from ...models import PrivateChatSession
+from ...models import PrivateChatSession, ProactiveChatRecord
 
 PROACTIVE_CHECK_INTERVAL = 3600
 
-# 分级冷却时间（小时）：好感度越高，冷却越短
-COOLDOWN_TIERS = (0.301, 12.0), (0.151, 24.0), (0.051, 36.0)
+# 分级冷却时间（小时）：好感度越高，冷却越短（已在原有基础上整体延长一倍）
+COOLDOWN_TIERS = (0.301, 24.0), (0.151, 48.0), (0.051, 72.0)
 # 连续未回复主动私聊达到该次数后不再发起
 MAX_UNREPLIED_COUNT = 2
 # 决策历史保留条数（供 chat-monitor 展示）
 DECISION_HISTORY_LIMIT = 100
+# 注入决策提示词的近期主动私聊发送记录条数
+RECENT_SEND_HISTORY_LIMIT = 10
 
 
 def get_cooldown_hours(favorability: float) -> float:
@@ -143,23 +145,47 @@ class ProactiveChatController:
             }
         return candidates
 
+    async def _get_recent_sends(self) -> str:
+        """获取最近若干次主动私聊的发送记录（时间 + 对象 + 内容）"""
+        stmt = (
+            select(ProactiveChatRecord)
+            .order_by(ProactiveChatRecord.sent_at.desc(), ProactiveChatRecord.id.desc())
+            .limit(RECENT_SEND_HISTORY_LIMIT)
+        )
+        async with get_session() as db_session:
+            records = (await db_session.scalars(stmt)).all()
+
+        if not records:
+            return "暂无主动私聊发送记录。"
+
+        lines = []
+        # 查询时按时间倒序取最近 N 条，展示时恢复为时间正序
+        for record in reversed(records):
+            target = record.nickname or record.user_id
+            lines.append(f"- [{record.sent_at.strftime('%m-%d %H:%M')}] 给 {target}: {record.content}")
+        return "\n".join(lines)
+
     async def _llm_decide(self, candidates: dict[str, dict]) -> Optional[ProactiveDecision]:
         from .event_collector import event_collector
 
         friend_list = "\n".join(f"- {info['nickname']} (好感度: {info['fav']})" for info in candidates.values())
         plan_text = self.moonlark_main.planner.get_plan_text()
-        events_text = await event_collector.get_all_events_summary()
+        # 只取上次决策之后新产生的事件，避免重复喂入已经决策过的旧事件
+        cursor = event_collector.get_decision_cursor()
+        events_text = await event_collector.get_events_summary_since(cursor)
         notes_text = await self.moonlark_main.get_relevant_notes()
+        recent_sends_text = await self._get_recent_sends()
         messages = await get_messages(
             "proactive_chat",
             friends=friend_list,
             plan=plan_text,
             events=events_text,
             notes=notes_text,
+            recent_sends=recent_sends_text,
             current_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         )
         try:
-            return await fetch_json(
+            decision = await fetch_json(
                 messages,
                 ProactiveDecision,
                 identify="ProactiveChat - Decide",
@@ -168,6 +194,9 @@ class ProactiveChatController:
         except Exception as e:
             logger.warning(f"[ProactiveChat] LLM 决策失败: {e}")
             return None
+        # 仅在真正完成一次决策后推进游标，事件不会因为决策失败而丢失
+        event_collector.advance_decision_cursor()
+        return decision
 
     async def _send_proactive(self, decision: ProactiveDecision) -> str:
         from ..proactive_chat import send_proactive_private_message
