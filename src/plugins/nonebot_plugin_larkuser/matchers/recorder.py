@@ -26,7 +26,9 @@ async def _(session: async_scoped_session, user: UserInfo = EventUserInfo()) -> 
     except NoResultFound:
         return
     config = json.loads(user_data.config)
-    if user_data.nickname != user.user_name and not config.get("lock_nickname"):
+    # user_name 可能为空（部分适配器 / 事件无法提供昵称），而 nickname 是非空列，
+    # 直接写入 None 会触发 IntegrityError，因此仅在拿到非空昵称时才更新。
+    if user.user_name and user_data.nickname != user.user_name and not config.get("lock_nickname"):
         logger.info(f"用户 {user_data.user_id} 修改了其昵称 ({user_data.nickname} => {user.user_name})")
         user_data.nickname = user.user_name
         config.pop("nick_source", None)  # 清除自动补全标识，标记为通过自身消息更新
