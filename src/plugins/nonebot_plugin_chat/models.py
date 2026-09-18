@@ -133,6 +133,11 @@ class PrivateChatSession(Model):
     user_id: Mapped[str] = mapped_column(String(128), primary_key=True)
     session_key: Mapped[str] = mapped_column(String(256))  # 带 platform 前缀的 session key（如 qq_USERID）
     bot_id: Mapped[str] = mapped_column(String(128))  # 用户最后使用的 bot ID
+    adapter_name: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)  # 私聊适配器名，历史记录为空
+    platform_user_id: Mapped[Optional[str]] = mapped_column(
+        String(128),
+        nullable=True,
+    )  # 适配器原始 user_id（如 openid）
     last_message_time: Mapped[float] = mapped_column(Float())  # 最后消息时间戳
     last_proactive_message_time: Mapped[Optional[float]] = mapped_column(Float(), nullable=True)  # 最后主动消息时间戳
     unreplied_count: Mapped[int] = mapped_column(
