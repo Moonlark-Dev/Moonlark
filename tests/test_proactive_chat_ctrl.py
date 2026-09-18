@@ -69,6 +69,7 @@ async def test_get_candidates_filters_ineligible() -> None:
 
     with (
         patch.object(ctrl, "get_session", return_value=session_cm),
+        patch.object(ctrl, "get_available_bot_ids", AsyncMock(return_value={"bot1"})),
         patch("nonebot_plugin_larkuser.utils.user.get_user", side_effect=fake_get_user),
     ):
         controller = ctrl.ProactiveChatController(moonlark_main=None)  # type: ignore[arg-type]
@@ -78,6 +79,131 @@ async def test_get_candidates_filters_ineligible() -> None:
     assert set(candidates) == expected_ids
     for user_id in expected_ids:
         assert candidates[user_id]["nickname"] == next(c[1] for c in cases if c[0] == user_id)
+
+
+def _fake_session_ctx(sessions: list) -> AsyncMock:
+    """构造返回指定私聊会话列表的 get_session 上下文"""
+    fake_scalars = SimpleNamespace(all=lambda: sessions)
+    fake_result = SimpleNamespace(scalars=lambda: fake_scalars)
+    fake_db_session = SimpleNamespace(execute=AsyncMock(return_value=fake_result))
+    session_cm = AsyncMock()
+    session_cm.__aenter__.return_value = fake_db_session
+    return session_cm
+
+
+def _make_session(user_id: str, bot_id: str) -> object:
+    from nonebot_plugin_chat.models import PrivateChatSession
+
+    return PrivateChatSession(
+        user_id=user_id,
+        session_key=f"qq_{user_id}",
+        bot_id=bot_id,
+        last_message_time=0.0,
+        unreplied_count=0,
+    )
+
+
+async def _collect_candidates(
+    ctrl: object,
+    sessions: list,
+    available_bots: set[str] | None,
+    users: dict[str, object],
+) -> tuple[dict[str, dict], object]:
+    """运行 _get_candidates，返回 (候选列表, 控制器)"""
+    with (
+        patch.object(ctrl, "get_session", return_value=_fake_session_ctx(sessions)),
+        patch.object(ctrl, "get_available_bot_ids", AsyncMock(return_value=available_bots)),
+        patch("nonebot_plugin_larkuser.utils.user.get_user", side_effect=lambda user_id: users[user_id]),
+    ):
+        controller = ctrl.ProactiveChatController(moonlark_main=None)  # type: ignore[arg-type]
+        candidates = await controller._get_candidates()  # noqa: SLF001
+    return candidates, controller
+
+
+async def test_get_candidates_skips_users_whose_bot_is_unavailable() -> None:
+    """bot 离线/状态异常的用户不作为主动私聊候选，并记录到决策历史"""
+    from nonebot_plugin_chat.core.ego import proactive_chat_ctrl as ctrl
+
+    sessions = [_make_session("u_online", "bot_online"), _make_session("u_offline", "bot_offline")]
+    users = {
+        "u_online": SimpleNamespace(get_nickname=lambda: "在线用户", get_display_fav=lambda: 0.5),
+        "u_offline": SimpleNamespace(get_nickname=lambda: "离线用户", get_display_fav=lambda: 0.5),
+    }
+
+    candidates, controller = await _collect_candidates(ctrl, sessions, {"bot_online"}, users)
+
+    assert set(candidates) == {"u_online"}
+    unavailable_records = [
+        r for r in controller.decision_history if r.get("stage") == "bot_unavailable"
+    ]  # noqa: SLF001
+    assert [r["users"] for r in unavailable_records] == [["u_offline"]]
+
+
+async def test_get_candidates_without_bot_status_does_not_filter() -> None:
+    """无法判断 bot 状态时（返回 None）不按 bot 可用性过滤"""
+    from nonebot_plugin_chat.core.ego import proactive_chat_ctrl as ctrl
+
+    sessions = [_make_session("u1", "bot1"), _make_session("u2", "bot2")]
+    users = {
+        "u1": SimpleNamespace(get_nickname=lambda: "用户1", get_display_fav=lambda: 0.5),
+        "u2": SimpleNamespace(get_nickname=lambda: "用户2", get_display_fav=lambda: 0.5),
+    }
+
+    candidates, _ = await _collect_candidates(ctrl, sessions, None, users)
+
+    assert set(candidates) == {"u1", "u2"}
+
+
+async def test_send_proactive_prefers_session_with_available_bot() -> None:
+    """同名用户存在多条记录时，跳过 bot 不可用的记录，发送到可用 bot 的记录"""
+    from nonebot_plugin_chat.core.ego import proactive_chat_ctrl as ctrl
+
+    offline = _make_session("u_openid", "bot_offline")
+    online = _make_session("u_qq", "bot_online")
+    users = {
+        "u_openid": SimpleNamespace(get_nickname=lambda: "小明"),
+        "u_qq": SimpleNamespace(get_nickname=lambda: "小明"),
+    }
+    sent = AsyncMock()
+    bot = SimpleNamespace(self_id="bot_online")
+
+    with (
+        patch.object(ctrl, "get_session", return_value=_fake_session_ctx([offline, online])),
+        patch.object(ctrl, "get_available_bot_ids", AsyncMock(return_value={"bot_online"})),
+        patch("nonebot_plugin_larkuser.utils.user.get_user", side_effect=lambda user_id: users[user_id]),
+        patch("nonebot.get_bot", return_value=bot),
+        patch("nonebot_plugin_chat.core.proactive_chat.send_proactive_private_message", new=sent),
+    ):
+        controller = ctrl.ProactiveChatController(moonlark_main=None)  # type: ignore[arg-type]
+        result = await controller._send_proactive(
+            ctrl.ProactiveDecision(target_nickname="小明", topic="你好")
+        )  # noqa: SLF001
+
+    assert result == "已向 小明 发送主动私聊"
+    sent.assert_awaited_once_with(bot, "u_qq", "你好")
+
+
+async def test_send_proactive_reports_when_no_bot_available() -> None:
+    """同名记录对应的 bot 都不可用时，不发送并返回可读原因"""
+    from nonebot_plugin_chat.core.ego import proactive_chat_ctrl as ctrl
+
+    session = _make_session("u1", "bot_offline")
+    users = {"u1": SimpleNamespace(get_nickname=lambda: "小明")}
+    sent = AsyncMock()
+
+    with (
+        patch.object(ctrl, "get_session", return_value=_fake_session_ctx([session])),
+        patch.object(ctrl, "get_available_bot_ids", AsyncMock(return_value=set())),
+        patch("nonebot_plugin_larkuser.utils.user.get_user", side_effect=lambda user_id: users[user_id]),
+        patch("nonebot_plugin_chat.core.proactive_chat.send_proactive_private_message", new=sent),
+    ):
+        controller = ctrl.ProactiveChatController(moonlark_main=None)  # type: ignore[arg-type]
+        result = await controller._send_proactive(
+            ctrl.ProactiveDecision(target_nickname="小明", topic="你好")
+        )  # noqa: SLF001
+
+    assert result == "小明 没有可用的 bot 在线"
+    sent.assert_not_awaited()
 
 
 async def test_get_recent_sends_formats_history() -> None:
