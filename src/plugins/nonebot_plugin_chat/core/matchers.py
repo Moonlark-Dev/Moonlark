@@ -29,19 +29,29 @@ from .ego import moonlark_main
 from .session import create_group_session, create_private_session, get_session_directly
 
 
-async def record_private_chat_session(user_id: str, session_key: str, bot_id: str) -> None:
+async def record_private_chat_session(
+    user_id: str,
+    session_key: str,
+    bot_id: str,
+    adapter_name: str = "",
+    platform_user_id: str = "",
+) -> None:
     """记录用户私聊会话信息
 
     Args:
-        user_id: 用户 ID
+        user_id: 用户 ID（Moonlark 主账号 ID）
         session_key: 带 platform 前缀的 session key
         bot_id: Bot ID
+        adapter_name: 适配器名称，主动消息发送时用于确认 platform_user_id 的语义
+        platform_user_id: 适配器原始 user_id（如 QQ 官方 openid），主动消息发送时使用
     """
     async with get_session() as session:
         chat_session = PrivateChatSession(
             user_id=user_id,
             session_key=session_key,
             bot_id=bot_id,
+            adapter_name=adapter_name,
+            platform_user_id=platform_user_id,
             last_message_time=datetime.now().timestamp(),
         )
         await session.merge(chat_session)
@@ -83,8 +93,15 @@ async def _(
     user_id: str = get_user_id(),
     session_key: str = get_group_id(),
 ) -> None:
-    # 记录私聊会话信息（用于主动消息时获取正确的 bot）
-    await record_private_chat_session(user_id, session_key, bot.self_id)
+    platform_user_id = event.get_user_id()
+    # 记录私聊会话信息（用于主动消息时获取正确的 bot 与适配器原始 user_id）
+    await record_private_chat_session(
+        user_id,
+        session_key,
+        bot.self_id,
+        adapter_name=bot.adapter.get_name(),
+        platform_user_id=platform_user_id,
+    )
 
     # 检查是否是主动私聊的回复
     await moonlark_main.on_private_message_replied(user_id)
@@ -101,7 +118,6 @@ async def _(
     platform_message = event.get_message()
     message = await UniMessage.of(message=platform_message, bot=bot).attach_reply(event, bot)
     nickname = await get_nickname(user_id, bot, event)
-    platform_user_id = event.get_user_id()
     await session.handle_message(message, user_id, event, state, nickname, True, platform_user_id=platform_user_id)
 
 

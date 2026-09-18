@@ -102,6 +102,26 @@ async def record_proactive_message(user_id: str) -> None:
             await session.commit()
 
 
+def get_proactive_target_user_id(chat_session: PrivateChatSession, adapter_name: str) -> str:
+    """获取主动私聊应发送到的适配器用户 ID
+
+    `PrivateChatSession.user_id` 是 Moonlark 主账号 ID：QQ 官方适配器的私聊会被
+    自动绑定（见 nonebot_plugin_auto_bind）映射为 QQ 号，但 QQ 官方适配器发送 C2C
+    消息需要的是 openid。因此当记录中的适配器与当前 bot 一致时，优先使用记录里保存
+    的适配器原始 user_id；旧记录（无该字段）回退到 user_id。
+
+    Args:
+        chat_session: 私聊会话记录
+        adapter_name: 当前 bot 的适配器名称
+
+    Returns:
+        用于构造 Target 的用户 ID
+    """
+    if chat_session.platform_user_id and chat_session.adapter_name == adapter_name:
+        return chat_session.platform_user_id
+    return chat_session.user_id
+
+
 async def send_proactive_private_message(bot: Bot, user_id: str, subject: str) -> None:
     """发送主动私聊消息
 
@@ -119,7 +139,13 @@ async def send_proactive_private_message(bot: Bot, user_id: str, subject: str) -
 
     # 创建 Target（adapter_name 用于消息发送）
     adapter_name = bot.adapter.get_name()
-    target = Target.user(user_id, adapter=adapter_name)
+    if chat_session.adapter_name and chat_session.adapter_name != adapter_name:
+        logger.warning(
+            f"用户 {user_id} 的私聊记录适配器为 {chat_session.adapter_name}，"
+            f"与 bot {chat_session.bot_id} 的实际适配器 {adapter_name} 不一致，"
+            "将回退到 Moonlark 主账号 ID 发送",
+        )
+    target = Target.user(get_proactive_target_user_id(chat_session, adapter_name), adapter=adapter_name)
 
     # 创建或获取 PrivateSession
     session = await create_private_session(chat_session.session_key, target, bot)

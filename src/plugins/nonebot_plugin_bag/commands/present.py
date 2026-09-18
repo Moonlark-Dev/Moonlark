@@ -79,6 +79,7 @@ async def _trigger_gift_response(
 
 async def _send_proactive_gift(bot: Bot, user_id: str, nickname: str, item_name: str) -> None:
     from nonebot_plugin_chat.models import PrivateChatSession
+    from nonebot_plugin_chat.core.proactive_chat import get_proactive_target_user_id
     from nonebot_plugin_chat.core.session import create_private_session
     from nonebot_plugin_orm import get_session
     from sqlalchemy import select
@@ -96,7 +97,7 @@ async def _send_proactive_gift(bot: Bot, user_id: str, nickname: str, item_name:
     in_cooldown = last_time is not None and (now - last_time) < PROACTIVE_COOLDOWN_SECONDS
 
     adapter_name = bot.adapter.get_name()
-    target = Target.user(user_id, adapter=adapter_name)
+    target = Target.user(get_proactive_target_user_id(chat_session, adapter_name), adapter=adapter_name)
     session = await create_private_session(chat_session.session_key, target, bot)
 
     gift_prompt = f"{nickname} 送给你 {item_name}"
