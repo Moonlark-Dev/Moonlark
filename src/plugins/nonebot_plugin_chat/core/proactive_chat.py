@@ -35,7 +35,7 @@ from nonebot_plugin_online_timer import is_user_recently_online
 from sqlalchemy import select
 
 from ..lang import lang
-from ..models import PrivateChatSession
+from ..models import PrivateChatSession, ProactiveChatRecord
 from .session import create_private_session
 
 # async def get_cooldown_hours(favorability: float) -> float:
@@ -87,11 +87,16 @@ from .session import create_private_session
 #         return datetime.now() < cooldown_end
 
 
-async def record_proactive_message(user_id: str) -> None:
+async def record_proactive_message(user_id: str, content: str = "", nickname: str = "") -> None:
     """记录主动私聊消息
+
+    除更新最后主动消息时间戳（用于冷却判定）外，还会写入一条发送记录，
+    供下次 Decide 决策时参考最近若干次发送情况。
 
     Args:
         user_id: 用户 ID
+        content: 实际发送的主动私聊内容
+        nickname: 发送时的用户昵称
     """
     async with get_session() as session:
         result = await session.execute(select(PrivateChatSession).where(PrivateChatSession.user_id == user_id))
@@ -99,6 +104,7 @@ async def record_proactive_message(user_id: str) -> None:
         if chat_session:
             chat_session.last_proactive_message_time = datetime.now().timestamp()
             await session.merge(chat_session)
+            session.add(ProactiveChatRecord(user_id=user_id, nickname=nickname, content=content))
             await session.commit()
 
 
@@ -130,5 +136,6 @@ async def send_proactive_private_message(bot: Bot, user_id: str, subject: str) -
     # 发送事件到会话（强制触发回复）
     await session.post_event(prompt, trigger_mode="all")
 
-    # 记录发送历史
-    await record_proactive_message(user_id)
+    # 记录发送历史（时间戳 + 发送记录）
+    user = await get_user(user_id)
+    await record_proactive_message(user_id, subject, user.get_nickname() or "")
