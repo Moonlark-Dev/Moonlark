@@ -8,6 +8,17 @@ import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 TOOL_SCHEMA = REPO_ROOT / "src" / "prompt" / "__tools__" / "set_timer.yaml"
+CHAT_LANG = REPO_ROOT / "src" / "lang" / "zh_hans" / "chat.yaml"
+
+
+def test_timer_set_lang_key_accepts_two_placeholders() -> None:
+    """新增的确认文案存在，且能接受触发时间与定时器描述两个参数"""
+    prompt = yaml.safe_load(CHAT_LANG.read_text(encoding="utf-8"))["prompt"]
+
+    assert "timer_set" in prompt
+    rendered = prompt["timer_set"].format("2026-09-19 10:00", "提醒小明交作业")
+    assert "2026-09-19 10:00" in rendered
+    assert "提醒小明交作业" in rendered
 
 
 def test_tool_schema_requires_delay_and_description() -> None:
