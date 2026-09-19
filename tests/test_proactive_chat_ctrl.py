@@ -106,6 +106,59 @@ async def test_get_candidates_filters_ineligible() -> None:
     assert skipped == {"favorability": 2, "cooldown": 1, "user_active": 2, "unreplied": 1}
 
 
+async def test_check_and_send_skips_when_all_users_just_chatted() -> None:
+    """所有用户都在私聊静默期内时，不进行 LLM 决策，也不发送任何主动私聊"""
+    from nonebot_plugin_chat.core.ego import proactive_chat_ctrl as ctrl
+    from nonebot_plugin_chat.models import PrivateChatSession
+
+    now = datetime.now(timezone.utc).timestamp()
+    sessions = [
+        PrivateChatSession(
+            user_id="u1",
+            session_key="qq_u1",
+            bot_id="bot1",
+            last_message_time=now - 60,
+            unreplied_count=0,
+        ),
+    ]
+
+    fake_scalars = SimpleNamespace(all=lambda: sessions)
+    fake_result = SimpleNamespace(scalars=lambda: fake_scalars)
+    fake_db_session = SimpleNamespace(execute=AsyncMock(return_value=fake_result))
+    session_cm = AsyncMock()
+    session_cm.__aenter__.return_value = fake_db_session
+
+    def fake_get_user(_user_id: str):
+        return SimpleNamespace(
+            get_nickname=lambda: "小明",
+            get_display_fav=lambda: 0.8,
+        )
+
+    moonlark_main = SimpleNamespace(
+        state={"sleep_mode": False},
+        sleep_controller=SimpleNamespace(tiredness=0.0),
+    )
+    controller = ctrl.ProactiveChatController(moonlark_main=moonlark_main)  # type: ignore[arg-type]
+    decide_mock = AsyncMock()
+
+    with (
+        patch.object(ctrl, "get_session", return_value=session_cm),
+        patch.object(ctrl.config, "proactive_chat_user_active_cooldown_hours", 12.0),
+        patch("nonebot_plugin_larkuser.utils.user.get_user", side_effect=fake_get_user),
+        patch.object(controller, "_llm_decide", decide_mock),
+    ):
+        await controller.check_and_send()
+
+    decide_mock.assert_not_awaited()
+    assert controller.decision_history[-1]["stage"] == "no_candidates"
+    assert controller.decision_history[-1]["skipped"] == {
+        "favorability": 0,
+        "cooldown": 0,
+        "user_active": 1,
+        "unreplied": 0,
+    }
+
+
 async def test_get_recent_sends_formats_history() -> None:
     from nonebot_plugin_chat.core.ego import proactive_chat_ctrl as ctrl
 
