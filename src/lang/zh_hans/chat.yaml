@@ -138,6 +138,9 @@ command:
   reset:
     success: 已清除当前会话的所有历史消息并重置会话状态。
     not_found: 当前没有活动的会话需要重置。
+    no_permission: 权限不足，仅超级用户可以使用此命令。
+    session_success: 已清除会话 {} 的所有历史消息并重置该会话状态。
+    session_not_found: 未找到会话 {}，请确认会话 ID 是否正确。
   mute: 🤐(15min)
   unmute: 🔊✔
   done: 完成
@@ -177,6 +180,7 @@ help:
   usage14: chat stats (查看时间统计数据)
   usage15: chat compact [会话ID] (压缩消息队列，分析待定笔记后重置[SU])
   usage16: chat mode [passionate|standard|silent] (查看或切换互动模式，切换将重置会话上下文)
+  usage17: chat reset <会话ID> (重置指定会话的所有历史消息并重置会话状态[SU])
 
 pending_note:
   not_found: 未找到 ID 为 {} 的待定笔记。
