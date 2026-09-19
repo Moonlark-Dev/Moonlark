@@ -1,4 +1,3 @@
-import base64
 import hashlib
 import re
 import traceback
@@ -24,6 +23,7 @@ from datetime import datetime
 
 from sqlalchemy import delete, select
 
+from ..utils.image_format import image_data_url, normalize_image, sanitize_messages_images
 from ..utils.timing_stats import timing_stats_manager
 
 if TYPE_CHECKING:
@@ -141,6 +141,9 @@ class MessageQueue:
                         context_reset = True
                     else:
                         logger.info(f"群 {session_id} 的 system prompt 验证通过")
+                        repaired = sanitize_messages_images(restored_messages)
+                        if repaired:
+                            logger.warning(f"恢复消息队列时移除了 {repaired} 张模型不支持的图片")
                         self.fetcher = await self._create_fetcher(inject_session_info=False)
                         self.fetcher.session.messages = restored_messages
             else:
@@ -435,6 +438,9 @@ class MessageQueue:
         会把消息放入 waiting_sequence 而无法在本轮生效；这里直接插入正在进行的会话，
         消息会在本轮工具调用结束后、下一次请求之前送出。
 
+        图片在注入前会再次校验并转换为模型支持的格式，``mime_type`` 仅作为
+        调用方声明的类型参考，最终以图片真实格式为准。
+
         Args:
             image: 图片二进制数据
             mime_type: 图片 MIME 类型，如 image/png
@@ -442,10 +448,12 @@ class MessageQueue:
         """
         if self.fetcher is None:
             self.fetcher = await self._create_fetcher()
-        image_base64 = base64.b64encode(image).decode("utf-8")
+        normalized, actual_mime_type = normalize_image(image)
+        if actual_mime_type != mime_type:
+            logger.debug(f"注入图片的声明类型 {mime_type} 与实际类型 {actual_mime_type} 不一致，已按实际类型发送")
         content = [
             {"type": "text", "text": note},
-            {"type": "image_url", "image_url": {"url": f"data:{mime_type};base64,{image_base64}"}},
+            {"type": "image_url", "image_url": {"url": image_data_url(normalized, actual_mime_type)}},
         ]
         self.fetcher.session.insert_message(generate_message(content, "user"))
 
