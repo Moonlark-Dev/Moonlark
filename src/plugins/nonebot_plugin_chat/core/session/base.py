@@ -475,13 +475,15 @@ class BaseSession(ABC):
 
         await self.processor.handle_recall(message_id, message_content)
 
-    async def set_timer(self, delay: int, description: str = ""):
-        """
-        设置定时器
+    async def set_timer(self, delay: int, description: str) -> str:
+        """在当前会话设置一个一次性定时器
 
         Args:
-            delay: 延迟时间（分钟）
-            description: 定时器描述
+            delay: 延迟时间（分钟），到点后触发一次
+            description: 留给触发时自己的完整指令，会作为触发事件的文本注入会话并强制回复
+
+        Returns:
+            给模型的确认信息，包含确切的触发时间
         """
         now = datetime.now()
         trigger_time = now + timedelta(minutes=delay)
@@ -499,6 +501,12 @@ class BaseSession(ABC):
                 ),
             )
             await db_session.commit()
+
+        return await self.text(
+            "prompt.timer_set",
+            trigger_time.strftime("%Y-%m-%d %H:%M"),
+            description,
+        )
 
     async def post_event(self, event_prompt: str, trigger_mode: Literal["none", "probability", "all"]) -> None:
         """

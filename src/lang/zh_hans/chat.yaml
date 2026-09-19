@@ -197,6 +197,7 @@ prompt:
   warning:
     excessive_messages: "[系统警告]: 你已连续发送 {} 条消息，请等待用户回复后再继续发言，避免刷屏。"
   timer_triggered: "计时器 {} 已触发。"
+  timer_set: "定时器已设置：将在 {} 触发，届时你会看到「计时器 {} 已触发」。"
   recall: "消息 {} ({}) 被撤回。"
   poke:
     to_me: "{} 戳了戳你。"

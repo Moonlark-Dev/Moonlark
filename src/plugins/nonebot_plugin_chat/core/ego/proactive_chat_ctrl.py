@@ -17,6 +17,7 @@ from sqlalchemy import select
 if TYPE_CHECKING:
     from .moonlark_main import MoonlarkMain
 
+from ...config import config
 from ...models import PrivateChatSession, ProactiveChatRecord
 
 PROACTIVE_CHECK_INTERVAL = 3600
@@ -40,6 +41,31 @@ def get_cooldown_hours(favorability: float) -> float:
         if favorability >= threshold:
             return hours
     return float("inf")
+
+
+def get_user_active_cooldown_hours() -> float:
+    """用户主动私聊后的静默时长（小时）
+
+    返回 0 或负数表示不启用该限制。
+    """
+    return float(config.proactive_chat_user_active_cooldown_hours)
+
+
+def is_user_recently_active(chat_session: PrivateChatSession, now: Optional[float] = None) -> bool:
+    """判断用户是否在「私聊静默期」内
+
+    用户在静默期内主动私聊过 Moonlark，此时不应再向其发起主动私聊，
+    以免在用户刚刚主动找过 Moonlark 后立刻反向打扰。
+    """
+    cooldown_hours = get_user_active_cooldown_hours()
+    if cooldown_hours <= 0:
+        return False
+    last_message_time = chat_session.last_message_time
+    if not last_message_time:
+        return False
+    if now is None:
+        now = datetime.now().timestamp()
+    return now - last_message_time < cooldown_hours * 3600
 
 
 class ProactiveDecision(BaseModel):
@@ -75,9 +101,9 @@ class ProactiveChatController:
             return
 
         try:
-            candidates = await self._get_candidates()
+            candidates, skipped = await self._get_candidates()
             if not candidates:
-                self._record(stage="no_candidates")
+                self._record(stage="no_candidates", skipped=skipped)
                 return
 
             candidate_names = [info["nickname"] for info in candidates.values()]
@@ -99,23 +125,30 @@ class ProactiveChatController:
                 )
                 return
 
-            result = await self._send_proactive(decision)
+            result = await self._send_proactive(decision, candidates)
             self._record(
                 stage="send",
                 skip=False,
                 target_nickname=decision.target_nickname,
                 topic=decision.topic,
                 candidates_count=len(candidates),
+                skipped=skipped,
                 result=result,
             )
         except Exception as e:
             logger.exception(f"[ProactiveChat] 检查失败: {e}")
             self._record(stage="error", error=str(e))
 
-    async def _get_candidates(self) -> dict[str, dict]:
+    async def _get_candidates(self) -> tuple[dict[str, dict], dict[str, int]]:
+        """筛选本次可以发起主动私聊的候选人
+
+        Returns:
+            (候选人字典, 各筛除原因对应的人数统计)
+        """
         from nonebot_plugin_larkuser.utils.user import get_user
 
-        candidates = {}
+        candidates: dict[str, dict] = {}
+        skipped = {"favorability": 0, "cooldown": 0, "user_active": 0, "unreplied": 0}
         now = datetime.now().timestamp()
         async with get_session() as db_session:
             all_sessions = (await db_session.execute(select(PrivateChatSession))).scalars().all()
@@ -124,26 +157,33 @@ class ProactiveChatController:
             user = await get_user(session.user_id)
             nickname = user.get_nickname()
             fav = user.get_display_fav()
-            if fav <= 0:
-                continue
-            # 好感度过低，不允许主动私聊
             cooldown_hours = get_cooldown_hours(fav)
-            if cooldown_hours == float("inf"):
+            # 好感度过低或未建立好感度，不允许主动私聊
+            if fav <= 0 or cooldown_hours == float("inf"):
+                skipped["favorability"] += 1
                 continue
             # 处于分级冷却期内，不参与候选
             if session.last_proactive_message_time is not None:
                 elapsed = now - session.last_proactive_message_time
                 if elapsed < cooldown_hours * 3600:
+                    skipped["cooldown"] += 1
                     continue
+            # 用户刚刚主动私聊过：静默期内不主动打扰
+            if is_user_recently_active(session, now):
+                skipped["user_active"] += 1
+                continue
             # 连续多次未回复主动私聊，不再发起
             if session.unreplied_count >= MAX_UNREPLIED_COUNT:
+                skipped["unreplied"] += 1
                 continue
             candidates[session.user_id] = {
                 "nickname": nickname,
                 "fav": fav,
                 "last_message_time": session.last_message_time,
             }
-        return candidates
+        if candidates or any(skipped.values()):
+            logger.debug(f"[ProactiveChat] 候选筛选结果: candidates={len(candidates)} skipped={skipped}")
+        return candidates, skipped
 
     async def _get_recent_sends(self) -> str:
         """获取最近若干次主动私聊的发送记录（时间 + 对象 + 内容）"""
@@ -198,36 +238,58 @@ class ProactiveChatController:
         event_collector.advance_decision_cursor()
         return decision
 
-    async def _send_proactive(self, decision: ProactiveDecision) -> str:
-        from ..proactive_chat import send_proactive_private_message
+    async def _send_proactive(self, decision: ProactiveDecision, candidates: dict[str, dict]) -> str:
+        """向决策选中的用户发送主动私聊
+
+        只允许向本次筛选出的候选人发送，并在真正发送前重新确认用户是否刚私聊过，
+        避免 LLM 编造昵称或决策期间用户刚发过消息时仍然打扰对方。
+        """
         from nonebot import get_bot
 
+        from ..proactive_chat import send_proactive_private_message
+
+        target_user_id = next(
+            (user_id for user_id, info in candidates.items() if info["nickname"] == decision.target_nickname),
+            None,
+        )
+        if target_user_id is None:
+            logger.warning(f"[ProactiveChat] 决策目标 {decision.target_nickname!r} 不在候选人列表中，已忽略")
+            return f"未找到用户: {decision.target_nickname}"
+
         async with get_session() as db_session:
-            all_sessions = (await db_session.execute(select(PrivateChatSession))).scalars().all()
+            chat_session = (
+                await db_session.execute(select(PrivateChatSession).where(PrivateChatSession.user_id == target_user_id))
+            ).scalar_one_or_none()
 
-        for chat_session in all_sessions:
-            from nonebot_plugin_larkuser.utils.user import get_user
+        if chat_session is None:
+            return f"未找到用户: {decision.target_nickname}"
 
-            user = await get_user(chat_session.user_id)
-            if user.get_nickname() == decision.target_nickname:
-                try:
-                    bot = get_bot(chat_session.bot_id)
-                    await send_proactive_private_message(bot, chat_session.user_id, decision.topic)
-                    logger.info(f"[ProactiveChat] 已向 {decision.target_nickname} 发送主动私聊: {decision.topic}")
-                except Exception as e:
-                    logger.error(f"[ProactiveChat] 发送失败: {e}")
-                    return f"发送失败: {e}"
-                # 连续未回复计数 +1（用户任意回复私聊消息时由 update_reply_status 重置）
-                try:
-                    chat_session.unreplied_count += 1
-                    async with get_session() as db_session:
-                        await db_session.merge(chat_session)
-                        await db_session.commit()
-                except Exception as e:
-                    logger.warning(f"[ProactiveChat] 更新未回复计数失败: {e}")
-                return f"已向 {decision.target_nickname} 发送主动私聊"
+        # 发送前再次校验：LLM 决策期间用户可能刚私聊过
+        if is_user_recently_active(chat_session):
+            logger.info(f"[ProactiveChat] 用户 {decision.target_nickname} 刚刚私聊过，跳过本次主动私聊")
+            return f"用户 {decision.target_nickname} 刚刚私聊过，已跳过"
 
-        return f"未找到用户: {decision.target_nickname}"
+        try:
+            bot = get_bot(chat_session.bot_id)
+            await send_proactive_private_message(bot, chat_session.user_id, decision.topic)
+            logger.info(f"[ProactiveChat] 已向 {decision.target_nickname} 发送主动私聊: {decision.topic}")
+        except Exception as e:
+            logger.error(f"[ProactiveChat] 发送失败: {e}")
+            return f"发送失败: {e}"
+        # 连续未回复计数 +1（用户任意回复私聊消息时由 update_reply_status 重置）
+        try:
+            async with get_session() as db_session:
+                db_chat_session = (
+                    await db_session.execute(
+                        select(PrivateChatSession).where(PrivateChatSession.user_id == target_user_id),
+                    )
+                ).scalar_one_or_none()
+                if db_chat_session is not None:
+                    db_chat_session.unreplied_count += 1
+                    await db_session.commit()
+        except Exception as e:
+            logger.warning(f"[ProactiveChat] 更新未回复计数失败: {e}")
+        return f"已向 {decision.target_nickname} 发送主动私聊"
 
     async def update_reply_status(self, user_id: str) -> None:
         """用户向 bot 发送任意私聊消息时调用，重置连续未回复计数"""
