@@ -46,7 +46,9 @@ async def build_pvp_help_message(user_id: str) -> UniMessage:
 @quick_math.assign("pvp", additional=is_pvp_help_only)
 async def pvp_help_handler(bot: Bot, event: Event, user_id: str = get_user_id()) -> None:
     if isinstance(bot, QQBot):
-        await build_pvp_help_message(user_id).send(target=event, bot=bot)
+        # build_pvp_help_message 是协程函数：必须先 await 得到 UniMessage 再调用 send，
+        # 否则会对协程对象调用 send 并抛出 TypeError。
+        await (await build_pvp_help_message(user_id)).send(target=event, bot=bot)
         # UniMessage.send 只负责发送，必须单独调用 finish 结束处理器
         await quick_math.finish()
     # OneBot 11 等适配器不支持 markdown 卡片与键盘按钮，
