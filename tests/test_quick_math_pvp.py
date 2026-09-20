@@ -7,6 +7,9 @@
   子命令时执行；
 - PvP 帮助卡片改用 markdown 发送（QQ 官方机器人附带四个操作按钮），
   OneBot 11 等无键盘与 markdown 的适配器退化为把 markdown 渲染成图片；
+- 帮助处理器曾对 ``build_pvp_help_message`` 返回的协程对象直接调用 ``send()``，
+  在 QQ 官方机器人下抛出 ``TypeError: coroutine.send() takes no keyword arguments``；
+  现在先 ``await`` 得到 ``UniMessage`` 再发送；
 - QQ 官方机器人下创建房间也会展示房间信息（房间码、总人数、玩家列表）与操作按钮。
 
 注意：插件导入必须在 fixture/函数内部进行（collection 阶段 nonebot 插件尚未加载）。
@@ -142,6 +145,59 @@ async def test_pvp_help_renders_image_on_onebot(monkeypatch: pytest.MonkeyPatch)
     assert captured["markdown"] == _load_template("pvp.help").format(__prefix__="/").strip()
     image = next(segment for segment in finished["message"] if isinstance(segment, Image))
     assert image.raw == b"pvp-help-image"
+
+
+@pytest.mark.asyncio
+async def test_pvp_help_sends_keyboard_card_on_qq(monkeypatch: pytest.MonkeyPatch) -> None:
+    """QQ 官方机器人下帮助处理器必须先 await 构建协程，再发送 markdown 卡片。
+
+    回归点：``build_pvp_help_message`` 是协程函数，遗漏 ``await`` 会对协程对象调用
+    ``send()``，抛出 ``TypeError: coroutine.send() takes no keyword arguments``。
+    """
+    from nonebot.adapters.qq import Bot as QQBot
+    from nonebot_plugin_alconna import Keyboard, UniMessage
+    from nonebot_plugin_quick_math.commands import pvp as pvp_module
+
+    class _FinishedError(Exception):
+        """占位异常：模拟 quick_math.finish 结束事件处理器。"""
+
+    captured: dict[str, Any] = {}
+
+    async def fake_send(
+        self: UniMessage,
+        target: Any = None,
+        bot: Any = None,
+        **_kwargs: object,
+    ) -> None:
+        captured["message"] = self
+        captured["target"] = target
+        captured["bot"] = bot
+
+    async def fake_finish(message: UniMessage | None = None, **_kwargs: object) -> None:
+        captured["finished"] = message
+        raise _FinishedError
+
+    monkeypatch.setattr(UniMessage, "send", fake_send)
+    monkeypatch.setattr(pvp_module.quick_math, "finish", fake_finish)
+
+    bot = QQBot.__new__(QQBot)
+    event = object()
+    with pytest.raises(_FinishedError):
+        await pvp_module.pvp_help_handler(bot, event, user_id="user")
+
+    message = captured["message"]
+    assert isinstance(message, UniMessage)
+    keyboard = next(segment for segment in message if isinstance(segment, Keyboard))
+    assert [button.text for button in keyboard.children] == [
+        "/qm pvp create",
+        "/qm pvp join ",
+        "/qm pvp quit",
+        "/qm pvp start",
+    ]
+    assert captured["target"] is event
+    assert captured["bot"] is bot
+    # QQ 分支发送卡片后单独 finish，不应再走到渲染图片的分支
+    assert captured["finished"] is None
 
 
 # ---------- 房间卡片 ----------
