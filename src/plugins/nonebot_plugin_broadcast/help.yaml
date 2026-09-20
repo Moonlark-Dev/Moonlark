@@ -1,4 +1,4 @@
 plugin: broadcast
 commands:
-  bcsu: help;5;superuser
+  bcsu: help;9;superuser
   bc: bc_help;3;tools

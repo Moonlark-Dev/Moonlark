@@ -16,3 +16,4 @@ effect:
   crit: 大成功！
   success: 成功！
   fail: 大失败！
+  weak_fail: 失败！

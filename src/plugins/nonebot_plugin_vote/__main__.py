@@ -2,6 +2,8 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 from nonebot import logger
+from nonebot.adapters import Bot
+from nonebot.adapters.qq import Bot as QQBot
 from nonebot.params import ArgPlainText, Depends
 from nonebot.typing import T_State
 from nonebot_plugin_alconna import Alconna, Args, Arparma, Match, Option, Subcommand, UniMessage, on_alconna
@@ -13,6 +15,9 @@ from .config import config
 from .lang import lang
 from .modules import Choice, Vote, VoteLog
 from .utils import (
+    build_vote_buttons,
+    build_vote_list_markdown,
+    build_vote_markdown,
     create_vote,
     generate_vote_image,
     generate_vote_list,
@@ -35,6 +40,7 @@ vote = on_alconna(alc)
 
 @vote.handle()
 async def _(
+    bot: Bot,
     result: Arparma,
     choice: Match[int],
     hour: Match[int],
@@ -52,6 +58,14 @@ async def _(
     elif vote_data is None and result.find("vote_id"):
         await lang.finish("vote.not_found", user_id)
     elif vote_data is None:
+        if isinstance(bot, QQBot):
+            # QQ 官方：投票列表使用 markdown，标题通过 <qqbot-cmd-input> 变成可点击指令
+            await (
+                UniMessage()
+                .style(await build_vote_list_markdown(user_id, group_id, session, result.find("all")), "markdown")
+                .send()
+            )
+            await vote.finish()
         await vote.finish(
             UniMessage().image(raw=await generate_vote_list(user_id, group_id, session, result.find("all")))
         )
@@ -74,6 +88,15 @@ async def _(
         else:
             await lang.finish("vote.no_permission", user_id)
     else:
+        if isinstance(bot, QQBot):
+            # QQ 官方：投票详情使用 markdown，选项通过键盘按钮选择
+            message = UniMessage().style(await build_vote_markdown(user_id, session, vote_data), "markdown")
+            buttons = await build_vote_buttons(user_id, session, vote_data)
+            if buttons:
+                # 空的 keyboard 段会让 QQ 适配器报 SerializeFailed，因此无按钮时不附加
+                message.keyboard(*buttons)
+            await message.send()
+            await vote.finish()
         await vote.finish(UniMessage().image(raw=await generate_vote_image(user_id, session, vote_data)))
 
 
