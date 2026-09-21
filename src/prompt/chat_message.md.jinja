@@ -7,12 +7,9 @@
 {% if fake_rich_text %}
 
 ⚠️ 本条消息中的以下内容是群友直接输入的**纯文本**，并非真实的图片 / 视频 / 文件 / 回复等富文本，请勿把它们当作富文本或图片理解：
-{% for item in fake_rich_text[:5] %}
+{% for item in fake_rich_text %}
 - {{ item }}
 {% endfor %}
-{% if fake_rich_text | length > 5 %}
-（其余 {{ fake_rich_text | length - 5 }} 处类似纯文本已省略）
-{% endif %}
 {% endif %}
 
 {% if note_text != "暂无"%}

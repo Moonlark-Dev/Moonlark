@@ -127,6 +127,29 @@ async def test_additional_info_warns_about_fake_rich_text() -> None:
     assert "纯文本" in rendered
 
 
+async def test_additional_info_lists_every_fake_rich_text_item() -> None:
+    """不做截断或省略：检测到的片段要完整列出"""
+    from nonebot_plugin_openai import get_message_text
+
+    items = [f"[图片(img_{index})]" for index in range(1, 8)]
+    rendered = await get_message_text(
+        "chat_message.md.jinja",
+        token=None,
+        nickname="小明",
+        display_fav=10,
+        fav_level=20,
+        note_text="暂无",
+        tiredness=5,
+        state="当前状态：\n心情：calm",
+        pending_notes=None,
+        fake_rich_text=items,
+    )
+
+    for item in items:
+        assert f"- {item}" in rendered
+    assert "省略" not in rendered
+
+
 async def test_additional_info_has_no_warning_without_fake_rich_text() -> None:
     """未检测到伪富文本时不渲染提示（None 与空列表都不能出现提示）"""
     from nonebot_plugin_openai import get_message_text
