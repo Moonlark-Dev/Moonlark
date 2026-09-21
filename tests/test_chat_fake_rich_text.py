@@ -128,19 +128,21 @@ async def test_additional_info_warns_about_fake_rich_text() -> None:
 
 
 async def test_additional_info_has_no_warning_without_fake_rich_text() -> None:
+    """未检测到伪富文本时不渲染提示（None 与空列表都不能出现提示）"""
     from nonebot_plugin_openai import get_message_text
 
-    rendered = await get_message_text(
-        "chat_message.md.jinja",
-        token=None,
-        nickname="小明",
-        display_fav=10,
-        fav_level=20,
-        note_text="暂无",
-        tiredness=5,
-        state="当前状态：\n心情：calm",
-        pending_notes=None,
-        fake_rich_text=None,
-    )
+    for fake_rich_text in (None, []):
+        rendered = await get_message_text(
+            "chat_message.md.jinja",
+            token=None,
+            nickname="小明",
+            display_fav=10,
+            fav_level=20,
+            note_text="暂无",
+            tiredness=5,
+            state="当前状态：\n心情：calm",
+            pending_notes=None,
+            fake_rich_text=fake_rich_text,
+        )
 
-    assert "纯文本" not in rendered
+        assert "纯文本" not in rendered
