@@ -19,7 +19,7 @@ async def apply_bad_luck_to_luck(user_id: str, value: int) -> int:
     layers = await get_bad_luck_layers(user_id)
     if layers <= 0:
         return value
-    if random.random() < BAD_LUCK_ZERO_CHANCE_PER_LAYER * layers:
+    if random.random() < BAD_LUCK_ZERO_CHANCE_PER_LAYER * layers:  # nosec B311
         return 0
     return max(int(value * bad_luck_multiplier(layers)), 0)
 

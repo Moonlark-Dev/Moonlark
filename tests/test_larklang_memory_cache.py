@@ -4,6 +4,8 @@
 读取时每次都要查询数据库；现在改为在启动时解析进内存（LanguageData.keys）。
 """
 
+from pathlib import Path
+
 import pytest
 
 
@@ -14,14 +16,12 @@ def test_language_key_cache_model_removed() -> None:
     assert not hasattr(models, "LanguageKeyCache")
 
 
-def test_language_data_holds_keys() -> None:
+def test_language_data_holds_keys(tmp_path: Path) -> None:
     """LanguageData 增加内存键表字段，且每个实例互不共享"""
-    from pathlib import Path
-
     from nonebot_plugin_larklang.models import LanguageData
 
-    first = LanguageData(path=Path("/tmp/lang"))
-    second = LanguageData(path=Path("/tmp/lang"))
+    first = LanguageData(path=tmp_path)
+    second = LanguageData(path=tmp_path)
     assert first.keys == {}
     first.keys["plugin"] = {}
     assert second.keys == {}

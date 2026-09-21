@@ -73,7 +73,7 @@ def get_text(language: Optional[str], plugin: str, key: str, *args, **kwargs) ->
     texts = _lookup_key_texts(language, plugin, key)
     if texts is None:
         return f"[缺失: {plugin}.{key} ({args}; {kwargs})]"
-    text = random.choice(texts)
+    text = random.choice(texts)  # nosec B311
     try:
         return remove_trailing_blank_lines(text.format(*args, **kwargs, **builtin_format))
     except IndexError:
