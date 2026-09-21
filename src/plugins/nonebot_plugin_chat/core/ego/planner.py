@@ -144,6 +144,8 @@ class Planner:
     async def _gather_context(self, day: Optional[str] = None) -> str:
         from .event_collector import event_collector
 
+        # 生成计划前先保证所有会话都不存在尚未生成事件的消息
+        await event_collector.flush_pending()
         if day is None:
             day = (date.today() - timedelta(days=1)).isoformat()
         return await event_collector.get_all_events_summary(date=day)

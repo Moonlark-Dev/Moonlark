@@ -217,6 +217,8 @@ class ProactiveChatController:
 
         friend_list = "\n".join(f"- {info['nickname']} (好感度: {info['fav']})" for info in candidates.values())
         plan_text = self.moonlark_main.planner.get_plan_text()
+        # 决策前先保证所有会话都不存在尚未生成事件的消息
+        await event_collector.flush_pending()
         # 只取上次决策之后新产生的事件，避免重复喂入已经决策过的旧事件
         cursor = event_collector.get_decision_cursor()
         events_text = await event_collector.get_events_summary_since(cursor)

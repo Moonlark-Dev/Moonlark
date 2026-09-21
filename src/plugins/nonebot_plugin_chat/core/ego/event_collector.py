@@ -3,6 +3,7 @@
 每个会话每缓存 100 条消息运行一次，生成群聊事件和话题列表并存入数据库。
 """
 
+import asyncio
 import json
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Optional
@@ -23,11 +24,55 @@ class EventCollector:
     """会话事件收集器"""
 
     COLLECTION_INTERVAL = 100
+    # 未生成事件的消息数超过该值时，planner / 主动私聊决策会无视 COLLECTION_INTERVAL 立即收集一次
+    FLUSH_PENDING_THRESHOLD = 5
+    # 立即收集时的最大并发数，避免一次性向模型服务发起过多请求
+    FLUSH_PENDING_CONCURRENCY = 5
 
     def __init__(self) -> None:
         self._session_message_counters: dict[str, int] = {}
         # 决策游标：记录上一次主动私聊决策的时间，用于只取「上次决策到现在」的新事件
         self._decision_cursor: Optional[datetime] = None
+
+    def get_pending_message_count(self, session_id: str) -> int:
+        """获取某个会话中尚未生成事件的消息数"""
+        return self._session_message_counters.get(session_id, 0)
+
+    async def flush_pending(self, min_pending: int = FLUSH_PENDING_THRESHOLD) -> list[str]:
+        """把所有积压了过多未生成事件消息的会话立即收集一次
+
+        正常情况下每个会话每 :attr:`COLLECTION_INTERVAL` 条消息才生成一次事件，planner
+        与主动私聊决策在读取事件前调用本方法：只要某个会话积压的未生成事件消息数**大于**
+        ``min_pending``，就忽略最低消息数量立即运行一次收集，避免决策读到的事件总是落后于
+        最新消息。收集完成后对应计数清零，后续仍按 100 条的节奏进行。
+
+        Returns:
+            本次立即收集过的会话 ID 列表
+        """
+        from ..session import groups
+
+        sessions: list[tuple[str, "BaseSession"]] = []
+        for session_id, count in list(self._session_message_counters.items()):
+            if count <= min_pending:
+                continue
+            self._session_message_counters[session_id] = 0
+            session = groups.get(session_id)
+            if session is not None:
+                sessions.append((session_id, session))
+
+        if not sessions:
+            return []
+
+        semaphore = asyncio.Semaphore(self.FLUSH_PENDING_CONCURRENCY)
+
+        async def _collect_limited(session: "BaseSession") -> None:
+            async with semaphore:
+                await self._collect(session)
+
+        await asyncio.gather(*(_collect_limited(session) for _, session in sessions))
+        flushed = [session_id for session_id, _ in sessions]
+        logger.info(f"[EventCollector] 已为 {len(flushed)} 个积压会话立即生成事件: {flushed}")
+        return flushed
 
     def on_message_cached(self, session_id: str) -> None:
         self._session_message_counters.setdefault(session_id, 0)
@@ -38,8 +83,6 @@ class EventCollector:
 
             session = groups.get(session_id)
             if session is not None:
-                import asyncio
-
                 asyncio.create_task(self._collect(session))
 
     async def _collect(self, session: "BaseSession") -> None:
