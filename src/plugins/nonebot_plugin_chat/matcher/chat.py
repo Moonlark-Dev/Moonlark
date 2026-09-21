@@ -380,7 +380,14 @@ class CommandHandler:
                 await lang.finish("command.disabled", self.user_id)
 
 
-@on_command("chat").handle()
+# `chatterbox` 等更长的命令由 alconna 响应器处理，不会注册 nonebot 的命令前缀树，
+# `/chatterbox` 会被前缀树解析成 `/chat` + 参数 `terbox` 从而误触发本命令。
+# force_whitespace 要求命令与参数之间必须有空白符：`/chat`、`/chat xxx` 照常可用，
+# 而 `/chatterbox`、`/chatxxx` 不再命中。
+chat = on_command("chat", force_whitespace=True)
+
+
+@chat.handle()
 async def _(
     matcher: Matcher,
     bot: Bot,
