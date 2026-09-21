@@ -5,6 +5,7 @@
 
 from collections import deque
 from datetime import datetime, timezone
+import time
 from typing import TYPE_CHECKING, Any, Optional
 
 from nonebot import logger
@@ -29,6 +30,32 @@ MAX_UNREPLIED_COUNT = 2
 DECISION_HISTORY_LIMIT = 100
 # 注入决策提示词的近期主动私聊发送记录条数
 RECENT_SEND_HISTORY_LIMIT = 10
+# bot 可用性检查结果的缓存时间（秒）：同一次检查流程内多次读取复用，避免反复调用平台接口
+BOT_AVAILABILITY_CACHE_TTL = 60
+
+
+async def get_available_bot_ids() -> Optional[set[str]]:
+    """获取当前可用（已连接且状态正常）的 bot ID 集合
+
+    Returns:
+        可用 bot ID 集合；返回 None 表示无法判断（nonebot_plugin_bots 不可用），
+        调用方应跳过 bot 可用性过滤。
+    """
+    try:
+        from nonebot import get_bots
+        from nonebot_plugin_bots import is_bot_online
+    except ImportError as e:
+        logger.warning(f"[ProactiveChat] 无法加载 bot 状态检查，跳过 bot 在线过滤: {e}")
+        return None
+
+    available: set[str] = set()
+    for bot_id in get_bots():
+        try:
+            if await is_bot_online(bot_id):
+                available.add(bot_id)
+        except Exception as e:
+            logger.warning(f"[ProactiveChat] 获取 bot {bot_id} 状态失败: {e}")
+    return available
 
 
 def get_cooldown_hours(favorability: float) -> float:
@@ -52,6 +79,8 @@ class ProactiveChatController:
     def __init__(self, moonlark_main: "MoonlarkMain") -> None:
         self.moonlark_main = moonlark_main
         self._last_check_time: Optional[datetime] = None
+        # 可用 bot 缓存：(bot ID 集合, 获取时间)；集合为 None 表示无法判断
+        self._bot_availability: Optional[tuple[Optional[set[str]], float]] = None
         # 每次检查的决策记录（供 chat-monitor 展示与调试）
         self.decision_history: deque[dict[str, Any]] = deque(maxlen=DECISION_HISTORY_LIMIT)
 
@@ -60,6 +89,15 @@ class ProactiveChatController:
         self.decision_history.append(
             {"time": datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds"), **info},
         )
+
+    async def _get_available_bot_ids(self) -> Optional[set[str]]:
+        """获取可用 bot ID 集合（带短缓存，一次检查流程内复用）"""
+        now = time.monotonic()
+        if self._bot_availability is not None and now - self._bot_availability[1] < BOT_AVAILABILITY_CACHE_TTL:
+            return self._bot_availability[0]
+        available = await get_available_bot_ids()
+        self._bot_availability = (available, now)
+        return available
 
     async def check_and_send(self) -> None:
         now = datetime.now()
@@ -117,10 +155,16 @@ class ProactiveChatController:
 
         candidates = {}
         now = datetime.now().timestamp()
+        available_bots = await self._get_available_bot_ids()
+        unavailable_users: list[str] = []
         async with get_session() as db_session:
             all_sessions = (await db_session.execute(select(PrivateChatSession))).scalars().all()
 
         for session in all_sessions:
+            # 记录对应的 bot 当前不可用（未连接或状态异常）时无法发送主动私聊，不作为候选
+            if available_bots is not None and session.bot_id not in available_bots:
+                unavailable_users.append(session.user_id)
+                continue
             user = await get_user(session.user_id)
             nickname = user.get_nickname()
             fav = user.get_display_fav()
@@ -143,6 +187,9 @@ class ProactiveChatController:
                 "fav": fav,
                 "last_message_time": session.last_message_time,
             }
+        if unavailable_users:
+            # 记录因 bot 不可用而跳过的用户，供 chat-monitor 排查
+            self._record(stage="bot_unavailable", users=unavailable_users)
         return candidates
 
     async def _get_recent_sends(self) -> str:
@@ -202,14 +249,24 @@ class ProactiveChatController:
         from ..proactive_chat import send_proactive_private_message
         from nonebot import get_bot
 
+        available_bots = await self._get_available_bot_ids()
         async with get_session() as db_session:
             all_sessions = (await db_session.execute(select(PrivateChatSession))).scalars().all()
 
+        bot_unavailable = False
         for chat_session in all_sessions:
             from nonebot_plugin_larkuser.utils.user import get_user
 
             user = await get_user(chat_session.user_id)
             if user.get_nickname() == decision.target_nickname:
+                # 该记录对应的 bot 当前不可用，尝试下一个同名记录
+                if available_bots is not None and chat_session.bot_id not in available_bots:
+                    logger.warning(
+                        f"[ProactiveChat] bot {chat_session.bot_id} 当前不可用，"
+                        f"跳过用户 {chat_session.user_id} 的主动私聊",
+                    )
+                    bot_unavailable = True
+                    continue
                 try:
                     bot = get_bot(chat_session.bot_id)
                     await send_proactive_private_message(bot, chat_session.user_id, decision.topic)
@@ -227,6 +284,8 @@ class ProactiveChatController:
                     logger.warning(f"[ProactiveChat] 更新未回复计数失败: {e}")
                 return f"已向 {decision.target_nickname} 发送主动私聊"
 
+        if bot_unavailable:
+            return f"{decision.target_nickname} 没有可用的 bot 在线"
         return f"未找到用户: {decision.target_nickname}"
 
     async def update_reply_status(self, user_id: str) -> None:

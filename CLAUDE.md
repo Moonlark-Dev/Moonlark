@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Moonlark is a multi-functional chatbot built on Python 3.11+ and the Nonebot2 framework. It supports multiple chat platforms (QQ, Discord) through various adapters (OneBot V11/V12, QQ official adapter). The project follows a plugin-based architecture with 67 custom plugins located in `src/plugins/`.
+Moonlark is a multi-functional chatbot built on Python 3.11+ and the Nonebot2 framework. It serves QQ through several adapters (OneBot V11/V12 and the QQ official adapter fork). The project follows a plugin-based architecture with custom plugins located in `src/plugins/`.
 
 ## Development Setup
 
@@ -27,6 +27,15 @@ poetry run nb run
 nb run
 ```
 
+### Local Development Notes
+
+- Every `nb` command loads all plugins. If `NO_PROXY`/`no_proxy` contains `[::1]`, httpx fails to build its
+  proxy mounts (`InvalidURL`) and `nonebot_plugin_openai` fails to import, which cascades into a long list of
+  "Cannot load plugin" errors. Run commands with the broken variable removed:
+  `env -u NO_PROXY -u no_proxy poetry run nb orm check`.
+- Running the whole test suite (`pytest tests/`) loads every plugin and is memory hungry; while developing,
+  run only the test files related to your change.
+
 ### Server Environment
 
 The production server (`xdnas`) runs:
@@ -40,45 +49,72 @@ The production server (`xdnas`) runs:
 
 ### Code Quality
 ```bash
-# Format code with Ruff
-poetry run ruff format .
+# Format code with black (line-length 120; this is what pre-commit.ci enforces)
+poetry run black .
 
-# Lint code
+# Lint code with ruff (configuration in pyproject.toml)
 poetry run ruff check .
 
-# Run pre-commit hooks manually
+# Run pre-commit hooks manually (flake8 --select=E9 + black, see .pre-commit-config.yaml)
 poetry run pre-commit run --all-files
 ```
 
+Do NOT reformat the repository with `ruff format`: on several existing files its output differs from black
+(for example it removes the blank line after a class statement), so it rewrites unrelated files and fights the
+black hook configured in `.pre-commit-config.yaml`.
+
 ### Testing
 ```bash
-# Run tests with nonebug
-poetry run nb test
+# Run the whole suite (exactly what CI runs)
+poetry run pytest tests/ -v
 
-# Run specific test file
-poetry run nb test tests/test_name.py
+# Run a single test file (preferred while developing)
+poetry run pytest tests/test_name.py -v
 ```
 
 ### Database Migrations
 ```bash
-# Create new migration
-poetry run nb orm revision
+# Create a new migration (autogenerate — review the generated file before committing)
+poetry run nb orm revision -m "add xxx"
 
 # Apply migrations
 poetry run nb orm upgrade
 
-# Rollback migration
-poetry run nb orm downgrade -1
+# Report pending model/schema differences; CI requires "没有检测到新的升级操作"
+poetry run nb orm check
+
+# List revision heads; there must be exactly one head
+poetry run nb orm heads
+
+# Roll back to a revision: pass the revision id, `nb orm downgrade -1` fails ("No such option '-1'")
+poetry run nb orm downgrade <revision>
 ```
+
+Migration rules (all of them are enforced by CI):
+
+- Every change to a plugin's `models.py` needs a migration, otherwise `nb orm check` fails the PR.
+- `revision` / `down_revision` must form a **single head**. When `main` gains a new migration, re-parent yours
+  onto the new head, or the branch ends up with two heads.
+- `nb orm revision` autogenerates from the live metadata. If a plugin fails to load locally (see Local
+  Development Notes), its tables show up as unrelated `drop_table` operations — delete everything that is not
+  part of your change.
+- Use `op.batch_alter_table` for column changes and give new columns `nullable=True` or a `server_default` so
+  the MySQL production server can apply them.
+- Verify against a throwaway database before pushing, for example
+  `SQLALCHEMY_DATABASE_URL="sqlite+aiosqlite:////tmp/mig.db" poetry run nb orm upgrade`, then the same with
+  `nb orm check`.
 
 ### Plugin-Specific Scripts
 ```bash
-# Generate help documentation
-poetry run nb run --script larkhelp-generate
+# Generate help documentation from help.yaml (CI regenerates COMMANDS.md automatically)
+poetry run nb larkhelp-generate zh_hans COMMANDS.md
 
 # Initialize larkcave hashes
-poetry run nb run --script larkcave-init-hash
+poetry run nb larkcave-init-hash
 ```
+
+Each registered script is a top-level nb command (`nb <script>`); `nb run` only starts the bot and has no
+`--script` option.
 
 ## Architecture
 
@@ -99,6 +135,34 @@ Moonlark uses a modular plugin architecture. All custom plugins are in `src/plug
 - **ORM**: Database operations (via nonebot-plugin-orm with SQLAlchemy)
 - **Alconna**: Command parsing and message sending (via nonebot-plugin-alconna)
 - **HtmlRender**: Markdown to image rendering (via nonebot-plugin-htmlrender)
+
+### Multi-Bot Runtime
+
+Moonlark keeps several bot accounts online at the same time (at least one OneBot V11 account and the QQ
+official bot). Which account handles an incoming message, and which account a message is sent with, is decided
+by `nonebot_plugin_bots` and always keyed on `bot.self_id`:
+
+- `BOTS_LIST` maps a bot code to its `self_id`; `BOTS_APPID_MAP` maps a QQ official AppID to the matching QQ
+  number so messages sent by Moonlark's own accounts can be recognised and ignored.
+- Groups that contain both an OneBot bot and the QQ official bot are linked through `GroupBind`
+  (QQ group number ↔ `group_openid`). OneBot takes precedence; the QQ official bot answers only when it is
+  mentioned or when no OneBot bot is available. A session is assigned to one bot at a time.
+- Private chat can be disabled per bot with `.pm on|off` (`UserBotPrivateChatSettings`, keyed by
+  `(user_id, bot_id)`).
+- Check `nonebot_plugin_bots.is_bot_online(bot_id)` / `get_bot_status(bot_id)` before pushing a message to a
+  user: a stored session may point at an account that is currently offline.
+
+### User IDs and Account Mapping
+
+`nonebot_plugin_larkutils.get_user_id()` returns the **main account** id, not the adapter-native id:
+`nonebot_plugin_auto_bind` maps a QQ official openid onto the OneBot QQ number through `MainAccountMapping`
+(`nonebot_plugin_larkutils.subaccount`). Consequences:
+
+- Anything keyed by `user_id` (per-user settings, sessions, relationships) is keyed by the main account.
+- To talk to an adapter you need the adapter-native id from `event.get_user_id()` — the openid for QQ official
+  C2C, the QQ number for OneBot — not the main account id.
+- `get_group_id()` returns the platform-prefixed session key: `qq_{user_id}` in private chat, and
+  `qq_{group_number}` / `qq_{group_openid}` in groups.
 
 ### Plugin Structure
 
@@ -211,7 +275,10 @@ Guidelines:
 
 - Python 3.11+ syntax
 - Line length: 120 characters
-- Formatter: Ruff (configured in `pyproject.toml`)
+- Formatter: **black** (configured in `pyproject.toml` and `.pre-commit-config.yaml`); never reformat the
+  repository with `ruff format`, its output disagrees with black on existing files
+- Linter: ruff (`[tool.ruff]` in `pyproject.toml`; `E501`, `I001`, `RUF100` … are ignored while preview rules
+  such as `COM812` and `TCH` are active)
 - Type hints required for function parameters (ANN001)
 - Line endings: LF (Unix-style)
 
@@ -225,10 +292,36 @@ Guidelines:
 
 ## Testing
 
-- Test framework: pytest with pytest-asyncio
+- Test framework: pytest with pytest-asyncio (async mode: auto, configured in `pyproject.toml`)
 - Test files: `tests/`
-- Use `nonebug` for Nonebot plugin testing
-- Async mode: auto (configured in `pyproject.toml`)
+- Import plugin modules **inside** the test function, as every existing test does: `tests/conftest.py`
+  initialises NoneBot only in a session-scoped autouse fixture, so a module-level plugin import fails during
+  collection with `NoneBot has not been initialized`.
+- `tests/conftest.py` also registers the Console/OneBot V11 adapters, loads every plugin from
+  `pyproject.toml`, and sets `SQLALCHEMY_DATABASE_URL=sqlite+aiosqlite://` plus `ALEMBIC_STARTUP_CHECK=False`.
+- `nonebug` is installed but most tests use plain `unittest.mock`; follow the file you are editing.
+- Prefer a single test file: the full suite loads every plugin and is memory hungry.
+
+## CI (GitHub Actions)
+
+`.github/workflows/ci.yml` runs on every PR update (Python 3.11 + Poetry):
+
+1. `poetry lock` / `poetry install --all-groups` / `poetry update`
+2. `nb orm upgrade`, then `nb orm check` — the job fails unless it prints `没有检测到新的升级操作`
+3. `poetry run pytest tests/ -v`, with `SQLALCHEMY_DATABASE_URL=sqlite+aiosqlite://` and
+   `ALEMBIC_STARTUP_CHECK=False`
+4. `nb larkhelp-generate zh_hans COMMANDS.md`
+5. If the working tree changed (usually `poetry.lock` or `COMMANDS.md`), the job commits and pushes it back to
+   the PR branch as `Auto update from GitHub Actions`
+
+Practical consequences:
+
+- A model change without a migration fails CI at step 2.
+- Run `git pull --rebase` before pushing: the CI job may already have pushed a commit to your branch.
+- A run triggered by that bot push is parked as `action_required` and must be approved manually in the Actions
+  UI before it executes.
+- Independently of this workflow, PRs also carry pre-commit.ci (`autofix_prs: true`, it may push
+  `格式化代码` commits), Codacy and CodeFactor checks.
 
 ## Environment Variables
 
@@ -252,6 +345,17 @@ Supported chat platforms:
 - OneBot V11 (QQ)
 - OneBot V12
 - QQ Official (uses custom fork `github.com/Moonlark-Dev/adapter-qq`, imported as `nonebot.adapters.qq`)
+
+QQ official adapter specifics (easy to get wrong):
+
+- `Bot.self_id` is the **AppID**, not a QQ number — never treat `self_id` as an account number.
+- C2C (private) events: `event.get_user_id()` returns the counterpart's **openid**, `event.get_session_id()`
+  returns `friend_{openid}`, and `nonebot_plugin_session` derives the key `qq_{openid}`. Sending to that user
+  requires the openid; a main-account QQ number will not work.
+- Group events carry a `group_openid`, linked to an OneBot group number through
+  `nonebot_plugin_bots.GroupBind`.
+- C2C replies need a fresh `qq.reply_seq` in the target extras; see
+  `nonebot_plugin_chat/core/processor.py` for the existing handling.
 
 ## Frontend (moonlark-frontend)
 
@@ -297,9 +401,9 @@ moonlark-frontend/
 - Requests go through `apiRequest`/`apiRequestFull` in `src/utils/api.ts`; authenticated requests send the `sessionID` cookie as `Authorization: Bearer <sessionID>`.
 - 401 responses trigger a global handler (registered in `main.ts`) that redirects to `/login` with the current route as a `redirect` query parameter.
 
-### CI/CD
+### CI/CD (frontend repository)
 
-- GitHub Actions workflows in `.github/workflows/`:
+- GitHub Actions workflows in the frontend repository's `.github/workflows/`:
   - `ci.yaml`: runs `npm run lint` on Node 22 for pushes and PRs
   - `deloy.yaml`: on push to `main`, builds and deploys `dist/` to GitHub Pages (`peaceiris/actions-gh-pages`)
 
@@ -308,7 +412,7 @@ moonlark-frontend/
 ```
 Moonlark/
 ├── src/
-│   ├── plugins/          # 67 custom plugins
+│   ├── plugins/          # Custom plugins
 │   ├── lang/             # Localization files
 │   ├── prompt/           # Jinja2 prompt templates for AI features
 │   ├── static/           # Static assets
