@@ -5,6 +5,7 @@
 
 from collections import deque
 from datetime import datetime, timezone
+import time
 from typing import TYPE_CHECKING, Any, Optional
 
 from nonebot import logger
@@ -30,6 +31,32 @@ MAX_UNREPLIED_COUNT = 2
 DECISION_HISTORY_LIMIT = 100
 # 注入决策提示词的近期主动私聊发送记录条数
 RECENT_SEND_HISTORY_LIMIT = 10
+# bot 可用性检查结果的缓存时间（秒）：同一次检查流程内多次读取复用，避免反复调用平台接口
+BOT_AVAILABILITY_CACHE_TTL = 60
+
+
+async def get_available_bot_ids() -> Optional[set[str]]:
+    """获取当前可用（已连接且状态正常）的 bot ID 集合
+
+    Returns:
+        可用 bot ID 集合；返回 None 表示无法判断（nonebot_plugin_bots 不可用），
+        调用方应跳过 bot 可用性过滤。
+    """
+    try:
+        from nonebot import get_bots
+        from nonebot_plugin_bots import is_bot_online
+    except ImportError as e:
+        logger.warning(f"[ProactiveChat] 无法加载 bot 状态检查，跳过 bot 在线过滤: {e}")
+        return None
+
+    available: set[str] = set()
+    for bot_id in get_bots():
+        try:
+            if await is_bot_online(bot_id):
+                available.add(bot_id)
+        except Exception as e:
+            logger.warning(f"[ProactiveChat] 获取 bot {bot_id} 状态失败: {e}")
+    return available
 
 
 def get_cooldown_hours(favorability: float) -> float:
@@ -78,6 +105,8 @@ class ProactiveChatController:
     def __init__(self, moonlark_main: "MoonlarkMain") -> None:
         self.moonlark_main = moonlark_main
         self._last_check_time: Optional[datetime] = None
+        # 可用 bot 缓存：(bot ID 集合, 获取时间)；集合为 None 表示无法判断
+        self._bot_availability: Optional[tuple[Optional[set[str]], float]] = None
         # 每次检查的决策记录（供 chat-monitor 展示与调试）
         self.decision_history: deque[dict[str, Any]] = deque(maxlen=DECISION_HISTORY_LIMIT)
 
@@ -86,6 +115,15 @@ class ProactiveChatController:
         self.decision_history.append(
             {"time": datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds"), **info},
         )
+
+    async def _get_available_bot_ids(self) -> Optional[set[str]]:
+        """获取可用 bot ID 集合（带短缓存，一次检查流程内复用）"""
+        now = time.monotonic()
+        if self._bot_availability is not None and now - self._bot_availability[1] < BOT_AVAILABILITY_CACHE_TTL:
+            return self._bot_availability[0]
+        available = await get_available_bot_ids()
+        self._bot_availability = (available, now)
+        return available
 
     async def check_and_send(self) -> None:
         now = datetime.now()
@@ -150,10 +188,16 @@ class ProactiveChatController:
         candidates: dict[str, dict] = {}
         skipped = {"favorability": 0, "cooldown": 0, "user_active": 0, "unreplied": 0}
         now = datetime.now().timestamp()
+        available_bots = await self._get_available_bot_ids()
+        unavailable_users: list[str] = []
         async with get_session() as db_session:
             all_sessions = (await db_session.execute(select(PrivateChatSession))).scalars().all()
 
         for session in all_sessions:
+            # 记录对应的 bot 当前不可用（未连接或状态异常）时无法发送主动私聊，不作为候选
+            if available_bots is not None and session.bot_id not in available_bots:
+                unavailable_users.append(session.user_id)
+                continue
             user = await get_user(session.user_id)
             nickname = user.get_nickname()
             fav = user.get_display_fav()
@@ -181,6 +225,9 @@ class ProactiveChatController:
                 "fav": fav,
                 "last_message_time": session.last_message_time,
             }
+        if unavailable_users:
+            # 记录因 bot 不可用而跳过的用户，供 chat-monitor 排查
+            self._record(stage="bot_unavailable", users=unavailable_users)
         if candidates or any(skipped.values()):
             logger.debug(f"[ProactiveChat] 候选筛选结果: candidates={len(candidates)} skipped={skipped}")
         return candidates, skipped
@@ -241,8 +288,8 @@ class ProactiveChatController:
     async def _send_proactive(self, decision: ProactiveDecision, candidates: dict[str, dict]) -> str:
         """向决策选中的用户发送主动私聊
 
-        只允许向本次筛选出的候选人发送，并在真正发送前重新确认用户是否刚私聊过，
-        避免 LLM 编造昵称或决策期间用户刚发过消息时仍然打扰对方。
+        只允许向本次筛选出的候选人发送，并在真正发送前重新确认 bot 是否可用、
+        用户是否刚私聊过，避免 LLM 编造昵称或决策期间状态变化后仍然打扰对方。
         """
         from nonebot import get_bot
 
@@ -256,6 +303,7 @@ class ProactiveChatController:
             logger.warning(f"[ProactiveChat] 决策目标 {decision.target_nickname!r} 不在候选人列表中，已忽略")
             return f"未找到用户: {decision.target_nickname}"
 
+        available_bots = await self._get_available_bot_ids()
         async with get_session() as db_session:
             chat_session = (
                 await db_session.execute(select(PrivateChatSession).where(PrivateChatSession.user_id == target_user_id))
@@ -264,7 +312,12 @@ class ProactiveChatController:
         if chat_session is None:
             return f"未找到用户: {decision.target_nickname}"
 
-        # 发送前再次校验：LLM 决策期间用户可能刚私聊过
+        # 发送前再次校验：bot 可能已离线，用户也可能刚私聊过
+        if available_bots is not None and chat_session.bot_id not in available_bots:
+            logger.warning(
+                f"[ProactiveChat] bot {chat_session.bot_id} 当前不可用，跳过用户 {chat_session.user_id} 的主动私聊",
+            )
+            return f"{decision.target_nickname} 没有可用的 bot 在线"
         if is_user_recently_active(chat_session):
             logger.info(f"[ProactiveChat] 用户 {decision.target_nickname} 刚刚私聊过，跳过本次主动私聊")
             return f"用户 {decision.target_nickname} 刚刚私聊过，已跳过"
