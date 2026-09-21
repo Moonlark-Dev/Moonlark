@@ -252,7 +252,12 @@ class MessageProcessor:
         else:
             return await self.session.text("poke.not_found")
 
-    async def parse_message(self, message: UniMessage, event: Event, state: T_State) -> tuple[str, list[bytes]]:
+    async def parse_message(
+        self,
+        message: UniMessage,
+        event: Event,
+        state: T_State,
+    ) -> tuple[str, list[bytes], list[str]]:
         parser = MessageParser(
             message,
             event,
@@ -262,7 +267,7 @@ class MessageProcessor:
             not self.ENABLE_EMBEDDED_IMAGE,
         )
         msg_str = await parser.parse()
-        return (await LinkParser(msg_str, self.session.lang_str).parse()), parser.images
+        return (await LinkParser(msg_str, self.session.lang_str).parse()), parser.images, parser.fake_rich_text
 
     async def should_ignore_mention(self, user_id: str) -> bool:
         async with get_session() as db_session:
@@ -315,7 +320,7 @@ class MessageProcessor:
             message, event, state, user_id, nickname, dt, mentioned, message_id, platform_user_id = item[1]
             mentioned = mentioned and not await self.should_ignore_mention(user_id)
 
-            text, images = await self.parse_message(message, event, state)
+            text, images, fake_rich_text = await self.parse_message(message, event, state)
             logger.debug(f"{text=}")
             if not text:
                 return
@@ -333,6 +338,7 @@ class MessageProcessor:
                 "images": images,
                 "to_me": mentioned,
                 "triggered_reply": False,
+                "fake_rich_text": fake_rich_text,
             }
             await self.process_messages(msg_dict)
             self.session.cached_messages.append(msg_dict)
@@ -667,7 +673,11 @@ class MessageProcessor:
 
             if not self.blocked:
                 msg_str = generate_message_string(msg_dict)
-                msg_str += await self.generate_additional_prompt(msg_str, msg_dict["user_id"])
+                msg_str += await self.generate_additional_prompt(
+                    msg_str,
+                    msg_dict["user_id"],
+                    msg_dict.get("fake_rich_text", []),
+                )
                 msg_dict["mq_text"] = msg_str
                 await self.append_user_message(msg_str, msg_dict["images"])
                 # print(self.openai_messages.messages)
@@ -779,7 +789,12 @@ class MessageProcessor:
         note_lines = await self.filter_info_lines(note_lines)
         return "\n".join(note_lines) if notes else await self.session.text("prompt.note.none")
 
-    async def generate_additional_prompt(self, message_str: str, sender_id: str) -> str:
+    async def generate_additional_prompt(
+        self,
+        message_str: str,
+        sender_id: str,
+        fake_rich_text: Optional[list[str]] = None,
+    ) -> str:
         note_manager = await get_context_notes(self.session.session_id)
         sender = await get_user(sender_id)
         notes, notes_from_other_group = await note_manager.filter_note(message_str)
@@ -812,6 +827,7 @@ class MessageProcessor:
             tiredness=tiredness,
             state=state,
             pending_notes=pending_notes_text or None,
+            fake_rich_text=fake_rich_text or None,
         )
 
     async def filter_info_lines(self, lines: list[str]) -> list[str]:

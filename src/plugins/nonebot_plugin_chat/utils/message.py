@@ -38,6 +38,7 @@ MAX_FORWARD_DEPTH = 3
 from .image import generate_image_id, get_image_summary
 from .file import get_file_summary
 from .emoji import QQ_EMOJI_MAP
+from .rich_text import find_fake_rich_text
 
 
 class MessageParser:
@@ -50,6 +51,7 @@ class MessageParser:
         lang_str: str,
         describe_image: bool = True,
         _forward_depth: int = 0,
+        fake_rich_text: Optional[list[str]] = None,
     ) -> None:
         self.message = message
         self.event = event
@@ -59,6 +61,9 @@ class MessageParser:
         self.state = state
         self.images = []
         self._forward_depth = _forward_depth
+        # 纯文本中伪装成富文本占位符的片段（如用户直接发送 "[图片(img_1)]"），
+        # 由嵌套的回复/转发解析共同收集。
+        self.fake_rich_text: list[str] = fake_rich_text if fake_rich_text is not None else []
 
     async def parse(self) -> str:
         return "".join([await self.parse_segment(segment) for segment in self.message])
@@ -83,6 +88,9 @@ class MessageParser:
 
     async def parse_segment(self, segment: Segment) -> str:
         if isinstance(segment, Text):
+            for placeholder in find_fake_rich_text(segment.text):
+                if placeholder not in self.fake_rich_text:
+                    self.fake_rich_text.append(placeholder)
             return segment.text
         elif isinstance(segment, At):
             return await self.parse_mention(segment)
@@ -157,7 +165,13 @@ class MessageParser:
     async def get_parsed_message(self, node_message: list[dict]) -> str:
         uni_message = await parse_dict_message(node_message, self.bot, self.event)
         return await parse_message_to_string(
-            uni_message, self.event, self.bot, self.state, self.user_id, forward_depth=self._forward_depth + 1
+            uni_message,
+            self.event,
+            self.bot,
+            self.state,
+            self.user_id,
+            forward_depth=self._forward_depth + 1,
+            fake_rich_text=self.fake_rich_text,
         )
 
     async def parse_mention(self, segment: At) -> str:
@@ -171,7 +185,14 @@ class MessageParser:
     async def parse_replied_message(self, msg: UniMessage) -> str:
         if msg == self.message:
             return ""
-        return await parse_message_to_string(msg, self.event, self.bot, self.state, self.user_id)
+        return await parse_message_to_string(
+            msg,
+            self.event,
+            self.bot,
+            self.state,
+            self.user_id,
+            fake_rich_text=self.fake_rich_text,
+        )
 
     async def parse_reply(self, segment: Reply) -> str:
         logger.info(f"Reply: {segment=} {segment.msg=} {segment.id=}")
@@ -193,7 +214,12 @@ class MessageParser:
         elif isinstance(self.bot, OneBotV11Bot):
             result = await self.bot.get_msg(message_id=int(segment.id))
             message = await parse_message_to_string(
-                await parse_dict_message(result["message"], self.bot), self.event, self.bot, self.state, self.user_id
+                await parse_dict_message(result["message"], self.bot),
+                self.event,
+                self.bot,
+                self.state,
+                self.user_id,
+                fake_rich_text=self.fake_rich_text,
             )
             sender_nickname = await get_nickname(str(result["sender"]["user_id"]), self.bot, self.event)
             return await lang.text("parser.reply_with_sender", self.user_id, message, sender_nickname)
@@ -212,9 +238,23 @@ async def parse_dict_message(dict_message: list[dict], bot: Bot, event: Optional
 
 
 async def parse_message_to_string(
-    message: UniMessage, event: Event, bot: Bot, state: T_State, lang_str: str, forward_depth: int = 0
+    message: UniMessage,
+    event: Event,
+    bot: Bot,
+    state: T_State,
+    lang_str: str,
+    forward_depth: int = 0,
+    fake_rich_text: Optional[list[str]] = None,
 ) -> str:
-    parser = MessageParser(message, event, bot, state, lang_str, _forward_depth=forward_depth)
+    parser = MessageParser(
+        message,
+        event,
+        bot,
+        state,
+        lang_str,
+        _forward_depth=forward_depth,
+        fake_rich_text=fake_rich_text,
+    )
     return await parser.parse()
 
 
