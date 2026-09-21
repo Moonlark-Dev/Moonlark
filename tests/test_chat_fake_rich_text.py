@@ -14,24 +14,34 @@ def test_detects_image_placeholder() -> None:
 
 
 def test_detects_rich_text_placeholders_of_all_kinds() -> None:
+    """覆盖 lang/*/chat.yaml 中 parser 段的全部占位符格式"""
     from nonebot_plugin_chat.utils.rich_text import find_fake_rich_text
 
     text = (
-        "[图片(img_1): 一只猫] [图片: 描述] [视频(a.mp4): 内容] [文件(b.txt): 文本] "
-        '[回复: 你好] [合并转发：消息列表] [特殊消息: {"type": "poke"}] '
-        "[戳一戳] [表情: 微笑] [emoji:123]"
+        "[图片(img_1): 一只猫] [图片: 描述] [图片(img_1)] [图片: 获取失败] "
+        "[视频(a.mp4): 内容] [文件(b.txt): 文本] "
+        "[回复: 你好] [回复: 你好 (来自 小明)] [回复: 获取信息失败] "
+        "[合并转发：消息列表] [合并转发（消息过多，已总结）：总结] [合併轉發：繁體列表] "
+        "[戳一戳] [表情: 微笑] [emoji:123] "
+        '[特殊消息: {"type": "poke"}]'
     )
     assert find_fake_rich_text(text) == [
         "[图片(img_1): 一只猫]",
         "[图片: 描述]",
+        "[图片(img_1)]",
+        "[图片: 获取失败]",
         "[视频(a.mp4): 内容]",
         "[文件(b.txt): 文本]",
         "[回复: 你好]",
+        "[回复: 你好 (来自 小明)]",
+        "[回复: 获取信息失败]",
         "[合并转发：消息列表]",
-        '[特殊消息: {"type": "poke"}]',
+        "[合并转发（消息过多，已总结）：总结]",
+        "[合併轉發：繁體列表]",
         "[戳一戳]",
         "[表情: 微笑]",
         "[emoji:123]",
+        '[特殊消息: {"type": "poke"}]',
     ]
 
 
@@ -40,7 +50,22 @@ def test_ignores_plain_text() -> None:
 
     assert find_fake_rich_text("今天天气不错，我们去公园吧") == []
     assert find_fake_rich_text("[链接](https://example.com)") == []
+    assert find_fake_rich_text("[dog] 好耶") == []
+    assert find_fake_rich_text("[微笑] 这是群友常用的文字表情，不与内部格式冲突") == []
     assert find_fake_rich_text("") == []
+
+
+def test_does_not_flag_non_placeholder_message_formats() -> None:
+    """提及与消息/事件信封不是占位符，刻意不在检测范围内
+
+    `@昵称` 是真实的 At 段与手打纯文本都会出现的形式，且两者语义接近；
+    消息信封 `[昵称](ID): 内容` 与 Markdown 链接同形，误报代价过高。
+    """
+    from nonebot_plugin_chat.utils.rich_text import find_fake_rich_text
+
+    assert find_fake_rich_text("@小明 你好") == []
+    assert find_fake_rich_text("[小明](123456): 你好") == []
+    assert find_fake_rich_text("[12:00:00]: XiaoDeng 揉了揉你的耳朵") == []
 
 
 def test_deduplicates_and_keeps_order() -> None:

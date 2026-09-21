@@ -8,13 +8,21 @@ Moonlark 在解析消息时，会把图片、视频、文件、回复等消息�
 
 import re
 
-# 富文本占位符的关键字，与 parser.* 文案中使用的关键字保持一致。
+# 富文本占位符的关键字，与 lang/*/chat.yaml 的 parser 段逐一对应：
+#   image_with_id / image / image_failed / image_without_desc -> 图片
+#   video -> 视频、file -> 文件
+#   forward.* -> 合并转发（zh_tw 为繁体「合併轉發」）
+#   reply / reply_with_sender / reply_failed -> 回复
+#   other -> 特殊消息、poke -> 戳一戳
+#   emoji -> 表情、emoji_unknown -> emoji
+# 新增 parser 文案时需要同步维护该列表。
 RICH_TEXT_KEYWORDS = (
     "图片",
     "视频",
     "文件",
-    "回复",
     "合并转发",
+    "合併轉發",
+    "回复",
     "特殊消息",
     "戳一戳",
     "表情",
