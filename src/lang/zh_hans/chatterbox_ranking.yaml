@@ -14,7 +14,6 @@ bar:
   span_1d: 1 天
   subtitle_global: 全局
 button:
-  tip: 换个榜单看看：
   span_total: 总榜
   span_7d: 近 7 天
   span_1d: 今日

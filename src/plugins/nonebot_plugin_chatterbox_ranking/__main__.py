@@ -19,6 +19,7 @@ from nonebot_plugin_alconna import (
     UniMessage,
 )
 from nonebot_plugin_larkutils import get_user_id, get_group_id, open_file
+from nonebot_plugin_larkutils.cache import create_image_markdown
 from nonebot_plugin_larkutils.command import get_command_prefix
 from .image import render_bar
 from .lang import lang
@@ -83,7 +84,7 @@ async def build_rank_buttons(user_id: str, span: SpanType, global_flag: bool) ->
     return buttons
 
 
-async def send_rank_with_buttons(
+async def send_rank_card(
     bot: Bot,
     event: Event,
     user_id: str,
@@ -91,11 +92,14 @@ async def send_rank_with_buttons(
     global_flag: bool,
     image: bytes,
 ) -> None:
-    """QQ 官方：图片消息（msg_type 7）无法携带按钮，因此在排行榜图片之后再发一条带按钮的 markdown。"""
-    await UniMessage().image(raw=image).send(target=event, bot=bot)
+    """QQ 官方：排行榜图片与跳转按钮合成一条 markdown 消息发送。
+
+    QQ 官方的图片消息（msg_type 7）无法携带按钮，因此与 sign 一致，
+    先把图片上传图床再用 markdown 内嵌，按钮作为同一条消息的键盘下发。
+    """
     await (
         UniMessage()
-        .style(await lang.text("button.tip", user_id), "markdown")
+        .style(await create_image_markdown(image), "markdown")
         # row=3：三个时间段按钮占一行，统计范围与本人排名占第二行
         .keyboard(*await build_rank_buttons(user_id, span, global_flag), row=3)
         .send(target=event, bot=bot)
@@ -201,8 +205,8 @@ async def _(
         subtitle,
     )
     if isinstance(bot, Bot_QQ):
-        # QQ 官方：图片之后追加一条带跳转按钮的 markdown
-        await send_rank_with_buttons(bot, event, user_id, span, global_flag, image)
+        # QQ 官方：图片与跳转按钮合成一条 markdown 卡片
+        await send_rank_card(bot, event, user_id, span, global_flag, image)
         await chatterbox.finish()
     await chatterbox.finish(UniMessage().image(raw=image))
 
