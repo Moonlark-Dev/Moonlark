@@ -1,8 +1,12 @@
 import colorsys
+from collections.abc import Sequence
 from datetime import timedelta
 import io
-import matplotlib.pyplot as plt
+
 import matplotlib.dates as mdates
+import matplotlib.pyplot as plt
+from PIL import Image, ImageDraw, ImageFont
+from nonebot.log import logger
 from nonebot_plugin_orm import async_scoped_session
 from nonebot_plugin_message_summary.models import GroupMessage
 from sqlalchemy import select
@@ -12,8 +16,8 @@ from ..lang import lang
 from ..config import config
 
 
-async def render_line_cheat(session: async_scoped_session, user_id: str, group_id: str) -> bytes:
-    result = await session.scalars(select(GroupMessage).where(GroupMessage.group_id == group_id))
+async def render_line_chart(session: async_scoped_session, user_id: str, group_ids: Sequence[str]) -> bytes:
+    result = await session.scalars(select(GroupMessage).where(GroupMessage.group_id.in_(group_ids)))
     messages = result.all()
 
     if not messages:
@@ -49,34 +53,30 @@ async def render_line_cheat(session: async_scoped_session, user_id: str, group_i
         current_time += interval
 
     # Create the chart
-    plt.figure(figsize=(12, 6))
-    plt.plot(time_points, heat_scores, marker="o", linestyle="-", linewidth=2, markersize=4)
-    plt.title(await lang.text("history.title", user_id))
-    plt.xlabel(await lang.text("history.xlabel", user_id))
-    plt.ylabel(await lang.text("history.ylabel", user_id))
-    plt.grid(True, alpha=0.3)
+    fig, ax = plt.subplots(figsize=(12, 6))
+    ax.plot(time_points, heat_scores, marker="o", linestyle="-", linewidth=2, markersize=4)
+    ax.set_title(await lang.text("history.title", user_id))
+    ax.set_xlabel(await lang.text("history.xlabel", user_id))
+    ax.set_ylabel(await lang.text("history.ylabel", user_id))
+    ax.grid(True, alpha=0.3)
 
     # Format x-axis as time
-    plt.gca().xaxis.set_major_formatter(mdates.DateFormatter("%H:%M"))
-    plt.gca().xaxis.set_major_locator(mdates.MinuteLocator(interval=60))
-    plt.xticks(rotation=45)
+    ax.xaxis.set_major_formatter(mdates.DateFormatter("%H:%M"))
+    ax.xaxis.set_major_locator(mdates.MinuteLocator(interval=60))
+    ax.tick_params(axis="x", rotation=45)
 
     # Set y-axis limits
-    plt.ylim(0, round(max(heat_scores) // 10 * 10 + 10))
+    ax.set_ylim(0, round(max(heat_scores) // 10 * 10 + 10))
 
     # Adjust layout to prevent label cutoff
-    plt.tight_layout()
+    fig.tight_layout()
 
     # Save to bytes
     buf = io.BytesIO()
-    plt.savefig(buf, format="png", dpi=300, bbox_inches="tight")
+    fig.savefig(buf, format="png", dpi=300, bbox_inches="tight")
     buf.seek(0)
-    plt.close()
+    plt.close(fig)
     return buf.getvalue()
-
-
-from PIL import Image, ImageDraw, ImageFont
-from nonebot.log import logger
 
 
 def get_next_tens(n: int) -> int:
@@ -85,9 +85,8 @@ def get_next_tens(n: int) -> int:
     return ((n // 10) + 1) * 10
 
 
-async def render_heat_cheat(session: async_scoped_session, user_id: str, group_id: str) -> bytes:
-    group_id = "qq_701257458"
-    result = await session.scalars(select(GroupMessage).where(GroupMessage.group_id == group_id))
+async def render_heat_chart(session: async_scoped_session, user_id: str, group_ids: Sequence[str]) -> bytes:
+    result = await session.scalars(select(GroupMessage).where(GroupMessage.group_id.in_(group_ids)))
     messages = list(result.all())
     heat_scores: list[int] = []
     if not messages:
@@ -105,12 +104,16 @@ async def render_heat_cheat(session: async_scoped_session, user_id: str, group_i
         ]
         heat_scores.append(
             await calculate_heat_score(
-                window_message_timestamps, time_cursor, round((end_time - start_time).total_seconds())
+                window_message_timestamps,
+                time_cursor,
+                round((end_time - start_time).total_seconds()),
+                config.ghot_max_message_rate,
             )
         )
         time_cursor += timedelta(minutes=1)
     origin_max_score = max(heat_scores)
-    max_score = get_next_tens(origin_max_score)
+    # 全窗口热度为 0 时 max_score 会被算成 0，下面按比例取色会除零，这里兜底为 1
+    max_score = get_next_tens(origin_max_score) or 1
     # Create Image
     image_width = 600
     image_height = 270
@@ -137,8 +140,8 @@ async def render_heat_cheat(session: async_scoped_session, user_id: str, group_i
     title = await lang.text("heat_c.title", user_id)
     draw.text((20, 20), title, fill=text_color, font=title_font)
 
-    # Draw user ID
-    user_id_text = await lang.text("heat_c.gid", user_id, group_id)
+    # Draw group key
+    user_id_text = await lang.text("heat_c.gid", user_id, group_ids[0])
     draw.text((20, 60), user_id_text, fill=text_color, font=small_font)
 
     # Draw statistics
@@ -168,11 +171,14 @@ async def render_heat_cheat(session: async_scoped_session, user_id: str, group_i
     timeline_end_y = timeline_y + timeline_height
     time_cursor = time_interval[0]
     total_interval_seconds = (time_interval[1] - time_interval[0]).total_seconds()
-    width_per_minute = timeline_width / (total_interval_seconds / 60)
+    # 所有消息时间相同时区间长度为 0，避免除零，整段时间轴按一分钟宽绘制
+    width_per_minute = timeline_width if total_interval_seconds <= 0 else timeline_width / (total_interval_seconds / 60)
     for record in heat_scores:
         start_x = (
             timeline_start_x
             + (time_cursor - time_interval[0]).total_seconds() / total_interval_seconds * timeline_width
+            if total_interval_seconds > 0
+            else timeline_start_x
         )
         block_color_hsv = (44 / 360, record / max_score, 1)
         block_color = tuple(int(x * 255) for x in colorsys.hsv_to_rgb(*block_color_hsv))
