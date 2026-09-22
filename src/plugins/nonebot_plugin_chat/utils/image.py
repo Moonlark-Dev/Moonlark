@@ -31,6 +31,7 @@ from nonebot_plugin_openai.utils.message import generate_message, get_message, g
 from nonebot import get_driver
 
 from .cache import AsyncCache
+from .image_format import ImageFormatError, normalize_image
 
 
 class ImageCacheData(TypedDict):
@@ -80,19 +81,19 @@ async def request_describe_image(image: bytes, user_id: str) -> tuple[str, str]:
             image_id = cache["image_id"]
 
     # 调用 VLM 获取描述
-    image_base64 = base64.b64encode(image).decode("utf-8")
-    messages = [
-        await get_message("system", "image_describe/system.md.jinja"),
-        generate_message(
-            [
-                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_base64}"}},
-                {"type": "text", "text": await get_message_text("image_describe/user.md.jinja")},
-            ],
-            "user",
-        ),
-    ]
-
     try:
+        normalized, mime_type = normalize_image(image)
+        image_base64 = base64.b64encode(normalized).decode("utf-8")
+        messages = [
+            await get_message("system", "image_describe/system.md.jinja"),
+            generate_message(
+                [
+                    {"type": "image_url", "image_url": {"url": f"data:{mime_type};base64,{image_base64}"}},
+                    {"type": "text", "text": await get_message_text("image_describe/user.md.jinja")},
+                ],
+                "user",
+            ),
+        ]
         summary = (await fetch_message(messages, identify="Image Describe")).strip()
     except Exception as e:
         logger.warning(traceback.format_exc())
@@ -170,13 +171,18 @@ async def query_image_content(image_id: str, query_prompt: str, user_id: str) ->
         return "未找到指定的图片，可能已过期或不存在。"
 
     image = cache_data["raw"]
-    image_base64 = base64.b64encode(image).decode("utf-8")
+    try:
+        normalized, mime_type = normalize_image(image)
+    except ImageFormatError as e:
+        logger.warning(f"图片 {image_id} 格式不受支持: {e}")
+        return f"查询失败 ({e})"
+    image_base64 = base64.b64encode(normalized).decode("utf-8")
 
     messages = [
         await get_message("system", "image_query/system.md.jinja"),
         generate_message(
             [
-                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_base64}"}},
+                {"type": "image_url", "image_url": {"url": f"data:{mime_type};base64,{image_base64}"}},
                 {"type": "text", "text": await get_message_text("image_query/user.md.jinja", query=query_prompt)},
             ],
             "user",

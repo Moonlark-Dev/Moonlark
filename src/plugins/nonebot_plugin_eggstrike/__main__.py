@@ -3,9 +3,10 @@ from typing import Any, Literal
 
 from nonebot.adapters import Bot, Event
 from nonebot_plugin_alconna import Alconna, Args, At, Match, Option, Subcommand, UniMessage, on_alconna
+from nonebot_plugin_buff import attach_bad_luck
 from nonebot_plugin_items.utils.string import get_location_by_id
 from nonebot_plugin_larkuser import get_nickname, get_user, patch_matcher
-from nonebot_plugin_larkutils import get_user_id
+from nonebot_plugin_larkutils import get_main_account, get_user_id
 from nonebot_plugin_orm import get_session
 from nonebot_plugin_ranking import generate_image
 from nonebot_plugin_ranking.types import RankingData
@@ -16,6 +17,7 @@ from .lang import lang
 from .models import AttackRecord
 from .utils import (
     EGG_TYPES,
+    ROTTEN_EGG_TYPE,
     NotEnoughEggs,
     deduct_eggs,
     get_egg_type_name,
@@ -131,6 +133,10 @@ async def throw_egg(
         before_hp = target_user.get_health()
         await target_user.damage(egg_count * egg_damage)
         hp_lost = round(before_hp - target_user.get_health(), 1)
+
+    # 被臭鸡蛋砸中会被附着霉运 buff（可叠加，每层持续 2 小时）
+    if egg_key == ROTTEN_EGG_TYPE:
+        await attach_bad_luck(await get_main_account(target_id), layers=egg_count)
 
     nickname = await get_nickname(target_id, bot, event)
     if hp_lost > 0:

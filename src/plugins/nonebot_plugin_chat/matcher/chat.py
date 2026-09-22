@@ -21,7 +21,7 @@ from nonebot import on_command
 from nonebot.adapters import Bot, Event, Message
 from nonebot.matcher import Matcher
 from nonebot.params import CommandArg
-from nonebot_plugin_larkutils import get_group_id, get_user_id
+from nonebot_plugin_larkutils import get_group_id, get_user_id, is_superuser
 from nonebot_plugin_larkutils.user import private_message
 from nonebot_plugin_orm import async_scoped_session
 
@@ -139,11 +139,23 @@ class CommandHandler:
         await self.matcher.finish("\n".join(session.tool_calls_history))
 
     async def handle_reset(self) -> None:
-        result = await reset_session(self.group_id)
-        if result:
-            await lang.finish("command.reset.success", self.user_id)
+        """重置会话：不带参数时重置当前会话，指定会话 ID 时仅超级用户可用"""
+        target_session_id = self.argv[1] if len(self.argv) > 1 else ""
+        if not target_session_id:
+            result = await reset_session(self.group_id)
+            if result:
+                await lang.finish("command.reset.success", self.user_id)
+            else:
+                await lang.finish("command.reset.not_found", self.user_id)
+
+        # 重置其他会话属于管理操作，仅超级用户可用
+        if not await is_superuser(self.event, self.bot):
+            await lang.finish("command.reset.no_permission", self.user_id)
+
+        if await reset_session(target_session_id):
+            await lang.finish("command.reset.session_success", self.user_id, target_session_id)
         else:
-            await lang.finish("command.reset.not_found", self.user_id)
+            await lang.finish("command.reset.session_not_found", self.user_id, target_session_id)
 
     async def handle_stop(self) -> None:
         session = await self.get_group_session()
@@ -380,7 +392,14 @@ class CommandHandler:
                 await lang.finish("command.disabled", self.user_id)
 
 
-@on_command("chat").handle()
+# `chatterbox` 等更长的命令由 alconna 响应器处理，不会注册 nonebot 的命令前缀树，
+# `/chatterbox` 会被前缀树解析成 `/chat` + 参数 `terbox` 从而误触发本命令。
+# force_whitespace 要求命令与参数之间必须有空白符：`/chat`、`/chat xxx` 照常可用，
+# 而 `/chatterbox`、`/chatxxx` 不再命中。
+chat = on_command("chat", force_whitespace=True)
+
+
+@chat.handle()
 async def _(
     matcher: Matcher,
     bot: Bot,

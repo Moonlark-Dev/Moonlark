@@ -12,7 +12,9 @@ require("nonebot_plugin_orm")
 require("nonebot_plugin_schedule")
 require("nonebot_plugin_render")
 require("nonebot_plugin_apscheduler")
+require("nonebot_plugin_buff")
 
 from . import models  # noqa: F401, E402 - 确保 ORM 模型被注册  # pylint: disable=wrong-import-position
+from . import hooks  # noqa: F401, E402 - 注册霉运对人品值的修正钩子  # pylint: disable=wrong-import-position
 from . import __main__  # noqa: F401, E402  # pylint: disable=wrong-import-position
 from . import rank  # noqa: F401, E402  # pylint: disable=wrong-import-position

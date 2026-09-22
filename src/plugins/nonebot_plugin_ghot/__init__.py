@@ -15,6 +15,8 @@ require("nonebot_plugin_larkutils")
 require("nonebot_plugin_larklang")
 require("nonebot_plugin_orm")
 require("nonebot_plugin_alconna")
+# 通过 GroupBind 合并同一物理群在 QQ 官方与 OneBot 下的群键
+require("nonebot_plugin_bots")
 
 from .function import get_group_hot_score
 from . import __main__

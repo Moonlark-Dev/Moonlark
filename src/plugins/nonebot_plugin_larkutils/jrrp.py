@@ -1,7 +1,7 @@
 from datetime import date
 import os
 import struct
-from typing import Optional, Tuple
+from typing import Awaitable, Callable, Optional, Tuple
 from nonebot_plugin_orm import Model, get_session
 from sqlalchemy import String
 from sqlalchemy.orm import mapped_column, Mapped
@@ -14,9 +14,34 @@ class LuckValue(Model):
     reroll_count: Mapped[int] = mapped_column(default=0)
 
 
+# 人品值修正钩子：接收 (user_id, 原始人品值)，返回修正后的人品值
+LuckValueHook = Callable[[str, int], Awaitable[int]]
+_luck_value_hooks: list[LuckValueHook] = []
+
+
+def register_luck_value_hook(hook: LuckValueHook) -> None:
+    """注册人品值修正钩子
+
+    每次生成或重抽人品值时按注册顺序依次调用，例如 buff 系统可以借此
+    在用户带有「霉运」时压低抽到的人品值。
+    """
+    _luck_value_hooks.append(hook)
+
+
+async def apply_luck_value_hooks(user_id: str, value: int) -> int:
+    """依次应用所有已注册的人品值修正钩子"""
+    for hook in _luck_value_hooks:
+        value = await hook(user_id, value)
+    return value
+
+
 def _get_june_bias() -> int:
     today = date.today()
     return 50 if today.month == 6 and 1 <= today.day <= 15 else 0
+
+
+def _roll_luck_value(bias: int) -> int:
+    return struct.unpack("<I", os.urandom(4))[0] % 101 + bias
 
 
 async def get_luck_value(user_id: str) -> int:
@@ -25,9 +50,10 @@ async def get_luck_value(user_id: str) -> int:
         value = await session.get(LuckValue, {"user_id": user_id})
         if value is not None and value.generate_date == date.today():
             return value.luck_value
+        luck_value = await apply_luck_value_hooks(user_id, _roll_luck_value(bias))
         value = LuckValue(
             user_id=user_id,
-            luck_value=(luck_value := struct.unpack("<I", os.urandom(4))[0] % 101 + bias),
+            luck_value=luck_value,
             generate_date=date.today(),
             reroll_count=0,
         )
@@ -43,7 +69,7 @@ async def get_luck_value_with_reroll_count(user_id: str) -> Tuple[int, int]:
         value = await session.get(LuckValue, {"user_id": user_id})
         if value is not None and value.generate_date == date.today():
             return value.luck_value, value.reroll_count
-        luck_value = struct.unpack("<I", os.urandom(4))[0] % 101 + bias
+        luck_value = await apply_luck_value_hooks(user_id, _roll_luck_value(bias))
         value = LuckValue(
             user_id=user_id,
             luck_value=luck_value,
@@ -78,7 +104,7 @@ async def reroll_luck_value(user_id: str, max_reroll_count: int) -> Optional[Tup
 
         # 如果没有记录或不是今天的记录，先创建今日记录
         if value is None or value.generate_date != date.today():
-            new_luck_value = struct.unpack("<I", os.urandom(4))[0] % 101 + bias
+            new_luck_value = await apply_luck_value_hooks(user_id, _roll_luck_value(bias))
             value = LuckValue(
                 user_id=user_id,
                 luck_value=new_luck_value,
@@ -105,7 +131,7 @@ async def reroll_luck_value(user_id: str, max_reroll_count: int) -> Optional[Tup
             if struct.unpack("<I", os.urandom(4))[0] % 2 == 0:
                 new_luck_value = 0
             else:
-                new_luck_value = struct.unpack("<I", os.urandom(4))[0] % 101 + bias
+                new_luck_value = await apply_luck_value_hooks(user_id, _roll_luck_value(bias))
         else:
             # 50% reroll 到更高值，50% reroll 到更低值
             if struct.unpack("<I", os.urandom(4))[0] % 2 == 0:
@@ -118,6 +144,7 @@ async def reroll_luck_value(user_id: str, max_reroll_count: int) -> Optional[Tup
                     new_luck_value = bias + struct.unpack("<I", os.urandom(4))[0] % range_size
                 else:
                     new_luck_value = bias
+            new_luck_value = await apply_luck_value_hooks(user_id, new_luck_value)
 
         value.luck_value = new_luck_value
         value.reroll_count += 1

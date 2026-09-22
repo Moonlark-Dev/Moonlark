@@ -6,6 +6,7 @@ from nonebot_plugin_alconna import Alconna, Args, Subcommand, on_alconna
 from nonebot_plugin_alconna.uniseg import UniMessage
 
 from nonebot_plugin_bag.utils.bag import give_item
+from nonebot_plugin_buff import get_bad_luck_multiplier
 from nonebot_plugin_items.utils.get import get_item
 from nonebot_plugin_items.utils.string import get_location_by_id
 from nonebot_plugin_larklang import LangHelper
@@ -89,13 +90,15 @@ async def handle_buy(index: int, count: int = 1, user_id: str = get_user_id()) -
         await lang.finish("buy.success", user_id, name, count, total_price)
 
     # 逐单位随机判定：例如买鸡蛋时有概率获得臭鸡蛋
+    # 霉运 buff 会按层数降低随机事件的触发概率
+    event_multiplier = await get_bad_luck_multiplier(user_id)
     got: dict[str, int] = {}
     for _ in range(count):
         chosen = item_id
         roll = random.random()
         acc = 0.0
         for probability, alt_id in alternatives:
-            acc += probability
+            acc += probability * event_multiplier
             if roll < acc:
                 chosen = alt_id
                 break

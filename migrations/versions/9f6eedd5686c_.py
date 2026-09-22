@@ -1,7 +1,7 @@
 """新增市场插件
 
 迁移 ID: 9f6eedd5686c
-父迁移: 8a7b8160f2f7
+父迁移: ffdcbc994500
 创建时间: 2025-08-14 13:39:38.284103
 
 玩家间物品交易市场：`nonebot_plugin_market_marketitem` 保存上架中的商品
@@ -18,7 +18,7 @@ from alembic import op
 import sqlalchemy as sa
 
 revision: str = "9f6eedd5686c"
-down_revision: str | Sequence[str] | None = "8a7b8160f2f7"
+down_revision: str | Sequence[str] | None = "ffdcbc994500"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

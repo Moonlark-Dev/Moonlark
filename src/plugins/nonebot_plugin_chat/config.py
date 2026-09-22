@@ -43,6 +43,9 @@ class Config(BaseModel):
     # Moonlark 所在地区的经纬度，不填写则不启用所在地每日天气
     moonlark_latitude: Optional[float] = None
     moonlark_longitude: Optional[float] = None
+    # 用户主动私聊后的静默时长（小时）：在这段时间内不向其发起主动私聊，避免打扰；
+    # 设为 0 或负数表示关闭该限制
+    proactive_chat_user_active_cooldown_hours: float = 12.0
 
     @field_validator(
         "qweather_api_host",
