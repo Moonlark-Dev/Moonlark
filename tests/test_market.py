@@ -322,7 +322,7 @@ async def test_build_markdown_list(market_env: Any) -> None:
 
     assert markdown == "\n".join(
         [
-            "## 全球市场",
+            "## 跳蚤市场",
             "> 第 1/2 页 · 共 12 件商品在售",
             "",
             '- <qqbot-cmd-input text="/market buy 3 1" show="鸡蛋 ×5 · 15.0 VimCoin" reference="false" />',
@@ -356,7 +356,7 @@ async def test_handle_market_list_qq_sends_markdown(market_env: Any, monkeypatch
 
     assert len(_FakeUniMessage.sent) == 1
     markdown = _FakeUniMessage.sent[0]
-    assert markdown.startswith("## 全球市场")
+    assert markdown.startswith("## 跳蚤市场")
     assert '<qqbot-cmd-input text="/market buy 1 1" show="鸡蛋 ×5 · 15.0 VimCoin" reference="false" />' in markdown
     assert (
         '<qqbot-cmd-input text="/market buy 2 1" show="二十面骰子 ×1 · 30.0 VimCoin" reference="false" />' in markdown
@@ -388,7 +388,7 @@ async def test_handle_market_list_other_adapter_sends_plain_text(
     assert _FakeUniMessage.sent == []
     finish.assert_awaited_once()
     plain = finish.await_args.args[0]
-    assert plain.splitlines()[0] == "📦 全球市场（第 1/1 页，共 1 件）"
+    assert plain.splitlines()[0] == "📦 跳蚤市场（第 1/1 页，共 1 件）"
     assert "1. 鸡蛋 ×5 — 15.0 VimCoin" in plain
     assert "qqbot-cmd-input" not in plain
 

@@ -1,5 +1,5 @@
 help:
-  description: 全球市场
+  description: 跳蚤市场
   details: |
     玩家间物品交易市场：可以将背包中的物品上架出售，也可以购买其他玩家出售的物品。
     所有交易收取 1% 手续费。
@@ -19,7 +19,7 @@ sell:
   item_not_enough: 出售失败，选中的物品只有 {} 个，数量不足
   wrong_price: 价格参数无效：请填写正数或连续的 + / -，留空则按均价上架
   no_base_price: 该物品还没有成交记录，请直接填写固定单价上架
-  done: 完成！已将 {} 个「{}」以单价 {} VimCoin 的价格上架至全球市场
+  done: 完成！已将 {} 个「{}」以单价 {} VimCoin 的价格上架至跳蚤市场
 buy:
   wrong_count: 购买数量必须大于 0
   not_found: 没有找到正在出售的「{}」
@@ -27,11 +27,11 @@ buy:
   finish: 完成！购买了 {} 个「{}」，总共花费了 {} VimCoin
 list:
   empty: 市场上暂时没有商品在出售
-  title: "📦 全球市场（第 {}/{} 页，共 {} 件）"
+  title: "📦 跳蚤市场（第 {}/{} 页，共 {} 件）"
   item: "{}. {} ×{} — {} VimCoin"
   footer: 使用 {__prefix__}market buy <编号> [数量] 购买，market list 页码 翻页
   title_md: |
-    ## 全球市场
+    ## 跳蚤市场
     > 第 {}/{} 页 · 共 {} 件商品在售
   item_md: |
     - <qqbot-cmd-input text="{__prefix__}market buy {} 1" show="{} ×{} · {} VimCoin" reference="false" />
