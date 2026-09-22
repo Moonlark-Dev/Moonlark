@@ -9,6 +9,7 @@ from nonebot_plugin_chat.types import CachedMessage
 from nonebot_plugin_larkuser.utils.nickname import get_nickname
 from nonebot_plugin_userinfo import get_user_info
 from nonebot_plugin_alconna import (
+    Emoji,
     Image,
     Other,
     Segment,
@@ -38,6 +39,14 @@ MAX_FORWARD_DEPTH = 3
 from .image import generate_image_id, get_image_summary
 from .file import get_file_summary
 from .emoji import QQ_EMOJI_MAP
+from .qq_face import (
+    QQFaceTag,
+    build_face_ext_map,
+    contains_face_tag,
+    decode_face_ext,
+    is_empty_face_id,
+    iter_face_tags,
+)
 from .rich_text import find_fake_rich_text
 
 
@@ -61,6 +70,10 @@ class MessageParser:
         self.state = state
         self.images = []
         self._forward_depth = _forward_depth
+        # QQ 官方适配器会把 <faceType=...,faceId=...,ext=...> 转成 Emoji 段并丢掉 ext，
+        # 从事件原始正文里把 faceId 对应的描述文本补回来
+        raw_content = getattr(event, "content", None)
+        self._face_ext_map = build_face_ext_map(raw_content) if isinstance(raw_content, str) else {}
         # 纯文本中伪装成富文本占位符的片段（如用户直接发送 "[图片(img_1)]"），
         # 由嵌套的回复/转发解析共同收集。
         self.fake_rich_text: list[str] = fake_rich_text if fake_rich_text is not None else []
@@ -86,14 +99,43 @@ class MessageParser:
             self.images.append(image_raw)
             return await lang.text("parser.image_without_desc", self.user_id, image_id)
 
+    async def parse_text(self, text: str) -> str:
+        """解析文本中的富文本表情标签（如 QQ 官方的 ``<faceType=...>``）"""
+        if not contains_face_tag(text):
+            return text
+        parts: list[str] = []
+        for part in iter_face_tags(text):
+            if isinstance(part, QQFaceTag):
+                parts.append(await self.parse_face(part.face_id, part.ext))
+            else:
+                parts.append(part)
+        return "".join(parts)
+
+    async def parse_face(self, face_id: str = "", ext: str = "") -> str:
+        """解析一个表情，优先使用 ext 中的描述文本，其次按 faceId 查表"""
+        face_id = (face_id or "").strip()
+        if face_text := (decode_face_ext(ext) or self._face_ext_map.get(face_id)):
+            return await lang.text("parser.emoji", self.user_id, face_text)
+        if not is_empty_face_id(face_id):
+            if emoji_name := QQ_EMOJI_MAP.get(face_id, None):
+                return await lang.text("parser.emoji", self.user_id, emoji_name)
+            return await lang.text("parser.emoji_unknown", self.user_id, face_id)
+        return await lang.text("parser.face_unknown", self.user_id)
+
     async def parse_segment(self, segment: Segment) -> str:
         if isinstance(segment, Text):
-            for placeholder in find_fake_rich_text(segment.text):
+            # 先把 QQ 富文本表情标签还原成可读文本，再收集伪装成富文本占位符的片段
+            resolved_text = await self.parse_text(segment.text)
+            for placeholder in find_fake_rich_text(resolved_text):
                 if placeholder not in self.fake_rich_text:
                     self.fake_rich_text.append(placeholder)
-            return segment.text
+            return resolved_text
         elif isinstance(segment, At):
             return await self.parse_mention(segment)
+        elif isinstance(segment, Emoji):
+            if segment.name:
+                return await lang.text("parser.emoji", self.user_id, segment.name)
+            return await self.parse_face(segment.id or "")
         elif isinstance(segment, Image):
             return await self.parse_image(segment)
         elif isinstance(segment, File):
@@ -114,12 +156,8 @@ class MessageParser:
     async def parse_special_segment(self, segment: MessageSegment) -> str:
         if segment.type == "poke":
             return await lang.text("parser.poke", self.user_id)
-        if segment.type == "emoji":
-            emoji_id = segment.data.get("id", "")
-            emoji_name = QQ_EMOJI_MAP.get(emoji_id, None)
-            if emoji_name:
-                return await lang.text("parser.emoji", self.user_id, emoji_name)
-            return await lang.text("parser.emoji_unknown", self.user_id, emoji_id)
+        if segment.type in ("face", "emoji"):
+            return await self.parse_face(str(segment.data.get("id", "")))
         return await lang.text("parser.other", self.user_id, segment)
 
     async def parse_forawrd_message(self, ref_id: str) -> str:
