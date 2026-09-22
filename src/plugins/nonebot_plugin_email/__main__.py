@@ -6,6 +6,7 @@ alc = Alconna(
     "email",
     Subcommand("claim", Args["email_id", int | Literal["all"], "all"]),
     Subcommand("unread", Args["email_id", int | Literal["all"], "all"]),
+    Subcommand("read", Args["email_id", int | Literal["all"], "all"]),
 )
 email = on_alconna(alc)
 patch_matcher(email)

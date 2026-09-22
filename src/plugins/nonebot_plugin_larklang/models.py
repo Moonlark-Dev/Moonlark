@@ -2,7 +2,7 @@ from pathlib import Path
 from pydantic import BaseModel
 from nonebot_plugin_orm import Model
 from typing import Optional
-from sqlalchemy import String, Text
+from sqlalchemy import String
 from sqlalchemy.orm import Mapped, mapped_column
 
 
@@ -17,13 +17,6 @@ class GroupLanguageSetting(Model):
 
     group_id: Mapped[str] = mapped_column(String(128), primary_key=True)
     language: Mapped[str] = mapped_column(String(16), default="zh_hans")
-
-
-class LanguageKeyCache(Model):
-    language: Mapped[str] = mapped_column(String(16), primary_key=True)
-    plugin: Mapped[str] = mapped_column(String(32), primary_key=True)
-    key: Mapped[str] = mapped_column(String(64), primary_key=True)
-    text: Mapped[str] = mapped_column(Text())
 
 
 class LanguageDisplayData(BaseModel):
@@ -45,3 +38,5 @@ class LanguageData(BaseModel):
     # 其他节
     display: LanguageDisplayData = LanguageDisplayData()
     patch: Optional[str] = None
+    # 插件名 -> 键 -> 文本，由 LangLoader 在启动时从 YAML 载入内存
+    keys: dict[str, dict[str, LanguageKey]] = {}

@@ -1,0 +1,31 @@
+list:
+  title: "【当前附着效果】"
+  empty: "当前没有附着任何效果喵~"
+  item: "- {} x{}/{}{}"
+status:
+  duration: "（剩余 {}）"
+  count: "（剩余 {} 次）"
+  both: "（剩余 {}，{} 次）"
+  none: ""
+duration:
+  hour_minute: "{} 小时 {} 分钟"
+  minute_second: "{} 分钟 {} 秒"
+  second: "{} 秒"
+info:
+  not_found: "当前没有附着效果 {}。"
+  header: "【{}】x{}/{}"
+  description: "说明：{}"
+  duration: "剩余时间：{}"
+  no_duration: "剩余时间：无限制"
+  count: "剩余次数：{}"
+  no_count: "剩余次数：无限制"
+  attached_at: "附着时间：{}"
+builtin:
+  bad_luck:
+    name: 霉运
+    description: 被臭鸡蛋砸中后沾染的霉运，收益与运气都会变差。
+help:
+  description: 效果
+  details: 查看当前附着的效果（Buff）列表与附着情况
+  usage1: buff (查看当前附着的效果列表)
+  usage2: buff <效果ID> (查看指定效果的附着详情)

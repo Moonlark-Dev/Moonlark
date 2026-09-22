@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import AsyncGenerator, Optional
-from nonebot_plugin_alconna import Match
+from nonebot_plugin_alconna import Button, Match
 from nonebot_plugin_orm import async_scoped_session
 from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
@@ -8,10 +8,13 @@ from sqlalchemy.exc import NoResultFound
 from nonebot_plugin_render.render import render_template
 
 from nonebot_plugin_larkuser.utils.user import get_user
-from nonebot_plugin_larkutils import get_group_id, get_id
+from nonebot_plugin_larkutils import escape_cmd_input, escape_markdown, get_command_prefix, get_group_id, get_id
 from .lang import lang
 from .modules import Choice, Vote, VoteLog
 from .typing import ChoiceData
+
+# QQ 官方按钮文本长度有限，过长的选项名需要截断
+MAX_BUTTON_LABEL_LENGTH = 10
 
 
 async def create_vote(
@@ -145,3 +148,97 @@ async def generate_vote_list(
             ],
         },
     )
+
+
+async def get_vote_status_text(vote_data: Vote, user_id: str) -> str:
+    """获取投票状态文案"""
+    return await lang.text("status.open" if is_vote_open(vote_data) else "status.closed", user_id)
+
+
+def truncate_button_label(text: str, limit: int = MAX_BUTTON_LABEL_LENGTH) -> str:
+    """截断过长的按钮文本，避免超出 QQ 官方按钮长度限制"""
+    text = text.replace("\r\n", " ").replace("\n", " ").replace("\r", " ")
+    if len(text) <= limit:
+        return text
+    return text[: limit - 1] + "…"
+
+
+def build_choice_button_label(choice_id: int, text: str) -> str:
+    """构建选项按钮文案：`编号. 选项名`，整体不超过按钮长度限制"""
+    prefix = f"{choice_id}. "
+    return prefix + truncate_button_label(text, max(MAX_BUTTON_LABEL_LENGTH - len(prefix), 2))
+
+
+async def build_vote_list_markdown(
+    user_id: str, group_id: str, session: async_scoped_session, show_all: bool = False
+) -> str:
+    """构建 QQ 官方机器人使用的投票列表 markdown
+
+    每条投票的标题使用 `<qqbot-cmd-input>`，点击即可填入 `{前缀}vote <投票ID>`。
+    """
+    lines = [await lang.text("list_md.title", user_id)]
+    vote_list = [item async for item in get_vote_list(show_all, group_id, session)]
+    if not vote_list:
+        lines.append(await lang.text("list_md.empty", user_id))
+    for vote, is_open in vote_list:
+        status = await lang.text("status.open" if is_open else "status.closed", user_id)
+        lines.append(
+            await lang.text(
+                "list_md.item",
+                user_id,
+                vote.id,
+                escape_cmd_input(escape_markdown(vote.title)),
+                status,
+            )
+        )
+    return "\n".join(lines)
+
+
+async def build_vote_markdown(user_id: str, session: async_scoped_session, vote_data: Vote) -> str:
+    """构建 QQ 官方机器人使用的投票详情 markdown（选项正文由键盘按钮承载）"""
+    total_count = len((await session.scalars(select(VoteLog).where(VoteLog.belong == vote_data.id))).all())
+    choices = await get_choice(total_count, vote_data, session)
+    sponsor = await lang.text("vote_image.sponsor", user_id, (await get_user(vote_data.sponsor)).nickname)
+    lines = [
+        await lang.text("detail_md.title", user_id, escape_markdown(vote_data.title)),
+        await lang.text(
+            "detail_md.meta", user_id, vote_data.id, await get_vote_status_text(vote_data, user_id), sponsor
+        ),
+        "",
+        vote_data.content,
+        "",
+        await lang.text("detail_md.choices", user_id),
+    ]
+    for choice in choices:
+        lines.append(
+            await lang.text(
+                "detail_md.choice",
+                user_id,
+                choice["id"],
+                escape_markdown(choice["text"]),
+                choice["count"],
+                choice["percent"],
+            )
+        )
+    lines.append("")
+    lines.append(
+        await lang.text("detail_md.end_time", user_id, vote_data.end_time.strftime("%Y-%m-%d %H:%M:%S")),
+    )
+    return "\n".join(lines)
+
+
+async def build_vote_buttons(user_id: str, session: async_scoped_session, vote_data: Vote) -> list[Button]:
+    """构建投票选项按钮，点击即投出该选项（投票已结束或已投票时返回空列表）"""
+    if not is_vote_open(vote_data) or await is_user_voted(vote_data, user_id, session):
+        return []
+    total_count = len((await session.scalars(select(VoteLog).where(VoteLog.belong == vote_data.id))).all())
+    choices = await get_choice(total_count, vote_data, session)
+    prefix = get_command_prefix()
+    return [
+        Button(
+            "enter",
+            build_choice_button_label(choice["id"], choice["text"]),
+            text=f"{prefix}vote {vote_data.id} {choice['id']}",
+        )
+        for choice in choices
+    ]

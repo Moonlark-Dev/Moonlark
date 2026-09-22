@@ -21,6 +21,7 @@ require("nonebot_plugin_render")
 require("nonebot_plugin_bag")
 require("nonebot_plugin_items")
 require("nonebot_plugin_larksetu")
+require("nonebot_plugin_buff")
 
 from .__main__ import (
     AUTO_SIGN_TICKET_ID,

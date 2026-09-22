@@ -1,14 +1,12 @@
 import tomllib
 from typing import Any
 from pathlib import Path
-from nonebot_plugin_orm import get_session
 import aiofiles
 import yaml
 from nonebot.compat import type_validate_python
 from nonebot.log import logger
-import json
 
-from .models import LanguageData, LanguageKey, LanguageKeyCache
+from .models import LanguageData, LanguageKey
 
 
 class KeysParser:
@@ -73,7 +71,6 @@ class LangLoader:
         logger.info(f"在 {base_path.as_posix()} 下找到 {len(self.lang_list)} 个语言")
         logger.debug(str(self.lang_list))
         self.languages: dict[str, LanguageData] = {}
-        self.session = get_session()
         self.format = format_
 
     async def init(self) -> None:
@@ -94,8 +91,6 @@ class LangLoader:
         lang_list = list(self.languages.keys())
         for lang in lang_list:
             await self.load_language(self.languages[lang].path)
-        await self.session.commit()
-        await self.session.close()
 
     async def load_language(self, lang: Path) -> None:
         for plugin in lang.iterdir():
@@ -103,11 +98,7 @@ class LangLoader:
                 continue
             async with aiofiles.open(plugin, encoding="utf-8") as f:
                 keys = KeysParser(yaml.safe_load(await f.read()), self.format).get_keys()
-            await self.commit_keys(lang.name, plugin.name[:-5], keys)
-
-    async def commit_keys(self, langugage: str, plugin: str, keys: dict[str, LanguageKey]) -> None:
-        for key, value in keys.items():
-            self.session.add(LanguageKeyCache(language=langugage, plugin=plugin, key=key, text=json.dumps(value.text)))
+            self.languages[lang.name].keys[plugin.name[:-5]] = keys
 
     def get_languages(self) -> dict[str, LanguageData]:
         return self.languages

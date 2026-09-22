@@ -1,0 +1,9 @@
+plugin: buff
+commands:
+  buff:
+    description: help.description
+    details: help.details
+    usages:
+      - help.usage1
+      - help.usage2
+    category: game

@@ -1,7 +1,8 @@
-from random import randint
+from random import randint, random
 
 from nonebot_plugin_alconna import Alconna, Args, on_alconna
 from nonebot_plugin_bag.utils.reduce import ItemNotEnough, remove_item_from_bag
+from nonebot_plugin_buff import get_bad_luck_layers
 from nonebot_plugin_items.registry.registry import ResourceLocation
 from nonebot_plugin_items.utils.string import get_location_by_id
 from nonebot_plugin_larkuser import MoonlarkUser, get_user, patch_matcher
@@ -11,6 +12,13 @@ from .lang import lang
 
 MAX_COUNT = 100
 DICE_ITEM_ID = "moonlark:dice"
+
+# 霉运 buff 每层额外带来的大失败（1 点）/ 失败（2-9 点）概率
+BAD_LUCK_CRIT_FAIL_CHANCE_PER_LAYER = 0.1
+BAD_LUCK_FAIL_CHANCE_PER_LAYER = 0.25
+# 两段额外概率各自的上限，避免高层数时必定失败
+MAX_BAD_LUCK_CRIT_FAIL_CHANCE = 0.2
+MAX_BAD_LUCK_FAIL_CHANCE = 0.3
 
 
 def get_dice_location() -> ResourceLocation:
@@ -23,7 +31,7 @@ roll = on_alconna(alc)
 patch_matcher(roll)
 
 
-def get_dice_value() -> int:
+def roll_dice_value() -> int:
     """掷一个加权二十面骰子，返回点数（1-20）"""
     c = randint(0, 200)  # nosec B311
     if 193 <= c <= 200:  # 20
@@ -39,6 +47,25 @@ def get_dice_value() -> int:
     if c <= 15:  # 1
         return 1
     return 0
+
+
+def get_dice_value(bad_luck_layers: int = 0) -> int:
+    """掷一个加权二十面骰子，返回点数（1-20）
+
+    `bad_luck_layers` 大于 0（用户带有霉运 buff）时，每层都会提高大失败
+    （1 点）与失败（2-9 点）的判定概率。
+    """
+    value = roll_dice_value()
+    if bad_luck_layers <= 0:
+        return value
+    crit_chance = min(BAD_LUCK_CRIT_FAIL_CHANCE_PER_LAYER * bad_luck_layers, MAX_BAD_LUCK_CRIT_FAIL_CHANCE)
+    fail_chance = min(BAD_LUCK_FAIL_CHANCE_PER_LAYER * bad_luck_layers, MAX_BAD_LUCK_FAIL_CHANCE)
+    c = random()  # nosec B311
+    if c < crit_chance:
+        return 1
+    if c < crit_chance + fail_chance:
+        return randint(2, 9)  # nosec B311
+    return value
 
 
 def get_vimcoin_delta(value: int) -> int:
@@ -85,7 +112,9 @@ async def _(user_id: str = get_user_id(), count: int = 1) -> None:
         await remove_item_from_bag(user_id, get_dice_location(), count)
     except ItemNotEnough as e:
         await lang.finish("not_enough", user_id, e.need, e.have)
-    values = [get_dice_value() for _ in range(count)]
+    # 带有霉运 buff 时更容易失败
+    bad_luck_layers = await get_bad_luck_layers(user_id)
+    values = [get_dice_value(bad_luck_layers) for _ in range(count)]
     delta = 0
     for value in values:
         single_delta = get_vimcoin_delta(value)
@@ -101,6 +130,8 @@ async def _(user_id: str = get_user_id(), count: int = 1) -> None:
             effects.append(await lang.text("effect.success", user_id))
         elif value == 1:
             effects.append(await lang.text("effect.fail", user_id))
+        elif value <= 9:
+            effects.append(await lang.text("effect.weak_fail", user_id))
         effects.append(await get_delta_summary(user_id, delta))
         await lang.finish("result_single", user_id, value, "".join(effects))
 
