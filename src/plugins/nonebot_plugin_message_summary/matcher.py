@@ -4,6 +4,7 @@ from nonebot.adapters import Event, Bot, Message
 from nonebot.adapters.onebot.v11 import GroupMessageEvent
 from nonebot.adapters.onebot.v11 import Bot as OB11Bot
 from nonebot.adapters.qq import Bot as QQBot
+from nonebot.adapters.qq.event import GroupMessageCreateEvent
 from nonebot.params import CommandArg
 from nonebot_plugin_alconna import MultiVar, on_alconna, Alconna, Subcommand, Args, UniMessage, Reply, At
 from nonebot_plugin_orm import async_scoped_session, get_session
@@ -24,7 +25,13 @@ from .models import GroupMessage, GroupDailySummary, MVPRecord
 from .hash_utils import compute_message_hash
 from .lang import lang
 from .word_cloud import generate_word_cloud
-from .__main__ import get_cached_daily_summary, send_daily_summary_to_group
+from .__main__ import (
+    get_cached_daily_summary,
+    resolve_state_key,
+    send_daily_summary_to_group,
+    send_daily_summary_to_qq,
+    try_send_qq_daily_summary,
+)
 from .ai_utils import (
     fetch_broadcast_summary,
     fetch_default_summary,
@@ -323,7 +330,11 @@ async def _(
 
 @recorder.handle()
 async def _(
-    event: Event, session: async_scoped_session, group_id: str = get_group_id(), user_id: str = get_user_id()
+    bot: Bot,
+    event: Event,
+    session: async_scoped_session,
+    group_id: str = get_group_id(),
+    user_id: str = get_user_id(),
 ) -> None:
     async with get_config() as conf:
         if group_id in conf.data:
@@ -339,6 +350,10 @@ async def _(
         )
     )
     await session.commit()
+
+    if isinstance(bot, QQBot) and isinstance(event, GroupMessageCreateEvent):
+        # 记录完成后再触发，保证当天的总结包含这条消息
+        await try_send_qq_daily_summary(bot, event, group_id)
 
 
 @mvp_ranking.handle()
@@ -373,6 +388,7 @@ async def handle_mvp_ranking(
 @group_daily.handle()
 async def handle_group_daily(
     bot: Bot,
+    event: Event,
     user_id: str = get_user_id(),
     group_id: str = get_group_id(),
 ) -> None:
@@ -385,9 +401,13 @@ async def handle_group_daily(
     if cached:
         image_bytes = await md_to_pic(cached)
         await group_daily.finish(UniMessage().image(raw=image_bytes))
+
+    if isinstance(bot, QQBot) and isinstance(event, GroupMessageCreateEvent):
+        # QQ 适配器只能复用当前消息事件被动发送
+        await send_daily_summary_to_qq(bot, event, group_id, await resolve_state_key(group_id))
     else:
         await send_daily_summary_to_group(group_id)
-        await group_daily.finish()
+    await group_daily.finish()
 
 
 @word_cloud.handle()
