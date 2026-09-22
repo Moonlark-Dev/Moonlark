@@ -10,7 +10,7 @@
         <li>{{ email.id }}</li>
     </ul>
 </small>
-<p>{{ email.content }}</p>
+<p>{{ email.content | safe }}</p>
 {% if email.items %}
 <span class="h5">
     {{ item }}

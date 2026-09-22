@@ -8,7 +8,6 @@ from nonebot_plugin_larklang.__main__ import get_languages
 from .theme import get_themes
 from .config import config
 
-
 CACHE_CREATOR_TYPE = Callable[[str], Awaitable[bytes]]
 creator_functions: dict[str, CACHE_CREATOR_TYPE] = {}
 cache_dir = get_cache_dir("nonebot-plugin-render")

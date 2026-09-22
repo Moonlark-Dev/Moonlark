@@ -6,7 +6,6 @@ from nonebot_plugin_orm import async_scoped_session
 from nonebot_plugin_userinfo import EventUserInfo, UserInfo
 from sqlalchemy.exc import NoResultFound
 import json
-import base64
 from ..models import UserData, GuestUser
 
 
@@ -26,10 +25,14 @@ async def _(session: async_scoped_session, user: UserInfo = EventUserInfo()) -> 
         user_data = await session.get_one(UserData, {"user_id": user.user_id})
     except NoResultFound:
         return
-    config = json.loads(base64.b64decode(user_data.config))
-    if user_data.nickname != user.user_name and not config.get("lock_nickname"):
+    config = json.loads(user_data.config)
+    # user_name 可能为空（部分适配器 / 事件无法提供昵称），而 nickname 是非空列，
+    # 直接写入 None 会触发 IntegrityError，因此仅在拿到非空昵称时才更新。
+    if user.user_name and user_data.nickname != user.user_name and not config.get("lock_nickname"):
         logger.info(f"用户 {user_data.user_id} 修改了其昵称 ({user_data.nickname} => {user.user_name})")
         user_data.nickname = user.user_name
+        config.pop("nick_source", None)  # 清除自动补全标识，标记为通过自身消息更新
+        user_data.config = json.dumps(config)
     if user.user_avatar and user_data.register_time and not config.get("lock_avatar"):
         avatar = await user.user_avatar.get_image()
         if await is_user_avatar_updated(user_data.user_id, avatar):

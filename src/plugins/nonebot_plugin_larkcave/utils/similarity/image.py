@@ -55,8 +55,8 @@ async def check_image(posting: bytes, session: async_scoped_session, name: str) 
 
         similarity = compare_hash(posting_hash, image_data.p_hash)
 
-        # 相似度阈值设为 0.9
-        if similarity >= 0.9:
+        # 相似度阈值设为 0.98
+        if similarity >= 0.98:
             cave = await session.get_one(CaveData, {"id": image_data.belong})
             return CheckFailedResult(passed=False, similar_cave=cave, similarity=similarity)
 

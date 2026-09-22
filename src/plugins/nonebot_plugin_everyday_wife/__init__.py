@@ -13,5 +13,8 @@ require("nonebot_plugin_session")
 require("nonebot_plugin_larkutils")
 require("nonebot_plugin_orm")
 require("nonebot_plugin_userinfo")
+require("nonebot_plugin_bots")
+require("nonebot_plugin_larkuser")
+require("nonebot_plugin_chat")
 
 from . import __main__

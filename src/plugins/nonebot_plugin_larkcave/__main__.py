@@ -1,11 +1,15 @@
 from typing import Union
-from nonebot_plugin_alconna import Alconna, Args, Image, MultiVar, Option, Subcommand, Text, on_alconna
+from nonebot_plugin_alconna import Alconna, Args, Image, MultiVar, Option, Reference, Subcommand, Text, on_alconna
 
 alc = Alconna(
     "cave",
     Subcommand(
+        "n|node",
+        Args["node_msg", Reference],
+    ),
+    Subcommand(
         "a|add",
-        Args["content", MultiVar(Union[Image, Text])],  # type: ignore
+        Args["content?", MultiVar(Union[Image, Text])],  # type: ignore
     ),
     Subcommand(
         "s|restore",

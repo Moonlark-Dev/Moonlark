@@ -1,49 +1,42 @@
+import asyncio
+import aiofiles
+from nonebot_plugin_openai.types import TimeoutStrategy
+from nonebot_plugin_openai.types import FunctionParameterDefinition
+from nonebot_plugin_openai.types import MoonlarkFunctionDefinition
+from nonebot_plugin_openai.utils.functions import generate_function_list
+from openai.types.shared.reasoning_effort import ReasoningEffort
 import hashlib
 from collections.abc import Awaitable
+import traceback
+import uuid
+
+from openai.types.chat import ChatCompletion
 
 from nonebot_plugin_larklang.__main__ import get_module_name
 import inspect
-import json
-from typing import Optional, Any, AsyncGenerator, Callable, TypeVar
+from openai.types.chat.chat_completion_message_function_tool_call import ChatCompletionMessageFunctionToolCall
 
+import json
+from typing import Generic, Optional, Any, AsyncGenerator, Callable, TypeVar, cast
 from nonebot import logger
+import openai
 from openai.types.shared_params import FunctionDefinition
 from openai.types.chat import ChatCompletionToolMessageParam, ChatCompletionFunctionToolParam
 from nonebot_plugin_status_report import report_openai_history
+from pydantic import BaseModel, ValidationError
 
-from ..types import Messages, AsyncFunction
+from ..types import FunctionParameter, FunctionParameterWithEnum, Messages, AsyncFunction, Message as OpenaiMessage
 
 from ..config import config
 from .message import generate_message
 from .client import client
-
-
-def generate_function_list(func_index: dict[str, AsyncFunction]) -> list[ChatCompletionFunctionToolParam]:
-    func_list = []
-    for name, data in func_index.items():
-        func_info = FunctionDefinition(
-            name=name, description=data["description"], parameters={"type": "object", "properties": {}, "required": []}
-        )
-        for p_name, p_data in data["parameters"].items():
-            param_info = {"type": p_data["type"], "description": p_data["description"]}
-            if "enum" in p_data:
-                param_info["enum"] = list(p_data["enum"])
-            func_info["parameters"]["properties"][p_name] = param_info
-            if p_data["required"]:
-                func_info["parameters"]["required"].append(p_name)
-        func_list.append(
-            ChatCompletionFunctionToolParam(
-                type="function",
-                function=func_info,
-            )
-        )
-    return func_list
-
+from .model_config import get_model_for_identify
 
 T = TypeVar("T")
+T2 = TypeVar("T2", bound=BaseModel)
 
 
-class LLMRequestSession:
+class LLMRequestSession(Generic[T2]):
 
     def __init__(
         self,
@@ -56,70 +49,233 @@ class LLMRequestSession:
             Callable[[str, str, dict[str, Any]], Awaitable[tuple[str, str, dict[str, Any]]]]
         ] = None,
         post_function_call: Optional[Callable[[T], Awaitable[T]]] = None,
+        timeout: Optional[int] = None,
+        timeout_strategy: Optional[TimeoutStrategy] = None,
+        reasoning_effort: Optional[ReasoningEffort] = None,
+        response_format: Optional[type[T2]] = None,
+        on_tool_round_complete: Optional[Callable[[], Awaitable[None]]] = None,
     ) -> None:
         self.messages: Messages = messages
         self.identify = identify
+        self.on_tool_round_complete = on_tool_round_complete
         self.func_list = generate_function_list(func_index)
         self.func_index = func_index
+        self.tool_choice = kwargs.pop("tool_choice", "auto")
         self.kwargs = kwargs
         self.stop = False
+        self.trace_id = uuid.uuid4().hex
         self.model = model
-        self.tigger_functions = {
+        self.trigger_functions = {
             "pre_function_call": pre_function_call,
             "post_function_call": post_function_call,
         }
+        self.reasoning_effort = reasoning_effort
+        self.has_tool_calls: bool = False
+        self.response_format = response_format
+        self.timeout_per_request = timeout
+        self.timeout_strategy = timeout_strategy
+        self.insert_message_queue = []
+        self._content_yielded = False
+        self._in_request: bool = False
+        self._this_round_success = False
+        self.last_response: Optional[ChatCompletion] = None
 
-    async def fetch_llm_response(self) -> AsyncGenerator[str, None]:
-        while not self.stop:
-            async for message in self.request():
-                yield message
-        await report_openai_history(self.messages, self.identify, self.model)
+    def set_custom_trace_id(self, trace_id: str) -> None:
+        self.trace_id = trace_id
 
-    async def request(self) -> AsyncGenerator[str, None]:
-        response = (
-            await client.chat.completions.create(
-                messages=self.messages,
+    async def fetch_llm_response(self) -> AsyncGenerator[T2 | str, None]:
+        retry_count = 0
+        self._in_request = True
+        try:
+            while not self.stop:
+                content_yielded = False
+                async for message in self.request():
+                    yield message
+                    content_yielded = True
+                if not content_yielded and not self._this_round_success:
+                    retry_count += 1
+                    if retry_count > 3:
+                        raise Exception("Failed to fetch LLM response after 3 retries")
+                    await asyncio.sleep(1)
+                else:
+                    retry_count = 0
+        finally:
+            self._in_request = False
+            await report_openai_history(self.messages, self.identify, self.model)
+
+    def _sanitize_messages(self) -> None:
+        """清理消息中的空 tool_calls 数组（部分 Provider 会拒绝 tool_calls=[]）"""
+        for msg in self.messages:
+            if isinstance(msg, dict):
+                if msg.get("tool_calls") == []:
+                    msg.pop("tool_calls", None)
+            elif getattr(msg, "tool_calls", None) == []:
+                msg.tool_calls = None
+
+    async def create_completion(self) -> ChatCompletion:
+        self._sanitize_messages()
+        tool_choice = self.tool_choice if self.func_list else "none"
+        if not self.response_format:
+            completion = await client.chat.completions.create(
+                messages=self.messages,  # type: ignore
                 model=self.model,
                 tools=self.func_list,
-                tool_choice="auto" if self.func_list else "none",
-                extra_headers={
-                    "X-Title": (t := f"{config.identify_prefix} - {self.identify}"),
-                    "HTTP-Referer": f"https://{hashlib.sha256(t.encode()).hexdigest()}.moonlark.itcdt.top",
-                },
+                tool_choice=tool_choice,
+                extra_headers=self._build_extra_headers(),
+                timeout=self.timeout_per_request,
+                reasoning_effort=self.reasoning_effort or openai.omit,  # type: ignore
                 **self.kwargs,
             )
-        ).choices[0]
-        logger.debug(f"{response=}\n{self.messages=}\n{self.model=}\n{self.func_list=}")
+        else:
+            completion = await client.chat.completions.parse(
+                messages=self.messages,  # type: ignore
+                model=self.model,
+                tools=self.func_list,
+                tool_choice=tool_choice,
+                extra_headers=self._build_extra_headers(),
+                timeout=self.timeout_per_request,
+                reasoning_effort=self.reasoning_effort or openai.omit,  # type: ignore
+                response_format=self.response_format,
+                **self.kwargs,
+            )
+        self.last_response = completion
+        return completion
+
+    def _build_extra_headers(self) -> dict[str, str]:
+        """构建请求头：Thread/Trace 标识 + 多个 Trace Id 头 + 溯源 Referer"""
+        thread = f"{config.identify_prefix} - {self.identify}"
+        headers: dict[str, str] = {
+            config.openai_thread_header: thread,
+            "HTTP-Referer": f"https://{hashlib.sha256(thread.encode()).hexdigest()}.moonlark.itcdt.top",
+        }
+        for header in config.openai_trace_headers:
+            headers[header] = self.trace_id
+        return headers
+
+    async def request(self) -> AsyncGenerator[T2 | str, None]:
+        self._this_round_success = False
+        try:
+            logger.info(f"[{self.identify}] 正在请求模型 {self.model} ...")
+            completion = await self.create_completion()
+            logger.debug(f"{completion.choices=}")
+            response = completion.choices[0]
+        except openai.APITimeoutError as e:
+            if self.timeout_strategy is None or self.timeout_strategy["strategy"] == "throw":
+                raise e
+            elif self.timeout_strategy["strategy"] == "replace":
+                response = self.timeout_strategy["choice"]
+        except IndexError:
+            logger.warning(f"请求取得了空回复")
+            return
+        logger.debug(f"{response=}")
+        if response.message.tool_calls == []:
+            response.message.tool_calls = None
         self.messages.append(response.message)
+        self._content_yielded = False
         if response.message.content:
-            yield response.message.content
-        if response.finish_reason == "tool_calls":
+            self._content_yielded = True
+            self._this_round_success = True
+            if self.response_format and hasattr(response.message, "parsed"):
+                yield response.message.parsed  # type: ignore
+            else:
+                yield response.message.content
+        if response.message.tool_calls:
+            self._this_round_success = True
             for request in response.message.tool_calls:
-                await self.call_function(request.id, request.function.name, json.loads(request.function.arguments))
-        elif response.finish_reason in ["stop", "eos"]:
+                if isinstance(request, ChatCompletionMessageFunctionToolCall):
+                    await self.call_function(request.id, request.function.name, json.loads(request.function.arguments))
+            if not self._content_yielded and self.on_tool_round_complete:
+                await self.on_tool_round_complete()
+        elif not self.insert_message_queue:
             self.stop = True
+        self.messages.extend(self.insert_message_queue)
+        self.insert_message_queue.clear()
+
+    def insert_message(self, message: OpenaiMessage) -> None:
+        if self._in_request:
+            self.insert_message_queue.append(message)
+        else:
+            self.messages.append(message)
+
+    def insert_messages(self, messages: Messages) -> None:
+        if self._in_request:
+            self.insert_message_queue.extend(messages)
+        else:
+            self.messages.extend(messages)
 
     async def call_function(self, call_id: str, name: str, params: dict[str, Any]) -> None:
-        if self.tigger_functions["pre_function_call"]:
-            call_id, name, params = await self.tigger_functions["pre_function_call"](call_id, name, params)
-        result = await self.func_index[name]["func"](**params)
-        if self.tigger_functions["post_function_call"]:
-            result = await self.tigger_functions["post_function_call"](result)
+        logger.debug(f"[{self.identify}] Calling function {name} with params {params}")
+        self.has_tool_calls = True
+        if self.trigger_functions["pre_function_call"]:
+            call_id, name, params = await self.trigger_functions["pre_function_call"](call_id, name, params)
+        try:
+            result = await self.func_index[name]["func"](**params)
+        except Exception as e:
+            logger.exception(e)
+            # 使用 format_exception_only 排除 traceback，只保留异常类型和消息
+            last_line = traceback.format_exception_only(type(e), e)[-1].strip()
+            result = f"工具调用失败：{last_line}"
+        if self.trigger_functions["post_function_call"]:
+            result = await self.trigger_functions["post_function_call"](result)
         if result is None:
             result = "success"
         logger.debug(f"函数返回: {result}")
+        if isinstance(result, str):
+            content = result
+        else:
+            content = json.dumps(result, ensure_ascii=False)
         msg: ChatCompletionToolMessageParam = {
             "role": "tool",
             "tool_call_id": call_id,
-            "content": json.dumps(result, ensure_ascii=False),
+            "content": content,
         }
         self.messages.append(msg)
 
 
-class MessageFetcher:
+class MessageFetcher(Generic[T2]):
 
     def __init__(
         self,
+        messages: Messages,
+        use_default_message: bool,
+        model: str,
+        functions: Optional[list[AsyncFunction]],
+        identify: str,
+        pre_function_call: Optional[Callable[[str, str, dict[str, Any]], Awaitable[tuple[str, str, dict[str, Any]]]]],
+        post_function_call: Optional[Callable[[T], Awaitable[T]]],
+        timeout: Optional[int] = None,
+        timeout_strategy: Optional[TimeoutStrategy] = None,
+        reasoning_effort: Optional[ReasoningEffort] = None,
+        response_format: Optional[type[T2]] = None,
+        on_tool_round_complete: Optional[Callable[[], Awaitable[None]]] = None,
+        **kwargs,
+    ) -> None:
+        logger.debug(f"{identify=}")
+        logger.debug(f"{reasoning_effort=}")
+        if use_default_message:
+            messages.insert(0, generate_message(config.openai_default_message, "system"))
+        func_index: dict[str, AsyncFunction] = {}
+        if functions:
+            for func in functions:
+                func_index[func["func"].__name__] = func
+        self.session = LLMRequestSession(
+            messages,
+            func_index,
+            model,  # type: ignore
+            kwargs,
+            identify,
+            pre_function_call,
+            post_function_call,
+            timeout,
+            timeout_strategy,
+            reasoning_effort,
+            response_format,
+            on_tool_round_complete,
+        )
+
+    @classmethod
+    async def create(
+        cls,
         messages: Messages,
         use_default_message: bool = False,
         model: Optional[str] = None,
@@ -129,33 +285,44 @@ class MessageFetcher:
             Callable[[str, str, dict[str, Any]], Awaitable[tuple[str, str, dict[str, Any]]]]
         ] = None,
         post_function_call: Optional[Callable[[T], Awaitable[T]]] = None,
+        timeout: Optional[int] = None,
+        timeout_strategy: Optional[TimeoutStrategy] = None,
+        reasoning_effort: Optional[ReasoningEffort] = None,
+        response_format: Optional[type[T2]] = None,
+        on_tool_round_complete: Optional[Callable[[], Awaitable[None]]] = None,
         **kwargs,
-    ) -> None:
+    ) -> "MessageFetcher":
+        """异步创建 MessageFetcher 实例，正确处理模型配置获取"""
         if identify is None:
             stack = inspect.stack()[1]
             function_name = stack.function
             plugin_name = get_module_name(inspect.getmodule(stack[0]))
             identify = f"{plugin_name}.{function_name}"
-        logger.debug(f"{identify=}")
 
         if model is None:
-            model = config.model_override.get(identify, config.openai_default_model)
+            model = await get_model_for_identify(identify)
 
-        if use_default_message:
-            messages.insert(0, generate_message(config.openai_default_message, "system"))
-        func_index: dict[str, AsyncFunction] = {}
-        if functions:
-            for func in functions:
-                func_index[func["func"].__name__] = func
-        self.session = LLMRequestSession(
-            messages, func_index, model, kwargs, identify, pre_function_call, post_function_call
+        return cls(
+            messages,
+            use_default_message,
+            model,
+            functions,
+            identify,
+            pre_function_call,
+            post_function_call,
+            timeout,
+            timeout_strategy,
+            reasoning_effort,
+            response_format,
+            on_tool_round_complete,
+            **kwargs,
         )
 
-    async def fetch_last_message(self) -> str:
+    async def fetch_last_message(self) -> T2 | str:
         # return (await self.fetch_messages())[-1]
         return [msg async for msg in self.session.fetch_llm_response()][-1]
 
-    async def fetch_message_stream(self) -> AsyncGenerator[str, None]:
+    async def fetch_message_stream(self) -> AsyncGenerator[T2 | str, None]:
         async for msg in self.session.fetch_llm_response():
             yield msg
 
@@ -173,6 +340,9 @@ async def fetch_message(
         Callable[[str, str, dict[str, Any]], Awaitable[tuple[str, str, dict[str, Any]]]]
     ] = None,
     post_function_call: Optional[Callable[[T], Awaitable[T]]] = None,
+    timeout: Optional[int] = None,
+    timeout_strategy: Optional[TimeoutStrategy] = None,
+    reasoning_effort: Optional[ReasoningEffort] = None,
     **kwargs,
 ) -> str:
     if identify is None:
@@ -181,10 +351,74 @@ async def fetch_message(
         plugin_name = get_module_name(inspect.getmodule(stack[0]))
         identify = f"{plugin_name}.{function_name}"
 
-    if model is None:
-        model = config.model_override.get(identify, config.openai_default_model)
-
-    fetcher = MessageFetcher(
-        messages, use_default_message, model, functions, identify, pre_function_call, post_function_call, **kwargs
+    fetcher = await MessageFetcher.create(
+        messages,
+        use_default_message,
+        model,
+        functions,
+        identify,
+        pre_function_call,
+        post_function_call,
+        timeout,
+        timeout_strategy,
+        reasoning_effort,
+        **kwargs,
     )
     return await fetcher.fetch_last_message()
+
+
+import re
+
+T3 = TypeVar("T3")
+from nonebot.compat import type_validate_json
+
+
+def strip_json_codeblock(text: str) -> str:
+    stripped = text.strip()
+    m = re.match(r"^```(?:json)?\s*\n?(.*?)\n?\s*```$", stripped, re.DOTALL)
+    if m:
+        return m.group(1).strip()
+    return stripped
+
+
+async def fetch_json(
+    messages: Messages,
+    response_format: type[T3],
+    use_default_message: bool = False,
+    model: Optional[str] = None,
+    functions: Optional[list[AsyncFunction]] = None,
+    identify: Optional[str] = None,
+    pre_function_call: Optional[
+        Callable[[str, str, dict[str, Any]], Awaitable[tuple[str, str, dict[str, Any]]]]
+    ] = None,
+    post_function_call: Optional[Callable[[T], Awaitable[T]]] = None,
+    timeout: Optional[int] = None,
+    timeout_strategy: Optional[TimeoutStrategy] = None,
+    reasoning_effort: Optional[ReasoningEffort] = None,
+    formatter_max_retry: int = 3,
+    **kwargs,
+) -> T3:
+    fetcher = await MessageFetcher.create(
+        messages,
+        use_default_message,
+        model,
+        functions,
+        identify,
+        pre_function_call,
+        post_function_call,
+        timeout,
+        timeout_strategy,
+        reasoning_effort,
+        **kwargs,
+    )
+
+    retry_count = 0
+    async for message in fetcher.fetch_message_stream():
+        try:
+            return type_validate_json(response_format, strip_json_codeblock(message))
+        except ValidationError as e:
+            if retry_count >= formatter_max_retry:
+                raise e
+            retry_count += 1
+            fetcher.session.insert_message(generate_message(str(e), "user"))
+    raise ValueError("No valid response found")

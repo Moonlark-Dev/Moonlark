@@ -1,0 +1,9 @@
+description: |
+  查询指定用户背包中所有可以赠送给 Moonlark 的礼物及其数量。
+  返回每个礼物的名称和数量（合并相同礼物后）。
+  如果用户没有注册或没有礼物，会返回提示信息。
+parameters:
+  - name: target_nickname
+    description: "要查询礼物的用户的昵称。"
+    type: string
+    required: true

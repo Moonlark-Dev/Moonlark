@@ -1,5 +1,5 @@
 #  Moonlark - A new ChatBot
-#  Copyright (C) 2025  Moonlark Development Team
+#  Copyright (C) 2026  Moonlark Development Team
 #
 #  This program is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU Affero General Public License as published
@@ -16,5 +16,4 @@
 # ##############################################################################
 
 from .group import enabled_group, parse_message_to_string
-from .private import get_history, generate_history, generate_memory
-from .splitter import splitter
+from .gift_manager import get_gift_manager, GiftManager

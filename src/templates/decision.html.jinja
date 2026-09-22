@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>处分决定</title>
+    <style>
+        /* GB/T 9704-2012 党政机关公文格式样式 */
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap');
+
+        :root {
+            --red-line: #cc0000;
+            --text-primary: #000000;
+            --text-secondary: #333333;
+            --paper-bg: #fffff8;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #f0f0f0;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            padding: 20px;
+            font-family: 'Noto Serif SC', 'SimSun', '宋体', serif;
+        }
+
+        .page {
+            background: var(--paper-bg);
+            width: 100%;
+            max-width: 1100px;
+            min-height: 297mm;
+            padding: 30mm 60px 30mm 65px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            position: relative;
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+
+        /* 发文机关标志 */
+        .header-org {
+            text-align: center;
+            font-family: 'Noto Sans SC', 'SimHei', '黑体', sans-serif;
+            font-size: 22pt;
+            font-weight: 700;
+            color: var(--red-line);
+            letter-spacing: 4px;
+            margin-bottom: 8mm;
+        }
+
+        /* 文号 */
+        .doc-number {
+            text-align: center;
+            font-size: 14pt;
+            margin-bottom: 6mm;
+            font-family: 'Noto Serif SC', '仿宋', 'FangSong', serif;
+        }
+
+        .doc-number .year {
+            color: var(--red-line);
+            font-weight: 600;
+        }
+
+        .doc-number .bracket-open,
+        .doc-number .bracket-close {
+            color: var(--red-line);
+        }
+
+        .doc-number .num {
+            color: var(--red-line);
+            font-weight: 600;
+            padding: 0 3px;
+        }
+
+        /* 红线 */
+        .red-line {
+            width: 100%;
+            height: 2px;
+            background: var(--red-line);
+            margin: 5mm 0 8mm 0;
+            position: relative;
+        }
+
+        .red-line::before {
+            content: '';
+            position: absolute;
+            top: -3px;
+            left: 0;
+            width: 100%;
+            height: 1px;
+            background: var(--red-line);
+        }
+
+        .red-line::after {
+            content: '';
+            position: absolute;
+            bottom: -3px;
+            left: 0;
+            width: 100%;
+            height: 1px;
+            background: var(--red-line);
+        }
+
+        /* 标题 */
+        .doc-title {
+            text-align: center;
+            font-family: 'Noto Serif SC', '小标宋', 'SimSun', serif;
+            font-size: 22pt;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 8mm 0 10mm 0;
+            line-height: 1.5;
+        }
+
+        /* 主送机关 */
+        .recipient {
+            font-size: 14pt;
+            margin-bottom: 5mm;
+            font-family: 'Noto Serif SC', '仿宋', 'FangSong', serif;
+        }
+
+        /* 正文 */
+        .doc-body {
+            font-size: 14pt;
+            font-family: 'Noto Serif SC', '仿宋', 'FangSong', serif;
+            text-align: justify;
+            margin: 0 26px 0 28px;
+        }
+
+        .doc-body p {
+            text-indent: 2em;
+            margin-bottom: 3mm;
+        }
+
+        .doc-body .no-indent {
+            text-indent: 0;
+        }
+
+        /* 小标题 */
+        .section-title {
+            font-weight: 700;
+            margin-top: 6mm;
+            margin-bottom: 3mm;
+            text-indent: 0 !important;
+        }
+
+        /* 列表项 */
+        .violation-list {
+            margin: 3mm 0 3mm 2em;
+            padding: 0;
+            list-style: none;
+            counter-reset: item;
+        }
+
+        .violation-list li {
+            position: relative;
+            padding-left: 1.5em;
+            margin-bottom: 2mm;
+            text-indent: 0;
+        }
+
+        .violation-list li::before {
+            content: counter(item) "、";
+            position: absolute;
+            left: 0;
+            counter-increment: item;
+        }
+
+        /* 处分内容 */
+        .punishment {
+            font-weight: 700;
+            color: var(--red-line);
+            font-size: 15pt;
+        }
+
+        /* 落款区域 */
+        .signature-area {
+            margin-top: 15mm;
+            text-align: right;
+            font-family: 'Noto Serif SC', '仿宋', 'FangSong', serif;
+            font-size: 14pt;
+            margin-bottom: 30mm;
+        }
+
+        .signature-area .org-name {
+            margin-bottom: 3mm;
+        }
+
+        .signature-area .date {
+            margin-top: 2mm;
+        }
+
+        /* 附注 */
+        .remark {
+            margin-top: 10mm;
+            font-size: 12pt;
+            color: var(--text-secondary);
+            border-top: 1px solid #ccc;
+            padding-top: 3mm;
+        }
+
+        /* 版记 */
+        .colophon {
+            position: absolute;
+            bottom: 10mm;
+            left: 28mm;
+            right: 26mm;
+            font-size: 10pt;
+            color: var(--text-secondary);
+        }
+
+        .colophon-line {
+            width: 100%;
+            height: 1px;
+            background: #999;
+            margin: 2mm 0;
+        }
+
+        .colophon-content {
+            padding: 1mm 0;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="page">
+        <!-- 发文机关标志 -->
+        <div class="header-org">
+            {{ group_name }}群管理小组
+        </div>
+
+        <!-- 文号 -->
+        <div class="doc-number">
+            {{ group_name }}
+            <span class="bracket-open">〔</span>
+            <span class="year">{{ year }}</span>
+            <span class="bracket-close">〕</span>
+            <span class="num">{{ doc_number }}</span>
+            号
+        </div>
+
+        <!-- 红线 -->
+        <div class="red-line"></div>
+
+        <!-- 标题 -->
+        <div class="doc-title">
+            关于对 {{ target_nickname }} 同志处分的决定
+        </div>
+
+        <!-- 正文 -->
+        <div class="doc-body">
+            <!-- 受处分人信息 -->
+            <p class="no-indent">受处分人：{{ target_nickname }}</p>
+
+            <!-- 一、违纪事实 -->
+            <p class="section-title">一、违纪事实</p>
+            <p>{{ violation_time }}，在"{{ group_name }}"群内，{{ target_nickname }}同志在与群成员进行日常交流时，{{ violation_background }}，作出如下违纪行为：</p>
+
+            <ul class="violation-list">
+                {% for item in violation_details %}
+                <li>{{ item }}。</li>
+                {% endfor %}
+            </ul>
+
+            <!-- 二、处分决定 -->
+            <p class="section-title">二、处分决定</p>
+            <p>为严肃群内纪律，教育本人并警示他人，经群管理团队研究决定：</p>
+            <p>对 <span class="punishment">{{ target_nickname }}</span> 同志给予 <span class="punishment">{{ punishment }}</span> 的处分。</p>
+
+            <!-- 三、整改与申诉要求 -->
+            <p class="section-title">三、整改与申诉要求</p>
+            {% for req in rectification_requirements %}
+            <p>{{ req }}。</p>
+            {% endfor %}
+
+            <p>本决定自下发之日起生效。</p>
+            <p>特此决定。</p>
+        </div>
+
+        <!-- 落款 -->
+        <div class="signature-area">
+            <div class="org-name">{{ group_name }}群管理小组</div>
+            <div class="date">{{ date }}</div>
+        </div>
+
+        <!-- 版记 -->
+        <div class="colophon">
+            <div class="colophon-line"></div>
+            <div class="colophon-content">
+                <span>抄送：{{ group_name }}群管理小组办公室</span>
+            </div>
+            <div class="colophon-line"></div>
+            <div class="colophon-content">
+                <span>{{ group_name }}群管理小组</span>
+            </div>
+            <div class="colophon-line"></div>
+        </div>
+    </div>
+</body>
+
+</html>

@@ -1,0 +1,222 @@
+import base64
+
+from nonebot_plugin_openai.utils.message import generate_message, get_message, get_message_text
+from bilibili_api import video
+from ...config import config
+import httpx
+from nonebot_plugin_openai import fetch_message
+from nonebot import logger, require
+
+require("nonebot_plugin_apscheduler")
+from nonebot_plugin_apscheduler import scheduler
+import asyncio
+import os
+from pathlib import Path
+from typing import Optional, Tuple
+from nonebot_plugin_chat.types import GetTextFunc
+
+require("nonebot_plugin_localstore")
+import nonebot_plugin_localstore as store
+
+# 获取缓存目录
+VIDEO_DIR = store.get_cache_dir("nonebot_plugin_chat") / "video"
+if not VIDEO_DIR.exists():
+    VIDEO_DIR.mkdir(parents=True, exist_ok=True)
+
+
+import re
+
+
+async def resolve_b23_url(b23_url: str, get_text: GetTextFunc) -> str:
+    """
+    解析 b23.tv 短链并返回 BV 号
+    """
+    if not b23_url.startswith("http"):
+        b23_url = f"https://{b23_url}"
+
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(b23_url, follow_redirects=True)
+        # 从最终 URL 中提取 BV 号
+        # 典型的 URL: https://www.bilibili.com/video/BV1xx411c7mD/?spm_id_from=...
+        match = re.search(r"BV[a-zA-Z0-9]+", resp.url.path)
+        if match:
+            return match.group(0)
+        else:
+            return await get_text("bilibili.resolve_failed")
+
+
+async def _get_video_info(bv_id: str) -> Tuple[str, str, str, Optional[str]]:
+    """获取视频信息和下载地址"""
+    v = video.Video(bvid=bv_id)
+    info = await v.get_info()
+    title = info["title"]
+    desc = info["desc"]
+
+    play_url = await v.get_download_url(page_index=0)
+    video_url = None
+    audio_url = None
+
+    if "dash" in play_url:
+        video_streams = play_url["dash"]["video"]
+        video_streams.sort(key=lambda x: x["bandwidth"])
+        video_url = video_streams[0]["baseUrl"]
+
+        if "audio" in play_url["dash"]:
+            audio_streams = play_url["dash"]["audio"]
+            audio_streams.sort(key=lambda x: x["bandwidth"])
+            audio_url = audio_streams[0]["baseUrl"]
+
+    elif "durl" in play_url:
+        video_url = play_url["durl"][0]["url"]
+
+    if not video_url:
+        raise ValueError("无法获取视频下载地址")
+
+    return title, desc, video_url, audio_url
+
+
+async def _download_file(url: str, path: Path) -> None:
+    """下载文件"""
+    headers = {
+        "Referer": "https://www.bilibili.com",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+    }
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(url, headers=headers)
+        resp.raise_for_status()
+        with open(path, "wb") as f:
+            f.write(resp.content)
+
+
+async def _merge_video_audio(video_path: Path, audio_path: Path, output_path: Path) -> None:
+    """合并视频和音频"""
+    process = await asyncio.create_subprocess_exec(
+        "ffmpeg",
+        "-y",
+        "-i",
+        str(video_path),
+        "-i",
+        str(audio_path),
+        "-c:v",
+        "copy",
+        "-c:a",
+        "aac",
+        str(output_path),
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+    stdout, stderr = await process.communicate()
+
+    if process.returncode != 0:
+        logger.error(f"FFmpeg merge failed: {stderr.decode()}")
+        raise RuntimeError("FFmpeg merge failed")
+
+
+async def describe_bilibili_video(bv_id: str, get_text: GetTextFunc, query: Optional[str] = None) -> str:
+    """
+    根据 BV 号总结 B 站视频内容
+
+    Args:
+        bv_id: B 站视频的 BV 号
+        get_text: 本地化文本获取函数
+        query: 可选的自然语言查询指令。提供时不再总结整个视频，而是只提取该查询所需的具体信息
+
+    Returns:
+        视频内容总结，或针对 query 的查询结果
+    """
+    file_name = f"{bv_id}.mp4"
+    file_path = VIDEO_DIR / file_name
+    temp_video_path = VIDEO_DIR / f"{bv_id}_temp_video.mp4"
+    temp_audio_path = VIDEO_DIR / f"{bv_id}_temp_audio.m4a"
+
+    def _cleanup_cache_files():
+        """清理所有缓存文件"""
+        for path in [file_path, temp_video_path, temp_audio_path]:
+            try:
+                if path.exists():
+                    os.remove(path)
+            except OSError as e:
+                logger.warning(f"清理 {path} 时出现错误")
+                logger.exception(e)
+
+    try:
+        title, desc, video_url, audio_url = await _get_video_info(bv_id)
+
+        await _download_file(video_url, temp_video_path)
+
+        if audio_url:
+            await _download_file(audio_url, temp_audio_path)
+            try:
+                await _merge_video_audio(temp_video_path, temp_audio_path, file_path)
+            except RuntimeError:
+                # 合并失败，回退到仅视频
+                if file_path.exists():
+                    os.remove(file_path)
+                os.rename(temp_video_path, file_path)
+        else:
+            if file_path.exists():
+                os.remove(file_path)
+            os.rename(temp_video_path, file_path)
+
+        # 读取视频文件并编码为 base64（Gemini 2.0+ 不再支持外部 HTTP URL）
+        video_bytes = file_path.read_bytes()
+        video_base64 = base64.b64encode(video_bytes).decode("utf-8")
+        video_data_url = f"data:video/mp4;base64,{video_base64}"
+
+        if query:
+            prompt_dir = "bilibili_query"
+            identify = "Bilibili Video Query"
+            user_prompt = await get_message_text(
+                "bilibili_query/user.md.jinja",
+                title=title,
+                description=desc,
+                query=query,
+            )
+        else:
+            prompt_dir = "bilibili"
+            identify = "Bilibili Video Summary"
+            user_prompt = await get_message_text("bilibili/user.md.jinja", title=title, description=desc)
+
+        messages = [
+            await get_message("system", f"{prompt_dir}/system.md.jinja"),
+            generate_message(
+                [
+                    {"type": "text", "text": user_prompt},
+                    {"type": "video_url", "video_url": {"url": video_data_url}},
+                ],
+                role="user",
+            ),
+        ]
+
+        result = await fetch_message(messages=messages, identify=identify)
+        _cleanup_cache_files()
+        return result
+    except Exception as e:
+        logger.exception(e)
+        _cleanup_cache_files()
+        raise e
+
+
+@scheduler.scheduled_job("cron", hour=2, minute=5, id="cleanup_bilibili_video_cache")
+async def _cleanup_bilibili_video_cache() -> None:
+    from ...core.session import groups
+
+    for session in groups.values():
+        if session.processor.openai_messages.fetcher_lock.locked():
+            logger.debug("跳过清理 bilibili 视频缓存：有会话正在处理")
+            return
+
+    if not VIDEO_DIR.exists():
+        return
+
+    count = 0
+    for file in VIDEO_DIR.iterdir():
+        if file.is_file():
+            try:
+                os.remove(file)
+                count += 1
+            except OSError as e:
+                logger.warning(f"清理 {file} 时出现错误")
+                logger.exception(e)
+
+    logger.info(f"已清理 {count} 个 bilibili 视频缓存文件")

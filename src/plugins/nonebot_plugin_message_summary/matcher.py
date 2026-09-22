@@ -1,0 +1,508 @@
+from nonebot import on_message, on_command, logger
+from nonebot.typing import T_State
+from nonebot.adapters import Event, Bot, Message
+from nonebot.adapters.onebot.v11 import GroupMessageEvent
+from nonebot.adapters.onebot.v11 import Bot as OB11Bot
+from nonebot.adapters.qq import Bot as QQBot
+from nonebot.params import CommandArg
+from nonebot_plugin_alconna import MultiVar, on_alconna, Alconna, Subcommand, Args, UniMessage, Reply, At
+from nonebot_plugin_orm import async_scoped_session, get_session
+from sqlalchemy import select
+from typing import Literal, Sequence
+from datetime import datetime, timedelta
+
+from nonebot_plugin_larkutils import get_user_id, get_group_id, open_file, FileType
+from nonebot_plugin_larkutils.file import FileManager
+from nonebot_plugin_larkuser import get_group_name, get_user
+from nonebot_plugin_ranking import generate_image
+from nonebot_plugin_chat.utils.group import parse_message_to_string
+from nonebot_plugin_chat.models import ChatGroup
+from nonebot_plugin_broadcast import get_available_groups
+from nonebot_plugin_htmlrender import md_to_pic
+
+from .models import GroupMessage, GroupDailySummary, MVPRecord
+from .hash_utils import compute_message_hash
+from .lang import lang
+from .word_cloud import generate_word_cloud
+from .__main__ import get_cached_daily_summary, send_daily_summary_to_group
+from .ai_utils import (
+    fetch_broadcast_summary,
+    fetch_default_summary,
+    fetch_topic_summary,
+    get_catgirl_score,
+    analyze_debate,
+    generate_message_string,
+    generate_semantic_search_payload,
+    analyze_history,
+    generate_decision_content,
+)
+from .render_utils import (
+    render_summary_result,
+    render_neko_result,
+    render_debate_result,
+    render_history_check_result,
+    render_decision_notice,
+)
+
+# --- Matchers ---
+
+summary = on_alconna(
+    Alconna(
+        "summary",
+        Subcommand("--enable|-e"),
+        Subcommand("--disable|-d"),
+        Subcommand("--everyday-summary", Args["status", Literal["on", "off"]]),
+        Args["limit", int, 200],
+        Subcommand("-s|--style", Args["style_type", Literal["default", "broadcast", "bc", "topic"], "default"]),
+    )
+)
+
+recorder = on_message(priority=3, block=False)
+neko_finder = on_alconna(Alconna("neko-finder"))
+debate_helper = on_alconna(Alconna("debate-helper", Args["limit", int, 200]))
+check_history = on_command("check-history", aliases={"发过了吗"})
+mvp_ranking = on_alconna(Alconna("mvp-rank"))
+group_daily = on_alconna(Alconna("group-daily"))
+decision = on_alconna(
+    Alconna(
+        "decision",
+        Args["target", At],
+        Args["reason_arg", MultiVar(str), ""],
+    )
+)
+word_cloud = on_alconna(Alconna("word-cloud", Args["hours", int, 24]))
+
+
+# --- Config Helpers ---
+
+
+def get_config() -> FileManager:
+    return open_file("disabled_groups.json", FileType.CONFIG, [])
+
+
+def get_everyday_summary_config() -> FileManager:
+    """Get the config file for everyday summary feature"""
+    return open_file("everyday_summary_config.json", FileType.CONFIG, [])
+
+
+# --- Handlers ---
+
+
+@summary.assign("style")
+async def _(
+    limit: int,
+    style_type: str,
+    session: async_scoped_session,
+    user_id: str = get_user_id(),
+    group_id: str = get_group_id(),
+) -> None:
+    await handle_main(limit, session, style_type, user_id, group_id)
+
+
+@summary.assign("$main")
+async def handle_main(
+    limit: int,
+    session: async_scoped_session,
+    style_type: str = "default",
+    user_id: str = get_user_id(),
+    group_id: str = get_group_id(),
+) -> None:
+    style = style_type
+    async with get_config() as conf:
+        if group_id in conf.data:
+            await lang.finish("disabled", user_id)
+
+    result = (
+        await session.scalars(
+            select(GroupMessage)
+            .where(GroupMessage.group_id == group_id)
+            .order_by(GroupMessage.id_.desc())
+            .limit(limit)
+            .order_by(GroupMessage.id_)
+        )
+    ).all()
+
+    messages = await generate_message_string(result, style)
+
+    await summary.send(await lang.text("analyzing", user_id))
+    if style in ["broadcast", "bc"]:
+        summary_string = await fetch_broadcast_summary(user_id, messages)
+        await summary.finish(summary_string)
+    elif style == "topic":
+        summary_string = await fetch_topic_summary(user_id, messages)
+        await summary.finish(await render_summary_result(summary_string, "topic"))
+    else:
+        summary_string = await fetch_default_summary(user_id, messages)
+        await summary.finish(await render_summary_result(summary_string, "default"))
+
+
+@summary.assign("enable")
+async def _(user_id: str = get_user_id(), group_id: str = get_group_id()) -> None:
+    async with get_config() as conf:
+        if group_id in conf.data:
+            conf.data.remove(group_id)
+    await lang.finish("switch.enable", user_id)
+
+
+@summary.assign("disable")
+async def _(user_id: str = get_user_id(), group_id: str = get_group_id()) -> None:
+    async with get_config() as conf:
+        if group_id not in conf.data:
+            conf.data.append(group_id)
+    await lang.finish("switch.disable", user_id)
+
+
+@summary.assign("everyday-summary")
+async def _(status: str, user_id: str = get_user_id(), group_id: str = get_group_id()) -> None:
+    everyday_config = get_everyday_summary_config()
+    async with everyday_config as conf:
+        if status == "on":
+            if group_id not in conf.data:
+                conf.data.append(group_id)
+            await lang.finish("everyday_summary.enable", user_id)
+        else:
+            if group_id in conf.data:
+                conf.data.remove(group_id)
+            await lang.finish("everyday_summary.disable", user_id)
+
+
+@neko_finder.handle()
+async def handle_neko_finder(
+    session: async_scoped_session,
+    user_id: str = get_user_id(),
+    group_id: str = get_group_id(),
+) -> None:
+    """处理 .neko-finder 指令"""
+    result = (
+        await session.scalars(select(GroupMessage).where(GroupMessage.group_id == group_id).order_by(GroupMessage.id_))
+    ).all()
+    messages = await generate_message_string(list(result), "broadcast")
+    await neko_finder.send(await lang.text("analyzing", user_id))
+    catgirl_scores = await get_catgirl_score(messages)
+    await neko_finder.finish(await render_neko_result(catgirl_scores, user_id))
+
+
+@debate_helper.handle()
+async def handle_debate(
+    limit: int,
+    session: async_scoped_session,
+    user_id: str = get_user_id(),
+    group_id: str = get_group_id(),
+) -> None:
+    """处理 .debate 指令"""
+    async with get_config() as conf:
+        if group_id in conf.data:
+            await lang.finish("disabled", user_id)
+
+    result = (
+        await session.scalars(
+            select(GroupMessage)
+            .where(GroupMessage.group_id == group_id)
+            .order_by(GroupMessage.id_.desc())
+            .limit(limit)
+            .order_by(GroupMessage.id_)
+        )
+    ).all()
+    messages = await generate_message_string(result, "broadcast")
+    await debate_helper.send(await lang.text("analyzing", user_id))
+    debate_data = await analyze_debate(messages, user_id)
+
+    if debate_data is None:
+        await lang.finish("debate.no_conflict", user_id)
+
+    await debate_helper.finish(await render_debate_result(debate_data, user_id))
+
+
+@check_history.handle()
+async def handle_check_history(
+    bot: Bot,
+    event: Event,
+    session: async_scoped_session,
+    state: T_State,
+    args: Message = CommandArg(),
+    user_id: str = get_user_id(),
+    group_id: str = get_group_id(),
+) -> None:
+    """处理 .check-history 指令"""
+
+    # 1. Input Parsing & Validation
+    target_content = ""
+
+    # Check for reply first
+    uni_msg = UniMessage.of(args)
+    await uni_msg.attach_reply(event, bot)
+    if uni_msg.has(Reply):
+        reply = uni_msg[Reply, 0]
+        lang_str = f"mlsid::--lang=zh_hans"
+        target_content = await parse_message_to_string(UniMessage([reply]), event, bot, state, lang_str)
+
+    # If no reply content, check arguments
+    if not target_content:
+        target_content = args.extract_plain_text().strip()
+
+    if not target_content:
+        await lang.finish("check_history.no_content", user_id)
+
+    # 2. Stage 1: Intent Extraction
+    payload = await generate_semantic_search_payload(target_content)
+
+    # 3. Stage 2: Historical Analysis
+    # Fetch last 48 hours of messages
+    start_time = datetime.now() - timedelta(hours=48)
+    history = (
+        await session.scalars(
+            select(GroupMessage)
+            .where(GroupMessage.group_id == group_id)
+            .where(GroupMessage.timestamp >= start_time)
+            .order_by(GroupMessage.id_)
+        )
+    ).all()
+
+    if not history:
+        await lang.finish("check_history.no_history", user_id)
+
+    # Filter out the replied message itself if it exists in history
+    history_list = list(history)
+    if uni_msg.has(Reply):
+        # Iterate backwards to find the most recent matching message
+        for i in range(len(history_list) - 1, -1, -1):
+            if history_list[i].message == target_content:
+                history_list.pop(i)
+                break
+
+    await check_history.send(await lang.text("analyzing", user_id))
+    result = await analyze_history(payload, history_list, user_id)
+
+    # 4. Visualization & Output
+    if not result:
+        await lang.finish("check_history.no_match", user_id)
+
+    msg = await render_history_check_result(result, user_id)
+    await check_history.finish(await msg.export(bot))
+
+
+# --- Recorder Logic ---
+
+
+async def clean_recorded_message(session: async_scoped_session) -> None:
+    end_time = datetime.now() - timedelta(days=2)
+    # Bulk delete is more efficient
+    # await session.execute(delete(GroupMessage).where(GroupMessage.timestamp < end_time))
+    # But keeping original logic structure for safety unless refactoring DB logic entirely
+    for item in await session.scalars(select(GroupMessage).where(GroupMessage.timestamp < end_time)):
+        await session.delete(item)
+
+
+@recorder.handle()
+async def _(
+    event: GroupMessageEvent, session: async_scoped_session, bot: Bot, state: T_State, group_id: str = get_group_id()
+) -> None:
+    async with get_config() as conf:
+        if group_id in conf.data:
+            await recorder.finish()
+    await clean_recorded_message(session)
+    if (g := await session.get(ChatGroup, {"group_id": group_id})) and g.enabled:
+        uni_msg = UniMessage.of(event.message, bot)
+        await uni_msg.attach_reply(event, bot)
+        lang_str = f"mlsid::--lang=zh_hans"
+        msg = await parse_message_to_string(uni_msg, event, bot, state, lang_str)
+    else:
+        msg = event.raw_message
+    session.add(
+        GroupMessage(
+            message=msg,
+            message_hash=compute_message_hash(event.message),
+            sender_nickname=event.sender.nickname,
+            user_id=event.get_user_id(),
+            group_id=group_id,
+        )
+    )
+    await session.commit()
+    await recorder.finish()
+
+
+@recorder.handle()
+async def _(
+    event: Event, session: async_scoped_session, group_id: str = get_group_id(), user_id: str = get_user_id()
+) -> None:
+    async with get_config() as conf:
+        if group_id in conf.data:
+            await recorder.finish()
+    await clean_recorded_message(session)
+    session.add(
+        GroupMessage(
+            message=event.get_plaintext(),
+            message_hash=compute_message_hash(event.get_message()),
+            sender_nickname=(await get_user(user_id)).get_nickname(),
+            user_id=user_id,
+            group_id=group_id,
+        )
+    )
+    await session.commit()
+
+
+@mvp_ranking.handle()
+async def handle_mvp_ranking(
+    session: async_scoped_session,
+    user_id: str = get_user_id(),
+    group_id: str = get_group_id(),
+) -> None:
+    """处理 .mvp-rank 指令"""
+    result = await session.scalars(
+        select(MVPRecord).where(MVPRecord.group_id == group_id).order_by(MVPRecord.mvp_count.desc())
+    )
+    mvp_records = result.all()
+
+    if not mvp_records:
+        await lang.finish("mvp_ranking.no_data", user_id)
+
+    ranked_data = []
+    for record in mvp_records:
+        ranked_data.append(
+            {
+                "user_id": record.user_id,
+                "data": record.mvp_count,
+                "info": None,
+            }
+        )
+
+    image = await generate_image(ranked_data, user_id, await lang.text("mvp_ranking.title", user_id))
+    await mvp_ranking.finish(UniMessage().image(raw=image))
+
+
+@group_daily.handle()
+async def handle_group_daily(
+    bot: Bot,
+    user_id: str = get_user_id(),
+    group_id: str = get_group_id(),
+) -> None:
+    """处理 .group-daily 指令，发送当日群聊总结"""
+    async with get_config() as conf:
+        if group_id in conf.data:
+            await lang.finish("disabled", user_id)
+
+    cached = await get_cached_daily_summary(group_id)
+    if cached:
+        image_bytes = await md_to_pic(cached)
+        await group_daily.finish(UniMessage().image(raw=image_bytes))
+    else:
+        await send_daily_summary_to_group(group_id)
+        await group_daily.finish()
+
+
+@word_cloud.handle()
+async def handle_word_cloud(
+    hours: int,
+    session: async_scoped_session,
+    user_id: str = get_user_id(),
+    group_id: str = get_group_id(),
+) -> None:
+    """处理 .word-cloud 指令，生成群聊词云"""
+    async with get_config() as conf:
+        if group_id in conf.data:
+            await lang.finish("disabled", user_id)
+
+    hours = min(max(hours, 1), 48)
+    start_time = datetime.now() - timedelta(hours=hours)
+    result = (
+        await session.scalars(
+            select(GroupMessage)
+            .where(GroupMessage.group_id == group_id)
+            .where(GroupMessage.timestamp >= start_time)
+            .order_by(GroupMessage.id_),
+        )
+    ).all()
+
+    if not result:
+        await lang.finish("word_cloud.no_data", user_id, hours)
+
+    image = await generate_word_cloud(result)
+    if image is None:
+        await lang.finish("word_cloud.no_data", user_id, hours)
+
+    await word_cloud.finish(
+        UniMessage().text(await lang.text("word_cloud.title", user_id, hours, len(result))).image(raw=image),
+    )
+
+
+@decision.handle()
+async def handle_decision(
+    target: At,
+    reason_arg: list[str],
+    session: async_scoped_session,
+    bot: Bot,
+    event: Event,
+    user_id: str = get_user_id(),
+    group_id: str = get_group_id(),
+) -> None:
+    """处理 .decision 指令，生成虚假处分通知"""
+    async with get_config() as conf:
+        if group_id in conf.data:
+            await lang.finish("disabled", user_id)
+    reason = " ".join(reason_arg)
+
+    # 获取群名称
+    group_name = "群"
+    try:
+        if isinstance(bot, OB11Bot):
+            # OneBot v11 适配器获取群名称的逻辑
+            # 提取 group_id 中的数字部分（如 "qq_598443695" -> 598443695）
+            numeric_group_id = int(group_id.split("_")[-1]) if "_" in group_id else int(group_id)
+            group_info = await bot.get_group_info(group_id=numeric_group_id)
+            group_name = group_info.get("group_name", "群")
+        elif isinstance(bot, QQBot) and (group_openid := getattr(event, "group_openid", None)):
+            # QQ 官方 Bot：群名称取自 /v2/groups/{group_openid}/info 的缓存
+            group_name = await get_group_name(bot, str(group_openid)) or group_name
+    except Exception as e:
+        logger.warning(f"获取群名称失败: {e}")
+
+    # 获取目标用户的昵称（与 recorder 一致的方法）
+    target_user_id = target.target
+    target_nickname = (await get_user(target_user_id)).get_nickname()
+
+    # 处分内容（第二个参数）
+    punishment = reason
+    if not punishment:
+        await lang.finish("decision.no_punishment", user_id)
+
+    # 获取最近 300 条消息
+    result = (
+        await session.scalars(
+            select(GroupMessage)
+            .where(GroupMessage.group_id == group_id)
+            .order_by(GroupMessage.id_.desc())
+            .limit(300)
+            .order_by(GroupMessage.id_)
+        )
+    ).all()
+
+    if not result:
+        await lang.finish("decision.no_messages", user_id)
+
+    # 生成消息字符串
+    messages = await generate_message_string(result, "broadcast")
+
+    # 调用 AI 生成处分内容
+    await decision.send(await lang.text("analyzing", user_id))
+    decision_data = await generate_decision_content(
+        messages=messages,
+        target_nickname=target_nickname,
+        group_name=group_name,
+        punishment=punishment,
+        user_id=user_id,
+    )
+
+    if not decision_data:
+        raise Exception("生成处分通知失败")
+
+    # 渲染处分通知图片
+    msg = await render_decision_notice(
+        decision_data=decision_data,
+        target_nickname=target_nickname,
+        group_name=group_name,
+        punishment=punishment,
+        user_id=user_id,
+        group_id=group_id,
+    )
+
+    await decision.finish(msg)

@@ -1,5 +1,5 @@
 #  Moonlark - A new ChatBot
-#  Copyright (C) 2025  Moonlark Development Team
+#  Copyright (C) 2026  Moonlark Development Team
 #
 #  This program is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU Affero General Public License as published
@@ -16,8 +16,9 @@
 # ##############################################################################
 
 import asyncio
-from typing import Literal, overload
+from typing import Literal, Optional, overload
 
+from nonebot.adapters import Event
 from nonebot_plugin_alconna import UniMessage
 
 from nonebot_plugin_larkuser import prompt
@@ -29,30 +30,57 @@ from nonebot_plugin_quick_math.types import QuestionData, ReplyType, ExtendReply
 
 @overload
 async def wait_answer(
-    question: QuestionData, image: UniMessage, user_id: str, enable_leave_command: Literal[False] = False
+    question: QuestionData,
+    image: UniMessage,
+    user_id: str,
+    events: Optional[list[Event]] = None,
+    enable_leave_command: Literal[False] = False,
 ) -> ReplyType: ...
 
 
 @overload
 async def wait_answer(
-    question: QuestionData, image: UniMessage, user_id: str, enable_leave_command: Literal[True] = False
+    question: QuestionData,
+    image: UniMessage,
+    user_id: str,
+    events: Optional[list[Event]] = None,
+    enable_leave_command: Literal[True] = False,
 ) -> ReplyType | ExtendReplyType: ...
 
 
 async def wait_answer(
-    question: QuestionData, image: UniMessage, user_id: str, enable_leave_command: bool = False
+    question: QuestionData,
+    image: UniMessage,
+    user_id: str,
+    events: Optional[list[Event]] = None,
+    enable_leave_command: bool = False,
+    allow_quit: bool = True,
+    ignore_error_details: bool = False,
 ) -> ReplyType | ExtendReplyType:
     message = image
     for i in range(config.qm_retry_count + 1):
         try:
-            r: str = await prompt(message, user_id, timeout=question["limit_in_sec"])
+            r: str = await prompt(
+                message,
+                user_id,
+                timeout=question["limit_in_sec"],
+                event=events[-1] if events else None,
+                events=events,
+                # 允许退出指令（禅模式）时禁用 prompt 的 q 快捷退出：
+                # 否则输入 q 会以 FinishedException 直接结束整个会话，导致无法结算积分
+                allow_quit=allow_quit and not enable_leave_command,
+                # 超时以 PromptTimeout 返回 ReplyType.TIMEOUT 交给会话结算，
+                # 避免 FinishedException 中断会话导致结算卡片不发送
+                ignore_error_details=ignore_error_details,
+            )
         except PromptTimeout:
             return ReplyType.TIMEOUT
         if r.lower() in ["skip", "tg"]:
             return ReplyType.SKIP
-        elif r.lower() in ["leave", "quit"]:
+        elif enable_leave_command and r.lower() in ["leave", "quit", "q"]:
             return ExtendReplyType.LEAVE
-        elif await question["question"]["answer"](r):
+        elif r.strip().upper() == question["question"]["answer"]:
+            # 所有题目都是选择题，answer 是正确选项字母；直接比较字母，忽略大小写与空白
             return ReplyType.RIGHT
         message = UniMessage.text(await lang.text(f"answer.wrong", user_id, config.qm_retry_count - i))
     return ReplyType.WRONG

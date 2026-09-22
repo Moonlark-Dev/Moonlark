@@ -1,5 +1,8 @@
-from typing import TypedDict, Awaitable, Callable, Any
+from typing import Literal, Optional, Awaitable, Callable, Any
+from typing_extensions import TypedDict
 from openai.types.chat import ChatCompletionMessageParam, ChatCompletionToolMessageParam, ChatCompletionMessage
+from openai.types.chat.chat_completion import Choice
+from pydantic import BaseModel
 
 Message = ChatCompletionMessageParam | ChatCompletionToolMessageParam | ChatCompletionMessage
 Messages = list[Message]
@@ -16,6 +19,31 @@ class FunctionParameterWithEnum(FunctionParameter):
 
 
 class AsyncFunction(TypedDict):
-    func: Callable[[...], Awaitable[Any]]
+    func: Callable[..., Awaitable[Any]]
     description: str
     parameters: dict[str, FunctionParameter | FunctionParameterWithEnum]
+
+
+class StopSessionStrategy(TypedDict):
+    strategy: Literal["throw"]
+
+
+class ReplaceResponseStrategy(TypedDict):
+    strategy: Literal["replace"]
+    choice: Choice
+
+
+TimeoutStrategy = ReplaceResponseStrategy | StopSessionStrategy
+
+
+class FunctionParameterDefinition(BaseModel):
+    type: str
+    description: str
+    required: bool = True
+    enum: Optional[list[str]] = None
+    name: str
+
+
+class MoonlarkFunctionDefinition(BaseModel):
+    description: str
+    parameters: list[FunctionParameterDefinition]

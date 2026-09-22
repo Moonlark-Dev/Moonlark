@@ -1,0 +1,16 @@
+description: |
+  申请额外的消息 Token。提交理由和最近聊天记录供审核 AI 审核，审核通过后在指定次数的 send_message 操作中不消耗 Token，结束后 Token 池重置为最小值。
+  **何时调用**：当 Token 不足（≤ 0）但你需要发送消息时，例如：
+  1. 需要发送长回复回答用户的提问，当前 Token 不足以支持完整回复。
+  2. Token 为负数时有人 @提及了你，需要立即回应。
+  3. 需要处理紧急或时效性强的消息，等待 Token 自然恢复会错过最佳回复时机。
+  4. 正在进行有意义的多轮对话，Token 不足会导致对话中断。
+parameters:
+  - name: reason
+    description: "申请原因，必须详细说明为什么需要额外 Token，审核 AI 会根据此理由判断是否批准。"
+    type: string
+    required: true
+  - name: message_count
+    description: "需要的额外消息数量（1-10），审核通过后该次数内的 send_message 不消耗 Token。"
+    type: integer
+    required: true

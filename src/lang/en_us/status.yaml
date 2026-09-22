@@ -9,6 +9,7 @@ template:
   online: 在线
   plugin_count: 插件数量
   offline: 离线
+  abnormal: Abnormal
   run_time: 运行时间
   uptime: 开机时间
 title: "系统状态"

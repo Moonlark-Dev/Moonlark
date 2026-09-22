@@ -1,0 +1,26 @@
+以下是你认识的用户列表，请选择一个发送主动私聊，或跳过：
+
+{{ friends }}
+
+## 当天的计划
+{{ plan }}
+
+## 当天各会话的事件和话题（仅包含上次决策之后的新事件）
+{{ events }}
+
+## 近期主动私聊发送记录（最近 10 次）
+{{ recent_sends }}
+
+请参考上面的发送记录，避免短时间内重复找同一位好友，或重复发送高度相似的话题。
+
+## 相关备忘录
+{{ notes }}
+
+当前时间：{{ current_time }}
+
+请按系统提示中的输出格式，只返回严格的 JSON 对象（不要包含 Markdown 代码块）：
+
+{"skip": false, "target_nickname": "好友列表中的昵称", "topic": "私聊内容"}
+
+如果不想发送，设置 skip=true，并将 target_nickname 与 topic 留空：
+{"skip": true, "target_nickname": "", "topic": ""}

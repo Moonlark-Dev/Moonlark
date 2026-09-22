@@ -1,0 +1,18 @@
+{#
+模板参数：
+- title: 视频标题
+- description: 视频简介
+- query: 自然语言形式的查询指令
+#}
+{% if description %}
+这是 B 站视频：{{ title }}
+简介：{{ description }}
+{% else %}
+视频标题：{{ title }}
+{% endif %}
+
+# Query
+{{ query }}
+
+# Action
+请基于上述规则，根据查询指令从提供的视频中提取信息，不要总结整个视频。

@@ -1,0 +1,10 @@
+help:
+  description: 指令用法查询
+  details: 根据指令列表生成指定指令或功能的具体用法
+  usage1: command <查询内容> (查询指令的具体用法)
+
+thinking: 正在根据指令列表生成用法喵～ 请稍等
+usage: "用法: command <查询内容>，例如「command 如何查看今日人品」"
+commands_error: 指令列表生成失败了唔…… 请稍后再试喵～
+llm_error: 生成失败了唔…… 请稍后再试喵～
+result: "{}"

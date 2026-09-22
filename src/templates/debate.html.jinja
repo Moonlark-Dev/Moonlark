@@ -1,0 +1,353 @@
+{% extends base %}
+
+{% block header %}
+<style>
+    :root {
+        --bg-color: #f8f9fa;
+        --card-bg: #ffffff;
+        --text-primary: #1e293b;
+        --text-secondary: #64748b;
+        --accent-a: #e11d48; /* Rose */
+        --accent-a-bg: #fff1f2;
+        --accent-b: #0ea5e9; /* Sky */
+        --accent-b-bg: #f0f9ff;
+        --border-color: #e2e8f0;
+        --radius-lg: 16px;
+        --radius-md: 8px;
+        --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+        --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    }
+
+    body {
+        background-color: var(--bg-color);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        color: var(--text-primary);
+        line-height: 1.6;
+    }
+
+    .debate-wrapper {
+        margin: 40px auto;
+        padding: 0 20px;
+    }
+
+    /* 头部设计 */
+    .header-section {
+        text-align: center;
+        margin-bottom: 40px;
+    }
+
+    .conflict-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 6px 16px;
+        background: #f1f5f9;
+        color: #475569;
+        font-size: 0.8rem;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        border-radius: 100px;
+        text-transform: uppercase;
+        margin-bottom: 16px;
+    }
+
+    .topic-title {
+        font-size: 2rem;
+        font-weight: 800;
+        letter-spacing: -0.5px;
+        color: #0f172a;
+        line-height: 1.2;
+        margin: 0;
+    }
+
+    /* 核心对抗布局 */
+    .battle-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+        margin-bottom: 32px;
+        align-items: stretch;
+    }
+
+    /* 移动端适配 */
+    @media (max-width: 768px) {
+        .battle-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .party-column {
+        background: var(--card-bg);
+        border-radius: var(--radius-lg);
+        border: 1px solid var(--border-color);
+        box-shadow: var(--shadow-sm);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    /* 角色头部 */
+    .party-header {
+        padding: 20px 24px;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .party-icon {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 0.9rem;
+    }
+
+    .party-name {
+        font-weight: 700;
+        font-size: 1.1rem;
+    }
+
+    /* Party A Specifics */
+    .party-a .party-icon {
+        background: var(--accent-a-bg);
+        color: var(--accent-a);
+    }
+    .party-a-border { border-top: 4px solid var(--accent-a); }
+
+    /* Party B Specifics */
+    .party-b .party-icon {
+        background: var(--accent-b-bg);
+        color: var(--accent-b);
+    }
+    .party-b-border { border-top: 4px solid var(--accent-b); }
+
+
+    .party-body {
+        padding: 24px;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    /* 观点引用块 */
+    .standpoint-box {
+        position: relative;
+        font-size: 1rem;
+        color: #334155;
+        font-style: italic;
+        padding-left: 16px;
+        border-left: 3px solid #cbd5e1;
+    }
+    
+    .label-tiny {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        color: #94a3b8;
+        font-weight: 700;
+        margin-bottom: 8px;
+        letter-spacing: 0.05em;
+        display: block;
+    }
+
+    /* 论据列表 */
+    .args-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .args-list li {
+        position: relative;
+        padding-left: 20px;
+        margin-bottom: 10px;
+        font-size: 0.95rem;
+        color: #475569;
+    }
+
+    .args-list li::before {
+        content: "•";
+        position: absolute;
+        left: 0;
+        color: #cbd5e1;
+        font-weight: bold;
+        font-size: 1.2em;
+        line-height: 1;
+    }
+
+    /* 元数据区域（潜台词/谬误） */
+    .meta-box {
+        background: #f8fafc;
+        border-radius: var(--radius-md);
+        padding: 12px 16px;
+        font-size: 0.85rem;
+        margin-top: auto; /* Push to bottom */
+    }
+
+    .meta-item + .meta-item {
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px dashed #e2e8f0;
+    }
+
+    .meta-title {
+        font-weight: 600;
+        font-size: 0.75rem;
+        color: #64748b;
+        margin-bottom: 4px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .text-fallacy {
+        color: #b45309; /* Amber 700 */
+    }
+    
+    .bg-fallacy {
+        background-color: #fffbeb; /* Amber 50 */
+    }
+
+    /* 结论分析卡片 */
+    .analysis-card {
+        background: #1e293b; /* Dark slate */
+        color: #f8fafc;
+        border-radius: var(--radius-lg);
+        padding: 32px;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    }
+
+    .analysis-card::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 4px;
+        background: linear-gradient(90deg, var(--accent-a), var(--accent-b));
+    }
+
+    .analysis-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 16px;
+        color: #94a3b8;
+        font-weight: 600;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    .analysis-text {
+        font-size: 1.05rem;
+        line-height: 1.8;
+        opacity: 0.95;
+    }
+
+    /* VS Badge (Optional, subtle) */
+    .vs-badge-mobile {
+        display: none;
+        text-align: center;
+        font-weight: bold;
+        color: #cbd5e1;
+        margin: -10px 0 14px 0;
+    }
+    
+    @media (max-width: 768px) {
+        .vs-badge-mobile { display: block; }
+    }
+</style>
+{% endblock header %}
+
+{% block body %}
+<div class="debate-wrapper">
+    
+    <!-- 头部区域 -->
+    <header class="header-section">
+        <div class="conflict-badge">{{ data.conflict_type }}</div>
+        <h1 class="topic-title">{{ data.topic }}</h1>
+    </header>
+    
+    <!-- 对抗区域 Grid -->
+    <div class="battle-grid">
+        {% for party in data.parties %}
+        {% set is_party_a = (loop.index == 1) %}
+        
+        <div class="party-column {% if is_party_a %}party-a party-a-border{% else %}party-b party-b-border{% endif %}">
+            
+            <!-- 角色名 -->
+            <div class="party-header">
+                <div class="party-icon">
+                    {% if is_party_a %}A{% else %}B{% endif %}
+                </div>
+                <div class="party-name">{{ party.name }}</div>
+            </div>
+
+            <div class="party-body">
+                <!-- 核心立场 -->
+                <div>
+                    <span class="label-tiny">{{ text.standpoint }}</span>
+                    <div class="standpoint-box">
+                        "{{ party.standpoint }}"
+                    </div>
+                </div>
+
+                <!-- 论据列表 -->
+                <div>
+                    <span class="label-tiny">{{ text.arguments }}</span>
+                    <ul class="args-list">
+                        {% for arg in party.arguments %}
+                        <li>{{ arg }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+
+                <!-- 潜台词与谬误 (放在底部灰色盒子) -->
+                {% if party.implicit or party.fallacies %}
+                <div class="meta-box {% if party.fallacies %}bg-fallacy{% endif %}">
+                    {% if party.implicit %}
+                    <div class="meta-item">
+                        <div class="meta-title">💡 {{ text.implicit }}</div>
+                        <div>{{ party.implicit }}</div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if party.fallacies %}
+                    <div class="meta-item">
+                        <div class="meta-title text-fallacy">⚠️ {{ text.fallacies }}</div>
+                        <div class="text-fallacy">{{ party.fallacies }}</div>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if loop.index == 1 %}
+        <!-- 移动端显示的 VS 分割线 -->
+        <div class="vs-badge-mobile">VS</div>
+        {% endif %}
+        
+        {% endfor %}
+    </div>
+    
+    <!-- 深度分析 -->
+    <div class="analysis-card">
+        <div class="analysis-header">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
+            {{ text.analysis_title }}
+        </div>
+        <div class="analysis-text">
+            {{ data.analysis.conclusion }}
+        </div>
+    </div>
+
+</div>
+{% endblock body %}

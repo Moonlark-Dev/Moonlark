@@ -1,10 +1,14 @@
 from datetime import datetime
-from sqlalchemy import String, Text, Double
+from sqlalchemy import String, Text, Double, LargeBinary
 from nonebot_plugin_orm import Model
 from sqlalchemy.orm import Mapped, mapped_column
 from pydantic import BaseModel
 
 from .config import config
+
+from sqlalchemy.dialects.mysql import LONGBLOB
+
+CompatibleBlob = LargeBinary().with_variant(LONGBLOB(), "mysql")
 
 
 class CaveData(Model):
@@ -17,10 +21,19 @@ class CaveData(Model):
 
 class ImageData(Model):
     id: Mapped[float] = mapped_column(Double(), primary_key=True)
-    file_id: Mapped[str] = mapped_column(String(32))
     name: Mapped[str] = mapped_column(Text())
     belong: Mapped[int]
     p_hash: Mapped[str] = mapped_column(String(64), nullable=True)
+    image_data: Mapped[bytes] = mapped_column(CompatibleBlob, nullable=True)
+
+
+class CaveImagePromptConfig(Model):
+    """记录用户私聊单图投稿询问功能的开关状态，默认关闭"""
+
+    __tablename__ = "nonebot_plugin_cave_image_prompt_config"
+
+    user_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    enabled: Mapped[bool] = mapped_column(default=False)
 
 
 class CaveImage(BaseModel):

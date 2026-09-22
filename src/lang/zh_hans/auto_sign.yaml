@@ -1,0 +1,11 @@
+email:
+  subject: 自动签到成功
+  header: |
+    【自动签到】
+    已使用一张自动签到券为您完成今日签到，奖励已发放：
+  sign_days: 连续签到：{} 天
+  exp: 经验：+{}（当前 {}）
+  vim: VimCoin：+{}（当前 {}）
+  fav: 好感：+{}‰
+  ticket_gained: 连续签到已满 {} 天，获得自动签到券 x1！
+  consumed: 本次消耗：自动签到券 x1

@@ -1,0 +1,9 @@
+description: |
+  撤回一条消息，你只能撤回你自己发送的消息。消息 ID 为 `send_message` 工具返回的消息 ID。
+  你可以少量的在发送消息时制造一些错误输入，随后通过此工具撤回重发来增强你的活人感。
+  参考的使用场景：在发送消息后发现群友实际上想说的内容和此前你的分析有偏离时。
+parameters:
+  - name: message_id
+    description: "要撤回的消息的**消息 ID**。"
+    type: string
+    required: true

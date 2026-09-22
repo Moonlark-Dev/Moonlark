@@ -202,6 +202,234 @@ help:
   usage3: summary -s topic (话题梳理)
   usage4: summary -e|-d (功能开关)
   usage5: summary --everyday-summary <on/off> (每日总结开关)
+help_neko:
+  description: 找猫娘
+  details: 根据近 2 天的消息对群友的“猫娘指数”进行打分。
+  usage1: neko-finder
+help_debate:
+  description: 辩论助手
+  details: 分析群聊中的争议或辩论，提供客观的双方观点摘要。
+  usage1: debate [读取长度]
 everyday_summary:
   enable: 每日群消息总结推送已启用（推送时间：6:00）
   disable: 每日群消息总结推送已禁用。
+neko:
+  no_data: 暂无数据
+  x_label: '猫娘分数'
+  title: 猫娘分数排行榜
+  render_title: 猫娘分数排行榜
+  score: 分数
+  comment_prefix: "💬"
+  first_badge: "🥇 #1"
+  prompt: |
+    # Role: 资深二次元文化鉴定师与数据分析师
+
+    ## Background
+    用户拥有一段群聊记录，需要识别其中哪些群友的发言风格符合“猫娘（Neko-musume）”的萌属性特征。你需要对每一位参与发言的群友进行量化评分、点评并排序，最终以结构化的数据格式输出。
+
+    ## Goal
+    分析输入的聊天记录，根据“猫娘特征”对所有发言者进行 0-100 的打分，并按分数从高到低排序输出为 JSON 格式。
+
+    ## Definition: 猫娘特征 (Scoring Criteria)
+    在评分时，请重点参考以下维度：
+    1.  **口癖与词尾 (关键加分项)**：频繁使用“喵”、“咪”、“呐”、“捏”等句尾助词。
+    2.  **行为描述**：使用第三人称描述动作（如 *摇尾巴*、*蹭蹭*、*伸懒腰*）。
+    3.  **情绪表达**：表现出撒娇、粘人、对主人的依赖，或者傲娇（嘴硬心软）的态度。
+    4.  **颜文字与符号**：频繁使用萌系颜文字（如 `(>ω<)`、`qwq`、`=w=`）或波浪号 `~`。
+    5.  **扣分项**：过于严肃、硬核、粗俗或充满“现充/大叔”气息的发言应给予低分。
+
+    ## Constraints
+    *   **评分范围**：0 (完全不像) 到 100 (完美的猫娘)。
+    *   **覆盖范围**：必须包含聊天记录中出现的所有用户。
+    *   **评语风格**：请使用调侃、幽默且带有二次元梗的语气进行简短点评。
+    *   **排序方式**：严格按照 `score` 从高到低排序。
+    *   **输出格式**：严格且合法的 JSON 格式，不要包含 Markdown 的代码块标记（```json），直接输出纯文本 JSON。
+
+    ## Workflow
+    1.  读取并解析提供的聊天记录。
+    2.  提取每位用户的发言内容。
+    3.  对照 [猫娘特征] 进行分析和打分。
+    4.  按照分数降序排列数据。
+    5.  生成最终 JSON。
+
+    ## Output Format (JSON Structure)
+    [
+      {{
+        "rank": 1,
+        "username": "用户昵称",
+        "score": 95
+      }},
+      ...
+    ]
+
+    **输出只能包含 JSON 结构，不能包含除此之外的任何内容（如：Markdown 代码块）**
+debate:
+  no_conflict: 未检测到争议或辩论内容。
+  render_title: 辩论分析报告
+  standpoint: 核心立场
+  arguments: 主要论据
+  implicit: 隐含前提
+  fallacies: 逻辑谬误
+  analysis_title: Moonlark 分析
+  prompt: |
+    # Role: 智能争议裁判/辩论摘要机器人
+
+    ## Profile
+    你是一个运行在群聊环境中的智能辅助机器人。你的核心功能是处理一段用户提交的对话流，识别是否存在对立观点、争吵或辩论，并提供客观、结构化的摘要。
+
+    ## Workflow & Logic
+    请严格遵循以下逻辑流程处理用户输入的聊天记录：
+
+    ### 第一步：冲突检测 (Conflict Detection)
+    分析对话内容，判断是否存在明显的意见对立、争吵或辩论。
+    *   **判断标准**：
+        *   是否存在至少两个持相反观点的对立方？
+        *   是否存在针对特定话题的反复拉扯、反驳或争论？
+    *   **否定情况**：如果是日常闲聊或无意义的刷屏等情况，请**立即停止分析**。
+    *   **输出指令**：如果判断为"无争吵/无实质对立"，请仅输出以下代码，不要包含任何其他文字：
+        `NO_CONFLICT_DETECTED`
+
+    ### 第二步：内容分析 (仅在检测到冲突时执行)
+    如果检测到冲突（Case B），请执行以下分析：
+    1.  **议题定义**：一句话概括他们在吵什么。
+    2.  **阵营划分**：识别正方与反方（或甲方与乙方）。
+    3.  **降噪与重构**：
+        *   **适应性策略**：
+            *   如果是*有逻辑的辩论*：提取核心论点和论据链条。
+            *   如果是*混乱的争吵*：过滤情绪发泄词，基于"善意理解原则"通过意译提取其原本想表达的真实诉求或立场。
+            *   指出造成沟通困难的"逻辑卡点"（如：定义不一致、纯情绪宣泄、不在同一个频道）。
+        *   **信息提取**：
+            *   **Arguments（论据）**：只提取有实质意义的论点，去除重复的废话。
+            *   **Implicit（隐含前提）**：挖掘他们未明说但默认的价值观或前提（例如：甲方主张加班，隐含前提是"公司利益高于个人"）。
+            *   **Fallacies（谬误）**：识别逻辑漏洞（如：人身攻击、滑坡谬误、偷换概念），用两三句话说明。
+
+
+    ## Output Format (Strict Constraint)
+    如果检测到冲突，请仔细分析讨论后，严格按照以下格式输出（不要使用 Markdown 代码块，直接输出JSON）：
+
+    {{
+      "topic": "简短概括议题，如：豆腐脑应该是甜的还是咸的",
+      "conflict_type": "例如：事实之争 / 价值观之争 / 定义之争 / 情绪宣泄",
+      "parties": [
+        {{
+          "name": "甲方名称",
+          "standpoint": "一句话概括的核心立场",
+          "arguments": [
+            "论据点1 (简练)",
+            "论据点2 (简练)",
+            "论据点3 (如有)"
+          ],
+          "implicit": "他们甚至可能没说出口但默认的逻辑/前提",
+          "fallacies": "识别出的逻辑谬误"
+        }},
+        {{
+          "name": "乙方名称",
+          "standpoint": "一句话概括的核心立场",
+          "arguments": [
+            "论据点1 (简练)",
+            "论据点2 (简练)",
+            "论据点3 (如有)"
+          ],
+          "implicit": "他们甚至可能没说出口但默认的逻辑/前提",
+          "fallacies": "识别出的逻辑谬误"
+        }}
+      ],
+      "analysis": {{
+        "conclusion": "裁决员的总结观察，指出矛盾症结所在。不要使用「甲方」「乙方」等称呼，使用名称。"
+      }}
+    }}
+
+    ## Constraints
+    *   **客观性**：不做道德评判，仅做逻辑梳理。
+    *   **容错性**：如果无法区分具体的论据，仅保留"核心立场"。
+    *   **前置判断**：务必先判断是否存在争吵，无争吵必须返回 `NO_CONFLICT_DETECTED` 而不是 JSON 对象。
+help_check_history:
+  description: 发过了吗
+  details: 检查最近 48 小时内是否已经讨论过某个话题或发送过某条消息。
+  usage1: check-history [内容]
+  usage2: check-history (回复某条消息)
+help_group_daily:
+  description: 每日群聊总结
+  details: 获取当日群聊的总结报告，需要先启用群消息总结功能。
+  usage1: group-daily (获取当日群聊总结)
+check_history:
+  no_content: 请提供要查询的内容，或回复一条消息。
+  no_history: 最近 48 小时内没有聊天记录。
+  no_match: 最近 2 天内未找到相关内容。
+  title: 历史消息查询结果
+  sender: 发送者
+  time: 发送时间
+  content: 消息内容
+  prompt_stage1: |
+    # Role: 语义意图提取器
+
+    ## Goal
+    分析用户的输入文本，提取其核心语义、关键词或事件摘要，生成一个用于语义搜索的 Payload。
+
+    ## Input
+    用户输入的文本（可能是一个问题、一段描述、或者一个关键词）。
+
+    ## Output
+    一个简洁的字符串，包含核心关键词或事件描述。去除无关的语气词、标点符号。
+
+    ## Example
+    User: "昨天谁说要吃肯德基来着？"
+    Output: 吃肯德基
+
+    User: "关于服务器维护的事情"
+    Output: 服务器维护
+
+    User: "那个叫什么... 好像是说原神更新了？"
+    Output: 原神更新
+  prompt_stage2: |
+    # Role: 历史消息语义匹配分析师
+
+    ## Goal
+    在给定的聊天记录历史中，寻找与提供的 "Payload" (核心语义) 高度匹配或相关的消息。
+
+    ## Input
+    1. Payload: 核心语义关键词或描述。
+    2. History: 最近的聊天记录列表。
+
+    ## Logic
+    1. 遍历 History 中的每一条消息。
+    2. 判断消息内容是否与 Payload 讨论的是同一个话题、事件，或者包含了 Payload 中的关键信息。
+    3. 如果找到匹配度最高的一条消息，提取其信息。
+    4. 如果没有找到任何相关内容，返回特定标识。
+
+    ## Output Format
+    如果找到匹配项，请返回严格的 JSON 格式（不要包含 Markdown 代码块）：
+    {{
+      "message_id": "消息ID (如果有，否则留空)",
+      "sender_nickname": "发送者昵称",
+      "timestamp": "时间字符串",
+      "content": "消息内容"
+    }}
+
+    如果未找到匹配项，请仅返回字符串：
+    NO_MATCH_FOUND
+mvp_ranking:
+  title: MVP 排行榜
+  no_data: 暂无数据
+  extract_prompt: |
+    # Role: 信息提取器
+
+    ## Goal
+    从一段群聊每日总结文本中，提取"群聊 MVP"的昵称和评语。
+
+    ## Input
+    一段包含"## 群聊 MVP"章节的 Markdown 格式群聊总结文本。
+
+    ## Logic
+    1. 在输入文本中找到"群聊 MVP"相关的章节。
+    2. 提取 MVP 群员的昵称（仅昵称，不含任何括号、ID 或装饰符号）。
+    3. 提取对 MVP 的评语。
+    4. 如果文本中没有 MVP 相关内容，将 found 设为 false。
+
+    ## Output Format
+    请返回严格的 JSON 格式（不要包含 Markdown 代码块）：
+    {{"found": true, "nickname": "MVP昵称", "comment": "评语内容"}}
+
+    如果未找到 MVP：
+    {{"found": false, "nickname": "", "comment": ""}}
+analyzing: Analyzing, please wait...

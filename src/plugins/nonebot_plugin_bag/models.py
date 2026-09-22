@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import String
+from sqlalchemy import String, Text
 from nonebot_plugin_orm import Model
 from sqlalchemy.orm import mapped_column, Mapped
 
@@ -11,7 +11,7 @@ class Bag(Model):
     item_id: Mapped[str] = mapped_column(String(64))
     count: Mapped[int]
     locked: Mapped[bool]
-    data: Mapped[bytes]  # b64 json
+    data: Mapped[str] = mapped_column(Text())  # json
 
 
 class BagOverflow(Model):
@@ -19,5 +19,5 @@ class BagOverflow(Model):
     user_id: Mapped[str] = mapped_column(String(128))
     item_id: Mapped[str] = mapped_column(String(64))
     count: Mapped[int]
-    data: Mapped[bytes]  # b64 json
+    data: Mapped[str] = mapped_column(Text())  # json
     time: Mapped[datetime]

@@ -1,0 +1,15 @@
+{% extends base %}
+
+{% block body %}
+<div>
+    <p>
+        <strong>{{ text.sender }}: </strong>{{ result.sender_nickname }}<br>
+        <strong>{{ text.time }}: </strong>{{ result.timestamp }}
+    </p>
+</div>
+<hr>
+<div class="text-secondary">
+    <span style="word-break: break-all;">{{ result.content }}</span>
+</div>
+
+{% endblock %}

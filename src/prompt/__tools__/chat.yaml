@@ -1,0 +1,10 @@
+description: |
+  在QQ中聊天，等待所有群聊火私聊会话冷却无新消息三分钟后返回。
+  **调用时机参考：**
+  - 想要暂时放下其他任务，专注于参与群聊互动
+  - 希望在做下一步决策前先观察群聊动态
+parameters:
+  - name: max_wait_minutes
+    description: "最大等待时间（分钟），超时后即使会话未冷却也会返回。默认10分钟。"
+    type: integer
+    required: false

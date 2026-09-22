@@ -19,6 +19,14 @@ require("nonebot_plugin_larkuser")
 require("nonebot_plugin_userinfo")
 require("nonebot_plugin_openai")
 require("nonebot_plugin_wolfram_alpha")
+require("nonebot_plugin_ghot")
 require("nonebot_plugin_alconna")
+require("nonebot_plugin_ranking")
 
-from . import matcher
+from . import matcher as _command_matchers
+from .core import matchers as _core_matchers
+from . import startup as _startup
+from .core import proactive_chat as _proactive_chat
+
+# 导出供其他插件使用的接口
+from .core.session import post_group_event

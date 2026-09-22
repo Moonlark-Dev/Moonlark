@@ -1,5 +1,4 @@
 from nonebot_plugin_orm import get_session
-import base64
 import json
 
 from nonebot_plugin_items.utils.get import get_item
@@ -65,7 +64,7 @@ async def append_item(user_id: str, item: ItemStack, count: int) -> None:
                 item_id=str(item.item.getLocation()),
                 count=count,
                 bag_index=bag_index,
-                data=base64.b64encode(json.dumps(item.data).encode("utf-8")),
+                data=json.dumps(item.data),
                 locked=False,
             )
         )

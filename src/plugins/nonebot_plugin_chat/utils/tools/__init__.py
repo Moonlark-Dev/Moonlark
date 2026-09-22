@@ -1,5 +1,5 @@
 #  Moonlark - A new ChatBot
-#  Copyright (C) 2025  Moonlark Development Team
+#  Copyright (C) 2026  Moonlark Development Team
 #
 #  This program is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU Affero General Public License as published
@@ -16,7 +16,18 @@
 # ##############################################################################
 
 from .browser import browse_webpage
-from .search import search_on_google
+from .search import web_search
 from .wolfram_alpha import request_wolfram_alpha
-from .describe_image import describe_image
-from .fetch_forward_message import get_fetcher
+from .abbreviation import search_abbreviation
+from .vm import (
+    vm_create_task,
+    vm_get_task_state,
+    vm_send_input,
+    vm_stop_task,
+    is_vm_available,
+    is_vm_configured,
+)
+from .bilibili import describe_bilibili_video, resolve_b23_url
+from .query_history import fetch_history_messages
+from .weather import get_weather
+from .image import download_image, ImageDownloadError

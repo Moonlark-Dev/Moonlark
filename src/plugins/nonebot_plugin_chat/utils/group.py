@@ -1,5 +1,5 @@
 #  Moonlark - A new ChatBot
-#  Copyright (C) 2025  Moonlark Development Team
+#  Copyright (C) 2026  Moonlark Development Team
 #
 #  This program is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU Affero General Public License as published
@@ -15,72 +15,128 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
-from typing import Optional, cast
-from nonebot import on_message
-from nonebot.adapters import Bot
-from nonebot.adapters import Event
+import re
+import traceback
+
+from nonebot import logger
+from nonebot.adapters import Bot, Event
 from nonebot.typing import T_State
-from nonebot_plugin_userinfo import get_user_info
-from nonebot_plugin_alconna import Image, UniMessage, Text, At, Reply, Reference
-from nonebot_plugin_orm import async_scoped_session
-from nonebot_plugin_larkuser import get_user
+from nonebot_plugin_alconna import UniMessage
 from nonebot_plugin_larkutils import get_group_id, get_user_id
-from nonebot.adapters import Message
+from nonebot_plugin_openai import fetch_message, generate_message
+from nonebot_plugin_openai.utils.message import get_message
+from nonebot_plugin_orm import get_session
+from openai import APITimeoutError
 
-from nonebot.adapters.onebot.v11 import Bot as OneBotV11Bot
-
-# from nonebot.adapters.onebot.v11 import MessageSegment as OneBotV11MessageSegment
-
-from ..models import ChatGroup
-from .image import get_image_summary
+from ..lang import lang
+from ..models import ChatGroup, PrivateChatConfig
+from .message import parse_message_to_string as _parse_message_to_string
+from .tools.browser import browser_tool
 
 
 async def group_message(event: Event) -> bool:
-    return event.get_user_id() != event.get_session_id()
+    try:
+        return event.get_user_id() != event.get_session_id()
+    except (ValueError, NotImplementedError):
+        return False
 
 
-async def enabled_group(
-    event: Event, session: async_scoped_session, group_id: str = get_group_id(), user_id: str = get_user_id()
-) -> bool:
-    return bool(
-        (await group_message(event)) and (g := await session.get(ChatGroup, {"group_id": group_id})) and g.enabled
-    )
+async def enabled_group(event: Event, group_id: str = get_group_id()) -> bool:
+    async with get_session() as session:
+        return bool(
+            (await group_message(event)) and (g := await session.get(ChatGroup, {"group_id": group_id})) and g.enabled,
+        )
 
 
-async def parse_message_to_string(message: UniMessage, event: Event, bot: Bot, state: T_State) -> str:
-    str_msg = ""
-    for segment in message:
-        if isinstance(segment, Text):
-            str_msg += segment.text
-        elif isinstance(segment, At):
-            user = await get_user(segment.target)
-            if (not user.has_nickname()) and (user_info := await get_user_info(bot, event, segment.target)):
-                nickname = user_info.user_displayname or user_info.user_name
-            else:
-                nickname = user.get_nickname()
-            str_msg += f"@{nickname}"
-        elif isinstance(segment, Image):
-            str_msg += f"[图片: {await get_image_summary(segment, event, bot, state)}]"
-        elif isinstance(segment, Reply) and segment.msg is not None:
-            if isinstance(segment.msg, UniMessage):
-                str_msg += f"[回复: {await parse_message_to_string(segment.msg, event, bot, state)}]"
-            elif isinstance(segment.msg, Message):
-                str_msg += f"[回复: {await parse_message_to_string(UniMessage.generate_without_reply(message=segment.msg), event, bot, state)}]"
-            else:
-                str_msg += f"[回复: {segment.msg}]"
-        elif isinstance(segment, Reference) and isinstance(bot, OneBotV11Bot) and segment.id is not None:
-            str_msg += f"[合并转发: {segment.id}]"
-        else:
-            str_msg += f"[特殊消息: {segment.dump()}]"
-    return str_msg
+async def enabled_private_chat(event: Event, user_id: str = get_user_id()) -> bool:
+    try:
+        if event.get_user_id() == event.get_session_id():
+            return await get_private_chat_enabled(user_id)
+    except (ValueError, NotImplementedError):
+        pass
+    # QQ adapter C2C messages: get_user_id() returns openid, get_session_id() returns "friend_{openid}"
+    if event.__class__.__module__.startswith("nonebot.adapters.qq"):
+        from nonebot.adapters.qq.event import C2CMessageCreateEvent
+
+        if isinstance(event, C2CMessageCreateEvent):
+            return await get_private_chat_enabled(user_id)
+    return False
 
 
-# from nonebot.adapters.onebot.v11 import GroupMessageEvent, Bot
-# from nonebot.matcher import Matcher
+async def get_private_chat_enabled(user_id: str) -> bool:
+    """私聊 Chat 开关，未创建过配置的用户默认开启"""
+    async with get_session() as session:
+        g = await session.get(PrivateChatConfig, {"user_id": user_id})
+        return g.enabled if g is not None else True
 
-# @on_message().handle()
-# async def _(matcher: Matcher, event: GroupMessageEvent, bot: Bot, state: T_State):
-#     if event.group_id == 598443695:
-#         message = UniMessage.of(event.get_message())
-#         await message.attach_reply()
-#         await matcher.finish(await parse_message_to_string(message, event, bot, state))
+
+class BrowserErrorOccurred(Exception):
+    pass
+
+
+class LinkParser:
+    def __init__(self, message: str, lang_str: str) -> None:
+        self.message = message
+        self.lang_str = lang_str
+        self.pattern = re.compile(
+            r"((https?|ftp):\/\/)?(([\w\-]+\.)+[a-zA-Z]{2,}|localhost|(\d{1,3}\.){3}\d{1,3})(:\d{2,5})?(\/[^\s]*)?",
+        )
+        self.links = self.get_links()
+
+    def get_links(self) -> list[re.Match[str]]:
+        return [
+            i
+            for i in self.pattern.finditer(self.message)
+            if "bilibili.com" not in i.group().lower() and "b23.tv" not in i.group().lower()
+        ]
+
+    async def parse(self) -> str:
+        for link_match in self.get_links()[::-1]:
+            link = link_match.group()
+            try:
+                description = await self.get_description(link)
+                self.message = (
+                    f"{self.message[: link_match.start()]}{link}({description}){self.message[link_match.end() :]}"
+                )
+            except BrowserErrorOccurred:
+                logger.warning(traceback.format_exc())
+            except APITimeoutError:
+                logger.warning(f"解析超时: {link}")
+        return self.message
+
+    async def get_description(self, link: str) -> str:
+        result = await browser_tool.browse(link)
+        if not result["success"]:
+            raise BrowserErrorOccurred(f"解析失败: {result}")
+        status_code = result["metadata"].get("status_code")
+        if status_code != 200:
+            return f"HTTP {status_code}"
+        return await fetch_message(
+            [
+                await get_message("system", "link_parser.md.jinja"),
+                generate_message(
+                    await lang.text(
+                        "browse_webpage.success",
+                        self.lang_str,
+                        result["url"],
+                        result["metadata"]["status_code"],
+                        result["metadata"]["description"],
+                        result["metadata"]["keywords"],
+                        result["metadata"]["content_length"],
+                        result["title"],
+                        result["content"],
+                    ),
+                    "user",
+                ),
+            ],
+            identify="Link Parse",
+            timeout=90,
+        )
+
+
+async def parse_message_to_string(
+    message: UniMessage, event: Event, bot: Bot, state: T_State, lang_str: str, forward_depth: int = 0
+) -> str:
+    return await LinkParser(
+        await _parse_message_to_string(message, event, bot, state, lang_str, forward_depth=forward_depth), lang_str
+    ).parse()

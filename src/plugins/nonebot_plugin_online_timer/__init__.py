@@ -20,3 +20,4 @@ require("nonebot_plugin_apscheduler")
 require("nonebot_plugin_ranking")
 
 from . import __main__
+from .__main__ import is_user_recently_online

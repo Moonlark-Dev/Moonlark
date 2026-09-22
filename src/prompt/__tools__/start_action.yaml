@@ -1,0 +1,26 @@
+description: |
+  执行一个自主的动作，这些动作在聊天之外，大多指向你在现实中想要做的事（如睡觉、自主活动、写博客等）。
+  **何时调用**：当你被要求"去做某事"时、或感到犯困需要睡觉时调用。
+  
+  使用 type 参数指定要请求的动作类型：
+  - start_self_action：让 Moonlark 进行一段时间的自主活动
+  - start_blog：让 Moonlark 写一篇博客日记
+  - sleep：让 Moonlark 去睡觉休息
+  提交请求后会等待 Moonlark 决定是否接受。
+parameters:
+  - name: type
+    description: "要请求的动作类型"
+    type: string
+    required: true
+    enum:
+      - start_self_action
+      - start_blog
+      - sleep
+  - name: info
+    description: "动作的补充说明。例如 sleep 时写打算睡多久，start_self_action 时写想做什么。"
+    type: string
+    required: true
+  - name: reason
+    description: "请求此动作的原因"
+    type: string
+    required: true

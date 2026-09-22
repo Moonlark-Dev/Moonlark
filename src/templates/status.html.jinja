@@ -140,7 +140,7 @@
           <div class="progress-circle success">
             <svg width="120" height="120" viewBox="0 0 120 120">
               <circle class="progress-bar-bg" cx="60" cy="60" r="54" stroke-width="6"></circle>
-              <circle class="progress-bar" id="cpu" cx="60" cy="60" r="54" stroke-width="6" stroke-dasharray="226"
+              <circle class="progress-bar" id="memory" cx="60" cy="60" r="54" stroke-width="6" stroke-dasharray="226"
                 stroke-dashoffset="0"></circle>
             </svg>
             <div class="progress-text">{{ system.mem.used }}{{ text.gb }}</div>
@@ -159,7 +159,16 @@
 <ul class="list-group list-group-flush">
   {% for node_id, node in admin_status.nodes.items() %}
   <li class="list-group-item d-flex justify-content-between align-items-center">
-    {% if node.online %}
+    {% if node.online and not node.good %}
+    <div>
+      <span class="ms-2">{{ node.nickname }} ({{ node_id }})</span>
+      <small class="text-muted d-block">
+        <span class="badge bg-info">{{ node.adapter_name }}</span>
+        {{ node.user_id }}
+      </small>
+    </div>
+    <span class="badge bg-warning">{{ text.abnormal }}</span>
+    {% elif node.online %}
     <div>
       <span class="ms-2">{{ node.nickname }} ({{ node_id }})</span>
       <small class="text-muted d-block">
@@ -213,8 +222,8 @@
   }
 
   // 更新进度条
-  updateProgress("loadavg", Math.min(parseInt({{ system.loadavg }} * 20), 100));
-  updateProgress("memory", Math.min(parseInt({{ system.mem.used }} / {{ system.mem.total }} * 100), 100));
+  updateProgress("loadavg", Math.min(parseInt({{ system.loadavg }} / {{ system.cpu.core_count }} * 100), 100));
   updateProgress("cpu", Math.min(parseInt({{ system.cpu.usage }}), 100));
+  updateProgress("memory", Math.min(parseInt({{ system.mem.used }} / {{ system.mem.total }} * 100), 100));
 </script>
 {% endblock body %}

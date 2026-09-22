@@ -1,0 +1,437 @@
+#  Moonlark - A new ChatBot
+#  Copyright (C) 2026  Moonlark Development Team
+#
+#  This program is free software: you can redistribute it and/or modify
+#  it under the terms of the GNU Affero General Public License as published
+#  by the Free Software Foundation, either version 3 of the License, or
+#  (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU Affero General Public License for more details.
+#
+#  You should have received a copy of the GNU Affero General Public License
+#  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+# ##############################################################################
+
+import base64
+import io
+import json
+import re
+import traceback
+from datetime import datetime
+from typing import Any, Dict, List, Optional
+from typing_extensions import TypedDict
+
+from nonebot import logger
+from PIL import Image
+from nonebot_plugin_chat.enums import MoodEnum
+from nonebot_plugin_chat.types import EMOTIONS
+from nonebot_plugin_orm import get_session
+from nonebot_plugin_openai.utils.chat import fetch_message
+from nonebot_plugin_openai.utils.message import generate_message, get_message
+from sqlalchemy import select
+
+from ..models import Sticker
+from .sticker_similarity import calculate_hash_async, check_sticker_duplicate
+
+
+# 表情包分类结果类型
+class MemeClassification(TypedDict):
+    is_meme: bool
+    text: str
+    emotion: str
+    labels: List[str]
+    context_keywords: List[str]
+
+
+_EMOTIONS = "\n".join([f"- {emotion}" for emotion in EMOTIONS])
+
+
+def is_gif(image_data: bytes) -> bool:
+    """
+    检测图片是否为 GIF 格式
+
+    Args:
+        image_data: 图片二进制数据
+
+    Returns:
+        是否为 GIF 格式
+    """
+    try:
+        img = Image.open(io.BytesIO(image_data))
+        return img.format == "GIF"
+    except Exception:
+        return False
+
+
+def extract_gif_first_frame(image_data: bytes) -> bytes:
+    """
+    提取 GIF 图片的第一帧并转换为 JPEG 格式
+
+    Args:
+        image_data: GIF 图片二进制数据
+
+    Returns:
+        JPEG 格式的第一帧图片数据
+    """
+    try:
+        img = Image.open(io.BytesIO(image_data))
+        # 跳到第一帧
+        img.seek(0)
+        # 转换为 RGB 模式（去除透明通道）
+        if img.mode in ("RGBA", "P"):
+            rgb_img = img.convert("RGB")
+        else:
+            rgb_img = img.convert("RGB")
+        # 保存为 JPEG 字节
+        output = io.BytesIO()
+        rgb_img.save(output, format="JPEG", quality=85)
+        return output.getvalue()
+    except Exception as e:
+        logger.warning(f"Failed to extract GIF first frame: {e}")
+        # 如果提取失败，返回原始数据
+        return image_data
+
+
+def prepare_image_for_classification(image_data: bytes) -> bytes:
+    """
+    准备图片用于分类：如果是 GIF 则提取第一帧，否则返回原图
+
+    Args:
+        image_data: 图片二进制数据
+
+    Returns:
+        处理后的图片数据
+    """
+    if is_gif(image_data):
+        logger.debug("GIF detected, extracting first frame for classification")
+        return extract_gif_first_frame(image_data)
+    return image_data
+
+
+def extract_json_from_response(response: str) -> Optional[Dict[str, Any]]:
+    """
+    从 LLM 响应中提取 JSON，处理可能包含 markdown 代码块的情况
+
+    Args:
+        response: LLM 返回的原始响应文本
+
+    Returns:
+        解析后的 JSON 字典，如果解析失败返回 None
+    """
+    # 去除首尾空白
+    response = response.strip()
+
+    # 尝试直接解析
+    try:
+        return json.loads(response)
+    except json.JSONDecodeError:
+        pass
+
+    # 尝试提取 markdown 代码块中的 JSON
+    # 匹配 ```json ... ``` 或 ``` ... ```
+    code_block_pattern = r"```(?:json)?\s*\n?([\s\S]*?)\n?```"
+    matches = re.findall(code_block_pattern, response)
+
+    for match in matches:
+        try:
+            return json.loads(match.strip())
+        except json.JSONDecodeError:
+            continue
+
+    # 尝试查找 JSON 对象（以 { 开头，以 } 结尾）
+    json_pattern = r"\{[\s\S]*\}"
+    json_matches = re.findall(json_pattern, response)
+
+    for match in json_matches:
+        try:
+            return json.loads(match)
+        except json.JSONDecodeError:
+            continue
+
+    return None
+
+
+async def classify_meme(image_data: bytes) -> Optional[MemeClassification]:
+    """
+    使用 LLM 对表情包进行分类
+
+    Args:
+        image_data: 图片二进制数据
+
+    Returns:
+        MemeClassification 分类结果，如果分类失败返回 None
+    """
+    try:
+        # 准备图片：如果是 GIF 则提取第一帧
+        processed_image = prepare_image_for_classification(image_data)
+
+        # 转换图片为 base64
+        image_base64 = base64.b64encode(processed_image).decode("utf-8")
+
+        # 构建消息
+        messages = [
+            await get_message("system", "meme_classification/system.md.jinja", emotions=_EMOTIONS),
+            generate_message(
+                [
+                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_base64}"}},
+                    {"type": "text", "text": "请分析这张图片并输出分类 JSON。"},
+                ],
+                "user",
+            ),
+        ]
+
+        # 调用 LLM
+        response = (await fetch_message(messages, identify="Meme Classification")).strip()
+
+        # 解析 JSON（处理可能的 markdown 代码块）
+        result = extract_json_from_response(response)
+
+        if result is None:
+            logger.warning(f"Failed to parse meme classification response: {response}")
+            return None
+
+        # 验证并转换结果
+        classification: MemeClassification = {
+            "is_meme": bool(result.get("is_meme", False)),
+            "text": str(result.get("text", "")),
+            "emotion": str(result.get("emotion", "")),
+            "labels": list(result.get("labels", [])),
+            "context_keywords": list(result.get("context_keywords", [])),
+        }
+
+        return classification
+
+    except Exception as e:
+        logger.warning(f"Failed to classify meme: {e}\n{traceback.format_exc()}")
+        return None
+
+
+class DuplicateStickerError(Exception):
+    """表情包重复异常"""
+
+    def __init__(self, existing_sticker: Sticker, similarity: float):
+        self.existing_sticker = existing_sticker
+        self.similarity = similarity
+        super().__init__(f"发现重复的表情包 (ID: {existing_sticker.id}, 相似度: {similarity:.2%})")
+
+
+class NotMemeError(Exception):
+    """图片不是表情包异常"""
+
+    def __init__(self, message: str = "该图片不是表情包"):
+        self.message = message
+        super().__init__(message)
+
+
+class StickerManager:
+    """Sticker management system for saving, searching and retrieving stickers"""
+
+    async def save_sticker(
+        self, description: str, raw: bytes, group_id: Optional[str] = None, check_duplicate: bool = True
+    ) -> Sticker:
+        """
+        Save a sticker to the database
+
+        Args:
+            description: VLM-generated description of the sticker
+            raw: Binary image data
+            group_id: Source group ID (optional, for tracking origin)
+            check_duplicate: Whether to check for duplicate stickers (default: True)
+
+        Returns:
+            The created Sticker object
+
+        Raises:
+            DuplicateStickerError: If a duplicate sticker is found
+        """
+        current_time = datetime.now()
+
+        async with get_session() as session:
+            # 检查重复
+            if check_duplicate:
+                is_duplicate, existing_sticker, similarity = await check_sticker_duplicate(raw, session)
+                if is_duplicate and existing_sticker:
+                    raise DuplicateStickerError(existing_sticker, similarity)
+
+            # 计算感知哈希
+            p_hash = await calculate_hash_async(raw)
+
+            # 调用 LLM 进行表情包分类
+            classification = await classify_meme(raw)
+
+            # 准备分类数据
+            meme_text: Optional[str] = None
+            emotion: Optional[str] = None
+            labels_json: Optional[str] = None
+            context_keywords_json: Optional[str] = None
+
+            if classification is not None:
+                # 如果不是表情包，拒绝添加
+                if not classification["is_meme"]:
+                    raise NotMemeError("该图片不是表情包，无法收藏")
+
+                meme_text = classification["text"]
+                emotion = classification["emotion"]
+                labels_json = json.dumps(classification["labels"], ensure_ascii=False)
+                context_keywords_json = json.dumps(classification["context_keywords"], ensure_ascii=False)
+
+            sticker = Sticker(
+                description=description,
+                raw=raw,
+                group_id=group_id,
+                created_time=current_time.timestamp(),
+                p_hash=p_hash if p_hash else None,
+                meme_text=meme_text,
+                emotion=emotion,
+                labels=labels_json,
+                context_keywords=context_keywords_json,
+            )
+
+            session.add(sticker)
+            await session.commit()
+            await session.refresh(sticker)
+
+        return sticker
+
+    async def search_sticker(self, query: str, limit: int = 5) -> List[Sticker]:
+        """
+        Search stickers by description (fuzzy matching)
+        Searches across ALL stickers globally, regardless of group_id
+
+        Args:
+            query: Search query string
+            limit: Maximum number of results to return
+
+        Returns:
+            List of matching Sticker objects
+        """
+        async with get_session() as session:
+            # Use LIKE for fuzzy matching on description
+            # Split query into keywords for better matching
+            keywords = query.split()
+
+            # Build query - search globally across all stickers
+            stmt = select(Sticker)
+
+            # Apply keyword filters using LIKE
+            for keyword in keywords:
+                stmt = stmt.where(Sticker.description.contains(keyword))
+
+            # Order by created_time descending (newest first) and limit results
+            stmt = stmt.order_by(Sticker.created_time.desc()).limit(limit)
+
+            result = await session.scalars(stmt)
+            return list(result.all())
+
+    async def search_sticker_any(self, query: str, limit: int = 5) -> List[Sticker]:
+        """
+        Search stickers matching ANY keyword (OR logic)
+        Searches across ALL stickers globally
+
+        Args:
+            query: Search query string
+            limit: Maximum number of results to return
+
+        Returns:
+            List of matching Sticker objects
+        """
+        from sqlalchemy import or_
+
+        async with get_session() as session:
+            keywords = query.split()
+
+            if not keywords:
+                return []
+
+            # Build OR conditions for each keyword
+            conditions = [Sticker.description.contains(keyword) for keyword in keywords]
+
+            stmt = select(Sticker).where(or_(*conditions)).order_by(Sticker.created_time.desc()).limit(limit)
+
+            result = await session.scalars(stmt)
+            return list(result.all())
+
+    async def get_sticker(self, sticker_id: int) -> Optional[Sticker]:
+        """
+        Get a sticker by its ID
+
+        Args:
+            sticker_id: The ID of the sticker to retrieve
+
+        Returns:
+            The Sticker object if found, None otherwise
+        """
+        async with get_session() as session:
+            return await session.get(Sticker, sticker_id)
+
+    async def delete_sticker(self, sticker_id: int) -> bool:
+        """
+        Delete a sticker by its ID
+
+        Args:
+            sticker_id: The ID of the sticker to delete
+
+        Returns:
+            True if deleted, False if not found
+        """
+        async with get_session() as session:
+            sticker = await session.get(Sticker, sticker_id)
+            if not sticker:
+                return False
+
+            await session.delete(sticker)
+            await session.commit()
+            return True
+
+    async def get_all_stickers(self, limit: int = 100) -> List[Sticker]:
+        """
+        Get all stickers (for listing purposes)
+
+        Args:
+            limit: Maximum number of stickers to return
+
+        Returns:
+            List of Sticker objects
+        """
+        async with get_session() as session:
+            stmt = select(Sticker).order_by(Sticker.created_time.desc()).limit(limit)
+            result = await session.scalars(stmt)
+            return list(result.all())
+
+    async def filter_by_emotion(self, emotion: str, limit: int = 10) -> List[Sticker]:
+        """
+        Filter stickers by emotion
+
+        Args:
+            emotion: Emotion to filter by (e.g., "高兴", "难过", "生气")
+            limit: Maximum number of results to return
+
+        Returns:
+            List of matching Sticker objects
+        """
+        async with get_session() as session:
+            stmt = (
+                select(Sticker)
+                .where(Sticker.emotion.contains(emotion))
+                .order_by(Sticker.created_time.desc())
+                .limit(limit)
+            )
+            result = await session.scalars(stmt)
+            return list(result.all())
+
+
+# Global sticker manager instance
+sticker_manager = StickerManager()
+
+
+def get_sticker_manager() -> StickerManager:
+    """
+    Get the global StickerManager instance
+
+    Returns:
+        StickerManager instance
+    """
+    return sticker_manager

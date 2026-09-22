@@ -1,4 +1,3 @@
-import base64
 from nonebot.log import logger
 import json
 from nonebot_plugin_orm import get_session
@@ -28,9 +27,7 @@ async def get_bag_item(user_id: str, index: int, ignore_lock: bool = False) -> B
         result = await session.scalar(select(Bag).where(Bag.user_id == user_id, Bag.bag_index == index))
         if result is None:
             raise IndexError(f"Item {user_id}->{index} not found.")
-        item = await get_item(
-            get_location_by_id(result.item_id), user_id, result.count, json.loads(base64.b64decode(result.data))
-        )
+        item = await get_item(get_location_by_id(result.item_id), user_id, result.count, json.loads(result.data))
         bag_item = BagItem(item, result.bag_index)
         if not ignore_lock:
             await bag_item.setup_bag_lock()
@@ -49,7 +46,7 @@ async def get_bag_items(user_id: str, ignore_lock: bool = False, ignore_locked_i
         list[BagItem]: 物品列表
     """
     async with get_session() as session:
-        result = await session.scalars(select(Bag.bag_index).where(Bag.user_id == user_id))
+        result = await session.scalars(select(Bag.bag_index).where(Bag.user_id == user_id).order_by(Bag.bag_index))
         item_list = []
         logger.debug(f"Getting bag items of user {user_id}")
         for index in result:

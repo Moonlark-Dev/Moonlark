@@ -1,0 +1,30 @@
+time:
+  days: "{}天{}小时{}分钟"
+  hours: "{}小时{}分钟"
+  minutes: "{}分钟"
+
+label:
+  global: "全局"
+  here: "本群"
+
+item:
+  title: "⏱️ 上次上线时间"
+  location: "📍 {}"
+  time_diff: "⏰ 距今: {}"
+  time_point: "🕐 {}"
+
+result: |
+  👤 用户: {}
+  {}
+
+no_record: "❌ 没有找到该用户的上次上线记录"
+
+error:
+  get_session_failed: "⚠️ 无法获取当前会话信息"
+
+help:
+  details: "记录并查询用户最后上线时间，支持全局和当前会话两种范围"
+  description: "查询最后上线时间"
+  usage1: "lastseen (查看自己最后上线时间)"
+  usage2: "lastseen @用户 (查看指定用户最后上线时间)"
+  usage3: "lastseen QQ号 (通过QQ号查询指定用户最后上线时间)"

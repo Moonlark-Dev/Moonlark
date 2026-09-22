@@ -20,6 +20,11 @@ class ResourceLocation:
     def getPath(self) -> str:
         return self.path
 
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, ResourceLocation):
+            return self.namespace == other.namespace and self.path == other.path
+        return False
+
     def __hash__(self) -> int:
         return str(self).__hash__()
 

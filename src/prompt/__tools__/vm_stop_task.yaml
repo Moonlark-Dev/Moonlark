@@ -1,0 +1,14 @@
+description: |
+  停止一个正在运行的任务。
+  **何时调用**:
+  - 当任务运行时间过长需要终止时
+  - 当发现任务执行的命令有误需要中断时
+  - 当不再需要任务继续执行时
+  **注意事项**:
+  - 停止后的任务无法恢复
+  - 任务状态将变为 stopped
+parameters:
+  - name: task_id
+    description: "要停止的任务的 ID"
+    type: string
+    required: true

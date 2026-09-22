@@ -1,5 +1,5 @@
 #  Moonlark - A new ChatBot
-#  Copyright (C) 2025  Moonlark Development Team
+#  Copyright (C) 2026  Moonlark Development Team
 #
 #  This program is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU Affero General Public License as published
@@ -15,14 +15,28 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
-from typing import Optional, Dict, Any
-from urllib.parse import urlparse
-import html2text
-from nonebot_plugin_htmlrender import get_new_page
-from nonebot.log import logger
 import re
+from typing import Any, Dict, Literal, Optional
+from typing_extensions import TypedDict
+from urllib.parse import urlparse
 
-from ..url_validator import is_internal_url
+import html2text
+from nonebot.log import logger
+from nonebot_plugin_htmlrender import get_new_page
+from nonebot_plugin_larkutils.url_validator import block_internal_request, resolve_internal
+
+from nonebot_plugin_chat.types import GetTextFunc
+
+
+class BrowseResult(TypedDict):
+    """网页浏览结果"""
+
+    success: bool
+    url: str
+    title: Optional[str]
+    content: Optional[str]
+    error: Optional[str]
+    metadata: Dict[str, Any]
 
 
 def _clean_markdown(markdown: str) -> str:
@@ -38,15 +52,13 @@ def _clean_markdown(markdown: str) -> str:
 async def _get_meta_content(page, name: str) -> Optional[str]:
     """获取meta标签内容"""
     try:
-        return await page.evaluate(
-            f"""
+        return await page.evaluate(f"""
             () => {{
                 const meta = document.querySelector('meta[name="{name}"]') || 
                             document.querySelector('meta[property="og:{name}"]');
                 return meta ? meta.content : null;
             }}
-        """
-        )
+        """)
     except Exception as e:
         logger.exception(e)
         return None
@@ -77,7 +89,6 @@ async def _remove_unwanted_elements(page):
             await page.evaluate(f"() => {{ document.querySelectorAll('{selector}').forEach(el => el.remove()) }}")
         except Exception as e:
             logger.exception(e)
-            pass
 
 
 async def _extract_main_content(page) -> str:
@@ -96,14 +107,12 @@ async def _extract_main_content(page) -> str:
 
     for selector in main_selectors:
         try:
-            content = await page.evaluate(
-                f"""
+            content = await page.evaluate(f"""
                 () => {{
                     const el = document.querySelector('{selector}');
                     return el ? el.innerHTML : null;
                 }}
-            """
-            )
+            """)
             if content:
                 return content
         except Exception as e:
@@ -120,7 +129,7 @@ class AsyncBrowserTool:
     def __init__(
         self,
         timeout: int = 30000,
-        wait_until: str = "networkidle",
+        wait_until: Literal["commit", "domcontentloaded", "load", "networkidle"] = "networkidle",
         remove_scripts: bool = True,
         remove_styles: bool = True,
     ):
@@ -149,7 +158,7 @@ class AsyncBrowserTool:
         self.html_converter.protect_links = True
         self.html_converter.unicode_snob = True
 
-    async def browse(self, url: str) -> Dict[str, Any]:
+    async def browse(self, url: str) -> BrowseResult:
         """
         异步浏览网页并转换为Markdown
 
@@ -161,16 +170,24 @@ class AsyncBrowserTool:
         """
         try:
             parsed = urlparse(url)
-            if is_internal_url(parsed):
-                return {"success": False, "url": url, "error": "无法访问本地资源", "content": None}
+            if await resolve_internal(parsed):
+                return {
+                    "success": False,
+                    "url": url,
+                    "error": "无法访问本地资源",
+                    "content": None,
+                    "title": None,
+                    "metadata": {},
+                }
             if not parsed.scheme:
                 url = f"https://{url}"
             async with get_new_page() as page:
+                await page.route("**/*", block_internal_request)
                 await page.set_extra_http_headers(
                     {
                         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
                         "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
-                    }
+                    },
                 )
                 response = await page.goto(url, wait_until=self.wait_until, timeout=self.timeout)
                 logger.debug("页面已打开")
@@ -190,7 +207,7 @@ class AsyncBrowserTool:
 
                 if self.remove_styles:
                     await page.evaluate(
-                        "() => { document.querySelectorAll('style, link[rel=\"stylesheet\"]').forEach(el => el.remove()) }"
+                        "() => { document.querySelectorAll('style, link[rel=\"stylesheet\"]').forEach(el => el.remove()) }",
                     )
 
                 # 移除不必要的元素
@@ -208,6 +225,7 @@ class AsyncBrowserTool:
                 "url": url,
                 "title": title,
                 "content": markdown_content,
+                "error": None,
                 "metadata": {
                     "description": meta_description,
                     "keywords": meta_keywords,
@@ -217,36 +235,39 @@ class AsyncBrowserTool:
             }
 
         except Exception as e:
-            return {"success": False, "url": url, "error": str(e), "content": None}
+            return {"success": False, "url": url, "error": str(e), "content": None, "title": None, "metadata": {}}
 
     def _html_to_markdown(self, html: str) -> str:
         """将HTML转换为Markdown"""
         return self.html_converter.handle(html)
 
 
-# OpenAI 工具函数定义
-# async_browser_tool_schema = {
-#     "type": "function",
-#     "function": {
-#         "name": "browse_webpage",
-#         "description": "使用浏览器访问指定URL并获取网页内容的Markdown格式文本",
-#         "parameters": {
-#             "type": "object",
-#             "properties": {
-#                 "url": {
-#                     "type": "string",
-#                     "description": "要访问的网页URL地址"
-#                 }
-#             },
-#             "required": ["url"]
-#         }
-#     }
-# }
-
-
 browser_tool = AsyncBrowserTool()
 
 
-async def browse_webpage(url: str) -> dict[str, Any]:
+# f"""- URL: {result['url']}
+# - 请求状态: {result['metadata']['status_code']}
+# - 页面简介: {result['metadata']['description']}
+# - 关键词: {result['metadata']['keywords']}
+# - 内容长度: {result['metadata']['content_length']}
+
+# # {result['title']}
+
+# {result['content']}"""
+
+
+async def browse_webpage(url: str, get_text: GetTextFunc) -> str:
     logger.info(f"Moonlark 正在访问: {url}")
-    return await browser_tool.browse(url)
+    result = await browser_tool.browse(url)
+    if result["success"]:
+        return await get_text(
+            "browse_webpage.success",
+            result["url"],
+            result["metadata"]["status_code"],
+            result["metadata"]["description"],
+            result["metadata"]["keywords"],
+            result["metadata"]["content_length"],
+            result["title"],
+            result["content"],
+        )
+    return await get_text("browse_webpage.error", result["error"])

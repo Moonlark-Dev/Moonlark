@@ -8,7 +8,8 @@ from nonebot import on_command
 from nonebot.adapters import Message
 from nonebot.params import CommandArg
 import json
-from typing import Generator, TypedDict, Optional
+from typing import Generator, Optional
+from typing_extensions import TypedDict
 import aiofiles
 from pathlib import Path
 

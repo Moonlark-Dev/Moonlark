@@ -1,0 +1,207 @@
+import json
+from datetime import datetime, timedelta, timezone
+from typing import Sequence
+
+from nonebot import logger
+from nonebot_plugin_openai import fetch_message, fetch_json, generate_message
+from nonebot_plugin_openai.utils.message import get_message, get_message_text, get_messages
+from pydantic import BaseModel
+
+from .models import CatGirlScore, DebateAnalysis, GroupMessage
+
+
+class MVPResult(BaseModel):
+    found: bool
+    nickname: str = ""
+    comment: str = ""
+
+
+async def generate_message_string(result: list[GroupMessage] | Sequence[GroupMessage], style: str) -> str:
+    messages = ""
+    for message in list(result)[::-1]:
+        if style in ["broadcast", "bc"]:
+            # Format timestamp to include both date and time for broadcast style
+            timestamp_str = message.timestamp.strftime("%Y-%m-%d %H:%M:%S")
+            messages += f"[{timestamp_str}] [{message.sender_nickname}] {message.message}\n"
+        else:
+            messages += f"[{message.sender_nickname}] {message.message}\n"
+    return messages
+
+
+async def fetch_broadcast_summary(user_id: str, messages: str) -> str:
+    summary_string = await fetch_message(
+        await get_messages("msg_summary_broadcast", messages=messages),
+        identify="Message Summary (Broadcast)",
+    )
+    return summary_string
+
+
+async def fetch_default_summary(user_id: str, messages: str) -> str:
+    summary_string = await fetch_message(
+        [await get_message("system", "msg_summary/system.md.jinja"), generate_message(messages, "user")],
+        identify="Message Summary",
+    )
+    return summary_string
+
+
+async def fetch_topic_summary(user_id: str, messages: str) -> str:
+    summary_string = await fetch_message(
+        [await get_message("system", "msg_summary_topic/system.md.jinja"), generate_message(messages, "user")],
+        identify="Message Summary (Topic)",
+    )
+    return summary_string
+
+
+async def fetch_daily_summary(user_id: str, messages: str) -> str:
+    summary_string = await fetch_message(
+        [
+            await get_message("system", "msg_summary_daily/system.md.jinja"),
+            generate_message(messages, "user"),
+        ],
+        identify="Message Summary (Daily)",
+    )
+    return summary_string
+
+
+async def get_catgirl_score(message_list: str) -> list[CatGirlScore]:
+    """获取由聊天记录总结出来的猫娘分数"""
+    return json.loads(
+        await fetch_message(
+            [
+                await get_message("system", "neko/system.md.jinja"),
+                generate_message(message_list, "user"),
+            ],
+            identify="Message Summary (Neko)",
+        )
+    )
+
+
+async def analyze_debate(messages: str, user_id: str) -> DebateAnalysis | None:
+    """分析聊天记录中的辩论内容"""
+    result = await fetch_message(
+        [
+            await get_message("system", "debate/system.md.jinja"),
+            generate_message(messages, "user"),
+        ],
+        identify="Message Summary (Debate)",
+    )
+
+    # 检查是否检测到冲突
+    if "NO_CONFLICT_DETECTED" in result:
+        return None
+
+    # 清理 JSON 字符串
+    result = result.strip()
+    if result.startswith("```json"):
+        result = result[7:]
+    if result.endswith("```"):
+        result = result[:-3]
+    result = result.strip()
+
+    return json.loads(result)
+
+
+async def generate_semantic_search_payload(query: str) -> str:
+    """Stage 1: Intent Extraction"""
+    result = await fetch_message(
+        [
+            await get_message("system", "check_history_stage1/system.md.jinja"),
+            generate_message(query, "user"),
+        ],
+        identify="Message Summary (History Check Stage 1)",
+    )
+    return result.strip()
+
+
+async def analyze_history(payload: str, history: list[GroupMessage], user_id: str) -> dict | None:
+    """Stage 2: Historical Analysis"""
+    messages_str = await generate_message_string(history, "broadcast")
+
+    result = await fetch_message(
+        [
+            await get_message("system", "check_history_stage2/system.md.jinja"),
+            generate_message(f"Payload: {payload}\n\nHistory:\n{messages_str}", "user"),
+        ],
+        identify="Message Summary (History Check Stage 2)",
+    )
+
+    if "NO_MATCH_FOUND" in result:
+        return None
+
+    # Clean JSON string
+    result = result.strip()
+    if result.startswith("```json"):
+        result = result[7:]
+    if result.endswith("```"):
+        result = result[:-3]
+    result = result.strip()
+
+    try:
+        return json.loads(result)
+    except json.JSONDecodeError as e:
+        logger.exception(e)
+        return None
+
+
+async def extract_mvp_from_summary(summary_string: str, user_id: str = "") -> tuple[str, str] | None:
+    """Extract MVP nickname and comment from daily summary using LLM"""
+    try:
+        result = await fetch_json(
+            [
+                await get_message("system", "mvp_extract/system.md.jinja"),
+                generate_message(summary_string, "user"),
+            ],
+            response_format=MVPResult,
+            identify="Message Summary (MVP Extract)",
+        )
+    except Exception as e:
+        logger.exception(e)
+        return None
+
+    if result.found and result.nickname:
+        return result.nickname, result.comment
+    return None
+
+
+class DecisionResult(BaseModel):
+    """处分通知 AI 生成结果"""
+
+    background: str
+    violations: list[str]
+    punishment: str
+    rectification: list[str]
+
+
+async def generate_decision_content(
+    messages: str,
+    target_nickname: str,
+    group_name: str,
+    punishment: str,
+    user_id: str,
+) -> DecisionResult | None:
+    """生成处分通知内容
+
+    Args:
+        messages: 聊天记录
+        target_nickname: 目标群员昵称
+        group_name: 群名称
+        punishment: 处分内容（如"女装"）
+        user_id: 用户ID
+    """
+    prompt = await get_message_text("decision/system.md.jinja")
+    try:
+        result = await fetch_json(
+            [
+                generate_message(prompt, "system"),
+                generate_message(
+                    f"目标群员昵称：{target_nickname}\n群名称：{group_name}\n处分内容：{punishment}\n\n聊天记录：\n{messages}",
+                    "user",
+                ),
+            ],
+            response_format=DecisionResult,
+            identify="Message Summary (Decision)",
+        )
+        return result
+    except Exception as e:
+        logger.exception(e)
+        return None

@@ -1,0 +1,3 @@
+plugin: md
+commands:
+  md: help;1;superuser

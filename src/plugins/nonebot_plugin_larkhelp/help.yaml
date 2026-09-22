@@ -1,3 +1,4 @@
 plugin: larkhelp
 commands:
   help: help;2;tools
+  menu: menu;2;tools

@@ -1,3 +1,6 @@
+from typing import Optional
+
+from nonebot.adapters import Event
 from nonebot.matcher import Matcher
 from nonebot_plugin_orm import get_session
 from nonebot_plugin_userinfo import UserInfo, EventUserInfo
@@ -5,14 +8,21 @@ from nonebot_plugin_userinfo import UserInfo, EventUserInfo
 from nonebot_plugin_larkutils import get_user_id
 from .register import register_user
 from ..lang import lang
+from .downed import send_down_prompt
 from .user import get_user
 
 
-async def check_access(user_id: str = get_user_id(), user_info: UserInfo = EventUserInfo()) -> None:
-    if (await get_user(user_id)).register_time is None:
+async def check_access(
+    user_id: str = get_user_id(), user_info: UserInfo = EventUserInfo(), event: Optional[Event] = None
+) -> None:
+    user = await get_user(user_id)
+    if await user.is_down():
+        await send_down_prompt(user_id, user.get_down_remaining())
+        return
+    if user.register_time is None:
         await lang.send("matcher.not_registered", user_id)
         async with get_session() as session:
-            await register_user(session, user_id, user_info)
+            await register_user(session, user_id, user_info, event=event)
 
 
 def patch_matcher(matcher: type[Matcher]) -> type[Matcher]:

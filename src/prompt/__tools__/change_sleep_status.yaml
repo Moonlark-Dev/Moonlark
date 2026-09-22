@@ -1,0 +1,21 @@
+description: |
+  处理犯困提示，决定是否准备睡觉。
+  **何时必须调用**：当你收到犯困提示时，使用此工具来确认你是否准备睡觉。
+  - 选择 `ready`：确认准备去睡觉
+  - 选择 `delay`：延迟一段时间再考虑睡觉，可以指定延迟的分钟数和原因
+parameters:
+  - name: deal_type
+    description: "决策类型：'ready' 表示准备睡觉，'delay' 表示延迟。"
+    type: string
+    required: true
+    enum:
+      - ready
+      - delay
+  - name: delay_minutes
+    description: "延迟的分钟数（仅当 deal_type 为 'delay' 时有效），最大 30 分钟。"
+    type: integer
+    required: false
+  - name: reason
+    description: "延迟的原因（仅当 deal_type 为 'delay' 时可选）。"
+    type: string
+    required: false

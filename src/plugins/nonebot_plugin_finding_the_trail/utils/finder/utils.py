@@ -1,5 +1,5 @@
 #  Moonlark - A new ChatBot
-#  Copyright (C) 2024  Moonlark Development Team
+#  Copyright (C) 2026  Moonlark Development Team
 #
 #  This program is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU Affero General Public License as published
@@ -17,7 +17,7 @@
 
 import copy
 import random
-from typing import TypedDict
+from typing_extensions import TypedDict
 
 from ..enums import Directions, Blocks, DIRECTION_LIST
 

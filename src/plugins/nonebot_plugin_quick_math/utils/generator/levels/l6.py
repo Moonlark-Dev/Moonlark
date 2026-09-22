@@ -1,18 +1,9 @@
-import copy
-import json
 import random
-from typing import Generator, Optional
 import sympy as sp
-import re
 
-from .utils import parse_int, get_verify_function
+from .options import build_choices
+from .utils import parse_int
 
-from nonebot_plugin_openai.utils.message import generate_message
-
-from ....exceptions import GenerateFailed
-
-from ....config import config
-from nonebot_plugin_openai.utils.chat import fetch_message
 from ....types import Question
 from ....__main__ import lang
 
@@ -44,14 +35,18 @@ async def generate_question(user_id: str) -> Question:
                 answer += evaluate_trig_functions(b)[1] * a
             case 3:
                 a = random.choice([i for i in range(-5, 6) if i != 0])
-                b = 15 * random.choice([i for i in range(1, 13) if i != 90])
+                # 排除 90°（tan 无定义，sympy 会给出 zoo）
+                b = 15 * random.choice([i for i in range(1, 13) if i != 6])  # nosec
                 question += f"{parse_int(a)}\\tan {b}^\\circ"
                 answer += evaluate_trig_functions(b)[2] * a
             case _:
                 a = random.choice([i for i in range(-75, 76) if i != 0])
                 question += parse_int(a)
                 answer += sp.Integer(a)
+    distractors = [str(answer + k) for k in range(1, 5)] + [str(answer - k) for k in range(1, 5)]
+    options, answer_letter = build_choices(str(answer), distractors)
     return {
-        "answer": get_verify_function(answer, user_id),
+        "answer": answer_letter,
         "question": await lang.text("question.l6", user_id, question),
+        "options": options,
     }

@@ -1,5 +1,5 @@
 #  Moonlark - A new ChatBot
-#  Copyright (C) 2025  Moonlark Development Team
+#  Copyright (C) 2026  Moonlark Development Team
 #
 #  This program is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU Affero General Public License as published
@@ -15,7 +15,8 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
-from typing import TypedDict, Literal
+from typing import Literal
+from typing_extensions import TypedDict
 from typing_extensions import TypedDict as ExtensionTypedDict
 
 from nonebot_plugin_larkcave.models import CaveData

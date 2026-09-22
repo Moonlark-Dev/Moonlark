@@ -1,5 +1,5 @@
 #  Moonlark - A new ChatBot
-#  Copyright (C) 2024  Moonlark Development Team
+#  Copyright (C) 2026  Moonlark Development Team
 #
 #  This program is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU Affero General Public License as published
@@ -38,6 +38,7 @@ try:
     }
 except FileNotFoundError:
     logger.error(f"加载贴图失败（文件缺失）: {traceback.format_exc()}")
+    BLOCKS = {}
 
 
 def generate_map_image(game_map: list[list[Blocks]]) -> Image.Image:

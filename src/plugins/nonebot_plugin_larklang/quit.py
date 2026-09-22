@@ -1,6 +1,5 @@
 from .__main__ import LangHelper
 
-
 lang = LangHelper()
 
 

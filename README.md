@@ -8,7 +8,7 @@
 ![GitHub repo size](https://img.shields.io/github/repo-size/Moonlark-Dev/Moonlark)
 [![pre-commit.ci status](https://results.pre-commit.ci/badge/github/Moonlark-Dev/Moonlark/main.svg)](https://results.pre-commit.ci/latest/github/Moonlark-Dev/Moonlark/main)
 
-[Moonlark Wiki](https://moonlark-wiki.itcdt.top/) · 
+[Wiki (维护中)](https://moonlark-wiki.itcdt.top/) · 
 [Crowdin](https://crowdin.com/project/moonlark) · 
 [English](README_eng.md) · 
 [繁體](README_zho.md)
@@ -34,7 +34,7 @@ Moonlark 在 [AGPL-3.0](LICENSE) 许可证下开源。
 
 ```
 Moonlark - A new ChatBot
-Copyright (C) 2024  Moonlark Development Team
+Copyright (C) 2026  Moonlark Development Team
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Affero General Public License as published

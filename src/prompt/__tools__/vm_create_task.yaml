@@ -1,0 +1,33 @@
+description: |
+  在远程 Docker 容器中创建一个命令执行任务。
+  **何时调用**:
+  - 当需要执行系统命令、运行脚本或进行系统操作时
+  - 当需要编译或运行代码时
+  - 当需要查看系统信息、文件内容或进行文件操作时
+  **使用流程**:
+  1. 调用此工具创建任务，获得任务 ID
+  2. 使用 vm_get_task_state 查询任务执行结果
+  3. 如果任务需要交互式输入，使用 vm_send_input 发送输入
+  4. 如果需要终止长时间运行的任务，使用 vm_stop_task
+  **注意事项**:
+  - 命令将在 Linux 环境的 Docker 容器中执行
+  - 任务是异步执行的，创建后需查询状态获取结果
+  - 对于长时间运行的命令，任务状态会显示为 running
+parameters:
+  - name: command
+    description: |
+      要在 Docker 容器中执行的 Shell 命令。
+      支持所有标准的 Linux Shell 命令，如 ls、cat、python、gcc 等。
+      可以使用管道、重定向等 Shell 特性。
+      例如: 'ls -la /tmp' 或 'python3 script.py' 或 'echo hello > test.txt'
+    type: string
+    required: true
+  - name: title
+    description: |
+      任务标题，用于描述这个任务的用途。
+      应简洁明了地说明任务目的，便于后续追踪和管理。
+      例如: '查看系统信息'、'运行测试脚本'、'编译程序'
+    type: string
+    required: true
+
+  

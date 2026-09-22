@@ -10,7 +10,6 @@ from .utils.generator import generate_map, change_light_stats
 from .utils.image import draw
 from nonebot_plugin_minigame_api import create_minigame_session
 
-
 alc = Alconna("tol", Args["width", int, config.tol_default_size[1]], Args["height", int, config.tol_default_size[0]])
 matcher = on_alconna(alc)
 lang = LangHelper()

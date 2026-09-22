@@ -1,0 +1,14 @@
+description: |
+  设置一个定时器，在指定时间后触发。
+  **何时必须调用**: 当需要在未来的某个时间点执行某个操作时。
+  **判断标准**: 当需要延迟执行某些操作或提醒时使用。
+  例如：群友要求你在 X 分钟后提醒他做某事；群友正在做某事，你想要几分钟后关心一下他的完成进度。
+parameters:
+  - name: delay
+    description: "延迟时间，以分钟为单位，计时器将在此时间后触发。"
+    type: integer
+    required: true
+  - name: description
+    description: "定时器描述，用于描述定时器的用途。"
+    type: string
+    required: true

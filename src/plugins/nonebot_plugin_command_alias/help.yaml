@@ -1,0 +1,3 @@
+plugin: command_alias
+commands:
+  alias: help;4;tools

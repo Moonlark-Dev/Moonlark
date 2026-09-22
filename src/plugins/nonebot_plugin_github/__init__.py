@@ -3,7 +3,6 @@ from nonebot import logger, require
 from nonebot.exception import FinishedException
 from nonebot.plugin import PluginMetadata
 
-
 __plugin_meta__ = PluginMetadata(
     name="nonebot_plugin_github",
     description="",
@@ -21,9 +20,8 @@ from nonebot import on_keyword
 from nonebot.adapters import Event
 from nonebot_plugin_larklang import LangHelper
 from nonebot_plugin_render import render_template
-from nonebot_plugin_larkutils import get_user_id
+from nonebot_plugin_larkutils import get_user_id, review_image
 from . import data_source
-
 
 github_command = on_alconna(Alconna("github", Args["url", str]))
 github_keyword = on_keyword({"/"}, block=False, priority=5)
@@ -48,46 +46,47 @@ async def _github_handler(matcher, url: str, user_id: str, reply_unknown_url: bo
         if reply_unknown_url:
             await lang.finish("unknown_url", user_id)
         return
-    await matcher.finish(
-        await UniMessage()
-        .image(
-            raw=await render_template(
-                "github.html.jinja",
-                await lang.text("title", user_id),
-                user_id,
-                {
-                    "data": data,
-                    "text": {
-                        "repo": {
-                            "star": await lang.text("repo.star", user_id),
-                            "forks": await lang.text("repo.forks", user_id),
-                            "issues": await lang.text("repo.issues", user_id),
-                            "language": await lang.text("repo.language", user_id),
-                        },
-                        "issues": {
-                            "open": await lang.text("issues.open", user_id),
-                            "closed": await lang.text("issues.closed", user_id),
-                        },
-                        "discussion": {
-                            "at": await lang.text("discussion.at", user_id),
-                        },
-                        "user": {
-                            "followers": await lang.text("user.followers", user_id),
-                            "following": await lang.text("user.following", user_id),
-                            "public_repos": await lang.text("user.public_repos", user_id),
-                            "location": await lang.text("user.location", user_id),
-                        },
-                        "pull": {
-                            "wants_to_merge": await lang.text("pull.want", user_id),
-                            "into": await lang.text("pull.into", user_id),
-                            "merged": await lang.text("pull.merged", user_id),
-                        },
-                    },
+    image = await render_template(
+        "github.html.jinja",
+        await lang.text("title", user_id),
+        user_id,
+        {
+            "data": data,
+            "text": {
+                "repo": {
+                    "star": await lang.text("repo.star", user_id),
+                    "forks": await lang.text("repo.forks", user_id),
+                    "issues": await lang.text("repo.issues", user_id),
+                    "language": await lang.text("repo.language", user_id),
                 },
-            )
-        )
-        .export()
+                "issues": {
+                    "open": await lang.text("issues.open", user_id),
+                    "closed": await lang.text("issues.closed", user_id),
+                },
+                "discussion": {
+                    "at": await lang.text("discussion.at", user_id),
+                },
+                "user": {
+                    "followers": await lang.text("user.followers", user_id),
+                    "following": await lang.text("user.following", user_id),
+                    "public_repos": await lang.text("user.public_repos", user_id),
+                    "location": await lang.text("user.location", user_id),
+                },
+                "pull": {
+                    "wants_to_merge": await lang.text("pull.want", user_id),
+                    "into": await lang.text("pull.into", user_id),
+                    "merged": await lang.text("pull.merged", user_id),
+                    "no_body": await lang.text("pull.no_body", user_id),
+                },
+            },
+        },
     )
+    if not (result := await review_image(image))["compliance"]:
+        if reply_unknown_url:
+            await lang.finish("not_compliance", user_id, result["message"])
+        else:
+            return
+    await matcher.finish(await UniMessage().image(raw=image).export())
 
 
 @github_command.handle()

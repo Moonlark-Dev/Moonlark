@@ -1,5 +1,5 @@
 #  Moonlark - A new ChatBot
-#  Copyright (C) 2024  Moonlark Development Team
+#  Copyright (C) 2026  Moonlark Development Team
 #
 #  This program is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU Affero General Public License as published
@@ -14,7 +14,6 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
-import base64
 from datetime import datetime
 from typing import Optional
 
@@ -22,13 +21,16 @@ from nonebot_plugin_orm import get_session
 
 from nonebot_plugin_larkuser.exceptions import UserNotRegistered
 from nonebot_plugin_larkuser.models import UserData
-from nonebot_plugin_larkuser.user.base import MoonlarkUser
+from nonebot_plugin_larkuser.user.base import MoonlarkUser, UnsetValue, _UNSET, _is_set
 from nonebot_plugin_larkuser.utils.avatar import get_user_avatar
 from nonebot_plugin_larkutils import get_main_account
 import json
 
+guest_users = {}
+
 
 class MoonlarkRegisteredUser(MoonlarkUser):
+    user_has_nickname: bool = True
 
     async def set_data(
         self,
@@ -38,23 +40,26 @@ class MoonlarkRegisteredUser(MoonlarkUser):
         health: Optional[float] = None,
         favorability: Optional[float] = None,
         config: Optional[dict] = None,
+        downed_at: UnsetValue = _UNSET,
     ) -> None:
-        if not self.is_registered():
+        if self.get_register_time() is None:
             raise UserNotRegistered
         async with get_session() as session:
             user = await session.get(UserData, self.user_id)
             if user is None:
                 session.add(user := UserData(user_id=user_id, nickname=""))
-            if experience:
+            if experience is not None:
                 user.experience = experience
-            if vimcoin:
+            if vimcoin is not None:
                 user.vimcoin = vimcoin
-            if health:
+            if health is not None:
                 user.health = health
-            if favorability:
+            if favorability is not None:
                 user.favorability = favorability
-            if config:
-                user.config = base64.b64encode(json.dumps(config).encode())
+            if config is not None:
+                user.config = json.dumps(config)
+            if _is_set(downed_at):
+                user.downed_at = downed_at
             await session.commit()
         await self.setup_user()
 
@@ -65,27 +70,30 @@ class MoonlarkRegisteredUser(MoonlarkUser):
         self.main_account = False
 
     async def setup_user(self) -> None:
+        await self.setup_user_id()
         async with get_session() as session:
             user = await session.get(UserData, self.user_id)
             if user is None:
+                self.user_has_nickname = False
                 return
             self.nickname = user.nickname
             self.register_time = user.register_time
             self.vimcoin = user.vimcoin
             self.experience = user.experience
             self.health = user.health
+            self.downed_at = user.downed_at
             self.fav = user.favorability
             self.avatar = await get_user_avatar(self.user_id)
-            self.config = json.loads(base64.b64decode(user.config))
+            self.config = json.loads(user.config)
         if not self.nickname:
             self.nickname = f"用户-{self.user_id}"
+            self.user_has_nickname = False
 
-
-guest_users = {}
+    def has_nickname(self) -> bool:
+        return self.user_has_nickname
 
 
 class MoonlarkRegisteredGuest(MoonlarkUser):
-
     async def set_data(
         self,
         user_id: str,
@@ -94,18 +102,21 @@ class MoonlarkRegisteredGuest(MoonlarkUser):
         health: Optional[float] = None,
         favorability: Optional[float] = None,
         config: Optional[dict] = None,
+        downed_at: UnsetValue = _UNSET,
     ) -> None:
         user = {}
-        if experience:
+        if experience is not None:
             user["experience"] = experience
-        if vimcoin:
+        if vimcoin is not None:
             user["vimcoin"] = vimcoin
-        if health:
+        if health is not None:
             user["health"] = health
-        if favorability:
+        if favorability is not None:
             user["favorability"] = favorability
-        if config:
+        if config is not None:
             user["config"] = config
+        if downed_at is not _UNSET:
+            user["downed_at"] = downed_at
 
     async def setup_user_id(self) -> None:
         pass
@@ -130,3 +141,6 @@ class MoonlarkRegisteredGuest(MoonlarkUser):
         self.fav = user["favorability"]
         self.avatar = None
         self.config = user["config"]
+
+    def has_nickname(self) -> bool:
+        return bool(self.nickname)

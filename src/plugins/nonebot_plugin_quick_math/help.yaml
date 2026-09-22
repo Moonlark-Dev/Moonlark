@@ -6,6 +6,11 @@ commands:
     usages:
       - help.u1
       - help.u2
-      - help.u4
+      - help.u6
+      - help.u7
+      - help.u9
+      - help.u8
       - help.u3
+      - help.u4
+      - help.u5
     category: game

@@ -1,0 +1,14 @@
+list:
+  title: "【Moonlark 商店】當前持有：{} VimCoin"
+  item: "[{}] {} - {} VimCoin"
+  footer: 使用 {__prefix__}shop buy <編號> [數量] 購買商品
+buy:
+  invalid_index: 無效的商品編號，請使用 {__prefix__}shop 查看商品列表。
+  invalid_count: 購買數量必須大於 0
+  no_enough_vimcoin: "VimCoin 不足！需要 {}，當前持有 {}。"
+  success: "購買成功！獲得 {} x{}，花費 {} VimCoin。"
+help:
+  description: 商店
+  details: 使用 VimCoin 購買禮物等商品，購買的物品會存入背包。
+  usage1: shop (查看商品列表)
+  usage2: shop buy <編號> [數量] (購買商品)

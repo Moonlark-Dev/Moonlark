@@ -1,12 +1,56 @@
 from datetime import datetime
 from nonebot_plugin_orm import Model
 from sqlalchemy.orm import mapped_column, Mapped
-from sqlalchemy import String, Text
+from sqlalchemy import String, Text, Integer, DateTime, BINARY, LargeBinary
+from typing_extensions import TypedDict
 
 
 class GroupMessage(Model):
     id_: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     message: Mapped[str] = mapped_column(Text())
+    message_hash: Mapped[bytes] = mapped_column(
+        BINARY(32).with_variant(LargeBinary(32), "sqlite"),
+        nullable=True,
+    )
     sender_nickname: Mapped[str] = mapped_column(String(128))
+    user_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
     group_id: Mapped[str] = mapped_column(String(128))
     timestamp: Mapped[datetime] = mapped_column(default=datetime.now)
+
+
+class GroupDailySummary(Model):
+    group_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    date: Mapped[datetime] = mapped_column(DateTime, primary_key=True)
+    summary: Mapped[str] = mapped_column(Text())
+
+
+class MVPRecord(Model):
+    user_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    group_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    mvp_count: Mapped[int] = mapped_column(Integer(), default=0)
+
+
+class CatGirlScore(TypedDict):
+    rank: int
+    username: str
+    score: int
+    comment: str
+
+
+class DebateParty(TypedDict):
+    name: str
+    standpoint: str
+    arguments: list[str]
+    implicit: str
+    fallacies: str
+
+
+class DebateAnalysisResult(TypedDict):
+    conclusion: str
+
+
+class DebateAnalysis(TypedDict):
+    topic: str
+    conflict_type: str
+    parties: list[DebateParty]
+    analysis: DebateAnalysisResult

@@ -1,7 +1,6 @@
 from nonebot import require
 from nonebot.plugin import PluginMetadata
 
-
 __plugin_meta__ = PluginMetadata(
     name="nonebot_plugin_pacman",
     description="",

@@ -1,5 +1,5 @@
 #  Moonlark - A new ChatBot
-#  Copyright (C) 2025  Moonlark Development Team
+#  Copyright (C) 2026  Moonlark Development Team
 #
 #  This program is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU Affero General Public License as published
@@ -16,4 +16,5 @@
 # ##############################################################################
 
 from .biligame import get_events
-from .mihoyo_bbs import request_takumi_api
+from .version import get_game_version
+from .mihoyo_bbs import request_sr_wiki

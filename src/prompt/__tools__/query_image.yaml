@@ -1,0 +1,13 @@
+description: |
+  对聊天中已出现的某张图片进行针对性的内容查询。
+  **使用场景**: 已有的图片描述信息不足以做出回复（例如你想要知道图片中某个特定细节）
+  例如：用户 XiaoDeng3386 发送了一个战绩截图，但是这张截图的描述并没有包含 XiaoDeng3386 的战绩，可以调用此工具，并在 `query_prompt` 中输入"XiaoDeng3386 的战绩"获取有关信息。
+parameters:
+  - name: image_id
+    description: "目标图片的唯一标识 ID，格式如 'img_1'，从你收到的消息中的 [图片(ID:xxx): 描述] 中获取。"
+    type: string
+    required: true
+  - name: query_prompt
+    description: "自然语言形式的查询指令，描述本次需要从图片中提取的具体信息。"
+    type: string
+    required: true

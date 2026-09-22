@@ -1,5 +1,5 @@
 #  Moonlark - A new ChatBot
-#  Copyright (C) 2025  Moonlark Development Team
+#  Copyright (C) 2026  Moonlark Development Team
 #
 #  This program is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU Affero General Public License as published
@@ -19,10 +19,12 @@ import asyncio
 from datetime import datetime
 from typing import NoReturn, cast
 
-from nonebot import Bot
+from nonebot import logger
+from nonebot.adapters import Bot
 from nonebot.internal.adapter import Event
 from nonebot.typing import T_State
 from nonebot_plugin_alconna import Image, Text, UniMessage, image_fetch
+from nonebot_plugin_larkuser import get_nickname
 
 from nonebot_plugin_orm import async_scoped_session
 from sqlalchemy import select, func
@@ -45,23 +47,37 @@ async def get_cave_id(session: async_scoped_session) -> int:
 
 
 async def post_cave(
-    content: list[Image | Text], user_id: str, event: Event, bot: Bot, state: T_State, session: async_scoped_session
+    content: list[Image | Text],
+    user_id: str,
+    event: Event,
+    bot: Bot,
+    state: T_State,
+    session: async_scoped_session,
+    group_id: str | None = None,
 ) -> NoReturn:
     await lang.send("add.checking", user_id)
     try:
         await check_cave(content, event, bot, state, session)
     except ReviewFailed as e:
-        await lang.finish("add.review_fail", user_id, e.reason)
+        await lang.finish("add.review_fail", user_id, e.reason, reply_message=True)
     except EmptyImage:
-        await lang.finish("add.image_empty", user_id)
+        await lang.finish("add.image_empty", user_id, reply_message=True)
     except DuplicateCave as e:
         msg = UniMessage(await lang.text("add.similarity_title", user_id))
         msg.extend(await decode_cave(e.cave, session, user_id))
         msg.append(Text(await lang.text("add.similarity_footer", user_id, round(e.score * 100, 3))))
         await cave.finish(msg, reply_message=True)
     async with lock:
+        await session.commit()
         cave_id = await get_cave_id(session)
-        content = " ".join(
+        # 展开嵌套的 UniMessage 对象
+        flat_content: list[Image | Text] = []
+        for seg in content:
+            if isinstance(seg, UniMessage):
+                flat_content.extend(seg)
+            else:
+                flat_content.append(seg)
+        parsed_content = " ".join(
             [
                 (
                     (await encode_text(seg.text))
@@ -72,9 +88,10 @@ async def post_cave(
                         )
                     )
                 )
-                for seg in content
+                for seg in flat_content
             ]
         )
-        session.add(CaveData(id=cave_id, author=user_id, time=datetime.now(), content=content))
+        session.add(CaveData(id=cave_id, author=user_id, time=datetime.now(), content=parsed_content))
         await session.commit()
-    await lang.finish("add.posted", user_id, cave_id)
+
+    await lang.finish("add.posted", user_id, cave_id, reply_message=True)

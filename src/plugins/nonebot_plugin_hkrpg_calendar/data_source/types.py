@@ -1,5 +1,5 @@
 #  Moonlark - A new ChatBot
-#  Copyright (C) 2025  Moonlark Development Team
+#  Copyright (C) 2026  Moonlark Development Team
 #
 #  This program is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU Affero General Public License as published
@@ -16,7 +16,8 @@
 # ##############################################################################
 
 from datetime import datetime
-from typing import TypedDict, Optional
+from typing import Optional
+from typing_extensions import TypedDict
 
 
 class ParseDatetimeReturn(TypedDict):

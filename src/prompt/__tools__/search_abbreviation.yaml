@@ -1,0 +1,9 @@
+description: |
+  查询英文字母缩写的含义。
+  **何时调用**: 当遇到不理解的英文字母缩写（如 yyds、xswl、nsdd 等网络用语缩写）时使用。
+  **判断标准**: 当消息中出现看起来像是拼音首字母缩写的字母组合，且不确定其含义时使用。
+parameters:
+  - name: text_arg
+    description: "要查询的英文字母缩写，如 'yyds'、'xswl' 等。"
+    type: string
+    required: true

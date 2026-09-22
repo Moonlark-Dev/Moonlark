@@ -14,5 +14,6 @@ require("nonebot_plugin_larkuser")
 require("nonebot_plugin_larklang")
 # require("nonebot_plugin_openai")
 require("nonebot_plugin_schedule")
+require("nonebot_plugin_chat")
 
 from . import main as __main

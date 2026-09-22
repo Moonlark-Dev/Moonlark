@@ -1,0 +1,82 @@
+﻿{% extends base %}
+
+{% block header %}
+<style>
+    .splat-user {
+        text-align: center;
+        padding: 8px 0 14px 0;
+    }
+    .splat-user .nickname {
+        font-size: 150%;
+        font-weight: bold;
+    }
+    .splat-user .user-id {
+        color: #888;
+        font-size: 90%;
+    }
+    .splat-table {
+        width: 100%;
+        text-align: center;
+        font-size: 95%;
+    }
+    .splat-table th,
+    .splat-table td {
+        padding: 6px 4px;
+        border-bottom: 1px solid #e0e0e0;
+    }
+    .splat-table th {
+        color: #666;
+        font-weight: 600;
+    }
+    .splat-table .label {
+        text-align: left;
+        color: #333;
+    }
+    .splat-table .value {
+        font-weight: 600;
+    }
+</style>
+{% endblock header %}
+
+{% block body %}
+<div class="splat-user">
+    <span class="nickname">{{ nickname }}</span><br>
+    <span class="user-id">{{ target_id }}</span>
+</div>
+<table class="splat-table">
+    <thead>
+        <tr>
+            <th></th>
+            <th>{{ text.span_7d }}</th>
+            <th>{{ text.span_30d }}</th>
+            <th>{{ text.span_total }}</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td class="label">{{ text.received }}</td>
+            <td class="value">{{ data["7d"].received }}</td>
+            <td class="value">{{ data["30d"].received }}</td>
+            <td class="value">{{ data["total"].received }}</td>
+        </tr>
+        <tr>
+            <td class="label">{{ text.thrown }}</td>
+            <td class="value">{{ data["7d"].thrown }}</td>
+            <td class="value">{{ data["30d"].thrown }}</td>
+            <td class="value">{{ data["total"].thrown }}</td>
+        </tr>
+        <tr>
+            <td class="label">{{ text.max_attack }}</td>
+            <td class="value">{{ data["7d"].max_attack }}</td>
+            <td class="value">{{ data["30d"].max_attack }}</td>
+            <td class="value">{{ data["total"].max_attack }}</td>
+        </tr>
+        <tr>
+            <td class="label">{{ text.max_received }}</td>
+            <td class="value">{{ data["7d"].max_received }}</td>
+            <td class="value">{{ data["30d"].max_received }}</td>
+            <td class="value">{{ data["total"].max_received }}</td>
+        </tr>
+    </tbody>
+</table>
+{% endblock body %}

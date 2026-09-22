@@ -1,5 +1,5 @@
 from typing import Optional
-from nonebot.adapters import Event
+from nonebot.adapters import Event, Bot
 from nonebot.matcher import Matcher
 from nonebot_plugin_larkuser.utils.waiter2 import WaitUserInput
 from nonebot import on_message
@@ -22,14 +22,14 @@ class Waiter3(WaitUserInput):
         self.session_id = session_id
         self.default = default
         self.checker = lambda _: True
-        self.answer = None
+        self.answer: Optional[UniMessage] = None
         self.message_matcher = on_message(block=True, rule=checker)
         patch_matcher(self.message_matcher)
         self.message_matcher.handle()(self.handle_message)
 
-    async def handle_message(self, matcher: Matcher, event: Event, user_id: str = get_user_id()) -> None:
+    async def handle_message(self, matcher: Matcher, event: Event, bot: Bot, user_id: str = get_user_id()) -> None:
         self.user_id = user_id
-        return await super().handle_message(matcher, event, user_id)
+        return await super().handle_message(matcher, event, bot, user_id)
 
     def check_group(self, group_id: str = get_group_id()) -> bool:
         return group_id == self.session_id

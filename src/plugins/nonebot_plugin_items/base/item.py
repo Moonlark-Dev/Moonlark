@@ -51,12 +51,6 @@ class Item(ABC):
         """
         return await self.lang.text(key, user_id, *args, **kwargs)
 
-    def isUseable(self, stack: "ItemStack") -> bool:
-        if "useable" in stack.data:
-            return stack.data["useable"]
-        else:
-            return self.properties["useable"]
-
     async def getDefaultDescription(self, user_id: str) -> str:
         key = f"{self.getLocation().getPath()}.description"
         if await self.lang.is_key_exists(key, user_id):

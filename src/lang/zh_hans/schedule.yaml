@@ -10,8 +10,8 @@ collect:
 help:
   description: 每日任务
   details: 查看每日任务或领取每日任务奖励，每日刷新，部分功能仅在签到后可用。
-  usage1: schdeule (查看每日任务列表)
-  usage2: schdeule collect (领取可领取的奖励)
+  usage1: schedule (查看每日任务列表)
+  usage2: schedule collect (领取可领取的奖励)
 
 task_jrrp:
   name: 每日人品

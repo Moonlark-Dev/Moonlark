@@ -308,6 +308,27 @@ async def render_online_timeline(
     return img_bytes.getvalue()
 
 
+async def is_user_recently_online(user_id: str, minutes: int = 30) -> bool:
+    """检查用户是否在指定时间内有过在线记录
+
+    Args:
+        user_id: 用户 ID
+        minutes: 时间范围（分钟），默认 30 分钟
+
+    Returns:
+        如果用户在指定时间内有过在线记录返回 True，否则返回 False
+    """
+    async with get_session() as session:
+        cutoff_time = datetime.now() - timedelta(minutes=minutes)
+        result = await session.execute(
+            select(OnlineTimeRecord)
+            .where(OnlineTimeRecord.user_id == user_id)
+            .where(OnlineTimeRecord.end_time >= cutoff_time)
+            .limit(1)
+        )
+        return result.scalar_one_or_none() is not None
+
+
 # Scheduled task to clean up old records
 @scheduler.scheduled_job("cron", hour=2, minute=0)  # Run daily at 2:00 AM
 async def cleanup_old_records():

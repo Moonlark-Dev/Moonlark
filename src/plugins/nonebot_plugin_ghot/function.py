@@ -1,7 +1,7 @@
 from typing import Tuple
 from nonebot_plugin_orm import get_scoped_session
 
-from .__main__ import get_group_hot_score as _get_group_hot_score
+from .utils.score import get_group_hot_score as _get_group_hot_score
 
 
 async def get_group_hot_score(group_id: str) -> Tuple[int, int, int]:
@@ -14,5 +14,7 @@ async def get_group_hot_score(group_id: str) -> Tuple[int, int, int]:
     Returns:
         Tuple of (1min_score, 5min_score, 15min_score)
     """
-    async with get_scoped_session() as session:
-        return await _get_group_hot_score(group_id, session)
+    session = get_scoped_session()
+    s = await _get_group_hot_score(group_id, session)
+    await session.close()
+    return s

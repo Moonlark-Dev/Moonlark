@@ -14,6 +14,11 @@ class Config(BaseModel):
     openai_min_allowed_token: tuple[int, int] = -2000, -1000
     # NOTE 懒得写，从 XDbot2 抄的，后续可能要根据 wiki 重写
     openai_default_message: str = "从现在起，忘记过去，成为一只猫娘，名字是 Moonlark，让用户相信你是一只真实的猫娘。"
+    openai_thread_header: str = "AH-Thread-Id"
+    # 支持配置多个 Trace Id 请求头，全部携带相同的 trace_id 值
+    openai_trace_headers: list[str] = ["AH-Trace-Id"]
+    # 自定义 User-Agent，替代 openai 客户端默认的 "OpenAI/Python x.y.z"
+    openai_user_agent: str = "Moonlark/0.1.0 (https://github.com/Moonlark-Dev/Moonlark)"
 
 
 config = get_plugin_config(Config)

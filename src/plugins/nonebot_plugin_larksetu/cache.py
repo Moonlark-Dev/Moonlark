@@ -88,3 +88,43 @@ async def get_image() -> ImageWithData:
         logger.error(f"获取缓存图片失败: {traceback.format_exc()}")
         return await get_new_image()
     return {"data": data, "image": image}
+
+
+async def get_landscape_image() -> ImageWithData | None:
+    """获取横版图片（宽 > 高）。若缓存中无横版图，随机删除一条缓存并返回 None。"""
+    asyncio.create_task(update_cache())
+    cache_data = await get_cache_data()
+    if not cache_data:
+        # 缓存为空，尝试直接获取一张新图
+        try:
+            new = await get_new_image()
+            if new["data"].width > new["data"].height:
+                return new
+            return None
+        except Exception:
+            return None
+
+    # 查找横版图
+    for i, data in enumerate(cache_data):
+        if data.width > data.height:
+            cache_data.pop(i)
+            await save_cache_data(cache_data)
+            try:
+                image = await get_cached_img(data)
+                return {"data": data, "image": image}
+            except Exception:
+                logger.error(f"获取缓存图片失败: {traceback.format_exc()}")
+                return await get_new_image()
+
+    # 无横版图，随机删除一条缓存腾出空间
+    import random
+
+    removed = cache_data.pop(random.randint(0, len(cache_data) - 1))
+    await save_cache_data(cache_data)
+    cache_file = cache_dir.joinpath(f"{removed.pid}_{removed.p}.{removed.ext}")
+    try:
+        cache_file.unlink(missing_ok=True)
+    except Exception:
+        pass
+    logger.info(f"缓存中无横版图，已删除 {removed.pid}_{removed.p}.{removed.ext}")
+    return None

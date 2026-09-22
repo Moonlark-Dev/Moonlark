@@ -1,0 +1,114 @@
+{% extends base %}
+
+{% block header %}
+<style>
+    .error-container {
+        padding: 10px;
+    }
+    
+    .error-header {
+        background: linear-gradient(135deg, #ff6b6b 0%, #dc3545 100%);
+        color: white;
+        padding: 15px 20px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 15px rgba(220, 53, 69, 0.3);
+    }
+    
+    .error-header h2 {
+        margin: 0;
+        font-size: 1.3rem;
+        font-weight: 600;
+    }
+    
+    .error-header .error-type {
+        font-size: 0.9rem;
+        opacity: 0.9;
+        margin-top: 5px;
+    }
+    
+    .traceback-section {
+        margin-top: 15px;
+    }
+    
+    .traceback-content {
+        background-color: #f8f9fa;
+        border-radius: 8px;
+        padding: 12px;
+        overflow-y: auto;
+    }
+    
+    .traceback-line {
+        font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+        font-size: 0.7rem;
+        color: #495057;
+        line-height: 1.6;
+        margin: 2px 0;
+        padding: 2px 6px;
+        border-radius: 3px;
+    }
+    
+    .traceback-line.file-line {
+        color: #0d6efd;
+    }
+    
+    .traceback-line.code-line {
+        color: #333;
+        padding-left: 20px;
+    }
+    
+    .traceback-line.error-line {
+        color: #dc3545;
+        font-weight: 600;
+        background-color: #fff5f5;
+    }
+    
+    .tip-section {
+        margin-top: 15px;
+        padding: 10px 15px;
+        background-color: #e7f1ff;
+        border-radius: 8px;
+        border-left: 4px solid #0d6efd;
+    }
+    
+    .tip-text {
+        font-size: 0.8rem;
+        color: #495057;
+    }
+    
+    .tip-text strong {
+        color: #0d6efd;
+    }
+</style>
+{% endblock header %}
+
+{% block body %}
+<div class="error-container">
+    <div class="error-header text-center">
+        <h2>{{ text.title }}</h2>
+        <div class="error-type">{{ error_type }}: {{ final_message }}</div>
+    </div>
+    
+    <div class="traceback-section">
+        <div class="traceback-content">
+            {% for line in traceback_lines %}
+                {% if line.type == "file" %}
+                    <div class="traceback-line file-line">{{ line.content }}</div>
+                {% elif line.type == "code" %}
+                    <div class="traceback-line code-line">{{ line.content }}</div>
+                {% elif line.type == "error" %}
+                    <div class="traceback-line error-line">{{ line.content }}</div>
+                {% else %}
+                    <div class="traceback-line">{{ line.content }}</div>
+                {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+    
+    <div class="tip-section">
+        <div class="tip-text">
+            <strong>{{ text.tip_label }}</strong> {{ text.tip_content }}
+        </div>
+    </div>
+</div>
+{% endblock body %}

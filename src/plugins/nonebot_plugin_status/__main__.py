@@ -64,6 +64,7 @@ async def handle_status(user_id: str = get_user_id()) -> None:
                 "offline",
                 "run_time",
                 "uptime",
+                "abnormal",
             ],
             "template.",
         ),

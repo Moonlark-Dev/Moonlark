@@ -1,7 +1,8 @@
 from datetime import date
 import json
 from pathlib import Path
-from typing import Optional, TypedDict
+from typing import Optional
+from typing_extensions import TypedDict
 import aiofiles
 from nonebot_plugin_orm import async_scoped_session, AsyncSession, get_session
 from sqlalchemy import select

@@ -2,6 +2,7 @@ from enum import Enum
 
 
 class LuckType(Enum):
+    BEYOND_PERFECT = 0  # >100
     PERFECT_LUCK = 1  # 100
     ALMOST_PERFECT = 2  # 99
     GREAT_DAY = 3  # 85-98

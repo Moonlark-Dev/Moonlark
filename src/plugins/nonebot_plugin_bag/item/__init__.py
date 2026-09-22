@@ -1,5 +1,4 @@
 import asyncio
-import base64
 import json
 from typing import Any
 from nonebot_plugin_orm import AsyncSession, get_session
@@ -43,7 +42,7 @@ class BagItem:
     async def save_item(self) -> None:
         async with get_session() as session:
             result = await self.get_item(session)
-            result.data = base64.b64encode(json.dumps(self.stack.data).encode())
+            result.data = json.dumps(self.stack.data)
             result.count = self.stack.count
             await session.commit()
 
