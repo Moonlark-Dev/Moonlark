@@ -76,7 +76,7 @@ async def buy_goods(user_id: str, item_id: str, count: int) -> dict[str, int] | 
     got: dict[str, int] = {}
     for _ in range(count):
         chosen = item_id
-        roll = random.random()
+        roll = random.random()  # nosec B311
         acc = 0.0
         for probability, alt_id in alternatives:
             acc += probability
