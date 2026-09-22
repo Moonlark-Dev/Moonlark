@@ -1,5 +1,4 @@
 import asyncio
-import base64
 import html
 import json
 import math
@@ -31,6 +30,7 @@ from ..types import CachedMessage
 from ..utils.ai_agent import AskAISession
 from ..utils.emoji import QQ_EMOJI_MAP
 from ..utils.image import query_image_content
+from ..utils.image_format import try_build_image_part
 from ..utils.message import MessageParser, generate_message_string
 from ..utils.note_manager import get_context_notes
 from ..utils.status_manager import get_status_manager
@@ -252,7 +252,12 @@ class MessageProcessor:
         else:
             return await self.session.text("poke.not_found")
 
-    async def parse_message(self, message: UniMessage, event: Event, state: T_State) -> tuple[str, list[bytes]]:
+    async def parse_message(
+        self,
+        message: UniMessage,
+        event: Event,
+        state: T_State,
+    ) -> tuple[str, list[bytes], list[str]]:
         parser = MessageParser(
             message,
             event,
@@ -262,7 +267,7 @@ class MessageProcessor:
             not self.ENABLE_EMBEDDED_IMAGE,
         )
         msg_str = await parser.parse()
-        return (await LinkParser(msg_str, self.session.lang_str).parse()), parser.images
+        return (await LinkParser(msg_str, self.session.lang_str).parse()), parser.images, parser.fake_rich_text
 
     async def should_ignore_mention(self, user_id: str) -> bool:
         async with get_session() as db_session:
@@ -315,7 +320,7 @@ class MessageProcessor:
             message, event, state, user_id, nickname, dt, mentioned, message_id, platform_user_id = item[1]
             mentioned = mentioned and not await self.should_ignore_mention(user_id)
 
-            text, images = await self.parse_message(message, event, state)
+            text, images, fake_rich_text = await self.parse_message(message, event, state)
             logger.debug(f"{text=}")
             if not text:
                 return
@@ -333,6 +338,7 @@ class MessageProcessor:
                 "images": images,
                 "to_me": mentioned,
                 "triggered_reply": False,
+                "fake_rich_text": fake_rich_text,
             }
             await self.process_messages(msg_dict)
             self.session.cached_messages.append(msg_dict)
@@ -641,8 +647,12 @@ class MessageProcessor:
             {"type": "text", "text": msg_str},
         ]
         for img in images:
-            image_base64 = base64.b64encode(img).decode("utf-8")
-            content.append({"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_base64}"}})
+            part = try_build_image_part(img)
+            if part is None:
+                # 非法或模型不支持的图片直接丢弃，避免上游因单张图片拒绝整轮请求
+                logger.warning("跳过无法送入模型的图片（格式不受支持或内容损坏）")
+                continue
+            content.append(part)
         await self.openai_messages.append_user_message(content)
 
     async def process_messages(self, msg_dict: CachedMessage) -> None:
@@ -667,7 +677,11 @@ class MessageProcessor:
 
             if not self.blocked:
                 msg_str = generate_message_string(msg_dict)
-                msg_str += await self.generate_additional_prompt(msg_str, msg_dict["user_id"])
+                msg_str += await self.generate_additional_prompt(
+                    msg_str,
+                    msg_dict["user_id"],
+                    msg_dict.get("fake_rich_text", []),
+                )
                 msg_dict["mq_text"] = msg_str
                 await self.append_user_message(msg_str, msg_dict["images"])
                 # print(self.openai_messages.messages)
@@ -779,7 +793,12 @@ class MessageProcessor:
         note_lines = await self.filter_info_lines(note_lines)
         return "\n".join(note_lines) if notes else await self.session.text("prompt.note.none")
 
-    async def generate_additional_prompt(self, message_str: str, sender_id: str) -> str:
+    async def generate_additional_prompt(
+        self,
+        message_str: str,
+        sender_id: str,
+        fake_rich_text: Optional[list[str]] = None,
+    ) -> str:
         note_manager = await get_context_notes(self.session.session_id)
         sender = await get_user(sender_id)
         notes, notes_from_other_group = await note_manager.filter_note(message_str)
@@ -812,6 +831,7 @@ class MessageProcessor:
             tiredness=tiredness,
             state=state,
             pending_notes=pending_notes_text or None,
+            fake_rich_text=fake_rich_text or None,
         )
 
     async def filter_info_lines(self, lines: list[str]) -> list[str]:
