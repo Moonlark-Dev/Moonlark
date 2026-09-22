@@ -16,6 +16,7 @@ from nonebot.matcher import Matcher
 from nonebot_plugin_alconna import Alconna, Args, Subcommand, UniMessage, on_alconna
 from nonebot_plugin_bag.models import Bag
 from nonebot_plugin_bag.utils.bag import give_item
+from nonebot_plugin_buff import get_bad_luck_multiplier
 from nonebot_plugin_email.utils.unread import get_unread_email_count
 from nonebot_plugin_items.utils.get import get_item
 from nonebot_plugin_items.utils.string import get_location_by_id
@@ -141,6 +142,8 @@ async def _calc_sign_vim(user_id: str, sign_days: int) -> dict:
         * random.random(),
         1,
     )
+    # 霉运 buff：签到获得的 VimCoin 按层数减半
+    vim = round(vim * await get_bad_luck_multiplier(user_id), 1)
     await user.add_vimcoin(vim)
     return {
         "text": await lang.text("image.vim", user_id),
@@ -150,15 +153,21 @@ async def _calc_sign_vim(user_id: str, sign_days: int) -> dict:
     }
 
 
+def _display_number(value: float) -> float | int:
+    """展示用数字：整数时去掉小数部分，避免 `+1` 变成 `+1.0`"""
+    return int(value) if float(value).is_integer() else round(value, 2)
+
+
 async def _calc_sign_fav(user_id: str) -> dict:
     """计算并增加签到好感度。返回 (text, origin, add, now)。"""
     user = await get_user(user_id)
     origin = user.get_display_fav()
-    fav = 0.001
+    # 霉运 buff：签到获得的好感度按层数减半
+    fav = 0.001 * await get_bad_luck_multiplier(user_id)
     await user.add_fav(fav)
     return {
         "text": await lang.text("image.fav", user_id),
-        "add": round(fav * 1000),
+        "add": _display_number(fav * 1000),
         "now": user.get_display_fav(),
         "origin": origin,
     }
@@ -237,7 +246,7 @@ async def perform_sign(user_id: str, missed_days: int = 0, auto: bool = False) -
             got_vim += (await _calc_sign_vim(user_id, day_count))["add"]
             got_exp += (await _calc_sign_exp(user_id, day_count))["add"]
         user = await get_user(user_id)
-        await user.add_fav(0.001 * missed_days)
+        await user.add_fav(0.001 * missed_days * await get_bad_luck_multiplier(user_id))
         resign_result = {"days": missed_days, "vim": round(got_vim, 1), "exp": got_exp}
 
     # ====== 连续签到奖励：每连续签到 5 天奖励一张自动签到券 ======

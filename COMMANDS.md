@@ -15,6 +15,11 @@
 
 「他宝了个腿的。」 ——巡海游侠，波提欧
 - `/boothill <句子>`
+## `buff`: 效果
+
+查看当前附着的效果（Buff）列表与附着情况
+- `/buff (查看当前附着的效果列表)`
+- `/buff <效果ID> (查看指定效果的附着详情)`
 ## `chatterbox`: 群话痨排行
 
 统计群聊中的话痨，该功能不支持 QQ 节点且需要在群聊中手动启用。
@@ -347,6 +352,8 @@ Moonlark 投票
 - `/email claim <email_id> (领取指定邮件)`
 - `/email unread all (将所有邮件标为未读)`
 - `/email unread <email_id> (将邮件标为未读)`
+- `/email read all (将所有邮件标为已读)`
+- `/email read <email_id> (将邮件标为已读)`
 ## `fav-rank`: 好感度排行
 
 查看 Moonlark 好感度排行榜，展示所有用户的好感度排名。好感度通过日常互动累积，数值越高代表与 Moonlark 的亲密度越高。
@@ -415,13 +422,17 @@ Moonlark 投票
 - `/wakeuprank today (今日起床时间排行)`
 ## `bcsu`: 广播管理
 
-发送和管理广播消息
+发送和管理广播消息，可附加仅在 QQ 官方机器人上显示的自定义按钮
 > 此指令仅 Moonlark 管理员可用。
 - `/bcsu (查看广播管理菜单)`
 - `/bcsu <内容> (设置广播内容)`
 - `/bcsu clear (清除广播内容)`
 - `/bcsu preview (预览广播内容)`
 - `/bcsu submit (提交并发送广播)`
+- `/bcsu button add <按钮名> <指令> (添加广播按钮，仅 QQ 官方机器人生效)`
+- `/bcsu button remove <按钮名> (移除广播按钮)`
+- `/bcsu button clear (清空全部广播按钮)`
+- `/bcsu button list (查看当前广播按钮)`
 ## `md`: Markdown 渲染测试
 
 将参数中的 Markdown 原样发送到当前群聊，用于测试 QQ 官方机器人的 Markdown 渲染效果（仅超管可用）

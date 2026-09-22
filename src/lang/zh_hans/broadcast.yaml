@@ -12,15 +12,29 @@ bcsu:
   no_bots: "未找到 OneBot V11 适配器的机器人"
   broadcast_sent: "广播已发送至 {0} 个群聊"
   start: 已开始推送广播内容
+  button_list: "当前广播按钮（仅 QQ 官方机器人生效）："
+  button_list_footer: "{0}"
+  button_empty: "当前没有自定义广播按钮。使用 {__prefix__}bcsu button add <按钮名> <指令> 添加。"
+  button_item: "- {0} → {1}"
+  button_added: "已添加广播按钮：{0} → {1}"
+  button_removed: "已移除广播按钮：{0}"
+  button_not_found: "未找到按钮：{0}"
+  button_cleared: "已清空全部广播按钮（共 {0} 个）。"
+  button_full: "按钮数量已达上限（{0} 个），请先移除部分按钮。"
+  button_usage: 用法：{__prefix__}bcsu button add <按钮名> <指令> | remove <按钮名> | clear | list
 
 help:
   description: 广播管理
-  details: 发送和管理广播消息
+  details: 发送和管理广播消息，可附加仅在 QQ 官方机器人上显示的自定义按钮
   usage1: bcsu (查看广播管理菜单)
   usage2: bcsu <内容> (设置广播内容)
   usage3: bcsu clear (清除广播内容)
   usage4: bcsu preview (预览广播内容)
   usage5: bcsu submit (提交并发送广播)
+  usage6: bcsu button add <按钮名> <指令> (添加广播按钮，仅 QQ 官方机器人生效)
+  usage7: bcsu button remove <按钮名> (移除广播按钮)
+  usage8: bcsu button clear (清空全部广播按钮)
+  usage9: bcsu button list (查看当前广播按钮)
 
 bc_help:
   description: 广播设置

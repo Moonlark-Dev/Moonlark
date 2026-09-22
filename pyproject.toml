@@ -31,6 +31,7 @@ plugins = [
     "nonebot_plugin_bingo",
     "nonebot_plugin_boothill",
     "nonebot_plugin_bots",
+    "nonebot_plugin_buff",
     "nonebot_plugin_email",
     "nonebot_plugin_extrahelp",
     "nonebot_plugin_favrank",
