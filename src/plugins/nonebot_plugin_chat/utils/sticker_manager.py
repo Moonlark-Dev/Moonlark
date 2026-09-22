@@ -34,6 +34,7 @@ from nonebot_plugin_openai.utils.message import generate_message, get_message
 from sqlalchemy import select
 
 from ..models import Sticker
+from .image_format import normalize_image
 from .sticker_similarity import calculate_hash_async, check_sticker_duplicate
 
 
@@ -165,8 +166,9 @@ async def classify_meme(image_data: bytes) -> Optional[MemeClassification]:
         MemeClassification 分类结果，如果分类失败返回 None
     """
     try:
-        # 准备图片：如果是 GIF 则提取第一帧
+        # 准备图片：如果是 GIF 则提取第一帧，再统一校验并转换为模型支持的格式
         processed_image = prepare_image_for_classification(image_data)
+        processed_image, mime_type = normalize_image(processed_image)
 
         # 转换图片为 base64
         image_base64 = base64.b64encode(processed_image).decode("utf-8")
@@ -176,7 +178,7 @@ async def classify_meme(image_data: bytes) -> Optional[MemeClassification]:
             await get_message("system", "meme_classification/system.md.jinja", emotions=_EMOTIONS),
             generate_message(
                 [
-                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_base64}"}},
+                    {"type": "image_url", "image_url": {"url": f"data:{mime_type};base64,{image_base64}"}},
                     {"type": "text", "text": "请分析这张图片并输出分类 JSON。"},
                 ],
                 "user",

@@ -1,5 +1,4 @@
 import asyncio
-import base64
 import html
 import json
 import math
@@ -31,6 +30,7 @@ from ..types import CachedMessage
 from ..utils.ai_agent import AskAISession
 from ..utils.emoji import QQ_EMOJI_MAP
 from ..utils.image import query_image_content
+from ..utils.image_format import try_build_image_part
 from ..utils.message import MessageParser, generate_message_string
 from ..utils.note_manager import get_context_notes
 from ..utils.status_manager import get_status_manager
@@ -641,8 +641,12 @@ class MessageProcessor:
             {"type": "text", "text": msg_str},
         ]
         for img in images:
-            image_base64 = base64.b64encode(img).decode("utf-8")
-            content.append({"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_base64}"}})
+            part = try_build_image_part(img)
+            if part is None:
+                # 非法或模型不支持的图片直接丢弃，避免上游因单张图片拒绝整轮请求
+                logger.warning("跳过无法送入模型的图片（格式不受支持或内容损坏）")
+                continue
+            content.append(part)
         await self.openai_messages.append_user_message(content)
 
     async def process_messages(self, msg_dict: CachedMessage) -> None:
