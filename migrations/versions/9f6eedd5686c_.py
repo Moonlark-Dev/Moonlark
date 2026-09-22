@@ -1,8 +1,12 @@
-"""empty message
+"""新增市场插件
 
 迁移 ID: 9f6eedd5686c
-父迁移: f79433854a65
+父迁移: 8a7b8160f2f7
 创建时间: 2025-08-14 13:39:38.284103
+
+玩家间物品交易市场：`nonebot_plugin_market_marketitem` 保存上架中的商品
+（item_data 以 JSON 文本保存物品 NBT），`nonebot_plugin_market_selllog`
+按物品类型累计成交数量与成交金额，用于计算平均成交价。
 
 """
 
@@ -13,9 +17,8 @@ from collections.abc import Sequence
 from alembic import op
 import sqlalchemy as sa
 
-
 revision: str = "9f6eedd5686c"
-down_revision: str | Sequence[str] | None = "f79433854a65"
+down_revision: str | Sequence[str] | None = "8a7b8160f2f7"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
@@ -31,7 +34,7 @@ def upgrade(name: str = "") -> None:
         sa.Column("remain_count", sa.Integer(), nullable=False),
         sa.Column("price", sa.Float(), nullable=False),
         sa.Column("user_id", sa.String(length=128), nullable=False),
-        sa.Column("item_data", sa.LargeBinary(), nullable=False),
+        sa.Column("item_data", sa.Text(), nullable=False),
         sa.PrimaryKeyConstraint("item_id", name=op.f("pk_nonebot_plugin_market_marketitem")),
         info={"bind_key": "nonebot_plugin_market"},
     )
