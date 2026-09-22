@@ -1,11 +1,13 @@
 from random import randint
 
+from nonebot.adapters import Bot
 from nonebot_plugin_alconna import Alconna, Args, on_alconna
 from nonebot_plugin_bag.utils.reduce import ItemNotEnough, remove_item_from_bag
 from nonebot_plugin_items.registry.registry import ResourceLocation
 from nonebot_plugin_items.utils.string import get_location_by_id
 from nonebot_plugin_larkuser import MoonlarkUser, get_user, patch_matcher
 from nonebot_plugin_larkutils import get_user_id
+from nonebot_plugin_shop.utils import offer_purchase_when_short
 
 from .lang import lang
 
@@ -72,19 +74,35 @@ async def get_delta_summary(user_id: str, delta: int) -> str:
     return await lang.text("outcome.none", user_id)
 
 
+async def consume_dice(user_id: str, count: int, bot: Bot) -> ItemNotEnough | None:
+    """消耗背包中的二十面骰子。
+
+    骰子不足且商店有售时，先询问是否购买缺口再重试一次；
+    成功返回 None，仍然不足时返回异常供调用方提示持有数量。
+    """
+    try:
+        await remove_item_from_bag(user_id, get_dice_location(), count)
+    except ItemNotEnough as error:
+        if not await offer_purchase_when_short(user_id, DICE_ITEM_ID, count, bot):
+            return error
+        try:
+            await remove_item_from_bag(user_id, get_dice_location(), count)
+        except ItemNotEnough as retry_error:
+            return retry_error
+    return None
+
+
 @roll.handle()
-async def _(user_id: str = get_user_id(), count: int = 1) -> None:
+async def _(bot: Bot, user_id: str = get_user_id(), count: int = 1) -> None:
     if count <= 0:
         await lang.finish("invalid_count", user_id)
     if count > MAX_COUNT:
         await lang.finish("too_many", user_id, MAX_COUNT)
 
     user = await get_user(user_id)
-    try:
-        # 消耗背包中对应数量的二十面骰子
-        await remove_item_from_bag(user_id, get_dice_location(), count)
-    except ItemNotEnough as e:
-        await lang.finish("not_enough", user_id, e.need, e.have)
+    # 消耗背包中对应数量的二十面骰子（不足时询问购买后重试）
+    if (error := await consume_dice(user_id, count, bot)) is not None:
+        await lang.finish("not_enough", user_id, error.need, error.have)
     values = [get_dice_value() for _ in range(count)]
     delta = 0
     for value in values:

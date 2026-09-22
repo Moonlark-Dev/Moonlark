@@ -10,6 +10,7 @@ from nonebot_plugin_orm import get_session
 from nonebot_plugin_ranking import generate_image
 from nonebot_plugin_ranking.types import RankingData
 from nonebot_plugin_render import render_template
+from nonebot_plugin_shop.utils import offer_purchase_when_short
 from sqlalchemy import Row, func, select
 
 from .lang import lang
@@ -77,6 +78,35 @@ async def get_span_text(span: str, user_id: str) -> str:
     return await lang.text(f"span_{span}", user_id)
 
 
+async def throw_eggs(user_id: str, target_id: str, egg_key: str, count: int, bot: Bot) -> int | None:
+    """扣除鸡蛋并写入攻击记录。
+
+    鸡蛋不足且商店有售时，先询问是否购买缺口再重试一次；
+    成功返回 None，仍然不足时返回当前持有数量供调用方提示。
+    """
+    egg_item_id = EGG_TYPES[egg_key][0]
+    egg_location = get_location_by_id(egg_item_id)
+    await offer_purchase_when_short(user_id, egg_item_id, count, bot)
+
+    async with get_session() as session:
+        try:
+            await deduct_eggs(session, user_id, egg_location, count)
+        except NotEnoughEggs as error:
+            await session.rollback()
+            return error.have
+        session.add(
+            AttackRecord(
+                user_id=user_id,
+                target_id=target_id,
+                count=count,
+                egg_id=egg_item_id,
+                time=datetime.now(),
+            ),
+        )
+        await session.commit()
+    return None
+
+
 @splat.assign("$main")
 async def throw_egg(
     bot: Bot,
@@ -104,26 +134,12 @@ async def throw_egg(
         egg_key = await get_selected_egg_type(user_id)
 
     target_id = target.result.target
-    egg_item_id, egg_damage = EGG_TYPES[egg_key]
-    egg_location = get_location_by_id(egg_item_id)
+    egg_damage = EGG_TYPES[egg_key][1]
     egg_name = await get_egg_type_name(egg_key, user_id)
 
-    async with get_session() as session:
-        try:
-            await deduct_eggs(session, user_id, egg_location, egg_count)
-        except NotEnoughEggs as e:
-            await session.rollback()
-            await lang.finish("throw.not_enough", user_id, egg_name, e.have)
-        session.add(
-            AttackRecord(
-                user_id=user_id,
-                target_id=target_id,
-                count=egg_count,
-                egg_id=egg_item_id,
-                time=datetime.now(),
-            ),
-        )
-        await session.commit()
+    # 鸡蛋不足时先询问是否购买缺口，购买后重试（重试结果由 throw_eggs 判定）
+    if (have := await throw_eggs(user_id, target_id, egg_key, egg_count, bot)) is not None:
+        await lang.finish("throw.not_enough", user_id, egg_name, have)
 
     target_user = await get_user(target_id)
     hp_lost = 0
