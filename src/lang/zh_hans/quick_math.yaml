@@ -152,7 +152,7 @@ pvp:
     # ⚔️ Quick Math PvP
 
     群内多人在线对战！互相轮流答题，坚持到最后的人获胜。
-
+  help_commands: |
     - `{__prefix__}qm pvp create [最大人数]` 创建房间
     - `{__prefix__}qm pvp join <房间码>` 加入房间
     - `{__prefix__}qm pvp quit` 退出房间

@@ -10,6 +10,8 @@
 - 帮助处理器曾对 ``build_pvp_help_message`` 返回的协程对象直接调用 ``send()``，
   在 QQ 官方机器人下抛出 ``TypeError: coroutine.send() takes no keyword arguments``；
   现在先 ``await`` 得到 ``UniMessage`` 再发送；
+- QQ 官方机器人下的帮助卡片只保留标题与玩法介绍（操作已经在按钮里），
+  OneBot 11 等无按钮适配器渲染的图片仍保留完整指令列表；
 - QQ 官方机器人下创建房间也会展示房间信息（房间码、总人数、玩家列表）与操作按钮。
 
 注意：插件导入必须在 fixture/函数内部进行（collection 阶段 nonebot 插件尚未加载）。
@@ -47,6 +49,18 @@ def patched_lang(monkeypatch: pytest.MonkeyPatch) -> None:
         return remove_trailing_blank_lines(_load_template(key).format(*args, **kwargs, **builtin_format))
 
     monkeypatch.setattr(lang, "text", fake_text)
+
+
+def _help_markdown(append_commands: bool) -> str:
+    """PvP 帮助 markdown：QQ 适配器只有标题与介绍，无按钮的适配器追加指令列表。
+
+    与 ``get_pvp_help_markdown`` 一致：每段文本先去掉 YAML 块标量结尾的空行，
+    再用空行拼接，最后填充指令前缀。
+    """
+    parts = [_load_template("pvp.help").strip()]
+    if append_commands:
+        parts.append(_load_template("pvp.help_commands").strip())
+    return "\n\n".join(parts).format(__prefix__="/")
 
 
 def _parse(text: str) -> Any:
@@ -100,13 +114,18 @@ async def test_pvp_help_check_accepts_bare_pvp() -> None:
 
 @pytest.mark.asyncio
 async def test_pvp_help_message_is_markdown_with_buttons() -> None:
-    """QQ 帮助卡片应为 markdown（而非纯文本），并附带四个操作按钮。"""
+    """QQ 帮助卡片应为 markdown（而非纯文本），并附带四个操作按钮。
+
+    QQ 卡片下方已经提供了全部操作的按钮，正文只保留标题与玩法介绍，
+    不再重复展示一份指令列表。
+    """
     from nonebot_plugin_alconna import Keyboard, Text
     from nonebot_plugin_quick_math.commands.pvp import build_pvp_help_message
 
     message = await build_pvp_help_message("user")
     text = next(segment for segment in message if isinstance(segment, Text))
-    assert text.text == _load_template("pvp.help").format(__prefix__="/").strip()
+    assert text.text == _help_markdown(append_commands=False)
+    assert _load_template("pvp.help_commands").format(__prefix__="/").strip() not in text.text
     assert "markdown" in text.styles[next(iter(text.styles))]
     keyboard = next(segment for segment in message if isinstance(segment, Keyboard))
     assert [button.flag for button in keyboard.children] == ["enter", "input", "enter", "enter"]
@@ -120,7 +139,10 @@ async def test_pvp_help_message_is_markdown_with_buttons() -> None:
 
 @pytest.mark.asyncio
 async def test_pvp_help_renders_image_on_onebot(monkeypatch: pytest.MonkeyPatch) -> None:
-    """OneBot 11 等适配器没有键盘与 markdown，帮助页面应渲染成图片发送。"""
+    """OneBot 11 等适配器没有键盘与 markdown，帮助页面应渲染成图片发送。
+
+    这类适配器没有可点击的按钮，图片内需要保留完整的指令列表。
+    """
     from nonebot.adapters.console import Bot as ConsoleBot
     from nonebot_plugin_alconna import Image, UniMessage
     from nonebot_plugin_quick_math.commands import pvp as pvp_module
@@ -142,7 +164,7 @@ async def test_pvp_help_renders_image_on_onebot(monkeypatch: pytest.MonkeyPatch)
 
     await pvp_module.pvp_help_handler(ConsoleBot.__new__(ConsoleBot), None, user_id="user")
 
-    assert captured["markdown"] == _load_template("pvp.help").format(__prefix__="/").strip()
+    assert captured["markdown"] == _help_markdown(append_commands=True)
     image = next(segment for segment in finished["message"] if isinstance(segment, Image))
     assert image.raw == b"pvp-help-image"
 
