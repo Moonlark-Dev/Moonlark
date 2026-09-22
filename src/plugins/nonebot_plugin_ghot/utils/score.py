@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from datetime import datetime, timedelta
 from sqlalchemy import select
 from nonebot_plugin_orm import async_scoped_session
@@ -20,6 +21,10 @@ async def calculate_heat_score(
     Returns:
         Heat score (0-10000)
     """
+    # 时间窗口为 0（例如统计区间内所有消息时间戳相同）时窗口无意义，热度记为 0
+    if delta_t <= 0:
+        return 0
+
     # Filter messages within the time window
     valid_messages = [t for t in messages_timestamps if delta_t >= (current_time - t).total_seconds() >= 0]
 
@@ -43,17 +48,19 @@ async def calculate_heat_score(
     return score
 
 
-async def get_group_hot_score(group_id: str, session: async_scoped_session) -> tuple[int, int, int]:
+async def get_group_hot_score(group_id: str | Sequence[str], session: async_scoped_session) -> tuple[int, int, int]:
     """
     Get group heat scores for 1, 5, and 15 minute windows.
 
     Args:
-        group_id: Group ID
+        group_id: Group ID, or every group key of the same physical group
         session: Database session
 
     Returns:
         Tuple of (1min_score, 5min_score, 15min_score)
     """
+    group_keys = [group_id] if isinstance(group_id, str) else list(group_id)
+
     # Get current time
     current_time = datetime.now()
 
@@ -63,7 +70,7 @@ async def get_group_hot_score(group_id: str, session: async_scoped_session) -> t
     # Get messages for this group within the last 15 minutes (longest window)
     start_time = current_time - timedelta(seconds=900)
     result = await session.scalars(
-        select(GroupMessage).where(GroupMessage.group_id == group_id).where(GroupMessage.timestamp >= start_time)
+        select(GroupMessage).where(GroupMessage.group_id.in_(group_keys)).where(GroupMessage.timestamp >= start_time)
     )
     messages = result.all()
 

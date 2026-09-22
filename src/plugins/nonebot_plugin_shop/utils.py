@@ -12,6 +12,7 @@ from nonebot.adapters.qq import Bot as QQBot
 from nonebot_plugin_alconna import Button, UniMessage
 from nonebot_plugin_bag.models import Bag
 from nonebot_plugin_bag.utils.bag import give_item
+from nonebot_plugin_buff import get_bad_luck_multiplier
 from nonebot_plugin_items.utils.get import get_item
 from nonebot_plugin_items.utils.string import get_location_by_id
 from nonebot_plugin_larklang import LangHelper
@@ -74,12 +75,15 @@ async def buy_goods(user_id: str, item_id: str, count: int) -> dict[str, int] | 
         return {item_id: count}
 
     got: dict[str, int] = {}
+    # 逐单位随机判定：例如买鸡蛋时有概率获得臭鸡蛋
+    # 霉运 buff 会按层数降低随机事件的触发概率
+    event_multiplier = await get_bad_luck_multiplier(user_id)
     for _ in range(count):
         chosen = item_id
         roll = random.random()  # nosec B311
         acc = 0.0
         for probability, alt_id in alternatives:
-            acc += probability
+            acc += probability * event_multiplier
             if roll < acc:
                 chosen = alt_id
                 break

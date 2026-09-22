@@ -2,6 +2,8 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 from nonebot import logger
+from nonebot.adapters import Bot
+from nonebot.adapters.qq import Bot as QQBot
 from nonebot.params import ArgPlainText, Depends
 from nonebot.typing import T_State
 from nonebot_plugin_alconna import Alconna, Args, Arparma, Match, Option, Subcommand, UniMessage, on_alconna
@@ -13,6 +15,9 @@ from .config import config
 from .lang import lang
 from .modules import Choice, Vote, VoteLog
 from .utils import (
+    build_vote_buttons,
+    build_vote_list_markdown,
+    build_vote_markdown,
     create_vote,
     generate_vote_image,
     generate_vote_list,
@@ -33,8 +38,58 @@ alc = Alconna(
 vote = on_alconna(alc)
 
 
+async def _reply_vote_list(
+    bot: Bot, user_id: str, group_id: str, session: async_scoped_session, show_all: bool
+) -> None:
+    """投票列表：QQ 官方使用 markdown，标题通过 <qqbot-cmd-input> 变成可点击指令"""
+    if isinstance(bot, QQBot):
+        await (
+            UniMessage().style(await build_vote_list_markdown(user_id, group_id, session, show_all), "markdown").send()
+        )
+        await vote.finish()
+    await vote.finish(UniMessage().image(raw=await generate_vote_list(user_id, group_id, session, show_all)))
+
+
+async def _submit_choice(vote_data: Vote, choice_id: int, user_id: str, session: async_scoped_session) -> None:
+    """提交选项并记录投票"""
+    if not is_vote_open(vote_data):
+        await lang.finish("choose.vote_ended", user_id)
+    if await is_user_voted(vote_data, user_id, session):
+        await lang.finish("choose.voted", user_id)
+    content = await get_choice_content(vote_data, choice_id, session)
+    if content is None:
+        await lang.finish("choose.choice_not_found", user_id, choice_id)
+    session.add(VoteLog(belong=vote_data.id, user_id=user_id, choice=choice_id))
+    await session.commit()
+    await lang.finish("choose.success", user_id, content)
+
+
+async def _close_vote(vote_data: Vote, user_id: str, is_superuser: bool, session: async_scoped_session) -> None:
+    """关闭投票：仅发起人或超级用户可用"""
+    if vote_data.sponsor != user_id and not is_superuser:
+        await lang.finish("vote.no_permission", user_id)
+    vote_data.end_time = datetime.now()
+    await lang.send("close.success", user_id, vote_data.id)
+    await session.commit()
+    await vote.finish()
+
+
+async def _reply_vote_detail(bot: Bot, user_id: str, session: async_scoped_session, vote_data: Vote) -> None:
+    """投票详情：QQ 官方使用 markdown 并把选项做成键盘按钮，其它平台渲染为图片"""
+    if isinstance(bot, QQBot):
+        message = UniMessage().style(await build_vote_markdown(user_id, session, vote_data), "markdown")
+        buttons = await build_vote_buttons(user_id, session, vote_data)
+        if buttons:
+            # 空的 keyboard 段会让 QQ 适配器报 SerializeFailed，因此无按钮时不附加
+            message.keyboard(*buttons)
+        await message.send()
+        await vote.finish()
+    await vote.finish(UniMessage().image(raw=await generate_vote_image(user_id, session, vote_data)))
+
+
 @vote.handle()
 async def _(
+    bot: Bot,
     result: Arparma,
     choice: Match[int],
     hour: Match[int],
@@ -52,29 +107,13 @@ async def _(
     elif vote_data is None and result.find("vote_id"):
         await lang.finish("vote.not_found", user_id)
     elif vote_data is None:
-        await vote.finish(
-            UniMessage().image(raw=await generate_vote_list(user_id, group_id, session, result.find("all")))
-        )
+        await _reply_vote_list(bot, user_id, group_id, session, result.find("all"))
     elif choice.available:
-        if not is_vote_open(vote_data):
-            await lang.finish("choose.vote_ended", user_id)
-        if await is_user_voted(vote_data, user_id, session):
-            await lang.finish("choose.voted", user_id)
-        if (content := await get_choice_content(vote_data, choice.result, session)) is None:
-            await lang.finish("choose.choice_not_found", user_id, choice.result)
-        session.add(VoteLog(belong=vote_data.id, user_id=user_id, choice=choice.result))
-        await session.commit()
-        await lang.finish("choose.success", user_id, content)
+        await _submit_choice(vote_data, choice.result, user_id, session)
     elif result.find("close"):
-        if vote_data.sponsor == user_id or is_superuser:
-            vote_data.end_time = datetime.now()
-            await lang.send("close.success", user_id, vote_data.id)
-            await session.commit()
-            await vote.finish()
-        else:
-            await lang.finish("vote.no_permission", user_id)
+        await _close_vote(vote_data, user_id, is_superuser, session)
     else:
-        await vote.finish(UniMessage().image(raw=await generate_vote_image(user_id, session, vote_data)))
+        await _reply_vote_detail(bot, user_id, session, vote_data)
 
 
 @vote.got("title")
