@@ -1,19 +1,14 @@
-import random
-
 from nonebot.adapters import Bot
 from nonebot.adapters.qq import Bot as QQBot
 from nonebot_plugin_alconna import Alconna, Args, Subcommand, on_alconna
 from nonebot_plugin_alconna.uniseg import UniMessage
 
-from nonebot_plugin_bag.utils.bag import give_item
-from nonebot_plugin_buff import get_bad_luck_multiplier
-from nonebot_plugin_items.utils.get import get_item
-from nonebot_plugin_items.utils.string import get_location_by_id
 from nonebot_plugin_larklang import LangHelper
 from nonebot_plugin_larkuser import get_user, patch_matcher
 from nonebot_plugin_larkutils import get_user_id
 
-from .goods import GOODS, GOODS_ALTERNATIVES
+from .goods import GOODS
+from .utils import buy_goods, get_goods_name
 
 alc = Alconna(
     "shop",
@@ -22,12 +17,6 @@ alc = Alconna(
 shop = on_alconna(alc)
 patch_matcher(shop)
 lang = LangHelper()
-
-
-async def get_goods_name(item_id: str, user_id: str) -> str:
-    location = get_location_by_id(item_id)
-    stack = await get_item(location, user_id)
-    return await stack.getName()
 
 
 async def build_markdown_list(user_id: str, vimcoin: float) -> str:
@@ -78,35 +67,10 @@ async def handle_buy(index: int, count: int = 1, user_id: str = get_user_id()) -
     total_price = price * count
     name = await get_goods_name(item_id, user_id)
 
-    user = await get_user(user_id)
-    if not await user.use_vimcoin(total_price):
+    got = await buy_goods(user_id, item_id, count)
+    if got is None:
+        user = await get_user(user_id)
         await lang.finish("buy.no_enough_vimcoin", user_id, total_price, round(user.get_vimcoin(), 1))
-
-    location = get_location_by_id(item_id)
-    alternatives = GOODS_ALTERNATIVES.get(item_id)
-    if not alternatives:
-        stack = await get_item(location, user_id, count)
-        await give_item(user_id, stack)
-        await lang.finish("buy.success", user_id, name, count, total_price)
-
-    # 逐单位随机判定：例如买鸡蛋时有概率获得臭鸡蛋
-    # 霉运 buff 会按层数降低随机事件的触发概率
-    event_multiplier = await get_bad_luck_multiplier(user_id)
-    got: dict[str, int] = {}
-    for _ in range(count):
-        chosen = item_id
-        roll = random.random()
-        acc = 0.0
-        for probability, alt_id in alternatives:
-            acc += probability * event_multiplier
-            if roll < acc:
-                chosen = alt_id
-                break
-        got[chosen] = got.get(chosen, 0) + 1
-
-    for got_id, got_count in got.items():
-        stack = await get_item(get_location_by_id(got_id), user_id, got_count)
-        await give_item(user_id, stack)
 
     if got.get(item_id, 0) == count:
         await lang.finish("buy.success", user_id, name, count, total_price)

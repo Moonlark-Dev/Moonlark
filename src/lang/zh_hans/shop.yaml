@@ -15,6 +15,16 @@ buy:
   success: "购买成功！获得 {} x{}，花费 {} VimCoin。"
   item_part: "{} ×{}"
   success_alt: "购买成功！获得了 {}，花费 {} VimCoin。"
+purchase:
+  prompt: |
+    【购买提示】
+    你的{}不足，还需要 {} 个。是否花费 {} VimCoin 购买？回复 y 确认购买，n 取消。
+  prompt_markdown: |
+    ## 购买提示
+    > 你的{}不足，还需要 **{} 个**
+    是否花费 **{} VimCoin** 购买？
+  button_yes: 购买
+  button_no: 取消
 help:
   description: 商店
   details: 使用 VimCoin 购买礼物等商品，购买的物品会存入背包。

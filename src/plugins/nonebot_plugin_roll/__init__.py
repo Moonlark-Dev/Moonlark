@@ -13,6 +13,7 @@ require("nonebot_plugin_items")
 require("nonebot_plugin_larklang")
 require("nonebot_plugin_larkuser")
 require("nonebot_plugin_larkutils")
+require("nonebot_plugin_shop")
 require("nonebot_plugin_buff")
 
 from . import __main__  # noqa: F401, E402  # pylint: disable=wrong-import-position

@@ -25,12 +25,27 @@ async def is_pvp_help_only(_event: Event, _bot: Bot, _state: T_State, result: Ar
     return subcommand is None or not subcommand.subcommands
 
 
+async def get_pvp_help_markdown(user_id: str, append_commands: bool) -> str:
+    """生成 PvP 帮助 markdown：标题与玩法介绍，外加可选的指令列表。
+
+    :param append_commands: 非 QQ 适配器（无按钮）时在末尾追加指令列表。
+    """
+    parts = [await lang.text("pvp.help", user_id)]
+    if append_commands:
+        parts.append(await lang.text("pvp.help_commands", user_id))
+    return "\n\n".join(parts)
+
+
 async def build_pvp_help_message(user_id: str) -> UniMessage:
-    """构建 PvP 帮助卡片（QQ 官方机器人的 markdown + 操作按钮）。"""
+    """构建 PvP 帮助卡片（QQ 官方机器人的 markdown + 操作按钮）。
+
+    QQ 官方机器人已经把全部操作做成了卡片下方的按钮，
+    因此不再重复展示一份指令列表。
+    """
     prefix = get_command_prefix()
     return (
         UniMessage()
-        .style(await lang.text("pvp.help", user_id), "markdown")
+        .style(await get_pvp_help_markdown(user_id, append_commands=False), "markdown")
         .keyboard(
             Button("enter", await lang.text("button.pvp-create", user_id), text=f"{prefix}qm pvp create"),
             # 房间码需要用户自行输入，使用 input 类型预填指令前缀
@@ -53,8 +68,9 @@ async def pvp_help_handler(bot: Bot, event: Event, user_id: str = get_user_id())
         await quick_math.finish()
     # OneBot 11 等适配器不支持 markdown 卡片与键盘按钮，
     # 退化为把同一份 markdown 渲染成图片发送，保证排版一致；
-    # 帮助卡片内已经列出了全部指令，用户照常输入指令即可操作。
-    await quick_math.finish(UniMessage().image(raw=await md_to_pic(await lang.text("pvp.help", user_id))))
+    # 没有按钮可用，因此图片内保留完整的指令列表供用户手动输入。
+    markdown = await get_pvp_help_markdown(user_id, append_commands=True)
+    await quick_math.finish(UniMessage().image(raw=await md_to_pic(markdown)))
 
 
 @quick_math.assign("pvp.create")

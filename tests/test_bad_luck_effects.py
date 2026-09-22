@@ -125,6 +125,7 @@ class _FakeStack:
 def shop_env(monkeypatch: pytest.MonkeyPatch):
     """打桩商店购买流程，记录实际发放的物品"""
     import nonebot_plugin_shop.__main__ as module
+    import nonebot_plugin_shop.utils as shop_utils
 
     granted: list[str] = []
     multiplier = {"value": 1.0}
@@ -147,13 +148,14 @@ def shop_env(monkeypatch: pytest.MonkeyPatch):
 
     monkeypatch.setattr(module, "lang", _FakeLang())
     monkeypatch.setattr(module, "get_goods_name", AsyncMock(return_value="鸡蛋"))
-    monkeypatch.setattr(module, "get_item", fake_get_item)
-    monkeypatch.setattr(module, "give_item", fake_give_item)
-    monkeypatch.setattr(module, "get_location_by_id", lambda item_id: item_id)
-    monkeypatch.setattr(module, "get_user", AsyncMock(return_value=_FakeUser()))
-    monkeypatch.setattr(module, "get_bad_luck_multiplier", fake_multiplier)
+    # 购买逻辑（含随机事件判定）在 utils.buy_goods 中，需要打桩 utils 的依赖
+    monkeypatch.setattr(shop_utils, "get_item", fake_get_item)
+    monkeypatch.setattr(shop_utils, "give_item", fake_give_item)
+    monkeypatch.setattr(shop_utils, "get_location_by_id", lambda item_id: item_id)
+    monkeypatch.setattr(shop_utils, "get_user", AsyncMock(return_value=_FakeUser()))
+    monkeypatch.setattr(shop_utils, "get_bad_luck_multiplier", fake_multiplier)
     # 0.004：正常状态下小于 0.005 的概率，霉运减半后（0.0025）不再命中
-    monkeypatch.setattr(module.random, "random", lambda: 0.004)
+    monkeypatch.setattr(shop_utils.random, "random", lambda: 0.004)
     return module, granted, multiplier
 
 
