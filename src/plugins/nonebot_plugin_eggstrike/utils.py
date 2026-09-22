@@ -5,11 +5,14 @@ from sqlalchemy import func, select
 
 from .models import EggSelection
 
+# 臭鸡蛋的种类 id：命中后会给目标附着霉运 buff
+ROTTEN_EGG_TYPE = "rotten_egg"
+
 # 鸡蛋种类注册表：英文 id -> (物品 ID, 每个鸡蛋造成的伤害)
 # 新鸡蛋种类在这里注册后，即可通过 /splat 查看、/splat switch 切换、-t/--type 指定使用
 EGG_TYPES: dict[str, tuple[str, float]] = {
     "egg": ("moonlark:egg", 0.2),
-    "rotten_egg": ("moonlark:rotten_egg", 1.0),
+    ROTTEN_EGG_TYPE: ("moonlark:rotten_egg", 1.0),
 }
 DEFAULT_EGG_TYPE = "egg"
 

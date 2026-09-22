@@ -1,38 +1,36 @@
 import inspect
 from nonebot.params import Depends
-import json
 from typing import Any, Optional
 import random
 from pathlib import Path
 from types import ModuleType
 from typing import NoReturn
-from nonebot import get_driver, get_plugin_by_module_name, get_plugin_config, logger
+from nonebot import get_driver, get_plugin_by_module_name, get_plugin_config
 from nonebot.matcher import Matcher
 from nonebot_plugin_larkutils import parse_special_user_id
 from .config import Config
 from .exceptions import *
 from .loader import LangLoader
-from .models import LanguageData, LanguageKeyCache, DisplaySetting, GroupLanguageSetting
+from .models import LanguageData, DisplaySetting, GroupLanguageSetting
 from nonebot_plugin_orm import get_session, AsyncSession
-from sqlalchemy import select
-import copy
 
-languages = {}
+languages: dict[str, LanguageData] = {}
 config = get_plugin_config(Config)
 builtin_format = {"__prefix__": config.command_start[0]}
 
 
 @get_driver().on_startup
 async def load_languages() -> None:
+    """从语言目录重新载入全部语言键
+
+    键缓存直接保存在内存中（LanguageData.keys），因此这里只需重新构建
+    LangLoader 并替换模块级 `languages` 引用即可。
+    """
     global languages
-    async with get_session() as session:
-        for item in await session.scalars(select(LanguageKeyCache)):
-            await session.delete(item)
-        await session.commit()
     loader = LangLoader(Path(config.language_dir), builtin_format)
     await loader.init()
     await loader.load()
-    languages = copy.deepcopy(loader.get_languages())
+    languages = loader.get_languages()
 
 
 def get_module_name(module: ModuleType | None) -> str | None:
@@ -55,24 +53,27 @@ def remove_trailing_blank_lines(text: str) -> str:
     return "\n".join(lines)
 
 
-def apply_template(language: str, plugin: str, key: str, text: str) -> str:
-    try:
-        return random.choice(languages[language].keys[plugin][key]["__template__"].text).format(text)
-    except KeyError:
-        return text
-
-
-async def get_text(language: Optional[str], plugin: str, key: str, session: AsyncSession, *args, **kwargs) -> str:
-    expr = select(LanguageKeyCache.text).where(LanguageKeyCache.plugin == plugin, LanguageKeyCache.key == key)
+def _lookup_key_texts(language: Optional[str], plugin: str, key: str) -> Optional[list[str]]:
+    """在内存缓存中查找键文本列表；指定语言缺失时回退到任意语言"""
     if language is not None:
-        expr = expr.where(LanguageKeyCache.language == language)
-    data = (await session.scalars(expr)).first()
-    if data is None:
-        if language is not None:
-            return await get_text(None, plugin, key, session, *args, **kwargs)
-        else:
-            return f"[缺失: {plugin}.{key} ({args}; {kwargs})]"
-    text = random.choice(json.loads(data))
+        data = languages.get(language)
+        if data is not None:
+            value = data.keys.get(plugin, {}).get(key)
+            if value is not None:
+                return value.text
+        return _lookup_key_texts(None, plugin, key)
+    for data in languages.values():
+        value = data.keys.get(plugin, {}).get(key)
+        if value is not None:
+            return value.text
+    return None
+
+
+def get_text(language: Optional[str], plugin: str, key: str, *args, **kwargs) -> str:
+    texts = _lookup_key_texts(language, plugin, key)
+    if texts is None:
+        return f"[缺失: {plugin}.{key} ({args}; {kwargs})]"
+    text = random.choice(texts)  # nosec B311
     try:
         return remove_trailing_blank_lines(text.format(*args, **kwargs, **builtin_format))
     except IndexError:
@@ -147,9 +148,8 @@ class LangHelper:
     async def text(self, key: str, user_id: str | int, *args, **kwargs) -> str:
         session = get_session()
         language = await get_user_language(str(user_id), session)
-        text = await get_text(language, self.plugin_name, key, session, *args, **kwargs)
         await session.close()
-        return text
+        return get_text(language, self.plugin_name, key, *args, **kwargs)
 
     def get_command_helper(self, base_key: Optional[str] = None, **preformated_keys) -> Any:
         async def _get_command_helper() -> "CommandLangHelper":

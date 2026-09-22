@@ -3,17 +3,36 @@ from typing import Literal
 from nonebot_plugin_larkuser import get_user
 from nonebot_plugin_larkutils.file import FileType
 from sqlalchemy import func, select
-from nonebot.adapters import Bot
+from nonebot.adapters import Bot, Event
 from nonebot.adapters.qq import Bot as Bot_QQ
 from nonebot import on_message
 from nonebot_plugin_orm import async_scoped_session
-from nonebot_plugin_alconna import on_alconna, Alconna, Arparma, Option, Subcommand, UniMessage, Args, At
+from nonebot_plugin_alconna import (
+    on_alconna,
+    Alconna,
+    Arparma,
+    Args,
+    At,
+    Button,
+    Option,
+    Subcommand,
+    UniMessage,
+)
 from nonebot_plugin_larkutils import get_user_id, get_group_id, open_file
+from nonebot_plugin_larkutils.cache import create_image_markdown
+from nonebot_plugin_larkutils.command import get_command_prefix
 from .image import render_bar
 from .lang import lang
 from .models import GroupChatterbox, GroupChatterboxWithNickname
 
 SpanType = Literal["total", "7d", "1d"]
+
+# 时间段按钮的文案 key，顺序即键盘上的排列顺序
+SPAN_BUTTON_KEYS: dict[SpanType, str] = {
+    "total": "button.span_total",
+    "7d": "button.span_7d",
+    "1d": "button.span_1d",
+}
 
 chatterbox = on_alconna(
     Alconna(
@@ -27,6 +46,64 @@ chatterbox = on_alconna(
 )
 
 recorder = on_message(priority=3, block=False)
+
+
+def build_rank_command(span: SpanType, global_flag: bool = False, user_id_arg: Literal["me"] | None = None) -> str:
+    """拼出跳转到指定排行榜的指令文本。
+
+    QQ 官方的 enter 按钮会把这段文本原样发回聊天，因此必须是完整可解析的指令。
+    """
+    argv = [f"{get_command_prefix()}chatterbox", span]
+    if user_id_arg is not None:
+        argv.append(user_id_arg)
+    if global_flag:
+        argv.append("--global")
+    return " ".join(argv)
+
+
+async def build_rank_buttons(user_id: str, span: SpanType, global_flag: bool) -> list[Button]:
+    """构建 QQ 官方排行榜的跳转按钮。
+
+    依次是三个时间段的榜单、另一个统计范围（本群/全局）以及本人的排名，
+    让用户不必手打指令即可切换榜单。
+    """
+    buttons = [
+        Button("enter", await lang.text(lang_key, user_id), text=build_rank_command(item, global_flag))
+        for item, lang_key in SPAN_BUTTON_KEYS.items()
+    ]
+    buttons.extend(
+        [
+            Button(
+                "enter",
+                await lang.text("button.scope_group" if global_flag else "button.scope_global", user_id),
+                text=build_rank_command(span, not global_flag),
+            ),
+            Button("enter", await lang.text("button.me", user_id), text=build_rank_command(span, global_flag, "me")),
+        ],
+    )
+    return buttons
+
+
+async def send_rank_card(
+    bot: Bot,
+    event: Event,
+    user_id: str,
+    span: SpanType,
+    global_flag: bool,
+    image: bytes,
+) -> None:
+    """QQ 官方：排行榜图片与跳转按钮合成一条 markdown 消息发送。
+
+    QQ 官方的图片消息（msg_type 7）无法携带按钮，因此与 sign 一致，
+    先把图片上传图床再用 markdown 内嵌，按钮作为同一条消息的键盘下发。
+    """
+    await (
+        UniMessage()
+        .style(await create_image_markdown(image), "markdown")
+        # row=3：三个时间段按钮占一行，统计范围与本人排名占第二行
+        .keyboard(*await build_rank_buttons(user_id, span, global_flag), row=3)
+        .send(target=event, bot=bot)
+    )
 
 
 def get_start_date(span: SpanType) -> date | None:
@@ -100,6 +177,8 @@ async def _(
 
 @chatterbox.handle()
 async def _(
+    bot: Bot,
+    event: Event,
     session: async_scoped_session,
     result: Arparma,
     span: SpanType = "total",
@@ -109,26 +188,27 @@ async def _(
     async with open_file("disabled.json", FileType.CONFIG, []) as f:
         if group_id in f.data:
             await lang.finish("disabled", user_id)
-    global_flag = result.find("global")
+    global_flag = bool(result.find("global"))
     rows = (await session.execute(build_rank_statement(span, None if global_flag else group_id).limit(12))).all()
     scope_text, span_text = await get_scope_span_text(user_id, span, global_flag)
     title = await lang.text("bar.main_title", user_id, scope_text, span_text)
     subtitle = await lang.text("bar.subtitle_global", user_id) if global_flag else group_id
-    await chatterbox.finish(
-        UniMessage().image(
-            raw=await render_bar(
-                [
-                    GroupChatterboxWithNickname(
-                        nickname=(await get_user(row.user_id)).get_nickname(), message_count=row.total_count
-                    )
-                    for row in rows
-                ],
-                user_id,
-                title,
-                subtitle,
+    image = await render_bar(
+        [
+            GroupChatterboxWithNickname(
+                nickname=(await get_user(row.user_id)).get_nickname(), message_count=row.total_count
             )
-        )
+            for row in rows
+        ],
+        user_id,
+        title,
+        subtitle,
     )
+    if isinstance(bot, Bot_QQ):
+        # QQ 官方：图片与跳转按钮合成一条 markdown 卡片
+        await send_rank_card(bot, event, user_id, span, global_flag, image)
+        await chatterbox.finish()
+    await chatterbox.finish(UniMessage().image(raw=image))
 
 
 @recorder.handle()

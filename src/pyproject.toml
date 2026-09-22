@@ -58,6 +58,7 @@ packages = [
     { include = "nonebot_plugin_bingo", from = "./plugins" },
     { include = "nonebot_plugin_boothill", from = "./plugins" },
     { include = "nonebot_plugin_bots", from = "./plugins" },
+    { include = "nonebot_plugin_buff", from = "./plugins" },
     { include = "nonebot_plugin_email", from = "./plugins" },
     { include = "nonebot_plugin_extrahelp", from = "./plugins" },
     { include = "nonebot_plugin_favrank", from = "./plugins" },

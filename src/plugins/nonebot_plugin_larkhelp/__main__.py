@@ -17,6 +17,7 @@ from nonebot_plugin_alconna import Alconna, Args, Button, on_alconna
 from nonebot_plugin_alconna.uniseg import UniMessage
 
 from nonebot_plugin_larkutils.command import get_command_prefix
+from nonebot_plugin_larkutils.escape import escape_cmd_input
 from nonebot_plugin_render.render import render_template
 from nonebot_plugin_render.cache import creator
 
@@ -30,14 +31,10 @@ from nonebot.exception import FinishedException
 def urlencode_cmd(text: str) -> str:
     """对传入 `<qqbot-cmd-input>` 标签的 text/show 属性值进行 urlencode。
 
-    QQ 官方要求指令组件的 text/show 属性值需 urlencode 后传递，否则带上
-    尖括号占位符（如 `shop buy <编号> [数量]`）的用法会导致平台返回
-    "qqbot-cmd-input参数解析失败"。整体百分号编码会使较长中文用法远超官方
-    100 字符限制，因此仅编码会破坏标签解析的保留字符，中文及常规字符保持原样，
-    平台按 urlencode 解码后即可还原原文。
+    实现已抽取到 `nonebot_plugin_larkutils.escape.escape_cmd_input`，这里保留同名
+    函数以兼容既有调用与测试。
     """
-    text = text.replace("\r\n", " ").replace("\n", " ").replace("\r", " ")
-    return re.sub(r"[<>&\"'%]", lambda m: f"%{ord(m.group()):02X}", text)
+    return escape_cmd_input(text)
 
 
 def strip_usage_explanation(text: str) -> str:
