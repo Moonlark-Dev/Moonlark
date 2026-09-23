@@ -169,11 +169,6 @@ Moonlark 本地化设置
 设定部分指令的图片渲染主题
 - `/theme (查看主题列表)`
 - `/theme <name> (更换主题)`
-## `version`: 版本管理
-
-使用 git 和 nb_cli 管理版本，仅限 SUPERUSER
-- `/version show (显示版本信息)`
-- `/version upgrade (更新代码)`
 ## `whoami`: 我是谁
 
 查看用户帐号基本信息
@@ -465,3 +460,9 @@ Moonlark 投票
 - `/subaccount bind <子账号ID> <主账号ID> (绑定子账号)`
 - `/subaccount unbind <子账号ID> (解绑子账号)`
 - `/subaccount unbind <主账号ID> --all (解绑全部子账号)`
+## `version`: 版本管理
+
+使用 git 和 nb_cli 管理版本，仅限 SUPERUSER
+> 此指令仅 Moonlark 管理员可用。
+- `/version show (显示版本信息)`
+- `/version upgrade (更新代码)`
