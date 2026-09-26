@@ -75,6 +75,22 @@ async def build_question_info(user_id: str, question: QuestionData) -> str:
     return image
 
 
+def build_at_user_markdown(qq_user_id: Optional[str]) -> str:
+    """构建 QQ markdown 卡片开头的 @ 前缀，提醒本条题目的作答者。
+
+    QQ 官方机器人用 ``<qqbot-at-user>`` 标签提及用户；该标签只接受适配器原生 ID
+    （群聊中的 member_openid），因此由调用方传入 ``get_qq_user_id`` 的结果。
+    C2C 单聊不支持该语法（发送会报 ActionFailed），此时 ``qq_user_id`` 为 ``None``，
+    返回空串不加 @。
+
+    前缀末尾补一个空行：``<qqbot-at-user>`` 独占一行时会被当作 HTML 块，
+    直接紧跟表格会导致表格一并被吞进该块而原样显示，空行可结束 HTML 块。
+    """
+    if not qq_user_id:
+        return ""
+    return f'<qqbot-at-user id="{qq_user_id}" />\n\n'
+
+
 async def get_question(
     bot: Bot,
     level: int,
@@ -133,7 +149,8 @@ async def build_markdown_message(
 ) -> tuple[UniMessage, QuestionData]:
     """构建 QQ 官方机器人的 markdown 题目卡片，并附带选项/操作按钮。"""
     options = question["question"]["options"]
-    content = await lang.text(
+    # 卡片开头 @ 本题作答者：群聊下用户才会知道自己需要作答（PvP 尤其重要）
+    content = build_at_user_markdown(qq_user_id) + await lang.text(
         "main.qq_markdown",
         user_id,
         await build_question_info(user_id, question),
@@ -143,7 +160,6 @@ async def build_markdown_message(
         point,
         skipped_question,
         total_skipping_count,
-        qq_user_id=qq_user_id,
     )
     message = UniMessage().style(content, "markdown")
     if question["level"] in _QUESTION_IMAGE_LEVELS:

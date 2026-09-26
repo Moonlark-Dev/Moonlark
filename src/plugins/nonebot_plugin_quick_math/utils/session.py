@@ -27,6 +27,7 @@ from nonebot_plugin_htmlrender import md_to_pic
 from nonebot_plugin_achievement.utils.unlock import unlock_achievement
 from nonebot_plugin_larkuser import prompt
 from nonebot_plugin_larkuser.exceptions import PromptTimeout
+from nonebot_plugin_larkutils.user import private_message
 from nonebot_plugin_quick_math.__main__ import lang, quick_math
 from nonebot_plugin_quick_math.config import config
 from nonebot_plugin_quick_math.types import LevelMode, LevelModeString, ReplyType, QuestionData, ExtendReplyType
@@ -111,7 +112,7 @@ class QuickMathSession:
     ) -> tuple[UniMessage, QuestionData]: ...
 
     async def get_question(self, **kwargs) -> tuple[UniMessage, QuestionData]:
-        return await get_question(
+        message, question = await get_question(
             self.bot,
             self.get_level(),
             self.user_id,
@@ -122,6 +123,20 @@ class QuickMathSession:
             qq_user_id=self.qq_user_id,
             **kwargs,
         )
+        if not isinstance(self.bot, QQBot):
+            # 非 QQ 适配器没有 markdown 卡片：群聊里在题目图片最前面 @ 本题作答者，
+            # 让群成员知道轮到谁答题（QQ 官方机器人由题目 markdown 内的标签负责）
+            message = await self.prepend_answer_at(message)
+        return message, question
+
+    async def prepend_answer_at(self, message: UniMessage) -> UniMessage:
+        """非 QQ 适配器下，群聊里在题目消息最前面追加 @ 答题者。
+
+        私聊（或没有可用于判断的事件）无需 @，直接返回原消息。
+        """
+        if self.event is None or await private_message(self.event):
+            return message
+        return UniMessage().at(self.user_id) + message
 
     def get_level(self) -> int:
         if self.level[0] == "lock":
@@ -270,11 +285,14 @@ class QuickMathPvpSession(QuickMathSession):
 
     与普通模式的区别：
 
-    - 题目开头会 @ 答题者（QQ markdown 使用 @ 标签，其他适配器前置 At 段）；
     - 难度升级周期按参与人数计算（每名玩家答对 ``cycle_count`` 题后升级，
       默认取房间人数 × 普通模式升级周期），而非写死的固定值；
     - 答错/超时后不可复活，直接淘汰；
     - 题目的等级、限时缩短与跳过次数均按玩家独立计算。
+
+    题目开头 @ 作答者的行为与普通模式一致，由 :class:`QuickMathSession` 负责：
+    QQ 官方机器人在 markdown 卡片开头使用 ``<qqbot-at-user>`` 标签，
+    其余适配器在题目图片前追加 At 段。
     """
 
     def __init__(
@@ -288,13 +306,6 @@ class QuickMathPvpSession(QuickMathSession):
         super().__init__(user_id, bot, qq_user_id, event)
         # 升级周期按房间人数计算，由房间在开局时传入；未传入时退化为普通模式周期
         self.cycle_count = cycle_count if cycle_count is not None else config.qm_change_max_level_count
-
-    async def get_question(self, **kwargs) -> tuple[UniMessage, QuestionData]:
-        message, question = await super().get_question(**kwargs)
-        if not isinstance(self.bot, QQBot):
-            # 非 QQ 适配器：在题目最前面 @ 需要答题的玩家
-            message = UniMessage().at(self.user_id) + message
-        return message, question
 
     async def send_lang(self, key: str, *args: object) -> None:
         """针对玩家本人最新事件发送本地化文本（不经过 matcher，适配 PvP 群聊场景）。"""

@@ -15,6 +15,11 @@
   q 不再被 prompt 的快捷退出吞掉、超时以 ``ReplyType.TIMEOUT`` 返回，保证
   退出/超时后正常发送结算卡片；
 - 结算卡片弃用 QQ 不支持的 markdown 表格，改为 ``> -`` 无序列表；
+- 题目卡片前的统计信息回退为 markdown 表格（``| 已答 | 限时 | 难度 | 跳过 |``），
+  不再使用 ``> -`` 引用列表；
+- 题目卡片开头 @ 本题作答者：QQ 官方机器人在群聊 markdown 卡片内使用
+  ``<qqbot-at-user>`` 标签（C2C 单聊不支持该语法，跳过），其余适配器在群聊中于
+  题目图片前追加 At 段，普通/禅/PvP 模式一致；
 - 积分命令误用其他插件的 LangHelper 且文案键缺失，导致点击“积分”无响应；
 - 排行命令手写 markdown 引用了不存在的键（yaml 键名为连字符、代码用下划线），
   改为使用 nonebot_plugin_ranking 渲染排行。
@@ -229,6 +234,98 @@ async def test_question_card_leave_button_only_when_enabled() -> None:
     assert isinstance(message, UniMessage)
     keyboard = next(segment for segment in message if isinstance(segment, Keyboard))
     assert all(button.text != "leave" for button in keyboard.children)
+
+
+# ---------- 题目卡片：表格与 @ 作答者 ----------
+
+
+def test_qq_question_card_uses_markdown_table() -> None:
+    """题目信息前的统计信息应为 markdown 表格，不再使用 “> -” 引用列表。"""
+    template = _load_template("main.qq_markdown")
+    assert template.splitlines()[0] == "| 已答 | 限时 | 难度 | 跳过 |"
+    assert "|---|---|---|---|" in template
+    assert "> -" not in template
+    # 题目信息段与表格各列的占位符保持不变
+    assert "## 题目信息" in template
+    for placeholder in ("{0}", "{1}", "{2}", "{3}", "{5}", "{6}"):
+        assert placeholder in template
+
+
+@pytest.mark.asyncio
+async def test_question_card_prepends_at_user_in_group() -> None:
+    """群聊（有 qq_user_id）下题目卡片开头应 @ 作答者，让人知道轮到谁答题。"""
+    from nonebot_plugin_alconna import Text
+    from nonebot_plugin_quick_math.utils.question import build_markdown_message
+
+    message, _ = await build_markdown_message("user", _make_choice_question(), 0, 0, 0, 0, "qq_openid")
+    content = next(segment for segment in message if isinstance(segment, Text)).text
+    assert content.startswith('<qqbot-at-user id="qq_openid" />')
+    # @ 标签后接空行，再是统计表格与题目信息
+    assert "| 已答 | 限时 | 难度 | 跳过 |" in content
+
+
+@pytest.mark.asyncio
+async def test_question_card_omits_at_user_in_c2c() -> None:
+    """C2C 单聊不支持 <qqbot-at-user> 提及语法，题目卡片不应出现 @ 标签。"""
+    from nonebot_plugin_alconna import Text
+    from nonebot_plugin_quick_math.utils.question import build_markdown_message
+
+    message, _ = await build_markdown_message("user", _make_choice_question(), 0, 0, 0, 0, None)
+    content = next(segment for segment in message if isinstance(segment, Text)).text
+    assert "qqbot-at-user" not in content
+    assert content.startswith("| 已答 |")
+
+
+class _FakeOneBotEvent:
+    """最小事件替身：只实现判断私聊所需的两个方法。"""
+
+    def __init__(self, session_id: str, user_id: str) -> None:
+        self._session_id = session_id
+        self._user_id = user_id
+
+    def get_session_id(self) -> str:
+        return self._session_id
+
+    def get_user_id(self) -> str:
+        return self._user_id
+
+
+def _patch_session_question(monkeypatch: pytest.MonkeyPatch) -> None:
+    """让会话拿题时返回固定题目，避免依赖题目生成与图片渲染。"""
+    from nonebot_plugin_alconna import UniMessage
+    from nonebot_plugin_quick_math.utils import session as session_module
+
+    async def fake_get_question(*_args: object, **_kwargs: object) -> tuple[UniMessage, dict[str, Any]]:
+        return UniMessage("题目"), _make_choice_question()
+
+    monkeypatch.setattr(session_module, "get_question", fake_get_question)
+
+
+@pytest.mark.asyncio
+async def test_non_qq_normal_session_prepends_at_in_group(monkeypatch: pytest.MonkeyPatch) -> None:
+    """普通模式在 OneBot 等适配器的群聊中也应 @ 作答者（修复前只有 PvP 会 @）。"""
+    from nonebot.adapters.console import Bot as ConsoleBot
+    from nonebot_plugin_alconna import At
+    from nonebot_plugin_quick_math.utils.session import QuickMathSession
+
+    _patch_session_question(monkeypatch)
+    session = QuickMathSession("123", ConsoleBot.__new__(ConsoleBot), None, _FakeOneBotEvent("group_1", "123"))
+    message, _ = await session.get_question()
+    assert isinstance(message[0], At)
+    assert message[0].target == "123"
+
+
+@pytest.mark.asyncio
+async def test_non_qq_normal_session_omits_at_in_private(monkeypatch: pytest.MonkeyPatch) -> None:
+    """私聊中只有自己，无需 @，题目消息不应追加 At 段。"""
+    from nonebot.adapters.console import Bot as ConsoleBot
+    from nonebot_plugin_alconna import At
+    from nonebot_plugin_quick_math.utils.session import QuickMathSession
+
+    _patch_session_question(monkeypatch)
+    session = QuickMathSession("123", ConsoleBot.__new__(ConsoleBot), None, _FakeOneBotEvent("123", "123"))
+    message, _ = await session.get_question()
+    assert not any(isinstance(segment, At) for segment in message)
 
 
 # ---------- 所有题目按选项字母判题 ----------
