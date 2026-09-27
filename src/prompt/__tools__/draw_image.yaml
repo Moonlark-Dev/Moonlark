@@ -18,3 +18,10 @@ parameters:
     description: "图片质量，可选 'auto'、'low'、'medium'、'high'。默认为 'high'。"
     type: string
     required: false
+  - name: moonlark_portrait
+    description: |
+      是否把 Moonlark 自己的画像一并传给绘图模型作为参考图。
+      为 true 时，模型会在生成时参照 Moonlark 的官方画像（内置图片），
+      适合画 Moonlark 本人、或要求生成图与 Moonlark 形象一致的场景；画其他内容时保持默认的 false。
+    type: boolean
+    required: false

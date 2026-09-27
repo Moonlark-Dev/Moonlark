@@ -50,6 +50,7 @@ from .tools import (
     ImageDownloadError,
 )
 from ..utils.emoji import QQ_EMOJI_MAP
+from .portrait import PORTRAIT_FILE_NAME, PORTRAIT_MIME_TYPE, get_moonlark_portrait
 from .note_manager import check_note, get_context_notes
 from .status_manager import get_status_manager
 
@@ -107,12 +108,45 @@ class ToolManager:
 
         self.status_manager.set_mood(mood_enum, reason, intensity)
 
-    async def draw_image(self, prompt: str, size: str = "auto", quality: str = "high") -> str:
-        """根据提示词生成图片并发送到当前会话"""
+    async def draw_image(
+        self,
+        prompt: str,
+        size: str = "auto",
+        quality: str = "high",
+        moonlark_portrait: bool = False,
+    ) -> str:
+        """根据提示词生成图片并发送到当前会话
+
+        Args:
+            prompt: 图片的文字描述
+            size: 图片尺寸
+            quality: 图片质量
+            moonlark_portrait: 为 True 时将内置的 Moonlark 画像一并传给图像生成模型作为参考图
+
+        Returns:
+            工具执行结果
+        """
         if self.processor is None:
             raise RuntimeError("processor is None")
 
-        image_bytes = await generate_image(prompt, size=size, quality=quality)
+        # 模型可能把布尔值写成字符串（如 "false"），字符串在 Python 中恒为真值，需显式转换
+        if isinstance(moonlark_portrait, str):
+            moonlark_portrait = moonlark_portrait.strip().lower() in {"true", "1", "yes"}
+
+        reference_image = None
+        if moonlark_portrait:
+            reference_image = (
+                PORTRAIT_FILE_NAME,
+                await get_moonlark_portrait(),
+                PORTRAIT_MIME_TYPE,
+            )
+
+        image_bytes = await generate_image(
+            prompt,
+            size=size,
+            quality=quality,
+            reference_image=reference_image,
+        )
 
         message = UniMessage.image(raw=image_bytes)
         await message.send(target=self.processor.session.target, bot=self.processor.session.bot)

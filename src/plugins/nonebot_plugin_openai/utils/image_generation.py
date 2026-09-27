@@ -61,6 +61,7 @@ async def generate_image(
     identify: str = "Draw Image",
     size: str = "auto",
     quality: str = "high",
+    reference_image: Optional[tuple[str, bytes, str]] = None,
 ) -> bytes:
     """调用 OpenAI 图像生成 API 生成图片
 
@@ -69,6 +70,9 @@ async def generate_image(
         identify: 用于识别模型配置的应用标识，可通过 /model 命令为该标识指定模型
         size: 图片尺寸，支持标准尺寸 (auto/1024x1024/1536x1024/1024x1536) 或自定义 WxH 格式（宽高需为 16 的倍数）
         quality: 图片质量，可选 "auto", "low", "medium", "high"
+        reference_image: 可选的参考图，格式为 (文件名, 二进制数据, MIME 类型)。
+            提供时改用 images/edit 接口，把参考图与提示词一并提交给模型，
+            用于让生成结果参照已有图片（如固定的角色形象）
 
     Returns:
         图片的二进制数据
@@ -79,13 +83,23 @@ async def generate_image(
     """
     size = validate_size(size)
     model = await get_model_for_identify(identify)
-    response = await client.images.generate(
-        model=model,
-        prompt=prompt,
-        size=size,
-        quality=quality,
-        n=1,
-    )
+    if reference_image is not None:
+        response = await client.images.edit(
+            model=model,
+            prompt=prompt,
+            image=[reference_image],
+            size=size,
+            quality=quality,
+            n=1,
+        )
+    else:
+        response = await client.images.generate(
+            model=model,
+            prompt=prompt,
+            size=size,
+            quality=quality,
+            n=1,
+        )
 
     if not response.data or len(response.data) == 0:
         raise Exception("图像生成 API 返回了空数据")
