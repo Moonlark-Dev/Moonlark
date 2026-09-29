@@ -41,6 +41,7 @@ plugins = [
     "nonebot_plugin_holiday",
     "nonebot_plugin_int",
     "nonebot_plugin_items",
+    "nonebot_plugin_jev",
     "nonebot_plugin_join_message",
     "nonebot_plugin_jrrp",
     "nonebot_plugin_larkcave",
