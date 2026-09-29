@@ -25,7 +25,7 @@ from nonebot_plugin_chat.utils.group import LinkParser
 from nonebot_plugin_chat.utils.token_bucket import TokenBucket
 
 from ..config import config
-from ..models import ChatGroup, Sticker, UserProfile
+from ..models import ChatGroup, PreTriggerSignals, Sticker, UserProfile
 from ..types import CachedMessage
 from ..utils.ai_agent import AskAISession
 from ..utils.emoji import QQ_EMOJI_MAP
@@ -44,14 +44,6 @@ from .message import MessageQueue
 class UnlimitedTokenReviewResult(BaseModel):
     approved: bool
     reason: str
-
-
-class PreTriggerSignals(BaseModel):
-    truncate: bool
-    help_needed: bool
-    emotional_support_needed: bool
-    chatting_alone: bool
-    tech_topic: bool
 
 
 if TYPE_CHECKING:
@@ -162,14 +154,19 @@ class MessageProcessor:
                 await self.send_message(refuse_msg)
                 logger.info(f"Interaction {id_} from {nickname} is refused by bite")
 
-    async def judge_user_behavior(self, nickname: str, score: int, reason: str) -> str:
+    async def judge_user_behavior(self, nickname: str, score: int, reason: str) -> tuple[str, bool]:
+        """评价用户行为并调整好感度
+
+        Returns:
+            (给上层的结果文本, 好感度是否真的发生了变动)
+        """
         # 获取用户 ID
         users = await self.session.get_users()
         if not (user_id := users.get(nickname)):
-            return await self.session.text("judge.user_not_found", nickname)
+            return await self.session.text("judge.user_not_found", nickname), False
         user = await get_user(user_id)
         if user.get_register_time() is None:
-            return await self.session.text("judge.user_not_registered", nickname)
+            return await self.session.text("judge.user_not_registered", nickname), False
         # 限制分数范围
         score = max(-2, min(2, score))
         # 检查冷却时间和每日上限
@@ -179,17 +176,17 @@ class MessageProcessor:
         # 增加操作冷却时间为1小时，降低好感度操作冷却时间为0.5小时
         cooldown_hours = 1.0 if score > 0 else 0.5
         if dt - datetime.fromtimestamp(last_judge_time) < timedelta(hours=cooldown_hours):
-            return await self.session.text("judge.cooldown", nickname)
+            return await self.session.text("judge.cooldown", nickname), False
         if datetime.fromtimestamp(last_judge_time).date() != datetime.now().date():
             daily_score = 0
         delta = score * 0.0004
         if abs(daily_score + delta) > 0.005:
-            return await self.session.text("judge.daily_limit", nickname)
+            return await self.session.text("judge.daily_limit", nickname), False
         await user.set_config_key("chat_fav_judge_cache", [dt.timestamp(), daily_score + delta])
         await user.add_fav(delta)
         logger.info(f"AI judged user {user_id} ({nickname}): {score} ({reason}), delta={delta}")
         asyncio.create_task(self.send_judge_response(score, reason, user_id))
-        return await self.session.text("judge.success", nickname, reason)
+        return await self.session.text("judge.success", nickname, reason), True
 
     async def send_judge_response(self, score: int, reason: str, user_id: str) -> None:
         # 添加 reaction
@@ -1118,22 +1115,11 @@ class MessageProcessor:
                 logger.exception(f"[PendingNotes:{self.session.session_id}] 分析失败: {e}")
 
     async def analyze_pre_trigger_signals(self) -> PreTriggerSignals | None:
+        """触发概率的预处理：由 Jev 依据最近的聊天记录判定五个布尔信号"""
+        from ..utils.jev_judge import analyze_pre_trigger
+
         chat_history = await self.session.get_cached_messages_string(length=10, include_self_message=False)
-        try:
-            result = await fetch_json(
-                [
-                    generate_message(await get_message_text("truncate_check.md.jinja"), "system"),
-                    generate_message(chat_history, "user"),
-                ],
-                PreTriggerSignals,
-                identify="Pre-Trigger Analysis",
-                reasoning_effort="low",
-            )
-            logger.debug(f"Pre-trigger signals: {result}")
-            return result
-        except Exception as e:
-            logger.exception(e)
-            return None
+        return await analyze_pre_trigger(chat_history, self.session.lang_str)
 
     @staticmethod
     def calculate_gate_probability(signals: PreTriggerSignals) -> float:

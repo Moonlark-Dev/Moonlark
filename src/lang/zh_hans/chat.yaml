@@ -632,12 +632,8 @@ prompt_link_parser: |
   你的回复中不能出现除了该页面的简介以外的任何内容。
 
 fetcher:
-  parse_failed: |
-    [异常] 解析输出失败，请检查你的输出内容并尝试重新输出。
-    错误信息：{}
-    **请确保你的输出符合“输出”章节中的定义。**
   sticker_recommendation: "基于上下文的表情包推荐:"
-  reply_required: "[提示] 你标记了一个“需要回复”，但是没有输出任何的工具调用。请确保你的输出中包含一个有效的 `send_message` 工具调用。"
+  reply_required: "[提示] 经过判断你本轮需要回复，但你还没有通过 `send_message` 工具发送任何消息。请把要回复的内容用 `send_message` 工具发出。"
 
 proactive_message:
   prompt: |
