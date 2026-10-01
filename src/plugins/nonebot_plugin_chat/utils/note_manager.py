@@ -18,7 +18,7 @@
 from datetime import datetime, timedelta
 import json
 import re
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, Any, List, Optional
 
 from nonebot import logger
 from nonebot_plugin_apscheduler import scheduler
@@ -273,8 +273,11 @@ async def cleanup_expired_notes() -> int:
 
 if TYPE_CHECKING:
     from ..core.session.base import BaseSession
+    from ..models import SessionEvent
 
 from nonebot_plugin_openai import fetch_json
+
+from ..core.ego.event_collector import event_collector, format_event_content
 
 
 async def check_note(
@@ -291,6 +294,141 @@ async def check_note(
         NoteCheckResult,  # type: ignore
         identify="Check Note",
     )
+
+
+# ========================================================================
+# 每日 Note 整理（上下文重置前，交给 Jev 判定错误 / 过期）
+# ========================================================================
+
+# 交给 Jev 的 state 中聊天记录的最大字符数（关键词匹配仍使用完整记录）
+NOTE_REVIEW_CHAT_CHAR_LIMIT = 20000
+# Jev 判定为 wrong/expired 且置信度达到该值才删除笔记
+NOTE_DELETE_MIN_CONFIDENCE = 0.8
+
+
+def _content_to_text(content: Any) -> str:
+    """把 OpenAI 消息的 content（字符串或分段列表）拍平成纯文本，跳过图片等非文本分段"""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts = []
+        for part in content:
+            if isinstance(part, dict):
+                if part.get("type") == "text":
+                    parts.append(str(part.get("text", "")))
+            else:
+                text = getattr(part, "text", None)
+                if isinstance(text, str):
+                    parts.append(text)
+        return "\n".join(parts)
+    return ""
+
+
+def serialize_openai_history(messages: list) -> str:
+    """把会话的消息队列序列化为整段聊天记录（跳过 system 提示词与图片）"""
+    lines = []
+    for message in messages:
+        if isinstance(message, dict):
+            role = message.get("role", "")
+            content = message.get("content")
+        else:
+            role = getattr(message, "role", "")
+            content = getattr(message, "content", None)
+        if role == "system":
+            continue
+        text = _content_to_text(content).strip()
+        if not text:
+            continue
+        lines.append(f"[{role}] {text}")
+    return "\n".join(lines)
+
+
+def _note_description(note: Note) -> str:
+    """笔记的可读描述，作为 Jev 判定时的题目数据"""
+    created = datetime.fromtimestamp(note.created_time).strftime("%Y-%m-%d %H:%M")
+    parts = [f"[#{note.id}] {note.content}"]
+    if note.keywords:
+        parts.append(f"关键词: {note.keywords}")
+    parts.append(f"创建于 {created}")
+    if note.expire_time:
+        parts.append(f"过期时间: {note.expire_time.strftime('%Y-%m-%d %H:%M')}")
+    return "；".join(parts)
+
+
+def _format_events_for_review(events: list["SessionEvent"]) -> str:
+    """把会话当天的事件记录格式化为可读文本（对异常内容做兜底）"""
+    lines = []
+    for event in events:
+        time_str = f"{event.date} {event.created_at.strftime('%H:%M')}" if event.created_at else event.date
+        lines.append(f"[{time_str}] {format_event_content(event.content)}")
+    return "\n".join(lines)
+
+
+async def review_session_notes(session: "BaseSession") -> int:
+    """每天聊天上下文重置前的 Note 整理
+
+    根据所选会话的整个聊天记录读出所有能被匹配到的 Note（``filter_note`` 关键词匹配，
+    含无关键词的常驻笔记），连同该会话当天的事件列表一起交给 Jev 分析每条笔记是否
+    错误（wrong）或已过期（expired）；判定正确且置信度足够的笔记会被删除。
+
+    Returns:
+        删除的笔记数量；无可整理内容或 Jev 不可用时返回 0
+    """
+    from nonebot_plugin_jev import ChoiceAnswer, ask, choice, lang_ref
+
+    chat_history = serialize_openai_history(session.processor.openai_messages.messages)
+    if not chat_history.strip():
+        return 0
+
+    note_manager = await get_context_notes(session.session_id)
+    # include_expired=True：把所有仍存在的笔记都纳入整理（按时间过期的由每日清理任务处理）
+    matched_notes, _ = await note_manager.filter_note(chat_history, include_expired=True)
+    if not matched_notes:
+        return 0
+
+    # 事件列表：重置发生在凌晨 4 点，get_session_events 默认取「前一天 0:00 至今」，
+    # 正好覆盖被重置的这段会话；必要时先补齐尚未生成事件的消息
+    try:
+        await event_collector.flush_pending(min_pending=0)
+    except Exception as e:
+        logger.warning(f"[NoteReview:{session.session_id}] 补齐事件失败: {e}")
+    events = await event_collector.get_session_events(session.session_id)
+    events_text = _format_events_for_review(events)
+
+    state = {
+        # 关键词匹配使用完整聊天记录，交给 Jev 的 state 只保留尾部以控制体积
+        "chat_history": chat_history[-NOTE_REVIEW_CHAT_CHAR_LIMIT:],
+        "events": events_text,
+        "notes": [_note_description(note) for note in matched_notes],
+        "now": datetime.now().isoformat(timespec="seconds"),
+    }
+    questions = {
+        f"note_{note.id}": choice(
+            lang_ref("note_review.question", _note_description(note)),
+            criteria={key: lang_ref(f"note_review.criteria.{key}") for key in ("keep", "wrong", "expired")},
+        )
+        for note in matched_notes
+    }
+
+    try:
+        answers = await ask(state, questions, lang_str=session.lang_str, identify="Note Review")
+    except Exception as e:
+        logger.warning(f"[NoteReview:{session.session_id}] Jev 审查失败: {e}")
+        return 0
+
+    deleted = 0
+    for note in matched_notes:
+        answer = answers.get(f"note_{note.id}")
+        if not isinstance(answer, ChoiceAnswer):
+            continue
+        if answer.choice in ("wrong", "expired") and answer.confidence >= NOTE_DELETE_MIN_CONFIDENCE:
+            if await note_manager.delete_note(note.id):
+                deleted += 1
+                logger.info(
+                    f"[NoteReview:{session.session_id}] 删除笔记 #{note.id}"
+                    f"（{answer.choice}，置信度 {answer.confidence:.2f}）: {note.content[:50]}"
+                )
+    return deleted
 
 
 @scheduler.scheduled_job("cron", hour="3", id="cleanup_expired_notes")

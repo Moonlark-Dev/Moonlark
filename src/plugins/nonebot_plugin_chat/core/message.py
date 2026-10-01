@@ -1,19 +1,14 @@
 import hashlib
-import re
-import traceback
 import uuid
 from typing import TYPE_CHECKING, Any, Optional, cast
-from nonebot.compat import type_validate_json
 from nonebot.log import logger
 
 from nonebot_plugin_chat.utils.role import get_role
-from nonebot_plugin_chat.models import MessageQueueCache, ModelResponse
+from nonebot_plugin_chat.models import MessageQueueCache
 from nonebot_plugin_chat.enums import FetchStatus
-from pydantic import ValidationError
 from nonebot_plugin_openai import generate_message
-from nonebot_plugin_openai.utils.chat import MessageFetcher, strip_json_codeblock
+from nonebot_plugin_openai.utils.chat import MessageFetcher
 from nonebot_plugin_orm import get_session
-from openai.types.chat import ChatCompletionMessage
 from nonebot_plugin_openai.types import Message as OpenAIMessage
 
 import asyncio
@@ -28,6 +23,9 @@ from ..utils.timing_stats import timing_stats_manager
 
 if TYPE_CHECKING:
     from nonebot_plugin_chat.core.processor import MessageProcessor
+
+# Jev 判定「需要回复但没发消息」时，最多提示模型补发的次数
+MAX_REPLY_REMINDERS = 2
 
 
 class MessageQueue:
@@ -324,6 +322,7 @@ class MessageQueue:
 
     async def _fetch_reply(self) -> FetchStatus:
         from .ego.moonlark_main import moonlark_main
+        from ..utils.jev_judge import apply_reply_evaluation, evaluate_reply
 
         moonlark_main.on_reply_sent()
 
@@ -341,57 +340,43 @@ class MessageQueue:
         if self.fetcher is None:
             logger.error("Failed to create fetcher: _create_fetcher() returned None")
             return FetchStatus.FAILED
-        retry_count = 0
-        analysis = None  # 跟踪是否已成功解析 JSON
+
+        round_start = datetime.now()
+        reply_baseline = len(self.fetcher.session.messages)
+        outputs: list[str] = []
+        reply_reminders = 0
         try:
-            async for message in self.fetcher.fetch_message_stream():
-                if retry_count > 5:
-                    raise Exception("Failed to fetch message")
-                if not message:
+            # 模型的输出不再是 JSON，而是一段自然语言的思考文本；
+            # 整轮回复结束后，由 Jev 依据聊天上下文、模型的 reasoning_content、
+            # 模型输出与实际发送的消息判定 mood / 好感度 / 兴趣 / 是否漏发回复。
+            while True:
+                async for message in self.fetcher.fetch_message_stream():
+                    if message:
+                        outputs.append(str(message))
+
+                evaluation = await evaluate_reply(
+                    self.processor,
+                    list(self.fetcher.session.messages[reply_baseline:]),
+                    outputs,
+                    round_start,
+                )
+                if evaluation is None:
+                    break
+                if (
+                    evaluation.reply_required
+                    and not self._has_sent_message_since(round_start)
+                    and reply_reminders < MAX_REPLY_REMINDERS
+                ):
+                    reply_reminders += 1
+                    logger.info("Jev 判定本轮需要回复但尚未发送消息，提示模型补发 ...")
+                    # 复位 stop 并插入提示，让 fetcher 再跑一轮
+                    self.fetcher.session.stop = False
+                    self.fetcher.session.insert_message(
+                        generate_message(await self.processor.session.text("fetcher.reply_required"), "user"),
+                    )
                     continue
-                try:
-                    analysis = type_validate_json(ModelResponse, strip_json_codeblock(message))
-                except Exception as e:
-                    # 如果当前轮次含有工具调用，忽略输出解析失败提示
-                    if self.fetcher is not None and self.fetcher.session and self.fetcher.session.messages:
-                        last_msg = self.fetcher.session.messages[-1]
-                    else:
-                        last_msg = None
-                    if last_msg and getattr(last_msg, "tool_calls", None):
-                        continue
-                    # 如果已成功解析过 JSON，忽略同一调用后续轮次的解析失败
-                    if analysis is not None:
-                        continue
-                    if self.fetcher is not None and self.fetcher.session:
-                        self.fetcher.session.insert_message(
-                            generate_message(await self.processor.session.text("fetcher.parse_failed", str(e)), "user")
-                        )
-                    retry_count += 2
-                    continue
-                if analysis is not None:
-                    if analysis.thought:
-                        self.last_thought = analysis.thought
-                    if analysis.mood:
-                        await self.processor.tool_manager.set_mood(
-                            analysis.mood, analysis.mood_reason, analysis.mood_intensity
-                        )
-                    if analysis.interest is not None:
-                        self.processor.session.set_interest(analysis.interest)
-                        logger.debug(f"Cached interest: {analysis.interest:.2f}")
-                    if (judge := analysis.favorability_judge) is not None:
-                        await self.processor.judge_user_behavior(judge.target, judge.score, judge.reason)
-                    if (
-                        analysis.reply_required
-                        and self.fetcher is not None
-                        and self.fetcher.session
-                        and self.fetcher.session.messages
-                        and isinstance(self.fetcher.session.messages[-1], ChatCompletionMessage)
-                        and not self.fetcher.session.messages[-1].tool_calls
-                    ):
-                        self.fetcher.session.insert_message(
-                            generate_message(await self.processor.session.text("fetcher.reply_required"), "user")
-                        )
-                        retry_count += 1
+                await apply_reply_evaluation(self.processor, evaluation)
+                break
 
             if self.fetcher is not None:
                 fetcher_messages = self.fetcher.get_messages()
@@ -403,6 +388,10 @@ class MessageQueue:
             logger.exception(e)
             state = FetchStatus.FAILED
 
+        # 模型的自然语言输出即「所思所想」，供 chat-monitor 的 thought 接口读取
+        if outputs:
+            self.last_thought = outputs[-1]
+
         # 持久化最近一次 API 响应体（以便前端点击消息时查看）
         if hasattr(self, "fetcher") and self.fetcher is not None:
             last_resp = getattr(self.fetcher.session, "last_response", None)
@@ -410,6 +399,14 @@ class MessageQueue:
                 self.last_response = last_resp
 
         return state
+
+    def _has_sent_message_since(self, since: datetime) -> bool:
+        """本轮回复是否已经通过 send_message 实际发出过消息"""
+        return any(
+            bool(msg.get("message_id")) and (msg.get("send_time") or since) >= since
+            for msg in self.processor.session.cached_messages
+            if msg.get("self")
+        )
 
     async def _ensure_system_prompt(self) -> None:
         if self.fetcher is None:

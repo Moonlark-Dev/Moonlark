@@ -330,6 +330,8 @@ Key variables in `.env` (see `.env.template` for full list):
 - `OPENAI_API_KEY`, `OPENAI_BASE_URL`: OpenAI API configuration
 - `OPENAI_DEFAULT_MODEL`: Default model for OpenAI-compatible APIs
 - `MODEL_OVERRIDE`: JSON mapping for model overrides per application
+- `TYPESAFE_API_KEY`, `TYPESAFE_BASE_URL`, `TYPESAFE_MODEL`: TypeSafe Jev (System One) API used by
+  `nonebot_plugin_jev` (chat 的心情/好感度判定、触发概率预处理、每日 Note 整理；不配置时这些调用跳过)
 - `WOLFRAM_API_KEY`: Wolfram Alpha API
 - `BAIDU_API_KEY`, `BAIDU_SECRET_KEY`: Baidu translation API
 - `SENTRY_DSN`: Error tracking

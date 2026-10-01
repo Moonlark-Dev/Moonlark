@@ -68,6 +68,7 @@ packages = [
     { include = "nonebot_plugin_holiday", from = "./plugins" },
     { include = "nonebot_plugin_int", from = "./plugins" },
     { include = "nonebot_plugin_items", from = "./plugins" },
+    { include = "nonebot_plugin_jev", from = "./plugins" },
     { include = "nonebot_plugin_join_message", from = "./plugins" },
     { include = "nonebot_plugin_jrrp", from = "./plugins" },
     { include = "nonebot_plugin_larkcave", from = "./plugins" },

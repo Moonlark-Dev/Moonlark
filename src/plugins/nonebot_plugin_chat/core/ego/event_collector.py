@@ -1,12 +1,17 @@
 """事件收集器
 
-每个会话每缓存 100 条消息运行一次，生成群聊事件和话题列表并存入数据库。
+每个会话每缓存 50 条消息运行一次，生成群聊事件和话题列表并存入数据库。
+
+可靠性说明：``BaseSession.clean_cached_message`` 只保留最近 50 条缓存消息，
+因此收集间隔必须与缓存上限一致（50），否则两批之间的消息永远不会被任何一次
+收集看到（间隔为 100 时会漏掉一半消息）。收集失败时会把计数补回阈值，
+让下一条消息触发一次重试，避免这一批消息的事件永久丢失。
 """
 
 import asyncio
 import json
 from datetime import datetime, timedelta
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from nonebot import logger
 from nonebot_plugin_openai.utils.chat import fetch_json
@@ -20,10 +25,52 @@ if TYPE_CHECKING:
 from ...models import SessionEvent
 
 
+def normalize_event_content(data: Any) -> Optional[dict]:
+    """把模型返回的事件内容规整为 ``{"topics": [str, ...], "events": [str, ...]}``
+
+    模型可能把 topics/events 返回成字符串、数字等非预期结构；非对象直接返回 None。
+    规整后 ``_format_events`` 等消费方可以安全地按列表处理。
+    """
+    if not isinstance(data, dict):
+        return None
+
+    def _str_list(value: Any) -> list[str]:
+        if isinstance(value, str):
+            return [value.strip()] if value.strip() else []
+        if isinstance(value, list):
+            return [str(item).strip() for item in value if str(item).strip()]
+        return []
+
+    normalized = dict(data)
+    normalized["topics"] = _str_list(data.get("topics"))
+    normalized["events"] = _str_list(data.get("events"))
+    return normalized
+
+
+def format_event_content(content: str) -> str:
+    """把存储的事件 JSON 渲染为可读文本，结构异常时降级为原文片段"""
+    try:
+        data = json.loads(content)
+    except (json.JSONDecodeError, TypeError):
+        return str(content)[:200]
+    normalized = normalize_event_content(data)
+    if normalized is None:
+        return str(content)[:200]
+    lines = []
+    if normalized["topics"]:
+        lines.append(f"话题: {', '.join(normalized['topics'][:5])}")
+    lines.extend(f"- {event}" for event in normalized["events"][:3])
+    if not lines:
+        lines.append("(无话题/事件)")
+    return "\n".join(lines)
+
+
 class EventCollector:
     """会话事件收集器"""
 
-    COLLECTION_INTERVAL = 100
+    # 与 BaseSession.clean_cached_message 的缓存上限（50 条）保持一致：
+    # 间隔大于缓存上限会导致两批之间的消息永远不被收集
+    COLLECTION_INTERVAL = 50
     # 未生成事件的消息数超过该值时，planner / 主动私聊决策会无视 COLLECTION_INTERVAL 立即收集一次
     FLUSH_PENDING_THRESHOLD = 5
     # 立即收集时的最大并发数，避免一次性向模型服务发起过多请求
@@ -44,7 +91,7 @@ class EventCollector:
         正常情况下每个会话每 :attr:`COLLECTION_INTERVAL` 条消息才生成一次事件，planner
         与主动私聊决策在读取事件前调用本方法：只要某个会话积压的未生成事件消息数**大于**
         ``min_pending``，就忽略最低消息数量立即运行一次收集，避免决策读到的事件总是落后于
-        最新消息。收集完成后对应计数清零，后续仍按 100 条的节奏进行。
+        最新消息。收集完成后对应计数清零，后续仍按 COLLECTION_INTERVAL 的节奏进行。
 
         Returns:
             本次立即收集过的会话 ID 列表
@@ -113,7 +160,10 @@ class EventCollector:
                 reasoning_effort="low",
             )
 
-            content = json.dumps(result, ensure_ascii=False)
+            normalized = normalize_event_content(result)
+            if normalized is None:
+                raise ValueError(f"事件内容无法规整为 topics/events: {result!r}")
+            content = json.dumps(normalized, ensure_ascii=False)
             async with get_session() as db_session:
                 db_session.add(
                     SessionEvent(
@@ -127,6 +177,9 @@ class EventCollector:
             logger.info(f"[EventCollector] 已收集会话 {session_name} 的事件和话题")
         except Exception as e:
             logger.warning(f"[EventCollector] 收集失败: {e}")
+            # 收集失败时把计数补回阈值：下一条消息缓存时会立即重试，
+            # 避免这一批消息的事件因为一次失败而永久丢失
+            self._session_message_counters[session.session_id] = self.COLLECTION_INTERVAL
 
     async def get_session_events(self, session_id: str, start_date: Optional[str] = None) -> list[SessionEvent]:
         """获取指定会话的事件，范围为 start_date（默认前一天）0:00 至今天"""
@@ -195,18 +248,8 @@ class EventCollector:
                     session_name = (await session.get_session_name()) or event.session_id
                 session_names[event.session_id] = session_name
             lines.append(f"\n## 会话: {session_name}")
-            try:
-                data = json.loads(event.content)
-                if isinstance(data, dict):
-                    topics = data.get("topics", [])
-                    events_list = data.get("events", [])
-                    if topics:
-                        lines.append(f"话题: {', '.join(topics[:5])}")
-                    if events_list:
-                        for evt in events_list[:3]:
-                            lines.append(f"- {evt}")
-            except (json.JSONDecodeError, TypeError):
-                lines.append(event.content[:200])
+            # format_event_content 内部会规整 topics/events 的类型并对异常内容兜底
+            lines.append(format_event_content(event.content))
 
         return "\n".join(lines) if lines else "暂无事件记录。"
 

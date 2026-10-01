@@ -88,36 +88,14 @@ class MessageQueueCache(Model):
     )  # 消息哈希，用于去重
 
 
-class JudgeData(BaseModel):
-    target: str
-    score: Literal[-2, -1, 0, 1, 2]
-    reason: str
+class PreTriggerSignals(BaseModel):
+    """回复触发前的预处理信号，由 Jev 依据最近的聊天记录判定（见 utils/jev_judge.py）"""
 
-
-class ModelResponse(BaseModel, extra="forbid"):
-    reply_required: bool
-    mood: Optional[
-        Literal[
-            "joy",
-            "sadness",
-            "anger",
-            "fear",
-            "surprise",
-            "disgust",
-            "trust",
-            "anticipation",
-            "calm",
-            "bored",
-            "confused",
-            "tired",
-            "shy",
-        ]
-    ]
-    mood_intensity: float = Field(0.8, ge=0.5, le=1.2)
-    mood_reason: Optional[str] = None
-    favorability_judge: Optional[JudgeData] = None
-    interest: Optional[float] = Field(None, ge=0.0, le=1.0)
-    thought: Optional[str] = None
+    truncate: bool
+    help_needed: bool
+    emotional_support_needed: bool
+    chatting_alone: bool
+    tech_topic: bool
 
 
 class PrivateChatConfig(Model):
@@ -276,7 +254,7 @@ class Timer(Model):
 
 
 class SessionEvent(Model):
-    """按会话收集的事件和话题记录，每 100 条消息收集一次"""
+    """按会话收集的事件和话题记录，每 50 条消息收集一次"""
 
     __tablename__ = "nonebot_plugin_chat_sessionevent"
 
