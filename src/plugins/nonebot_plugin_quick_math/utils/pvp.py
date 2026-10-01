@@ -1,4 +1,3 @@
-import operator
 import random
 from datetime import datetime
 from typing import Optional
@@ -44,7 +43,15 @@ class QuickMathRoomPlayer:
         self.event = event
         self.session: Optional[QuickMathPvpSession] = None
         self.saved = False
-        self.final_point = 0
+
+    @property
+    def final_point(self) -> int:
+        """玩家最终得分，直接取自其会话。
+
+        不能用单独保存的字段：``final_point`` 只在 :meth:`QuickMathRoom.eliminate`
+        里赋值，而获胜者从未被淘汰，结算时就会读到未赋值的 0 分。
+        """
+        return self.session.point if self.session is not None else 0
 
 
 class QuickMathRoom:
@@ -59,6 +66,8 @@ class QuickMathRoom:
         self.players: list[QuickMathRoomPlayer] = []
         self.status = "waiting"  # waiting | playing | ended
         self.order: list[QuickMathRoomPlayer] = []
+        # 淘汰顺序（先被淘汰的在前），结算时倒序即得到名次
+        self.eliminated: list[QuickMathRoomPlayer] = []
         self.seat = 0
 
     def get_player(self, user_id: str) -> Optional[QuickMathRoomPlayer]:
@@ -198,8 +207,9 @@ class QuickMathRoom:
         if player.saved:
             return
         player.saved = True
+        # 记录淘汰顺序：越晚被淘汰名次越高，获胜者没有淘汰记录、单独排在第一名
+        self.eliminated.append(player)
         session = player.session
-        player.final_point = session.point if session is not None else 0
         if session is not None and session.passed > 0:
             await update_user_data(player.user_id, session.point)
             await session.update_achievement()
@@ -209,6 +219,18 @@ class QuickMathRoom:
         else:
             await self.broadcast_lang("pvp.eliminated", self.owner, nickname, player.final_point)
 
+    def get_ranking(self) -> list[QuickMathRoomPlayer]:
+        """按淘汰顺序返回名次：坚持到最后的人第一，最先被淘汰的人最后。
+
+        PvP 的胜负只由“是否被淘汰”决定，积分仅用于展示，
+        因此不能按积分排序：积分更高的玩家可能更早出局。
+        """
+        ranking = self.players[:]
+        ranking.extend(reversed(self.eliminated))
+        # 兜底：既未获胜也没有淘汰记录的玩家（例如对局被异常中断）排在最后，避免漏展示
+        ranking.extend(player for player in self.order if player not in ranking)
+        return ranking
+
     async def finish(self) -> None:
         """仅剩一人时结算：保存成绩并发送得分排行表格（md_to_pic）。"""
         winner = self.players[0] if self.players else None
@@ -217,41 +239,32 @@ class QuickMathRoom:
             await winner.session.update_achievement()
         if winner is not None:
             winner_nickname = await self.get_nickname(winner.user_id)
-            await self.broadcast_lang("pvp.winner", self.owner, winner_nickname, winner.session.point)
+            await self.broadcast_lang("pvp.winner", self.owner, winner_nickname, winner.final_point)
         image = await md_to_pic(await self.build_result_markdown())
         await UniMessage().image(raw=image).send(target=self.last_event, bot=self.bot)
         self.status = "ended"
         rooms.pop(self.room_id, None)
 
     async def build_result_markdown(self) -> str:
-        """生成结算表格 markdown（按得分降序）。"""
-        records: list[dict] = []
-        for player in self.order:
-            session = player.session
-            records.append(
-                {
-                    "user_id": player.user_id,
-                    "point": player.final_point,
-                    "passed": session.passed if session is not None else 0,
-                    "total_answered": session.total_answered if session is not None else 0,
-                    "skipped": session.skipped_question if session is not None else 0,
-                },
-            )
-        records.sort(key=operator.itemgetter("point"), reverse=True)
+        """生成结算表格 markdown（按淘汰顺序排名，见 :meth:`get_ranking`）。"""
         lines = [await lang.text("pvp.result_title", self.owner)]
-        for index, record in enumerate(records, start=1):
-            nickname = await self.get_nickname(record["user_id"])
-            rate = record["passed"] / record["total_answered"] * 100 if record["total_answered"] else 0
+        for index, player in enumerate(self.get_ranking(), start=1):
+            session = player.session
+            passed = session.passed if session is not None else 0
+            total_answered = session.total_answered if session is not None else 0
+            skipped = session.skipped_question if session is not None else 0
+            nickname = await self.get_nickname(player.user_id)
+            rate = passed / total_answered * 100 if total_answered else 0
             lines.append(
                 await lang.text(
                     "pvp.result_row",
                     self.owner,
                     index,
                     nickname,
-                    record["point"],
-                    record["passed"],
+                    player.final_point,
+                    passed,
                     f"{rate:.0f}%",
-                    record["skipped"],
+                    skipped,
                 ),
             )
         return "\n".join(lines)
