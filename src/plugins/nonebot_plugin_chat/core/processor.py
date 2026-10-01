@@ -37,6 +37,7 @@ from ..utils.status_manager import get_status_manager
 from ..utils.sticker_manager import get_sticker_manager
 from ..utils.timing_stats import timing_stats_manager
 from ..utils.tool_manager import ToolManager
+from ..utils.tools.meme import MemeTools
 from ..utils.tools.sticker import StickerTools
 from .message import MessageQueue
 
@@ -65,6 +66,7 @@ class MessageProcessor:
         self.blocked = False
         self._latest_reasioning_content_cache = ""
         self.sticker_tools = StickerTools(self.session)
+        self.meme_tools = MemeTools(self.session)
         self.functions = []
         self.loop_task = None
         self._processing_task = None
