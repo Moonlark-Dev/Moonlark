@@ -1,5 +1,5 @@
 from nonebot_plugin_orm import Model
-from sqlalchemy import String, Text
+from sqlalchemy import Float, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 
@@ -13,7 +13,9 @@ class MarketItem(Model):
     item_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     item_namespace: Mapped[str] = mapped_column(String(64))
     remain_count: Mapped[int]
-    price: Mapped[float]
+    # 显式指定 Float()：SQLAlchemy 2.1 起 Mapped[float] 的默认映射由 Float 变为 Double，
+    # 不写显式类型会让 nb orm check 把现有 FLOAT 列判成待迁移
+    price: Mapped[float] = mapped_column(Float())
     user_id: Mapped[str] = mapped_column(String(128))
     item_data: Mapped[str] = mapped_column(Text())  # json
 
@@ -23,4 +25,4 @@ class SellLog(Model):
 
     item_namespace: Mapped[str] = mapped_column(String(64), primary_key=True)
     sold_count: Mapped[int]
-    price_sum: Mapped[float]
+    price_sum: Mapped[float] = mapped_column(Float())
