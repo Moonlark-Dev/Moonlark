@@ -14,9 +14,15 @@
   OneBot 11 等无按钮适配器渲染的图片仍保留完整指令列表；
 - QQ 官方机器人下创建房间也会展示房间信息（房间码、总人数、玩家列表）与操作按钮。
 
+- 结算表格的排名按淘汰顺序计算（坚持到最后的人第一），而不是按积分降序：
+  积分更高的玩家可能更早被淘汰，旧实现会让亚军排在冠军前面；
+- 结算表格里获胜者的积分曾恒为 0：``final_point`` 只在 ``eliminate`` 里赋值，
+  而获胜者从未被淘汰；现在得分直接取自玩家会话。
+
 注意：插件导入必须在 fixture/函数内部进行（collection 阶段 nonebot 插件尚未加载）。
 """
 
+import re
 from pathlib import Path
 from typing import Any
 
@@ -289,3 +295,156 @@ async def test_onebot_room_message_stays_plain_text() -> None:
     assert "玩家（1/5）" in content
     assert "/qm pvp join ABCDE" in content
     assert not any(isinstance(segment, Keyboard) for segment in message)
+
+
+# ---------- 结算排名与积分 ----------
+
+
+class _FakePvpSession:
+    """结算只需要会话里的统计数据，用假会话避免真正出题与写库。"""
+
+    def __init__(self, point: int, passed: int, total_answered: int, skipped: int = 0) -> None:
+        self.point = point
+        self.passed = passed
+        self.total_answered = total_answered
+        self.skipped_question = skipped
+        self.achievement_updated = False
+
+    async def update_achievement(self) -> None:
+        self.achievement_updated = True
+
+
+def _result_rows(markdown: str) -> list[list[str]]:
+    """取出结算表格的数据行（跳过表头与对齐行），每个单元格去掉空白。"""
+    return [
+        [cell.strip() for cell in line.strip().strip("|").split("|")]
+        for line in markdown.splitlines()
+        if re.match(r"^\|\s*\d+\s*\|", line)
+    ]
+
+
+@pytest.mark.asyncio
+async def test_eliminate_records_elimination_order(monkeypatch: pytest.MonkeyPatch) -> None:
+    """淘汰时记录淘汰顺序，并用会话里的真实积分（而非另存一份可能漏写的字段）。"""
+    from nonebot.adapters.console import Bot as ConsoleBot
+    from nonebot_plugin_quick_math.utils import pvp as pvp_module
+    from nonebot_plugin_quick_math.utils.pvp import QuickMathRoom, QuickMathRoomPlayer
+
+    async def fake_update_user_data(_user_id: str, _point: int) -> tuple[int, int]:
+        return 0, 0
+
+    broadcasts: list[tuple[str, tuple[object, ...]]] = []
+
+    async def fake_broadcast_lang(_self: Any, key: str, _user_id: str, *args: object) -> None:
+        broadcasts.append((key, args))
+
+    monkeypatch.setattr(pvp_module, "update_user_data", fake_update_user_data)
+    monkeypatch.setattr(QuickMathRoom, "broadcast_lang", fake_broadcast_lang)
+
+    room = QuickMathRoom("ABCDE", "group", "u1", 2, ConsoleBot.__new__(ConsoleBot), None)
+    player = QuickMathRoomPlayer("u2", None, None)
+    session = _FakePvpSession(point=19, passed=8, total_answered=9)
+    player.session = session  # type: ignore[assignment]
+
+    await room.eliminate(player)
+
+    assert room.eliminated == [player]
+    assert player.saved is True
+    assert player.final_point == 19
+    assert session.achievement_updated is True
+    assert broadcasts[-1] == ("pvp.eliminated", ("昵称-u2", 19))
+
+    # 已淘汰的玩家不会重复记录（quit 与答错可能先后触发淘汰）
+    await room.eliminate(player)
+    assert room.eliminated == [player]
+
+
+@pytest.mark.asyncio
+async def test_result_markdown_ranks_by_elimination_order() -> None:
+    """结算排名按淘汰顺序：先被淘汰的排后面，获胜者第一且显示真实积分。
+
+    回归点：旧实现按积分降序排序，而获胜者从未被淘汰、积分为 0，
+    于是获胜者被排到已被淘汰的玩家后面，表格里积分为 0。
+    """
+    from nonebot.adapters.console import Bot as ConsoleBot
+    from nonebot_plugin_quick_math.utils.pvp import QuickMathRoom, QuickMathRoomPlayer
+
+    room = QuickMathRoom("ABCDE", "group", "u1", 3, ConsoleBot.__new__(ConsoleBot), None)
+    winner = QuickMathRoomPlayer("u1", None, None)
+    runner_up = QuickMathRoomPlayer("u2", None, None)
+    first_out = QuickMathRoomPlayer("u3", None, None)
+    winner.session = _FakePvpSession(point=23, passed=8, total_answered=8)  # type: ignore[assignment]
+    runner_up.session = _FakePvpSession(point=19, passed=8, total_answered=9, skipped=1)  # type: ignore[assignment]
+    first_out.session = _FakePvpSession(point=5, passed=2, total_answered=3)  # type: ignore[assignment]
+    room.order = [winner, runner_up, first_out]
+    room.players = [winner]
+    # 先淘汰 first_out，再淘汰 runner_up，最后剩下 winner
+    room.eliminated = [first_out, runner_up]
+
+    markdown = await room.build_result_markdown()
+
+    assert room.get_ranking() == [winner, runner_up, first_out]
+    rows = _result_rows(markdown)
+    assert [row[0] for row in rows] == ["1", "2", "3"]
+    assert [row[1] for row in rows] == ["昵称-u1", "昵称-u2", "昵称-u3"]
+    # 获胜者的积分是其会话真实得分，不再是 0
+    assert [row[2] for row in rows] == ["23", "19", "5"]
+    assert [row[3] for row in rows] == ["8", "8", "2"]
+    assert [row[4] for row in rows] == ["100%", "89%", "67%"]
+    assert [row[5] for row in rows] == ["0", "1", "0"]
+
+
+@pytest.mark.asyncio
+async def test_finish_reports_winner_point_and_ranking(monkeypatch: pytest.MonkeyPatch) -> None:
+    """完整结算流程：获胜者广播与卡片都使用真实积分，且排在第一名。"""
+    from nonebot.adapters.console import Bot as ConsoleBot
+    from nonebot_plugin_alconna import UniMessage
+    from nonebot_plugin_quick_math.utils import pvp as pvp_module
+    from nonebot_plugin_quick_math.utils.pvp import QuickMathRoom, QuickMathRoomPlayer
+
+    async def fake_update_user_data(_user_id: str, _point: int) -> tuple[int, int]:
+        return 0, 0
+
+    async def fake_md_to_pic(markdown: str, **_kwargs: object) -> bytes:
+        rendered["markdown"] = markdown
+        return b"pvp-result-image"
+
+    broadcasts: list[tuple[str, tuple[object, ...]]] = []
+
+    async def fake_broadcast_lang(_self: Any, key: str, _user_id: str, *args: object) -> None:
+        broadcasts.append((key, args))
+
+    async def fake_send(self: UniMessage, target: Any = None, bot: Any = None, **_kwargs: object) -> None:
+        sent["message"] = self
+        sent["target"] = target
+        sent["bot"] = bot
+
+    rendered: dict[str, str] = {}
+    sent: dict[str, Any] = {}
+
+    monkeypatch.setattr(pvp_module, "update_user_data", fake_update_user_data)
+    monkeypatch.setattr(pvp_module, "md_to_pic", fake_md_to_pic)
+    monkeypatch.setattr(QuickMathRoom, "broadcast_lang", fake_broadcast_lang)
+    monkeypatch.setattr(UniMessage, "send", fake_send)
+
+    room = QuickMathRoom("RANKR", "group", "u1", 2, ConsoleBot.__new__(ConsoleBot), None)
+    loser = QuickMathRoomPlayer("u1", None, None)
+    winner = QuickMathRoomPlayer("u2", None, None)
+    loser.session = _FakePvpSession(point=19, passed=8, total_answered=9)  # type: ignore[assignment]
+    winner.session = _FakePvpSession(point=23, passed=8, total_answered=8)  # type: ignore[assignment]
+    room.order = [loser, winner]
+    room.players = [winner]
+    room.eliminated = [loser]
+    pvp_module.rooms[room.room_id] = room
+    try:
+        await room.finish()
+    finally:
+        pvp_module.rooms.pop(room.room_id, None)
+
+    assert broadcasts[-1] == ("pvp.winner", ("昵称-u2", 23))
+    rows = _result_rows(rendered["markdown"])
+    assert [(row[0], row[1], row[2]) for row in rows] == [("1", "昵称-u2", "23"), ("2", "昵称-u1", "19")]
+    assert room.status == "ended"
+    assert "RANKR" not in pvp_module.rooms
+    assert sent["target"] is None
+    assert any(segment.__class__.__name__ == "Image" for segment in sent["message"])
