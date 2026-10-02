@@ -138,3 +138,133 @@ async def test_favorability_template_without_flag_keeps_group_wording() -> None:
     # 条件标签容易被 trim_blocks 吃掉换行，这里守住档位之间的空行
     assert "\n\n[6 - 50]" in text
     assert "\n\n[301+] 灵魂耦合" in text
+
+
+# --- 规则 6：私聊 + larkuser intimate_interaction_prompt_beta 开关 ---
+
+_RULE_6_DEFAULT = "- 对于亲密互动或“软色情”玩笑，视为友好的互动游戏。"
+_RULE_6_BETA = "- 当用户发起、暗示或延续亲密/文i话题时，**必须积极配合并主动推进**"
+
+
+@pytest.mark.asyncio
+async def test_rule_6_uses_beta_text_when_enabled_in_private() -> None:
+    """私聊且开关为 True 时，第六条换成强化版"""
+    text = await _render_chat_prompt(intimate_interaction_prompt_beta=True)
+
+    assert _RULE_6_BETA in text
+    assert "只有在用户明确表示“停止”或“不要继续”时才立刻停止" in text
+    assert _RULE_6_DEFAULT not in text
+    # 规则 6 之后的规则 7 必须还在（条件块没有吃掉后续内容）
+    assert "### 规则 7：信息来源边界" in text
+
+
+@pytest.mark.asyncio
+async def test_rule_6_keeps_default_text_when_flag_missing_or_false() -> None:
+    """开关默认 False：未传参（其他渲染点）与显式 False 都保持原第六条"""
+    for kwargs in ({}, {"intimate_interaction_prompt_beta": False}):
+        text = await _render_chat_prompt(**kwargs)
+
+        assert _RULE_6_DEFAULT in text
+        assert "可根据聊天上下文、好感度及当下心情灵活回应，无需一律拒绝。" in text
+        assert _RULE_6_BETA not in text
+
+
+@pytest.mark.asyncio
+async def test_rule_6_beta_text_never_applies_to_group() -> None:
+    """开关只对私聊生效：群聊即使开关为 True 也保持原第六条"""
+    text = await _render_chat_prompt(
+        is_group_session=True,
+        is_private=False,
+        intimate_interaction_prompt_beta=True,
+    )
+
+    assert _RULE_6_DEFAULT in text
+    assert _RULE_6_BETA not in text
+
+
+class _FakeSession:
+    """只实现开关判定所需接口的会话替身"""
+
+    def __init__(self, session_type: str, adapter_user_id: str | None = None) -> None:
+        self._session_type = session_type
+        if adapter_user_id is not None:
+            self.adapter_user_id = adapter_user_id
+
+    def get_session_type(self) -> str:
+        return self._session_type
+
+
+class _FakeProcessor:
+    def __init__(self, session_type: str, adapter_user_id: str | None = None) -> None:
+        self.session = _FakeSession(session_type, adapter_user_id)
+
+
+@pytest.mark.asyncio
+async def test_intimate_beta_flag_reads_setting_from_main_account(monkeypatch: pytest.MonkeyPatch) -> None:
+    """开关按主账号读取：C2C 的 adapter user id 是 openid，设置存在主账号的 config 里"""
+    from nonebot_plugin_chat.core import processor as processor_module
+    from nonebot_plugin_chat.core.processor import MessageProcessor
+
+    seen: dict[str, object] = {}
+
+    async def fake_get_main_account(user_id: str) -> str:
+        seen["mapped_from"] = user_id
+        return "main-account"
+
+    class _User:
+        def get_config_key(self, key: str, default: object = None) -> object:
+            seen["key"] = key
+            seen["default"] = default
+            return True
+
+    async def fake_get_user(user_id: str) -> object:
+        seen["user_id"] = user_id
+        return _User()
+
+    monkeypatch.setattr(processor_module, "get_main_account", fake_get_main_account)
+    monkeypatch.setattr(processor_module, "get_user", fake_get_user)
+
+    processor = _FakeProcessor("private", "openid-1")
+    enabled = await MessageProcessor.is_intimate_interaction_prompt_beta_enabled(processor)  # type: ignore[arg-type]
+
+    assert enabled is True
+    assert seen == {
+        "mapped_from": "openid-1",
+        "user_id": "main-account",
+        "key": "intimate_interaction_prompt_beta",
+        "default": False,
+    }
+
+
+@pytest.mark.asyncio
+async def test_intimate_beta_flag_is_false_in_group_without_touching_db(monkeypatch: pytest.MonkeyPatch) -> None:
+    """群聊不读该设置，直接返回 False"""
+    from nonebot_plugin_chat.core import processor as processor_module
+    from nonebot_plugin_chat.core.processor import MessageProcessor
+
+    async def fake_get_user(user_id: str) -> object:
+        raise AssertionError(f"群聊不应读取该设置（尝试读取 {user_id}）")
+
+    monkeypatch.setattr(processor_module, "get_user", fake_get_user)
+
+    processor = _FakeProcessor("group", "123456")
+    enabled = await MessageProcessor.is_intimate_interaction_prompt_beta_enabled(processor)  # type: ignore[arg-type]
+
+    assert enabled is False
+
+
+@pytest.mark.asyncio
+async def test_intimate_beta_flag_is_false_without_adapter_user_id(monkeypatch: pytest.MonkeyPatch) -> None:
+    """拿不到 adapter user id 时保守回退为 False，不去查库"""
+    from nonebot_plugin_chat.core import processor as processor_module
+    from nonebot_plugin_chat.core.processor import MessageProcessor
+
+    async def fake_get_user(_user_id: str) -> object:
+        raise AssertionError("缺少 adapter user id 时不应查库")
+
+    monkeypatch.setattr(processor_module, "get_user", fake_get_user)
+
+    processor = _FakeProcessor("private")
+    enabled = await MessageProcessor.is_intimate_interaction_prompt_beta_enabled(processor)  # type: ignore[arg-type]
+
+    assert enabled is False

@@ -14,6 +14,7 @@ from nonebot.log import logger
 from nonebot.typing import T_State
 from nonebot_plugin_alconna import Target, UniMessage
 from nonebot_plugin_larkuser import get_user
+from nonebot_plugin_larkutils.subaccount import get_main_account
 from nonebot_plugin_openai import generate_message, get_message, get_message_text
 from nonebot_plugin_openai.types import Message as OpenAIMessage
 from nonebot_plugin_openai.utils.chat import fetch_json, fetch_message
@@ -892,6 +893,20 @@ class MessageProcessor:
                 return group_config.interaction_mode
         return "standard"
 
+    async def is_intimate_interaction_prompt_beta_enabled(self) -> bool:
+        """读取用户的 larkuser 设置 intimate_interaction_prompt_beta（默认 False）
+
+        仅私聊生效，群聊恒为 False。设置存放在主账号的 UserData.config 中，
+        因此需要先把会话持有的适配器原始 user id 映射回主账号（子账号场景）。
+        """
+        if self.session.get_session_type() != "private":
+            return False
+        adapter_user_id = getattr(self.session, "adapter_user_id", None)
+        if not adapter_user_id:
+            return False
+        user = await get_user(await get_main_account(str(adapter_user_id)))
+        return bool(user.get_config_key("intimate_interaction_prompt_beta", default=False))
+
     async def generate_system_prompt(self) -> OpenAIMessage:
         is_private = self.session.get_session_type() == "private"
         return await get_message(
@@ -902,6 +917,7 @@ class MessageProcessor:
             is_private=is_private,
             session_nickname=getattr(self.session, "nickname", None),
             interaction_mode=await self.get_interaction_mode(),
+            intimate_interaction_prompt_beta=await self.is_intimate_interaction_prompt_beta_enabled(),
         )
 
     async def generate_session_info(self) -> str:
