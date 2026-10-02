@@ -3,6 +3,9 @@ name: CI
 on:
   pull_request:
     types: [opened, synchronize]
+  # 合并进 main 的组合（两个 PR 各自绿、合起来坏）在 PR 阶段没人验证，这里补一次
+  push:
+    branches: [main]
 
 
 jobs:
@@ -15,7 +18,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v7
         with:
-          ref: ${{ github.head_ref }}
+          ref: ${{ github.head_ref || github.ref_name }}
           fetch-depth: 0
           persist-credentials: false
       
@@ -61,6 +64,8 @@ jobs:
           poetry run nb larkhelp-generate zh_hans COMMANDS.md
       
       - name: Commit and push changes
+        # push 事件（main）上没有可回推的 PR 分支，只做校验
+        if: github.event_name == 'pull_request'
         env:
           HEAD_REF: ${{ github.head_ref }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
