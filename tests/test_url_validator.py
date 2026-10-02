@@ -118,12 +118,15 @@ async def test_resolve_internal_blocks_when_any_ip_internal() -> None:
 
 
 @pytest.mark.asyncio
-async def test_resolve_internal_blocks_dns_failure() -> None:
-    from nonebot_plugin_larkutils.url_validator import resolve_internal
+async def test_resolve_internal_raises_on_dns_failure() -> None:
+    """DNS 解析失败不再等同于「内网」，而是抛 ResolveError 交由调用方区分"""
+
+    from nonebot_plugin_larkutils.url_validator import ResolveError, resolve_internal
 
     loop = asyncio.get_running_loop()
     with patch.object(loop, "getaddrinfo", new=AsyncMock(side_effect=OSError("resolve failed"))):
-        assert await resolve_internal(urlparse("http://unknown.invalid/")) is True
+        with pytest.raises(ResolveError):
+            await resolve_internal(urlparse("http://unknown.invalid/"))
 
 
 @pytest.mark.asyncio
@@ -147,11 +150,27 @@ async def test_resolve_internal_short_circuits_without_dns() -> None:
 
 
 @pytest.mark.asyncio
-async def test_resolve_internal_blocks_dns_timeout() -> None:
-    from nonebot_plugin_larkutils.url_validator import resolve_internal
+async def test_resolve_internal_raises_on_dns_timeout() -> None:
+    from nonebot_plugin_larkutils.url_validator import ResolveError, resolve_internal
 
     with patch("asyncio.wait_for", new=AsyncMock(side_effect=asyncio.TimeoutError())):
-        assert await resolve_internal(urlparse("http://example.com/")) is True
+        with pytest.raises(ResolveError):
+            await resolve_internal(urlparse("http://example.com/"))
+
+
+@pytest.mark.asyncio
+async def test_block_internal_request_fails_closed_on_dns_failure() -> None:
+    """DNS 解析失败时路由处理器仍必须拦截（fail-closed），不能放行未验证的请求"""
+
+    from nonebot_plugin_larkutils.url_validator import block_internal_request
+
+    route = _FakeRoute()
+    request = _fake_request("https://www.bing.com/search?q=x")
+    loop = asyncio.get_running_loop()
+    with patch.object(loop, "getaddrinfo", new=AsyncMock(side_effect=OSError("resolve failed"))):
+        assert await block_internal_request(route, request) is True
+    assert route.aborted is True
+    assert route.continued is False
 
 
 class _FakeRoute:

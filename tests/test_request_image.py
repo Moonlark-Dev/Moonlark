@@ -125,6 +125,14 @@ class _FakeStickerTools:
         self.send_sticker = _async_tool("send_sticker")
 
 
+class _FakeMemeTools:
+    """外部梗图源工具，与表情包工具相互独立"""
+
+    def __init__(self) -> None:
+        self.search_meme = _async_tool("search_meme")
+        self.send_meme = _async_tool("send_meme")
+
+
 class _FakeAiAgent:
     def __init__(self) -> None:
         self.ask_ai = _async_tool("ask_ai")
@@ -138,6 +146,7 @@ class _FakeProcessor:
         self.openai_messages = _FakeMessageQueue()
         self.session = _FakeSession()
         self.sticker_tools = _FakeStickerTools()
+        self.meme_tools = _FakeMemeTools()
         self.ai_agent = _FakeAiAgent()
         self.query_image = _async_tool("query_image")
         self.send_message = _async_tool("send_message")
@@ -215,3 +224,13 @@ async def test_select_tools_falls_back_to_processor_query_image(monkeypatch: pyt
 
     assert "query_image" in names
     assert "request_image" not in names
+
+
+async def test_select_tools_registers_meme_tools_separately(monkeypatch: pytest.MonkeyPatch) -> None:
+    """meme 搜索作为独立一组工具注册，与表情包收藏工具并列"""
+    names = await _selected_tool_names(monkeypatch, _FakeProcessor())
+
+    assert "search_meme" in names
+    assert "send_meme" in names
+    assert "search_sticker" in names
+    assert "send_sticker" in names

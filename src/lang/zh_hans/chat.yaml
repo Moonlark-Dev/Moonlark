@@ -325,7 +325,7 @@ tools:
 sticker:
   saved: '表情包已保存，ID: {}'
   not_found: '未找到指定的图片，可能已过期或不存在'
-  search_result: '找到以下表情包：\n{}'
+  search_result: "找到以下表情包：\n{}"
   search_empty: '没有找到匹配的表情包'
   sent: '表情包已发送'
   send_failed: '发送失败: {}'

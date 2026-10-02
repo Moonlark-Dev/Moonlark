@@ -48,7 +48,7 @@ reply:
       "3": 非常感兴趣——主动想深入聊下去
   favor_target:
     instructions: |
-      结合 `chat_context`、`reasoning_content` 与 `sent_messages`，本轮是否有 `participants` 中的某位参与者，其行为值得 Moonlark 调整好感度？只在有明确理由时选择具体的人，否则选择 none。
+      结合 `chat_context`、`reasoning_content` 与 `sent_messages`，本轮是否有 `participants` 中的某位参与者，其行为值得 Moonlark 调整好感度？只在有明确理由时选择具体的人，否则选择 none。（本问题只在群聊中提出；私聊中的对话者已确定，不会问到这个问题。）
     none: 没有需要评价的对象
   favor_score:
     instructions: |
@@ -60,7 +60,16 @@ reply:
       "-1": 有轻微的冒犯或令人不快，小幅降低好感度
       "-2": 有严重的冒犯或伤害，明显降低好感度
   reply_required: |
-    Moonlark 本轮是否需要在会话中回复，却没有通过 send_message 发出任何消息？如果她经过思考决定不回应（`sent_messages` 为空且确实无需回应），为「否」。
+    Moonlark 本轮是否需要在会话中回复，却没有真正把回复发出去？请特别注意「输出异常」的情况，它与「深思熟虑后决定不回复」完全不同，必须判为「是」。
+
+    判为「是」的情形（满足任一即可）：
+    1. **输出异常：模型本意要调用 send_message，却把工具调用写成了普通文本。** 例如 `model_output` 中出现 `<invoke name="send_message">`、`<parameter name="message_content">...</parameter>`、`<parameter name="reply_message_id">...</parameter>`、`</invoke>` 这类片段——它们只是被当成文字输出，工具从未被真正执行，因此 `sent_messages` 为空。只要 `model_output` 里出现了这种「想发消息的意图或半成品调用」，就应判为「是」。
+    2. **回复被意外中断或截断**：`model_output` 明显在思考中途断掉、只写了一半的打算，或自称「马上回复」「这就说」却没有真正发出任何消息。
+    3. **确实需要回应却没有回应**：`chat_context` 中最近的消息（尤其是明确 @ 或直接提问）明显期待 Moonlark 的反应，而她既没有发送消息，也没有任何「决定不回应」的思考。
+
+    判为「否」的情形：她经过思考后明确决定不回应（`sent_messages` 为空，且 `reasoning_content` / `model_output` 中写明了不回复的理由，如话题已结束、只是群友之间的闲聊、自己插不上话）；或本轮确实没有需要回应的事情。
+
+    不确定时判为「否」。
   mood_reason: "由 Jev 判定的心情变动：{0}（置信度 {1}）"
   favor_reason: "{0}（Jev 置信度 {1}）"
 
