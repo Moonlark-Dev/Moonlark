@@ -37,7 +37,7 @@ async def get_ego_status(request: Request):
 
 @router.get("/chat-monitor/ego/plan")
 async def get_ego_plan(request: Request):
-    """获取今日计划详情（时间段+内容列表）"""
+    """获取今日背景意图详情（时间段+内容列表）"""
     await verify_admin_request(request)
     from nonebot_plugin_chat.core.ego.moonlark_main import moonlark_main
 
