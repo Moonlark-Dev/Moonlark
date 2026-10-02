@@ -27,11 +27,21 @@ jobs:
       - name: Setup Poetry
         uses: snok/install-poetry@v1.4.2
 
-      - name: Install and update requirements
+      - name: Check poetry.lock is in sync
         run: |
+          # 两层校验，且都不修改提交上来的 lock（不一致就让作者本地重锁，CI 不再代劳）：
+          # 1. 根 pyproject.toml 的 content-hash —— 必须先查，因为下面的 poetry lock 会重写它
+          # 2. src/pyproject.toml 的约束不在 content-hash 覆盖范围内，改用「重新解析后的已锁定版本集合」
+          # 这里只用 poetry lock：它保留已锁定的版本；poetry update 会把所有依赖浮动到约束内最新，
+          # 让每个 PR 都重写 poetry.lock，是并发 PR 互相冲突的根源。
+          poetry check --lock
+          cp poetry.lock "$RUNNER_TEMP/poetry.lock.committed"
           poetry lock
+          python .github/scripts/check_poetry_lock.py "$RUNNER_TEMP/poetry.lock.committed" poetry.lock
+
+      - name: Install dependencies
+        run: |
           poetry install --all-groups
-          poetry update
       
       - name: Check database update
         run: |
@@ -57,7 +67,8 @@ jobs:
         run: |
           # checkout 使用 persist-credentials: false，需显式配置 token 才能 push
           git config --global url."https://x-access-token:${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"
-          git add .
+          # 只回推 COMMANDS.md：poetry.lock 由贡献者或 Dependabot 维护，CI 不再改写它
+          git add COMMANDS.md
           if ! git diff --cached --quiet; then
             git config --global user.name "github-actions[bot]"
             git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -68,4 +79,4 @@ jobs:
           fi
 
       
-
+ 
