@@ -4,6 +4,17 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    # 让 poetry.lock 的写者尽量少：把零散的升级攒成两个 PR（主依赖 / 开发依赖），
+    # 大版本仍单独提 PR 以便逐个评审。注意 src/pyproject.toml 不在 Dependabot 视野内
+    # （该目录没有 poetry.lock），它的约束变动仍需人工处理。
+    open-pull-requests-limit: 5
+    groups:
+      python-runtime:
+        dependency-type: "production"
+        update-types: ["minor", "patch"]
+      python-dev:
+        dependency-type: "development"
+        update-types: ["minor", "patch"]
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
