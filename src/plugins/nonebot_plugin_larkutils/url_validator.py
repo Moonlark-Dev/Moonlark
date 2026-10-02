@@ -132,6 +132,10 @@ def is_internal_url(parsed_url: ParseResult) -> bool:
     return False
 
 
+class ResolveError(Exception):
+    """DNS 解析失败（或超时），无法判定目标是否内网"""
+
+
 async def resolve_internal(parsed_url: ParseResult) -> bool:
     """
     检测URL是否指向内网地址（含 DNS 解析后的结果）
@@ -139,11 +143,19 @@ async def resolve_internal(parsed_url: ParseResult) -> bool:
     在 is_internal_url 的基础上，对域名进行 DNS 解析并检查解析出的 IP，
     用于拦截 127.0.0.1.nip.io 这类解析到内网地址的域名（DNS rebinding / SSRF）。
 
+    DNS 解析失败或超时时**不再**等同于「内网」：解析失败只是说明当前拿不到结果
+    （临时性 DNS 故障、无外网的环境等），把它当成内网会把正常的公网 URL 报成
+    「无法访问本地资源」。安全上仍然拒绝访问，但这种情况下抛出 ResolveError，
+    由调用方决定如何呈现（例如提示解析失败而非本地资源）。
+
     Args:
         parsed_url: urllib.parse.urlparse() 的返回结果
 
     Returns:
         bool: True表示是内网/本地URL，False表示是外网URL
+
+    Raises:
+        ResolveError: 域名无法解析或解析超时，无法判定是否为内网地址
     """
 
     if is_internal_url(parsed_url):
@@ -159,9 +171,9 @@ async def resolve_internal(parsed_url: ParseResult) -> bool:
             loop.getaddrinfo(hostname, None, type=socket.SOCK_STREAM),
             timeout=5,
         )
-    except (OSError, asyncio.TimeoutError):
-        # 域名无法解析或解析超时时，拒绝访问
-        return True
+    except (OSError, asyncio.TimeoutError) as e:
+        # 域名无法解析或解析超时：拒绝访问，但要与「确实是内网」区分开
+        raise ResolveError(str(e) or "DNS resolution failed") from e
 
     for _, _, _, _, sockaddr in infos:
         try:
@@ -201,7 +213,11 @@ async def block_internal_request(route: Route, request: Request) -> bool:
 
     parsed = urlparse(request.url)
     if request.is_navigation_request() or (parsed.hostname and not _is_ip_hostname(parsed.hostname)):
-        blocked = await resolve_internal(parsed)
+        try:
+            blocked = await resolve_internal(parsed)
+        except ResolveError:
+            # 解析失败时保持 fail-closed：无法确认目标不是内网，就不放行
+            blocked = True
     else:
         blocked = is_internal_url(parsed)
     try:

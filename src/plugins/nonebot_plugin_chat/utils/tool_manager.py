@@ -330,6 +330,10 @@ class ToolManager:
             tools.append(processor.sticker_tools.recommend_sticker)
             tools.append(processor.sticker_tools.send_sticker)
 
+            # meme tools（外部梗图源，独立于表情包收藏体系）
+            tools.append(processor.meme_tools.search_meme)
+            tools.append(processor.meme_tools.send_meme)
+
             # ask_ai
             tools.append(processor.ai_agent.ask_ai)
 

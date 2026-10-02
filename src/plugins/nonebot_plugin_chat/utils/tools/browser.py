@@ -23,7 +23,7 @@ from urllib.parse import urlparse
 import html2text
 from nonebot.log import logger
 from nonebot_plugin_htmlrender import get_new_page
-from nonebot_plugin_larkutils.url_validator import block_internal_request, resolve_internal
+from nonebot_plugin_larkutils.url_validator import ResolveError, block_internal_request, resolve_internal
 
 from nonebot_plugin_chat.types import GetTextFunc
 
@@ -123,6 +123,29 @@ async def _extract_main_content(page) -> str:
     return await page.content()
 
 
+# 只有这些协议算「已经带了协议」。
+# 不能直接用 urlparse(url).scheme 判断：对于 "example.com:8080/a" 这种
+# 「主机:端口」写法，urlparse 会把 example.com 当成 scheme（netloc/hostname 都为空），
+# 于是漏补 https://，导航时直接失败。
+_KNOWN_SCHEMES = ("http", "https")
+
+
+def _normalize_url(url: str) -> str:
+    """
+    规范化用户/模型给出的 URL
+
+    - 去掉首尾空白与包裹的尖括号（模型常把 URL 包在空白或 <> 里）
+    - 没有 http/https 协议时补上 https://（必须先补协议，否则 urlparse 拿不到
+      hostname，会被 is_internal_url 判成「无主机名的本地资源」而误报）
+    """
+    url = url.strip().strip("<>").strip()
+    if not url:
+        return url
+    if urlparse(url).scheme.lower() not in _KNOWN_SCHEMES:
+        url = f"https://{url}"
+    return url
+
+
 class AsyncBrowserTool:
     """异步浏览器工具，用于OpenAI函数调用"""
 
@@ -169,6 +192,9 @@ class AsyncBrowserTool:
             包含markdown内容和元数据的字典
         """
         try:
+            # 先补协议再校验：否则 "www.example.com/x" 会因为没有 scheme 而
+            # 被 urlparse 解析成「无 hostname」，被误判为本地资源。
+            url = _normalize_url(url)
             parsed = urlparse(url)
             if await resolve_internal(parsed):
                 return {
@@ -179,8 +205,6 @@ class AsyncBrowserTool:
                     "title": None,
                     "metadata": {},
                 }
-            if not parsed.scheme:
-                url = f"https://{url}"
             async with get_new_page() as page:
                 await page.route("**/*", block_internal_request)
                 await page.set_extra_http_headers(
@@ -234,6 +258,17 @@ class AsyncBrowserTool:
                 },
             }
 
+        except ResolveError as e:
+            # DNS 解析失败不等于「本地资源」，如实反馈以便模型改试其他来源
+            logger.warning(f"无法解析域名，已拒绝访问: {url} ({e})")
+            return {
+                "success": False,
+                "url": url,
+                "error": f"域名解析失败，暂时无法访问该网站（{e}）",
+                "content": None,
+                "title": None,
+                "metadata": {},
+            }
         except Exception as e:
             return {"success": False, "url": url, "error": str(e), "content": None, "title": None, "metadata": {}}
 
