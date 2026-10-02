@@ -123,6 +123,28 @@ def _score_level(answer: ScoreAnswer, levels: int) -> int:
     return int(_clamp(round(answer.score), 0, levels - 1))
 
 
+def _get_private_target(session: Any) -> Optional[str]:
+    """私聊会话中唯一的对话者昵称；群聊返回 None
+
+    私聊只有一个人，好感度评价的对象是确定的，因此不必再让 Jev 去挑人。
+    昵称优先取 ``PrivateSession.nickname``（setup 时已解析），拿不到时退回
+    消息缓存中唯一的非自身昵称。
+    """
+    try:
+        if session.get_session_type() != "private":
+            return None
+    except Exception:
+        return None
+    nickname = getattr(session, "nickname", "") or ""
+    if nickname:
+        return nickname
+    others = {message.get("nickname") or "" for message in session.cached_messages if not message.get("self")}
+    others.discard("")
+    if len(others) == 1:
+        return others.pop()
+    return None
+
+
 async def evaluate_reply(
     processor: "MessageProcessor",
     reply_messages: list,
@@ -166,6 +188,10 @@ async def evaluate_reply(
         if nickname and nickname not in participants:
             participants.append(nickname)
 
+    # 私聊里只有一位对话者，不存在「评价谁」的问题：不再向 Jev 提问 favor_target，
+    # 直接把他作为被评价对象，只保留 favor_score 的判定。
+    private_target = _get_private_target(session)
+
     from .status_manager import get_status_manager
 
     current_mood = get_status_manager().get_status()[0].value
@@ -193,10 +219,11 @@ async def evaluate_reply(
         "reply_required": noul(lang_ref("reply.reply_required")),
     }
     if participants:
-        questions["favor_target"] = choice(
-            lang_ref("reply.favor_target.instructions"),
-            criteria={**{name: name for name in participants}, "none": lang_ref("reply.favor_target.none")},
-        )
+        if private_target is None:
+            questions["favor_target"] = choice(
+                lang_ref("reply.favor_target.instructions"),
+                criteria={**{name: name for name in participants}, "none": lang_ref("reply.favor_target.none")},
+            )
         questions["favor_score"] = choice(
             lang_ref("reply.favor_score.instructions"),
             criteria={key: lang_ref(f"reply.favor_score.criteria.{key}") for key in FAVOR_SCORE_KEYS},
@@ -235,19 +262,22 @@ async def evaluate_reply(
     if isinstance(reply_answer, NoulAnswer):
         evaluation.reply_required = reply_answer.noul >= REPLY_REQUIRED_THRESHOLD
 
+    # 私聊没有 favor_target 答案，被评价对象直接取会话中的唯一对话者
     target_answer = answers.get("favor_target")
     score_answer = answers.get("favor_score")
-    if (
-        isinstance(target_answer, ChoiceAnswer)
-        and target_answer.choice in participants
-        and isinstance(score_answer, ChoiceAnswer)
-    ):
+    if private_target is not None:
+        favor_target_name: Optional[str] = private_target
+    elif isinstance(target_answer, ChoiceAnswer) and target_answer.choice in participants:
+        favor_target_name = target_answer.choice
+    else:
+        favor_target_name = None
+    if favor_target_name is not None and isinstance(score_answer, ChoiceAnswer):
         try:
             score_value = int(score_answer.choice)
         except ValueError:
             score_value = 0
         if score_value != 0:
-            evaluation.favor_target = target_answer.choice
+            evaluation.favor_target = favor_target_name
             evaluation.favor_score = score_value
             score_label = await jev_lang.text(f"reply.favor_score.criteria.{score_answer.choice}", lang_str)
             evaluation.favor_reason = await jev_lang.text(

@@ -34,12 +34,16 @@ def _score(value: float, confidence: float = 0.8) -> Any:
 
 def _fake_processor(
     cached_messages: list[dict] | None = None,
+    session_type: str = "group",
+    nickname: str = "",
 ) -> Any:
     session = SimpleNamespace(
         session_id="pytest_jev_group",
         lang_str="mlsid::--lang=zh_hans",
         cached_messages=cached_messages or [],
         get_cached_messages_string=AsyncMock(return_value="[10:00:00] 小明: 你好"),
+        get_session_type=Mock(return_value=session_type),
+        nickname=nickname,
         set_interest=Mock(),
         add_event=AsyncMock(),
     )
@@ -182,6 +186,108 @@ async def test_evaluate_reply_skips_no_mood_and_zero_score(monkeypatch: pytest.M
     assert evaluation.favor_target is None
     assert evaluation.favor_changed is False
     assert evaluation.reply_required is False
+
+
+async def test_evaluate_reply_private_skips_favor_target_question(monkeypatch: pytest.MonkeyPatch) -> None:
+    """私聊不提问 favor_target，被评价对象自动填为会话中的对话者"""
+    from nonebot_plugin_chat.utils import jev_judge
+
+    now = datetime.now()
+    processor = _fake_processor(
+        cached_messages=[
+            {"content": "你好", "nickname": "小明", "self": False, "message_id": "1", "send_time": now},
+        ],
+        session_type="private",
+        nickname="小明",
+    )
+    captured: dict[str, Any] = {}
+
+    async def fake_ask(state: Any, questions: dict, **kwargs: Any) -> dict:
+        captured["questions"] = questions
+        # 私聊中 Jev 只会回答 favor_score
+        return {
+            "mood": _choice("joy"),
+            "mood_intensity": _score(2.0),
+            "interest": _score(1.0),
+            "reply_required": _noul(0.1),
+            "favor_score": _choice("1", confidence=0.7),
+        }
+
+    monkeypatch.setattr(jev_judge.jev_lang, "text", AsyncMock(side_effect=lambda key, *a, **k: key))
+
+    with patch.object(jev_judge, "ask", AsyncMock(side_effect=fake_ask)):
+        evaluation = await jev_judge.evaluate_reply(processor, [], ["私聊回复"], now)  # type: ignore[arg-type]
+
+    assert evaluation is not None
+    # 私聊不提交 favor_target 问题，但仍然提交 favor_score
+    assert "favor_target" not in captured["questions"]
+    assert "favor_score" in captured["questions"]
+    # 目标由会话自动填充，分数来自 Jev
+    assert evaluation.favor_target == "小明"
+    assert evaluation.favor_score == 1
+    assert evaluation.favor_changed is True
+
+
+async def test_evaluate_reply_private_falls_back_to_cached_nickname(monkeypatch: pytest.MonkeyPatch) -> None:
+    """私聊 session.nickname 为空时，退回消息缓存中唯一的非自身昵称"""
+    from nonebot_plugin_chat.utils import jev_judge
+
+    now = datetime.now()
+    processor = _fake_processor(
+        cached_messages=[
+            {"content": "你好", "nickname": "小红", "self": False, "message_id": "1", "send_time": now},
+        ],
+        session_type="private",
+        nickname="",
+    )
+
+    async def fake_ask(state: Any, questions: dict, **kwargs: Any) -> dict:
+        return {"favor_score": _choice("-1", confidence=0.6)}
+
+    monkeypatch.setattr(jev_judge.jev_lang, "text", AsyncMock(side_effect=lambda key, *a, **k: key))
+
+    with patch.object(jev_judge, "ask", AsyncMock(side_effect=fake_ask)):
+        evaluation = await jev_judge.evaluate_reply(processor, [], ["回复"], now)  # type: ignore[arg-type]
+
+    assert evaluation is not None
+    assert evaluation.favor_target == "小红"
+    assert evaluation.favor_score == -1
+
+
+async def test_evaluate_reply_group_still_asks_favor_target(monkeypatch: pytest.MonkeyPatch) -> None:
+    """群聊行为不变：仍然提问 favor_target，并且只接受 participants 中的名字"""
+    from nonebot_plugin_chat.utils import jev_judge
+
+    now = datetime.now()
+    processor = _fake_processor(
+        cached_messages=[
+            {
+                "content": "Moonlark 的回复",
+                "nickname": "Moonlark",
+                "self": True,
+                "message_id": "12345",
+                "send_time": now + timedelta(seconds=1),
+            },
+            {"content": "你好", "nickname": "小明", "self": False, "message_id": "1", "send_time": now},
+        ],
+        session_type="group",
+        nickname="小明",
+    )
+    captured: dict[str, Any] = {}
+
+    async def fake_ask(state: Any, questions: dict, **kwargs: Any) -> dict:
+        captured["questions"] = questions
+        return {"favor_target": _choice("小明"), "favor_score": _choice("2", confidence=0.9)}
+
+    monkeypatch.setattr(jev_judge.jev_lang, "text", AsyncMock(side_effect=lambda key, *a, **k: key))
+
+    with patch.object(jev_judge, "ask", AsyncMock(side_effect=fake_ask)):
+        evaluation = await jev_judge.evaluate_reply(processor, [], ["群聊回复"], now)  # type: ignore[arg-type]
+
+    assert evaluation is not None
+    assert "favor_target" in captured["questions"]
+    assert evaluation.favor_target == "小明"
+    assert evaluation.favor_score == 2
 
 
 async def test_apply_evaluation_pushes_event_on_favor_change() -> None:
