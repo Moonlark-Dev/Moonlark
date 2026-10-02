@@ -924,15 +924,20 @@ class MessageProcessor:
         """生成会话信息（紧随 system prompt 注入，仅在会话创建/重置时生成）
 
         包含：会话名称、当前日期与星期、所在地每日天气（已配置时）、
-        此前的事件（前一天 0:00 至今）与当天的计划。
+        群聊会话的最近发言者与主人存在指示、此前的事件（前一天 0:00 至今）
+        与当天的背景意图。
         """
         try:
+            from ..utils.session_metadata import build_group_session_metadata
             from ..utils.weather import get_daily_weather_text, get_weekday_text
 
             parts = []
             if self.session.get_session_type() == "group":
                 session_name = (await self.session.get_session_name()) or "未知名称群聊"
                 parts.append(f"会话名称：{session_name}")
+                group_metadata = await build_group_session_metadata(self.session.session_id)
+                if group_metadata:
+                    parts.append("\n".join(group_metadata))
             now = datetime.now()
             parts.append(f"当前日期：{now.strftime('%Y-%m-%d')} {get_weekday_text(now)}")
             weather_text = await get_daily_weather_text()
@@ -1055,7 +1060,8 @@ class MessageProcessor:
                 chat_history = await self.session.get_cached_messages_string(
                     length=50,
                     include_self_message=True,
-                    exclude_content_prefixes=("今日计划已更新",),
+                    # 旧名字（今日计划）用于过滤改名之前已经落库的消息队列缓存
+                    exclude_content_prefixes=("今日计划已更新", "今日背景意图已更新"),
                 )
                 if not chat_history.strip():
                     return

@@ -264,8 +264,8 @@ class MoonlarkMain:
             parts.append("## 此前的事件\n" + "\n".join(event_texts))
 
         plan_text = self.planner.get_plan_text()
-        if plan_text and plan_text != "今日暂无计划。" and plan_text != "暂无备忘录。":
-            parts.append("## 今日计划\n" + plan_text)
+        if plan_text and plan_text != "今日暂无背景意图。" and plan_text != "暂无备忘录。":
+            parts.append("## 今日背景意图\n" + plan_text)
 
         return "\n\n".join(parts)
 

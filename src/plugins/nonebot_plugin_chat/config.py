@@ -46,6 +46,10 @@ class Config(BaseModel):
     # 用户主动私聊后的静默时长（小时）：在这段时间内不向其发起主动私聊，避免打扰；
     # 设为 0 或负数表示关闭该限制
     proactive_chat_user_active_cooldown_hours: float = 12.0
+    # 主人（XiaoDeng3386）的账号标识，用于判断主人是否出现在当前群聊的 Message Summary 数据中
+    # （会与消息记录的 user_id 或 sender_nickname 比对），判定结果写入 ChatGroup.master_present。
+    # 不填写时不在会话元数据中生成「主人是否在当前会话」指示；私聊始终不生成
+    chat_master_user_id: str = ""
 
     @field_validator(
         "qweather_api_host",

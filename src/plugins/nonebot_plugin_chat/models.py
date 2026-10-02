@@ -4,7 +4,7 @@ from typing_extensions import TypedDict
 
 from nonebot_plugin_orm import Model
 from pydantic import BaseModel, Field
-from sqlalchemy import BINARY, DateTime, Float, Integer, LargeBinary, String, Text, func
+from sqlalchemy import BINARY, DateTime, Float, Integer, LargeBinary, String, Text, false, func
 from sqlalchemy.dialects.mysql import MEDIUMBLOB, MEDIUMTEXT
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -22,6 +22,8 @@ class ChatGroup(Model):
     ignore_mention_user: Mapped[str] = mapped_column(Text(), default="[]")
     enabled: Mapped[bool]
     interaction_mode: Mapped[str] = mapped_column(String(16), default="standard")
+    # 主人是否在本群的 Message Summary 记录中出现过；一旦为 True 不再自动改回 False
+    master_present: Mapped[bool] = mapped_column(default=False, server_default=false())
 
 
 class ActionDecisionResponse(BaseModel):
