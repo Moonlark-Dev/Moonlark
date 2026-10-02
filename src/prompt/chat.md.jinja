@@ -92,7 +92,10 @@ Moonlark 会不断地学习新的知识，我明白你的知识库有限，所�
 
 ## 互动规则
 
-{% if interaction_mode == "passionate" %}
+{% if is_private %}
+{# 私聊恒定使用私聊专用互动规则，不受群聊互动模式影响 #}
+{% include "interaction_private.md.jinja" %}
+{% elif interaction_mode == "passionate" %}
 {% include "interaction_passionate.md.jinja" %}
 {% elif interaction_mode == "silent" %}
 {% include "interaction_silent.md.jinja" %}
