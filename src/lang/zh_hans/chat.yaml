@@ -150,6 +150,10 @@ command:
     not_found: 未找到会话 {}，请确认会话 ID 是否正确。
     pending_notes_analyzed: 已分析待定笔记，正在重置消息队列……
     success: 已压缩会话 {} 的消息队列（待定笔记已保留）。
+  review_all:
+    no_permission: 权限不足，仅超级用户可以使用此命令。
+    started: 已开始对所有会话执行记忆整理，完成后会重置它们的消息队列，请稍候……
+    success: 记忆整理完成：共处理 {} 个会话，删除 {} 条笔记，重置 {} 个会话的消息队列。
   stats:
     result: |
       📊 Chat 时间统计
@@ -181,6 +185,7 @@ help:
   usage15: chat compact [会话ID] (压缩消息队列，分析待定笔记后重置[SU])
   usage16: chat mode [passionate|standard|silent] (查看或切换互动模式，切换将重置会话上下文)
   usage17: chat reset <会话ID> (重置指定会话的所有历史消息并重置会话状态[SU])
+  usage18: chat review-all (对所有会话执行记忆整理并重置其消息队列[SU])
 
 pending_note:
   not_found: 未找到 ID 为 {} 的待定笔记。

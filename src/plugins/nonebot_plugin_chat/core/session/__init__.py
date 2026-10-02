@@ -159,14 +159,20 @@ async def _() -> None:
         await session.process_timer()
 
 
-@scheduler.scheduled_job("cron", hour=4, id="daily_reset_message_queues")
-async def _reset_all_message_queues() -> None:
-    """每天凌晨4点重置所有会话的消息队列（内存 + 数据库）
+async def review_and_reset_all_sessions(source: str = "DailyReset") -> tuple[int, int, int]:
+    """对当前所有活动会话执行 Note 整理，然后重置它们的消息队列（内存 + 数据库）
 
-    重置前有两个前置步骤：
+    整理的步骤：
     1. 补齐各会话尚未生成事件的消息，保证事件列表是完整的；
     2. 对每个会话执行 Note 整理——用整个聊天记录匹配出所有笔记，连同当天的事件列表
-       交给 Jev 判定是否错误/过期，命中则删除（见 review_session_notes）。
+       交给 Jev 判定是否应当删除，命中则删除（见 ``review_session_notes``）；
+    3. 重置每个会话的消息队列。
+
+    Args:
+        source: 调用来源，仅用于日志前缀（每日任务 / 手动指令）
+
+    Returns:
+        (处理的会话数, 删除的笔记数, 重置成功的会话数)
     """
     from ...utils.note_manager import review_session_notes
 
@@ -175,21 +181,35 @@ async def _reset_all_message_queues() -> None:
 
         await event_collector.flush_pending(min_pending=0)
     except Exception as e:
-        logger.warning(f"[DailyReset] 补齐会话事件失败（不影响重置）: {e}")
+        logger.warning(f"[{source}] 补齐会话事件失败（不影响重置）: {e}")
 
+    reviewed = 0
+    deleted_total = 0
+    reset = 0
     for session_id, session in list(groups.items()):
+        reviewed += 1
         try:
             deleted = await review_session_notes(session)
+            deleted_total += deleted
             if deleted:
-                logger.info(f"[DailyReset] 会话 {session_id} 的 Note 整理删除了 {deleted} 条笔记")
+                logger.info(f"[{source}] 会话 {session_id} 的 Note 整理删除了 {deleted} 条笔记")
         except Exception as e:
-            logger.exception(f"[DailyReset] 会话 {session_id} 的 Note 整理失败: {e}")
+            logger.exception(f"[{source}] 会话 {session_id} 的 Note 整理失败: {e}")
 
         try:
             await session.processor.openai_messages._reset_and_clear_db(session_id)
-            logger.info(f"[DailyReset] 已重置会话消息队列: {session_id}")
+            reset += 1
+            logger.info(f"[{source}] 已重置会话消息队列: {session_id}")
         except Exception as e:
-            logger.exception(f"[DailyReset] 重置会话 {session_id} 失败: {e}")
+            logger.exception(f"[{source}] 重置会话 {session_id} 失败: {e}")
+
+    return reviewed, deleted_total, reset
+
+
+@scheduler.scheduled_job("cron", hour=4, id="daily_reset_message_queues")
+async def _reset_all_message_queues() -> None:
+    """每天凌晨4点整理所有会话的 Note 并重置它们的消息队列（内存 + 数据库）"""
+    await review_and_reset_all_sessions(source="DailyReset")
 
 
 @get_driver().on_shutdown

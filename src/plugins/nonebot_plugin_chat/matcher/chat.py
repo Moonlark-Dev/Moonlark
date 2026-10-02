@@ -25,7 +25,13 @@ from nonebot_plugin_larkutils import get_group_id, get_user_id, is_superuser
 from nonebot_plugin_larkutils.user import private_message
 from nonebot_plugin_orm import async_scoped_session
 
-from nonebot_plugin_chat.core.session import get_session_directly, group_disable, groups, reset_session
+from nonebot_plugin_chat.core.session import (
+    get_session_directly,
+    group_disable,
+    groups,
+    reset_session,
+    review_and_reset_all_sessions,
+)
 from nonebot_plugin_chat.core.session.base import BaseSession
 
 from ..lang import lang
@@ -345,6 +351,15 @@ class CommandHandler:
 
         await lang.finish("command.compact.success", self.user_id, target_session_id)
 
+    async def handle_review_all(self) -> None:
+        """对所有会话执行记忆整理并重置消息队列，仅超级用户可用"""
+        if not await is_superuser(self.event, self.bot):
+            await lang.finish("command.review_all.no_permission", self.user_id)
+
+        await lang.send("command.review_all.started", self.user_id)
+        reviewed, deleted, reset = await review_and_reset_all_sessions(source="ManualReviewAll")
+        await lang.finish("command.review_all.success", self.user_id, reviewed, deleted, reset)
+
     async def handle(self) -> None:
         if not self.argv or not self.argv[0]:
             await lang.finish("command.no_argv", self.user_id)
@@ -379,6 +394,8 @@ class CommandHandler:
                 await self.handle_mode()
             case "compact":
                 await self.handle_compact()
+            case "review-all":
+                await self.handle_review_all()
             case _:
                 await lang.finish("command.no_argv", self.user_id)
 
