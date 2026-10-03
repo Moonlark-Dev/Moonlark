@@ -485,15 +485,12 @@ tools_desc:
     result: "{} 的人品值是 {}。"
 
 ask_ai:
-  accepted: "ask_ai 任务已在后台开始执行。
+  accepted: ask_ai 任务已在后台开始执行。
   result_prompt: |
     [事件] 你之前使用 ask_ai 工具处理的请求「{}」已在后台完成，结果如下：
 
     {}
-
-  failed_prompt: |
-    [事件] 你之前使用 ask_ai 工具处理的请求「{}」在后台处理失败（错误信息：{}）。
-
+  failed_prompt: "[事件] 你之前使用 ask_ai 工具处理的请求「{}」在后台处理失败（错误信息：{}）。"
 status:
   info: |
     心情：{}
