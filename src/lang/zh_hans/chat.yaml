@@ -485,7 +485,7 @@ tools_desc:
     result: "{} 的人品值是 {}。"
 
 ask_ai:
-  accepted: "[系统] ask_ai 任务已在后台开始执行。请先继续与群友正常交流，无需等待，结果完成后会以事件的形式自动汇报给你。"
+  accepted: "ask_ai 任务已在后台开始执行。
   result_prompt: |
     [事件] 你之前使用 ask_ai 工具处理的请求「{}」已在后台完成，结果如下：
 
