@@ -20,6 +20,19 @@ poetry install
 
 在运行前，您需要将 [`.env.template`](.env.template) 复制为 `.env` 文件。
 
+### 依赖变更
+
+项目有两份依赖声明：根 [`pyproject.toml`](pyproject.toml) 与 [`src/pyproject.toml`](src/pyproject.toml)，
+它们共用根目录的 `poetry.lock`。只要您改动了其中任意一份的依赖（包括版本约束），请在提交前运行：
+
+```bash
+poetry lock
+```
+
+并把生成的 `poetry.lock` 一起提交。CI 会校验 lock 与两份声明是否一致，不一致会让您的拉取请求失败——
+CI 不会替您重锁，也不会替您升级依赖。只想升级某个依赖的版本时请交给 Dependabot 的 PR，不要在自己的
+PR 里跑 `poetry update`：那会把 200 行以上的 lock 改动塞进您的 PR，并使多个并发 PR 互相冲突。
+
 ### 代码规范
 
 我们建议您在提交代码时遵循一下几个准则，否则您的拉取请求可能会被审核员标记为 `请求更改`：
