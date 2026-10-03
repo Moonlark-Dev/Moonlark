@@ -59,9 +59,9 @@ class WdymTools:
         """解析 b23.tv 短链并返回 BV 号"""
         return await _resolve_b23_url(b23_url, self._get_text)
 
-    async def search_abbreviation(self, text_arg: str) -> str:
+    async def search_abbreviation(self, text: str) -> str:
         """查询英文字母缩写的含义"""
-        return await _search_abbreviation(text_arg, self._get_text)
+        return await _search_abbreviation(text, self._get_text)
 
     async def query_image(self, image_id: str, query_prompt: str) -> str:
         """对聊天中已出现的某张图片进行针对性的内容查询"""
