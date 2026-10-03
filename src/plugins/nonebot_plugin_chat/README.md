@@ -99,13 +99,14 @@ is_truncated = await self.check_message_truncated()
 
 ```python
 ai_agent = AskAISession(lang_str, tool_manager)
-result = await ai_agent.ask_ai(query)
+receipt = await ai_agent.ask_ai(query)  # 立即返回受理提示，研究在后台进行
 ```
 
 与普通回复不同，AI Agent 可以自主决定调用哪些工具并迭代推理。
 
-`ask_ai` 工具有总运行时间限制（3 分钟）：超时后工具会立即返回「正在处理中」提示，
-任务转入后台继续执行；处理完成后通过触发类型为 `all` 的事件向会话汇报结果。
+`ask_ai` 是完全异步的工具：调用后立即返回一条「已转入后台」的受理提示，研究任务在后台继续执行；
+处理完成后（失败时同样）通过触发类型为 `all` 的事件向会话汇报结果。
+同一个 `query` 在完成前重复调用会复用已有任务，不会重复消耗 API。
 
 ### 意识系统（Ego）
 
