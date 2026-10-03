@@ -48,13 +48,22 @@ def get_plugin_name(module: ModuleType | None) -> Optional[str]:
     return plugin.name
 
 
-def resize_png_to_75_percent(png_bytes: bytes) -> bytes:
-    with Image.open(io.BytesIO(png_bytes)) as img:
-        new_size = (int(img.width * 0.75), int(img.height * 0.75))
-        resized_img = img.resize(new_size, Image.Resampling.LANCZOS)
+def convert_image_to_webp(image_bytes: bytes, quality: int = config.render_webp_quality) -> bytes:
+    """把渲染结果转成 WebP，用体积更小的编码替代此前的 PNG 缩放一刀切
 
+    Args:
+        image_bytes: 浏览器截图产出的图片二进制（通常为 PNG）
+        quality: 有损 WebP 质量（0-100），越大越清晰、体积越大
+
+    Returns:
+        WebP 格式的图片二进制
+    """
+    with Image.open(io.BytesIO(image_bytes)) as img:
+        # WebP 不支持调色板/部分特殊模式，统一转到 RGB(A) 后再编码
+        if img.mode not in ("RGB", "RGBA"):
+            img = img.convert("RGBA" if "A" in img.getbands() else "RGB")
         output_buffer = io.BytesIO()
-        resized_img.save(output_buffer, format="PNG")
+        img.save(output_buffer, format="WEBP", quality=quality, method=4)
         return output_buffer.getvalue()
 
 
@@ -77,7 +86,6 @@ async def render_template(
     templates: dict,
     keys: dict[str, str] = {},
     cache: bool = False,
-    resize: bool = False,
     viewport: dict | None = None,
     background_url: str = DEFAULT_BACKGROUND_URL,
 ) -> bytes:
@@ -98,6 +106,4 @@ async def render_template(
         template_path=Path(getcwd()).joinpath(f"src/templates").as_uri(),
         viewport=viewport or config.render_viewport,
     )
-    if resize:
-        return resize_png_to_75_percent(image)
-    return image
+    return convert_image_to_webp(image)

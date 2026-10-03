@@ -50,11 +50,12 @@ async def render_template(
     templates: dict,
     keys: dict[str, str] = {},
     cache: bool = False,
-    resize: bool = False,
+    viewport: dict | None = None,
+    background_url: str = DEFAULT_BACKGROUND_URL,
 ) -> bytes:
 ```
 
-渲染模板为图片。
+渲染模板为图片。渲染结果统一转为 WebP（有损，质量由 `render_webp_quality` 配置，默认 85）。
 
 ### 参数
 
@@ -64,11 +65,12 @@ async def render_template(
 - `templates`: 模板参数字典
 - `keys`: 本地化文本字典，默认为空字典
 - `cache`: 是否使用缓存，默认为 `False`
-- `resize`: 是否调整图片大小，默认为 `False`
+- `viewport`: 浏览器视口，默认取 `render_viewport` 配置
+- `background_url`: 页面背景图 URL
 
 ### 返回
 
-`bytes` - 渲染后的图片字节数据
+`bytes` - 渲染后的图片字节数据（WebP 格式）
 
 ## （修饰器）添加缓存创建函数 `creator`
 
