@@ -45,6 +45,20 @@ def _extract_msg_id(result: Any) -> str | None:
     return getattr(result, "message_id", None)
 
 
+def get_qq_at_user(event: Optional[Event]) -> str:
+    """构建 QQ 官方机器人 markdown 卡片开头的 @ 前缀。
+
+    ``<qqbot-at-user>`` 只接受适配器原生 ID（群聊里是 member_openid），因此这里取
+    ``event.get_user_id()``，而不是 larkutils 的主账号 ID——主账号 ID 是 QQ 号，
+    在开放平台的 openid 体系里并不存在，@ 出来会是一个无效用户。
+
+    C2C 单聊不支持该语法（发送会报 ActionFailed），返回空串跳过 @。
+    """
+    if event is None or isinstance(event, C2CMessageCreateEvent):
+        return ""
+    return f'<qqbot-at-user id="{event.get_user_id()}" />'
+
+
 async def build_jrrp_message(bot: Bot, user_id: str, event: Optional[Event] = None) -> str | UniMessage:
     """构建 jrrp 回复消息。
 
@@ -56,7 +70,7 @@ async def build_jrrp_message(bot: Bot, user_id: str, event: Optional[Event] = No
     if not isinstance(bot, QQBot):
         return await get_luck_message(user_id)
     prefix = get_command_prefix()
-    at_user = "" if isinstance(event, C2CMessageCreateEvent) else f'<qqbot-at-user id="{user_id}" />'
+    at_user = get_qq_at_user(event)
     return (
         UniMessage()
         .style(f"{at_user}{await get_luck_message(user_id)}", "markdown")

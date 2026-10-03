@@ -2,22 +2,59 @@
 
 {% block header %}
 <style>
+    .podium {
+        /* 三张卡片等分一行；align-items: flex-end 让卡片底边对齐，
+           再用上外边距把第 2/3 名压低，冠军卡片自然形成领奖台的高度差。
+           这里不使用负外边距或相对位移，卡片不会溢出父容器。 */
+        display: flex;
+        align-items: flex-end;
+        margin: 0 -10px;
+    }
+    .col-4 {
+        flex: 1 1 0;
+        min-width: 0;
+        padding: 0 10px;
+    }
     .luckiest {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+        box-sizing: border-box;
+        width: 100%;
         text-align: center;
         padding: 10px;
-        
+        border-radius: 6px;
     }
+    /* 第 2/3 名下移，与冠军卡片拉开 70px 的高度差 */
     .luckiest-low {
         margin-top: 70px;
     }
     .rank {
         font-size: 275%;
+        margin: 0;
     }
     .avatar {
-        margin-bottom: 15px;
+        margin: 0 auto 15px;
+        /* 正方形头像：宽度占满卡片内容区，height:auto 保证不被拉伸变形 */
+        display: block;
+        width: 100%;
+        height: auto;
+        aspect-ratio: 1 / 1;
+        object-fit: cover;
+        max-width: 160px;
     }
     .value {
         font-size: 300%;
+        margin: 0;
+    }
+    .nickname {
+        word-break: break-word;
+        margin: 0.5rem 0;
+    }
+    .user-id {
+        word-break: break-all;
+        display: block;
     }
     #third {
         background-color: #86d5e4;
@@ -41,71 +78,46 @@
 
 <h2 style="text-align: center;">{{ text.reverse_title }}</h2>
 
-<div class="row">
+<div class="podium">
 <!-- 2nd -->
 <div class="col-4">
-<div class="card luckiest luckiest-low bg-opacity-75" id="second">
+<div class="card luckiest luckiest-low" id="second">
 <p class="rank">2nd</p>
 {% if luckiest_2.avatar %}
-<img src="data:image;base64,{{ luckiest_2.avatar }}" class="rounded-circle avatar" width="100%">
+<img src="data:image;base64,{{ luckiest_2.avatar }}" class="rounded-circle avatar">
 {% endif %}
-<h3>{{ luckiest_2.nickname }}</h3>
-<small>{{ luckiest_2.user_id }}</small>
+<h3 class="nickname">{{ luckiest_2.nickname }}</h3>
+<small class="user-id">{{ luckiest_2.user_id }}</small>
 </div>
 </div>
 
 <!-- 1st -->
 <div class="col-4">
-<div class="card luckiest bg-opacity-75" id="first">
+<div class="card luckiest" id="first">
 <p class="rank">1st</p>
 {% if luckiest_1.avatar %}
-<img src="data:image;base64,{{ luckiest_1.avatar }}" class="rounded-circle avatar" width="100%">
+<img src="data:image;base64,{{ luckiest_1.avatar }}" class="rounded-circle avatar">
 {% endif %}
-<h3>{{ luckiest_1.nickname }}</h3>
-<small>{{ luckiest_1.user_id }}</small>
+<h3 class="nickname">{{ luckiest_1.nickname }}</h3>
+<small class="user-id">{{ luckiest_1.user_id }}</small>
+<p class="value">{{ luckiest_1.value }}</p>
 </div>
 </div>
 
-<!-- 3nd -->
+<!-- 3rd -->
 
 <div class="col-4">
-<div class="card luckiest luckiest-low bg-opacity-75" id="third">
+<div class="card luckiest luckiest-low" id="third">
 <p class="rank">3rd</p>
 {% if luckiest_3.avatar %}
-<img src="data:image;base64,{{ luckiest_3.avatar }}" class="rounded-circle avatar" width="100%">
+<img src="data:image;base64,{{ luckiest_3.avatar }}" class="rounded-circle avatar">
 {% endif %}
-<h3>{{ luckiest_3.nickname }}</h3>
-<small>{{ luckiest_3.user_id }}</small>
+<h3 class="nickname">{{ luckiest_3.nickname }}</h3>
+<small class="user-id">{{ luckiest_3.user_id }}</small>
 </div>
 </div>
 
 </div>
-
-<script>
-let first_value = '<p class="value">{{ luckiest_1.value }}</p>';
-let heights = [
-    document.getElementById("first").offsetHeight,
-    document.getElementById("second").offsetHeight,
-    document.getElementById("third").offsetHeight,
-];
-heights.sort()
-let base_height = heights[2];
-console.log(heights[0], heights[1], heights[2]);
-
-["first", "second", "third"].forEach((value, index, array) => {
-    let padding = (base_height - document.getElementById(value).offsetHeight) / 2;
-    let height = base_height;
-    if (value === "first") {
-        height += 70;
-    }
-    document.getElementById(value).style.height = `${height}px`;
-    document.getElementById(value).style.paddingTop = `${padding}px`;
-    console.log(padding, height, value)
-});
-document.getElementById("first").innerHTML += first_value;
-
-
-</script>
 
 {% if user %}
 <hr>

@@ -31,9 +31,9 @@ async def test_build_jrrp_message_qq_prepends_at_and_adds_buttons(monkeypatch: p
     message = await build_jrrp_message(bot=MagicMock(spec=QQBot), user_id="10")
 
     assert isinstance(message, UniMessage)
-    # 文本保持原有内容，且最前面附加 @ (qqbot-at-user)
+    # 非 C2C 场景下没有 event，退回不带 @ 的纯 markdown，文本保持原有内容
     text = next(seg for seg in message if isinstance(seg, Text))
-    assert text.text == '<qqbot-at-user id="10" />你今天的人品值是: 66'
+    assert text.text == "你今天的人品值是: 66"
     assert any("markdown" in styles for styles in text.styles.values())
     # 键盘包含 幸运星/倒霉蛋/重新抽取 三个 enter 按钮
     keyboard = next(seg for seg in message if isinstance(seg, Keyboard))
@@ -44,6 +44,36 @@ async def test_build_jrrp_message_qq_prepends_at_and_adds_buttons(monkeypatch: p
         "text::button.unlucky_one",
         "text::button.reroll",
     ]
+
+
+@pytest.mark.asyncio
+async def test_build_jrrp_message_qq_group_at_uses_adapter_user_id(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """群聊 @ 必须用适配器原生 ID（member_openid），而不是 larkutils 的主账号 ID
+
+    ``<qqbot-at-user>`` 只认适配器原生 ID；传 larkutils 的主账号 ID（QQ 号）会 @ 到
+    一个在开放平台 openid 体系里并不存在的用户。
+    """
+    from nonebot.adapters.qq import Bot as QQBot
+    from nonebot.adapters.qq.event import GroupAtMessageCreateEvent
+    from nonebot_plugin_alconna import Text
+    from nonebot_plugin_jrrp.__main__ import build_jrrp_message
+    from nonebot_plugin_larkutils.command import config
+
+    monkeypatch.setattr("nonebot_plugin_jrrp.__main__.get_luck_message", AsyncMock(return_value="你今天的人品值是: 66"))
+    monkeypatch.setattr(config, "command_start", ["/"])
+
+    event = MagicMock(spec=GroupAtMessageCreateEvent)
+    event.get_user_id.return_value = "MEMBER_OPENID_ABC"
+
+    # user_id 是 larkutils 的主账号 ID，与适配器原生 ID 不同
+    message = await build_jrrp_message(bot=MagicMock(spec=QQBot), user_id="10001", event=event)
+
+    text = next(seg for seg in message if isinstance(seg, Text))
+    assert text.text == '<qqbot-at-user id="MEMBER_OPENID_ABC" />你今天的人品值是: 66'
+    # 主账号 ID 不能出现在 @ 标签里
+    assert 'id="10001"' not in text.text
 
 
 @pytest.mark.asyncio
