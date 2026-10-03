@@ -44,7 +44,7 @@ class Planner:
         self._plan: Optional[list[PlanItem]] = None
 
     async def run_morning_plan(self) -> None:
-        logger.info("[Planner] 开始生成今日计划")
+        logger.info("[Planner] 开始生成今日背景意图")
         try:
             events_text = await self._gather_context()
             notes_text = await self.moonlark_main.get_relevant_notes()
@@ -58,8 +58,8 @@ class Planner:
             result = await fetch_json(messages, PlanResponse, identify="Planner - Morning", reasoning_effort="medium")
             self._plan = result.plan
             self._save()
-            await self._notify_sessions(f"今日计划已更新：\n{self.get_plan_text()}")
-            logger.info("[Planner] 今日计划已生成")
+            await self._notify_sessions(f"今日背景意图已更新：\n{self.get_plan_text()}")
+            logger.info("[Planner] 今日背景意图已生成")
         except Exception as e:
             logger.exception(f"[Planner] 计划生成失败: {e}")
 
@@ -85,8 +85,8 @@ class Planner:
             result = await fetch_json(messages, PlanResponse, identify="Planner - Afternoon", reasoning_effort="medium")
             self._plan = result.plan
             self._save()
-            await self._notify_sessions(f"今日计划已更新：\n{self.get_plan_text()}")
-            logger.info("[Planner] 下午计划已更新")
+            await self._notify_sessions(f"今日背景意图已更新：\n{self.get_plan_text()}")
+            logger.info("[Planner] 下午背景意图已更新")
         except Exception as e:
             logger.exception(f"[Planner] 计划更新失败: {e}")
 
@@ -105,7 +105,7 @@ class Planner:
     def get_plan_text(self) -> str:
         plan = self.get_plan()
         if not plan:
-            return "今日暂无计划。"
+            return "今日暂无背景意图。"
         lines = []
         for item in plan:
             lines.append(f"[{item.period}] {item.content}")

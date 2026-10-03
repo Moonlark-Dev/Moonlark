@@ -304,19 +304,30 @@ Guidelines:
 
 ## CI (GitHub Actions)
 
-`.github/workflows/ci.yml` runs on every PR update (Python 3.11 + Poetry):
+`.github/workflows/ci.yml` runs on every PR update and on pushes to `main` (Python 3.11 + Poetry):
 
-1. `poetry lock` / `poetry install --all-groups` / `poetry update`
+1. `poetry check --lock` + `poetry lock` + `poetry install --all-groups` — CI **只校验** `poetry.lock` 与
+   pyproject 是否一致：根 `pyproject.toml` 用 content-hash，`src/pyproject.toml` 的约束不在 content-hash
+   覆盖范围内，改用 `.github/scripts/check_poetry_lock.py` 比较重新解析后的已锁定版本集合。不一致就
+   失败，CI 不再替 PR 重锁、也不再浮动依赖
 2. `nb orm upgrade`, then `nb orm check` — the job fails unless it prints `没有检测到新的升级操作`
 3. `poetry run pytest tests/ -v`, with `SQLALCHEMY_DATABASE_URL=sqlite+aiosqlite://` and
    `ALEMBIC_STARTUP_CHECK=False`
 4. `nb larkhelp-generate zh_hans COMMANDS.md`
-5. If the working tree changed (usually `poetry.lock` or `COMMANDS.md`), the job commits and pushes it back to
-   the PR branch as `Auto update from GitHub Actions`
+5. If `COMMANDS.md` changed, the job commits and pushes it back to the PR branch as
+   `Auto update from GitHub Actions` — 只回推这一个文件，`poetry.lock` 永远不会被 CI 改写
 
 Practical consequences:
 
 - A model change without a migration fails CI at step 2.
+- 改动根 `pyproject.toml` 或 `src/pyproject.toml` 的依赖后，必须本地运行 `poetry lock` 并提交生成的
+  `poetry.lock`，否则 CI 在第 1 步失败（`poetry lock` 只补齐 pyproject 变更所必需的解析结果，不升级
+  已锁定的包）。
+- 依赖版本升级交给 Dependabot（`.github/dependabot.yml`，按主依赖/开发依赖分组），不要在 PR 里跑
+  `poetry update`：它会把 200+ 行 lock 变化塞进每个 PR，是并发 PR 互相冲突的根源。
+- 仍然可能撞 `poetry.lock` 冲突，但只发生在同时有多个 PR 改依赖时：本 PR 没改依赖就
+  `git checkout --theirs poetry.lock` 取 main 侧；改了就跑 `poetry lock` 重新生成，再用
+  `poetry check --lock` 确认一致。不要手改 lock 里的包条目。
 - Run `git pull --rebase` before pushing: the CI job may already have pushed a commit to your branch.
 - A run triggered by that bot push is parked as `action_required` and must be approved manually in the Actions
   UI before it executes.

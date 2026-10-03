@@ -297,13 +297,13 @@ async def check_note(
 
 
 # ========================================================================
-# 每日 Note 整理（上下文重置前，交给 Jev 判定错误 / 过期）
+# 每日 Note 整理（上下文重置前，交给 Jev 判定是否删除）
 # ========================================================================
 
 # 交给 Jev 的 state 中聊天记录的最大字符数（关键词匹配仍使用完整记录）
 NOTE_REVIEW_CHAT_CHAR_LIMIT = 20000
-# Jev 判定为 wrong/expired 且置信度达到该值才删除笔记
-NOTE_DELETE_MIN_CONFIDENCE = 0.8
+# Jev 判定为 delete 且置信度达到该值才删除笔记
+NOTE_DELETE_MIN_CONFIDENCE = 0.72
 
 
 def _content_to_text(content: Any) -> str:
@@ -369,7 +369,8 @@ async def review_session_notes(session: "BaseSession") -> int:
 
     根据所选会话的整个聊天记录读出所有能被匹配到的 Note（``filter_note`` 关键词匹配，
     含无关键词的常驻笔记），连同该会话当天的事件列表一起交给 Jev 分析每条笔记是否
-    错误（wrong）或已过期（expired）；判定正确且置信度足够的笔记会被删除。
+    应当删除（delete：内容错误、已经过期，或已被后续事件/更新的笔记取代）；判定为
+    delete 且置信度足够的笔记会被删除。
 
     Returns:
         删除的笔记数量；无可整理内容或 Jev 不可用时返回 0
@@ -405,7 +406,7 @@ async def review_session_notes(session: "BaseSession") -> int:
     questions = {
         f"note_{note.id}": choice(
             lang_ref("note_review.question", _note_description(note)),
-            criteria={key: lang_ref(f"note_review.criteria.{key}") for key in ("keep", "wrong", "expired")},
+            criteria={key: lang_ref(f"note_review.criteria.{key}") for key in ("keep", "delete")},
         )
         for note in matched_notes
     }
@@ -421,12 +422,12 @@ async def review_session_notes(session: "BaseSession") -> int:
         answer = answers.get(f"note_{note.id}")
         if not isinstance(answer, ChoiceAnswer):
             continue
-        if answer.choice in ("wrong", "expired") and answer.confidence >= NOTE_DELETE_MIN_CONFIDENCE:
+        if answer.choice == "delete" and answer.confidence >= NOTE_DELETE_MIN_CONFIDENCE:
             if await note_manager.delete_note(note.id):
                 deleted += 1
                 logger.info(
                     f"[NoteReview:{session.session_id}] 删除笔记 #{note.id}"
-                    f"（{answer.choice}，置信度 {answer.confidence:.2f}）: {note.content[:50]}"
+                    f"（置信度 {answer.confidence:.2f}）: {note.content[:50]}"
                 )
     return deleted
 

@@ -1,8 +1,9 @@
-"""每日 Note 整理测试：聊天记录匹配 → Jev 判定 wrong/expired → 删除"""
+"""每日 Note 整理测试：聊天记录匹配 → Jev 判定 delete → 删除"""
 
 from __future__ import annotations
 
 from datetime import datetime
+from pathlib import Path
 from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any
 from unittest.mock import AsyncMock, patch
@@ -65,14 +66,16 @@ async def test_serialize_openai_history_skips_system_and_images() -> None:
     assert "[tool]" not in text
 
 
-async def test_review_deletes_wrong_and_expired_notes() -> None:
-    """Jev 判定 wrong/expired 且置信度足够的笔记被删除，keep 或低置信度保留"""
+async def test_review_deletes_notes_marked_delete() -> None:
+    """Jev 判定 delete 且置信度达到下限的笔记被删除，keep 或低置信度保留"""
     from nonebot_plugin_chat.utils import note_manager as note_manager_module
 
     notes = [
         _note(1, "小明的生日是 8 月 15 日", keywords="小明 生日"),
         _note(2, "本周六有考试", keywords="考试"),
         _note(3, "仍然有效的笔记", keywords=""),
+        _note(4, "已被后续事件取代的旧笔记", keywords="取代"),
+        _note(5, "置信度略低于下限的笔记", keywords="边界"),
     ]
     deleted: list[int] = []
     fake_manager = SimpleNamespace(
@@ -80,10 +83,14 @@ async def test_review_deletes_wrong_and_expired_notes() -> None:
         delete_note=AsyncMock(side_effect=lambda note_id: deleted.append(note_id) or True),
     )
 
+    assert note_manager_module.NOTE_DELETE_MIN_CONFIDENCE == 0.72
+
     answers = {
-        "note_1": _choice_answer("wrong", confidence=0.9),
-        "note_2": _choice_answer("expired", confidence=0.5),  # 置信度不足，不删
-        "note_3": _choice_answer("keep", confidence=0.95),
+        "note_1": _choice_answer("delete", confidence=0.9),  # 删除
+        "note_2": _choice_answer("delete", confidence=0.5),  # 置信度不足，不删
+        "note_3": _choice_answer("keep", confidence=0.95),  # 保留
+        "note_4": _choice_answer("delete", confidence=0.72),  # 恰为下限，删除
+        "note_5": _choice_answer("delete", confidence=0.71),  # 略低于下限，保留
     }
     captured: dict[str, Any] = {}
 
@@ -114,18 +121,34 @@ async def test_review_deletes_wrong_and_expired_notes() -> None:
     ):
         deleted_count = await note_manager_module.review_session_notes(session)
 
-    assert deleted_count == 1
-    assert deleted == [1]
+    assert deleted_count == 2
+    assert deleted == [1, 4]
 
     # state 里包含聊天记录与事件列表
     state = captured["state"]
     assert "小明 生日 考试 都提到了" in state["chat_history"]
     assert "小明过了生日" in state["events"]
     # 每条匹配到的笔记都有一个对应的问题
-    assert set(captured["questions"]) == {"note_1", "note_2", "note_3"}
-    # 问题文本是本地化键引用
+    assert set(captured["questions"]) == {"note_1", "note_2", "note_3", "note_4", "note_5"}
+    # 问题文本是本地化键引用，标签只剩 keep / delete
     question = captured["questions"]["note_1"]
-    assert question.criteria.keys() == {"keep", "wrong", "expired"}
+    assert question.criteria.keys() == {"keep", "delete"}
+
+
+async def test_note_review_lang_matches_keep_delete_tags() -> None:
+    """语言文件里的审查提示词已合并为 keep / delete，并保留「只保留最新」规则"""
+    import yaml
+
+    lang_file = Path(__file__).resolve().parents[1] / "src" / "lang" / "zh_hans" / "jev.yaml"
+    review = yaml.safe_load(lang_file.read_text(encoding="utf-8"))["note_review"]
+
+    assert set(review["criteria"]) == {"keep", "delete"}
+    assert "wrong" not in review["criteria"]
+    assert "expired" not in review["criteria"]
+    assert "只保留最新" in review["question"]
+    # 用户的 delete 判定清单
+    for clue in ("后续事件是否明确覆盖了旧信息", "已经完成、结束、取消", "超过事项发生的日期", "特定短期场景"):
+        assert clue in review["question"]
 
 
 async def test_review_skips_when_no_matched_notes() -> None:
