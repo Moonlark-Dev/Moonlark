@@ -125,6 +125,7 @@
 Moonlark 权限控制 (仅 SUPERUSER 可用)
 - `/access {ban|pardon} <主体ID> (封禁/解封用户)`
 - `/access {block|unblock} <权限> <主体ID> (添加/移除权限)`
+- `/access reload (重新加载权限表缓存)`
 ## `bag`: 背包
 
 查看，处理，使用背包中的物品
