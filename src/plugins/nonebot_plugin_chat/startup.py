@@ -87,6 +87,13 @@ async def _init_moonlark_main():
     async def _clear_plan_flag():
         moonlark_main.sleep_controller._morning_plan_scheduled = False
 
+    @scheduler.scheduled_job("cron", hour=0, minute=5, id="refresh_daily_weather")
+    async def _refresh_daily_weather():
+        """每天刷新一次天气缓存（会话元数据从缓存读取天气）"""
+        from .utils.weather import refresh_daily_weather_cache
+
+        await refresh_daily_weather_cache()
+
     @scheduler.scheduled_job("cron", hour=3, id="moonlark_main_cleanup_plans")
     async def _cleanup_plans():
         from .core.ego.planner import Planner

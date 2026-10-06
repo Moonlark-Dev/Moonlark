@@ -63,7 +63,6 @@ class BaseSession(ABC):
         self.bot = bot
         self.lang_str = lang_str
         self.tool_calls_history = []
-        self.cached_messages: list[CachedMessage] = []
         self.message_cache_counter = 0
         self.ghot_coefficient = 1
         self.accumulated_text_length = 0  # 累计文本长度
@@ -76,6 +75,11 @@ class BaseSession(ABC):
         self.last_interest_update_time: Optional[datetime] = None  # interest 最后更新时间
         self.processor = MessageProcessor(self)
         self.message_queue = SessionQueue(self.processor.notify_message_queued)
+
+    @property
+    def cached_messages(self) -> list[CachedMessage]:
+        """会话的消息列表（由 Chat Context 持有，这里只做转发）"""
+        return self.processor.openai_messages.context.cached_messages
 
     # interest 衰减配置
     INTEREST_HALF_LIFE = 420  # 半衰期（秒），默认 7 分钟
@@ -200,18 +204,10 @@ class BaseSession(ABC):
     async def calculate_ghot_coefficient(self) -> None:
         pass
 
-    def clean_cached_message(self) -> None:
-        if len(self.cached_messages) > 50:
-            self.cached_messages = self.cached_messages[-50:]
-
     async def on_cache_posted(self) -> None:
         self.message_cache_counter += 1
         await self.calculate_ghot_coefficient()
-        self.clean_cached_message()
         self.last_activate = datetime.now()
-        from ..ego.moonlark_main import moonlark_main
-
-        moonlark_main.on_message_cached(self.session_id)
 
     async def mute(self) -> None:
         self.mute_until = datetime.now() + timedelta(minutes=15)

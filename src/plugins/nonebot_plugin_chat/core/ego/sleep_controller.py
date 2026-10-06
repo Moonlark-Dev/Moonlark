@@ -191,7 +191,7 @@ class SleepController:
             if session_id == exclude_session_id:
                 continue
             try:
-                await session.processor.openai_messages._reset_and_clear_db(session_id)
+                await session.processor.openai_messages.reset_context()
                 logger.info(f"[SleepController] 唤醒后已重置会话 {session_id} 的上下文")
             except Exception as e:
                 logger.warning(f"[SleepController] 唤醒后重置会话 {session_id} 失败: {e}")

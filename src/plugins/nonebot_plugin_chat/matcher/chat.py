@@ -343,8 +343,8 @@ class CommandHandler:
             await session.processor._analyze_pending_notes()
             await lang.send("command.compact.pending_notes_analyzed", self.user_id)
 
-        # 重置消息队列
-        await session.processor.openai_messages._reset_and_clear_db(target_session_id)
+        # 重置上下文（保存现有记录并换用新的 context index）
+        await session.processor.openai_messages.reset_context()
 
         # 重新注入待定笔记
         await session.processor._inject_pending_notes_to_openai_messages()

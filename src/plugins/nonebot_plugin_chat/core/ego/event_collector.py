@@ -1,11 +1,12 @@
 """事件收集器
 
-每个会话每缓存 50 条消息运行一次，生成群聊事件和话题列表并存入数据库。
+以 chat context 的 block 为单位收集会话事件：一个 block 默认 50 条消息，
+达到上限时自动提交；也可以由代码（planner / 主动私聊决策 / Note 整理）提前触发。
+block 一旦提交就立即冻结，其后的新消息属于下一个 block——因此「第 30 条时提前
+触发」得到的是一个独立 block，不会与前一个 block 混在一起。
 
-可靠性说明：``BaseSession.clean_cached_message`` 只保留最近 50 条缓存消息，
-因此收集间隔必须与缓存上限一致（50），否则两批之间的消息永远不会被任何一次
-收集看到（间隔为 100 时会漏掉一半消息）。收集失败时会把计数补回阈值，
-让下一条消息触发一次重试，避免这一批消息的事件永久丢失。
+收集失败时 block 会被记为「未总结」保留在 chat context 里，下一次收集会重试，
+避免这一批消息的事件永久丢失。
 """
 
 import asyncio
@@ -20,6 +21,7 @@ from nonebot_plugin_orm import get_session
 from sqlalchemy import select
 
 if TYPE_CHECKING:
+    from ..context import ChatContext
     from ..session.base import BaseSession
 
 from ...models import SessionEvent
@@ -68,8 +70,7 @@ def format_event_content(content: str) -> str:
 class EventCollector:
     """会话事件收集器"""
 
-    # 与 BaseSession.clean_cached_message 的缓存上限（50 条）保持一致：
-    # 间隔大于缓存上限会导致两批之间的消息永远不被收集
+    # 与 ChatContext.BLOCK_MESSAGE_LIMIT 保持一致：一个 block 的消息一起提交事件总结
     COLLECTION_INTERVAL = 50
     # 未生成事件的消息数超过该值时，planner / 主动私聊决策会无视 COLLECTION_INTERVAL 立即收集一次
     FLUSH_PENDING_THRESHOLD = 5
@@ -77,21 +78,34 @@ class EventCollector:
     FLUSH_PENDING_CONCURRENCY = 5
 
     def __init__(self) -> None:
-        self._session_message_counters: dict[str, int] = {}
+        self._collection_locks: dict[str, asyncio.Lock] = {}
         # 决策游标：记录上一次主动私聊决策的时间，用于只取「上次决策到现在」的新事件
         self._decision_cursor: Optional[datetime] = None
 
+    @staticmethod
+    def _get_context(session: "BaseSession") -> "ChatContext":
+        return session.processor.openai_messages.context
+
     def get_pending_message_count(self, session_id: str) -> int:
-        """获取某个会话中尚未生成事件的消息数"""
-        return self._session_message_counters.get(session_id, 0)
+        """获取某个会话当前 block 中尚未生成事件的消息数"""
+        from ..session import groups
+
+        session = groups.get(session_id)
+        if session is None:
+            return 0
+        return self._get_context(session).pending_block_message_count
+
+    def request_collection(self, session: "BaseSession") -> None:
+        """当前 block 已满（50 条）时提交一次事件总结"""
+        asyncio.create_task(self._collect(session, min_pending=self.COLLECTION_INTERVAL - 1))
 
     async def flush_pending(self, min_pending: int = FLUSH_PENDING_THRESHOLD) -> list[str]:
         """把所有积压了过多未生成事件消息的会话立即收集一次
 
         正常情况下每个会话每 :attr:`COLLECTION_INTERVAL` 条消息才生成一次事件，planner
-        与主动私聊决策在读取事件前调用本方法：只要某个会话积压的未生成事件消息数**大于**
-        ``min_pending``，就忽略最低消息数量立即运行一次收集，避免决策读到的事件总是落后于
-        最新消息。收集完成后对应计数清零，后续仍按 COLLECTION_INTERVAL 的节奏进行。
+        与主动私聊决策在读取事件前调用本方法：只要某个会话当前 block 里未生成事件的消息
+        数**大于** ``min_pending``（或有尚未成功总结的 block），就忽略最低消息数量立即
+        运行一次收集，避免决策读到的事件总是落后于最新消息。
 
         Returns:
             本次立即收集过的会话 ID 列表
@@ -99,13 +113,11 @@ class EventCollector:
         from ..session import groups
 
         sessions: list[tuple[str, "BaseSession"]] = []
-        for session_id, count in list(self._session_message_counters.items()):
-            if count <= min_pending:
+        for session_id, session in list(groups.items()):
+            context = self._get_context(session)
+            if context.pending_block_message_count <= min_pending and not context.unsummarized_blocks:
                 continue
-            self._session_message_counters[session_id] = 0
-            session = groups.get(session_id)
-            if session is not None:
-                sessions.append((session_id, session))
+            sessions.append((session_id, session))
 
         if not sessions:
             return []
@@ -114,29 +126,34 @@ class EventCollector:
 
         async def _collect_limited(session: "BaseSession") -> None:
             async with semaphore:
-                await self._collect(session)
+                await self._collect(session, min_pending=min_pending)
 
         await asyncio.gather(*(_collect_limited(session) for _, session in sessions))
         flushed = [session_id for session_id, _ in sessions]
         logger.info(f"[EventCollector] 已为 {len(flushed)} 个积压会话立即生成事件: {flushed}")
         return flushed
 
-    def on_message_cached(self, session_id: str) -> None:
-        self._session_message_counters.setdefault(session_id, 0)
-        self._session_message_counters[session_id] += 1
-        if self._session_message_counters[session_id] >= self.COLLECTION_INTERVAL:
-            self._session_message_counters[session_id] = 0
-            from ..session import groups
+    async def _collect(self, session: "BaseSession", min_pending: int = FLUSH_PENDING_THRESHOLD) -> None:
+        """收集当前 block（以及此前失败重试的 block）的事件"""
+        context = self._get_context(session)
+        lock = self._collection_locks.setdefault(session.session_id, asyncio.Lock())
+        if lock.locked():
+            return
+        async with lock:
+            targets = list(context.unsummarized_blocks)
+            if context.pending_block_message_count > min_pending:
+                block_id = context.current_block_id
+                if context.freeze_block(block_id):
+                    targets.append(block_id)
+            for block_id in targets:
+                await self._summarize_block(session, context, block_id)
 
-            session = groups.get(session_id)
-            if session is not None:
-                asyncio.create_task(self._collect(session))
-
-    async def _collect(self, session: "BaseSession") -> None:
+    async def _summarize_block(self, session: "BaseSession", context: "ChatContext", block_id: int) -> None:
         try:
             today = datetime.now().strftime("%Y-%m-%d")
-            chat_history = await session.get_cached_messages_string(length=100, include_self_message=True)
+            chat_history = context.block_history_string(block_id)
             if not chat_history.strip():
+                context.mark_block_summarized(block_id)
                 return
 
             identity_text = await get_message_text("identity.md.jinja")
@@ -170,16 +187,15 @@ class EventCollector:
                         session_id=session.session_id,
                         date=today,
                         content=content,
+                        block_id=block_id,
                     )
                 )
                 await db_session.commit()
 
-            logger.info(f"[EventCollector] 已收集会话 {session_name} 的事件和话题")
+            context.mark_block_summarized(block_id)
+            logger.info(f"[EventCollector] 已收集会话 {session_name} 的 block {block_id} 事件和话题")
         except Exception as e:
-            logger.warning(f"[EventCollector] 收集失败: {e}")
-            # 收集失败时把计数补回阈值：下一条消息缓存时会立即重试，
-            # 避免这一批消息的事件因为一次失败而永久丢失
-            self._session_message_counters[session.session_id] = self.COLLECTION_INTERVAL
+            logger.warning(f"[EventCollector] 收集失败（block {block_id} 将重试）: {e}")
 
     async def get_session_events(self, session_id: str, start_date: Optional[str] = None) -> list[SessionEvent]:
         """获取指定会话的事件，范围为 start_date（默认前一天）0:00 至今天"""

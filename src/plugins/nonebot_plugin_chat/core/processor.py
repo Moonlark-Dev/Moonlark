@@ -40,6 +40,7 @@ from ..utils.timing_stats import timing_stats_manager
 from ..utils.tool_manager import ToolManager
 from ..utils.tools.meme import MemeTools
 from ..utils.tools.sticker import StickerTools
+from .context import serialize_cached_message
 from .message import MessageQueue
 
 
@@ -224,7 +225,7 @@ class MessageProcessor:
                 logger.exception(e)
 
     async def _startup(self) -> None:
-        await self.openai_messages.restore_from_db()
+        await self.openai_messages.start()
         self._restored = True
         if self.enabled and self.session.message_queue:
             self.notify_message_queued()
@@ -296,9 +297,7 @@ class MessageProcessor:
                 event_prompt,
                 additional_info,
             )
-            await self.openai_messages.append_user_message(content)
-
-            # 缓存事件消息以便前端展示
+            # 缓存事件消息以便前端展示，同时作为 user 消息进入上下文
             event_msg: CachedMessage = {
                 "content": event_prompt,
                 "nickname": "Moonlark",
@@ -312,7 +311,13 @@ class MessageProcessor:
                 "triggered_reply": False,
                 "mq_text": content,
             }
-            self.session.cached_messages.append(event_msg)
+            await self.openai_messages.append_user_message_with_data(
+                content,
+                serialize_cached_message(event_msg),
+                sub_type="event",
+                trigger_type=trigger_mode,
+                timestamp=event_msg["send_time"],
+            )
             await self.session.on_cache_posted()
 
         elif item[0] == "message":
@@ -340,10 +345,9 @@ class MessageProcessor:
                 "triggered_reply": False,
                 "fake_rich_text": fake_rich_text,
             }
-            await self.process_messages(msg_dict)
-            self.session.cached_messages.append(msg_dict)
-            await self.session.on_cache_posted()
             trigger_mode = "all" if mentioned else "probability"
+            await self.process_messages(msg_dict, trigger_mode)
+            await self.session.on_cache_posted()
         logger.debug(f"{trigger_mode=} {self.blocked=}")
         self.token_bucket.add(
             {
@@ -552,7 +556,7 @@ class MessageProcessor:
             message_id = getattr(msg_first, "id", "")
             sent_msg_id = getattr(msg_first, "id", None)
 
-        # 记录 Moonlark 自己发送的消息到缓存
+        # 记录 Moonlark 自己发送的消息到缓存（只用于展示，模型自己的输出由工具调用表示）
         self_msg: CachedMessage = {
             "content": message_content,
             "nickname": "Moonlark",
@@ -565,7 +569,10 @@ class MessageProcessor:
             "to_me": False,
             "triggered_reply": False,
         }
-        self.session.cached_messages.append(self_msg)
+        await self.openai_messages.append_assistant_message(
+            message_content,
+            data=serialize_cached_message(self_msg),
+        )
         await self.session.on_cache_posted()
 
         # 检查待定笔记是否有新内容
@@ -642,7 +649,8 @@ class MessageProcessor:
         logger.info(f"Unlimited tokens denied: reason: {reason}, denial: {result.reason}")
         return await self.session.text("apply_unlimited_tokens.denied", result.reason)
 
-    async def append_user_message(self, msg_str: str, images: list[bytes]) -> None:
+    def build_message_content(self, msg_str: str, images: list[bytes]) -> list:
+        """把文本与图片组装成传给 OpenAI SDK 的 content"""
         content: list = [
             {"type": "text", "text": msg_str},
         ]
@@ -653,9 +661,11 @@ class MessageProcessor:
                 logger.warning("跳过无法送入模型的图片（格式不受支持或内容损坏）")
                 continue
             content.append(part)
-        await self.openai_messages.append_user_message(content)
+        return content
 
-    async def process_messages(self, msg_dict: CachedMessage) -> None:
+    async def process_messages(
+        self, msg_dict: CachedMessage, trigger_mode: Literal["none", "probability", "all"]
+    ) -> None:
         async with get_session() as session:
             r = await session.get(ChatGroup, {"group_id": self.session.session_id})
 
@@ -675,34 +685,42 @@ class MessageProcessor:
 
             self.blocked = blocked_user or blocked_keyword
 
-            if not self.blocked:
-                msg_str = generate_message_string(msg_dict)
-                msg_str += await self.generate_additional_prompt(
-                    msg_str,
-                    msg_dict["user_id"],
-                    msg_dict.get("fake_rich_text", []),
-                )
-                msg_dict["mq_text"] = msg_str
-                await self.append_user_message(msg_str, msg_dict["images"])
-                # print(self.openai_messages.messages)
-            if not self.blocked and not msg_dict["self"]:
-                content = msg_dict.get("content", "")
-                if isinstance(content, str) and content:
-                    cleaned = re.sub(r"\[.*?\]", "", content)
-                    cleaned = re.sub(r"\s+", " ", cleaned).strip()
-                    self.session.accumulated_text_length += len(cleaned)
-                logger.debug(f"Accumulated text length: {self.session.accumulated_text_length}")
+        msg_str = generate_message_string(msg_dict)
+        if not self.blocked:
+            msg_str += await self.generate_additional_prompt(
+                msg_str,
+                msg_dict["user_id"],
+                msg_dict.get("fake_rich_text", []),
+            )
+            msg_dict["mq_text"] = msg_str
 
-                # 通知 MoonlarkMain 收到消息（更新 SleepController 的 last_message_time）
-                from .ego.moonlark_main import moonlark_main
+        # 被拦截的消息只作为展示记录进入上下文，不会送给模型
+        await self.openai_messages.append_user_message_with_data(
+            self.build_message_content(msg_str, msg_dict["images"]),
+            serialize_cached_message(msg_dict),
+            sub_type="message",
+            trigger_type=trigger_mode,
+            timestamp=msg_dict["send_time"],
+            display_only=self.blocked,
+        )
 
-                moonlark_main.on_message_received()
+        if not self.blocked and not msg_dict["self"]:
+            content = msg_dict.get("content", "")
+            if isinstance(content, str) and content:
+                cleaned = re.sub(r"\[.*?\]", "", content)
+                cleaned = re.sub(r"\s+", " ", cleaned).strip()
+                self.session.accumulated_text_length += len(cleaned)
+            logger.debug(f"Accumulated text length: {self.session.accumulated_text_length}")
+
+            # 通知 MoonlarkMain 收到消息（更新 SleepController 的 last_message_time）
+            from .ego.moonlark_main import moonlark_main
+
+            moonlark_main.on_message_received()
 
             # 消息入队后更新未分析计数并检查是否需要分析待定笔记
-            if not self.blocked and not msg_dict["self"]:
-                self.unanalyzed_message_count += 1
-                if self.unanalyzed_message_count >= 20:
-                    asyncio.create_task(self._analyze_pending_notes())
+            self.unanalyzed_message_count += 1
+            if self.unanalyzed_message_count >= 20:
+                asyncio.create_task(self._analyze_pending_notes())
 
     def get_message_content_list(self) -> list[str]:
         l = []
@@ -931,7 +949,7 @@ class MessageProcessor:
         """
         try:
             from ..utils.session_metadata import build_group_session_metadata
-            from ..utils.weather import get_daily_weather_text, get_weekday_text
+            from ..utils.weather import get_cached_daily_weather_text, get_weekday_text
 
             parts = []
             if self.session.get_session_type() == "group":
@@ -942,7 +960,8 @@ class MessageProcessor:
                     parts.append("\n".join(group_metadata))
             now = datetime.now()
             parts.append(f"当前日期：{now.strftime('%Y-%m-%d')} {get_weekday_text(now)}")
-            weather_text = await get_daily_weather_text()
+            # 天气从 LocalStore 缓存读取，每天第一次获取时刷新
+            weather_text = await get_cached_daily_weather_text()
             if weather_text:
                 parts.append(f"今日天气：{weather_text}")
 

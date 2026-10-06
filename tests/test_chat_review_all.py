@@ -123,12 +123,12 @@ async def test_dispatches_review_all_subcommand(
 
 
 def _fake_session(session_id: str, review_result: int = 0, *, review_error: bool = False) -> Any:
-    async def _reset(_session_id: str) -> None:
+    async def _reset() -> None:
         return None
 
     return SimpleNamespace(
         session_id=session_id,
-        processor=SimpleNamespace(openai_messages=SimpleNamespace(_reset_and_clear_db=AsyncMock(side_effect=_reset))),
+        processor=SimpleNamespace(openai_messages=SimpleNamespace(reset_context=AsyncMock(side_effect=_reset))),
         _review_result=review_result,
         _review_error=review_error,
     )
@@ -159,7 +159,7 @@ async def test_review_and_reset_all_sessions_counts() -> None:
 
     assert (reviewed, deleted, reset) == (2, 2, 2)
     for session in sessions.values():
-        session.processor.openai_messages._reset_and_clear_db.assert_awaited_once()
+        session.processor.openai_messages.reset_context.assert_awaited_once()
     fake_event_collector.flush_pending.assert_awaited_once_with(min_pending=0)
 
 
@@ -168,7 +168,7 @@ async def test_review_and_reset_all_sessions_survives_failures() -> None:
     from nonebot_plugin_chat.core import session as session_module
 
     broken = _fake_session("qq_111", review_error=True)
-    broken.processor.openai_messages._reset_and_clear_db = AsyncMock(side_effect=RuntimeError("db down"))
+    broken.processor.openai_messages.reset_context = AsyncMock(side_effect=RuntimeError("db down"))
     good = _fake_session("qq_222", review_result=1)
     sessions = {"qq_111": broken, "qq_222": good}
 
@@ -189,4 +189,4 @@ async def test_review_and_reset_all_sessions_survives_failures() -> None:
     assert reviewed == 2
     assert deleted == 1
     assert reset == 1
-    good.processor.openai_messages._reset_and_clear_db.assert_awaited_once_with("qq_222")
+    good.processor.openai_messages.reset_context.assert_awaited_once_with()
