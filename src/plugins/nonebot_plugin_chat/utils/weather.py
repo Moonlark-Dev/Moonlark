@@ -3,12 +3,19 @@
 - 每日天气：用于会话信息、博客、日记、计划生成的"当天天气"
 - 实时天气：get_weather 工具
 - 未配置 QWEATHER_API_KEY / 经纬度时，所有功能自动禁用（fallback 到旧行为）
+
+每日天气会缓存在 LocalStore 里（按日期），会话元数据（meta 消息）直接读缓存，
+跨天后的第一次获取会重新请求并刷新缓存。
 """
 
+import json
 from datetime import datetime
 from typing import Optional
 
+import aiofiles
 import httpx
+import nonebot_plugin_localstore as store
+from nonebot.log import logger
 
 from ..config import config
 
@@ -63,3 +70,59 @@ async def get_daily_weather_text() -> Optional[str]:
 
     today = data["daily"][0]
     return f"{today.get('textDay', '未知')}，{today.get('tempMin', '?')}℃~{today.get('tempMax', '?')}℃"
+
+
+def _daily_weather_cache_file():
+    directory = store.get_cache_dir("nonebot_plugin_chat")
+    directory.mkdir(parents=True, exist_ok=True)
+    return directory / "daily_weather.json"
+
+
+def _today() -> str:
+    return datetime.now().strftime("%Y-%m-%d")
+
+
+async def read_daily_weather_cache() -> Optional[str]:
+    """读取当天的天气缓存，缓存不存在或已跨天时返回 None"""
+    path = _daily_weather_cache_file()
+    if not path.exists():
+        return None
+    try:
+        async with aiofiles.open(path, encoding="utf-8") as file:
+            cached = json.loads(await file.read())
+    except Exception as e:
+        logger.debug(f"读取天气缓存失败: {e}")
+        return None
+    if not isinstance(cached, dict) or cached.get("date") != _today():
+        return None
+    text = cached.get("text")
+    return text if isinstance(text, str) and text else None
+
+
+async def write_daily_weather_cache(text: str) -> None:
+    path = _daily_weather_cache_file()
+    payload = {"date": _today(), "text": text, "updated_at": datetime.now().isoformat()}
+    try:
+        async with aiofiles.open(path, "w", encoding="utf-8") as file:
+            await file.write(json.dumps(payload, ensure_ascii=False))
+    except Exception as e:
+        logger.debug(f"写入天气缓存失败: {e}")
+
+
+async def get_cached_daily_weather_text() -> Optional[str]:
+    """获取当天的天气文本：优先读 LocalStore 缓存，跨天后重新获取并刷新缓存"""
+    cached = await read_daily_weather_cache()
+    if cached is not None:
+        return cached
+    text = await get_daily_weather_text()
+    if text:
+        await write_daily_weather_cache(text)
+    return text
+
+
+async def refresh_daily_weather_cache() -> Optional[str]:
+    """强制刷新当天天气缓存（每日定时任务调用）"""
+    text = await get_daily_weather_text()
+    if text:
+        await write_daily_weather_cache(text)
+    return text

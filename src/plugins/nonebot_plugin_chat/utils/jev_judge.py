@@ -60,6 +60,7 @@ INTEREST_LEVELS = 4  # 兴趣问题的等级数
 MOOD_INTENSITY_RANGE = (0.5, 1.2)  # 与旧版 ModelResponse.mood_intensity 的取值范围一致
 REPLY_REQUIRED_THRESHOLD = 0.7  # reply_required Noul 达到该值才提示模型补发消息
 NUL_THRESHOLD = 0.5  # 触发预处理的 Noul 判定阈值
+SLIDING_WINDOW_RELEVANT_THRESHOLD = 0.5  # 滑动窗口：旧 block 的事件仍与最新 block 相关的最低置信度
 
 # 好感度评价的选项（与 src/lang/zh_hans/jev.yaml 中 reply.favor_score.criteria 的键一致）
 FAVOR_SCORE_KEYS = ("2", "1", "0", "-1", "-2")

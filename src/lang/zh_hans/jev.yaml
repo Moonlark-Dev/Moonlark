@@ -87,3 +87,12 @@ note_review:
   criteria:
     keep: 保留——笔记仍然正确、仍然有效，且没有被后续事件或更新的笔记取代
     delete: 删除——笔记内容错误、已经过期，或已被后续事件/更新的笔记取代（同一事实只保留最新的那一条）
+
+context_window:
+  block_relevant: |
+    请判断 state 中较早的一段对话事件 `history_events` 是否仍然与最新一段对话的事件 `latest_events` 相关。
+    满足任一即为「是」：history_events 里的主要话题、人物或事项在 latest_events 中仍有对应或仍在延续；
+    latest_events 是对 history_events 的追问、补充或后续进展；history_events 里提到的事情尚未有结果、仍然待办。
+    以下为「否」：latest_events 已经完全转向别的话题，history_events 提到的内容在最新一段里不再出现、
+    也不再被需要；history_events 的事项已经结束、被明确取代或明确放弃。
+    不确定时为「是」（宁可保留也不要误删）。

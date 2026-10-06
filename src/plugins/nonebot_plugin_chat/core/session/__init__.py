@@ -5,9 +5,6 @@ from nonebot import get_driver, logger
 from nonebot.adapters import Bot
 from nonebot_plugin_alconna import Target
 from nonebot_plugin_larklang.__main__ import get_group_language
-from nonebot_plugin_orm import get_session
-from sqlalchemy import delete
-from ...models import MessageQueueCache
 from .base import BaseSession
 from .group import GroupSession
 from .private import PrivateSession
@@ -108,15 +105,9 @@ async def reset_session(session_id: str) -> bool:
     if session.processor.openai_messages.fetcher_task:
         session.processor.openai_messages.fetcher_task.cancel()
 
-    # 清除消息队列中的所有消息
-    if session.processor.openai_messages.fetcher is not None:
-        session.processor.openai_messages.fetcher.session.messages.clear()
-        session.processor.openai_messages.fetcher.session.insert_message_queue.clear()
-
-    # 删除数据库中的缓存
-    async with get_session() as db_session:
-        await db_session.execute(delete(MessageQueueCache).where(MessageQueueCache.group_id == session_id))
-        await db_session.commit()
+    # 保存现有记录并换用新的 context index（旧上下文留在数据库中等待归档）
+    await session.processor.openai_messages.reset_context()
+    await session.processor.openai_messages.context.stop()
 
     logger.info(f"Session {session_id} has been reset.")
     return True
@@ -197,9 +188,9 @@ async def review_and_reset_all_sessions(source: str = "DailyReset") -> tuple[int
             logger.exception(f"[{source}] 会话 {session_id} 的 Note 整理失败: {e}")
 
         try:
-            await session.processor.openai_messages._reset_and_clear_db(session_id)
+            await session.processor.openai_messages.reset_context()
             reset += 1
-            logger.info(f"[{source}] 已重置会话消息队列: {session_id}")
+            logger.info(f"[{source}] 已重置会话上下文: {session_id}")
         except Exception as e:
             logger.exception(f"[{source}] 重置会话 {session_id} 失败: {e}")
 
@@ -212,7 +203,18 @@ async def _reset_all_message_queues() -> None:
     await review_and_reset_all_sessions(source="DailyReset")
 
 
+@scheduler.scheduled_job("cron", hour=7, id="daily_context_archive")
+async def _archive_expired_contexts() -> None:
+    """每天上午 7 点归档超过三天的上下文（从数据库删除并落到本地 json）"""
+    from ..context_archive import archive_expired_contexts
+
+    result = await archive_expired_contexts()
+    if result.archived or result.failed:
+        logger.info(f"[ContextArchive] 已归档 {len(result.archived)} 个上下文，失败 {len(result.failed)} 个")
+
+
 @get_driver().on_shutdown
 async def _() -> None:
     for session in groups.values():
         await session.processor.openai_messages.save_to_db()
+        await session.processor.openai_messages.context.stop()

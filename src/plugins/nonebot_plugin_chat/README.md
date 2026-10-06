@@ -41,6 +41,39 @@
 - 工具调用：通过 `ToolManager` 管理可用工具（网页浏览、Wolfram Alpha、搜索引擎、B站解析、贴纸等）
 - 即时记忆：每处理一定量消息后，调用 AI 从最近消息中提取即时记忆
 
+### Chat Context（上下文管理）
+
+会话上下文由 `core/context.py` 的 `ChatContext` 统一持有，`BaseSession` 与
+`MessageQueue` 都不再自己保存消息。一个 `MessageQueue` 实例化一个 `ChatContext`。
+
+- **存储**：`nonebot_plugin_chat_contextmessage`，`(session_id, context_index, index)`
+  复合主键。`context_index` 只增不减，最大的就是最新会话；`index` 在同一
+  `context_index` 内递增。`role` 为 system/user/assistant/tool，user 消息再按
+  `sub_type` 分为 event/message/meta；`display_only` 标记只用于展示、不进入 LLM
+  消息列表的消息（被拦截的用户消息、实际发送出去的回复）。
+- **block**：事件总结的单位，默认 50 条消息一个 block（`block_id` 同时写进
+  `SessionEvent`）。block 一旦提交给事件总结就立即冻结并启用新的 `block_id`，
+  因此提前触发（例如第 30 条）得到的是独立 block。`block_id = 0` 是 system/meta
+  前导消息，不参与事件总结与滑动窗口。
+- **恢复与重置**：启动时恢复最大的 `context_index`；若最后一条消息早于当天 2:00
+  则立即 reset。reset 会保存现有记录后换用新的 `context_index`，重新注入 system
+  prompt 与会话元数据（meta）。内存中的消息每 5 分钟（以及每次定时任务）写回数据库。
+- **锁定与 cursor**：`MessageQueue` 请求 LLM 时通过 `acquire_cursor()` 锁定 context
+  并分配 `request_id`。`request_id` 只打在 message queue 推送上来的消息（LLM 输出与
+  工具返回）上，请求结束由 cursor 汇报成功/失败，失败时只删除这些消息——user/system
+  消息（含注入进请求的图片与提示）不会因为一次请求失败而丢失。锁定最长 10 分钟，
+  缓冲队列出现 `trigger_type=all` 的消息时刷新限时，超时以失败解锁。cursor 失效后
+  继续操作会抛 `MessageCursorClosed`。
+- **双缓冲队列**：processor 推送的消息在锁定期间进入 processor 缓冲队列；一旦其中
+  出现 `trigger_type=all` 的消息或事件，整队移交给 message queue 的缓冲队列，
+  message queue 每轮请求先提交完整消息列表、再拉取该队列的增量消息（拉取即写入
+  context）。请求结束后 processor 缓冲队列的剩余消息全部加入 context。
+- **滑动窗口**：距离上一次请求（最后一条带 `request_id` 的消息）超过 10 分钟时，
+  从新到旧遍历 block，用 Jev 判断某个 block 的事件是否仍出现在最新 block 的事件中，
+  不再相关则删除该 block 及其之前的全部消息并更新 meta；最新 block 永不删除。
+- **归档**：每天 7:00 把最后一条消息超过三天的 context 从数据库搬到 LocalStore 的
+  json（`core/context_archive.py`）。
+
 ### Token Bucket 流控
 
 基于令牌桶算法控制回复频率，替代旧版的欲望（desire）机制。
@@ -185,6 +218,8 @@ await judge_user_behavior(nickname, score=1, reason="有趣的发言")
 nonebot_plugin_chat/
 ├── core/
 │   ├── processor.py      # MessageProcessor 核心处理
+│   ├── context.py        # ChatContext 上下文管理（消息表 / block / 锁 / 滑动窗口）
+│   ├── context_archive.py # 过期 context 的每日归档
 │   ├── message.py        # MessageQueue 消息队列管理
 │   ├── matchers.py       # 消息匹配器
 │   ├── proactive_chat.py # 主动私聊

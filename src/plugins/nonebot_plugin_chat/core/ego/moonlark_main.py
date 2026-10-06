@@ -200,9 +200,6 @@ class MoonlarkMain:
     def on_reply_sent(self) -> None:
         self.sleep_controller.handle_reply()
 
-    def on_message_cached(self, session_id: str) -> None:
-        event_collector.on_message_cached(session_id)
-
     async def on_private_message_replied(self, user_id: str) -> None:
         await self.proactive_chat.update_reply_status(user_id)
 

@@ -162,13 +162,12 @@ async def test_processor_uses_real_mime_and_skips_invalid() -> None:
     from nonebot_plugin_chat.core.processor import MessageProcessor
 
     processor = _FakeProcessor()
-    await MessageProcessor.append_user_message(
+    content = MessageProcessor.build_message_content(
         processor,  # type: ignore[arg-type]
         "hello",
         [_make_image("PNG"), b"<html>not an image</html>", _make_image("BMP")],
     )
 
-    content = processor.openai_messages.messages[0]
     urls = [part["image_url"]["url"] for part in content if part.get("type") == "image_url"]
     assert len(urls) == 2
     assert urls[0].startswith("data:image/png;base64,")

@@ -4,7 +4,7 @@ from typing_extensions import TypedDict
 
 from nonebot_plugin_orm import Model
 from pydantic import BaseModel, Field
-from sqlalchemy import BINARY, DateTime, Float, Integer, LargeBinary, String, Text, false, func
+from sqlalchemy import Boolean, DateTime, Float, Integer, LargeBinary, String, Text, false, func
 from sqlalchemy.dialects.mysql import MEDIUMBLOB, MEDIUMTEXT
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -76,18 +76,40 @@ class Sticker(Model):
     context_keywords: Mapped[Optional[str]] = mapped_column(Text(), nullable=True)  # 适用语境关键词（JSON 数组）
 
 
-class MessageQueueCache(Model):
-    """消息队列缓存，用于持久化 OpenAI 消息历史以便重启后恢复"""
+class ChatContextMessage(Model):
+    """Chat Context 消息表：一条记录即对话上下文中的一条消息
 
-    message_id: Mapped[int] = mapped_column(Integer(), primary_key=True, autoincrement=True)
-    group_id: Mapped[str] = mapped_column(String(128))
-    trace_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)  # 上下文 trace ID，用于重启后恢复
-    # MySQL 使用 MEDIUMTEXT (16MB)，SQLite 使用 Text（无大小限制）
-    message_json: Mapped[str] = mapped_column(CompatibleMediumText)  # JSON 序列化的消息列表
-    updated_time: Mapped[datetime] = mapped_column(DateTime(), default=datetime.now)  # 最后更新时间戳
-    message_hash: Mapped[bytes] = mapped_column(
-        BINARY(32).with_variant(LargeBinary(32), "sqlite"),
-    )  # 消息哈希，用于去重
+    由 ``core/context.py`` 的 :class:`~nonebot_plugin_chat.core.context.ChatContext`
+    负责读写。``(session_id, context_index, index)`` 为复合主键：
+
+    - ``context_index``：上下文序号，同一会话内只增不减，最大的一条即最新会话；
+    - ``index``：同一 ``context_index`` 内递增的消息序号；
+    - ``block_id``：事件总结的 block 标记（不属于主键）。0 表示 system / meta 前导消息，
+      真实 block 从 1 开始；同一 block 的消息会被一起提交给事件总结，
+      收集完成后下一个 block 才启用新的 block_id。
+    """
+
+    __tablename__ = "nonebot_plugin_chat_contextmessage"
+
+    session_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    context_index: Mapped[int] = mapped_column(Integer(), primary_key=True)
+    index: Mapped[int] = mapped_column(Integer(), primary_key=True)
+    block_id: Mapped[int] = mapped_column(Integer(), default=0, index=True)
+    role: Mapped[str] = mapped_column(String(16))  # assistant / system / user / tool
+    sub_type: Mapped[str] = mapped_column(String(16), default="")  # user 消息为 event / message / meta，其余为空
+    timestamp: Mapped[datetime] = mapped_column(DateTime(), default=datetime.now)  # 消息创建时间
+    # 传给 OpenAI SDK 的 content，JSON 序列化（字符串或多模态 part 列表）
+    content: Mapped[str] = mapped_column(CompatibleMediumText)
+    # processor 解析出来的 json（用户消息为 CachedMessage），其余留空
+    data: Mapped[Optional[str]] = mapped_column(CompatibleMediumText, nullable=True)
+    # 只用于展示、不进入 LLM 消息列表的消息（被拦截的用户消息、实际发送出去的回复）
+    display_only: Mapped[bool] = mapped_column(Boolean(), default=False, server_default=false())
+    # assistant 消息的工具调用列表，JSON 序列化；tool 消息的 tool_call_id
+    tool_calls: Mapped[Optional[str]] = mapped_column(CompatibleMediumText, nullable=True)
+    tool_call_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    trigger_type: Mapped[str] = mapped_column(String(16), default="none")  # 非 user 消息恒为 none
+    # 仅 message queue 推送上来的消息（LLM 输出与工具返回）带有 request id
+    request_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
 
 
 class PreTriggerSignals(BaseModel):
@@ -256,7 +278,7 @@ class Timer(Model):
 
 
 class SessionEvent(Model):
-    """按会话收集的事件和话题记录，每 50 条消息收集一次"""
+    """按会话收集的事件和话题记录，每个 block（默认 50 条消息）收集一次"""
 
     __tablename__ = "nonebot_plugin_chat_sessionevent"
 
@@ -265,3 +287,5 @@ class SessionEvent(Model):
     date: Mapped[str] = mapped_column(String(16), index=True)  # YYYY-MM-DD
     content: Mapped[str] = mapped_column(Text())
     created_at: Mapped[datetime] = mapped_column(DateTime(), default=datetime.now)
+    # 该事件总结对应的 ChatContextMessage.block_id，滑动窗口按 block 回溯删除历史消息
+    block_id: Mapped[int] = mapped_column(Integer(), default=0, server_default="0", index=True)
