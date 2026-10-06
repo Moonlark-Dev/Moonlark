@@ -412,7 +412,6 @@ class SignHandler:
             self.user_id,
             self._templates,
             viewport={"width": 380, "height": 10},
-            resize=True,
             **self._bg_kwargs,
         )
         await self.send_card(image)
