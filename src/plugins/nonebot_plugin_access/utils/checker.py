@@ -1,21 +1,19 @@
 from collections import deque
 
-from nonebot import get_driver, logger
+from nonebot import logger
 from nonebot.adapters import Bot, Event
 from nonebot.exception import IgnoredException
-from nonebot.matcher import Matcher, matchers
+from nonebot.matcher import Matcher
 from nonebot.message import run_preprocessor
 from nonebot.params import Depends
 from nonebot_plugin_alconna import MsgTarget, UniMessage
 from nonebot_plugin_larkutils.subaccount import get_main_account
-from nonebot_plugin_orm import get_session
-from sqlalchemy import select
 
 from nonebot_plugin_larkutils import get_group_id
 from nonebot_plugin_larkutils.user import get_user_id
 from nonebot_plugin_access.config import config
 from nonebot_plugin_access.lang import lang
-from nonebot_plugin_access.models import SubjectData
+from nonebot_plugin_access.utils.cache import access_cache
 
 # run_preprocessor 会对同一事件的每个匹配 matcher 各执行一次，且这些执行共享同一
 # 个事件对象（id 相同）。记录已通知的事件 id，避免同一条消息触发多个被拒绝的
@@ -28,14 +26,11 @@ async def get_subject_list(bot: Bot, group_id: str = get_group_id(), user_id: st
 
 
 async def is_available(subject: str, name: str, default: bool = True) -> bool:
-    async with get_session() as session:
-        result = (
-            await session.scalars(
-                select(SubjectData.available).where(SubjectData.subject == subject).where(SubjectData.name == name)
-            )
-        ).all()
-        logger.debug(f"权限检查结果 ({subject=}, {name=}): {result}")
-        return all(result or [default])
+    """从内存缓存读取权限（缓存未加载时先加载）。"""
+    await access_cache.ensure_loaded()
+    result = access_cache.get(subject, name, default)
+    logger.debug(f"权限检查结果 ({subject=}, {name=}): {result}")
+    return result
 
 
 async def send_fallback(event: Event, result: bool, target: MsgTarget) -> None:
