@@ -947,8 +947,10 @@ class ChatContext:
     async def _watch_lock_timeout(self) -> None:
         try:
             while self.locked:
-                assert self._lock_deadline is not None
-                delay = (self._lock_deadline - datetime.now()).total_seconds()
+                deadline = self._lock_deadline
+                if deadline is None:
+                    return
+                delay = (deadline - datetime.now()).total_seconds()
                 if delay > 0:
                     await asyncio.sleep(delay)
                     continue

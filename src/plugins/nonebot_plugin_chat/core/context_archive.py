@@ -71,16 +71,23 @@ def _serialize_row(row: ChatContextMessage) -> dict:
     }
 
 
+def _context_index(session: object) -> Optional[int]:
+    """读取会话当前的 context index；会话尚未初始化完成时返回 None"""
+    try:
+        return session.processor.openai_messages.context.context_index  # type: ignore[attr-defined]
+    except AttributeError:  # pragma: no cover - 防御性兜底
+        return None
+
+
 async def _active_context_indexes() -> dict[str, int]:
     """内存中仍然活跃的会话及其当前 context index（不参与归档）"""
     from .session import groups
 
     active: dict[str, int] = {}
     for session_id, session in groups.items():
-        try:
-            active[session_id] = session.processor.openai_messages.context.context_index
-        except Exception:  # pragma: no cover - 会话尚未初始化完成
-            continue
+        context_index = _context_index(session)
+        if context_index is not None:
+            active[session_id] = context_index
     return active
 
 
