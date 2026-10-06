@@ -53,6 +53,34 @@ async def post_group_event(
         return False
 
 
+async def _discard_session(session: BaseSession) -> None:
+    """清理一个初始化失败的会话（停用处理器、取消后台任务、停掉上下文保存）"""
+    session.processor.enabled = False
+    if session.processor.loop_task is not None:
+        session.processor.loop_task.cancel()
+    try:
+        await session.processor.openai_messages.context.stop()
+    except Exception as e:  # pragma: no cover - 清理失败不应掩盖 setup 的原始异常
+        logger.warning(f"清理会话 {session.session_id} 失败: {e}")
+
+
+async def _setup_session(session_id: str, session: BaseSession) -> None:
+    """登记并初始化会话；初始化失败时把它移出 groups
+
+    ``setup()`` 失败（例如工具定义文件缺失）时若把半初始化的会话留在 ``groups``
+    里，后续消息会在这个永远不会处理消息的会话上排队：chat monitor 一直显示
+    「解析中」，数据库里也不会再出现新消息。这里直接丢掉它，让下一条消息重新
+    走一次完整的创建流程，并把失败暴露在日志里。
+    """
+    groups[session_id] = session
+    try:
+        await session.setup()
+    except Exception:
+        groups.pop(session_id, None)
+        await _discard_session(session)
+        raise
+
+
 async def get_private_session(session_key: str, target: Target, bot: Bot) -> PrivateSession:
     """获取或创建私聊会话。
 
@@ -62,8 +90,7 @@ async def get_private_session(session_key: str, target: Target, bot: Bot) -> Pri
         bot: Bot 实例
     """
     if session_key not in groups:
-        groups[session_key] = PrivateSession(session_key, bot, target)
-        await groups[session_key].setup()
+        await _setup_session(session_key, PrivateSession(session_key, bot, target))
     return cast(PrivateSession, groups[session_key])
 
 
@@ -117,8 +144,7 @@ async def create_group_session(group_id: str, target: Target, bot: Bot) -> Group
     """创建群会话，并查询群语言设置"""
     if group_id not in groups:
         lang_name = await get_group_language(group_id)
-        groups[group_id] = GroupSession(group_id, bot, target, lang_name=lang_name)
-        await groups[group_id].setup()
+        await _setup_session(group_id, GroupSession(group_id, bot, target, lang_name=lang_name))
     return cast(GroupSession, groups[group_id])
 
 
@@ -131,8 +157,7 @@ async def create_private_session(session_key: str, target: Target, bot: Bot) -> 
         bot: Bot 实例
     """
     if session_key not in groups:
-        groups[session_key] = PrivateSession(session_key, bot, target)
-        await groups[session_key].setup()
+        await _setup_session(session_key, PrivateSession(session_key, bot, target))
     return cast(PrivateSession, groups[session_key])
 
 

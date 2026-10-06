@@ -93,8 +93,20 @@ class MessageProcessor:
     async def setup(self) -> None:
         self.functions = await self.tool_manager.select_tools("group")
         await self.ai_agent.setup()
-        if not self.loop_task:
-            self.loop_task = asyncio.create_task(self._startup())
+        self.ensure_startup()
+
+    def ensure_startup(self) -> None:
+        """确保上下文恢复任务已经启动
+
+        ``_startup`` 是后台任务，没有人 await 它；一旦它在恢复上下文时失败，
+        ``_restored`` 会一直保持 False，消息只会堆在队列里（chat monitor 一直
+        显示解析中），所以这里在失败后重新拉起它。
+        """
+        if self._restored:
+            return
+        if self.loop_task is not None and not self.loop_task.done():
+            return
+        self.loop_task = asyncio.create_task(self._startup())
 
     async def send_reaction(self, message_id: str, emoji_id: str, set: bool = True) -> Optional[str]:
         if isinstance(self.session.bot, OB11Bot) and self.session.is_napcat_bot():
@@ -225,13 +237,24 @@ class MessageProcessor:
                 logger.exception(e)
 
     async def _startup(self) -> None:
-        await self.openai_messages.start()
+        try:
+            await self.openai_messages.start()
+        except Exception as e:
+            # 这个任务没有人 await，异常若抛出去会被静默吞掉（self.loop_task 持有引用，
+            # asyncio 也不会报 "Task exception was never retrieved"）。记录后保持
+            # _restored=False，交给 ensure_startup 在下一条消息时重试。
+            logger.exception(f"会话 {self.session.session_id} 上下文恢复失败: {e}")
+            return
         self._restored = True
         if self.enabled and self.session.message_queue:
             self.notify_message_queued()
 
     def notify_message_queued(self) -> None:
-        if not self._restored or not self.enabled or self._message_processing:
+        if not self._restored:
+            # 上下文还在恢复中（或上次恢复失败）：失败时重新拉起启动任务
+            self.ensure_startup()
+            return
+        if not self.enabled or self._message_processing:
             return
         self._message_processing = True
         self._processing_task = asyncio.create_task(self._process_until_idle())
@@ -245,6 +268,10 @@ class MessageProcessor:
                     logger.exception(e)
         finally:
             self._message_processing = False
+            # 退出循环与新消息入队之间存在竞态：入队方看到 _message_processing 为 True
+            # 会直接返回，而这里刚刚判断队列为空。补一次检查，避免消息卡在队列里。
+            if self.enabled and self.session.message_queue:
+                self.notify_message_queued()
 
     async def poke(self, target_name: str) -> Optional[str]:
         target_id = (await self.session.get_users()).get(target_name)
