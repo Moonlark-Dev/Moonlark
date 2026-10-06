@@ -58,8 +58,8 @@ class MessageProcessor:
         # Chat 主模型支持图像（多模态）：图片直接嵌入上下文，不再生成 VLM 描述。
         # 关闭时回退为「VLM 描述图片 + query_image 按需追问」的方案。
         self.ENABLE_EMBEDDED_IMAGE = True
-        self.openai_messages = MessageQueue(self)
         self.session = session
+        self.openai_messages = MessageQueue(self)
         self.enabled = True
         self.tool_manager = ToolManager(self)
         self.ai_agent = AskAISession(self.session.lang_str, self.tool_manager)
