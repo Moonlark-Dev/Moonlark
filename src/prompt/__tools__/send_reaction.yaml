@@ -1,5 +1,5 @@
 description: |
-  对一条消息添加一个表情反应。
+  对一条消息添加或移除一个表情反应。
   emoji_id 参数的对照表如下，文本反应内容为 QQ 的小黄脸表情（文本为"反应"的内容，括号内为对应的 emoji_id）：
   {emoji_table}
 parameters:
@@ -11,3 +11,7 @@ parameters:
     description: "要添加的反应，为反应表情的 ID。"
     type: string
     required: true
+  - name: set
+    description: "是否设置该反应。默认为 true（添加反应）；传 false 表示取消这条消息上已有的该反应。"
+    type: boolean
+    required: false

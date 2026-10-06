@@ -1,0 +1,10 @@
+description: |
+  发送一张外部梗图到当前会话。
+  **何时调用**: 在使用 search_meme 找到合适的梗图后，调用此工具发送。
+  **注意**: meme_id 必须来自 search_meme 的搜索结果，是梗图源中的原生正整数 ID；
+  本地收藏的表情包请用 send_sticker 发送。
+parameters:
+  - name: meme_id
+    description: "要发送的梗图 ID，从 search_meme 的搜索结果中获取。"
+    type: integer
+    required: true

@@ -1,0 +1,15 @@
+description: |
+  从外部梗图源中搜索梗图。
+  **何时调用**: 当你想用梗图回应用户、而本地收藏的表情包不够贴切时，先调用此工具搜索。
+  **搜索技巧**: 使用描述性的关键词，如情绪（开心、嘲讽、无语）、动作（大笑、哭泣）或梗的内容。
+  **注意**: 结果中的 ID 是梗图源中的原生正整数，与 search_sticker 的 ID 空间相互独立，
+  不能把这里的 ID 传给 send_sticker，反之亦然。
+parameters:
+  - name: query
+    description: "搜索关键词，可以是情绪、动作、内容等描述性词语，多个关键词用空格分隔。"
+    type: string
+    required: true
+  - name: limit
+    description: "返回结果数量，默认为 5。"
+    type: integer
+    required: false

@@ -38,6 +38,36 @@ async def test_chat_common_tool_parameters_are_callable() -> None:
     _assert_tools_are_consistent(await ToolManager().select_tools("agent"))
 
 
+async def test_chat_group_tool_parameters_are_callable() -> None:
+    """chat 插件的群聊工具：每个注册的工具都必须有定义文件
+
+    群聊路径注册的工具比通用路径多得多（表情包 / 梗图 / 绘图 / 笔记……）。这里
+    曾经漏掉 search_meme.yaml 与 send_meme.yaml：select_tools() 直接抛
+    FileNotFoundError，会话 setup 失败，所有群聊与私聊都不再处理消息，而失败只
+    表现为「chat monitor 一直显示解析中」。所以对群聊路径做同样的全量比对。
+    """
+    from nonebot_plugin_chat.core.processor import MessageProcessor
+    from nonebot_plugin_chat.utils.tool_manager import ToolManager
+
+    class GroupSession:
+        """只提供 select_tools("group") 读取的属性，类名与真实会话一致"""
+
+        lang_str = "zh_hans"
+
+        def is_napcat_bot(self) -> bool:
+            return True
+
+        async def set_timer(self, delay: int, description: str) -> str:
+            # 参数名必须与真实会话一致（工具定义按名字比对），返回值不会被使用
+            return f"{delay}:{description}"
+
+    session = GroupSession()
+    processor = MessageProcessor(session)  # type: ignore[arg-type]
+    session.processor = processor  # type: ignore[attr-defined]
+
+    _assert_tools_are_consistent(await ToolManager(processor).select_tools("group"))
+
+
 async def test_wdym_tool_parameters_are_callable() -> None:
     """wdym 插件复用同一批工具定义，参数名同样要能落到包装函数上"""
     from nonebot_plugin_wdym.utils import WdymTools
