@@ -4,7 +4,7 @@ from typing_extensions import TypedDict
 
 from nonebot_plugin_orm import Model
 from pydantic import BaseModel, Field
-from sqlalchemy import DateTime, Float, Integer, LargeBinary, String, Text, false, func
+from sqlalchemy import Boolean, DateTime, Float, Integer, LargeBinary, String, Text, false, func
 from sqlalchemy.dialects.mysql import MEDIUMBLOB, MEDIUMTEXT
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -102,10 +102,13 @@ class ChatContextMessage(Model):
     content: Mapped[str] = mapped_column(CompatibleMediumText)
     # processor 解析出来的 json（用户消息为 CachedMessage），其余留空
     data: Mapped[Optional[str]] = mapped_column(CompatibleMediumText, nullable=True)
+    # 只用于展示、不进入 LLM 消息列表的消息（被拦截的用户消息、实际发送出去的回复）
+    display_only: Mapped[bool] = mapped_column(Boolean(), default=False, server_default=false())
     # assistant 消息的工具调用列表，JSON 序列化；tool 消息的 tool_call_id
     tool_calls: Mapped[Optional[str]] = mapped_column(CompatibleMediumText, nullable=True)
     tool_call_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     trigger_type: Mapped[str] = mapped_column(String(16), default="none")  # 非 user 消息恒为 none
+    # 仅 message queue 推送上来的消息（LLM 输出与工具返回）带有 request id
     request_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
 
 

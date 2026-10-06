@@ -55,8 +55,9 @@ LOCK_TIMEOUT_SECONDS = 600
 SLIDING_WINDOW_IDLE_SECONDS = 600
 # 恢复上下文时，最后一条消息早于当天该小时则立即 reset
 RESET_HOUR = 2
-# 标记「只用于展示、不进入 LLM 消息列表」的消息（被拦截的用户消息、实际发送出去的回复）
-DISPLAY_ONLY_KEY = "display_only"
+# 只有 message queue 推送上来的消息才带 request id：LLM 输出与工具返回。
+# 请求失败时按 request id 删除这些消息，user / system 消息（含注入进请求的图片与提示）不会丢。
+REQUEST_ID_ROLES = ("assistant", "tool")
 # 提供给 base session 的消息列表上限（与旧实现的 clean_cached_message 一致）
 CACHED_MESSAGE_LIMIT = 50
 
@@ -125,18 +126,8 @@ def serialize_cached_message(message: CachedMessage) -> dict:
     return data
 
 
-def _mark_display_only(data: Optional[dict], display_only: bool) -> Optional[dict]:
-    """给 processor 解析出来的 json 打上「只用于展示」标记"""
-    if not display_only:
-        return data
-    marked = dict(data or {})
-    marked[DISPLAY_ONLY_KEY] = True
-    return marked
-
-
 def _deserialize_cached_message(data: dict, content: Any) -> CachedMessage:
     message = dict(data)
-    message.pop(DISPLAY_ONLY_KEY, None)
     send_time = message.get("send_time")
     if isinstance(send_time, str):
         try:
@@ -190,6 +181,7 @@ class ContextMessage:
     timestamp: datetime
     content: Any
     data: Optional[dict] = None
+    display_only: bool = False
     tool_calls: Optional[list[dict]] = None
     tool_call_id: Optional[str] = None
     trigger_type: str = "none"
@@ -206,11 +198,11 @@ class ContextMessage:
         它们带有 processor 解析出来的 json（``data``，即 CachedMessage），会出现在
         base session 的消息列表里，但不进入 LLM 的消息列表。
         """
-        return bool(self.data and self.data.get(DISPLAY_ONLY_KEY))
+        return self.display_only
 
     @property
     def in_llm_context(self) -> bool:
-        return not self.is_display_only
+        return not self.display_only
 
     def signature(self) -> str:
         payload = {
@@ -247,6 +239,7 @@ class ContextMessage:
             timestamp=self.timestamp,
             content=json.dumps(_normalize(self.content), ensure_ascii=False),
             data=json.dumps(self.data, ensure_ascii=False) if self.data is not None else None,
+            display_only=self.display_only,
             tool_calls=json.dumps(self.tool_calls, ensure_ascii=False) if self.tool_calls else None,
             tool_call_id=self.tool_call_id,
             trigger_type=self.trigger_type,
@@ -265,6 +258,7 @@ class ContextMessage:
             timestamp=row.timestamp,
             content=json.loads(row.content) if row.content is not None else None,
             data=json.loads(row.data) if row.data else None,
+            display_only=bool(row.display_only),
             tool_calls=json.loads(row.tool_calls) if row.tool_calls else None,
             tool_call_id=row.tool_call_id,
             trigger_type=row.trigger_type,
@@ -282,6 +276,7 @@ class ContextMessage:
         trigger_type: str = "none",
         request_id: Optional[str] = None,
         data: Optional[dict] = None,
+        display_only: bool = False,
         timestamp: Optional[datetime] = None,
     ) -> "ContextMessage":
         role = get_role(message)
@@ -298,6 +293,7 @@ class ContextMessage:
             timestamp=timestamp or datetime.now(),
             content=_normalize(_message_content(message)),
             data=data,
+            display_only=display_only,
             tool_calls=_message_tool_calls(message),
             tool_call_id=_message_tool_call_id(message),
             trigger_type=trigger_type,
@@ -308,7 +304,8 @@ class ContextMessage:
 class MessageCursor:
     """message queue 向 chat context 申请的写入 / 拉取游标
 
-    - ``request_id``：本次请求的标识，请求期间 chat context 解析出来的消息都会带上它；
+    - ``request_id``：本次请求的标识，只打在 message queue 推送上来的消息（LLM 输出与
+      工具返回）上，请求失败时按它删除这些消息；
     - 提供给 message queue 的缓冲队列也放在这里；
     - chat context 解锁（请求结束或超时）后 cursor 立即失效，继续操作会抛
       :class:`MessageCursorClosed`。
@@ -634,7 +631,8 @@ class ChatContext:
                 sub_type=sub_type,
                 timestamp=timestamp or datetime.now(),
                 content=_normalize(content),
-                data=_mark_display_only(data, display_only),
+                data=data,
+                display_only=display_only,
                 trigger_type=trigger_type if sub_type != "meta" else "none",
             )
         )
@@ -658,7 +656,8 @@ class ChatContext:
                 sub_type="",
                 timestamp=timestamp or datetime.now(),
                 content=_normalize(content),
-                data=_mark_display_only(data, display_only),
+                data=data,
+                display_only=display_only,
                 tool_calls=tool_calls,
             )
         )
@@ -1038,11 +1037,14 @@ class ChatContext:
 
         added: list[ContextMessage] = []
         for message in messages[position:]:
+            role = get_role(message)
             context_message = ContextMessage.from_openai(
                 self.session_id,
                 message,
                 block_id=self._block_id,
-                request_id=request_id,
+                # 只有 message queue 推送上来的消息（LLM 输出与工具返回）才带 request id：
+                # 请求失败时据此删除这些消息，user / system 消息不会丢
+                request_id=request_id if role in REQUEST_ID_ROLES else None,
             )
             added.append(await self._commit(context_message))
         return added

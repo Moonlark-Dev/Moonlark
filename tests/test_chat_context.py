@@ -74,6 +74,7 @@ def _row(
     timestamp: Optional[datetime] = None,
     tool_calls: Optional[list] = None,
     tool_call_id: Optional[str] = None,
+    display_only: bool = False,
 ) -> Any:
     from nonebot_plugin_chat.models import ChatContextMessage
 
@@ -87,6 +88,7 @@ def _row(
         timestamp=timestamp or datetime.now(),
         content=json.dumps(content, ensure_ascii=False),
         data=None,
+        display_only=display_only,
         tool_calls=json.dumps(tool_calls, ensure_ascii=False) if tool_calls else None,
         tool_call_id=tool_call_id,
         trigger_type="none",
@@ -141,8 +143,9 @@ async def test_cached_messages_only_include_processor_json() -> None:
 
     cached = context.cached_messages
     assert [message["content"] for message in cached] == ["你好", "回复"]
-    # 展示标记不会泄漏给上层
+    # display_only 是独立的列，不会混进 processor 解析出来的 json
     assert all("display_only" not in message for message in cached)
+    assert [message.display_only for message in context.messages[-3:]] == [False, True, False]
 
 
 async def test_display_only_message_stays_out_of_llm_list() -> None:
@@ -219,6 +222,30 @@ async def test_absorb_messages_only_appends_new_tail() -> None:
     assert added[0].index == 2
 
 
+async def test_request_id_only_marks_message_queue_messages() -> None:
+    """request id 只打在 message queue 推送上来的消息（LLM 输出与工具返回）上
+
+    user / system 消息（注入进请求的图片、Jev 补发提示等）不带 request id，
+    请求失败时不会跟着被删掉。
+    """
+    db = _FakeDB()
+    context = await _initialized_context(db)
+    known = [
+        {"role": "system", "content": "系统提示"},
+        {"role": "user", "content": "会话元数据"},
+    ]
+    messages = [
+        *known,
+        {"role": "user", "content": "注入的图片或提示"},
+        {"role": "assistant", "content": None, "tool_calls": [{"id": "c1", "type": "function"}]},
+        {"role": "tool", "tool_call_id": "c1", "content": "工具返回"},
+    ]
+    added = await context.absorb_messages(messages, "req-1")
+
+    assert [message.role for message in added] == ["user", "assistant", "tool"]
+    assert [message.request_id for message in added] == [None, "req-1", "req-1"]
+
+
 async def test_cursor_buffers_processor_messages_and_releases() -> None:
     from nonebot_plugin_chat.core.context import MessageCursorClosed
 
@@ -252,7 +279,10 @@ async def test_failed_request_discards_its_messages() -> None:
         {"role": "system", "content": "系统提示"},
         {"role": "user", "content": "会话元数据"},
     ]
-    await context.absorb_messages([*known, {"role": "assistant", "content": "失败的输出"}], cursor.request_id)
+    await context.absorb_messages(
+        [*known, {"role": "user", "content": "注入的图片"}, {"role": "assistant", "content": "失败的输出"}],
+        cursor.request_id,
+    )
     await context.push_user_message("处理器消息")
 
     ctx_module = importlib.import_module("nonebot_plugin_chat.core.context")
@@ -260,6 +290,8 @@ async def test_failed_request_discards_its_messages() -> None:
         await cursor.report(False)
 
     assert all(message.content != "失败的输出" for message in context.messages)
+    # 注入进请求的 user 消息不受 request id 影响，不会被误删
+    assert any(message.content == "注入的图片" for message in context.messages)
     # processor 缓冲队列在解锁时全部加入上下文
     assert any(message.content == "处理器消息" for message in context.messages)
 
@@ -338,7 +370,8 @@ async def test_sliding_window_truncates_irrelevant_blocks() -> None:
     context = await _initialized_context(db)
     await context.push_user_message("旧话题")
     assert context.freeze_block(context.current_block_id)
-    latest = await context.push_user_message("新话题")
+    await context.push_user_message("新话题")
+    latest = await context.push_assistant_message("新话题的回复")
     latest.timestamp = datetime.now() - timedelta(minutes=30)
     latest.request_id = "req-old"
 
@@ -359,7 +392,8 @@ async def test_sliding_window_truncates_irrelevant_blocks() -> None:
 async def test_sliding_window_skipped_when_recent() -> None:
     db = _FakeDB()
     context = await _initialized_context(db)
-    latest = await context.push_user_message("新话题")
+    await context.push_user_message("新话题")
+    latest = await context.push_assistant_message("回复")
     latest.request_id = "req-new"
 
     ctx_module = importlib.import_module("nonebot_plugin_chat.core.context")

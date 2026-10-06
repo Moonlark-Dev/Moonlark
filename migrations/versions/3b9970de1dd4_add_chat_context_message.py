@@ -8,7 +8,9 @@
 
 - 新增 ``nonebot_plugin_chat_contextmessage``：Chat Context 的消息表，
   ``(session_id, context_index, index)`` 复合主键，``block_id`` 标记事件总结的
-  block（0 为 system / meta 前导消息），``request_id`` 标记某次 LLM 请求期间产生的消息；
+  block（0 为 system / meta 前导消息），``display_only`` 标记只用于展示、
+  不进入 LLM 消息列表的消息，``request_id`` 标记 message queue 推送上来的消息
+  （LLM 输出与工具返回）；
 - ``nonebot_plugin_chat_sessionevent`` 增加 ``block_id``：事件总结与消息 block 对应，
   滑动窗口据此按 block 回溯删除历史消息；
 - 删除旧的 ``nonebot_plugin_chat_messagequeuecache``：其 message_json + 哈希去重的
@@ -62,6 +64,7 @@ def upgrade(name: str = "") -> None:
             sa.Column("timestamp", sa.DateTime(), nullable=False),
             sa.Column("content", sa.Text(), nullable=False),
             sa.Column("data", sa.Text(), nullable=True),
+            sa.Column("display_only", sa.Boolean(), nullable=False, server_default=sa.false()),
             sa.Column("tool_calls", sa.Text(), nullable=True),
             sa.Column("tool_call_id", sa.String(length=64), nullable=True),
             sa.Column("trigger_type", sa.String(length=16), nullable=False),

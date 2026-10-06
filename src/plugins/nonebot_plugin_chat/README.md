@@ -49,7 +49,8 @@
 - **存储**：`nonebot_plugin_chat_contextmessage`，`(session_id, context_index, index)`
   复合主键。`context_index` 只增不减，最大的就是最新会话；`index` 在同一
   `context_index` 内递增。`role` 为 system/user/assistant/tool，user 消息再按
-  `sub_type` 分为 event/message/meta。
+  `sub_type` 分为 event/message/meta；`display_only` 标记只用于展示、不进入 LLM
+  消息列表的消息（被拦截的用户消息、实际发送出去的回复）。
 - **block**：事件总结的单位，默认 50 条消息一个 block（`block_id` 同时写进
   `SessionEvent`）。block 一旦提交给事件总结就立即冻结并启用新的 `block_id`，
   因此提前触发（例如第 30 条）得到的是独立 block。`block_id = 0` 是 system/meta
@@ -58,10 +59,11 @@
   则立即 reset。reset 会保存现有记录后换用新的 `context_index`，重新注入 system
   prompt 与会话元数据（meta）。内存中的消息每 5 分钟（以及每次定时任务）写回数据库。
 - **锁定与 cursor**：`MessageQueue` 请求 LLM 时通过 `acquire_cursor()` 锁定 context
-  并分配 `request_id`，请求期间产生的消息都带上它；请求结束由 cursor 汇报成功/失败，
-  失败时删除该 `request_id` 的全部消息。锁定最长 10 分钟，缓冲队列出现
-  `trigger_type=all` 的消息时刷新限时，超时以失败解锁。cursor 失效后继续操作会抛
-  `MessageCursorClosed`。
+  并分配 `request_id`。`request_id` 只打在 message queue 推送上来的消息（LLM 输出与
+  工具返回）上，请求结束由 cursor 汇报成功/失败，失败时只删除这些消息——user/system
+  消息（含注入进请求的图片与提示）不会因为一次请求失败而丢失。锁定最长 10 分钟，
+  缓冲队列出现 `trigger_type=all` 的消息时刷新限时，超时以失败解锁。cursor 失效后
+  继续操作会抛 `MessageCursorClosed`。
 - **双缓冲队列**：processor 推送的消息在锁定期间进入 processor 缓冲队列；一旦其中
   出现 `trigger_type=all` 的消息或事件，整队移交给 message queue 的缓冲队列，
   message queue 每轮请求先提交完整消息列表、再拉取该队列的增量消息（拉取即写入
