@@ -74,6 +74,9 @@ class MessageProcessor:
         self._processing_task = None
         self._message_processing = False
         self._restored = False
+        # 上下文恢复失败后的最小重试间隔（秒）：恢复要读取整个上下文，失败时不能每条消息都重试
+        self.STARTUP_RETRY_INTERVAL_SECONDS = 60
+        self._last_startup_failure: Optional[datetime] = None
         self.consecutive_message_count = 0
         # Token bucket 相关属性
         self.token_bucket = TokenBucket(6, -2)
@@ -101,11 +104,18 @@ class MessageProcessor:
         ``_startup`` 是后台任务，没有人 await 它；一旦它在恢复上下文时失败，
         ``_restored`` 会一直保持 False，消息只会堆在队列里（chat monitor 一直
         显示解析中），所以这里在失败后重新拉起它。
+
+        重试要有间隔：恢复会读取整个上下文（可能上千条消息、含图片），失败时
+        每条消息都重试会把事件循环拖住。间隔内的重试由会话定时任务负责。
         """
         if self._restored:
             return
         if self.loop_task is not None and not self.loop_task.done():
             return
+        if self._last_startup_failure is not None:
+            elapsed = (datetime.now() - self._last_startup_failure).total_seconds()
+            if elapsed < self.STARTUP_RETRY_INTERVAL_SECONDS:
+                return
         self.loop_task = asyncio.create_task(self._startup())
 
     async def send_reaction(self, message_id: str, emoji_id: str, set: bool = True) -> Optional[str]:
@@ -242,10 +252,12 @@ class MessageProcessor:
         except Exception as e:
             # 这个任务没有人 await，异常若抛出去会被静默吞掉（self.loop_task 持有引用，
             # asyncio 也不会报 "Task exception was never retrieved"）。记录后保持
-            # _restored=False，交给 ensure_startup 在下一条消息时重试。
+            # _restored=False，交给 ensure_startup 在间隔之后重试。
+            self._last_startup_failure = datetime.now()
             logger.exception(f"会话 {self.session.session_id} 上下文恢复失败: {e}")
             return
         self._restored = True
+        self._last_startup_failure = None
         if self.enabled and self.session.message_queue:
             self.notify_message_queued()
 

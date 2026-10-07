@@ -405,6 +405,152 @@ async def test_sliding_window_skipped_when_recent() -> None:
     events.assert_not_awaited()
 
 
+async def test_cached_messages_converts_each_message_once(monkeypatch: pytest.MonkeyPatch) -> None:
+    """cached_messages 重建时不能重复转换已经转换过的消息
+
+    每条带图消息的转换都要做 base64 解码，而 cached_messages 在一次消息处理里会被
+    读取很多次（每次 _commit 都会让缓存失效）。此前每次访问都要把整个上下文重新
+    转换一遍，上下文涨到几千条时事件循环会被拖死。
+    """
+    import importlib
+
+    ctx_module = importlib.import_module("nonebot_plugin_chat.core.context")
+    context = await _initialized_context(_FakeDB())
+    # 消息数可能超过一个 block 的容量，这些用例不需要真的去收集事件
+    from nonebot_plugin_chat.core.ego.event_collector import event_collector
+
+    monkeypatch.setattr(event_collector, "request_collection", lambda _session: None)
+
+    calls = 0
+    original = ctx_module._extract_images
+
+    def _counting(content: Any) -> Any:
+        nonlocal calls
+        calls += 1
+        return original(content)
+
+    monkeypatch.setattr(ctx_module, "_extract_images", _counting)
+
+    def _image_content(index: int) -> list:
+        return [
+            {"type": "text", "text": f"第 {index} 条"},
+            {"type": "image_url", "image_url": {"url": "data:image/png;base64,AAAA"}},
+        ]
+
+    for i in range(5):
+        await context.push_user_message(
+            _image_content(i), sub_type="message", data={"content": f"第 {i} 条", "self": False}
+        )
+
+    assert calls == 0  # 还没人读
+    assert len(context.cached_messages) == 5
+    assert calls == 5
+
+    # 又来一条消息：只应该转换这一条新的
+    await context.push_user_message(_image_content(5), sub_type="message", data={"content": "第 5 条", "self": False})
+    assert len(context.cached_messages) == 6
+    assert calls == 6, "已经转换过的消息被重复转换"
+
+
+async def test_cached_messages_only_converts_visible_window(monkeypatch: pytest.MonkeyPatch) -> None:
+    """只转换对外可见的最近 CACHED_MESSAGE_LIMIT 条，滑出窗口的消息释放图片二进制"""
+    import importlib
+
+    from nonebot_plugin_chat.core.context import CACHED_MESSAGE_LIMIT
+
+    ctx_module = importlib.import_module("nonebot_plugin_chat.core.context")
+    context = await _initialized_context(_FakeDB())
+    # 消息数可能超过一个 block 的容量，这些用例不需要真的去收集事件
+    from nonebot_plugin_chat.core.ego.event_collector import event_collector
+
+    monkeypatch.setattr(event_collector, "request_collection", lambda _session: None)
+
+    calls = 0
+    original = ctx_module._extract_images
+
+    def _counting(content: Any) -> Any:
+        nonlocal calls
+        calls += 1
+        return original(content)
+
+    monkeypatch.setattr(ctx_module, "_extract_images", _counting)
+
+    def _push(index: int) -> Any:
+        return context.push_user_message(
+            [{"type": "image_url", "image_url": {"url": "data:image/png;base64,AAAA"}}],
+            sub_type="message",
+            data={"content": f"第 {index} 条", "self": False},
+        )
+
+    # 先读一次，让窗口覆盖最早的一批消息
+    for i in range(10):
+        await _push(i)
+    assert len(context.cached_messages) == 10
+    assert calls == 10
+
+    total = CACHED_MESSAGE_LIMIT + 10
+    for i in range(10, total):
+        await _push(i)
+    context.invalidate_cached_messages()
+
+    assert len(context.cached_messages) == CACHED_MESSAGE_LIMIT
+    # 每条消息只转换一次：10 条旧的 + 窗口里的新消息
+    assert calls == total, "已经转换过的消息被重复转换"
+    # 滑出窗口的消息不再保留图片二进制
+    window_start = len(context.messages) - CACHED_MESSAGE_LIMIT
+    assert all(message._cached_message is None for message in context.messages[:window_start])
+
+
+async def test_cached_messages_skips_conversion_outside_window(monkeypatch: pytest.MonkeyPatch) -> None:
+    """从未被读过时，一次访问只转换窗口内的消息"""
+    import importlib
+
+    from nonebot_plugin_chat.core.context import CACHED_MESSAGE_LIMIT
+
+    ctx_module = importlib.import_module("nonebot_plugin_chat.core.context")
+    context = await _initialized_context(_FakeDB())
+    # 消息数可能超过一个 block 的容量，这些用例不需要真的去收集事件
+    from nonebot_plugin_chat.core.ego.event_collector import event_collector
+
+    monkeypatch.setattr(event_collector, "request_collection", lambda _session: None)
+
+    calls = 0
+    original = ctx_module._extract_images
+
+    def _counting(content: Any) -> Any:
+        nonlocal calls
+        calls += 1
+        return original(content)
+
+    monkeypatch.setattr(ctx_module, "_extract_images", _counting)
+
+    total = CACHED_MESSAGE_LIMIT + 30
+    for i in range(total):
+        await context.push_user_message(
+            [{"type": "image_url", "image_url": {"url": "data:image/png;base64,AAAA"}}],
+            sub_type="message",
+            data={"content": f"第 {i} 条", "self": False},
+        )
+
+    assert len(context.cached_messages) == CACHED_MESSAGE_LIMIT
+    assert calls == CACHED_MESSAGE_LIMIT, "转换了窗口之外的消息"
+
+
+async def test_context_message_signature_is_cached_and_invalidated() -> None:
+    """消息指纹只算一次，content 被改写后必须重算"""
+    context = await _initialized_context(_FakeDB())
+    message = await context.push_user_message("你好", sub_type="message", data={"content": "你好"})
+
+    first = message.signature()
+    assert message.signature() is first
+
+    message.content = "改写后的内容"
+    assert message.signature() is first  # 未声明改写时仍然命中缓存
+
+    message.invalidate_signature()
+    assert message.signature() != first
+
+
 async def test_archive_expired_contexts_writes_json(tmp_path: Any) -> None:
     archive_module = importlib.import_module("nonebot_plugin_chat.core.context_archive")
     rows = [

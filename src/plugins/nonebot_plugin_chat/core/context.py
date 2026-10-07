@@ -27,7 +27,7 @@ import base64
 import binascii
 import json
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any, Awaitable, Callable, Iterable, Optional, Sequence
 
@@ -186,6 +186,11 @@ class ContextMessage:
     tool_call_id: Optional[str] = None
     trigger_type: str = "none"
     request_id: Optional[str] = None
+    # 转换结果与指纹的进程内缓存：一条消息落定后内容不再变化，而 cached_messages /
+    # absorb_messages 会被高频调用（每次重算都要对图片做 base64 解码、对 content 做
+    # JSON 序列化）。缓存不参与相等性比较，也不出现在 repr 里。
+    _cached_message: Optional[CachedMessage] = field(default=None, repr=False, compare=False)
+    _signature: Optional[str] = field(default=None, repr=False, compare=False)
 
     @property
     def is_preamble(self) -> bool:
@@ -205,13 +210,19 @@ class ContextMessage:
         return not self.display_only
 
     def signature(self) -> str:
-        payload = {
-            "role": self.role,
-            "content": _normalize(self.content),
-            "tool_calls": _normalize(self.tool_calls),
-            "tool_call_id": self.tool_call_id,
-        }
-        return json.dumps(payload, ensure_ascii=False, sort_keys=True, default=str)
+        if self._signature is None:
+            payload = {
+                "role": self.role,
+                "content": _normalize(self.content),
+                "tool_calls": _normalize(self.tool_calls),
+                "tool_call_id": self.tool_call_id,
+            }
+            self._signature = json.dumps(payload, ensure_ascii=False, sort_keys=True, default=str)
+        return self._signature
+
+    def invalidate_signature(self) -> None:
+        """content 被就地改写后调用（前导 system / meta 消息会被刷新）"""
+        self._signature = None
 
     def to_openai(self) -> OpenAIMessage:
         if self.role == "tool":
@@ -226,7 +237,17 @@ class ContextMessage:
     def to_cached_message(self) -> Optional[CachedMessage]:
         if self.data is None:
             return None
-        return _deserialize_cached_message(self.data, self.content)
+        if self._cached_message is None:
+            self._cached_message = _deserialize_cached_message(self.data, self.content)
+        return self._cached_message
+
+    def release_cached_message(self) -> None:
+        """丢弃转换缓存
+
+        消息滑出 ``cached_messages`` 的窗口后调用：图片二进制没有必要长期保留，
+        需要时重新解码即可（那时它已经不在窗口里，不会再被高频访问）。
+        """
+        self._cached_message = None
 
     def to_row(self) -> ChatContextMessage:
         return ChatContextMessage(
@@ -395,17 +416,23 @@ class ChatContext:
     def cached_messages(self) -> list[CachedMessage]:
         """base session 需要的消息列表（processor 解析过的消息）
 
-        构建过程需要解码图片数据 URL，因此按需缓存，任何消息变更都会让它失效。
+        构建过程需要解码图片数据 URL，因此按需缓存，并且只为对外可见的窗口
+        （最近 :data:`CACHED_MESSAGE_LIMIT` 条）构建：``_messages`` 会积累到整天的
+        消息量，每次访问都重新转换整个上下文（每条带图消息都要 base64 解码）会把
+        事件循环拖住。单条消息的转换结果由 :meth:`ContextMessage.to_cached_message`
+        缓存，因此窗口内只有新消息需要转换。
         """
         if self._cached_messages is None:
+            window_start = max(0, len(self._messages) - CACHED_MESSAGE_LIMIT)
+            for message in self._messages[:window_start]:
+                message.release_cached_message()
             cached: list[CachedMessage] = []
-            for message in self._messages:
+            for message in self._messages[window_start:]:
                 converted = message.to_cached_message()
                 if converted is not None:
                     cached.append(converted)
             self._cached_messages = cached
-        # base session 只需要最近的一段消息（旧实现用 clean_cached_message 裁剪到 50 条）
-        return self._cached_messages[-CACHED_MESSAGE_LIMIT:]
+        return self._cached_messages
 
     def invalidate_cached_messages(self) -> None:
         self._cached_messages = None
@@ -846,6 +873,7 @@ class ChatContext:
         if self._messages[0].content != expected_content:
             logger.info(f"[ChatContext:{self.session_id}] system prompt 已更新")
             self._messages[0].content = expected_content
+            self._messages[0].invalidate_signature()
             self._pending.append(self._messages[0])
             self._cached_messages = None
 
@@ -856,6 +884,7 @@ class ChatContext:
                 content = await self._generate_meta_content()
                 if message.content != content:
                     message.content = content
+                    message.invalidate_signature()
                     self._pending.append(message)
                     self._cached_messages = None
                 return

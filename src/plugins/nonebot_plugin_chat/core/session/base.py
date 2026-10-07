@@ -397,6 +397,8 @@ class BaseSession(ABC):
             return await self.text("sleep_decision.timeout")
 
     async def process_timer(self) -> None:
+        # 上下文恢复失败时定期重试（重试有间隔，不依赖是否有新消息）
+        self.processor.ensure_startup()
         dt = datetime.now()
         if self.mute_until and dt > self.mute_until:
             self.mute_until = None

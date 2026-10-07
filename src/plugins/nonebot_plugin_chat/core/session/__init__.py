@@ -76,7 +76,9 @@ async def _setup_session(session_id: str, session: BaseSession) -> None:
     try:
         await session.setup()
     except Exception:
-        groups.pop(session_id, None)
+        # 并发创建时 groups 里可能已经是另一个会话，别把别人的删掉
+        if groups.get(session_id) is session:
+            groups.pop(session_id, None)
         await _discard_session(session)
         raise
 

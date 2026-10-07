@@ -45,6 +45,8 @@ async def test_failed_context_startup_is_retried_on_next_message(
     session = _FakeSession()
     processor = MessageProcessor(session)  # type: ignore[arg-type]
     session.processor = processor
+    # 关闭重试间隔，让「下一条消息」立即触发重试
+    processor.STARTUP_RETRY_INTERVAL_SECONDS = 0
 
     start = AsyncMock(side_effect=RuntimeError("恢复失败"))
     monkeypatch.setattr(processor.openai_messages, "start", start)
@@ -70,6 +72,27 @@ async def test_failed_context_startup_is_retried_on_next_message(
         await asyncio.sleep(0.01)
 
     assert not session.message_queue, "重试成功后队列仍未被消费"
+
+
+async def test_startup_failure_is_not_retried_on_every_message(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """恢复失败后的重试必须有间隔：恢复要读整个上下文，不能每条消息都重试"""
+    from nonebot_plugin_chat.core.processor import MessageProcessor
+
+    session = _FakeSession()
+    processor = MessageProcessor(session)  # type: ignore[arg-type]
+    session.processor = processor
+
+    start = AsyncMock(side_effect=RuntimeError("恢复失败"))
+    monkeypatch.setattr(processor.openai_messages, "start", start)
+
+    processor.ensure_startup()
+    for i in range(20):
+        session.message_queue.append(("message", (f"m{i}",)))
+    await asyncio.sleep(0.05)
+
+    assert start.await_count == 1, "重试间隔内不应该反复恢复上下文"
 
 
 async def test_failed_setup_does_not_leave_zombie_session(monkeypatch: pytest.MonkeyPatch) -> None:
