@@ -61,7 +61,7 @@ async def _(server: Literal["in", "jp", "cn"], user_id: str = get_user_id()) -> 
             await lang.text("title", user_id),
             user_id,
             templates,
-            await generate_render_keys(
+            keys=await generate_render_keys(
                 lang,
                 user_id,
                 [

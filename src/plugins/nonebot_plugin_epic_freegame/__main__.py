@@ -24,7 +24,7 @@ async def _(user_id: str = get_user_id()) -> None:
             await lang.text("title", user_id),
             user_id,
             {"result": data},
-            await generate_render_keys(
+            keys=await generate_render_keys(
                 lang,
                 user_id,
                 [

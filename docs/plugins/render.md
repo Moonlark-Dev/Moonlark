@@ -48,6 +48,7 @@ async def render_template(
     title: str,
     user_id: str,
     templates: dict,
+    *,
     keys: dict[str, str] = {},
     cache: bool = False,
     viewport: dict | None = None,
@@ -56,6 +57,15 @@ async def render_template(
 ```
 
 渲染模板为图片。渲染结果统一转为 WebP（有损，质量由 `render_webp_quality` 配置，默认 85）。
+
+::: warning 可选参数必须用关键字传递
+
+`keys` 及其后的参数是 keyword-only，必须写成 `cache=True`、`viewport={...}`。
+此前这些参数可按位置传递，`resize` 参数被删除后，调用方原来的
+`cache=True, resize=True` 悄悄变成了 `cache=True, viewport=True`，布尔值被当作
+视口交给 playwright 导致渲染直接失败。按位置传可选参数现在会立刻抛 `TypeError`。
+
+:::
 
 ### 参数
 
