@@ -21,6 +21,9 @@ sympy = ">=1.12.1, <2.0.0"
 openai = ">=1.34.0, <2.0.0"
 aiosqlite = ">=0.20.0, <0.21.0"
 aiomysql = ">=0.3.0, <0.4.0"
+# aiomysql 依赖 pymysql.converters.escape_bytes_prefixed，pymysql 1.2.1 移除了该符号、
+# 1.2.3 起变成字符串占位符（"DO NOT IMPORT THIS!!!"），execute 时抛 TypeError: 'str' object is not callable
+pymysql = ">=1.2, <1.2.1"
 cryptography = ">=48.0.0, <49.0.0"
 pyproject-toml = ">=0.0.10, <0.0.11"
 matplotlib = ">=3.10.0, <4.0.0"
