@@ -14,6 +14,25 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+    # CI 数据库用 MySQL（与生产环境的 MySQL 9.3 对齐），迁移和测试都跑在 MySQL 上：
+    # 只有 MySQL 才会暴露的问题（TEXT 列建索引、BLOB 主键长度、严格模式默认值等）
+    # 在 PR 阶段就能被发现，而不是合并后炸生产
+    services:
+      mysql:
+        image: mysql:9.3
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: moonlark
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+    env:
+      # 环境变量优先于 .env，`cp .env.template .env` 里的 sqlite URL 不会生效
+      SQLALCHEMY_DATABASE_URL: mysql+aiomysql://root:root@127.0.0.1:3306/moonlark?charset=utf8mb4
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -54,8 +73,8 @@ jobs:
           exit 1
 
       - name: Run pytest
+        # 数据库地址来自 job 级 env（MySQL）；tests/conftest.py 只在未设置时才回落到内存 SQLite
         env:
-          SQLALCHEMY_DATABASE_URL: sqlite+aiosqlite://
           ALEMBIC_STARTUP_CHECK: "False"
         run: poetry run pytest tests/ -v
       
