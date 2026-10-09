@@ -1,10 +1,10 @@
 """nonebot_plugin_ghot 的 QQ 官方适配器兼容性回归测试。
 
 覆盖：
-1. 两个处理器的事件参数可以同时接受 QQ 官方群消息与 OneBot V11 群消息
+1. 合并后的单一处理器的事件参数可以同时接受 QQ 官方群消息与 OneBot V11 群消息
    （此前注解写死为 OneBot V11 的 `GroupMessageEvent`，QQ 群里会被依赖注入直接跳过）；
 2. 同一物理群在 QQ 官方（group_openid）与 OneBot（群号）下的群键会按 GroupBind 合并；
-3. `ghot history` 只查询传入的群键，不再读死群号；
+3. 合并版图片卡片只查询传入的群键，不再读死群号；
 4. 群内消息时间戳完全相同（时间轴长度为 0）时不会除零。
 """
 
@@ -109,8 +109,8 @@ def _ob11_group_event():
 
 
 @pytest.mark.asyncio
-async def test_handlers_accept_qq_group_event() -> None:
-    """处理器的事件参数必须同时兼容 QQ 官方与 OneBot V11 的群消息事件"""
+async def test_handler_accepts_qq_group_event() -> None:
+    """合并后的单一处理器必须同时兼容 QQ 官方与 OneBot V11 的群消息事件"""
     import nonebot_plugin_ghot.__main__ as ghot
 
     checked = 0
@@ -118,7 +118,7 @@ async def test_handlers_accept_qq_group_event() -> None:
         for event in (_qq_group_event(), _ob11_group_event()):
             await field.field_info._check(event=event)  # ruff: ignore[private-member-access]
         checked += 1
-    assert checked == 2
+    assert checked >= 1
 
 
 @pytest.mark.asyncio
@@ -191,8 +191,8 @@ async def test_group_hot_score_queries_every_group_key() -> None:
 
 
 @pytest.mark.asyncio
-async def test_heat_chart_uses_requested_group(monkeypatch: pytest.MonkeyPatch) -> None:
-    """热力图必须使用传入的群键查询，不得再使用写死的群号"""
+async def test_ghot_card_uses_requested_group(monkeypatch: pytest.MonkeyPatch) -> None:
+    """合并版卡片必须使用传入的群键查询，不得再使用写死的群号"""
     from nonebot_plugin_ghot.utils import image
 
     monkeypatch.setattr(image, "lang", _RecordingLang())
@@ -203,14 +203,20 @@ async def test_heat_chart_uses_requested_group(monkeypatch: pytest.MonkeyPatch) 
         SimpleNamespace(timestamp=datetime(2024, 1, 1, 12, 10, tzinfo=timezone.utc)),
     ]
     session = _StubSession(rows=rows)
-    raw = await image.render_heat_chart(session, "user-1", ["qq_701257458", "qq_GROUP_OPENID_1"])
+    raw = await image.render_ghot_card(
+        session,
+        "user-1",
+        ["qq_701257458", "qq_GROUP_OPENID_1"],
+        scores=(10, 20, 30),
+        rankings=(1, 2, 3),
+    )
 
     assert raw.startswith(b"\x89PNG")
     assert _bound_parameters(session.statements[0]) == {"qq_701257458", "qq_GROUP_OPENID_1"}
 
 
 @pytest.mark.asyncio
-async def test_heat_chart_handles_single_timestamp(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_ghot_card_handles_single_timestamp(monkeypatch: pytest.MonkeyPatch) -> None:
     """所有消息时间相同时时间轴长度为 0，渲染不应除零"""
     from nonebot_plugin_ghot.utils import image
 
@@ -219,6 +225,12 @@ async def test_heat_chart_handles_single_timestamp(monkeypatch: pytest.MonkeyPat
 
     timestamp = datetime(2024, 1, 1, 12, 0, tzinfo=timezone.utc)
     session = _StubSession(rows=[SimpleNamespace(timestamp=timestamp)])
-    raw = await image.render_heat_chart(session, "user-1", ["qq_701257458"])
+    raw = await image.render_ghot_card(
+        session,
+        "user-1",
+        ["qq_701257458"],
+        scores=(0, 0, 0),
+        rankings=(0, 0, 0),
+    )
 
     assert raw.startswith(b"\x89PNG")
