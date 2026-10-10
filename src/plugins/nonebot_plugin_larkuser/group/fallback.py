@@ -100,10 +100,10 @@ async def fetch_group_members_from_message_summary(group_openid: str) -> list[QQ
     返回按最近发言时间倒序排列的成员（最近发言的在前），没有任何可用记录或查询失败时
     返回空列表，调用方据此决定是否继续使用原有缓存。
     """
-    group_message_model = _load_group_message_model()
-    if group_message_model is None:
-        return []
     try:
+        group_message_model = _load_group_message_model()
+        if group_message_model is None:
+            return []
         return await _query_message_summary_members(group_message_model, group_openid)
     except Exception as e:
         logger.warning(f"[larkuser] 从 Message Summary 还原群 {group_openid} 成员失败: {e}")
