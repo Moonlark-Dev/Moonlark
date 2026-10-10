@@ -1,15 +1,16 @@
 import asyncio
 import math
+import re
 import uuid
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
-from typing import Callable, Literal, Optional, TypeAlias, overload
+from typing import Callable, Iterable, Literal, Optional, TypeAlias, overload
 
 from nonebot.adapters import Bot, Event
 from nonebot.adapters.onebot.v11.event import PokeNotifyEvent
 from nonebot.log import logger
 from nonebot.typing import T_State
-from nonebot_plugin_alconna import Target, UniMessage, get_message_id
+from nonebot_plugin_alconna import At, Target, Text, UniMessage, get_message_id
 from nonebot_plugin_larkuser import get_nickname, get_user
 from nonebot_plugin_orm import get_session
 from sqlalchemy import delete
@@ -25,6 +26,76 @@ MessageQueueItem: TypeAlias = (
     tuple[Literal["message"], tuple[UniMessage, Event, T_State, str, str, datetime, bool, str, str]]
     | tuple[Literal["event"], tuple[str, Literal["probability", "none", "all"]]]
 )
+
+# 用户未设置任何昵称时的默认展示名前缀（见 nonebot_plugin_larkuser.utils.nickname.get_nickname）
+ANONYMOUS_NICKNAME_PREFIX = "匿名-"
+
+
+def get_anonymous_default_nickname(user_id: str) -> str:
+    """获取用户 ID 为 ``user_id`` 时的匿名默认展示名"""
+    return f"{ANONYMOUS_NICKNAME_PREFIX}{user_id[-4:]}"
+
+
+def build_anonymous_mention_pattern(suffixes: Iterable[str]) -> re.Pattern[str]:
+    """构建匿名用户提及的匹配正则
+
+    完整形式 ``匿名-XXXX`` 允许带 ``@`` 前缀出现，末尾不能紧跟字母数字（避免截断
+    更长的编号）；裸形式 ``XXXX`` 只在前后都不是字母数字或连字符时匹配，防止把普通
+    文本中的数字片段当成对匿名用户的引用。
+    """
+    alternatives = "|".join(sorted((re.escape(suffix) for suffix in suffixes), key=len, reverse=True))
+    return re.compile(
+        rf"@?{re.escape(ANONYMOUS_NICKNAME_PREFIX)}(?:{alternatives})(?![0-9A-Za-z])"
+        rf"|@?(?<![0-9A-Za-z-])(?:{alternatives})(?![0-9A-Za-z])"
+    )
+
+
+def split_text_by_anonymous_suffix(
+    text: str,
+    pattern: re.Pattern[str],
+    suffix_map: dict[str, str],
+) -> list[tuple[str, Optional[str]]]:
+    """按匿名用户提及切分文本
+
+    返回 ``(内容, 提及目标)`` 序列：普通文本的提及目标为 ``None``，命中匿名用户的
+    部分则为对应的用户 ID。
+    """
+    parts: list[tuple[str, Optional[str]]] = []
+    cursor = 0
+    for match in pattern.finditer(text):
+        token = match.group(0).removeprefix("@").removeprefix(ANONYMOUS_NICKNAME_PREFIX)
+        target = suffix_map.get(token)
+        if target is None:
+            continue
+        if match.start() > cursor:
+            parts.append((text[cursor : match.start()], None))
+        parts.append((match.group(0), target))
+        cursor = match.end()
+    if cursor < len(text):
+        parts.append((text[cursor:], None))
+    return parts
+
+
+def parse_anonymous_mentions(message: UniMessage, suffix_map: dict[str, str]) -> UniMessage:
+    """把消息文本中的匿名用户提及（``匿名-XXXX`` 或裸 ``XXXX``）解析为 At 段
+
+    仅处理文本段，其他段（图片、原有的 At 等）原样保留；上下文中没有出现过的
+    匿名后缀不会被匹配。
+    """
+    if not suffix_map or not any(isinstance(segment, Text) for segment in message):
+        return message
+    pattern = build_anonymous_mention_pattern(suffix_map)
+    result = UniMessage()
+    for segment in message:
+        if not isinstance(segment, Text):
+            result.append(segment)
+            continue
+        for text, target in split_text_by_anonymous_suffix(segment.text, pattern, suffix_map):
+            if target is None:
+                result.append(Text(text))
+            else:
+                result.append(At("user", target))
+    return result
 
 
 class SessionQueue:
@@ -261,6 +332,25 @@ class BaseSession(ABC):
         for message in self.cached_messages:
             if not message["self"]:
                 users[message["nickname"]] = message.get("platform_user_id", message["user_id"])
+        return users
+
+    def _get_anonymous_users(self) -> dict[str, str]:
+        """收集上下文中出现过的匿名用户，返回「匿名后缀 -> 适配器原始用户 ID」的映射
+
+        匿名指用户没有设置昵称、在上下文里以默认名 ``匿名-XXXX``（``XXXX`` 为主账号
+        ID 的末 4 位）出现。此时模型在回复中可能写出 ``匿名-XXXX`` 或直接引用 ``XXXX``，
+        发送前需要把它们还原成对真实用户的 At。
+        """
+        users: dict[str, str] = {}
+        for message in self.cached_messages:
+            if message.get("self"):
+                continue
+            user_id = message.get("user_id", "")
+            platform_user_id = message.get("platform_user_id") or user_id
+            nickname = message.get("nickname", "")
+            if not user_id or not platform_user_id or nickname != get_anonymous_default_nickname(user_id):
+                continue
+            users[user_id[-4:]] = platform_user_id
         return users
 
     @abstractmethod
