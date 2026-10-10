@@ -14,7 +14,8 @@ from datetime import datetime, timedelta
 
 from nonebot_plugin_larkutils import get_user_id, get_group_id, open_file, FileType
 from nonebot_plugin_larkutils.file import FileManager
-from nonebot_plugin_larkuser import get_group_name, get_user
+from nonebot_plugin_larkuser import get_user
+from nonebot_plugin_qq_group import get_group_name
 from nonebot_plugin_ranking import generate_image
 from nonebot_plugin_chat.utils.group import parse_message_to_string
 from nonebot_plugin_chat.models import ChatGroup
@@ -321,6 +322,7 @@ async def _(
             message_hash=compute_message_hash(event.message),
             sender_nickname=event.sender.nickname,
             user_id=event.get_user_id(),
+            platform_user_id=event.get_user_id(),
             group_id=group_id,
         )
     )
@@ -346,6 +348,7 @@ async def _(
             message_hash=compute_message_hash(event.get_message()),
             sender_nickname=(await get_user(user_id)).get_nickname(),
             user_id=user_id,
+            platform_user_id=event.get_user_id(),
             group_id=group_id,
         )
     )

@@ -30,7 +30,7 @@ from nonebot.adapters.qq.event import GroupMessageCreateEvent
 from nonebot.log import logger
 from nonebot_plugin_apscheduler import scheduler
 
-from ..config import config
+from .config import config
 from .cache import ensure_group_known, sync_all_groups
 
 
@@ -54,11 +54,11 @@ async def _(bot: Bot, event: Event) -> None:
 @scheduler.scheduled_job(
     "interval",
     seconds=config.qq_group_sync_interval,
-    id="larkuser_qq_group_cache_sync",
+    id="qq_group_cache_sync",
     max_instances=1,
 )
 async def _sync_qq_group_cache() -> None:
     try:
         await sync_all_groups()
     except Exception as e:
-        logger.exception(f"[larkuser] 刷新 QQ 群成员缓存失败: {e}")
+        logger.exception(f"[qq_group] 刷新 QQ 群成员缓存失败: {e}")

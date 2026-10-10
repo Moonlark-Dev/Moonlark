@@ -22,13 +22,13 @@ QQ 开放平台的群成员列表接口只对白名单机器人开放，实际�
 ``nonebot_plugin_message_summary`` 保存的群消息仍然能反映「最近在群里发过言的
 用户」，因此这里把它作为群成员列表的临时降级数据源：
 
-- 不写回 :class:`~nonebot_plugin_larkuser.models.QQGroupMember` 缓存，接口恢复后
+- 不写回 :class:`~nonebot_plugin_qq_group.models.QQGroupMember` 缓存，接口恢复后
   仍以腾讯返回的权威成员列表为准；
-- ``GroupMessage.user_id`` 是 Moonlark 主账号 ID（QQ 官方消息会被 auto_bind
-  归一化），与接口返回的 ``member_openid`` 不一定一致，因此这里只把结果当作临时的
-  活跃用户列表使用；
-- ``message_summary`` 插件 require 了 larkuser，因此只能在函数内延迟导入它的模型，
-  插件未加载或表不存在时返回空列表。
+- 优先使用 ``GroupMessage.platform_user_id``（即 ``event.get_user_id()``）：QQ 官方
+  消息里它就是 ``member_openid``，能直接对上接口返回的成员；历史数据没有这一列时
+  退回 Moonlark 主账号 ID（``GroupMessage.user_id``）；
+- ``message_summary`` 插件 require 了本插件与 larkuser，因此只能在函数内延迟导入它的
+  模型，插件未加载或表不存在时返回空列表。
 """
 
 from datetime import datetime, timedelta
@@ -51,7 +51,7 @@ def _load_group_message_model() -> Optional[type]:
     try:
         from nonebot_plugin_message_summary.models import GroupMessage
     except ImportError:
-        logger.debug("[larkuser] 未加载 message_summary 插件，无法从消息记录还原群成员")
+        logger.debug("[qq_group] 未加载 message_summary 插件，无法从消息记录还原群成员")
         return None
     return GroupMessage
 
@@ -62,17 +62,20 @@ async def _query_message_summary_members(group_message_model: type, group_openid
     since = datetime.now() - timedelta(hours=MESSAGE_SUMMARY_FALLBACK_HOURS)
     # 正常情况下消息记录里的 group_id 带平台前缀；同时兼容不带前缀的历史 / 其他写入方
     group_ids = (f"{QQ_GROUP_ID_PREFIX}{group_openid}", group_openid)
+    # platform_user_id 才是适配器原生 ID（QQ 官方群里即 member_openid），
+    # 没有它的历史记录退回主账号 ID，只作为活跃用户列表使用
+    member_id = func.coalesce(GroupMessage.platform_user_id, GroupMessage.user_id).label("member_id")
     async with get_session() as session:
         ranked = (
             await session.execute(
                 select(
-                    GroupMessage.user_id,
+                    member_id,
                     func.max(GroupMessage.id_).label("last_message_id"),
                 )
                 .where(GroupMessage.group_id.in_(group_ids))
                 .where(GroupMessage.timestamp >= since)
-                .where(GroupMessage.user_id.is_not(None))
-                .group_by(GroupMessage.user_id)
+                .where(member_id.is_not(None))
+                .group_by(member_id)
                 .order_by(func.max(GroupMessage.id_).desc()),
             )
         ).all()
@@ -81,16 +84,16 @@ async def _query_message_summary_members(group_message_model: type, group_openid
         nicknames = dict(
             (
                 await session.execute(
-                    select(GroupMessage.user_id, GroupMessage.sender_nickname).where(
+                    select(member_id, GroupMessage.sender_nickname).where(
                         GroupMessage.id_.in_([row.last_message_id for row in ranked]),
                     ),
                 )
             ).all(),
         )
     return [
-        QQGroupMemberInfo(member_openid=str(row.user_id), nickname=nicknames.get(row.user_id) or "")
+        QQGroupMemberInfo(member_openid=str(row.member_id), nickname=nicknames.get(row.member_id) or "")
         for row in ranked
-        if row.user_id
+        if row.member_id
     ]
 
 
@@ -106,5 +109,5 @@ async def fetch_group_members_from_message_summary(group_openid: str) -> list[QQ
             return []
         return await _query_message_summary_members(group_message_model, group_openid)
     except Exception as e:
-        logger.warning(f"[larkuser] 从 Message Summary 还原群 {group_openid} 成员失败: {e}")
+        logger.warning(f"[qq_group] 从 Message Summary 还原群 {group_openid} 成员失败: {e}")
         return []

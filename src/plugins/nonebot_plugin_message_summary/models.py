@@ -14,6 +14,9 @@ class GroupMessage(Model):
     )
     sender_nickname: Mapped[str] = mapped_column(String(128))
     user_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    # 适配器原生用户 ID（event.get_user_id()）：QQ 官方群里即 member_openid，
+    # user_id 则是 auto_bind 归一化后的 Moonlark 主账号 ID，两者不一定相同
+    platform_user_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
     group_id: Mapped[str] = mapped_column(String(128))
     timestamp: Mapped[datetime] = mapped_column(default=datetime.now)
 

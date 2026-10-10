@@ -90,6 +90,7 @@ packages = [
     { include = "nonebot_plugin_openai", from = "./plugins" },
     { include = "nonebot_plugin_pacman", from = "./plugins" },
     { include = "nonebot_plugin_preview", from = "./plugins" },
+    { include = "nonebot_plugin_qq_group", from = "./plugins" },
     { include = "nonebot_plugin_quick_math", from = "./plugins" },
     { include = "nonebot_plugin_ranking", from = "./plugins" },
     { include = "nonebot_plugin_render", from = "./plugins" },

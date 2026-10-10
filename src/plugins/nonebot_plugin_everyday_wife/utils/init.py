@@ -28,7 +28,8 @@ from sqlalchemy import select
 from nonebot_plugin_everyday_wife.models import WifeData
 from nonebot_plugin_everyday_wife.utils.control import marry
 from nonebot_plugin_bots.config import config as bots_config
-from nonebot_plugin_larkuser import get_group_member_ids, get_user
+from nonebot_plugin_larkuser import get_user
+from nonebot_plugin_qq_group import get_group_member_ids
 
 # 匹配 Moonlark 所需的最低好感度
 MOONLARK_MATCH_FAV_THRESHOLD = 0.150
@@ -186,5 +187,5 @@ async def get_members_onebot_v12(bot: OneBotV12Bot, group_id: str) -> list[str]:
 
 
 async def get_members_qq(bot: QQBot, group_id: str) -> list[str]:
-    """获取 QQ 群成员列表（使用 larkuser 维护的群成员缓存）"""
+    """获取 QQ 群成员列表（使用 nonebot_plugin_qq_group 维护的群成员缓存）"""
     return await get_group_member_ids(bot, group_id)
