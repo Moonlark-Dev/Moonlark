@@ -110,6 +110,56 @@ async def test_non_image_quits_immediately(sticker_dl_env):
 
 
 @pytest.mark.asyncio
+async def test_qq_face_sticker_prompts_unsupported(sticker_dl_env):
+    """收到 QQ 表情包（faceType=4 富文本标签）时提示不支持，并继续留在模式内"""
+    from nonebot.exception import FinishedException
+    from nonebot_plugin_alconna import Text, UniMessage
+    from nonebot_plugin_sticker_dl.__main__ import run_downloader
+
+    face_tag = '<faceType=4,faceId="",ext="eyJ0ZXh0IjoiW+eqgeeEtuWGkuWHul0ifQ==">'
+    _FakeWaiter.responses.append(UniMessage([Text(face_tag)]))
+    _FakeWaiter.responses.append(UniMessage([Text("退出")]))
+
+    with pytest.raises(FinishedException):
+        await run_downloader(None, {}, "user-1")
+
+    # 提示不支持后没有退出，而是重新等待下一条消息
+    assert len(_FakeWaiter.created) == 2
+    assert _FakeWaiter.sent == ["text::unsupported", ("finish", "quit")]
+    assert sticker_dl_env["fetched"] == []
+
+
+@pytest.mark.asyncio
+async def test_qq_emoji_segment_prompts_unsupported(sticker_dl_env):
+    """QQ 系统表情（Emoji 段）同样提示不支持而不是退出模式"""
+    from nonebot.exception import FinishedException
+    from nonebot_plugin_alconna import Emoji, Text, UniMessage
+    from nonebot_plugin_sticker_dl.__main__ import run_downloader
+
+    _FakeWaiter.responses.append(UniMessage([Emoji(id="4")]))
+    _FakeWaiter.responses.append(UniMessage([Text("退出")]))
+
+    with pytest.raises(FinishedException):
+        await run_downloader(None, {}, "user-1")
+
+    assert len(_FakeWaiter.created) == 2
+    assert _FakeWaiter.sent == ["text::unsupported", ("finish", "quit")]
+
+
+def test_is_unsupported_face(sticker_dl_env):
+    """只有 QQ 表情/表情包标签会被判为不支持，普通文本与图片不受影响"""
+    from nonebot_plugin_alconna import Emoji, Image, Text, UniMessage
+
+    is_unsupported_face = sticker_dl_env["mod"].is_unsupported_face
+
+    assert is_unsupported_face(UniMessage([Text('<faceType=4,faceId="",ext="eyJ0ZXh0IjoiW+eqgeeEtuWGkuWHul0ifQ==">')]))
+    assert is_unsupported_face(UniMessage([Text('<faceType=1,faceId="424",ext="eyJ0ZXh0Ijoi57ut5qCH6K+GIn0=">')]))
+    assert is_unsupported_face(UniMessage([Emoji(id="4")]))
+    assert not is_unsupported_face(UniMessage([Text("hello")]))
+    assert not is_unsupported_face(UniMessage([Image(url="https://example.com/a.png")]))
+
+
+@pytest.mark.asyncio
 async def test_timeout_exits_mode(sticker_dl_env):
     """等待超时时退出模式"""
     from nonebot.exception import FinishedException

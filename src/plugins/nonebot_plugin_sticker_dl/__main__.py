@@ -15,13 +15,14 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
+import re
 from typing import NoReturn, Optional
 
 from nonebot import logger
 from nonebot.adapters import Bot, Event
 from nonebot.rule import Rule
 from nonebot.typing import T_State
-from nonebot_plugin_alconna import Alconna, Image, UniMessage, image_fetch, on_alconna
+from nonebot_plugin_alconna import Alconna, Emoji, Image, Text, UniMessage, image_fetch, on_alconna
 from nonebot_plugin_larklang import LangHelper
 from nonebot_plugin_larkuser import Waiter, patch_matcher
 from nonebot_plugin_larkutils import get_user_id
@@ -29,13 +30,31 @@ from nonebot_plugin_larkutils import get_user_id
 PROMPT_TIMEOUT = 5 * 60
 """单次等待表情包的秒数，超时后退出表情包下载模式。"""
 
+# QQ 官方接口会把聊天中的表情以 <faceType=...,faceId="...",ext="..."> 标签塞进消息正文，
+# 其中表情包（faceType=4）的 faceId 通常为空，上游适配器只识别数字 faceId，
+# 整段标签会原样留在文本里，无法通过 image_fetch 取到图片。
+# 标签格式与 nonebot_plugin_chat.utils.qq_face 保持一致。
+QQ_FACE_TAG_PATTERN = re.compile(r"<faceType=\d+,faceId=\"[^\"]*\"(?:,ext=\"[^\"]*\")?\s*/?>")
+
 active_users: set[str] = set()
 """当前处于表情包下载模式的用户主账号 ID。"""
 
 
 def is_not_downloading(user_id: str = get_user_id()) -> bool:
-    """已在表情包下载模式中的用户再次发送指令时，交给模式内的 prompt 处理（按非图片消息退出）。"""
+    """已在表情包下载模式中的用户再次发送指令时，交给模式内的 prompt 处理（按普通消息退出）。"""
     return user_id not in active_users
+
+
+def is_unsupported_face(message: UniMessage) -> bool:
+    """判断消息是否为无法下载的 QQ 表情/表情包。
+
+    QQ 表情（``faceType=1`` 的系统表情）与表情包（``faceType=4``）都没有可供
+    ``image_fetch`` 下载的图片地址：前者会被适配器转成 Emoji 段，后者的富文本
+    标签会原样留在文本里，因此这里同时检查 Emoji 段与文本中的表情标签。
+    """
+    if message.get(Emoji):
+        return True
+    return any(QQ_FACE_TAG_PATTERN.search(segment.text) for segment in message.get(Text))
 
 
 matcher = on_alconna(Alconna("sticker-dl"), rule=Rule(is_not_downloading))
@@ -78,8 +97,13 @@ async def run_downloader(bot: Bot, state: T_State, user_id: str) -> NoReturn:
         except TimeoutError:
             await waiter.finish("timeout", user_id)
         event = waiter.get_event()
-        images = waiter.get().get(Image)
+        message = waiter.get()
+        images = message.get(Image)
         if not images:
+            if is_unsupported_face(message):
+                # QQ 表情/表情包无法下载，提示后继续等待，而不是退出表情包下载模式
+                await waiter.send_message(await lang.text("unsupported", user_id))
+                continue
             await waiter.finish("quit", user_id)
         await echo_images(waiter, event, bot, state, images)
 
