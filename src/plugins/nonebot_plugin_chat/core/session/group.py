@@ -7,12 +7,12 @@ from nonebot_plugin_alconna import Target, UniMessage
 from nonebot_plugin_chat.config import config
 from nonebot_plugin_chat.types import AdapterUserInfo
 from nonebot_plugin_ghot.function import get_group_hot_score
-from nonebot_plugin_larkuser import (
+from nonebot_plugin_larkuser import get_user
+from nonebot_plugin_qq_group import (
     ensure_group_members,
     get_group_member,
     get_group_member_nickname_map,
     get_group_name,
-    get_user,
 )
 
 from .base import BaseSession

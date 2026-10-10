@@ -21,6 +21,7 @@ require("nonebot_plugin_apscheduler")
 require("nonebot_plugin_bots")
 require("nonebot_plugin_broadcast")
 require("nonebot_plugin_chat")
+require("nonebot_plugin_qq_group")
 
 
 from . import __main__

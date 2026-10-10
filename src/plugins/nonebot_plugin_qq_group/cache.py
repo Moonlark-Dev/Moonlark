@@ -18,7 +18,7 @@
 """QQ 官方 Bot 群聊缓存。
 
 群成员列表接口存在分页与频率限制（60 QPM，每页最多 30 条），因此这里把接口
-结果落到数据库里做缓存，由 :mod:`nonebot_plugin_larkuser.group.sync` 周期性刷新，
+结果落到数据库里做缓存，由 :mod:`nonebot_plugin_qq_group.sync` 周期性刷新，
 群聊相关功能只读缓存，避免每次都直接打接口。
 
 缓存同时承担两个额外职责：
@@ -35,12 +35,16 @@ from typing import Any, Optional, Sequence
 
 from nonebot import get_bots, logger
 from nonebot.adapters.qq import Bot as QQBot
+from nonebot.exception import ActionFailed
 from nonebot_plugin_orm import get_session
 from sqlalchemy import select
 
-from ..config import config
-from ..models import GuestUser, QQGroupInfo, QQGroupMember, UserData
+from nonebot_plugin_larkuser.models import GuestUser, UserData
+
+from .config import config
+from .models import QQGroupInfo, QQGroupMember
 from .client import QQGroupAPIError, fetch_all_group_members, fetch_group_info
+from .fallback import fetch_group_members_from_message_summary
 from .types import QQGroupInfo as QQGroupInfoData
 from .types import QQGroupMemberInfo
 
@@ -102,7 +106,7 @@ async def remember_group(group_openid: str, bot_id: str = "") -> None:
         if record is None:
             session.add(QQGroupInfo(group_openid=group_openid, bot_id=bot_id))
             await session.commit()
-            logger.info(f"[larkuser] 登记 QQ 群 {group_openid}（bot={bot_id or '未知'}）")
+            logger.info(f"[qq_group] 登记 QQ 群 {group_openid}（bot={bot_id or '未知'}）")
             return
         if bot_id and record.bot_id != bot_id:
             record.bot_id = bot_id
@@ -202,7 +206,7 @@ async def refresh_group_info(bot: QQBot, group_openid: str) -> Optional[QQGroupI
 
 async def _mark_sync_failed(group_openid: str, subject: str, error: str) -> None:
     """记录一次同步失败，同时刷新对应时间戳以限制重试频率。"""
-    logger.warning(f"[larkuser] 同步 QQ 群 {group_openid} 的{subject}失败: {error}")
+    logger.warning(f"[qq_group] 同步 QQ 群 {group_openid} 的{subject}失败: {error}")
     now = _now()
     async with get_session() as session:
         record = await session.get(QQGroupInfo, {"group_openid": group_openid})
@@ -348,7 +352,12 @@ async def get_group_member_nickname_map(group_openid: str) -> dict[str, str]:
 
 
 async def refresh_group_members(bot: QQBot, group_openid: str) -> list[QQGroupMemberInfo]:
-    """全量刷新群成员缓存（含分页、频率限制与昵称补全），返回最新成员列表。"""
+    """全量刷新群成员缓存（含分页、频率限制与昵称补全），返回最新成员列表。
+
+    腾讯接口因权限、配额或平台故障不可用（``ActionFailed`` 等）时，临时改用
+    Message Summary 保存的群消息还原一份活跃成员列表，接口恢复后缓存仍会被
+    下一次成功同步覆盖。
+    """
     async with _get_sync_lock(group_openid):
         synced_at = _now()
         try:
@@ -357,12 +366,19 @@ async def refresh_group_members(bot: QQBot, group_openid: str) -> list[QQGroupMe
                 group_openid,
                 max_members=config.qq_group_member_max_count,
             )
-        except QQGroupAPIError as e:
+        except (QQGroupAPIError, ActionFailed) as e:
             await _mark_sync_failed(group_openid, "群成员列表", str(e))
+            fallback = await fetch_group_members_from_message_summary(group_openid)
+            if fallback:
+                logger.info(
+                    f"[qq_group] 群 {group_openid} 的群成员列表接口不可用，"
+                    f"临时改用 Message Summary 的 {len(fallback)} 名活跃成员",
+                )
+                return fallback
             return await get_cached_group_members(group_openid)
         await _store_members(group_openid, members, synced_at)
         updated = await fill_user_nicknames(members)
-        logger.info(f"[larkuser] 已同步 QQ 群 {group_openid} 的 {len(members)} 名成员（补全 {updated} 个昵称）")
+        logger.info(f"[qq_group] 已同步 QQ 群 {group_openid} 的 {len(members)} 名成员（补全 {updated} 个昵称）")
         return members
 
 
@@ -394,7 +410,7 @@ async def _sync_group(bot: QQBot, group_openid: str) -> None:
     except asyncio.CancelledError:
         raise
     except Exception as e:
-        logger.exception(f"[larkuser] 同步 QQ 群 {group_openid} 失败: {e}")
+        logger.exception(f"[qq_group] 同步 QQ 群 {group_openid} 失败: {e}")
 
 
 def request_group_sync(bot: QQBot, group_openid: str) -> None:
@@ -430,12 +446,12 @@ async def sync_all_groups() -> None:
         groups = list(rows)
     if not groups:
         return
-    logger.debug(f"[larkuser] 开始同步 {len(groups)} 个 QQ 群的成员缓存")
+    logger.debug(f"[qq_group] 开始同步 {len(groups)} 个 QQ 群的成员缓存")
     for group_openid, bot_id, members_synced_at in groups:
         if not _is_expired(members_synced_at, config.qq_group_member_cache_ttl):
             continue
         bot = get_qq_bot(bot_id)
         if bot is None:
-            logger.debug(f"[larkuser] Bot {bot_id or '未记录'} 未连接，跳过群 {group_openid}")
+            logger.debug(f"[qq_group] Bot {bot_id or '未记录'} 未连接，跳过群 {group_openid}")
             continue
         await _sync_group(bot, group_openid)

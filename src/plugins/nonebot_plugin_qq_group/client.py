@@ -237,7 +237,7 @@ async def fetch_all_group_members(
             break
         if len(members) >= max_members:
             logger.warning(
-                f"[larkuser] 群 {group_openid} 成员数超过上限 {max_members}，停止继续拉取",
+                f"[qq_group] 群 {group_openid} 成员数超过上限 {max_members}，停止继续拉取",
             )
             break
         seen_cursors.add(next_cursor)

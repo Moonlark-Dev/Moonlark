@@ -9,6 +9,7 @@ Moonlark 内置了一些 Library 型插件，以下是这些插件的说明及�
 - [LarkLang](larklang): 本地化插件
 - [LarkUtils](larkutils): 工具包
 - [LarkUser](larkuser): 用户数据
+- [QQ Group](qq_group): QQ 官方 Bot 群聊信息与群成员列表缓存
 - [Render](render): Jinja 模板渲染器
 - [LarkUID](larkuid): API 鉴权相关
 - [LarkHelp](larkhelp): 插件帮助
