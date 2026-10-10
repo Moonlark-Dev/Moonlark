@@ -51,6 +51,7 @@ from .client import (
     fetch_group_info,
     fetch_group_members_page,
 )
+from .fallback import fetch_group_members_from_message_summary
 from .types import QQGroupInfo, QQGroupMemberInfo
 
 __all__ = [
@@ -65,6 +66,7 @@ __all__ = [
     "ensure_group_members",
     "fetch_all_group_members",
     "fetch_group_info",
+    "fetch_group_members_from_message_summary",
     "fetch_group_members_page",
     "fill_user_nicknames",
     "get_cached_group_members",

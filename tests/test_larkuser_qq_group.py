@@ -30,14 +30,16 @@ def fast_throttle(monkeypatch):
 @pytest.fixture
 async def db(monkeypatch):
     """把缓存模块的数据库会话替换为临时内存数据库"""
-    from nonebot_plugin_larkuser.group import cache
+    from nonebot_plugin_larkuser.group import cache, fallback
     from nonebot_plugin_larkuser.models import QQGroupInfo
+    from nonebot_plugin_message_summary.models import GroupMessage  # noqa: F401  确保建表
 
     engine = create_async_engine("sqlite+aiosqlite://", echo=False)
     async with engine.begin() as conn:
         await conn.run_sync(QQGroupInfo.metadata.create_all)
     factory = async_sessionmaker(engine, expire_on_commit=False)
     monkeypatch.setattr(cache, "get_session", lambda **_: factory())
+    monkeypatch.setattr(fallback, "get_session", lambda **_: factory())
     yield factory
     await engine.dispose()
 
@@ -472,3 +474,84 @@ async def test_sync_all_groups_skips_fresh_cache(db, monkeypatch) -> None:
 
     monkeypatch.setattr(cache, "refresh_group_members", unexpected)
     await cache.sync_all_groups()
+
+
+# ── 群成员列表接口不可用时的 Message Summary 降级 ──
+
+
+@pytest.mark.asyncio
+async def test_fetch_group_members_from_message_summary(db) -> None:
+    from nonebot_plugin_larkuser.group.fallback import fetch_group_members_from_message_summary
+    from nonebot_plugin_message_summary.models import GroupMessage
+
+    async with db() as session:
+        # 平台前缀（qq_）与不带前缀的 group_id 都应命中；统计最后一条消息的昵称
+        session.add(GroupMessage(message="早", sender_nickname="甲", user_id="a1", group_id="qq_group-openid"))
+        session.add(GroupMessage(message="你好", sender_nickname="乙", user_id="a2", group_id="group-openid"))
+        session.add(GroupMessage(message="我又来了", sender_nickname="甲甲", user_id="a1", group_id="qq_group-openid"))
+        # 其他群与过期消息不计入
+        session.add(GroupMessage(message="别群", sender_nickname="丙", user_id="a3", group_id="qq_other-group"))
+        session.add(
+            GroupMessage(
+                message="很久以前",
+                sender_nickname="丁",
+                user_id="a4",
+                group_id="qq_group-openid",
+                timestamp=datetime.now() - timedelta(days=5),
+            ),
+        )
+        await session.commit()
+
+    members = await fetch_group_members_from_message_summary("group-openid")
+    assert [member.member_openid for member in members] == ["a1", "a2"]
+    assert {member.member_openid: member.nickname for member in members} == {"a1": "甲甲", "a2": "乙"}
+
+
+@pytest.mark.asyncio
+async def test_refresh_group_members_falls_back_to_message_summary(db, monkeypatch) -> None:
+    """腾讯接口抛 ActionFailed 时改用 Message Summary 的活跃成员，且不写回权威缓存"""
+    from nonebot.exception import ActionFailed
+    from nonebot_plugin_larkuser.group import cache
+    from nonebot_plugin_message_summary.models import GroupMessage
+
+    async with db() as session:
+        for index, user_id in enumerate(("a1", "a2", "a3"), start=1):
+            session.add(
+                GroupMessage(
+                    message=f"消息 {index}",
+                    sender_nickname=f"成员 {index}",
+                    user_id=user_id,
+                    group_id="qq_group-openid",
+                ),
+            )
+        await session.commit()
+
+    async def failed(bot, group_openid, *, max_members):
+        raise ActionFailed("qq", "获取群成员列表失败")
+
+    monkeypatch.setattr(cache, "fetch_all_group_members", failed)
+    members = await cache.refresh_group_members(_bot(), "group-openid")
+    assert [member.member_openid for member in members] == ["a3", "a2", "a1"]
+    # 降级数据只临时返回，不污染权威的 QQGroupMember 缓存
+    assert await cache.get_cached_group_members("group-openid") == []
+
+
+@pytest.mark.asyncio
+async def test_refresh_group_members_uses_cache_when_no_message_summary(db, monkeypatch) -> None:
+    """接口失败且没有任何 Message Summary 记录时，仍退回原有缓存"""
+    from nonebot_plugin_larkuser.group import cache
+    from nonebot_plugin_larkuser.group.client import QQGroupPermissionError
+    from nonebot_plugin_larkuser.group.types import QQGroupMemberInfo
+
+    async def ok(bot, group_openid, *, max_members):
+        return [QQGroupMemberInfo(member_openid="a1", nickname="AAA")]
+
+    monkeypatch.setattr(cache, "fetch_all_group_members", ok)
+    await cache.refresh_group_members(_bot(), "group-openid")
+
+    async def denied(bot, group_openid, *, max_members):
+        raise QQGroupPermissionError("无权限", code=11253)
+
+    monkeypatch.setattr(cache, "fetch_all_group_members", denied)
+    members = await cache.refresh_group_members(_bot(), "group-openid")
+    assert [member.member_openid for member in members] == ["a1"]

@@ -210,6 +210,11 @@ QQ 开放平台的[获取群基本信息](https://bot.q.qq.com/wiki/develop/api-
 缓存同时会用群成员列表里的昵称补全没有昵称的用户：已注册用户（`UserData`）昵称为空时
 填入并标记来源为 `group_member`，未注册用户直接写入 `GuestUser`。
 
+腾讯接口不可用（适配器抛出 `ActionFailed`，或返回 11253 / 429 等错误）时，读取群成员
+列表会临时降级到 `nonebot_plugin_message_summary` 保存的群消息：统计最近约两天在群里
+发过言的用户作为活跃成员列表返回，不写回权威缓存。这样即使群成员列表接口暂时不可用，
+`everyday_wife` 等依赖群成员列表的功能仍能继续工作。
+
 相关配置见 `.env.template` 中的 `QQ_GROUP_*` 配置项。
 
 ```python
@@ -254,6 +259,15 @@ async def refresh_group_members(bot: QQBot, group_openid: str) -> list[QQGroupMe
 ```
 
 忽略缓存有效期，全量重新拉取群成员列表并刷新缓存（含分页、频率限制与昵称补全）。
+腾讯接口不可用时返回从 Message Summary 临时还原的活跃成员列表；没有可用消息记录时
+退回已有缓存。
+
+```python
+async def fetch_group_members_from_message_summary(group_openid: str) -> list[QQGroupMemberInfo]:
+```
+
+从 Message Summary 保存的群消息里临时还原活跃成员列表（按最近发言时间倒序），
+供群成员列表接口不可用时降级使用；插件未加载、没有记录或查询失败时返回空列表。
 
 ```python
 async def refresh_group_info(bot: QQBot, group_openid: str) -> Optional[QQGroupInfo]:

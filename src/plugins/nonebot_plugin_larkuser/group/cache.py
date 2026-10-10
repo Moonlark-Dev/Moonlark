@@ -35,12 +35,14 @@ from typing import Any, Optional, Sequence
 
 from nonebot import get_bots, logger
 from nonebot.adapters.qq import Bot as QQBot
+from nonebot.exception import ActionFailed
 from nonebot_plugin_orm import get_session
 from sqlalchemy import select
 
 from ..config import config
 from ..models import GuestUser, QQGroupInfo, QQGroupMember, UserData
 from .client import QQGroupAPIError, fetch_all_group_members, fetch_group_info
+from .fallback import fetch_group_members_from_message_summary
 from .types import QQGroupInfo as QQGroupInfoData
 from .types import QQGroupMemberInfo
 
@@ -348,7 +350,12 @@ async def get_group_member_nickname_map(group_openid: str) -> dict[str, str]:
 
 
 async def refresh_group_members(bot: QQBot, group_openid: str) -> list[QQGroupMemberInfo]:
-    """全量刷新群成员缓存（含分页、频率限制与昵称补全），返回最新成员列表。"""
+    """全量刷新群成员缓存（含分页、频率限制与昵称补全），返回最新成员列表。
+
+    腾讯接口因权限、配额或平台故障不可用（``ActionFailed`` 等）时，临时改用
+    Message Summary 保存的群消息还原一份活跃成员列表，接口恢复后缓存仍会被
+    下一次成功同步覆盖。
+    """
     async with _get_sync_lock(group_openid):
         synced_at = _now()
         try:
@@ -357,8 +364,15 @@ async def refresh_group_members(bot: QQBot, group_openid: str) -> list[QQGroupMe
                 group_openid,
                 max_members=config.qq_group_member_max_count,
             )
-        except QQGroupAPIError as e:
+        except (QQGroupAPIError, ActionFailed) as e:
             await _mark_sync_failed(group_openid, "群成员列表", str(e))
+            fallback = await fetch_group_members_from_message_summary(group_openid)
+            if fallback:
+                logger.info(
+                    f"[larkuser] 群 {group_openid} 的群成员列表接口不可用，"
+                    f"临时改用 Message Summary 的 {len(fallback)} 名活跃成员",
+                )
+                return fallback
             return await get_cached_group_members(group_openid)
         await _store_members(group_openid, members, synced_at)
         updated = await fill_user_nicknames(members)
