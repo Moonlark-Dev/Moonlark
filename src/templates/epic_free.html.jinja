@@ -1,6 +1,6 @@
 {% extends base %}
 
-{% block header%}
+{% block header %}
 <script>
     function getCountDownString(dateStr) {
         const targetDate = new Date(dateStr);
@@ -14,45 +14,40 @@
 {% endblock header %}
 
 {% block body %}
-{% for game in result.data.Catalog.searchStore.elements %}
-{% if game.promotions %}
-{% set offer = game.promotions.promotionalOffers or game.promotions.upcomingPromotionalOffers %}
-{% if offer[0].promotionalOffers[0].discountSetting.discountType == "PERCENTAGE" and offer[0].promotionalOffers[0].discountSetting.discountPercentage == 0 %}
+{% for game in games %}
 <div class="row">
     <div class="col-2">
-        {% for image in game.keyImages %}
-        {% if image.type == "OfferImageTall" %}
-        <img src="{{ image.url }}" alt="{{ game.title }}" class="img-fluid">
+        {% if game.image %}
+        <img src="{{ game.image }}" alt="{{ game.title }}" class="img-fluid">
         {% endif %}
-        {% endfor %}
     </div>
     <div class="col-10">
         <h2>{{ game.title }}</h2>
-        <span class="badge bg-dark"><s>{{ game.price.totalPrice.fmtPrice.originalPrice }}</s></span>
-        {% if game.promotions.promotionalOffers %}
+        {% if game.original_price %}
+        <span class="badge bg-dark"><s>{{ game.original_price }}</s></span>
+        {% endif %}
+        {% if game.free_now %}
         <span class="badge bg-success">{{ free_now }}</span>
         {% else %}
         <span class="badge bg-warning">{{ coming_soon }}</span>
         {% endif %}
-        {{ remaining }} <span id="countdown-{{ game.id }}"></span>
+        {% if game.countdown_date %}
+        {{ remaining }} <span id="countdown-{{ loop.index }}"></span>
         <script>
-            {
-                {% if game.promotions.promotionalOffers %}
-                const dateStr = "{{ game.promotions.promotionalOffers[0].promotionalOffers[0].endDate }}";
-                {% else %}
-                const dateStr = "{{ game.promotions.upcomingPromotionalOffers[0].promotionalOffers[0].startDate }}";
-                {% endif %}
-                document.getElementById("countdown-{{ game.id }}").innerHTML = getCountDownString(dateStr);
-            }
+            document.getElementById("countdown-{{ loop.index }}").innerHTML =
+                getCountDownString("{{ game.countdown_date }}");
         </script>
+        {% endif %}
         <br>
         <small class="text-secondary">{{ game.description }}</small>
+        {% if game.url %}
+        <br>
+        <small class="text-secondary">{{ store_link }}: {{ game.url }}</small>
+        {% endif %}
     </div>
 </div>
 {% if not loop.last %}
 <hr>
-{% endif %}
-{% endif %}
 {% endif %}
 {% endfor %}
 {% endblock body %}

@@ -1,9 +1,27 @@
 title: Epic 免费游戏
 failed: 获取 Epic 免费游戏数据失败，请稍后再试。
+empty: 当前没有可以领取的 Epic 免费游戏，稍后再来看看吧。
 template:
   free_now: 当前免费
   coming_soon: 即将免费
   remaining: 剩余
+  store_link: 商店链接
+meta:
+  price: 原价 {}
+  remaining: 剩余 {}
+  upcoming: "{}后开始"
+markdown:
+  title: "## Epic 免费游戏"
+  free_now: "**当前免费**"
+  coming_soon: "**即将免费**"
+  item: "- [{}]({})"
+  item_plain: "- {}"
+  item_meta: "  {}"
+  item_link: "  {}"
+plain:
+  free_now: "【当前免费】"
+  coming_soon: "【即将免费】"
+  item: "{}\n{}"
 help:
   description: Epic 免费游戏查询
   details: 查询 Epic Games Store 当前和即将到来的免费游戏。
