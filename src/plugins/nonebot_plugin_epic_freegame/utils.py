@@ -6,6 +6,7 @@
 """
 
 from datetime import datetime, timezone
+import re
 from typing import Any
 
 EPIC_API_URL = (
@@ -14,6 +15,10 @@ EPIC_API_URL = (
 )
 # 商店页面统一使用接口请求的 zh-CN 地区，保证与文案、价格货币一致
 STORE_BASE_URL = "https://store.epicgames.com/zh-CN/p/"
+# QQ markdown 海报的显示宽度；Epic 原图是 2560x1440，按这个宽度等比缩小
+MARKDOWN_IMAGE_MAX_WIDTH = 760
+# Epic 的图片地址常带 2560x1440 这样的尺寸，用来还原海报的宽高比
+_IMAGE_SIZE_PATTERN = re.compile(r"(\d{3,4})x(\d{3,4})")
 
 
 def _first_page_slug(mappings: Any) -> str | None:
@@ -49,6 +54,23 @@ def get_store_url(game: dict[str, Any]) -> str | None:
     return f"{STORE_BASE_URL}{str(slug).removesuffix('/home')}"
 
 
+def build_markdown_image(url: str, alt: str, max_width: int = MARKDOWN_IMAGE_MAX_WIDTH) -> str:
+    """生成 QQ markdown 的图片代码。
+
+    Epic 的图片地址里通常带原始尺寸（如 ``..._2560x1440-....jpg``），用它等比
+    缩放到合适宽度后写成 ``![alt #宽px #高px](url)``（QQ 的尺寸语法）；拿不到
+    尺寸时退回普通 markdown 图片，交给 QQ 自行缩放。
+    """
+    match = _IMAGE_SIZE_PATTERN.search(url)
+    if match is None:
+        return f"![{alt}]({url})"
+    width, height = int(match.group(1)), int(match.group(2))
+    if width > max_width:
+        height = round(height * max_width / width)
+        width = max_width
+    return f"![{alt} #{width}px #{height}px]({url})"
+
+
 def _is_free_offer(offer_group: Any) -> bool:
     """判断一个促销分组是否是 0 折（也就是免费）活动"""
     if not isinstance(offer_group, dict):
@@ -72,12 +94,19 @@ def _first_free_offer(offer_groups: Any) -> dict[str, Any] | None:
     return None
 
 
-def _first_image(key_images: Any, image_type: str) -> str | None:
+def _first_image(key_images: Any, *image_types: str) -> str | None:
+    """按优先级取第一张可用图片。
+
+    Epic 的免费条目通常同时给出竖版 ``OfferImageTall``（1200x1600）与横版
+    ``OfferImageWide``（2560x1440）：图片模板的卡片是竖版位，QQ markdown 的海报
+    则用横版，因此两者各取所需并互相兜底。
+    """
     if not isinstance(key_images, list):
         return None
-    for image in key_images:
-        if isinstance(image, dict) and image.get("type") == image_type and image.get("url"):
-            return str(image["url"])
+    for image_type in image_types:
+        for image in key_images:
+            if isinstance(image, dict) and image.get("type") == image_type and image.get("url"):
+                return str(image["url"])
     return None
 
 
@@ -120,13 +149,16 @@ def collect_free_games(data: dict[str, Any]) -> list[dict[str, Any]]:
             offer = _first_free_offer(promotions.get("upcomingPromotionalOffers"))
         if offer is None:
             continue
+        key_images = game.get("keyImages")
         games.append(
             {
                 "id": str(game.get("id") or game.get("title") or ""),
                 "title": str(game.get("title") or ""),
                 "description": str(game.get("description") or ""),
                 "url": get_store_url(game),
-                "image": _first_image(game.get("keyImages"), "OfferImageTall"),
+                # 图片模板的卡片是竖版位，QQ markdown 的海报用横版
+                "image": _first_image(key_images, "OfferImageTall", "OfferImageWide"),
+                "wide_image": _first_image(key_images, "OfferImageWide", "OfferImageTall"),
                 "original_price": _original_price(game),
                 "free_now": free_now,
                 # 当前免费显示距结束的倒计时，即将免费显示距开始的时间

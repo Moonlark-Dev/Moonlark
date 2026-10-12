@@ -9,18 +9,16 @@ template:
 meta:
   price: 原价 {}
   remaining: 剩余 {}
-  upcoming: "{}后开始"
 markdown:
   title: "## Epic 免费游戏"
-  free_now: "**当前免费**"
-  coming_soon: "**即将免费**"
-  item: "- [{}]({})"
-  item_plain: "- {}"
-  item_meta: "  {}"
-  item_link: "  {}"
+  free_now: "### 当前免费"
+  coming_soon: "### 即将免费"
+  item: "[**{}**]({})"
+  item_plain: "**{}**"
+  quote: "> {}（{}） {}"
+  quote_no_meta: "> {} {}"
 plain:
   free_now: "【当前免费】"
-  coming_soon: "【即将免费】"
   item: "{}\n{}"
 help:
   description: Epic 免费游戏查询

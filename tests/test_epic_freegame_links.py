@@ -1,9 +1,13 @@
 """nonebot_plugin_epic_freegame 的链接展示回归测试。
 
 背景：/epic-free 原先只发送一张渲染图，图里的游戏名既不可点击、商店链接也没法复制。
-现在 QQ 官方机器人改发 markdown（标题本身就是可点击的商店链接，下面再附一行裸链接
-方便复制），其余平台在图片之外补一段纯文本链接列表。这里锁住这两条路径，以及
-商店链接的解析回退逻辑。
+现在：
+
+- QQ 官方机器人发 markdown：当前免费是「横版海报 + 加粗标题链接 +
+  > 简介（原价 · 剩余）裸链接」的完整卡片，即将免费只列一行加粗标题链接；
+- 其余平台保留图片渲染，但拆成两条消息：第一条发图片，第二条发当前免费游戏的链接列表。
+
+这里锁住这两条路径的格式，以及商店链接、海报尺寸的解析回退逻辑。
 """
 
 from datetime import datetime, timezone
@@ -18,6 +22,8 @@ _LANG_FILE = Path(__file__).parent.parent / "src" / "lang" / "zh_hans" / "epic_f
 _STORE_BASE = "https://store.epicgames.com/zh-CN/p/"
 _FREE_NOW_URL = f"{_STORE_BASE}out-of-sight-b96ca8"
 _COMING_SOON_URL = f"{_STORE_BASE}bad-cheese-4256d9"
+_TALL_IMAGE = "https://cdn1.epicgames.com/offer/xxx/out-of-sight_1200x1600-deadbeef"
+_WIDE_IMAGE = "https://cdn1.epicgames.com/offer/xxx/out-of-sight_2560x1440-deadbeef"
 
 
 def _flatten(data: dict[str, Any], prefix: str = "") -> dict[str, str]:
@@ -60,7 +66,10 @@ def _game(
         "urlSlug": "url-slug",
         "offerMappings": [{"pageSlug": slug, "pageType": "productHome"}] if slug else None,
         "catalogNs": {"mappings": [{"pageSlug": slug, "pageType": "productHome"}] if slug else []},
-        "keyImages": [{"type": "OfferImageTall", "url": "https://cdn.example/tall.jpg"}],
+        "keyImages": [
+            {"type": "OfferImageWide", "url": _WIDE_IMAGE},
+            {"type": "OfferImageTall", "url": _TALL_IMAGE},
+        ],
         "price": {"totalPrice": {"fmtPrice": {"originalPrice": price}}},
         "promotions": {
             "promotionalOffers": (
@@ -83,9 +92,10 @@ def _normalized() -> list[dict[str, Any]]:
         {
             "id": "1",
             "title": "虎视眈眈 (Out of Sight)",
-            "description": "",
+            "description": "一款潜行游戏",
             "url": _FREE_NOW_URL,
-            "image": None,
+            "image": _TALL_IMAGE,
+            "wide_image": _WIDE_IMAGE,
             "original_price": "¥53.00",
             "free_now": True,
             "countdown_date": None,
@@ -93,9 +103,10 @@ def _normalized() -> list[dict[str, Any]]:
         {
             "id": "2",
             "title": "Bad Cheese",
-            "description": "",
+            "description": "一款芝士游戏",
             "url": _COMING_SOON_URL,
-            "image": None,
+            "image": _TALL_IMAGE,
+            "wide_image": _WIDE_IMAGE,
             "original_price": "¥40.00",
             "free_now": False,
             "countdown_date": None,
@@ -146,6 +157,33 @@ def test_get_store_url_without_any_slug() -> None:
 
     assert get_store_url({"productSlug": None, "offerMappings": None, "catalogNs": None}) is None
     assert get_store_url({"productSlug": None, "offerMappings": [], "catalogNs": {"mappings": []}}) is None
+
+
+def test_build_markdown_image_scales_by_url_size() -> None:
+    """Epic 图片地址里的 2560x1440 用来等比缩小海报，避免原图过大"""
+    from nonebot_plugin_epic_freegame.utils import build_markdown_image
+
+    assert build_markdown_image("https://cdn/EGS_S1_2560x1440-deadbeef", "标题") == (
+        "![标题 #760px #428px](https://cdn/EGS_S1_2560x1440-deadbeef)"
+    )
+    # 本来就比目标宽度小的图不再放大
+    assert build_markdown_image("https://cdn/EGS_S1_600x338-deadbeef", "标题") == (
+        "![标题 #600px #338px](https://cdn/EGS_S1_600x338-deadbeef)"
+    )
+    # 地址里没有尺寸时退回普通 markdown 图片，交给 QQ 自行缩放
+    assert build_markdown_image("https://cdn/spt-assets/out-of-sight.jpg", "标题") == (
+        "![标题](https://cdn/spt-assets/out-of-sight.jpg)"
+    )
+
+
+def test_collect_free_games_uses_wide_poster_and_tall_cover() -> None:
+    """QQ 海报取横版 OfferImageWide，图片模板的竖版卡片取 OfferImageTall"""
+    from nonebot_plugin_epic_freegame.utils import collect_free_games
+
+    games = collect_free_games(_payload(_game("虎视眈眈 (Out of Sight)", free_now=True, slug="out-of-sight-b96ca8")))
+
+    assert games[0]["image"] == _TALL_IMAGE
+    assert games[0]["wide_image"] == _WIDE_IMAGE
 
 
 def test_collect_free_games_keeps_free_promotions_only() -> None:
@@ -207,21 +245,46 @@ def test_format_remaining_time() -> None:
     assert format_remaining_time(None, now) is None
 
 
+def _expected_qq_markdown() -> str:
+    """当前免费的完整卡片 + 即将免费的单行链接"""
+    free_now_card = "\n".join(
+        [
+            f"![虎视眈眈 (Out of Sight) #760px #428px]({_WIDE_IMAGE})",
+            f"[**虎视眈眈 (Out of Sight)**]({_FREE_NOW_URL})",
+            f"> 一款潜行游戏（原价 ¥53.00） {_FREE_NOW_URL}",
+        ]
+    )
+    return "\n\n".join(
+        [
+            "## Epic 免费游戏",
+            "\n\n".join(["### 当前免费", free_now_card]),
+            "\n\n".join(["### 即将免费", f"[**Bad Cheese**]({_COMING_SOON_URL})"]),
+        ]
+    )
+
+
 @pytest.mark.asyncio
-async def test_build_qq_markdown_has_clickable_and_copyable_links(epic_env: Any) -> None:
-    """QQ markdown：标题是链接（可点击），下面另起一行裸链接（可复制）"""
+async def test_build_qq_markdown_current_free_card(epic_env: Any) -> None:
+    """QQ markdown：当前免费是「横版海报 + 加粗标题链接 + > 简介（原价 · 剩余）裸链接」"""
     markdown = await epic_env.build_qq_markdown(_normalized(), "10")
 
-    assert f"- [虎视眈眈 (Out of Sight)]({_FREE_NOW_URL})" in markdown
-    assert f"- [Bad Cheese]({_COMING_SOON_URL})" in markdown
-    # 每个链接出现两次：一次是 markdown 链接，一次是便于复制的裸链接
-    assert markdown.count(_FREE_NOW_URL) == 2
-    assert markdown.count(_COMING_SOON_URL) == 2
-    assert "**当前免费**" in markdown
-    assert "**即将免费**" in markdown
-    assert "原价 ¥53.00" in markdown
+    assert markdown == _expected_qq_markdown()
+    # 海报用横版而不是竖版
+    assert _WIDE_IMAGE in markdown
+    assert _TALL_IMAGE not in markdown
     # 当前免费排在即将免费之前
-    assert markdown.index("**当前免费**") < markdown.index("**即将免费**")
+    assert markdown.index("### 当前免费") < markdown.index("### 即将免费")
+
+
+@pytest.mark.asyncio
+async def test_build_qq_markdown_coming_soon_has_link_only(epic_env: Any) -> None:
+    """即将免费只有一行加粗标题链接：没有海报、没有简介、没有裸链接"""
+    markdown = await epic_env.build_qq_markdown([_normalized()[1]], "10")
+
+    expected = "\n\n".join(["## Epic 免费游戏", "\n\n".join(["### 即将免费", f"[**Bad Cheese**]({_COMING_SOON_URL})"])])
+    assert markdown == expected
+    assert "![" not in markdown
+    assert ">" not in markdown
 
 
 @pytest.mark.asyncio
@@ -236,24 +299,31 @@ async def test_build_qq_markdown_without_url(epic_env: Any) -> None:
     game = dict(_normalized()[0], url=None)
     markdown = await epic_env.build_qq_markdown([game], "10")
 
-    assert "- 虎视眈眈 (Out of Sight)" in markdown
-    assert "[" not in markdown
+    assert "[**虎视眈眈 (Out of Sight)**](" not in markdown
+    assert "**虎视眈眈 (Out of Sight)**" in markdown
+    assert "> 一款潜行游戏（原价 ¥53.00）" in markdown
 
 
 @pytest.mark.asyncio
-async def test_build_plain_links_lists_copyable_urls(epic_env: Any) -> None:
-    """非 QQ 平台：链接单独占一行，方便复制"""
+async def test_build_plain_links_lists_free_now_only(epic_env: Any) -> None:
+    """非 QQ 第二条消息只列当前免费的游戏，链接单独占一行方便复制"""
     plain = await epic_env.build_plain_links(_normalized(), "10")
 
-    assert f"【当前免费】\n虎视眈眈 (Out of Sight)\n{_FREE_NOW_URL}" in plain
-    assert f"【即将免费】\nBad Cheese\n{_COMING_SOON_URL}" in plain
+    assert plain == f"【当前免费】\n虎视眈眈 (Out of Sight)\n{_FREE_NOW_URL}"
+    assert _COMING_SOON_URL not in plain
     # 纯文本里不能出现 markdown 链接语法，否则 OneBot 客户端会原样显示
     assert "](" not in plain
 
 
 @pytest.mark.asyncio
+async def test_build_plain_links_without_free_now_games(epic_env: Any) -> None:
+    """没有当前免费的游戏时第二条消息为空，由调用方跳过发送"""
+    assert await epic_env.build_plain_links([_normalized()[1]], "10") == ""
+
+
+@pytest.mark.asyncio
 async def test_handle_epic_free_qq_sends_markdown(epic_env: Any, monkeypatch: pytest.MonkeyPatch) -> None:
-    """QQ 官方机器人：发送 markdown 消息（不渲染图片），并单独结束处理器"""
+    """QQ 官方机器人：只发一条 markdown 消息（不渲染图片），并单独结束处理器"""
     from nonebot.adapters.qq import Bot as QQBot
     from nonebot_plugin_alconna.uniseg import Text, UniMessage
 
@@ -263,8 +333,10 @@ async def test_handle_epic_free_qq_sends_markdown(epic_env: Any, monkeypatch: py
     async def fake_send(self: UniMessage, *_args: object, **_kwargs: object) -> None:
         sent.append(self)
 
+    render = AsyncMock(return_value=b"webp-bytes")
     finish = AsyncMock()
     monkeypatch.setattr(module, "fetch_free_games", AsyncMock(return_value=_normalized()))
+    monkeypatch.setattr(module, "render_template", render)
     monkeypatch.setattr(UniMessage, "send", fake_send)
     monkeypatch.setattr(module.matcher, "finish", finish)
 
@@ -273,15 +345,16 @@ async def test_handle_epic_free_qq_sends_markdown(epic_env: Any, monkeypatch: py
     assert len(sent) == 1
     text = next(seg for seg in sent[0] if isinstance(seg, Text))
     assert any("markdown" in styles for styles in text.styles.values())
-    assert f"[虎视眈眈 (Out of Sight)]({_FREE_NOW_URL})" in text.text
+    assert text.text == _expected_qq_markdown()
+    render.assert_not_awaited()
     finish.assert_awaited()
 
 
 @pytest.mark.asyncio
-async def test_handle_epic_free_other_adapter_sends_image_with_links(
+async def test_handle_epic_free_other_adapter_sends_image_then_links(
     epic_env: Any, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """其余平台：图片 + 纯文本链接列表，链接可以复制"""
+    """其余平台：第一条发图片，第二条发当前免费的链接列表"""
     from nonebot_plugin_alconna.uniseg import Image, Text, UniMessage
 
     module = epic_env
@@ -299,11 +372,12 @@ async def test_handle_epic_free_other_adapter_sends_image_with_links(
 
     await module.handle_epic_free(bot=MagicMock(), user_id="10")
 
-    assert len(sent) == 1
+    assert len(sent) == 2
     assert any(isinstance(seg, Image) for seg in sent[0])
-    text = next(seg for seg in sent[0] if isinstance(seg, Text))
-    assert _FREE_NOW_URL in text.text
-    assert _COMING_SOON_URL in text.text
+    assert not any(isinstance(seg, Text) for seg in sent[0])
+    text = next(seg for seg in sent[1] if isinstance(seg, Text))
+    assert text.text == f"【当前免费】\n虎视眈眈 (Out of Sight)\n{_FREE_NOW_URL}"
+    assert _COMING_SOON_URL not in text.text
     # generate_render_keys 的前缀必须带点号，否则图片里会渲染出 [缺失: ...] 占位符
     assert render.await_args.kwargs["keys"] == {
         "free_now": "当前免费",
