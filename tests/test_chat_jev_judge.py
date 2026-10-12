@@ -288,6 +288,9 @@ async def test_evaluate_reply_group_still_asks_favor_target(monkeypatch: pytest.
     assert "favor_target" in captured["questions"]
     assert evaluation.favor_target == "小明"
     assert evaluation.favor_score == 2
+    # 目标消息与置信度一并带回，供重复消息门控使用
+    assert evaluation.favor_message == "你好"
+    assert evaluation.favor_confidence == pytest.approx(0.9)
 
 
 async def test_apply_evaluation_pushes_event_on_favor_change() -> None:
@@ -307,7 +310,7 @@ async def test_apply_evaluation_pushes_event_on_favor_change() -> None:
     evaluation2 = ReplyEvaluation(favor_target="小明", favor_score=1, favor_reason="表现友善")
     await apply_reply_evaluation(processor, evaluation2)  # type: ignore[arg-type]
 
-    processor.judge_user_behavior.assert_awaited_once_with("小明", 1, "表现友善")
+    processor.judge_user_behavior.assert_awaited_once_with("小明", 1, "表现友善", "", 0.0)
     processor.session.add_event.assert_awaited_once_with("已记录对小明的评价", "none")
 
     # 好感度变动失败（冷却/上限等）时不推送事件

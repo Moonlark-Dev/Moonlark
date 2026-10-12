@@ -30,10 +30,12 @@ from ..models import ChatGroup, PreTriggerSignals, Sticker, UserProfile
 from ..types import CachedMessage
 from ..utils.ai_agent import AskAISession
 from ..utils.emoji import QQ_EMOJI_MAP
+from ..utils.fav_judge import decide_favor_change, get_favor_judge_state, record_favor_change
 from ..utils.image import query_image_content
 from ..utils.image_format import try_build_image_part
 from ..utils.message import MessageParser, generate_message_string
 from ..utils.note_manager import get_context_notes
+from ..utils.simhash import build_message_fingerprint
 from ..utils.status_manager import get_status_manager
 from ..utils.sticker_manager import get_sticker_manager
 from ..utils.timing_stats import timing_stats_manager
@@ -180,8 +182,22 @@ class MessageProcessor:
                 await self.send_message(refuse_msg)
                 logger.info(f"Interaction {id_} from {nickname} is refused by bite")
 
-    async def judge_user_behavior(self, nickname: str, score: int, reason: str) -> tuple[str, bool]:
+    async def judge_user_behavior(
+        self,
+        nickname: str,
+        score: int,
+        reason: str,
+        message: str = "",
+        confidence: float = 0.0,
+    ) -> tuple[str, bool]:
         """评价用户行为并调整好感度
+
+        Args:
+            nickname: 被评价用户的昵称
+            score: -2 ~ 2 的档位（0 不会走到这里）
+            reason: Jev 给出的判定理由
+            message: 触发这次评价的消息原文，用于重复消息门控与落库
+            confidence: Jev 对本次 favor_score 的置信度（0-1）
 
         Returns:
             (给上层的结果文本, 好感度是否真的发生了变动)
@@ -195,22 +211,42 @@ class MessageProcessor:
             return await self.session.text("judge.user_not_registered", nickname), False
         # 限制分数范围
         score = max(-2, min(2, score))
-        # 检查冷却时间和每日上限
-        dt = datetime.now()
-        user_cache = user.get_config_key("chat_fav_judge_cache", [0, 0])
-        last_judge_time, daily_score = user_cache
-        # 增加操作冷却时间为1小时，降低好感度操作冷却时间为0.5小时
-        cooldown_hours = 1.0 if score > 0 else 0.5
-        if dt - datetime.fromtimestamp(last_judge_time) < timedelta(hours=cooldown_hours):
+        # 冷却时间、每日上限与重复消息门控都由 FavorJudgeRecord 推导
+        # （不再读写 LarkUser 的 chat_fav_judge_cache）
+        now = datetime.now()
+        state = await get_favor_judge_state(user_id, build_message_fingerprint(message), now)
+        decision = decide_favor_change(score, confidence, state, now)
+        if decision.rejection == "cooldown":
             return await self.session.text("judge.cooldown", nickname), False
-        if datetime.fromtimestamp(last_judge_time).date() != datetime.now().date():
-            daily_score = 0
-        delta = score * 0.0004
-        if abs(daily_score + delta) > 0.005:
+        if decision.rejection == "daily_limit":
             return await self.session.text("judge.daily_limit", nickname), False
-        await user.set_config_key("chat_fav_judge_cache", [dt.timestamp(), daily_score + delta])
-        await user.add_fav(delta)
-        logger.info(f"AI judged user {user_id} ({nickname}): {score} ({reason}), delta={delta}")
+        if decision.rejection == "low_confidence":
+            # 同一条消息被反复拿来刷好感度：抬高置信度要求，本次不变动好感度
+            return (
+                await self.session.text(
+                    "judge.low_confidence",
+                    nickname,
+                    decision.similar_count,
+                    f"{decision.required_confidence:.0%}",
+                ),
+                False,
+            )
+        await record_favor_change(
+            user_id=user_id,
+            session_id=self.session.session_id,
+            nickname=nickname,
+            message=message,
+            score=score,
+            delta=decision.delta,
+            confidence=confidence,
+            reason=reason,
+            now=now,
+        )
+        await user.add_fav(decision.delta)
+        logger.info(
+            f"AI judged user {user_id} ({nickname}): {score} ({reason}), delta={decision.delta}, "
+            f"confidence={confidence:.2f}, similar_count={decision.similar_count}"
+        )
         asyncio.create_task(self.send_judge_response(score, reason, user_id))
         return await self.session.text("judge.success", nickname, reason), True
 
