@@ -58,17 +58,16 @@ def build_markdown_image(url: str, alt: str, max_width: int = MARKDOWN_IMAGE_MAX
     """生成 QQ markdown 的图片代码。
 
     Epic 的图片地址里通常带原始尺寸（如 ``..._2560x1440-....jpg``），用它等比
-    缩放到合适宽度后写成 ``![alt #宽px #高px](url)``（QQ 的尺寸语法）；拿不到
-    尺寸时退回普通 markdown 图片，交给 QQ 自行缩放。
+    缩放到合适大小后写成 ``![alt #宽px #高px](url)``（QQ 的尺寸语法）；拿不到
+    尺寸时退回普通 markdown 图片，交给 QQ 自行缩放。宽高都不超过 max_width，
+    这样即使横版海报缺失、退回竖版封面也不会得到一张过高的图。
     """
     match = _IMAGE_SIZE_PATTERN.search(url)
     if match is None:
         return f"![{alt}]({url})"
     width, height = int(match.group(1)), int(match.group(2))
-    if width > max_width:
-        height = round(height * max_width / width)
-        width = max_width
-    return f"![{alt} #{width}px #{height}px]({url})"
+    scale = min(max_width / width, max_width / height, 1.0)
+    return f"![{alt} #{round(width * scale)}px #{round(height * scale)}px]({url})"
 
 
 def _is_free_offer(offer_group: Any) -> bool:

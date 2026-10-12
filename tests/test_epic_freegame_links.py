@@ -170,6 +170,10 @@ def test_build_markdown_image_scales_by_url_size() -> None:
     assert build_markdown_image("https://cdn/EGS_S1_600x338-deadbeef", "标题") == (
         "![标题 #600px #338px](https://cdn/EGS_S1_600x338-deadbeef)"
     )
+    # 横版海报缺失、退回竖版封面时按高度收敛，不会得到一张过高的图
+    assert build_markdown_image("https://cdn/EGS_S2_1200x1600-deadbeef", "标题") == (
+        "![标题 #570px #760px](https://cdn/EGS_S2_1200x1600-deadbeef)"
+    )
     # 地址里没有尺寸时退回普通 markdown 图片，交给 QQ 自行缩放
     assert build_markdown_image("https://cdn/spt-assets/out-of-sight.jpg", "标题") == (
         "![标题](https://cdn/spt-assets/out-of-sight.jpg)"
