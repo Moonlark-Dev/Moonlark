@@ -25,6 +25,7 @@ from nonebot_plugin_larklang.__main__ import LangHelper
 from nonebot_plugin_larkutils import get_user_id
 from .models import CommandHelp
 from .collector import collect_command_help
+from . import panel as help_panel
 from nonebot.exception import FinishedException
 
 
@@ -197,15 +198,30 @@ def generate_help_markdown() -> None:
         f.write(asyncio.run(generate_markdown()))
 
 
-@creator("help.html.jinja")
+@creator("help_panel")
+async def _render_panel_warm(user_id: str) -> bytes:
+    """注册到 Render 预渲染任务：启动时按 lang × theme 预热面板内存缓存。"""
+    try:
+        return await help_panel.render_help_panel(user_id, help_list)
+    except Exception:
+        logger.warning("帮助面板预渲染失败，跳过\n" + traceback.format_exc())
+        return b""
+
+
 async def render(user_id: str) -> bytes:
+    """渲染帮助图：优先 Pillow 面板（方案 A），字体缺失或渲染失败时回退 HTML。"""
+    if help_panel.font_available():
+        try:
+            return await help_panel.render_help_panel(user_id, help_list)
+        except Exception:
+            logger.error("帮助面板渲染失败，回退 HTML 渲染\n" + traceback.format_exc())
     return await render_template(
         "help.html.jinja",
         await lang.text("list.title", user_id),
         user_id,
         {"categories": await get_templates(user_id), "len": len},
         keys={"usage_text": await lang.text("list.usage_text", user_id)},
-        cache=True,
+        cache=False,
     )
 
 

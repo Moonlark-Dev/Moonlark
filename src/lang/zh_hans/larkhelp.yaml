@@ -98,3 +98,18 @@ markdown:
     ### 用法
   
   usage: "- `{}`\n"
+
+panel:
+  eyebrow: MOONLARK · LARKHELP
+  title: 指令手册
+  subtitle: '数据更新于 {}  ·  热门榜来自 cmd-rank'
+  hint: '输入 help <指令名> 查看完整说明   ·   输入 menu 打开分类菜单'
+  badge: 条指令
+  hot_title: 热门指令
+  hot_note: '近 7 天 · 来自 cmd-rank · 已从下方列表移出'
+  hot_count: '{} 次'
+  row_count: '{} 条'
+  cont: '‹{}›（续）'
+  footer: '由 Moonlark & nonebot_plugin_larkhelp 生成   ·   说明过长时自动省略，完整内容见 help <指令名>'
+  logo_alt: LOGO 预留位
+  logo_alt_sub: '1264 × 848  (3:2)'
