@@ -137,6 +137,7 @@ packages = [
     { include = "nonebot_plugin_eggstrike", from = "./plugins" },
     { include = "nonebot_plugin_shengcao", from = "./plugins" },
     { include = "nonebot_plugin_md", from = "./plugins" },
+    { include = "nonebot_plugin_sticker_dl", from = "./plugins" },
 ]
 
 
