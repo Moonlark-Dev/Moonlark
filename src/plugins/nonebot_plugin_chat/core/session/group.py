@@ -15,7 +15,7 @@ from nonebot_plugin_larkuser import (
     get_user,
 )
 
-from .base import BaseSession
+from .base import BaseSession, parse_anonymous_mentions
 
 
 import asyncio
@@ -129,22 +129,26 @@ class GroupSession(BaseSession):
         message = re.sub(r"\[\d\d:\d\d:\d\d]\[Moonlark]\(\d+\): ?", "", origin_message)
         message = message.strip()
         users = await self.get_users()
-        if not users:
-            # 没有任何已知成员时直接返回，避免空正则匹配到每个字符
-            return UniMessage().text(text=message)
         uni_msg = UniMessage()
-        at_list = re.finditer("|".join([f"@{re.escape(user)}" for user in users.keys()]), message)
-        cursor_index = 0
-        for at in at_list:
-            uni_msg = uni_msg.text(text=message[cursor_index : at.start()])
-            at_nickname = at.group(0)[1:]
-            if user_id := users.get(at_nickname):
-                uni_msg = uni_msg.at(user_id)
-            else:
-                uni_msg = uni_msg.text(at.group(0))
-            cursor_index = at.end()
-        uni_msg = uni_msg.text(text=message[cursor_index:])
-        return uni_msg
+        if not users:
+            # 没有任何已知成员时无法解析 @昵称，整条消息保持为文本，
+            # 避免 join 出去的空正则匹配到每个字符
+            uni_msg = uni_msg.text(text=message)
+        else:
+            at_list = re.finditer("|".join([f"@{re.escape(user)}" for user in users.keys()]), message)
+            cursor_index = 0
+            for at in at_list:
+                uni_msg = uni_msg.text(text=message[cursor_index : at.start()])
+                at_nickname = at.group(0)[1:]
+                if user_id := users.get(at_nickname):
+                    uni_msg = uni_msg.at(user_id)
+                else:
+                    uni_msg = uni_msg.text(at.group(0))
+                cursor_index = at.end()
+            uni_msg = uni_msg.text(text=message[cursor_index:])
+        # 上下文中出现过的匿名用户（无昵称，以「匿名-XXXX」出现）可能被模型直接引用，
+        # 这里把「匿名-XXXX / XXXX」还原成 At
+        return parse_anonymous_mentions(uni_msg, self._get_anonymous_users())
 
     async def process_timer(self) -> None:
         await super().process_timer()
