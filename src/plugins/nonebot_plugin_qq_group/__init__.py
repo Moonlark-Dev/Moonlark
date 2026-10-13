@@ -20,7 +20,26 @@
 QQ 开放平台提供的群信息接口（``/v2/groups/{group_openid}/info``）与群成员列表
 接口（``/v2/groups/{group_openid}/members``）都只对白名单机器人开放，群成员列表
 还有分页与频率限制，所以这里统一维护一份数据库缓存，并对外提供只读查询接口。
+
+本插件从 ``nonebot_plugin_larkuser`` 中独立出来，方便 ``everyday_wife``、``chat``、
+``message_summary`` 等其他插件直接引用，而不必依赖整个用户系统。
 """
+
+from nonebot import require
+from nonebot.plugin import PluginMetadata
+
+from .config import Config
+
+__plugin_meta__ = PluginMetadata(
+    name="nonebot_plugin_qq_group",
+    description="QQ 官方 Bot 群聊信息与群成员列表缓存",
+    usage="",
+    config=Config,
+)
+
+require("nonebot_plugin_orm")
+require("nonebot_plugin_larkuser")
+require("nonebot_plugin_apscheduler")
 
 # 导入 sync 以注册群消息监听与周期性同步任务
 from . import sync as sync
@@ -51,6 +70,7 @@ from .client import (
     fetch_group_info,
     fetch_group_members_page,
 )
+from .fallback import fetch_group_members_from_message_summary
 from .types import QQGroupInfo, QQGroupMemberInfo
 
 __all__ = [
@@ -65,6 +85,7 @@ __all__ = [
     "ensure_group_members",
     "fetch_all_group_members",
     "fetch_group_info",
+    "fetch_group_members_from_message_summary",
     "fetch_group_members_page",
     "fill_user_nicknames",
     "get_cached_group_members",

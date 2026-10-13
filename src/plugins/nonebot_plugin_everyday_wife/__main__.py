@@ -42,6 +42,7 @@ from .utils.init import (
     get_members_onebot_v11,
     get_members_onebot_v12,
     get_members_qq,
+    has_enough_members,
     match_user_with_available,
 )
 
@@ -105,6 +106,9 @@ async def _(
     # 如果尚未匹配，则进行按需匹配
     if query is None:
         members = await get_group_members(bot, adapter_group_id)
+        if not has_enough_members(members):
+            # 群成员太少（或群成员列表获取失败）时不再显示「没有老婆」，改用更明确的提示
+            await lang.finish("not_enough_members", user_id, at_sender=True)
         matched_id = await match_user_with_available(platform_user_id, adapter_group_id, members)
 
         if matched_id is None:
