@@ -517,6 +517,7 @@ judge:
   user_not_registered: "用户 {} 还未注册（其好感度在注册之前是只读的），无法评价。"
   cooldown: "你在一小时内只可以评价 {} 一次。"
   daily_limit: "今天对 {} 的评价次数已达上限。"
+  low_confidence: "对 {} 的评价置信度不足：这条消息最近出现过 {} 次，需要 Jev 的置信度不低于 {}，本次好感度未变动。"
   success: "已记录对 {} 的评价：{}。好感度变化已生效。"
   message_analysis_system: |
     你是一个消息分析助手。
