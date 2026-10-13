@@ -298,7 +298,8 @@ Guidelines:
   initialises NoneBot only in a session-scoped autouse fixture, so a module-level plugin import fails during
   collection with `NoneBot has not been initialized`.
 - `tests/conftest.py` also registers the Console/OneBot V11 adapters, loads every plugin from
-  `pyproject.toml`, and sets `SQLALCHEMY_DATABASE_URL=sqlite+aiosqlite://` plus `ALEMBIC_STARTUP_CHECK=False`.
+  `pyproject.toml`, and sets `ALEMBIC_STARTUP_CHECK=False`; it only falls back to the in-memory SQLite URL
+  (`setdefault`) when `SQLALCHEMY_DATABASE_URL` is not already set — CI sets it to the job's MySQL service.
 - `nonebug` is installed but most tests use plain `unittest.mock`; follow the file you are editing.
 - Prefer a single test file: the full suite loads every plugin and is memory hungry.
 
@@ -311,8 +312,7 @@ Guidelines:
    覆盖范围内，改用 `.github/scripts/check_poetry_lock.py` 比较重新解析后的已锁定版本集合。不一致就
    失败，CI 不再替 PR 重锁、也不再浮动依赖
 2. `nb orm upgrade`, then `nb orm check` — the job fails unless it prints `没有检测到新的升级操作`
-3. `poetry run pytest tests/ -v`, with `SQLALCHEMY_DATABASE_URL=sqlite+aiosqlite://` and
-   `ALEMBIC_STARTUP_CHECK=False`
+3. `poetry run pytest tests/ -v`, with `ALEMBIC_STARTUP_CHECK=False`
 4. `nb larkhelp-generate zh_hans COMMANDS.md`
 5. If `COMMANDS.md` changed, the job commits and pushes it back to the PR branch as
    `Auto update from GitHub Actions` — 只回推这一个文件，`poetry.lock` 永远不会被 CI 改写
