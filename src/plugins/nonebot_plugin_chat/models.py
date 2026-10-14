@@ -59,6 +59,33 @@ class UserProfile(Model):
     profile_content: Mapped[str] = mapped_column(Text())
 
 
+class FavorJudgeRecord(Model):
+    """一次好感度评价（Jev 判定）的落库记录
+
+    取代原先存在 LarkUser config 里的 ``chat_fav_judge_cache``（不做数据迁移）：
+    冷却时间与每日上限直接由本表推导，重复消息的门控则靠 ``message_key`` 比对。
+
+    - ``message``：触发这次变动的消息原文（按会话缓存里该用户最新的一条取）；
+    - ``message_key``：消息指纹（见 ``utils/simhash.py``），<=5 字为 ``e:<原文>``，
+      更长为 ``s:<长度>:<simhash>``；
+    - ``delta``：本次实际写入的好感度变动量（score * 步长）。
+    """
+
+    __tablename__ = "nonebot_plugin_chat_favorjudgerecord"
+
+    id: Mapped[int] = mapped_column(Integer(), primary_key=True, autoincrement=True)
+    user_id: Mapped[str] = mapped_column(String(128), index=True)
+    session_id: Mapped[str] = mapped_column(String(128), default="", index=True)
+    nickname: Mapped[str] = mapped_column(String(128), default="")
+    message: Mapped[str] = mapped_column(Text(), default="")
+    message_key: Mapped[str] = mapped_column(String(64), default="")
+    score: Mapped[int] = mapped_column(Integer(), default=0)
+    delta: Mapped[float] = mapped_column(Float(), default=0.0)
+    confidence: Mapped[float] = mapped_column(Float(), default=0.0)
+    reason: Mapped[str] = mapped_column(Text(), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(), default=datetime.now, index=True)
+
+
 class Sticker(Model):
     """Sticker model for storing saved stickers/memes"""
 

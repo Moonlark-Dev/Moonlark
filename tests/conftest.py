@@ -8,7 +8,8 @@ from pytest_asyncio import is_async_test
 from nonebot.adapters.console import Adapter as ConsoleAdapter
 from nonebot.adapters.onebot.v11 import Adapter as OneBotV11Adapter
 
-os.environ["SQLALCHEMY_DATABASE_URL"] = "sqlite+aiosqlite://"
+# CI 通过环境变量把数据库指向 MySQL；本地未设置时才回落到内存 SQLite
+os.environ.setdefault("SQLALCHEMY_DATABASE_URL", "sqlite+aiosqlite://")
 os.environ["ALEMBIC_STARTUP_CHECK"] = "False"
 
 

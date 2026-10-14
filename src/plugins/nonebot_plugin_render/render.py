@@ -84,11 +84,19 @@ async def render_template(
     title: str,
     user_id: str,
     templates: dict,
+    *,
     keys: dict[str, str] = {},
     cache: bool = False,
     viewport: dict | None = None,
     background_url: str = DEFAULT_BACKGROUND_URL,
 ) -> bytes:
+    """渲染模板为图片。
+
+    除前四个参数外全部为 keyword-only：此前可选参数按位置传递，删除 `resize`
+    参数后调用方原来的 `cache=True, resize=True` 悄悄变成 `cache=True, viewport=True`，
+    布尔值被当成 viewport 交给 playwright（`viewport: expected object, got boolean`），
+    渲染整体失败。改为 keyword-only 后，同类错位会立刻抛 TypeError 而不是静默换义。
+    """
     if user_id.startswith("mlsid::") and parse_special_user_id(user_id).get("ignore-cache", "n") == "y":
         cache = False
     module = inspect.getmodule(inspect.stack()[1][0])

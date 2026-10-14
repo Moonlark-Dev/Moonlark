@@ -204,9 +204,8 @@ async def render(user_id: str) -> bytes:
         await lang.text("list.title", user_id),
         user_id,
         {"categories": await get_templates(user_id), "len": len},
-        {"usage_text": await lang.text("list.usage_text", user_id)},
-        True,
-        True,
+        keys={"usage_text": await lang.text("list.usage_text", user_id)},
+        cache=True,
     )
 
 
@@ -280,12 +279,11 @@ async def render_menu(user_id: str) -> bytes:
         await lang.text("menu.title", user_id),
         user_id,
         {"categories": categories, "random_command": random_cmd},
-        {
+        keys={
             "menu_category_hint": await lang.text("menu.menu_category_hint", user_id),
             "random_title": await lang.text("menu.random_title", user_id),
         },
-        True,
-        True,
+        cache=True,
     )
 
 
@@ -328,9 +326,8 @@ async def menu_category_handler(bot: Bot, category: str, user_id: str = get_user
                     cat_data["name"],
                     user_id,
                     cat_data,
-                    {"help_hint": await lang.text("menu.menu_cat_help_hint", user_id)},
-                    False,
-                    True,
+                    keys={"help_hint": await lang.text("menu.menu_cat_help_hint", user_id)},
+                    cache=False,
                 ),
                 name="image.png",
             )

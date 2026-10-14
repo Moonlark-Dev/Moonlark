@@ -1,0 +1,3 @@
+plugin: sticker_dl
+commands:
+  sticker-dl: help;1;tools

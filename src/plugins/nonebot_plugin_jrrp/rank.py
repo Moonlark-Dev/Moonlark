@@ -83,7 +83,7 @@ async def get_rank(sender_id: str, reverse: bool = False) -> NoReturn:
         await lang.text("rank.title", sender_id),
         sender_id,
         templates,
-        dict(
+        keys=dict(
             [(key, await lang.text(f"template.{key}", user_id)) for key in ["reverse_title", "unregistered", "title"]]
         ),
     )

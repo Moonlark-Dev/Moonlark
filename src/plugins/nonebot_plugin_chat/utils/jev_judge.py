@@ -108,6 +108,8 @@ class ReplyEvaluation:
     favor_target: Optional[str] = None  # 被评价的昵称；None 表示无需评价
     favor_score: int = 0  # -2 ~ 2（0 表示不变动）
     favor_reason: str = ""
+    favor_message: str = ""  # 触发这次评价的消息原文（用于重复消息门控与落库）
+    favor_confidence: float = 0.0  # Jev 对 favor_score 的置信度（0-1）
     reply_required: bool = False
 
     @property
@@ -144,6 +146,24 @@ def _get_private_target(session: Any) -> Optional[str]:
     if len(others) == 1:
         return others.pop()
     return None
+
+
+def _get_latest_message_text(session: Any, nickname: str) -> str:
+    """取会话缓存里该用户最新的一条消息原文
+
+    好感度评价的对象是「这一轮之前用户说的话」，消息缓存按时间正序排列，
+    因此从后往前找第一条属于该昵称、内容非空的消息。同一条消息被反复发送时，
+    后续的门控（``utils/fav_judge.py``）会据此抬高置信度要求。
+    """
+    for message in reversed(session.cached_messages):
+        if message.get("self"):
+            continue
+        if (message.get("nickname") or "") != nickname:
+            continue
+        content = str(message.get("content") or "").strip()
+        if content:
+            return content
+    return ""
 
 
 async def evaluate_reply(
@@ -280,6 +300,8 @@ async def evaluate_reply(
         if score_value != 0:
             evaluation.favor_target = favor_target_name
             evaluation.favor_score = score_value
+            evaluation.favor_confidence = score_answer.confidence
+            evaluation.favor_message = _get_latest_message_text(session, favor_target_name)
             score_label = await jev_lang.text(f"reply.favor_score.criteria.{score_answer.choice}", lang_str)
             evaluation.favor_reason = await jev_lang.text(
                 "reply.favor_reason", lang_str, score_label, f"{score_answer.confidence:.0%}"
@@ -306,6 +328,8 @@ async def apply_reply_evaluation(processor: "MessageProcessor", evaluation: Repl
             evaluation.favor_target,  # type: ignore[arg-type]
             evaluation.favor_score,
             evaluation.favor_reason,
+            evaluation.favor_message,
+            evaluation.favor_confidence,
         )
         if changed:
             # 好感度变动成功：向会话推送一条事件，让上下文知道这次变动

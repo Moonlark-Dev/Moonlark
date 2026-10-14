@@ -60,6 +60,7 @@ plugins = [
     "nonebot_plugin_openai",
     "nonebot_plugin_pacman",
     "nonebot_plugin_preview",
+    "nonebot_plugin_qq_group",
     "nonebot_plugin_quick_math",
     "nonebot_plugin_ranking",
     "nonebot_plugin_render",
@@ -107,6 +108,7 @@ plugins = [
     "nonebot_plugin_eggstrike",
     "nonebot_plugin_shengcao",
     "nonebot_plugin_md",
+    "nonebot_plugin_sticker_dl",
     "nonebot_plugin_updates",
 ]
 plugin_dirs = []

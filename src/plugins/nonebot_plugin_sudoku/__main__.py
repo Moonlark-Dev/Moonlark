@@ -63,7 +63,7 @@ def number_valid(value: int):
 
 
 async def render(content: dict, user_id: str = get_user_id()):
-    return await render_template("sudoku.html.jinja", "", user_id, content, {}, True)
+    return await render_template("sudoku.html.jinja", "", user_id, content, keys={}, cache=True)
 
 
 @sudoku.assign("new")
