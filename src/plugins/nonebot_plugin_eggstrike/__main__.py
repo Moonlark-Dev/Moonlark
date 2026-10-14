@@ -148,6 +148,82 @@ async def apply_egg_hit(victim_id: str, egg_type: EggTypeData, count: int) -> fl
     return hp_lost
 
 
+async def resolve_throw_options(user_id: str, count: Match[int], egg_type: Match[str]) -> tuple[int, str]:
+    """解析 /splat 的数量与鸡蛋种类：-t/--type 优先（只影响本次，不修改默认选择），否则使用已保存的选择"""
+    egg_count = count.result if count.available else 1
+    if egg_count <= 0:
+        await lang.finish("throw.invalid_count", user_id)
+    if egg_type.available:
+        egg_key = resolve_egg_type(egg_type.result)
+        if egg_key is None:
+            await lang.finish("throw.invalid_type", user_id, egg_type.result, len(EGG_TYPES), "、".join(EGG_TYPES))
+    else:
+        egg_key = await get_selected_egg_type(user_id)
+    return egg_count, egg_key
+
+
+async def resolve_reflection(
+    target_id: str, egg_key: str, flight_count: int
+) -> tuple[str | None, BarrierResult | None]:
+    """解析反弹与屏障：Moonlark 自己会反弹所有鸡蛋；装备了临时屏障的用户也会（有概率）反弹
+
+    返回 ``(reflect_reason, barrier_result)``：砸 Moonlark 自己时 reason 为 ``"reflect"``，
+    屏障反弹为 ``"barrier_reflect"``；未反弹时 reason 为 ``None``，屏障结果可能携带穿透信息。
+    """
+    if flight_count <= 0:
+        return None, None
+    if target_id in get_moonlark_user_ids():
+        return "reflect", None
+    barrier_result = await handle_barrier(target_id, egg_key == ROTTEN_EGG_EX_TYPE)
+    if barrier_result.blocked and barrier_result.reflected:
+        return "barrier_reflect", barrier_result
+    return None, barrier_result
+
+
+async def build_flight_lines(
+    user_id: str,
+    bot: Bot,
+    event: Event,
+    target_id: str,
+    egg_key: str,
+    flight_count: int,
+    reflect_reason: str | None,
+    barrier_result: BarrierResult | None,
+) -> list[str]:
+    """根据命中结果（反弹 / 屏障抵挡 / 直接命中）生成响应文案"""
+    if flight_count <= 0:
+        return []
+    lines: list[str] = []
+    egg_data = EGG_TYPES[egg_key]
+    egg_name = await get_egg_type_name(egg_key, user_id)
+
+    # 反弹时攻击者自己承受所有鸡蛋的伤害与霉运，效果与砸自己一致
+    if reflect_reason is not None:
+        reflected_self_damage = await apply_egg_hit(user_id, egg_data, flight_count)
+        key = "throw.barrier_reflect" if reflect_reason == "barrier_reflect" else "throw.reflect"
+        return [await lang.text(key, user_id, flight_count, egg_name, reflected_self_damage)]
+
+    if barrier_result is not None and barrier_result.blocked:
+        blocks_text = (
+            await lang.text("throw.blocked_broken", user_id)
+            if barrier_result.destroyed
+            else await lang.text("throw.blocked_remaining", user_id, barrier_result.remaining)
+        )
+        lines.append(await lang.text("throw.blocked", user_id, flight_count, egg_name, blocks_text))
+    else:
+        hp_lost = await apply_egg_hit(target_id, egg_data, flight_count)
+        nickname = await get_nickname(target_id, bot, event)
+        if barrier_result is not None and barrier_result.pierced:
+            lines.append(await lang.text("throw.pierced", user_id, egg_name))
+        if hp_lost > 0:
+            lines.append(await lang.text("throw.success_damage", user_id, nickname, flight_count, egg_name, hp_lost))
+        elif (await get_user(target_id)).is_registered():
+            lines.append(await lang.text("throw.success", user_id, nickname, flight_count, egg_name))
+        else:
+            lines.append(await lang.text("throw.success_unregistered", user_id, nickname, flight_count, egg_name))
+    return lines
+
+
 @splat.assign("$main")
 async def throw_egg(
     bot: Bot,
@@ -162,20 +238,8 @@ async def throw_egg(
         await show_egg_types(user_id)
         return
 
-    egg_count = count.result if count.available else 1
-    if egg_count <= 0:
-        await lang.finish("throw.invalid_count", user_id)
-
-    # 解析鸡蛋种类：-t/--type 优先（只影响本次，不修改默认选择），否则使用已保存的选择
-    if egg_type.available:
-        egg_key = resolve_egg_type(egg_type.result)
-        if egg_key is None:
-            await lang.finish("throw.invalid_type", user_id, egg_type.result, len(EGG_TYPES), "、".join(EGG_TYPES))
-    else:
-        egg_key = await get_selected_egg_type(user_id)
-
+    egg_count, egg_key = await resolve_throw_options(user_id, count, egg_type)
     target_id = target.result.target
-    egg_data = EGG_TYPES[egg_key]
     egg_name = await get_egg_type_name(egg_key, user_id)
 
     # 每个鸡蛋都有概率在手上爆炸（爆炸相当于砸自己）；爆炸的鸡蛋不会飞出去
@@ -186,51 +250,13 @@ async def throw_egg(
     if (have := await throw_eggs(user_id, target_id, egg_key, egg_count, bot, flight_count)) is not None:
         await lang.finish("throw.not_enough", user_id, egg_name, have)
 
-    lines = []
-
-    # 反弹与屏障：Moonlark 自己会反弹所有鸡蛋；装备了临时屏障的用户也会（有概率）反弹
-    reflected_self_damage = 0.0
-    reflect_reason: str | None = None
-    if flight_count > 0 and target_id in get_moonlark_user_ids():
-        reflect_reason = "reflect"
-    barrier_result: BarrierResult | None = None
-    if flight_count > 0 and reflect_reason is None:
-        barrier_result = await handle_barrier(target_id, egg_key == ROTTEN_EGG_EX_TYPE)
-        if barrier_result.blocked and barrier_result.reflected:
-            reflect_reason = "barrier_reflect"
-
-    if flight_count > 0:
-        if reflect_reason == "reflect":
-            reflected_self_damage = await apply_egg_hit(user_id, egg_data, flight_count)
-            lines.append(await lang.text("throw.reflect", user_id, flight_count, egg_name, reflected_self_damage))
-        elif reflect_reason == "barrier_reflect":
-            reflected_self_damage = await apply_egg_hit(user_id, egg_data, flight_count)
-            lines.append(
-                await lang.text("throw.barrier_reflect", user_id, flight_count, egg_name, reflected_self_damage)
-            )
-        elif barrier_result is not None and barrier_result.blocked:
-            blocks_text = (
-                await lang.text("throw.blocked_broken", user_id)
-                if barrier_result.destroyed
-                else await lang.text("throw.blocked_remaining", user_id, barrier_result.remaining)
-            )
-            lines.append(await lang.text("throw.blocked", user_id, flight_count, egg_name, blocks_text))
-        else:
-            hp_lost = await apply_egg_hit(target_id, egg_data, flight_count)
-            nickname = await get_nickname(target_id, bot, event)
-            if barrier_result is not None and barrier_result.pierced:
-                lines.append(await lang.text("throw.pierced", user_id, egg_name))
-            if hp_lost > 0:
-                lines.append(
-                    await lang.text("throw.success_damage", user_id, nickname, flight_count, egg_name, hp_lost)
-                )
-            elif (await get_user(target_id)).is_registered():
-                lines.append(await lang.text("throw.success", user_id, nickname, flight_count, egg_name))
-            else:
-                lines.append(await lang.text("throw.success_unregistered", user_id, nickname, flight_count, egg_name))
+    reflect_reason, barrier_result = await resolve_reflection(target_id, egg_key, flight_count)
+    lines = await build_flight_lines(
+        user_id, bot, event, target_id, egg_key, flight_count, reflect_reason, barrier_result
+    )
 
     if exploded > 0:
-        explode_damage = await apply_egg_hit(user_id, egg_data, exploded)
+        explode_damage = await apply_egg_hit(user_id, EGG_TYPES[egg_key], exploded)
         lines.append(await lang.text("throw.explode_hand", user_id, exploded, egg_name, explode_damage))
 
     await splat.finish("\n".join(lines))
