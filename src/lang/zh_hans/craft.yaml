@@ -26,6 +26,18 @@ upgrade:
   maxed: "合成机已满级，无法继续升级。"
   no_vimcoin: "VimCoin 不足！升级需要 {}，当前持有 {}。"
   success: "合成机升级成功！当前等级 {}，可同时合成 {} 个物品，本次升级花费 {} VimCoin。"
+  prompt: |
+    【合成机升级确认】
+    当前等级 {}（{} 个槽位）→ 等级 {}（{} 个槽位）
+    本次升级花费 {} VimCoin。回复 y 确认升级，n 取消。
+  prompt_markdown: |
+    ## 升级合成机
+    > 当前等级 {}（{} 个槽位）
+    > 升级至等级 {}（{} 个槽位）
+    是否花费 **{} VimCoin** 升级？
+  button_yes: 升级
+  button_no: 取消
+  cancel: 已取消升级。
 help:
   description: 合成机
   details: 把原料放进合成机并支付 VimCoin，等待一段时间后取走产物（会自动放入背包）。合成机可使用 VimCoin 升级，等级越高能同时进行的合成越多。

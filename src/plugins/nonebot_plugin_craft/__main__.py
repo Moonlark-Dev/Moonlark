@@ -1,9 +1,12 @@
 from datetime import datetime
 
 from nonebot import logger
-from nonebot_plugin_alconna import Alconna, Args, Subcommand, on_alconna
+from nonebot.adapters import Bot
+from nonebot.adapters.qq import Bot as QQBot
+from nonebot_plugin_alconna import Alconna, Args, Button, Subcommand, UniMessage, on_alconna
 from nonebot_plugin_apscheduler import scheduler
 from nonebot_plugin_larkuser import patch_matcher
+from nonebot_plugin_larkuser.utils.waiter import PromptRetryTooMuch, PromptTimeout, prompt
 from nonebot_plugin_larkutils import get_user_id
 from nonebot_plugin_orm import get_session
 
@@ -26,6 +29,10 @@ from .utils import (
     start_job,
     try_upgrade,
 )
+
+# 升级确认中允许的回复，以及被视为「同意升级」的回复
+ANSWER_ALIASES = {"y", "yes", "n", "no"}
+AGREE_ANSWERS = {"y", "yes"}
 
 alc = Alconna(
     "craft",
@@ -149,14 +156,65 @@ async def _(user_id: str = get_user_id()) -> None:
 
 
 @craft.assign("upgrade")
-async def _(user_id: str = get_user_id()) -> None:
+async def _(bot: Bot, user_id: str = get_user_id()) -> None:
+    """升级合成机：先弹出确认（QQ 官方机器人使用键盘按钮回复），确认后扣费升级"""
+    machine = await get_machine(user_id)
+    cost = get_upgrade_cost(machine.level)
+    if cost is None:
+        await lang.finish("upgrade.maxed", user_id)
+    next_slots = LEVEL_SLOTS[machine.level + 1]
+
+    prompt_data: str | UniMessage = await lang.text(
+        "upgrade.prompt",
+        user_id,
+        machine.level,
+        LEVEL_SLOTS[machine.level],
+        machine.level + 1,
+        next_slots,
+        cost,
+    )
+    if isinstance(bot, QQBot):
+        prompt_data = (
+            UniMessage()
+            .style(
+                await lang.text(
+                    "upgrade.prompt_markdown",
+                    user_id,
+                    machine.level,
+                    LEVEL_SLOTS[machine.level],
+                    machine.level + 1,
+                    next_slots,
+                    cost,
+                ),
+                "markdown",
+            )
+            .keyboard(
+                Button("enter", await lang.text("upgrade.button_yes", user_id), text="y"),
+                Button("enter", await lang.text("upgrade.button_no", user_id), text="n"),
+            )
+        )
     try:
-        level, cost, slots = await try_upgrade(user_id)
+        agreed = await prompt(
+            prompt_data,
+            user_id,
+            checker=lambda message: message.strip().lower() in ANSWER_ALIASES,
+            retry=1,
+            parser=lambda message: message.strip().lower() in AGREE_ANSWERS,
+            ignore_error_details=False,
+            allow_quit=False,
+        )
+    except (PromptTimeout, PromptRetryTooMuch):
+        await lang.finish("upgrade.cancel", user_id)
+    if not agreed:
+        await lang.finish("upgrade.cancel", user_id)
+
+    try:
+        level, paid, slots = await try_upgrade(user_id)
     except NotEnoughVimcoin as error:
         await lang.finish("upgrade.no_vimcoin", user_id, error.need, error.have)
-    if cost == 0:
+    if paid == 0:
         await lang.finish("upgrade.maxed", user_id)
-    await lang.finish("upgrade.success", user_id, level, slots, cost)
+    await lang.finish("upgrade.success", user_id, level, slots, paid)
 
 
 @scheduler.scheduled_job("interval", minutes=1, id="craft_collect_finished")
