@@ -23,8 +23,16 @@ help:
   usage7: email read <email_id> (将邮件标为已读)
 email_list:
   title: 邮件列表
+  title_md: '## 邮件列表（共 {} 封）'
+  empty: '> 暂无未读邮件。'
   time: '时间: {}'
   from: '来自: {}'
   email_id: '邮件 ID: {}'
   items: 包含的物品
   claimed: 已领取
+  claimed_md: '> 已领取'
+  subject_md: '### {}'
+  item_md: '- {} ×{}'
+  action_claim_all_md: '- <qqbot-cmd-input text="{__prefix__}email claim all" show="一键领取" reference="false" />'
+  action_read_all_md: '- <qqbot-cmd-input text="{__prefix__}email read all" show="全部已读" reference="false" />'
+  footer_md: 使用 {__prefix__}email claim <邮件 ID> / {__prefix__}email read <邮件 ID> 领取物品或标记已读，{__prefix__}email 查看未读邮件
