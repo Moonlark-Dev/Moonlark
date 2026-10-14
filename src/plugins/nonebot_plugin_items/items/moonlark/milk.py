@@ -26,7 +26,7 @@ class Milk(ConsumableItem):
         from nonebot_plugin_buff import get_bad_luck_multiplier
         from nonebot_plugin_buff.api import detach_random_negative_buff, get_buff_name
 
-        if random() >= self.SUCCESS_PROBABILITY * await get_bad_luck_multiplier(stack.user_id):
+        if random() >= self.SUCCESS_PROBABILITY * await get_bad_luck_multiplier(stack.user_id):  # nosec B311
             return await self.getText("milk.use_none", stack.user_id)
         attachment = await detach_random_negative_buff(stack.user_id)
         if attachment is None:

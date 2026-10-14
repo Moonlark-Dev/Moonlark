@@ -59,7 +59,7 @@ def roll_hand_explosion(egg_type: str, count: int) -> int:
     chance = EGG_TYPES[egg_type].explode_chance
     if chance <= 0 or count <= 0:
         return 0
-    return sum(1 for _ in range(count) if random() < chance)
+    return sum(1 for _ in range(count) if random() < chance)  # nosec B311
 
 
 async def get_egg_type_name(egg_type: str, user_id: str) -> str:

@@ -280,7 +280,7 @@ async def detach_random_negative_buff(user_id: str) -> Optional[BuffInfo]:
     attachments = await get_negative_attachments(user_id)
     if not attachments:
         return None
-    target = choice(attachments)
+    target = choice(attachments)  # nosec B311
     if await detach_buff(user_id, target.buff_id, layers=1):
         return target
     return None

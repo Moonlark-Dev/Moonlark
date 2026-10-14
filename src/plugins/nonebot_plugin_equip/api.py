@@ -166,12 +166,12 @@ async def handle_barrier(user_id: str, is_rotten_egg_ex: bool) -> "BarrierResult
     row = await get_equipped_row(user_id, "temp_barrier")
     if row is None:
         return BarrierResult(equipped=False, blocked=False, reflected=False)
-    if is_rotten_egg_ex and random() < BARRIER_EX_PIERCE_PROBABILITY:
+    if is_rotten_egg_ex and random() < BARRIER_EX_PIERCE_PROBABILITY:  # nosec B311
         return BarrierResult(equipped=True, blocked=False, reflected=False, pierced=True)
 
     state = _get_state(row)
     remaining = state.get("blocks", TEMP_BARRIER_BLOCKS) - 1
-    reflected = random() < BARRIER_REFLECT_PROBABILITY
+    reflected = random() < BARRIER_REFLECT_PROBABILITY  # nosec B311
     async with get_session() as session:
         db_row = await session.get(Equipped, row.id_)
         if db_row is None:
