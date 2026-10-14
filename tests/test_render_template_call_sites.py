@@ -114,11 +114,38 @@ def larkhelp_render_calls(monkeypatch: pytest.MonkeyPatch) -> list[tuple[tuple[A
 
 
 @pytest.mark.asyncio
-async def test_larkhelp_help_render_uses_keywords(
+async def test_larkhelp_help_render_prefers_panel(
     larkhelp_render_calls: list[tuple[tuple[Any, ...], dict[str, Any]]],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """/help 的渲染只传 4 个位置参数，cache 用关键字，且绝不出现 viewport"""
+    """字体可用时 /help 走 Pillow 面板，完全不碰 render_template"""
     import nonebot_plugin_larkhelp.__main__ as module
+
+    panel_calls: list[tuple[str, dict]] = []
+
+    async def fake_render_panel(user_id: str, help_list: dict) -> bytes:
+        panel_calls.append((user_id, help_list))
+        return b"panel-bytes"
+
+    monkeypatch.setattr(module.help_panel, "font_available", lambda: True)
+    monkeypatch.setattr(module.help_panel, "render_help_panel", fake_render_panel)
+
+    result = await module.render("mlsid::--lang=zh_hans;--theme=default;--ignore-cache=y")
+
+    assert result == b"panel-bytes"
+    assert panel_calls and panel_calls[0][0].startswith("mlsid::")
+    assert not larkhelp_render_calls, "字体可用时不得回落 HTML 渲染"
+
+
+@pytest.mark.asyncio
+async def test_larkhelp_help_render_fallback_uses_keywords(
+    larkhelp_render_calls: list[tuple[tuple[Any, ...], dict[str, Any]]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """字体缺失时回落 HTML：只传 4 个位置参数，cache 用关键字，且绝不出现 viewport"""
+    import nonebot_plugin_larkhelp.__main__ as module
+
+    monkeypatch.setattr(module.help_panel, "font_available", lambda: False)
 
     await module.render("mlsid::--lang=zh_hans;--theme=default;--ignore-cache=y")
 
@@ -126,7 +153,7 @@ async def test_larkhelp_help_render_uses_keywords(
     args, kwargs = larkhelp_render_calls[0]
     assert args[0] == "help.html.jinja"
     assert len(args) == len(_REQUIRED_POSITIONAL), f"位置参数过多，viewport 位置被布尔值顶掉了：{args!r}"
-    assert kwargs["cache"] is True
+    assert kwargs["cache"] is False
     assert "viewport" not in kwargs
     assert not any(isinstance(value, bool) for value in args)
 
