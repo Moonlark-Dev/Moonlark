@@ -18,7 +18,7 @@ require("nonebot_plugin_waiter")
 require("nonebot_plugin_apscheduler")
 
 
-from .matchers import recorder, panel, whoami, register, setnick, getid
+from .matchers import recorder, panel, whoami, register, setnick, getid, rescue
 from .matchers import subaccount_admin
 from .utils.matcher import patch_matcher
 from .utils.level import get_level_by_experience

@@ -33,8 +33,29 @@ getid:
     当前账号 ID: {}
     主账号 ID: {}
 downed:
-  prompt: "你已倒地（HP 为 0），暂时无法与 Moonlark 正常交流……约 {} 后复活。"
-  revived: "你已复活！HP 已恢复至 5。"
+  prompt: "你已倒地（HP 为 0），暂时无法与 Moonlark 正常交流……约 {} 后自动恢复为 1 HP，也可以让群友使用 rescue 指令救起你。"
+  revived: "你已自动恢复！HP 已恢复至 1。"
+rescue:
+  group_only: 请在群聊中使用该指令！
+  no_target: 请使用 rescue @用户 指定要救起的用户！
+  not_downed: "{} 现在没有倒地，无需救起。"
+  pay_prompt: "救起 {} 需要花费 {} vi，费用由谁支付？\n回复 1：由我支付\n回复 2：由 {} 支付\n回复 q：取消"
+  pay_prompt_markdown: |
+    ## 救起倒地用户
+
+    救起 {} 需要花费 {} vi，费用由谁支付？
+
+    请点击下方按钮选择喵~
+  button_rescuer_pay: 由我支付
+  button_target_pay: 由 {} 支付
+  button_quit: 取消
+  insufficient: "你的 VimCoin 不足（需要 {} vi），无法支付救起费用。"
+  target_insufficient: "{} 的 VimCoin 不足（需要 {} vi），无法支付救起费用。"
+  success: "你已成功救起 {}！对方已恢复 5 HP。"
+help_rescue:
+  description: 救起倒地用户
+  details: 花费 50 vi 救起一位倒地的用户，并选择费用由谁支付
+  usage1: rescue @用户 (花费 50 vi 救起倒地用户，可选择费用由自己或对方支付)
 whoami:
   info: |
     帐号实际ID: {}
