@@ -24,6 +24,7 @@ class BuffDefinition:
         max_layers: 最大层数；1 表示不支持叠加，大于 1 表示支持叠加
         default_duration: 未显式指定时间维度时使用的默认持续时间
         default_count: 未显式指定次数维度时使用的默认触发次数
+        is_negative: 是否为负面效果（牛奶等道具会随机移除一个负面效果）
     """
 
     id: str
@@ -33,6 +34,7 @@ class BuffDefinition:
     max_layers: int = 1
     default_duration: Optional[timedelta] = None
     default_count: Optional[int] = None
+    is_negative: bool = False
 
     @property
     def stackable(self) -> bool:

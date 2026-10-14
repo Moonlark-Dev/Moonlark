@@ -11,8 +11,31 @@ pawcoin:
   name: 猫爪币
 egg:
   name: 鸡蛋
+  usage: "向指定用户投掷：{__prefix__}splat <@目标> [数量]"
 rotten_egg:
   name: 臭鸡蛋
+  usage: "向指定用户投掷：{__prefix__}splat <@目标> [数量] -t rotten_egg"
+rotten_egg_ex:
+  name: 臭鸡蛋Ex
+  description: "发酵到极致的臭鸡蛋，命中后猛烈爆炸：恶臭持续更久、扣血更多。小心它也有概率在你手上爆炸！（3%）"
+  usage: "向指定用户投掷：{__prefix__}splat <@目标> [数量] -t rotten_egg_ex"
+milk:
+  name: 牛奶
+  description: "香浓的牛奶。喝下去有 90% 概率消除一个随机的负面效果（多层的只消除一层）。"
+  usage: "喝掉它：{__prefix__}consumables use <序号>"
+  use_none: "你喝下了牛奶……但似乎什么都没有发生。"
+  use_success: "你喝下了牛奶，浑身清爽！负面效果「{}」被消除了。"
+cake:
+  name: 蛋糕
+  description: "香甜松软的蛋糕。吃掉它回满血，或者在每天送一个给 Moonlark 博取好感（好感 +3）。"
+  usage: "吃掉它：{__prefix__}consumables use <序号>（赠送请用 {__prefix__}present）"
+  use_unregistered: 你还没有注册，没有血量可以回复。
+  use_full: 你已经满血了，蛋糕还是先留着吧。
+  use_heal: "你吃掉了蛋糕，回满了 {} 点 HP！"
+temp_barrier:
+  name: 临时屏障
+  description: "消耗性装备：装备后抵挡 20 次 splat 攻击，每次被击中时有 2% 概率把鸡蛋反弹回攻击者。臭鸡蛋 Ex 有 80% 概率击穿屏障。"
+  usage: "装备它：{__prefix__}equip <背包序号>"
 dice:
   name: 二十面骰子
   description: "命运的二十面体，掷出的每一面都可能是惊喜或惊吓！"

@@ -20,9 +20,11 @@ from .api import (  # noqa: F401, E402
     clear_buffs,
     consume_buff,
     detach_buff,
+    detach_random_negative_buff,
     get_buff_attachment,
     get_buff_attachments,
     get_buff_layers,
+    get_buff_name,
     has_buff,
 )
 from .builtin import (  # noqa: F401, E402

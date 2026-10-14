@@ -7,6 +7,9 @@ from ...lang import lang
 
 
 class Egg(Item):
+    # 在输入框补 @ 目标后扔出（/splat）
+    usage_command = "splat"
+
     def setupLang(self) -> None:
         self.lang = lang
 

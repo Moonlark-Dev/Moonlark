@@ -17,6 +17,8 @@ alc = Alconna(
     Subcommand("drop", Args["index", int], Args["count", int, 0]),
     Subcommand("tidy"),
     Subcommand("move", Args["origin", int], Args["target", int], Args["count", int, 0]),
+    # bag usage / bag use：展示物品的使用指令（QQ 平台附带可点击按钮）
+    Subcommand("usage", Args["index?", int], alias=["use"]),
 )
 bag = on_alconna(alc)
 patch_matcher(bag)
