@@ -5,6 +5,7 @@ from nonebot_plugin_alconna import Button, UniMessage
 from nonebot_plugin_render.render import render_template
 from nonebot_plugin_items.utils.string import get_location_by_id
 from nonebot_plugin_items.utils.get import get_item
+from nonebot_plugin_larkutils.cache import create_image_markdown
 from nonebot_plugin_larkutils.command import get_command_prefix
 from ..utils.read import mark_email_read
 from ..utils.unread import get_unread_email
@@ -46,11 +47,12 @@ async def _(bot: Bot, user_id: str = get_user_id()) -> None:
         },
     )
     if isinstance(bot, QQBot):
-        # QQ 官方：邮件列表后附带「一键领取」「全部已读」按钮
+        # QQ 官方：带键盘按钮的消息必须是 markdown 类型，
+        # 图片需先上传图床并以 markdown 图片代码发出，否则 QQ API 会返回「无效 markdown content」
         prefix = get_command_prefix()
         await (
             UniMessage()
-            .image(raw=image)
+            .style(await create_image_markdown(image), "markdown")
             .keyboard(
                 Button("enter", await lang.text("button.claim_all", user_id), text=f"{prefix}email claim all"),
                 Button("enter", await lang.text("button.read_all", user_id), text=f"{prefix}email read all"),
