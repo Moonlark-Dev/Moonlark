@@ -19,11 +19,11 @@ from typing import Optional
 from nonebot_plugin_alconna import UniMessage
 
 from nonebot_plugin_larkuser import get_user
-from nonebot_plugin_render import render_template
 from ...lang import lang
 from ...models import CommentData
 from nonebot_plugin_orm import AsyncSession, async_scoped_session
 from sqlalchemy import select
+from .render import CommentView, render_comment_image
 
 
 async def get_comment_list(belong: int, session: async_scoped_session | AsyncSession) -> list[CommentData]:
@@ -31,21 +31,19 @@ async def get_comment_list(belong: int, session: async_scoped_session | AsyncSes
 
 
 async def generate(comments: list[CommentData], cave_id: int, user_id: str) -> bytes:
-    return await render_template(
-        "cave_comment.html.jinja",
-        await lang.text("comment.title", user_id, cave_id),
-        user_id,
+    views: list[CommentView] = [
         {
-            "comments": [
-                {
-                    "author": (await get_user(comment.author)).get_nickname(),
-                    "time": comment.time.strftime("%Y-%m-%d %H:%M:%S"),
-                    "id": await lang.text("comment.id", user_id, comment.id),
-                    "text": comment.content.replace("<", "&lt;").replace(">", "&gt;"),
-                }
-                for comment in comments
-            ]
-        },
+            "nickname": (await get_user(comment.author)).get_nickname(),
+            "time": comment.time.strftime("%Y-%m-%d %H:%M:%S"),
+            "id": await lang.text("comment.id", user_id, comment.id),
+            "text": comment.content,
+        }
+        for comment in comments
+    ]
+    return render_comment_image(
+        await lang.text("comment.title", user_id, cave_id),
+        await lang.text("comment.footer", user_id),
+        views,
     )
 
 
