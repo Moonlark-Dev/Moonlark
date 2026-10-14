@@ -34,3 +34,9 @@ commands:
       - help_subaccount.usage3
       - help_subaccount.usage4
     category: superuser
+  rescue:
+    description: help_rescue.description
+    details: help_rescue.details
+    usages:
+      - help_rescue.usage1
+    category: community
