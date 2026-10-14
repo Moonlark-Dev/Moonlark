@@ -40,6 +40,15 @@ rescue:
   no_target: 请使用 rescue @用户 指定要救起的用户！
   not_downed: "{} 现在没有倒地，无需救起。"
   pay_prompt: "救起 {} 需要花费 {} vi，费用由谁支付？\n回复 1：由我支付\n回复 2：由 {} 支付\n回复 q：取消"
+  pay_prompt_markdown: |
+    ## 救起倒地用户
+
+    救起 {} 需要花费 {} vi，费用由谁支付？
+
+    请点击下方按钮选择喵~
+  button_rescuer_pay: 由我支付
+  button_target_pay: 由 {} 支付
+  button_quit: 取消
   insufficient: "你的 VimCoin 不足（需要 {} vi），无法支付救起费用。"
   target_insufficient: "{} 的 VimCoin 不足（需要 {} vi），无法支付救起费用。"
   success: "你已成功救起 {}！对方已恢复 5 HP。"

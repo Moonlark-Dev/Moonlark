@@ -16,7 +16,8 @@
 # ##############################################################################
 
 from nonebot.adapters import Bot, Event
-from nonebot_plugin_alconna import Alconna, Args, At, Match, on_alconna
+from nonebot.adapters.qq.bot import Bot as QQBot
+from nonebot_plugin_alconna import Alconna, Args, At, Button, Match, UniMessage, on_alconna
 from nonebot_plugin_larkutils import get_main_account, get_user_id, is_private_message
 
 from ..lang import lang
@@ -27,6 +28,28 @@ from ..utils.user import get_user
 from ..utils.waiter import prompt
 
 rescue = patch_matcher(on_alconna(Alconna("rescue", Args["target", At])))
+
+
+async def build_pay_message(bot: Bot, user_id: str, nickname: str) -> str | UniMessage:
+    """构建支付方选择提示。
+
+    QQ 官方机器人附带 由我支付/由对方支付/取消 三个按钮（an ``enter`` 按钮会把
+    ``text`` 原样发回聊天，由 prompt 等待器接收），其他平台保持纯文本提示。
+    """
+    if not isinstance(bot, QQBot):
+        return await lang.text("rescue.pay_prompt", user_id, nickname, RESCUE_COST, nickname)
+    return (
+        UniMessage()
+        .style(
+            await lang.text("rescue.pay_prompt_markdown", user_id, nickname, RESCUE_COST, nickname),
+            "markdown",
+        )
+        .keyboard(
+            Button("enter", await lang.text("rescue.button_rescuer_pay", user_id), text="1"),
+            Button("enter", await lang.text("rescue.button_target_pay", user_id, nickname), text="2"),
+            Button("enter", await lang.text("rescue.button_quit", user_id), text="q"),
+        )
+    )
 
 
 @rescue.handle()
@@ -46,7 +69,7 @@ async def _(
     nickname = await get_nickname(target_adapter_id, bot, event)
     rescuer = await get_user(user_id)
     downed_user = await get_user(target_id)
-    pay_prompt = await lang.text("rescue.pay_prompt", user_id, nickname, RESCUE_COST, nickname)
+    pay_prompt = await build_pay_message(bot, user_id, nickname)
     choice = await prompt(
         pay_prompt,
         user_id,
