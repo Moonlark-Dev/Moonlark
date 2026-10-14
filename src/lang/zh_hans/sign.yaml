@@ -30,6 +30,7 @@ button:
   not_registered: 您还未注册喵~请先发送 {__prefix__}register 完成注册后再来签到！
   jrrp: 今日人品
   email: 查看邮件
+  updates: 查看更新
 luck:
   a: 大吉
   b: 吉

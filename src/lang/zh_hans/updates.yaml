@@ -1,0 +1,5 @@
+none: 当前没有新的更新公告。
+help:
+  description: 查看更新
+  details: 查看最新更新公告
+  usage1: updates (查看最新更新公告)
