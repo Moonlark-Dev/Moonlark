@@ -13,7 +13,20 @@ import pytest
 import yaml
 
 _SHOP_LANG = Path(__file__).parent.parent / "src" / "lang" / "zh_hans" / "shop.yaml"
-_GOODS_NAMES = ["小鱼干", "毛线球", "铃铛项圈", "猫薄荷包", "逗猫棒", "猫罐头", "鸡蛋", "二十面骰子"]
+# 商品名称与跨分类的全局编号一一对应（分类标题出现在新分类的第一件商品之前）
+_GOODS_NAMES = [
+    "小鱼干",
+    "毛线球",
+    "铃铛项圈",
+    "猫薄荷包",
+    "逗猫棒",
+    "猫罐头",
+    "鸡蛋",
+    "二十面骰子",
+    "牛奶",
+    "临时屏障",
+]
+_CATEGORY_HEADERS = {1: "【礼物】", 9: "【消耗品】", 10: "【装备】"}
 
 
 def _flatten(data: dict[str, Any], prefix: str = "") -> dict[str, str]:
@@ -62,10 +75,11 @@ def shop_env(monkeypatch: pytest.MonkeyPatch) -> Any:
 
 
 def _expected_markdown(goods: list[tuple[str, int]]) -> str:
-    items = [
-        f'- <qqbot-cmd-input text="/shop buy {index} 1" show="{name} ({price}vi)" reference="false" />'
-        for index, (name, (_, price)) in enumerate(zip(_GOODS_NAMES, goods), start=1)
-    ]
+    items = []
+    for index, (name, (_, price)) in enumerate(zip(_GOODS_NAMES, goods), start=1):
+        if index in _CATEGORY_HEADERS:
+            items.append(_CATEGORY_HEADERS[index])
+        items.append(f'- <qqbot-cmd-input text="/shop buy {index} 1" show="{name} ({price}vi)" reference="false" />')
     return "\n".join(["## 商店", "> 当前持有：40399.6 VimCoin", "", *items, "", "点击可以进行购买"])
 
 
@@ -123,5 +137,8 @@ async def test_handle_main_other_adapter_sends_plain_text(shop_env: Any, monkeyp
     finish.assert_awaited_once()
     plain = finish.await_args.args[0]
     assert plain.splitlines()[0] == "【Moonlark 商店】当前持有：40399.6 VimCoin"
+    assert "【礼物】" in plain and "【消耗品】" in plain and "【装备】" in plain
     assert "[1] 小鱼干 - 20 VimCoin" in plain
+    assert "[9] 牛奶 - 35 VimCoin" in plain
+    assert "[10] 临时屏障 - 150 VimCoin" in plain
     assert "qqbot-cmd-input" not in plain

@@ -1,0 +1,35 @@
+list:
+  title: "【合成机】等级 {}（可同时合成 {} 个物品）"
+  slots: "槽位占用：{} / {}"
+  upgrade: "升级：花费 {} VimCoin 升到等级 {}（{} 个槽位），指令：{__prefix__}craft upgrade"
+  upgrade_max: "合成机已达满级（{}），无法继续升级。"
+  collected: "已完成合成：{}（产物已放入背包）"
+  jobs_title: "进行中的合成："
+  job: "· {} —— 剩余 {}"
+  jobs_empty: "当前没有进行中的合成（空余槽位：{} / {}）"
+  jobs_empty_after_collect: "刚领取了成品，当前没有进行中的合成（槽位 {} 个）。"
+  footer: "指令：{__prefix__}craft start <配方ID> [数量]、{__prefix__}craft collect、{__prefix__}craft upgrade"
+recipe:
+  title: "【配方】"
+  item: "[{}] {}x{}：消耗 {} + {} VimCoin，耗时 {}"
+start:
+  invalid_recipe: "无效的配方 ID：{}。"
+  invalid_count: "合成数量必须大于 0。"
+  no_slot: "合成槽位已满（可用槽位 {}）！等级决定可同时合成的数量，升级后槽位更多。"
+  not_enough_material: "材料不足：{} 还需要 {} 个（当前只有 {} 个）。"
+  not_enough_vimcoin: "VimCoin 不足！本次合成需要 {}，当前持有 {}。"
+  started: "已开始合成 {} x{}，预计 {} 后完成，完成后会被定时发放到背包。"
+collect:
+  done: "没有可以领取的合成成品。"
+  success: "领取完成！已放入背包：{}"
+upgrade:
+  maxed: "合成机已满级，无法继续升级。"
+  no_vimcoin: "VimCoin 不足！升级需要 {}，当前持有 {}。"
+  success: "合成机升级成功！当前等级 {}，可同时合成 {} 个物品，本次升级花费 {} VimCoin。"
+help:
+  description: 合成机
+  details: 把原料放进合成机并支付 VimCoin，等待一段时间后取走产物（会自动放入背包）。合成机可使用 VimCoin 升级，等级越高能同时进行的合成越多。
+  usage1: craft (查看合成机、配方与进行中的合成)
+  usage2: craft start <配方ID> [数量] (开始合成)
+  usage3: craft collect (收取已完成的合成产物)
+  usage4: craft upgrade (升级合成机，等级 1-4 对应 2/4/6/10 个槽位)

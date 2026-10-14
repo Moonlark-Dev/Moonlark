@@ -19,5 +19,6 @@ require("nonebot_plugin_ranking")
 require("nonebot_plugin_render")
 require("nonebot_plugin_shop")
 require("nonebot_plugin_buff")
+require("nonebot_plugin_equip")
 
-from . import __main__
+from . import __main__ as __main__

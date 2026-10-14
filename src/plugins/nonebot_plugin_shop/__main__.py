@@ -7,7 +7,7 @@ from nonebot_plugin_larklang import LangHelper
 from nonebot_plugin_larkuser import get_user, patch_matcher
 from nonebot_plugin_larkutils import get_user_id
 
-from .goods import GOODS
+from .goods import GOODS, GOODS_CATEGORIES
 from .utils import buy_goods, get_goods_name
 
 alc = Alconna(
@@ -19,6 +19,15 @@ patch_matcher(shop)
 lang = LangHelper()
 
 
+def iter_category_goods():
+    """按分类顺序产出 (全局编号, 分类标识, 物品 ID, 单价)，编号跨分类连续"""
+    index = 1
+    for goods_category, items in GOODS_CATEGORIES.items():
+        for item_id, price in items:
+            yield index, goods_category, item_id, price
+            index += 1
+
+
 async def build_markdown_list(user_id: str, vimcoin: float) -> str:
     """构建 QQ 官方机器人的商店列表 markdown。
 
@@ -26,7 +35,11 @@ async def build_markdown_list(user_id: str, vimcoin: float) -> str:
     编号只用于拼装指令，不展示在商品文本中。
     """
     items = []
-    for index, (item_id, price) in enumerate(GOODS, start=1):
+    current_category = None
+    for index, goods_category, item_id, price in iter_category_goods():
+        if goods_category != current_category:
+            current_category = goods_category
+            items.append(await lang.text(f"category.{goods_category}", user_id))
         name = await get_goods_name(item_id, user_id)
         items.append(await lang.text("list.item_md", user_id, index, name, price))
     return "\n".join(
@@ -49,7 +62,11 @@ async def handle_main(bot: Bot, user_id: str = get_user_id()) -> None:
         await shop.finish()
 
     lines = [await lang.text("list.title", user_id, vimcoin)]
-    for index, (item_id, price) in enumerate(GOODS, start=1):
+    current_category = None
+    for index, goods_category, item_id, price in iter_category_goods():
+        if goods_category != current_category:
+            current_category = goods_category
+            lines.append(await lang.text(f"category.{goods_category}", user_id))
         name = await get_goods_name(item_id, user_id)
         lines.append(await lang.text("list.item", user_id, index, name, price))
     lines.append(await lang.text("list.footer", user_id))

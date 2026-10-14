@@ -1,0 +1,3 @@
+plugin: craft
+commands:
+  craft: help;4;game

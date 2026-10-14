@@ -3,7 +3,8 @@ from typing import Any, Literal
 
 from nonebot.adapters import Bot, Event
 from nonebot_plugin_alconna import Alconna, Args, At, Match, Option, Subcommand, UniMessage, on_alconna
-from nonebot_plugin_buff import attach_bad_luck
+from nonebot_plugin_buff import BAD_LUCK_BUFF_ID, attach_buff
+from nonebot_plugin_equip import BarrierResult, handle_barrier
 from nonebot_plugin_items.utils.string import get_location_by_id
 from nonebot_plugin_larkuser import get_nickname, get_user, patch_matcher
 from nonebot_plugin_larkutils import get_main_account, get_user_id
@@ -18,12 +19,15 @@ from .lang import lang
 from .models import AttackRecord
 from .utils import (
     EGG_TYPES,
-    ROTTEN_EGG_TYPE,
+    EggTypeData,
     NotEnoughEggs,
+    ROTTEN_EGG_EX_TYPE,
     deduct_eggs,
     get_egg_type_name,
+    get_moonlark_user_ids,
     get_selected_egg_type,
     resolve_egg_type,
+    roll_hand_explosion,
     set_selected_egg_type,
 )
 
@@ -80,13 +84,19 @@ async def get_span_text(span: str, user_id: str) -> str:
     return await lang.text(f"span_{span}", user_id)
 
 
-async def throw_eggs(user_id: str, target_id: str, egg_key: str, count: int, bot: Bot) -> int | None:
+async def throw_eggs(
+    user_id: str, target_id: str, egg_key: str, count: int, bot: Bot, record_count: int | None = None
+) -> int | None:
     """扣除鸡蛋并写入攻击记录。
 
     鸡蛋不足且商店有售时，先询问是否购买缺口再重试一次；
     成功返回 None，仍然不足时返回当前持有数量供调用方提示。
+
+    Args:
+        count: 需要扣除的鸡蛋数量
+        record_count: 攻击记录中登记的数量（例如手上爆炸的鸡蛋不会飞出去；None 时与 count 一致）
     """
-    egg_item_id = EGG_TYPES[egg_key][0]
+    egg_item_id = EGG_TYPES[egg_key].item_id
     egg_location = get_location_by_id(egg_item_id)
     await offer_purchase_when_short(user_id, egg_item_id, count, bot)
 
@@ -96,17 +106,42 @@ async def throw_eggs(user_id: str, target_id: str, egg_key: str, count: int, bot
         except NotEnoughEggs as error:
             await session.rollback()
             return error.have
-        session.add(
-            AttackRecord(
-                user_id=user_id,
-                target_id=target_id,
-                count=count,
-                egg_id=egg_item_id,
-                time=datetime.now(),
-            ),
-        )
+        if record_count is None or record_count > 0:
+            session.add(
+                AttackRecord(
+                    user_id=user_id,
+                    target_id=target_id,
+                    count=record_count if record_count is not None else count,
+                    egg_id=egg_item_id,
+                    time=datetime.now(),
+                ),
+            )
         await session.commit()
     return None
+
+
+async def apply_egg_hit(victim_id: str, egg_type: EggTypeData, count: int) -> float:
+    """鸡蛋命中某人：扣血并附着霉运 buff（伤害与霉运时长由鸡蛋种类决定）
+
+    Returns:
+        实际扣除的 HP（未注册的扣 0）
+    """
+    if count <= 0:
+        return 0.0
+    hp_lost = 0.0
+    victim = await get_user(victim_id)
+    if victim.is_registered():
+        before_hp = victim.get_health()
+        await victim.damage(round(count * egg_type.damage, 1))
+        hp_lost = round(before_hp - victim.get_health(), 1)
+    if egg_type.buff_hours > 0:
+        await attach_buff(
+            await get_main_account(victim_id),
+            BAD_LUCK_BUFF_ID,
+            duration=timedelta(hours=egg_type.buff_hours),
+            layers=count,
+        )
+    return hp_lost
 
 
 @splat.assign("$main")
@@ -136,30 +171,65 @@ async def throw_egg(
         egg_key = await get_selected_egg_type(user_id)
 
     target_id = target.result.target
-    egg_damage = EGG_TYPES[egg_key][1]
+    egg_data = EGG_TYPES[egg_key]
     egg_name = await get_egg_type_name(egg_key, user_id)
 
+    # 每个鸡蛋都有概率在手上爆炸（爆炸相当于砸自己）；爆炸的鸡蛋不会飞出去
+    exploded = roll_hand_explosion(egg_key, egg_count)
+    flight_count = egg_count - exploded
+
     # 鸡蛋不足时先询问是否购买缺口，购买后重试（重试结果由 throw_eggs 判定）
-    if (have := await throw_eggs(user_id, target_id, egg_key, egg_count, bot)) is not None:
+    if (have := await throw_eggs(user_id, target_id, egg_key, egg_count, bot, flight_count)) is not None:
         await lang.finish("throw.not_enough", user_id, egg_name, have)
 
-    target_user = await get_user(target_id)
-    hp_lost = 0
-    if target_user.is_registered():
-        before_hp = target_user.get_health()
-        await target_user.damage(egg_count * egg_damage)
-        hp_lost = round(before_hp - target_user.get_health(), 1)
+    lines = []
 
-    # 被臭鸡蛋砸中会被附着霉运 buff（可叠加，每层持续 2 小时）
-    if egg_key == ROTTEN_EGG_TYPE:
-        await attach_bad_luck(await get_main_account(target_id), layers=egg_count)
+    # 反弹与屏障：Moonlark 自己会反弹所有鸡蛋；装备了临时屏障的用户也会（有概率）反弹
+    reflected_self_damage = 0.0
+    reflect_reason: str | None = None
+    if flight_count > 0 and target_id in get_moonlark_user_ids():
+        reflect_reason = "reflect"
+    barrier_result: BarrierResult | None = None
+    if flight_count > 0 and reflect_reason is None:
+        barrier_result = await handle_barrier(target_id, egg_key == ROTTEN_EGG_EX_TYPE)
+        if barrier_result.blocked and barrier_result.reflected:
+            reflect_reason = "barrier_reflect"
 
-    nickname = await get_nickname(target_id, bot, event)
-    if hp_lost > 0:
-        await lang.finish("throw.success_damage", user_id, nickname, egg_count, egg_name, hp_lost)
-    if target_user.is_registered():
-        await lang.finish("throw.success", user_id, nickname, egg_count, egg_name)
-    await lang.finish("throw.success_unregistered", user_id, nickname, egg_count, egg_name)
+    if flight_count > 0:
+        if reflect_reason == "reflect":
+            reflected_self_damage = await apply_egg_hit(user_id, egg_data, flight_count)
+            lines.append(await lang.text("throw.reflect", user_id, flight_count, egg_name, reflected_self_damage))
+        elif reflect_reason == "barrier_reflect":
+            reflected_self_damage = await apply_egg_hit(user_id, egg_data, flight_count)
+            lines.append(
+                await lang.text("throw.barrier_reflect", user_id, flight_count, egg_name, reflected_self_damage)
+            )
+        elif barrier_result is not None and barrier_result.blocked:
+            blocks_text = (
+                await lang.text("throw.blocked_broken", user_id)
+                if barrier_result.destroyed
+                else await lang.text("throw.blocked_remaining", user_id, barrier_result.remaining)
+            )
+            lines.append(await lang.text("throw.blocked", user_id, flight_count, egg_name, blocks_text))
+        else:
+            hp_lost = await apply_egg_hit(target_id, egg_data, flight_count)
+            nickname = await get_nickname(target_id, bot, event)
+            if barrier_result is not None and barrier_result.pierced:
+                lines.append(await lang.text("throw.pierced", user_id, egg_name))
+            if hp_lost > 0:
+                lines.append(
+                    await lang.text("throw.success_damage", user_id, nickname, flight_count, egg_name, hp_lost)
+                )
+            elif (await get_user(target_id)).is_registered():
+                lines.append(await lang.text("throw.success", user_id, nickname, flight_count, egg_name))
+            else:
+                lines.append(await lang.text("throw.success_unregistered", user_id, nickname, flight_count, egg_name))
+
+    if exploded > 0:
+        explode_damage = await apply_egg_hit(user_id, egg_data, exploded)
+        lines.append(await lang.text("throw.explode_hand", user_id, exploded, egg_name, explode_damage))
+
+    await splat.finish("\n".join(lines))
 
 
 async def show_egg_types(user_id: str) -> None:
@@ -168,9 +238,22 @@ async def show_egg_types(user_id: str) -> None:
     current_name = await get_egg_type_name(current, user_id)
     lines = [await lang.text("list.title", user_id, current_name)]
     for index, egg_key in enumerate(EGG_TYPES, start=1):
+        egg_data = EGG_TYPES[egg_key]
         name = await get_egg_type_name(egg_key, user_id)
-        damage = EGG_TYPES[egg_key][1]
-        lines.append(await lang.text("list.item", user_id, index, name, damage))
+        if egg_data.buff_hours > 0:
+            lines.append(
+                await lang.text(
+                    "list.item_buff",
+                    user_id,
+                    index,
+                    name,
+                    egg_data.damage,
+                    egg_data.buff_hours,
+                    round(egg_data.explode_chance * 100, 1),
+                )
+            )
+        else:
+            lines.append(await lang.text("list.item", user_id, index, name, egg_data.damage))
     lines.append(await lang.text("list.footer", user_id))
     await splat.finish("\n".join(lines))
 

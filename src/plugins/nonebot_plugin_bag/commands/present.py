@@ -1,4 +1,5 @@
 import time
+from datetime import datetime
 from types import SimpleNamespace
 
 from nonebot import logger
@@ -143,8 +144,23 @@ async def _(
     gift_item: GiftItem = item.stack.item
     item_name = await item.stack.getName()
 
-    fav_increase = gift_item.fav_value * count
     user = await get_user(user_id)
+
+    # 部分礼物有每日赠送上限（如蛋糕每天只能送一个）
+    daily_limit = gift_item.daily_gift_limit
+    if daily_limit:
+        today = datetime.now().strftime("%Y-%m-%d")
+        config_key = f"daily_gift_{gift_item.getLocation().getItemID()}"
+        last_gifted_date = user.get_config_key(config_key)
+        if last_gifted_date == today:
+            await item.unlock_item()
+            await lang.finish("present.daily_limited_today", user_id, daily_limit)
+        if count > daily_limit:
+            await item.unlock_item()
+            await lang.finish("present.daily_limit", user_id, daily_limit)
+        await user.set_config_key(config_key, today)
+
+    fav_increase = gift_item.fav_value * count
     await user.add_fav(fav_increase)
 
     item.stack.count -= count

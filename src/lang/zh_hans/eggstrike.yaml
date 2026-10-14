@@ -6,9 +6,17 @@ throw:
   success_damage: "你向 {} 扔了 {} 个{}，砸掉了对方 {} 点 HP！"
   success: "你向 {} 扔了 {} 个{}，没有造成伤害。"
   success_unregistered: "你向 {} 扔了 {} 个{}，对方未注册，没有造成伤害。"
+  reflect: "对方是 Moonlark，{} 个{}被反弹了回来，全部砸在了你自己身上！扣掉 {} 点 HP。"
+  barrier_reflect: "对方的临时屏障把 {} 个{}反弹了回来，砸在了你自己身上！扣掉 {} 点 HP。"
+  blocked: "对方的临时屏障挡下了 {} 个{}。（{}）"
+  blocked_remaining: "屏障剩余抵挡次数：{}"
+  blocked_broken: "对方的临时屏障被打碎了！"
+  pierced: "{} 击穿了对方的临时屏障！"
+  explode_hand: "有 {} 个{}在你手上爆炸了！你被溅得一脸臭，扣掉 {} 点 HP，霉运缠身。"
 list:
   title: "【当前选择的鸡蛋】{}"
   item: "[{}] {} - 每个造成 {} 点伤害"
+  item_buff: "[{}] {} - 每个造成 {} 点伤害，恶臭 {} 小时，手上爆炸率 {}%"
   footer: "使用 {__prefix__}splat switch <数字> 切换默认鸡蛋"
 switch:
   invalid_index: "无效的鸡蛋编号，可用编号 1-{}。"
@@ -31,9 +39,9 @@ span_30d: "30 天"
 span_total: 总共
 help:
   description: 砸鸡蛋
-  details: 向指定用户丢鸡蛋造成伤害，查看被砸 / 丢鸡蛋排行榜和个人砸鸡蛋信息。
+  details: 向指定用户丢鸡蛋造成伤害，查看被砸 / 丢鸡蛋排行榜和个人砸鸡蛋信息。臭鸡蛋会附着霉运，臭鸡蛋 Ex 命中后爆炸，Moonlark 会反弹所有鸡蛋。
   usage1: "splat (查看鸡蛋种类及当前选择)"
   usage2: "splat switch <数字> (切换默认鸡蛋种类)"
-  usage3: "splat <@用户> [数量] [-t/--type <数字|英文id>] (向指定用户丢鸡蛋，每个鸡蛋减 0.2 HP，臭鸡蛋减 1 HP)"
+  usage3: "splat <@用户> [数量] [-t/--type <数字|英文id>] (向指定用户丢鸡蛋，鸡蛋减 0.2 HP，臭鸡蛋减 1 HP 且附着霉运，臭鸡蛋 Ex 减 2 HP、恶臭 6 小时，砸中 Moonlark 会被反弹)"
   usage4: "splat rank/throwers [7d|30d|total] (被砸 / 丢鸡蛋排行榜)"
   usage5: "splat info [@用户] (查询砸鸡蛋信息)"

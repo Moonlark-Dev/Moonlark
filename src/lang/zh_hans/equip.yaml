@@ -1,0 +1,26 @@
+list:
+  title: "【装备栏】"
+  empty: "你还没有装备任何装备。使用 {__prefix__}equip <背包序号> 装备背包中的装备。"
+  item: "{} {}"
+  footer: "使用 {__prefix__}equip <背包序号> 装备，{__prefix__}equip off <类型> 卸下"
+state:
+  blocks: "剩余抵挡 {} 次攻击"
+use:
+  success: "已装备 {}！"
+  not_found: 失败：背包里找不到该序号的物品。
+  not_equipment: 这个物品不是装备，无法装备。
+  already_equipped: "你已经装备了同类型的装备（{}），请先卸下再更换。"
+unequip:
+  invalid_type: "无效的装备类型：{}。可用类型：temp_barrier（临时屏障）。"
+  not_equipped: 该类型当前没有装备中的装备。
+  success: "已卸下 {}，物品已放回背包。"
+equipment:
+  temp_barrier:
+    name: 临时屏障
+    description: "抵挡 20 次 splat 攻击，被击中时有 2% 概率把攻击反弹回攻击者。"
+help:
+  description: 装备栏
+  details: 查看装备的装备。装备激活后获得对应的被动效果，每一种类型的装备只能同时装备一件。
+  usage1: equip (查看装备栏)
+  usage2: equip <背包序号> (装备背包中的装备)
+  usage3: equip off <类型> (卸下指定类型的装备)
