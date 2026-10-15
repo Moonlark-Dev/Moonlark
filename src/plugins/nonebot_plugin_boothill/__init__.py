@@ -7,8 +7,7 @@ __plugin_meta__ = PluginMetadata(
     usage="",
 )
 
-require("nonebot_plugin_alconna")
-require("nonebot_plugin_render")
 require("nonebot_plugin_larklang")
+require("nonebot_plugin_larkutils")
 
 from . import __main__
