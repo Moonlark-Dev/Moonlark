@@ -1,7 +1,7 @@
 """add updates read status
 
 迁移 ID: 447403958b5a
-父迁移: 398dc14b670d
+父迁移: f2a96c4be153
 创建时间: 2026-10-14 23:33:31.303931
 
 """
@@ -14,7 +14,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision: str = "447403958b5a"
-down_revision: str | Sequence[str] | None = "398dc14b670d"
+down_revision: str | Sequence[str] | None = "f2a96c4be153"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
