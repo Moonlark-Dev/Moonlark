@@ -62,6 +62,7 @@ async def test_build_button_invite_and_jrrp(monkeypatch: pytest.MonkeyPatch) -> 
 
     handler = _make_handler(bot=MagicMock())
     monkeypatch.setattr("nonebot_plugin_sign.__main__.get_unread_email_count", AsyncMock(return_value=0))
+    monkeypatch.setattr("nonebot_plugin_sign.__main__.has_new_update", AsyncMock(return_value=False))
     monkeypatch.setattr(config, "command_start", ["/"])
     buttons = await handler.build_button()
 
@@ -77,12 +78,29 @@ async def test_build_button_adds_email_when_unread(monkeypatch: pytest.MonkeyPat
 
     handler = _make_handler(bot=MagicMock())
     monkeypatch.setattr("nonebot_plugin_sign.__main__.get_unread_email_count", AsyncMock(return_value=2))
+    monkeypatch.setattr("nonebot_plugin_sign.__main__.has_new_update", AsyncMock(return_value=False))
     monkeypatch.setattr(config, "command_start", ["/"])
     buttons = await handler.build_button()
 
     assert len(buttons) == 3
     assert str(buttons[-1].label) == "text::button.email"
     assert buttons[-1].text == "/email"
+
+
+@pytest.mark.asyncio
+async def test_build_button_adds_updates_when_new_update(monkeypatch: pytest.MonkeyPatch) -> None:
+    """有未阅读的更新公告时键盘应额外包含 查看更新 按钮并指向 updates 指令"""
+    from nonebot_plugin_sign.__main__ import config
+
+    handler = _make_handler(bot=MagicMock())
+    monkeypatch.setattr("nonebot_plugin_sign.__main__.get_unread_email_count", AsyncMock(return_value=0))
+    monkeypatch.setattr("nonebot_plugin_sign.__main__.has_new_update", AsyncMock(return_value=True))
+    monkeypatch.setattr(config, "command_start", ["/"])
+    buttons = await handler.build_button()
+
+    assert len(buttons) == 3
+    assert str(buttons[-1].label) == "text::button.updates"
+    assert buttons[-1].text == "/updates"
 
 
 def _make_markdown_handler(monkeypatch: pytest.MonkeyPatch, event: MagicMock) -> tuple[object, list]:
