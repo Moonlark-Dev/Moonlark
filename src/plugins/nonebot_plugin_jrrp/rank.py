@@ -14,9 +14,11 @@ from nonebot_plugin_chat.core.session import post_group_event
 
 async def get_user_list() -> AsyncGenerator[tuple[str, int], None]:
     session = get_session()
-    for user in await get_registered_user_ids():
-        yield user, await get_luck_value(user)
-    await session.close()
+    try:
+        for user in await get_registered_user_ids():
+            yield user, await get_luck_value(user)
+    finally:
+        await session.close()
 
 
 async def get_rank(sender_id: str, reverse: bool = False) -> NoReturn:
