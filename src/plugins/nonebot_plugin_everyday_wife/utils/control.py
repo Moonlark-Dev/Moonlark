@@ -77,9 +77,11 @@ async def marry(couple: tuple[str, str], group_id: str) -> None:
     session = get_scoped_session()
 
     # 先解除双方现有的匹配关系
-    for user in couple:
-        await divorce(group_id, session, user)
-    await session.close()
+    try:
+        for user in couple:
+            await divorce(group_id, session, user)
+    finally:
+        await session.close()
 
     # 创建新的双向匹配记录
     async with get_session() as session:

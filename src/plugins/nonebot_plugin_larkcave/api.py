@@ -42,13 +42,15 @@ async def get_image_data(cave_id: int) -> AsyncGenerator[Image, None]:
     :param cave_id: 所属回声洞 ID
     """
     session = get_scoped_session()
-    for image in await session.scalars(select(ImageData).where(ImageData.belong == cave_id)):
-        try:
-            data = await get_image(str(image.id), session)
-            yield Image(id=float(image.id), name=str(image.name), data=base64.b64encode(data.data).decode())
-        except Exception as e:
-            logger.error(f"获取 CAVE 图片信息失败 ({image.id=}, {e=}): {traceback.format_exc()}")
-    await session.close()
+    try:
+        for image in await session.scalars(select(ImageData).where(ImageData.belong == cave_id)):
+            try:
+                data = await get_image(str(image.id), session)
+                yield Image(id=float(image.id), name=str(image.name), data=base64.b64encode(data.data).decode())
+            except Exception as e:
+                logger.error(f"获取 CAVE 图片信息失败 ({image.id=}, {e=}): {traceback.format_exc()}")
+    finally:
+        await session.close()
 
 
 @app.get("/api/cave/random")

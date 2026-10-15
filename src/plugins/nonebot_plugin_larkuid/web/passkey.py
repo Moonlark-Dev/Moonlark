@@ -430,8 +430,10 @@ async def passkey_delete(
 @scheduler.scheduled_job("interval", minutes=10, id="remove_expired_passkey_challenges")
 async def _remove_expired_challenges() -> None:
     session = get_session()
-    result = await session.scalars(select(PasskeyChallenge).where(PasskeyChallenge.expires_at <= utcnow()))
-    for item in result.all():
-        await session.delete(item)
-    await session.commit()
-    await session.close()
+    try:
+        result = await session.scalars(select(PasskeyChallenge).where(PasskeyChallenge.expires_at <= utcnow()))
+        for item in result.all():
+            await session.delete(item)
+        await session.commit()
+    finally:
+        await session.close()
