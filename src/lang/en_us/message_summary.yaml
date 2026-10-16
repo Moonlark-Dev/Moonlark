@@ -433,3 +433,12 @@ mvp_ranking:
     如果未找到 MVP：
     {{"found": false, "nickname": "", "comment": ""}}
 analyzing: Analyzing, please wait...
+decision:
+  no_messages: 群内暂无消息记录，无法生成处分通知。
+  no_punishment: 请指定处分内容，例如：decision @群友 女装
+  generate_failed: 生成处分通知失败，请稍后重试。
+help_decision:
+  description: 虚假处分通知
+  details: 根据群内最近 300 条消息，对指定群员生成一份符合公文格式的虚假处分通知（整活用）。
+  usage1: decision @群友 <处分内容>
+  example: decision @小明 女装
