@@ -104,8 +104,34 @@ async def test_stale_temp_file_is_not_reused(monkeypatch: pytest.MonkeyPatch, tm
     assert list(file_module.FILE_CACHE_DIR.glob("temp_*")) == [], "临时文件用完应清理"
 
 
+def _fake_session_with_lock(locked: bool) -> MagicMock:
+    """构造一个只带 openai_messages.fetcher_lock 状态的最小会话"""
+    session = MagicMock()
+    session.processor.openai_messages.fetcher_lock.locked.return_value = locked
+    return session
+
+
+async def test_cleanup_job_skips_when_session_is_processing(monkeypatch: pytest.MonkeyPatch, tmp_path: Any) -> None:
+    """有会话正在处理（fetcher_lock 被占用）时，清理任务应当跳过，不动任何文件"""
+    from nonebot_plugin_chat.core.session import groups as groups_registry
+
+    file_module = await _ready_file_module(monkeypatch, tmp_path)
+    temp_file = file_module.FILE_CACHE_DIR / "temp_leftover.mp4"
+    temp_file.write_bytes(b"x")
+
+    groups_registry.clear()
+    groups_registry["qq_occupied"] = _fake_session_with_lock(locked=True)
+    try:
+        await file_module._cleanup_file_cache()
+        assert temp_file.exists(), "有会话处理中时不应清理缓存文件"
+    finally:
+        groups_registry.pop("qq_occupied", None)
+
+
 async def test_cleanup_job_removes_leftovers(monkeypatch: pytest.MonkeyPatch, tmp_path: Any) -> None:
     """定时清理任务应删除 files/ 目录中残留的 temp_* 与旧版 video_* 文件"""
+    from nonebot_plugin_chat.core.session import groups as groups_registry
+
     file_module = await _ready_file_module(monkeypatch, tmp_path)
     temp_file = file_module.FILE_CACHE_DIR / "temp_leftover.mp4"
     video_file = file_module.FILE_CACHE_DIR / "video_0123456789abcdef.mp4"
@@ -114,7 +140,13 @@ async def test_cleanup_job_removes_leftovers(monkeypatch: pytest.MonkeyPatch, tm
     video_file.write_bytes(b"y")
     other_file.write_bytes(b"z")
 
-    await file_module._cleanup_file_cache()
+    # 全量跑套件时其他测试可能往 groups 留下带状态的会话，清理行为不应被它们影响
+    sessions_backup = dict(groups_registry)
+    groups_registry.clear()
+    try:
+        await file_module._cleanup_file_cache()
+    finally:
+        groups_registry.update(sessions_backup)
 
     assert not temp_file.exists()
     assert not video_file.exists()
