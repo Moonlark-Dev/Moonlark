@@ -73,6 +73,14 @@ reply:
   mood_reason: "由 Jev 判定的心情变动：{0}（置信度 {1}）"
   favor_reason: "{0}（Jev 置信度 {1}）"
 
+sticker:
+  instructions: |
+    请从候选表情包中选出最适合发送的一条，主要依据 `requested_keyword`（请求的关键词）：
+    哪个候选最能表达这个关键词的含义？并没有贴合关键词的候选，或此时不适合发表情包，就选择 none。
+    `chat_context`（最近的聊天记录）与 `thinking_content`（Moonlark 当前的思考内容）仅作辅助参考，
+    例如：关键词是情绪词时，可参考聊天记录判断这个情绪想回应谁；判定为辅助信息与关键词冲突时，以关键词为准。
+  none: 不发送——没有贴合关键词的候选表情包，或此时不适合发送
+
 note_review:
   question: |
     以下是待审查的笔记：{0}

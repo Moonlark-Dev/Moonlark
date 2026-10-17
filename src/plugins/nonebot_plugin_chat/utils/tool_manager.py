@@ -326,7 +326,6 @@ class ToolManager:
 
             # sticker tools
             tools.append(processor.sticker_tools.save_sticker)
-            tools.append(processor.sticker_tools.search_sticker)
             tools.append(processor.sticker_tools.recommend_sticker)
             tools.append(processor.sticker_tools.send_sticker)
 
