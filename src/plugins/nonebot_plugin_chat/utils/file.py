@@ -16,13 +16,12 @@
 # ##############################################################################
 import base64
 import hashlib
-import os
 import traceback
 from pathlib import Path
 from typing_extensions import TypedDict
 
 import httpx
-from nonebot import get_driver, logger
+from nonebot import get_driver, logger, require
 from nonebot.adapters import Bot, Event
 from nonebot.typing import T_State
 from nonebot_plugin_alconna import File
@@ -30,7 +29,9 @@ from nonebot_plugin_localstore import get_cache_dir
 from nonebot_plugin_openai import fetch_message
 from nonebot_plugin_openai.utils.message import generate_message, get_message, get_message_text
 
-from ..config import config
+require("nonebot_plugin_apscheduler")
+from nonebot_plugin_apscheduler import scheduler
+
 from .cache import AsyncCache
 
 # 视频文件扩展名
@@ -47,8 +48,6 @@ class FileCacheData(TypedDict):
     """文件缓存数据结构"""
 
     description: str  # 生成的描述
-    file_id: str  # 临时文件 ID
-    file_path: Path  # 文件本地路径
 
 
 @get_driver().on_startup
@@ -101,26 +100,16 @@ async def describe_video(file_path: Path, file_name: str, user_id: str) -> str:
     Returns:
         str: 视频描述
     """
-    # 计算文件哈希用于缓存
-    file_hash = hashlib.sha256(open(file_path, "rb").read()).hexdigest()
+    # 读取文件内容并计算哈希用于缓存（内容后面还要编码，读一次就够了）
+    video_bytes = file_path.read_bytes()
+    file_hash = hashlib.sha256(video_bytes).hexdigest()
 
     # 检查缓存
     if (cache := await description_cache.get(file_hash)) is not None:
         return cache["description"]
 
-    # 生成外部访问 URL
-    file_id = f"video_{file_hash[:16]}{Path(file_name).suffix}"
-    cache_file_path = FILE_CACHE_DIR / file_id
-
-    # 复制文件到缓存目录（如果不在那里）
-    if not cache_file_path.exists():
-        import shutil
-
-        shutil.copy(file_path, cache_file_path)
-
     try:
-        # 读取视频文件并编码为 base64（Gemini 2.0+ 不再支持外部 HTTP URL）
-        video_bytes = cache_file_path.read_bytes()
+        # 编码为 base64 内联上传（Gemini 2.0+ 不再支持外部 HTTP URL 视频输入）
         video_base64 = base64.b64encode(video_bytes).decode("utf-8")
         video_data_url = f"data:video/mp4;base64,{video_base64}"
 
@@ -142,11 +131,7 @@ async def describe_video(file_path: Path, file_name: str, user_id: str) -> str:
         result = await fetch_message(messages=messages, identify="Video File Describe")
 
         # 缓存结果
-        cache_data: FileCacheData = {
-            "description": result,
-            "file_id": file_id,
-            "file_path": cache_file_path,
-        }
+        cache_data: FileCacheData = {"description": result}
         await description_cache.set(file_hash, cache_data)
 
         return result
@@ -157,6 +142,14 @@ async def describe_video(file_path: Path, file_name: str, user_id: str) -> str:
 
 
 from nonebot.adapters.onebot.v11 import Bot as OneBotV11Bot
+
+
+def _remove_file_quietly(path: Path) -> None:
+    """尽力删除一个缓存文件，失败时只记录日志（清理动作不应打断业务流程）"""
+    try:
+        path.unlink(missing_ok=True)
+    except OSError as e:
+        logger.warning(f"清理 {path} 时出现错误: {e}")
 
 
 async def get_file_url(file_id: str, bot: OneBotV11Bot) -> str:
@@ -192,23 +185,23 @@ async def get_file_summary(segment: File, event: Event, bot: Bot, state: T_State
 
         # 尝试获取视频描述
         if file_url:
-            try:
-                # 下载视频文件
-                file_hash = hashlib.sha256(file_url.encode()).hexdigest()[:16]
-                temp_path = FILE_CACHE_DIR / f"temp_{file_hash}{Path(file_name).suffix}"
+            # 下载视频文件
+            file_hash = hashlib.sha256(file_url.encode()).hexdigest()[:16]
+            temp_path = FILE_CACHE_DIR / f"temp_{file_hash}{Path(file_name).suffix}"
 
-                if not temp_path.exists():
-                    await _download_file(file_url, temp_path)
+            try:
+                # 先移除可能残留的下载临时文件（上次下载中断留下的残档会被误当缓存复用）
+                _remove_file_quietly(temp_path)
+                await _download_file(file_url, temp_path)
 
                 description = await describe_video(temp_path, file_name, event.get_user_id())
-
-                # 清理临时文件
-                if temp_path.exists():
-                    os.remove(temp_path)
-
             except Exception as e:
                 logger.warning(f"获取视频文件失败: {e}")
                 description = "无法获取视频文件"
+            finally:
+                # 清理临时文件
+                _remove_file_quietly(temp_path)
+
     else:
         # 非视频文件
         ext = Path(file_name).suffix.lower()
@@ -219,3 +212,33 @@ async def get_file_summary(segment: File, event: Event, bot: Bot, state: T_State
 
 # 导出供其他模块使用
 __all__ = ["get_file_summary", "is_video_file", "describe_video"]
+
+
+@scheduler.scheduled_job("cron", hour=2, minute=35, id="cleanup_chat_file_cache")
+async def _cleanup_file_cache() -> None:
+    """清理文件缓存目录中残留的下载临时文件与旧版视频副本
+
+    FILE_CACHE_DIR 目前只有两个写入方：
+    - get_file_summary 的下载临时文件（temp_*，正常路径会清理，中断时残留）
+    - 旧版 describe_video 复制的视频副本（video_*，改用 base64 内联后已不再写入，仅存量残留）
+    """
+    from ..core.session import groups
+
+    for session in groups.values():
+        if session.processor.openai_messages.fetcher_lock.locked():
+            logger.debug("跳过清理 chat 文件缓存：有会话正在处理")
+            return
+
+    if not FILE_CACHE_DIR.exists():
+        return
+
+    count = 0
+    for file in FILE_CACHE_DIR.iterdir():
+        if file.is_file() and (file.name.startswith("temp_") or file.name.startswith("video_")):
+            try:
+                file.unlink()
+                count += 1
+            except OSError as e:
+                logger.warning(f"清理 {file} 时出现错误: {e}")
+
+    logger.info(f"已清理 {count} 个 chat 文件缓存文件")
