@@ -78,15 +78,6 @@ class StickerTools:
         except NotMemeError:
             return await lang.text("sticker.not_meme", self.session.lang_str)
 
-    async def recommend_sticker(self) -> str:
-        """
-        推荐表情包
-        """
-        recommend_str = await lang.text("fetcher.sticker_recommendation", self.session.lang_str)
-        async for sticker in self.session.processor.generate_sticker_recommendations():
-            recommend_str += f"\n{sticker}"
-        return recommend_str
-
     async def send_sticker(self, query: str) -> str:
         """根据关键词发送表情包
 

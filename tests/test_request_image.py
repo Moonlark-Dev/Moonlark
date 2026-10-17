@@ -120,7 +120,6 @@ class _FakeSession:
 class _FakeStickerTools:
     def __init__(self) -> None:
         self.save_sticker = _async_tool("save_sticker")
-        self.recommend_sticker = _async_tool("recommend_sticker")
         self.send_sticker = _async_tool("send_sticker")
 
 
@@ -231,5 +230,7 @@ async def test_select_tools_registers_meme_tools_separately(monkeypatch: pytest.
 
     assert "search_meme" in names
     assert "send_meme" in names
+    # 表情包系列只保留 save/send：search（并入 send_sticker 内部）与 recommend 已下线
     assert "search_sticker" not in names
+    assert "recommend_sticker" not in names
     assert "send_sticker" in names
