@@ -15,7 +15,7 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
-from typing import Optional, Any, Literal
+from typing import Optional, Literal
 from typing_extensions import TypedDict
 
 from nonebot_plugin_bots.types import BotStatus
@@ -33,12 +33,6 @@ class EventCounter(TypedDict):
     total: int
     success: int
     failed: int
-
-
-class OpenAIHistory(TypedDict):
-    model: str
-    identify: str
-    messages: list[dict[str, Any]]
 
 
 class HandlerInfo(TypedDict):
@@ -67,6 +61,5 @@ class StatusReport(TypedDict):
     exceptions: list[ExceptionStatus]
     plugins: list[str]
     event_counter: EventCounter
-    openai: list[OpenAIHistory]
     command_usage: dict[str, int]
     handler_results: list[HandlerResult]

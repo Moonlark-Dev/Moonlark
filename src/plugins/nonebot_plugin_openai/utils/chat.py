@@ -22,7 +22,6 @@ from nonebot import logger
 import openai
 from openai.types.shared_params import FunctionDefinition
 from openai.types.chat import ChatCompletionToolMessageParam, ChatCompletionFunctionToolParam
-from nonebot_plugin_status_report import report_openai_history
 from pydantic import BaseModel, ValidationError
 
 from ..types import FunctionParameter, FunctionParameterWithEnum, Messages, AsyncFunction, Message as OpenaiMessage
@@ -101,7 +100,6 @@ class LLMRequestSession(Generic[T2]):
                     retry_count = 0
         finally:
             self._in_request = False
-            await report_openai_history(self.messages, self.identify, self.model)
 
     def _sanitize_messages(self) -> None:
         """清理消息中的空 tool_calls 数组（部分 Provider 会拒绝 tool_calls=[]）"""
