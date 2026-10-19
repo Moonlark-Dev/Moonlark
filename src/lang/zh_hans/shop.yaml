@@ -32,5 +32,6 @@ help:
   usage2: shop buy <编号> [数量] (购买商品)
 category:
   gift: 【礼物】
+  tool: 【道具】
   consumable: 【消耗品】
   equipment: 【装备】
