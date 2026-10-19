@@ -17,7 +17,7 @@
 
 from datetime import datetime, timedelta
 
-from nonebot import logger
+from nonebot import get_driver, logger, require
 from nonebot.message import run_preprocessor
 from nonebot.typing import T_State
 from nonebot.adapters import Event
@@ -30,6 +30,8 @@ from nonebot_plugin_render import render_template
 from sqlalchemy import select, func, desc, distinct
 
 from .models import CommandUsage
+
+require("nonebot_plugin_larkhelp")
 
 lang = LangHelper()
 
@@ -214,3 +216,20 @@ async def handle_cmd_rank(result: Arparma, user_id: str = get_user_id()):
     )
 
     await cmd_rank.finish(UniMessage().image(raw=image))
+
+
+# ============================================================
+# 帮助面板热门指令 provider 注入
+# ============================================================
+
+
+@get_driver().on_startup
+async def register_help_hot_provider() -> None:
+    """启动时向 larkhelp 注入热门指令 provider（帮助面板「热门指令」条带）。
+
+    larkhelp 不反向依赖本插件：未启用指令统计时面板自动省略热门分区。
+    """
+    from nonebot_plugin_larkhelp import panel
+
+    panel.register_hot_provider(lambda: get_command_ranking(days=7, limit=10))
+    logger.debug("nonebot_plugin_larkhelp: 已注入热门指令 provider")
