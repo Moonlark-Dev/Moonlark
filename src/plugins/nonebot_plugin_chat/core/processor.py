@@ -5,7 +5,7 @@ import math
 import random
 import re
 from datetime import datetime, timedelta
-from typing import TYPE_CHECKING, Any, AsyncGenerator, Literal, Optional
+from typing import TYPE_CHECKING, Any, Literal, Optional
 
 from nonebot.adapters import Event
 from nonebot.adapters.onebot.v11 import Bot as OB11Bot
@@ -20,13 +20,12 @@ from nonebot_plugin_openai.types import Message as OpenAIMessage
 from nonebot_plugin_openai.utils.chat import fetch_json, fetch_message
 from nonebot_plugin_orm import get_session
 from pydantic import BaseModel
-from sqlalchemy import select
 
 from nonebot_plugin_chat.utils.group import LinkParser
 from nonebot_plugin_chat.utils.token_bucket import TokenBucket
 
 from ..config import config
-from ..models import ChatGroup, PreTriggerSignals, Sticker, UserProfile
+from ..models import ChatGroup, PreTriggerSignals, UserProfile
 from ..types import CachedMessage
 from ..utils.ai_agent import AskAISession
 from ..utils.emoji import QQ_EMOJI_MAP
@@ -852,30 +851,6 @@ class MessageProcessor:
                         await self.session.text("prompt_group.member_info", nickname, fav, fav_level, profile),
                     )
         return profiles
-
-    async def generate_sticker_recommendations(self) -> AsyncGenerator[str, None]:
-        chat_history = "\n".join(self.get_message_content_list())
-        emotion_type = get_status_manager().get_status()[0].value
-        async with get_session() as session:
-            results = await session.scalars(
-                select(Sticker).where(
-                    Sticker.context_keywords.isnot(None),
-                    Sticker.emotion.isnot(None),
-                    Sticker.labels.isnot(None),
-                ),
-            )
-            for sticker in results:
-                if sticker.emotion == emotion_type:
-                    yield f"- {sticker.id}: {sticker.description}"
-                    break
-                for keyword in json.loads(sticker.context_keywords or "[]"):
-                    if keyword in chat_history:
-                        yield f"- {sticker.id}: {sticker.description}"
-                        break
-                for label in json.loads(sticker.labels or "[]"):
-                    if label in chat_history or label == emotion_type:
-                        yield f"- {sticker.id}: {sticker.description}"
-                        break
 
     async def generate_note_text(self, notes) -> str:
         async def format_note(note):
