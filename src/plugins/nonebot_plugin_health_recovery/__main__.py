@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from nonebot.log import logger
 from nonebot_plugin_apscheduler import scheduler
 from nonebot_plugin_larkuser.models import UserData
-from nonebot_plugin_larkuser.user.base import DOWN_DURATION, MAX_HEALTH, REVIVE_HEALTH
+from nonebot_plugin_larkuser.user.base import DOWN_DURATION, DOWN_EXPIRE_HEALTH, MAX_HEALTH
 from nonebot_plugin_last_seen.models import LastSeenRecord
 from nonebot_plugin_orm import get_session
 from sqlalchemy import select
@@ -16,7 +16,7 @@ RECOVERY_AMOUNT = 5
 async def recover_health() -> None:
     """每小时运行一次：为最近一小时内活跃的已注册未倒地用户回复 5 HP。
 
-    倒地状态已超过 30 分钟的用户的 HP 也会在此被重置为 5。
+    倒地状态已超过 3 小时（DOWN_DURATION）的用户的 HP 也会在此被重置为 1（DOWN_EXPIRE_HEALTH）。
     """
     now = datetime.now()
     active_threshold = now - timedelta(hours=1)
@@ -33,7 +33,7 @@ async def recover_health() -> None:
         for user in users:
             if user.health <= 0:
                 if user.downed_at is not None and now - user.downed_at >= DOWN_DURATION:
-                    user.health = REVIVE_HEALTH
+                    user.health = DOWN_EXPIRE_HEALTH
                     user.downed_at = None
                     revived += 1
                 continue

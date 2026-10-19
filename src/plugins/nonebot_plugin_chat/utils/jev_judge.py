@@ -30,7 +30,7 @@ mood / 兴趣 / 好感度 / 是否需要回复改由 Jev 依据
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any, Literal, Optional, Sequence
 
 from nonebot.log import logger
 
@@ -61,6 +61,10 @@ MOOD_INTENSITY_RANGE = (0.5, 1.2)  # 与旧版 ModelResponse.mood_intensity 的�
 REPLY_REQUIRED_THRESHOLD = 0.7  # reply_required Noul 达到该值才提示模型补发消息
 NUL_THRESHOLD = 0.5  # 触发预处理的 Noul 判定阈值
 SLIDING_WINDOW_RELEVANT_THRESHOLD = 0.5  # 滑动窗口：旧 block 的事件仍与最新 block 相关的最低置信度
+
+# 表情包判定的常量
+STICKER_CONTEXT_MESSAGES = 5  # 提交给 Jev 的最近聊天消息条数
+STICKER_MIN_CONFIDENCE = 0.6  # 选表情包的置信度低于该值时不发送
 
 # 好感度评价的选项（与 src/lang/zh_hans/jev.yaml 中 reply.favor_score.criteria 的键一致）
 FAVOR_SCORE_KEYS = ("2", "1", "0", "-1", "-2")
@@ -370,3 +374,135 @@ async def analyze_pre_trigger(chat_history: str, lang_str: str) -> Optional[PreT
     signals = PreTriggerSignals(**values)
     logger.debug(f"Pre-trigger signals: {signals}")
     return signals
+
+
+@dataclass
+class StickerSelection:
+    """一次 send_sticker 的 Jev 判定结果
+
+    - ``send``：Jev 选出了要发送的表情包，``sticker_id`` 有效
+    - ``declined``：Jev 明确决定不发送（选了 none）
+    - ``low_confidence``：选中的结果置信度过低，不发送
+    - ``skipped``：Jev 不可用或未取得有效答案，不发送
+    """
+
+    status: Literal["send", "declined", "low_confidence", "skipped"]
+    sticker_id: Optional[int] = None  # 要发送的表情包；仅 status 为 send 时保证有效
+    description: str = ""  # 选中表情包的描述（用于回复 Chat 模型）
+    confidence: float = 0.0  # Jev 对选择结果的置信度（0-1）
+
+
+def _describe_sticker(sticker: Any) -> str:
+    """生成候选表情包的一句话描述，作为 Jev choice 问题里该选项的 criteria 文本"""
+    parts = []
+    description = str(getattr(sticker, "description", "") or "").strip()
+    if description:
+        parts.append(description)
+    meme_text = str(getattr(sticker, "meme_text", "") or "").strip()
+    if meme_text:
+        parts.append(f"图内文字：{meme_text}")
+    emotion = str(getattr(sticker, "emotion", "") or "").strip()
+    if emotion:
+        parts.append(f"情绪：{emotion}")
+    return "；".join(parts) or f"id: {getattr(sticker, 'id', '?')}"
+
+
+def _get_thinking_content(processor: "MessageProcessor") -> str:
+    """读取 Moonlark 当前的思考内容，作为 Jev 的辅助参考
+
+    工具调用发生在本轮 LLM 请求内部，优先从进行中的请求消息里取最新的
+    reasoning_content；请求尚未产生思考内容时退回上一轮的缓存。
+    """
+    try:
+        messages = processor.openai_messages.fetcher.session.messages
+    except Exception:
+        messages = []
+    for message in reversed(messages):
+        if isinstance(message, dict) and message.get("role") not in ("assistant", None):
+            continue
+        reasoning = _extract_reasoning(message)
+        if reasoning:
+            return reasoning
+    return getattr(processor, "_latest_reasioning_content_cache", "") or ""
+
+
+async def select_sticker(
+    processor: "MessageProcessor",
+    query: str,
+    candidates: Sequence[Any],
+) -> StickerSelection:
+    """根据请求关键词，让 Jev 从候选表情包中选出要发送的一个
+
+    判定以 ``requested_keyword``（Chat 模型请求的关键词）为主，
+    最近的聊天消息与 Moonlark 的思考内容仅作辅助参考。
+    Jev 可以通过选择 none 决定不发送；置信度过低时同样不发送。
+
+    Args:
+        processor: 当前会话的处理器
+        query: Chat 模型请求的表情包关键词
+        candidates: 在数据库中搜索得到的候选 Sticker 列表（非空）
+
+    Returns:
+        判定结果：status 为 send 时携带选中的 sticker_id，其余状态均不发送
+    """
+    local_str = processor.session.lang_str
+
+    if not candidates:
+        return StickerSelection(status="skipped")
+
+    state = {
+        "requested_keyword": query,
+        "chat_context": await processor.session.get_cached_messages_string(
+            length=STICKER_CONTEXT_MESSAGES, include_self_message=True
+        ),
+        "thinking_content": _get_thinking_content(processor),
+    }
+
+    criteria = {str(sticker.id): _describe_sticker(sticker) for sticker in candidates}
+    criteria["none"] = lang_ref("sticker.none")
+    questions: dict[str, Question] = {
+        "pick": choice(lang_ref("sticker.instructions"), criteria=criteria),
+    }
+
+    try:
+        answers = await ask(state, questions, lang_str=local_str, identify="Sticker Selection")
+    except Exception as e:
+        _log_jev_failure("表情包判定", processor.session.session_id, e)
+        return StickerSelection(status="skipped")
+    if not answers:
+        logger.warning(f"[JevJudge:{processor.session.session_id}] 表情包判定没有取得任何答案")
+        return StickerSelection(status="skipped")
+
+    answer = answers.get("pick")
+    if not isinstance(answer, ChoiceAnswer):
+        return StickerSelection(status="skipped")
+
+    # Jev 选择 none：明确决定不发送
+    if answer.choice == "none":
+        logger.debug(
+            f"[JevJudge:{processor.session.session_id}] 表情包判定选择不发送 (confidence={answer.confidence:.0%})"
+        )
+        return StickerSelection(status="declined", confidence=answer.confidence)
+
+    # 把选择题的答案键还原成候选表情包的数据库 ID
+    try:
+        sticker_id = int(answer.choice)
+    except ValueError:
+        return StickerSelection(status="skipped", confidence=answer.confidence)
+    matched = next((sticker for sticker in candidates if sticker.id == sticker_id), None)
+    if matched is None:
+        return StickerSelection(status="skipped", confidence=answer.confidence)
+
+    if answer.confidence < STICKER_MIN_CONFIDENCE:
+        logger.debug(
+            f"[JevJudge:{processor.session.session_id}] 表情包 {sticker_id} 置信度过低，"
+            f"不发送 ({answer.confidence:.0%} < {STICKER_MIN_CONFIDENCE:.0%})"
+        )
+        return StickerSelection(status="low_confidence", sticker_id=sticker_id, confidence=answer.confidence)
+
+    return StickerSelection(
+        status="send",
+        sticker_id=sticker_id,
+        description=_describe_sticker(matched),
+        confidence=answer.confidence,
+    )

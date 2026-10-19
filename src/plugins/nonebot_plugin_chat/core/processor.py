@@ -5,7 +5,7 @@ import math
 import random
 import re
 from datetime import datetime, timedelta
-from typing import TYPE_CHECKING, Any, AsyncGenerator, Literal, Optional
+from typing import TYPE_CHECKING, Any, Literal, Optional
 
 from nonebot.adapters import Event
 from nonebot.adapters.onebot.v11 import Bot as OB11Bot
@@ -20,13 +20,12 @@ from nonebot_plugin_openai.types import Message as OpenAIMessage
 from nonebot_plugin_openai.utils.chat import fetch_json, fetch_message
 from nonebot_plugin_orm import get_session
 from pydantic import BaseModel
-from sqlalchemy import select
 
 from nonebot_plugin_chat.utils.group import LinkParser
 from nonebot_plugin_chat.utils.token_bucket import TokenBucket
 
 from ..config import config
-from ..models import ChatGroup, PreTriggerSignals, Sticker, UserProfile
+from ..models import ChatGroup, PreTriggerSignals, UserProfile
 from ..types import CachedMessage
 from ..utils.ai_agent import AskAISession
 from ..utils.emoji import QQ_EMOJI_MAP
@@ -523,11 +522,13 @@ class MessageProcessor:
                 cached_msg["triggered_reply"] = True
                 break
         self.session.accumulated_text_length = 0
-        await self.openai_messages.fetch_reply()
+        # @ 插话（important）等待正在进行的请求结束后补发，而不是被 fetcher_lock 静默丢弃
+        await self.openai_messages.fetch_reply(wait_if_busy=important)
 
     async def _check_rules(self, important: bool, token_check_passed: bool, recent_message_count: int) -> bool:
         checks = [
-            ("cold_until", self.cold_until > datetime.now(), "冷却期"),
+            # 冷却期只拦概率触发的回复：@ 插话是用户明确的召唤，不因 3 秒冷却被吞掉
+            ("cold_until", self.cold_until > datetime.now() and not important, "冷却期"),
             ("messages_empty", len(self.openai_messages.messages) <= 0, "消息为空"),
             ("last_message_not_user", not self.openai_messages.is_last_message_from_user(), "最后一条消息不是用户"),
             ("min_messages", len(self.openai_messages.messages) < 5 and not important, "消息数量不足 5 条"),
@@ -853,30 +854,6 @@ class MessageProcessor:
                     )
         return profiles
 
-    async def generate_sticker_recommendations(self) -> AsyncGenerator[str, None]:
-        chat_history = "\n".join(self.get_message_content_list())
-        emotion_type = get_status_manager().get_status()[0].value
-        async with get_session() as session:
-            results = await session.scalars(
-                select(Sticker).where(
-                    Sticker.context_keywords.isnot(None),
-                    Sticker.emotion.isnot(None),
-                    Sticker.labels.isnot(None),
-                ),
-            )
-            for sticker in results:
-                if sticker.emotion == emotion_type:
-                    yield f"- {sticker.id}: {sticker.description}"
-                    break
-                for keyword in json.loads(sticker.context_keywords or "[]"):
-                    if keyword in chat_history:
-                        yield f"- {sticker.id}: {sticker.description}"
-                        break
-                for label in json.loads(sticker.labels or "[]"):
-                    if label in chat_history or label == emotion_type:
-                        yield f"- {sticker.id}: {sticker.description}"
-                        break
-
     async def generate_note_text(self, notes) -> str:
         async def format_note(note):
             created_time = datetime.fromtimestamp(note.created_time).strftime("%y-%m-%d")
@@ -940,19 +917,20 @@ class MessageProcessor:
 
     async def is_additional_info_line_showed(self, line: str) -> bool:
         norm_line = self._normalize_line(line)
-        async with self.openai_messages.fetcher_lock:
-            for message in self.openai_messages.messages:
-                content = message.get("content") if isinstance(message, dict) else getattr(message, "content", None)
-                if content is None:
-                    continue
-                if isinstance(content, str):
-                    if norm_line in self._normalize_line(content):
+        # 不要在这里拿 fetcher_lock：它在整个 LLM 请求期间都被持有，逐行加锁会把
+        # 新消息的解析卡到请求结束为止。messages 属性本身就是快照列表，直接遍历即可。
+        for message in self.openai_messages.messages:
+            content = message.get("content") if isinstance(message, dict) else getattr(message, "content", None)
+            if content is None:
+                continue
+            if isinstance(content, str):
+                if norm_line in self._normalize_line(content):
+                    return True
+            elif isinstance(content, list):
+                for part in content:
+                    text = part.get("text") if isinstance(part, dict) else getattr(part, "text", None)
+                    if text and isinstance(text, str) and norm_line in self._normalize_line(text):
                         return True
-                elif isinstance(content, list):
-                    for part in content:
-                        text = part.get("text") if isinstance(part, dict) else getattr(part, "text", None)
-                        if text and isinstance(text, str) and norm_line in self._normalize_line(text):
-                            return True
         return False
 
     async def generate_event_additional_info(self) -> str:

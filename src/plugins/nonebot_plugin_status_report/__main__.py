@@ -17,7 +17,7 @@
 import hashlib
 import traceback
 from datetime import datetime
-from typing import cast, Optional, TYPE_CHECKING
+from typing import cast, Optional
 
 from fastapi import FastAPI
 from nonebot import get_app, get_loaded_plugins, get_driver
@@ -40,12 +40,8 @@ from sqlalchemy import select, func, delete
 from sqlalchemy.exc import IntegrityError
 from .config import config
 from .matcher import simple_run
-from .models import CommandUsage, HandlerResultRecord, ExceptionRecord, OpenAIHistoryRecord
-from .types import ExceptionStatus, EventCounter, OpenAIHistory, StatusReport, HandlerResult
-
-if TYPE_CHECKING:
-    from nonebot_plugin_openai.types import Messages
-
+from .models import CommandUsage, HandlerResultRecord, ExceptionRecord
+from .types import ExceptionStatus, EventCounter, StatusReport, HandlerResult
 
 lang = LangHelper()
 
@@ -54,7 +50,6 @@ event_counter = (0, 0)  # total, success
 
 MAX_HANDLER_RESULTS = 20
 MAX_EXCEPTIONS = 20
-MAX_OPENAI_HISTORY = 20
 
 
 async def get_command_usage() -> dict[str, int]:
@@ -96,28 +91,6 @@ async def get_exceptions() -> list[ExceptionStatus]:
             )
             for row in reversed(rows)
         ]
-
-
-async def get_openai_history(limit: int = 10, offset: int = 0) -> list[OpenAIHistory]:
-    async with get_session() as session:
-        result = await session.execute(
-            select(OpenAIHistoryRecord).order_by(OpenAIHistoryRecord.id.desc()).limit(limit).offset(offset)
-        )
-        rows = result.scalars().all()
-        return [
-            OpenAIHistory(
-                model=row.model,
-                identify=row.identify,
-                messages=row.messages or [],
-            )
-            for row in reversed(rows)
-        ]
-
-
-async def count_openai_history() -> int:
-    async with get_session() as session:
-        result = await session.execute(select(func.count()).select_from(OpenAIHistoryRecord))
-        return result.scalar()
 
 
 @get_driver().on_startup
@@ -256,27 +229,12 @@ async def _(event: Event, bot: Bot, exception: Optional[Exception]) -> None:
         await session.commit()
 
 
-async def report_openai_history(messages: "Messages", identify: str, model: str) -> None:
-    message_list = [message if isinstance(message, dict) else message.model_dump() for message in messages]
-    async with get_session() as session:
-        session.add(
-            OpenAIHistoryRecord(
-                model=model,
-                identify=identify,
-                messages=message_list,
-                timestamp=datetime.now(),
-            )
-        )
-        await session.commit()
-
-
 @scheduler.scheduled_job("cron", hour=4, id="cleanup_status_report")
 async def cleanup_old_records() -> None:
     async with get_session() as session:
         for model, max_count in [
             (HandlerResultRecord, MAX_HANDLER_RESULTS),
             (ExceptionRecord, MAX_EXCEPTIONS),
-            (OpenAIHistoryRecord, MAX_OPENAI_HISTORY),
         ]:
             count_result = await session.execute(select(func.count()).select_from(model))
             total = count_result.scalar() or 0
@@ -331,19 +289,6 @@ async def get_status_events(token: str, salt: str) -> EventCounter:
         total=event_counter[0],
         failed=event_counter[0] - event_counter[1],
     )
-
-
-@app.get("/admin/status/openai")
-async def get_status_openai(token: str, salt: str, limit: int = 10, offset: int = 0) -> list[OpenAIHistory]:
-    await verify_admin(token, salt)
-    return await get_openai_history(limit=limit, offset=offset)
-
-
-@app.get("/admin/status/openai/count")
-async def get_status_openai_count(token: str, salt: str) -> dict:
-    await verify_admin(token, salt)
-    total = await count_openai_history()
-    return {"total": total}
 
 
 @app.get("/admin/status/commands")

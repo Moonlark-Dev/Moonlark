@@ -15,8 +15,9 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
+from nonebot.log import logger
 from nonebot_plugin_alconna import UniMessage
 
 from ...lang import lang
@@ -25,6 +26,9 @@ from ..sticker_manager import get_sticker_manager
 
 if TYPE_CHECKING:
     from ...core.session.base import BaseSession
+
+# 每次发送时提交给 Jev 的候选表情包数量
+SEND_STICKER_CANDIDATE_LIMIT = 5
 
 
 class StickerTools:
@@ -74,52 +78,48 @@ class StickerTools:
         except NotMemeError:
             return await lang.text("sticker.not_meme", self.session.lang_str)
 
-    async def search_sticker(self, query: str) -> str:
-        """
-        根据描述搜索本地收藏的表情包
+    async def send_sticker(self, query: str) -> str:
+        """根据关键词发送表情包
+
+        流程：用关键词在数据库中搜索候选表情包，然后把请求的关键词、
+        最近五条消息与 Moonlark 的思考内容提交给 Jev，由它选出最优的
+        一张发送；Jev 决定不发送或置信度过低时不发送。
 
         Args:
-            query: 搜索查询字符串
+            query: 描述要发送的表情包的关键词
 
         Returns:
-            格式化的匹配表情包列表或空消息
+            工具执行结果：发送了什么，或为什么不发送
         """
-        stickers = await self.manager.search_sticker(query, limit=5)
+        from ..jev_judge import select_sticker
+
+        # 根据关键词在数据库中搜索候选
+        stickers = await self.manager.search_sticker(query, limit=SEND_STICKER_CANDIDATE_LIMIT)
         if not stickers:
-            stickers = await self.manager.search_sticker_any(query, limit=5)
+            stickers = await self.manager.search_sticker_any(query, limit=SEND_STICKER_CANDIDATE_LIMIT)
 
         if not stickers:
             return await lang.text("sticker.search_empty", self.session.lang_str)
 
-        results = [f"- {sticker.id}: {sticker.description}" for sticker in stickers]
-        return await lang.text("sticker.search_result", self.session.lang_str, "\n".join(results))
+        selection = await select_sticker(self.session.processor, query, stickers)
 
-    async def recommend_sticker(self) -> str:
-        """
-        推荐表情包
-        """
-        recommend_str = await lang.text("fetcher.sticker_recommendation", self.session.lang_str)
-        async for sticker in self.session.processor.generate_sticker_recommendations():
-            recommend_str += f"\n{sticker}"
-        return recommend_str
+        if selection.status == "send" and selection.sticker_id is not None:
+            sticker = await self.manager.get_sticker(selection.sticker_id)
+            if sticker is not None:
+                message = UniMessage.image(raw=sticker.raw)
+                await message.send(target=self.session.target, bot=self.session.bot)
+                # 发送贴纸增加 token
+                self.session.processor.token_bucket.add(0.5)
+                return await lang.text(
+                    "sticker.sent_detail",
+                    self.session.lang_str,
+                    selection.description,
+                )
+            # Jev 选中的表情包在发送前被删除，按不可用处理
+            logger.warning(f"Jev 选中的表情包不存在: {selection.sticker_id}")
 
-    async def send_sticker(self, sticker_id: int) -> Optional[str]:
-        """
-        发送本地收藏的表情包到群聊
-
-        Args:
-            sticker_id: 要发送的表情包的数据库 ID
-
-        Returns:
-            成功或错误消息
-        """
-        sticker = await self.manager.get_sticker(sticker_id)
-
-        if sticker is None:
-            return await lang.text("sticker.id_not_found", self.session.lang_str, sticker_id)
-
-        message = UniMessage.image(raw=sticker.raw)
-        await message.send(target=self.session.target, bot=self.session.bot)
-
-        # 发送贴纸增加 token
-        self.session.processor.token_bucket.add(0.5)
+        if selection.status == "declined":
+            return await lang.text("sticker.jev_declined", self.session.lang_str)
+        if selection.status == "low_confidence":
+            return await lang.text("sticker.low_confidence", self.session.lang_str, f"{selection.confidence:.0%}")
+        return await lang.text("sticker.judge_failed", self.session.lang_str)

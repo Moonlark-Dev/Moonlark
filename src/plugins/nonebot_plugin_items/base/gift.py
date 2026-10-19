@@ -17,6 +17,9 @@ class GiftItem(Item, ABC):
 
     fav_value: float = 0.005
 
+    # 每个自然日最多可以赠送几个；0 表示不限制
+    daily_gift_limit: int = 0
+
     def __init__(self, properties: ItemProperties = get_properties()):
         super().__init__(properties)
 

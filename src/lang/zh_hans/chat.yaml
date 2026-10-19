@@ -328,6 +328,10 @@ sticker:
   search_result: "找到以下表情包：\n{}"
   search_empty: '没有找到匹配的表情包'
   sent: '表情包已发送'
+  sent_detail: "已发送表情包：{}"
+  jev_declined: "经过判定，本次不适合发送表情包，没有发送"
+  low_confidence: "表情包判定的置信度过低（{}），本次没有发送表情包"
+  judge_failed: "表情包判定暂时不可用，本次没有发送表情包"
   send_failed: '发送失败: {}'
   id_not_found: '未找到 ID 为 {} 的表情包'
   duplicate: '该表情包已经收藏过了 (ID: {}, 相似度: {:.1%})，无需重复收藏'
@@ -636,7 +640,6 @@ prompt_link_parser: |
   你的回复中不能出现除了该页面的简介以外的任何内容。
 
 fetcher:
-  sticker_recommendation: "基于上下文的表情包推荐:"
   reply_required: "[提示] 经过判断你本轮需要回复，但你还没有通过 `send_message` 工具发送任何消息。请把要回复的内容用 `send_message` 工具发出。"
 
 proactive_message:

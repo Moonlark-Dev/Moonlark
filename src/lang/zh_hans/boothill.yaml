@@ -1,10 +1,9 @@
-image:
-  title: 转换结果
-  footer: 由 Moonlark & nonebot_plugin_boothill 生成
+empty: 请输入要过滤的文本~
+result: "{}"
+review_failed: 过滤结果未通过审核，请稍后再试~
 help:
   description: 波提欧
   details: |
-    对句子进行一些？？？的处理，仅支持简体中文。
-    
-    「他宝了个腿的。」 ——巡海游侠，波提欧
-  usage: boothill <句子>
+    模仿某被改造的联觉信标对文本进行过滤，仅支持简体中文。
+  usage1: boothill <句子> (标准模式：仅替换拼音以 ma 开头的词)
+  usage2: boothill-fury <句子> (狂怒模式：替换所有触发词)

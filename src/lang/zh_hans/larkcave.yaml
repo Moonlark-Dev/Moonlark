@@ -66,7 +66,7 @@ comment:
     {}
   success: 评论 ({}) 提交成功
   title: 回声洞评论 —— ({})
-  footer: 由 Moonlark & nonebot-plugin-cave-comment 生成
+  footer: 由 Moonlark 生成
   id: ({})
 stat:
   other: 其他
