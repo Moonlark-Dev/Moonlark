@@ -94,10 +94,14 @@ class MessageQueue:
     # 请求
     # ------------------------------------------------------------------
 
-    async def fetch_reply(self) -> None:
+    async def fetch_reply(self, wait_if_busy: bool = False) -> None:
         if self.fetcher_lock.locked():
-            return
-
+            if not wait_if_busy:
+                return
+            # @ 插话等重要回复不能被正在进行的请求静默吞掉：等它结束再补发。
+            # 若上一个请求已经把插话回复过（最后一条消息不再是用户），
+            # _fetch_reply 开头的检查会自行跳过，不会重复回复。
+            logger.info("上一个回复请求尚未结束，等待其结束后再处理本次插话")
         session_id = self.processor.session.session_id
         timing_stats_manager.record_fetch_start(session_id)
 
