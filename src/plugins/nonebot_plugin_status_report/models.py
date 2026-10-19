@@ -27,11 +27,3 @@ class ExceptionRecord(Model):
     message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     bot_id: Mapped[str] = mapped_column(String(128))
     timestamp: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
-
-
-class OpenAIHistoryRecord(Model):
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    model: Mapped[str] = mapped_column(String(128))
-    identify: Mapped[str] = mapped_column(String(256))
-    messages: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
-    timestamp: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
