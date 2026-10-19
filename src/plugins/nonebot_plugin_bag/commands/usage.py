@@ -38,11 +38,15 @@ async def _(bot: Bot, event: Event, index: int | None = None, user_id: str = get
             await lang.finish("usage.none_single", user_id)
         await lang.finish("usage.none", user_id)
 
+    # QQ 官方机器人发送 markdown：用法用围栏代码块包裹，避免 <@目标> 等尖括号被
+    # 当成 HTML 标签吞掉，也方便用户直接复制；其余平台保持纯文本。
+    is_qq = isinstance(bot, QQBot)
+    item_key = "usage.item_md" if is_qq else "usage.item"
     lines = [await lang.text("usage.title", user_id)] if index is None else []
     for item, usage in usage_items:
         lines.append(
             await lang.text(
-                "usage.item",
+                item_key,
                 user_id,
                 item.index,
                 await item.stack.getName(),
@@ -51,7 +55,7 @@ async def _(bot: Bot, event: Event, index: int | None = None, user_id: str = get
             )
         )
 
-    if isinstance(bot, QQBot):
+    if is_qq:
         buttons = [
             Button(
                 "enter",

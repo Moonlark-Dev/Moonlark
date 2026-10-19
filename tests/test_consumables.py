@@ -140,6 +140,12 @@ async def test_shop_has_milk_and_barrier() -> None:
     assert "moonlark:milk" in consumable_ids
     equipment_ids = [item_id for item_id, _ in GOODS_CATEGORIES["equipment"]]
     assert "moonlark:temp_barrier" in equipment_ids
+    # 鸡蛋与二十面骰子不是礼物（不能 /present），归入「道具」分类
+    tool_ids = [item_id for item_id, _ in GOODS_CATEGORIES["tool"]]
+    assert tool_ids == ["moonlark:egg", "moonlark:dice"]
+    gift_ids = [item_id for item_id, _ in GOODS_CATEGORIES["gift"]]
+    assert "moonlark:egg" not in gift_ids
+    assert "moonlark:dice" not in gift_ids
     # 全量商品表保持跨分类的连续编号，并包含所有分类的商品
     assert GOODS[-2:] == [("moonlark:milk", 35), ("moonlark:temp_barrier", 150)]
     assert len(GOODS) == sum(len(items) for items in GOODS_CATEGORIES.values())

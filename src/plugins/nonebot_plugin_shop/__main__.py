@@ -33,21 +33,26 @@ async def build_markdown_list(user_id: str, vimcoin: float) -> str:
 
     商品条目使用 <qqbot-cmd-input>：点击即把 `{前缀}shop buy <编号> 1` 填入输入框，
     编号只用于拼装指令，不展示在商品文本中。
+    每个分类自成一个 markdown 块（块之间空一行）：分类标题紧跟在上一个分类的
+    列表项后面时，会被 markdown 解析成该列表项的续行，从而带上无序列表缩进。
     """
-    items = []
+    blocks: list[str] = []
     current_category = None
+    current_lines: list[str] = []
     for index, goods_category, item_id, price in iter_category_goods():
         if goods_category != current_category:
+            if current_lines:
+                blocks.append("\n".join(current_lines))
             current_category = goods_category
-            items.append(await lang.text(f"category.{goods_category}", user_id))
+            current_lines = [await lang.text(f"category.{goods_category}", user_id)]
         name = await get_goods_name(item_id, user_id)
-        items.append(await lang.text("list.item_md", user_id, index, name, price))
-    return "\n".join(
+        current_lines.append(await lang.text("list.item_md", user_id, index, name, price))
+    if current_lines:
+        blocks.append("\n".join(current_lines))
+    return "\n\n".join(
         [
             await lang.text("list.title_md", user_id, vimcoin),
-            "",
-            *items,
-            "",
+            *blocks,
             await lang.text("list.footer_md", user_id),
         ],
     )

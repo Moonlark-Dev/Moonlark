@@ -52,6 +52,11 @@ present:
 usage:
   title: "【物品使用指令】"
   item: "[{}] {} x{}：{}"
+  item_md: |
+    [{}] {} x{}
+    ```
+    {}
+    ```
   none: 背包里没有可以使用指令的物品。
   none_single: 这个物品暂时没有使用指令。
 consumables:
