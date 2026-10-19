@@ -1,11 +1,12 @@
 """nonebot_plugin_email 的 QQ 官方 markdown 展示回归测试。
 
-QQ 官方机器人下，未读邮件列表完全以 markdown 文本展示：不渲染图片、
-不附带键盘按钮，一键领取/全部已读内嵌为 <qqbot-cmd-input>；
-其余平台仍只发送邮件列表渲染图。
+QQ 官方机器人下，未读邮件列表以 markdown 文本发送：不渲染图片，一键领取/全部已读
+改用键盘按钮下发，markdown 里既没有 <qqbot-cmd-input>，也不再展示 claim / read /
+查看未读邮件的用法说明；其余平台仍只发送邮件列表渲染图。
 """
 
 import datetime
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -35,42 +36,9 @@ _TEMPLATES = {
     "email_list.claimed": "已领取",
     "email_list.claimed_md": "> 已领取",
     "email_list.item_md": "- {} ×{}",
-    "email_list.action_claim_all_md": (
-        '- <qqbot-cmd-input text="{__prefix__}email claim all" show="一键领取" reference="false" />'
-    ),
-    "email_list.action_read_all_md": (
-        '- <qqbot-cmd-input text="{__prefix__}email read all" show="全部已读" reference="false" />'
-    ),
-    "email_list.footer_md": "使用 {__prefix__}email claim <邮件 ID> / {__prefix__}email read <邮件 ID>",
+    "button.claim_all": "一键领取",
+    "button.read_all": "全部已读",
 }
-
-
-class _FakeUniMessage:
-    """模拟仅用于 QQ 分支的 UniMessage：markdown 文本 + 禁止 image/keyboard"""
-
-    def __init__(self) -> None:
-        self.markdown = ""
-
-    def style(self, text: str, _style: str) -> "_FakeUniMessage":
-        self.markdown = text
-        return self
-
-    def keyboard(self, *_args: object) -> "_FakeUniMessage":
-        raise AssertionError("QQ 官方邮件列表不应附带键盘按钮")
-
-    def image(self, **kwargs: object) -> "_FakeUniMessage":
-        raise AssertionError("QQ 官方邮件列表不应发送渲染图片")
-
-
-class _FakeImageMessage:
-    """模拟非 QQ 平台的 UniMessage().image(raw=...)"""
-
-    def __init__(self) -> None:
-        self.image_raw = None
-
-    def image(self, raw: bytes | None = None) -> "_FakeImageMessage":
-        self.image_raw = raw
-        return self
 
 
 def _fake_email(subject: str = "测试邮件", content: str = "第一行\n第二行", is_claimed: bool = False) -> dict:
@@ -111,6 +79,7 @@ def email_env(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(module, "mark_email_read", AsyncMock(return_value=7))
     monkeypatch.setattr(module, "get_item", fake_get_item)
     monkeypatch.setattr(module, "lang", _FakeLang(_TEMPLATES))
+    monkeypatch.setattr(module, "get_command_prefix", lambda: "/")
     return module
 
 
@@ -119,29 +88,53 @@ def finish_mock() -> AsyncMock:
     return AsyncMock(side_effect=_Finished)
 
 
+def _capture_sent(monkeypatch: pytest.MonkeyPatch) -> list[Any]:
+    """把 UniMessage.send 换成记录型实现，返回被发出的消息列表"""
+    from nonebot_plugin_alconna import UniMessage
+
+    sent: list[UniMessage] = []
+
+    async def fake_send(self: UniMessage, *_args: object, **_kwargs: object) -> None:
+        sent.append(self)
+
+    monkeypatch.setattr(UniMessage, "send", fake_send)
+    return sent
+
+
+def _markdown_of(message: Any) -> str:
+    """取出消息里的 markdown 文本"""
+    from nonebot_plugin_alconna.uniseg import Text
+
+    text = next(seg for seg in message if isinstance(seg, Text))
+    assert any("markdown" in styles for styles in text.styles.values())
+    return text.text
+
+
+def _buttons_of(message: Any) -> list[Any]:
+    """取出消息里键盘按钮"""
+    from nonebot_plugin_alconna.uniseg import Keyboard
+
+    return next(seg for seg in message if isinstance(seg, Keyboard)).children
+
+
 @pytest.mark.asyncio
-async def test_qq_email_list_is_markdown_without_keyboard_or_image(
+async def test_qq_email_list_is_markdown_with_keyboard(
     email_env, finish_mock: AsyncMock, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """QQ 官方：邮件列表以纯 markdown 文本结束处理器，不发送图片、不发送键盘"""
+    """QQ 官方：邮件列表以 markdown 文本发送，一键领取/全部已读改为键盘按钮"""
     from nonebot.adapters.qq import Bot as QQBot
+    from nonebot_plugin_alconna.uniseg import Image
 
     module = email_env
-    messages: list[_FakeUniMessage] = []
-
-    def fake_unimessage(*_args: object, **_kwargs: object) -> _FakeUniMessage:
-        message = _FakeUniMessage()
-        messages.append(message)
-        return message
-
-    monkeypatch.setattr(module, "UniMessage", fake_unimessage)
+    sent = _capture_sent(monkeypatch)
     monkeypatch.setattr(module.email, "finish", finish_mock)
 
     with pytest.raises(_Finished):
-        await module._(bot=MagicMock(spec=QQBot), user_id="10")
+        await module._(bot=MagicMock(spec=QQBot), event=MagicMock(), user_id="10")
 
-    assert len(messages) == 1
-    markdown = messages[0].markdown
+    assert len(sent) == 1
+    message = sent[0]
+    markdown = _markdown_of(message)
     assert markdown.startswith("## 邮件列表（共 1 封）")
     assert "### 测试邮件" in markdown
     assert "时间: 2026-10-14 08:30:00" in markdown
@@ -150,16 +143,27 @@ async def test_qq_email_list_is_markdown_without_keyboard_or_image(
     assert "第一行\n第二行" in markdown
     assert "包含的物品" in markdown
     assert "- 鸡蛋 ×3" in markdown
-    assert '<qqbot-cmd-input text="/email claim all" show="一键领取" reference="false" />' in markdown
-    assert '<qqbot-cmd-input text="/email read all" show="全部已读" reference="false" />' in markdown
-    finish_mock.assert_awaited_once()
+    assert not markdown.endswith("\n")
+    assert [(str(button.label), button.text) for button in _buttons_of(message)] == [
+        ("一键领取", "/email claim all"),
+        ("全部已读", "/email read all"),
+    ]
+    # 按钮交给键盘后，markdown 里不再内嵌可点击指令，也不再展示用法说明
+    assert "qqbot-cmd-input" not in markdown
+    assert "email claim <" not in markdown
+    assert "email read <" not in markdown
+    assert "查看未读邮件" not in markdown
+    # QQ 官方不再发送邮件列表渲染图
+    assert not any(isinstance(seg, Image) for seg in message)
+    # 带键盘的消息用 UniMessage.send 发送，随后单独 finish
+    finish_mock.assert_awaited_once_with()
 
 
 @pytest.mark.asyncio
 async def test_qq_empty_email_list_shows_empty_hint(
     email_env, finish_mock: AsyncMock, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """QQ 官方：没有未读邮件时展示空列表提示与可点击操作"""
+    """QQ 官方：没有未读邮件时展示空列表提示，键盘按钮依然可用"""
     from nonebot.adapters.qq import Bot as QQBot
 
     module = email_env
@@ -169,23 +173,17 @@ async def test_qq_empty_email_list_shows_empty_hint(
             yield None
 
     monkeypatch.setattr(module, "get_unread_email", empty_unread)
-    messages: list[_FakeUniMessage] = []
-
-    def fake_unimessage(*_args: object, **_kwargs: object) -> _FakeUniMessage:
-        message = _FakeUniMessage()
-        messages.append(message)
-        return message
-
-    monkeypatch.setattr(module, "UniMessage", fake_unimessage)
+    sent = _capture_sent(monkeypatch)
     monkeypatch.setattr(module.email, "finish", finish_mock)
 
     with pytest.raises(_Finished):
-        await module._(bot=MagicMock(spec=QQBot), user_id="10")
+        await module._(bot=MagicMock(spec=QQBot), event=MagicMock(), user_id="10")
 
-    markdown = messages[0].markdown
+    markdown = _markdown_of(sent[0])
     assert "## 邮件列表（共 0 封）" in markdown
     assert "> 暂无未读邮件。" in markdown
     assert "包含的物品" not in markdown
+    assert [button.text for button in _buttons_of(sent[0])] == ["/email claim all", "/email read all"]
 
 
 @pytest.mark.asyncio
@@ -202,19 +200,12 @@ async def test_qq_claimed_email_marked_in_markdown(
         yield _fake_email(is_claimed=True)
 
     monkeypatch.setattr(module, "get_unread_email", claimed_unread)
-    messages: list[_FakeUniMessage] = []
-
-    def fake_unimessage(*_args: object, **_kwargs: object) -> _FakeUniMessage:
-        message = _FakeUniMessage()
-        messages.append(message)
-        return message
-
-    monkeypatch.setattr(module, "UniMessage", fake_unimessage)
+    sent = _capture_sent(monkeypatch)
 
     with pytest.raises(_Finished):
-        await module._(bot=MagicMock(spec=QQBot), user_id="10")
+        await module._(bot=MagicMock(spec=QQBot), event=MagicMock(), user_id="10")
 
-    assert "> 已领取" in messages[0].markdown
+    assert "> 已领取" in _markdown_of(sent[0])
 
 
 @pytest.mark.asyncio
@@ -227,11 +218,11 @@ async def test_qq_email_list_marks_emails_read(
     module = email_env
     mark_read = AsyncMock(return_value=7)
     monkeypatch.setattr(module, "mark_email_read", mark_read)
-    monkeypatch.setattr(module, "UniMessage", lambda *_args, **_kwargs: _FakeUniMessage())
+    _capture_sent(monkeypatch)
     monkeypatch.setattr(module.email, "finish", finish_mock)
 
     with pytest.raises(_Finished):
-        await module._(bot=MagicMock(spec=QQBot), user_id="10")
+        await module._(bot=MagicMock(spec=QQBot), event=MagicMock(), user_id="10")
 
     mark_read.assert_awaited_once_with(7, "10")
 
@@ -240,14 +231,19 @@ async def test_qq_email_list_marks_emails_read(
 async def test_other_adapter_email_still_image(
     email_env, finish_mock: AsyncMock, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """非 QQ 平台：仍发送渲染图消息"""
+    """非 QQ 平台：仍发送渲染图消息，不带键盘"""
+    from nonebot_plugin_alconna.uniseg import Image, Keyboard
+
     module = email_env
     monkeypatch.setattr(module, "render_template", AsyncMock(return_value=b"image-bytes"))
     monkeypatch.setattr(module.email, "finish", finish_mock)
-    monkeypatch.setattr(module, "UniMessage", lambda *_args, **_kwargs: _FakeImageMessage())
+    sent = _capture_sent(monkeypatch)
 
     with pytest.raises(_Finished):
-        await module._(bot=MagicMock(), user_id="10")
+        await module._(bot=MagicMock(), event=MagicMock(), user_id="10")
 
     (message,) = finish_mock.await_args.args
-    assert message.image_raw == b"image-bytes"
+    image = next(seg for seg in message if isinstance(seg, Image))
+    assert image.raw == b"image-bytes"
+    assert not any(isinstance(seg, Keyboard) for seg in message)
+    assert sent == []

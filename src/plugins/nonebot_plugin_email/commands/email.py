@@ -1,10 +1,11 @@
-from nonebot.adapters import Bot
+from nonebot.adapters import Bot, Event
 from nonebot.adapters.qq import Bot as QQBot
-from nonebot_plugin_alconna import UniMessage
+from nonebot_plugin_alconna import Button, UniMessage
 
 from nonebot_plugin_render.render import render_template
 from nonebot_plugin_items.utils.string import get_location_by_id
 from nonebot_plugin_items.utils.get import get_item
+from nonebot_plugin_larkutils.command import get_command_prefix
 from nonebot_plugin_larkutils.user import get_user_id
 from ..utils.read import mark_email_read
 from ..utils.unread import get_unread_email
@@ -45,8 +46,8 @@ async def _collect_email_list(user_id: str) -> list[dict]:
 async def _build_markdown_email_list(user_id: str, email_list: list[dict]) -> str:
     """构建 QQ 官方机器人的邮件列表 markdown
 
-    纯 markdown 展示邮件正文与附件物品，一键领取/全部已读以 <qqbot-cmd-input>
-    形式内嵌，不再渲染邮件列表图片，也不附带键盘按钮。
+    纯 markdown 展示邮件正文与附件物品，不再渲染邮件列表图片；一键领取/全部已读
+    由键盘按钮承载，因此这里既不内嵌 <qqbot-cmd-input>，也不展示用法说明。
     """
     lines = [await lang.text("email_list.title_md", user_id, len(email_list)), ""]
     if not email_list:
@@ -65,24 +66,28 @@ async def _build_markdown_email_list(user_id: str, email_list: list[dict]) -> st
             for item in data["item_list"]:
                 lines.append(await lang.text("email_list.item_md", user_id, item["name"], item["count"]))
         lines.append("")
-    lines.extend(
-        [
-            await lang.text("email_list.action_claim_all_md", user_id),
-            await lang.text("email_list.action_read_all_md", user_id),
-            "",
-            await lang.text("email_list.footer_md", user_id),
-        ]
-    )
+    if lines[-1] == "":
+        lines.pop()
     return "\n".join(lines)
 
 
 @email.assign("$main")
-async def _(bot: Bot, user_id: str = get_user_id()) -> None:
+async def _(bot: Bot, event: Event, user_id: str = get_user_id()) -> None:
     email_list = await _collect_email_list(user_id)
     if isinstance(bot, QQBot):
-        # QQ 官方：完全改用 markdown 文本展示，不用图床渲染图，也不发送键盘按钮，
-        # 领取/已读操作内嵌在 markdown 的 <qqbot-cmd-input> 里
-        await email.finish(UniMessage().style(await _build_markdown_email_list(user_id, email_list), "markdown"))
+        # QQ 官方：markdown 文本展示邮件，一键领取/全部已读改用键盘按钮下发
+        # （带 keyboard 的消息走 UniMessage.send，之后再单独 finish 结束处理器）
+        prefix = get_command_prefix()
+        message = (
+            UniMessage()
+            .style(await _build_markdown_email_list(user_id, email_list), "markdown")
+            .keyboard(
+                Button("enter", await lang.text("button.claim_all", user_id), text=f"{prefix}email claim all"),
+                Button("enter", await lang.text("button.read_all", user_id), text=f"{prefix}email read all"),
+            )
+        )
+        await message.send(target=event, bot=bot)
+        await email.finish()
     image = await render_template(
         "email.html.jinja",
         await lang.text("email_list.title", user_id),
