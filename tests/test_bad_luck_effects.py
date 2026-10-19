@@ -5,6 +5,7 @@
 以及臭鸡蛋命中后附着霉运。
 """
 
+from datetime import timedelta
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -265,17 +266,32 @@ async def test_rotten_egg_attaches_bad_luck(monkeypatch: pytest.MonkeyPatch) -> 
     """用臭鸡蛋砸中用户会按数量附着霉运 buff"""
     import nonebot_plugin_eggstrike.__main__ as module
 
-    attached: list[tuple[str, int]] = []
+    attached: list[tuple[str, int, timedelta | None]] = []
 
-    async def fake_attach_bad_luck(user_id: str, layers: int = 1) -> None:
-        attached.append((user_id, layers))
+    async def fake_attach_buff(
+        user_id: str,
+        buff_id: str,
+        duration: timedelta | None = None,
+        count: int | None = None,
+        layers: int = 1,
+    ):
+        attached.append((user_id, layers, duration))
+        return MagicMock()
 
     target_user = MagicMock()
     target_user.is_registered.return_value = True
     target_user.get_health.return_value = 10.0
     target_user.damage = AsyncMock()
 
-    monkeypatch.setattr(module, "attach_bad_luck", fake_attach_bad_luck)
+    barrier_result = MagicMock()
+    barrier_result.blocked = False
+    barrier_result.reflected = False
+    barrier_result.pierced = False
+
+    monkeypatch.setattr(module, "attach_buff", fake_attach_buff)
+    monkeypatch.setattr(module, "handle_barrier", AsyncMock(return_value=barrier_result))
+    monkeypatch.setattr(module, "get_moonlark_user_ids", lambda: set())
+    monkeypatch.setattr(module, "offer_purchase_when_short", AsyncMock())
     monkeypatch.setattr(module, "get_main_account", AsyncMock(return_value="target-main"))
     monkeypatch.setattr(module, "get_user", AsyncMock(return_value=target_user))
     monkeypatch.setattr(module, "get_nickname", AsyncMock(return_value="某人"))
@@ -283,6 +299,7 @@ async def test_rotten_egg_attaches_bad_luck(monkeypatch: pytest.MonkeyPatch) -> 
     monkeypatch.setattr(module, "get_location_by_id", lambda item_id: item_id)
     monkeypatch.setattr(module, "deduct_eggs", AsyncMock())
     monkeypatch.setattr(module, "lang", _FakeLang())
+    monkeypatch.setattr(module, "splat", MagicMock(finish=MagicMock(side_effect=_Finished)))
 
     target = MagicMock()
     target.result.target = "target-native"
@@ -297,4 +314,5 @@ async def test_rotten_egg_attaches_bad_luck(monkeypatch: pytest.MonkeyPatch) -> 
             user_id="thrower",
         )
 
-    assert attached == [("target-main", 2)]
+    # 2 个臭鸡蛋命中：2 层霉运，每层 2 小时
+    assert attached == [("target-main", 2, timedelta(hours=2))]

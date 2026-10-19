@@ -30,3 +30,7 @@ help:
   details: 使用 VimCoin 购买礼物等商品，购买的物品会存入背包。
   usage1: shop (查看商品列表)
   usage2: shop buy <编号> [数量] (购买商品)
+category:
+  gift: 【礼物】
+  consumable: 【消耗品】
+  equipment: 【装备】

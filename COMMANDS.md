@@ -27,6 +27,18 @@
 - `/ct [total|7d|1d] --global (全局话痨排行)`
 - `/ct -e|-d (功能开关)`
 - `/ct [total|7d|1d] me|<@用户> (查询指定用户的话痨排行)`
+## `consumables`: 消耗品
+
+查看背包中的消耗品并使用，每次使用消耗一个
+- `/consumables (查看消耗品列表)`
+- `/consumables use <INDEX> [count] (使用消耗品)`
+## `craft`: 合成机
+
+把原料放进合成机并支付 VimCoin，等待一段时间后取走产物（会自动放入背包）。合成机可使用 VimCoin 升级，等级越高能同时进行的合成越多。
+- `/craft (查看合成机、配方与进行中的合成)`
+- `/craft start <配方ID> [数量] (开始合成)`
+- `/craft collect (收取已完成的合成产物)`
+- `/craft upgrade (升级合成机，等级 1-4 对应 2/4/6/10 个槽位)`
 ## `defuse-tnt`: 拆除 TNT
 
 运气游戏——通过猜测排列出正确的拆除炸弹的密码。
@@ -35,6 +47,12 @@
 
 查询 Epic Games Store 当前和即将到来的免费游戏。
 - `/epic-free (查询免费游戏)`
+## `equip`: 装备栏
+
+查看装备的装备。装备激活后获得对应的被动效果，每一种类型的装备只能同时装备一件。
+- `/equip (查看装备栏)`
+- `/equip <背包序号> (装备背包中的装备)`
+- `/equip off <类型> (卸下指定类型的装备)`
 ## `ftt`: 寻径指津
 
 寻径指津玩法
@@ -137,6 +155,7 @@ Moonlark 权限控制 (仅 SUPERUSER 可用)
 - `/bag drop <INDEX> [count] (丢弃物品)`
 - `/bag tidy (整理背包)`
 - `/bag move <from> <to> (移动物品)`
+- `/bag usage <INDEX> / bag use <INDEX> (查看物品的使用指令，QQ 平台可点击按钮快速填入指令)`
 ## `id`: 查询用户 ID
 
 查看指定用户（或自己）的主账号 ID 和当前账号 ID
@@ -420,9 +439,11 @@ Moonlark 投票
 ## `splat`: 砸鸡蛋
 
 向指定用户丢鸡蛋造成伤害，查看被砸 / 丢鸡蛋排行榜和个人砸鸡蛋信息。
-- `/splat (查看鸡蛋种类及当前选择)`
+- `/splat eggs (查看各种鸡蛋的持有数量与效果)`
 - `/splat switch <数字> (切换默认鸡蛋种类)`
-- `/splat <@用户> [数量] [-t/--type <数字|英文id>] (向指定用户丢鸡蛋，每个鸡蛋减 0.2 HP，臭鸡蛋减 1 HP)`
+- `/splat <@用户> [数量] [-t/--type <数字|英文id>] (向指定用户丢鸡蛋)`
+- `/splat rank/throwers [7d|30d|total] (被砸 / 丢鸡蛋排行榜)`
+- `/splat info [@用户] (查询砸鸡蛋信息)`
 ## `waifu`: 今日群老婆
 
 匹配你的每日群老婆！（仅支持群聊使用）

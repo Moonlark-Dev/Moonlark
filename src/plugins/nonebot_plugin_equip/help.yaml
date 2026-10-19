@@ -1,0 +1,3 @@
+plugin: equip
+commands:
+  equip: help;3;game

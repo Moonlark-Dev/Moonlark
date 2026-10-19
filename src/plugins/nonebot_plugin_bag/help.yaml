@@ -12,6 +12,7 @@ commands:
       - help.usage6
       - help.usage7
       - help.usage8
+      - help.usage9
     category: setting
   present:
     description: present_help.description
@@ -19,3 +20,10 @@ commands:
     usages:
       - present_help.usage1
     category: setting
+  consumables:
+    description: consumables_help.description
+    details: consumables_help.details
+    usages:
+      - consumables_help.usage1
+      - consumables_help.usage2
+    category: game

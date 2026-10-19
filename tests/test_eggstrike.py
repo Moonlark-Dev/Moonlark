@@ -103,3 +103,59 @@ async def test_deduct_eggs_rolls_back_partial_on_shortage() -> None:
         async with get_session() as session:
             await deduct_eggs(session, "consumer2", egg_location, 10)
     assert await get_egg_count("consumer2", egg_location) == 7
+
+
+class _FakeEggLang:
+    async def text(self, key: str, _user_id: str, *args: object) -> str:
+        return f"{key}:{args}"
+
+    async def is_key_exists(self, key: str, _user_id: str) -> bool:
+        return True
+
+    async def finish(self, key: str, _user_id: str, *args: object) -> None:
+        raise _Finished(key)
+
+
+class _Finished(Exception):
+    """用于截断 finish 的哨兵异常"""
+
+
+@pytest.mark.asyncio
+async def test_build_eggs_markdown_plain(monkeypatch: pytest.MonkeyPatch) -> None:
+    """/splat eggs：展示每种鸡蛋的持有数量与效果（非 QQ 平台为纯文本）"""
+    import nonebot_plugin_eggstrike.__main__ as module
+    from nonebot_plugin_bag.models import Bag
+    from nonebot_plugin_orm import get_session
+
+    async with get_session() as session:
+        session.add(
+            Bag(
+                user_id="eggs-user",
+                item_id="moonlark:egg",
+                count=20,
+                bag_index=1,
+                data="{}",
+                locked=False,
+            )
+        )
+        await session.commit()
+
+    from nonebot_plugin_eggstrike.utils import EGG_TYPES
+
+    async def fake_egg_name(egg_key: str, _user_id: str) -> str:
+        return str(EGG_TYPES[egg_key].item_id.split(":")[1])
+
+    monkeypatch.setattr(module, "lang", _FakeEggLang())
+    monkeypatch.setattr(module, "get_egg_type_name", fake_egg_name)
+    text = await module.build_eggs_markdown("eggs-user", clickable=False)
+
+    # 数量行（含 20 个鸡蛋与当前选择标记）
+    assert "eggs.item_plain" in text and "'x20" in text and "eggs.current" in text
+    # 臭鸡蛋与臭鸡蛋Ex 持有为 0
+    assert text.count("'x0'") == 2
+    # 非平台文本不应包含 qqbot 专属输入框元素
+    assert "qqbot-cmd-input" not in text
+    # 效果行：鸡蛋伤害、臭鸡蛋恶臭时长与手上爆炸率
+    assert "eggs.effect_plain:(0.2,)" in text
+    assert "eggs.effect_buff:(1.0, 2, 1.0)" in text
+    assert "eggs.effect_buff:(2.0, 6, 3.0)" in text

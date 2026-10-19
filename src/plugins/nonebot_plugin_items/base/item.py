@@ -14,6 +14,10 @@ class Item(ABC):
     properties: ItemProperties
     lang: LangHelper
 
+    # 该物品的使用指令（不含指令前缀）；None 表示没有使用指令。
+    # 由 /bag usage 展示，QQ 平台上会为该指令生成可点击按钮。
+    usage_command: str | None = None
+
     def __init__(self, properties: ItemProperties = get_properties()):
         self.properties = properties
         self.setupLang()
@@ -56,6 +60,13 @@ class Item(ABC):
         if await self.lang.is_key_exists(key, user_id):
             return await self.getText(key, user_id)
         return await LangHelper("nonebot_plugin_item").text("description.none", user_id)
+
+    async def getUsageDescription(self, stack: "ItemStack") -> str | None:
+        """获取物品的使用说明（本地化键 `<id>.usage`），未提供时返回 None"""
+        key = f"{self.getLocation().getPath()}.usage"
+        if not await self.lang.is_key_exists(key, stack.user_id):
+            return None
+        return await self.getText(key, stack.user_id)
 
     async def getDescription(self, stack: "ItemStack") -> str:
         return await self.getDefaultDescription(stack.user_id)

@@ -7,6 +7,9 @@ from ...lang import lang
 
 
 class RottenEgg(Item):
+    # 在输入框补 @ 目标后扔出（/splat）
+    usage_command = "splat -t rotten_egg"
+
     def setupLang(self) -> None:
         self.lang = lang
 

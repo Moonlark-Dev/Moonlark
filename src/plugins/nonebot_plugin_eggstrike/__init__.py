@@ -17,7 +17,9 @@ require("nonebot_plugin_alconna")
 require("nonebot_plugin_orm")
 require("nonebot_plugin_ranking")
 require("nonebot_plugin_render")
+require("nonebot_plugin_htmlrender")
 require("nonebot_plugin_shop")
 require("nonebot_plugin_buff")
+require("nonebot_plugin_equip")
 
 from . import __main__

@@ -23,6 +23,7 @@ BAD_LUCK = register_buff(
         description_key="builtin.bad_luck.description",
         max_layers=BAD_LUCK_MAX_LAYERS,
         default_duration=BAD_LUCK_DURATION,
+        is_negative=True,
     ),
 )
 

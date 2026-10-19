@@ -9,8 +9,10 @@
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from random import choice
 from typing import Optional, Union
 
+from nonebot_plugin_larklang import LangHelper
 from nonebot_plugin_orm import AsyncSession, get_session
 from sqlalchemy import delete, select
 
@@ -249,3 +251,36 @@ async def clear_buffs(user_id: str) -> int:
         result = await session.execute(delete(BuffAttachment).where(BuffAttachment.user_id == user_id))
         await session.commit()
         return int(result.rowcount or 0)
+
+
+async def get_negative_attachments(user_id: str) -> list[BuffInfo]:
+    """获取用户当前生效中的所有负面 buff 附着"""
+    return [
+        attachment
+        for attachment in await get_buff_attachments(user_id)
+        if attachment.definition is not None and attachment.definition.is_negative
+    ]
+
+
+async def get_buff_name(attachment: BuffInfo, user_id: str) -> str:
+    """获取 buff 附着的本地化名称（按定义所属的语言文件）"""
+    definition = attachment.definition
+    if definition is None:
+        return attachment.buff_id
+    if definition.lang_plugin and definition.lang_plugin != "buff":
+        return await LangHelper(definition.lang_plugin).text(definition.name_key, user_id)
+    return await LangHelper("buff").text(definition.name_key, user_id)
+
+
+async def detach_random_negative_buff(user_id: str) -> Optional[BuffInfo]:
+    """随机移除一个负面 buff（多层只移除一层），返回被移除的附着快照。
+
+    没有负面 buff 时返回 None。
+    """
+    attachments = await get_negative_attachments(user_id)
+    if not attachments:
+        return None
+    target = choice(attachments)  # nosec B311
+    if await detach_buff(user_id, target.buff_id, layers=1):
+        return target
+    return None
