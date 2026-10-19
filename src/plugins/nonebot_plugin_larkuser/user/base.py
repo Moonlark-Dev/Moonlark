@@ -43,7 +43,8 @@ def _is_set(value: UnsetValue) -> TypeGuard[datetime | None]:
 
 MAX_HEALTH = 100
 REVIVE_HEALTH = 5
-DOWN_DURATION = timedelta(minutes=30)
+DOWN_DURATION = timedelta(hours=3)
+DOWN_EXPIRE_HEALTH = 1
 
 
 FAV_LEVELS = [
@@ -146,7 +147,7 @@ class MoonlarkUser(ABC):
         return self.get_register_time() is not None
 
     def get_down_remaining(self) -> timedelta:
-        """返回倒地剩余时间，未倒地时返回零时长"""
+        """返回倒地剩余时间（最长 DOWN_DURATION），未倒地时返回零时长"""
         if self.downed_at is None:
             return timedelta(0)
         return max(DOWN_DURATION - (datetime.now() - self.downed_at), timedelta(0))
@@ -154,13 +155,13 @@ class MoonlarkUser(ABC):
     async def is_down(self) -> bool:
         """是否处于倒地状态。
 
-        已注册用户 HP 为 0 且倒地未超过 30 分钟时为倒地状态。
-        倒地状态持续 30 分钟，结束后将 HP 重置为 5 并复活。
+        已注册用户 HP 为 0 且倒地未超过 DOWN_DURATION（3 小时）时为倒地状态。
+        倒地状态最长持续 3 小时，到时将 HP 重置为 DOWN_EXPIRE_HEALTH（1）并自动恢复。
         """
         if self.get_register_time() is None or self.get_health() > 0 or self.downed_at is None:
             return False
         if datetime.now() - self.downed_at >= DOWN_DURATION:
-            await self.revive()
+            await self.revive(DOWN_EXPIRE_HEALTH)
             return False
         return True
 
@@ -198,11 +199,11 @@ class MoonlarkUser(ABC):
         await self.set_health(self.get_health() - amount)
         return True
 
-    async def revive(self) -> None:
-        """倒地状态结束，将 HP 重置为 5 并清除倒地状态"""
+    async def revive(self, health: float = REVIVE_HEALTH) -> None:
+        """倒地状态结束，将 HP 重置为 health 并清除倒地状态"""
         if self.get_register_time() is None:
             return
-        await self.set_data(self.user_id, health=REVIVE_HEALTH, downed_at=None)
+        await self.set_data(self.user_id, health=health, downed_at=None)
 
     async def increase_death_count(self) -> None:
         if self.get_register_time() is None:
