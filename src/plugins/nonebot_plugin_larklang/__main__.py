@@ -147,8 +147,10 @@ class LangHelper:
 
     async def text(self, key: str, user_id: str | int, *args, **kwargs) -> str:
         session = get_session()
-        language = await get_user_language(str(user_id), session)
-        await session.close()
+        try:
+            language = await get_user_language(str(user_id), session)
+        finally:
+            await session.close()
         return get_text(language, self.plugin_name, key, *args, **kwargs)
 
     def get_command_helper(self, base_key: Optional[str] = None, **preformated_keys) -> Any:

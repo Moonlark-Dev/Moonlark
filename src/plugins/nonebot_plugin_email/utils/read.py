@@ -12,9 +12,16 @@ async def is_claimed(email_id: int, user_id: str) -> bool:
 
 async def mark_email_read(email_id: int, user_id: str, force: bool = False) -> int:
     session = get_session()
-    data = await session.scalar(select(EmailUser).where(EmailUser.user_id == user_id, EmailUser.email_id == email_id))
-    if data is not None and (await is_claimed(email_id, user_id) or force):
-        data.is_read = True
-        await session.commit()
-    await session.close()
+    try:
+        data = await session.scalar(
+            select(EmailUser).where(
+                EmailUser.user_id == user_id,
+                EmailUser.email_id == email_id,
+            ),
+        )
+        if data is not None and (await is_claimed(email_id, user_id) or force):
+            data.is_read = True
+            await session.commit()
+    finally:
+        await session.close()
     return email_id

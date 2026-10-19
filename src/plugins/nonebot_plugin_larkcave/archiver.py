@@ -48,50 +48,54 @@ async def get_comments(cave_id: int, session: AsyncSession) -> list[dict[str, st
 async def archive_cave(cave_id: int, session: AsyncSession) -> None:
     path = data_dir.joinpath(f"{cave_id}_{str(time.time()).replace('.', '_')}")
     path.mkdir(exist_ok=True)
-    cave_data = await session.get_one(CaveData, {"id": cave_id})
-    if cave_data.public:
-        raise ValueError("回声洞未被删除，无法归档")
-    async with aiofiles.open(path.joinpath("cave.json"), "w", encoding="utf-8") as f:
-        await f.write(
-            json.dumps(
-                {
-                    "id": cave_id,
-                    "author": cave_data.author,
-                    "content": cave_data.content,
-                    "time": cave_data.time.timestamp(),
-                    "comments": await get_comments(cave_id, session),
-                }
+    try:
+        cave_data = await session.get_one(CaveData, {"id": cave_id})
+        if cave_data.public:
+            raise ValueError("回声洞未被删除，无法归档")
+        async with aiofiles.open(path.joinpath("cave.json"), "w", encoding="utf-8") as f:
+            await f.write(
+                json.dumps(
+                    {
+                        "id": cave_id,
+                        "author": cave_data.author,
+                        "content": cave_data.content,
+                        "time": cave_data.time.timestamp(),
+                        "comments": await get_comments(cave_id, session),
+                    }
+                )
             )
-        )
-    await session.delete(cave_data)
-    await session.commit()
-    images = (await session.scalars(select(ImageData).where(ImageData.belong == cave_id))).all()
-    for image in images:
-        if image.image_data is not None:
-            async with aiofiles.open(path.joinpath(f"{image.id}_{image.name}"), "wb") as f:
-                await f.write(image.image_data)
-        await session.delete(image)
+        await session.delete(cave_data)
         await session.commit()
-    logger.success(f"已归档回声洞 {cave_id} 于 {path.as_posix()}")
-    await session.close()
+        images = (await session.scalars(select(ImageData).where(ImageData.belong == cave_id))).all()
+        for image in images:
+            if image.image_data is not None:
+                async with aiofiles.open(path.joinpath(f"{image.id}_{image.name}"), "wb") as f:
+                    await f.write(image.image_data)
+            await session.delete(image)
+            await session.commit()
+        logger.success(f"已归档回声洞 {cave_id} 于 {path.as_posix()}")
+    finally:
+        await session.close()
 
 
 @scheduler.scheduled_job("cron", day="*", id="archive_removed_cave")
 async def _() -> None:
     session = get_session()
-    removed_cave_list = (await session.scalars(select(RemovedCave))).all()
-    now = datetime.now()
-    for data in removed_cave_list:
-        if now <= data.expiration_time:
-            continue
-        logger.info(f"正在归档回声洞 {data.id} ...")
-        try:
-            await archive_cave(data.id, session)
-        except ValueError:
-            pass
-        except Exception:
-            logger.warning(f"归档回声洞 {data.id} 时出现错误: {traceback.format_exc()}")
-        await session.delete(data)
-    await session.commit()
-    logger.info("回声洞归档检查完成！")
-    await session.close()
+    try:
+        removed_cave_list = (await session.scalars(select(RemovedCave))).all()
+        now = datetime.now()
+        for data in removed_cave_list:
+            if now <= data.expiration_time:
+                continue
+            logger.info(f"正在归档回声洞 {data.id} ...")
+            try:
+                await archive_cave(data.id, session)
+            except ValueError:
+                pass
+            except Exception:
+                logger.warning(f"归档回声洞 {data.id} 时出现错误: {traceback.format_exc()}")
+            await session.delete(data)
+        await session.commit()
+        logger.info("回声洞归档检查完成！")
+    finally:
+        await session.close()
