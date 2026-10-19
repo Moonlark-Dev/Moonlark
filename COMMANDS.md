@@ -443,6 +443,10 @@ Moonlark 投票
 - `/splat <@用户> [数量] [-t/--type <数字|英文id>] (向指定用户丢鸡蛋)`
 - `/splat rank/throwers [7d|30d|total] (被砸 / 丢鸡蛋排行榜)`
 - `/splat info [@用户] (查询砸鸡蛋信息)`
+## `updates`: 查看更新
+
+查看最新更新公告
+- `/updates (查看最新更新公告)`
 ## `waifu`: 今日群老婆
 
 匹配你的每日群老婆！（仅支持群聊使用）
