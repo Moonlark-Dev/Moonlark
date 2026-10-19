@@ -4379,7 +4379,7 @@ strenum = "^0.4.15"
 type = "git"
 url = "https://github.com/Moonlark-Dev/nonebot-plugin-userinfo.git"
 reference = "HEAD"
-resolved_reference = "c1bb24ced09a89a848c8f58d7ffca9f3c97f57d8"
+resolved_reference = "685f1ec620a088e7c5d28afdc6d250c895c53849"
 
 [[package]]
 name = "nonebot-plugin-waiter"
