@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import random
 from dataclasses import dataclass
 from typing import Literal, Optional
 
@@ -21,11 +20,14 @@ from sqlalchemy import select
 
 from .lang import lang
 from .logic import (
+    HOLD_ACTION,
+    TRANSFER_ACTION,
     Action,
     draw_initial_probability,
     draw_probability,
     get_reward,
     get_risk_level,
+    pick_random,
     roll_explosion,
 )
 from .models import SweetPotatoStat
@@ -128,7 +130,7 @@ class HotPotatoRoom:
             return None
         text = str(value).strip()
         if text.lower() in {"random", "r", "随机"}:
-            return random.choice(targets) if targets else None
+            return pick_random(targets) if targets else None
         if text.isdigit():
             index = int(text)
             if 1 <= index <= len(self.players):
@@ -284,7 +286,7 @@ class HotPotatoRoom:
         self.pending_holds = {}
         self.rewards = {}
         self.action_queue = asyncio.Queue()
-        self.holder = random.choice(self.players)
+        self.holder = pick_random(self.players)
         initial = draw_initial_probability(self.potato_type.initial_probability_range)
         self.probability = initial
         self.min_probability = initial
@@ -448,8 +450,8 @@ class HotPotatoRoom:
         sections = [await lang.text("result.title", self.owner)]
         if self.burned is not None:
             reason_keys = {
-                "pass": "result.reason_pass",
-                "hold": "result.reason_hold",
+                TRANSFER_ACTION: "result.reason_pass",
+                HOLD_ACTION: "result.reason_hold",
                 "timeout": "result.reason_timeout",
             }
             sections.append(

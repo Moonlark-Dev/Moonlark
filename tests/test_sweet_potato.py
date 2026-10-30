@@ -98,7 +98,7 @@ def test_draw_probability_updates_floor(monkeypatch: pytest.MonkeyPatch) -> None
         calls.append((lower, upper))
         return upper
 
-    monkeypatch.setattr(logic.random, "randint", fake_randint)
+    monkeypatch.setattr(logic._RNG, "randint", fake_randint)
     assert logic.draw_probability(60) == (100, 100)
     assert calls == [(60, 100)]
 
@@ -113,8 +113,8 @@ def test_draw_probability_short_circuit_after_pass(monkeypatch: pytest.MonkeyPat
         calls.append((lower, upper))
         return next(values)
 
-    monkeypatch.setattr(logic.random, "randint", fake_randint)
-    monkeypatch.setattr(logic.random, "random", lambda: 0.0)
+    monkeypatch.setattr(logic._RNG, "randint", fake_randint)
+    monkeypatch.setattr(logic._RNG, "random", lambda: 0.0)
 
     probability, floor = logic.draw_probability(60, after_pass=True)
     assert probability == 57
@@ -126,8 +126,8 @@ def test_draw_probability_short_circuit_after_pass(monkeypatch: pytest.MonkeyPat
 def test_draw_probability_no_short_circuit_when_not_triggered(monkeypatch: pytest.MonkeyPatch) -> None:
     from nonebot_plugin_sweet_potato import logic
 
-    monkeypatch.setattr(logic.random, "randint", lambda _lower, upper: upper)
-    monkeypatch.setattr(logic.random, "random", lambda: 0.5)
+    monkeypatch.setattr(logic._RNG, "randint", lambda _lower, upper: upper)
+    monkeypatch.setattr(logic._RNG, "random", lambda: 0.5)
 
     probability, floor = logic.draw_probability(60, after_pass=True)
     assert probability == 100
@@ -143,8 +143,8 @@ def test_draw_probability_short_circuit_requires_above_90(monkeypatch: pytest.Mo
         calls.append((lower, upper))
         return 90
 
-    monkeypatch.setattr(logic.random, "randint", fake_randint)
-    monkeypatch.setattr(logic.random, "random", lambda: 0.0)
+    monkeypatch.setattr(logic._RNG, "randint", fake_randint)
+    monkeypatch.setattr(logic._RNG, "random", lambda: 0.0)
 
     probability, floor = logic.draw_probability(60, after_pass=True)
     assert probability == 90
@@ -156,11 +156,11 @@ def test_draw_probability_short_circuit_requires_above_90(monkeypatch: pytest.Mo
 def test_roll_explosion_bounds(monkeypatch: pytest.MonkeyPatch) -> None:
     from nonebot_plugin_sweet_potato import logic
 
-    monkeypatch.setattr(logic.random, "randint", lambda _lower, _upper: 100)
+    monkeypatch.setattr(logic._RNG, "randint", lambda _lower, _upper: 100)
     assert logic.roll_explosion(100) is True
     assert logic.roll_explosion(99) is False
 
-    monkeypatch.setattr(logic.random, "randint", lambda _lower, _upper: 1)
+    monkeypatch.setattr(logic._RNG, "randint", lambda _lower, _upper: 1)
     assert logic.roll_explosion(0) is False
     assert logic.roll_explosion(1) is True
 
