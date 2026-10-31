@@ -1,7 +1,6 @@
 import asyncio
 import html
 import json
-import math
 import random
 import re
 from datetime import datetime, timedelta
@@ -38,6 +37,7 @@ from ..utils.simhash import build_message_fingerprint
 from ..utils.status_manager import get_status_manager
 from ..utils.sticker_manager import get_sticker_manager
 from ..utils.timing_stats import timing_stats_manager
+from ..utils.token_cost import calculate_token_cost
 from ..utils.tool_manager import ToolManager
 from ..utils.tools.meme import MemeTools
 from ..utils.tools.sticker import StickerTools
@@ -81,6 +81,9 @@ class MessageProcessor:
         self.consecutive_message_count = 0
         # Token bucket 相关属性
         self.token_bucket = TokenBucket(6, -2)
+        # 被 @ / 重要事件触发的那一轮：首条不超过此长度的消息不计费，即使 Token 为负也放行
+        self.IMPORTANT_FREE_REPLY_CHARS = 100
+        self.important_turn_quota = False
         # Unlimited tokens 相关属性
         self.unlimited_tokens_remaining = 0
         self.unlimited_tokens_active = False
@@ -523,7 +526,7 @@ class MessageProcessor:
                 break
         self.session.accumulated_text_length = 0
         # @ 插话（important）等待正在进行的请求结束后补发，而不是被 fetcher_lock 静默丢弃
-        await self.openai_messages.fetch_reply(wait_if_busy=important)
+        await self.openai_messages.fetch_reply(wait_if_busy=important, important=important)
 
     async def _check_rules(self, important: bool, token_check_passed: bool, recent_message_count: int) -> bool:
         checks = [
@@ -576,6 +579,22 @@ class MessageProcessor:
             )
         return result
 
+    def _resolve_message_token_cost(self, message_content: str) -> int | None:
+        """返回本条消息应扣的 Token；返回 ``None`` 表示额度不足、禁止发送。
+
+        被 @ / 重要事件触发的轮次，首条消息即使 Token 为负数也放行；其中 100 字以内
+        不计费，超出部分照常计费。闲聊轮次完全沿用原规则。
+        """
+        free_quota = self.important_turn_quota
+        if free_quota:
+            # 每个 important 轮次只有首条消息享受这个额度
+            self.important_turn_quota = False
+        if self.token_bucket.get() < 0 and not free_quota:
+            return None
+        if free_quota and len(message_content) <= self.IMPORTANT_FREE_REPLY_CHARS:
+            return 0
+        return calculate_token_cost(message_content)
+
     async def send_message(self, message_content: str, reply_message_id: str | None = None) -> str:
         # 仅在群聊中启用 token bucket 功能
         if self.session.get_session_type() == "group":
@@ -588,13 +607,9 @@ class MessageProcessor:
                     self.token_bucket.token = self.token_bucket.min_token
                     logger.info("Unlimited tokens exhausted, token pool reset to minimum")
             else:
-                # 检查 token 是否为负数
-                if self.token_bucket.get() < 0 and self.session.get_session_type() == "group":
+                token_cost = self._resolve_message_token_cost(message_content)
+                if token_cost is None:
                     return await self.session.text("message.token_insufficient", self.token_bucket.get())
-
-                # 计算需要扣除的 token 数量（每 7 个字计入 1 token，不足 7 个字的部分按 7 个字算）
-                text_length = len(message_content)
-                token_cost = math.ceil(text_length / 7)  # 向上取整
         else:
             token_cost = 0
         message = await self.session.format_message(message_content)
