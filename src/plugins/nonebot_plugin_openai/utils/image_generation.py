@@ -23,6 +23,7 @@ import httpx
 
 from .client import client
 from .model_config import get_model_for_identify
+from .sanitize import strip_nul
 
 VALID_SIZES = {"auto", "1024x1024", "1536x1024", "1024x1536", "256x256", "512x512", "1792x1024", "1024x1792"}
 CUSTOM_SIZE_PATTERN = re.compile(r"^\d+x\d+$")
@@ -82,6 +83,8 @@ async def generate_image(
         Exception: API 调用失败时抛出异常
     """
     size = validate_size(size)
+    # 提示词来自用户 / 模型输出，NUL 会让网关的 jsonb 落库失败，发送前剔除
+    prompt = strip_nul(prompt)
     model = await get_model_for_identify(identify)
     if reference_image is not None:
         response = await client.images.edit(
