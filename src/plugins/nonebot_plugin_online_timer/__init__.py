@@ -20,4 +20,5 @@ require("nonebot_plugin_apscheduler")
 require("nonebot_plugin_ranking")
 
 from . import __main__
+from . import ranking  # noqa: F401, E402 - 注册 WebRanking
 from .__main__ import is_user_recently_online

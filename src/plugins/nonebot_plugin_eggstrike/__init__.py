@@ -23,3 +23,4 @@ require("nonebot_plugin_buff")
 require("nonebot_plugin_equip")
 
 from . import __main__
+from . import ranking  # noqa: F401, E402 - 注册 WebRanking

@@ -21,7 +21,7 @@ from nonebot_plugin_larkuser.utils.user import get_user
 from nonebot_plugin_larkutils.group import get_group_id
 from nonebot_plugin_larkutils.user import get_user_id, is_private_message
 from nonebot_plugin_orm import get_session
-from nonebot_plugin_ranking import generate_image
+from nonebot_plugin_ranking import WebRanking, generate_image, register
 from nonebot_plugin_ranking.types import RankingData
 from sqlalchemy import select
 
@@ -185,17 +185,25 @@ async def _(
         await execute_rua(bot, event, target, group_id, user_id, target_action, is_private)
 
 
-@matcher.assign("rank")
-async def _(user_id: str = get_user_id()) -> None:
+async def get_rua_ranking_data() -> list[RankingData]:
+    """按 rua 次数从高到低返回排行数据，供指令与 WebRanking 共用。"""
     async with get_session() as session:
         ranked_data = (await session.execute(select(RuaData).order_by(RuaData.count.desc()))).scalars().all()
+    return [RankingData(user_id=data.user_id, data=data.count, info=None) for data in ranked_data if data.count > 0]
 
-    if not ranked_data:
-        await lang.finish("rua.rank_no_data", user_id)
 
-    ranking_data = [
-        RankingData(user_id=data.user_id, data=data.count, info=None) for data in ranked_data if data.count > 0
-    ]
+class RuaRanking(WebRanking):
+
+    async def get_sorted_data(self, user_id: str) -> list[RankingData]:
+        return await get_rua_ranking_data()
+
+
+register(RuaRanking("rua", "rua.rank_title", lang))
+
+
+@matcher.assign("rank")
+async def _(user_id: str = get_user_id()) -> None:
+    ranking_data = await get_rua_ranking_data()
 
     if not ranking_data:
         await lang.finish("rua.rank_no_data", user_id)

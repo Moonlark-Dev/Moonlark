@@ -30,9 +30,11 @@ switch:
   success: "已将默认鸡蛋切换为 {}。"
 rank:
   title: "被砸排行榜（{}）"
+  web_title: "被砸排行榜"
   no_data: "暂无数据。"
 throwers:
   title: "丢鸡蛋排行榜（{}）"
+  web_title: "丢鸡蛋排行榜"
   no_data: "暂无数据。"
 info:
   title: "砸鸡蛋信息"
