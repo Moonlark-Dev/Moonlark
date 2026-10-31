@@ -26,6 +26,9 @@ class SessionData(Model):
     created_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
     last_active_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
     device: Mapped[Optional[str]] = mapped_column(String(256), nullable=True)
+    # 激活时轮换 session_id 后，新会话行指回被轮换掉的旧 ID：旧行已删除（正常鉴权失效），
+    # /api/login/pending 的长轮询仍拿着旧 ID，可借此取回新 ID 交还前端替换本地凭据。
+    previous_session_id: Mapped[Optional[str]] = mapped_column(String(32), nullable=True, index=True)
 
 
 class PasskeyCredential(Model):
