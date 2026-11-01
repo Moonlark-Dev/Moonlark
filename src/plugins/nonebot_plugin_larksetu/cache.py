@@ -21,7 +21,7 @@ import aiofiles
 from nonebot import get_driver, logger
 from nonebot.compat import type_validate_python
 from nonebot_plugin_localstore import get_cache_dir
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from .config import config
 from .image import get_new_image
@@ -61,7 +61,7 @@ class CacheEntry(BaseModel):
 
 class CacheIndex(BaseModel):
     version: int = CACHE_VERSION
-    entries: list[CacheEntry] = []
+    entries: list[CacheEntry] = Field(default_factory=list)
 
 
 # 索引读写的互斥锁：缓存索引的读-改-写必须串行，否则并发请求会互相覆盖
