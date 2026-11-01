@@ -21,7 +21,7 @@ from nonebot_plugin_email.utils.unread import get_unread_email_count
 from nonebot_plugin_items.utils.get import get_item
 from nonebot_plugin_items.utils.string import get_location_by_id
 from nonebot_plugin_items.registry.registry import ResourceLocation
-from nonebot_plugin_larksetu import get_landscape_image
+from nonebot_plugin_larksetu import get_image_id, get_landscape_image
 from nonebot_plugin_larkuser import get_user
 from nonebot_plugin_updates.utils import has_new_update
 from nonebot_plugin_larkuser.user.utils import is_user_registered
@@ -281,6 +281,8 @@ class SignHandler:
         self._missed_days: int = 0
         self._templates: dict = {}
         self._bg_kwargs: dict = {}
+        # 头图来自 setu 时的缓存 ID，用于在键盘上提供「查看原图」按钮
+        self._setu_image_id: Optional[str] = None
 
     async def process_register(self) -> None:
         """判断用户是否注册，如果未注册就触发注册流程。"""
@@ -402,6 +404,7 @@ class SignHandler:
             if setu_img:
                 b64 = base64.b64encode(setu_img["image"]).decode()
                 ext = setu_img["data"].ext
+                self._setu_image_id = get_image_id(setu_img["data"])
                 self._bg_kwargs["background_url"] = (
                     f"data:image/png;base64,{b64}" if ext == "png" else f"data:image/jpeg;base64,{b64}"
                 )
@@ -448,12 +451,23 @@ class SignHandler:
                 await lang.text("button.invite", self.user_id),
                 text=f"{config.command_start[0]}sign",
             ),
+        ]
+        if self._setu_image_id:
+            # 头图来自 setu 时提供「查看原图」入口，按缓存 ID 取回原图
+            buttons.append(
+                Button(
+                    "enter",
+                    await lang.text("button.setu_original", self.user_id),
+                    text=f"{config.command_start[0]}setu-g {self._setu_image_id}",
+                ),
+            )
+        buttons.append(
             Button(
                 "enter",
                 await lang.text("button.jrrp", self.user_id),
                 text=f"{config.command_start[0]}jrrp",
             ),
-        ]
+        )
         if await get_unread_email_count(self.user_id) > 0:
             buttons.append(
                 Button(
