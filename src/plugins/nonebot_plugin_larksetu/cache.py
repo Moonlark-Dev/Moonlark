@@ -177,7 +177,7 @@ async def _claim_entry(*, landscape_only: bool, retain: bool) -> Optional[CacheE
             for entry in index.entries
             if not entry.is_used and (not landscape_only or entry.data.width > entry.data.height)
         ]
-        entry = random.choice(pool) if pool else None
+        entry = random.choice(pool) if pool else None  # nosec B311
         if entry is not None:
             if retain:
                 entry.used_at = now
