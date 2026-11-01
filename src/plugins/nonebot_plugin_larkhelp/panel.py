@@ -126,6 +126,11 @@ LOGO_RATIO = 1264 / 848  # 3:2，LOGO 预留位
 LOGO_H = 168
 W = 2 * PAD + COLS * COL_W + (COLS - 1) * GUTTER  # 1068
 
+# 模拟粗体的同色描边宽度（设备像素）。设计稿 build_demo.py 用 SVG stroke-width=0.9，
+# 但 Pillow 的 stroke_width 是单侧描边：取 2 时 11px 的小字号中文（热门卡片右下角的
+# 分类名最明显）笔画会粘连成一团，与设计稿 demo 逐处对照后取 1。
+FAKE_BOLD_STROKE = 1
+
 
 # --------------------------------------------------------------------------
 # 字体度量
@@ -453,7 +458,7 @@ class Canvas:
             return 0.0
         f = _font(size)
         h_anchor = {"start": "l", "middle": "m", "end": "r"}[anchor]
-        stroke_w = 2 if weight >= 600 else 0
+        stroke_w = FAKE_BOLD_STROKE if weight >= 600 else 0
         alpha = 255 if opacity is None else max(1, round(255 * opacity))
         color = (*fill, alpha)
         tw = self.text_width(s, size)

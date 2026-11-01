@@ -1,5 +1,7 @@
 # 商店商品分类配置：分类标识 -> [(物品 ID, 单价 / VimCoin), ...]
 # 分类标识用于展示（shop.yaml 的 category.* 键），购买仍使用跨分类的统一编号。
+# gift：可 /present 赠送的礼物；tool：用 /splat、/roll 等指令消耗的道具；
+# consumable：可 /consumables use 的消耗品；equipment：可 /equip 的装备。
 GOODS_CATEGORIES: dict[str, list[tuple[str, int]]] = {
     "gift": [
         ("moonlark:dried_fish", 20),
@@ -8,6 +10,8 @@ GOODS_CATEGORIES: dict[str, list[tuple[str, int]]] = {
         ("moonlark:catnip_pouch", 45),
         ("moonlark:cat_teaser", 60),
         ("moonlark:cat_can", 90),
+    ],
+    "tool": [
         ("moonlark:egg", 15),
         ("moonlark:dice", 30),
     ],

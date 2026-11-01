@@ -7,6 +7,8 @@ from ...lang import lang
 
 
 class Dice(Item):
+    # 掷骰子消耗背包中的二十面骰子（/roll）
+    usage_command = "roll"
 
     def setupLang(self) -> None:
         self.lang = lang

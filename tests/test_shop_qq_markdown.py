@@ -3,6 +3,7 @@
 QQ 官方机器人下 /shop 使用 markdown 渲染：标题与持有余额、可点击商品条目
 （<qqbot-cmd-input>，点击即把 `{前缀}shop buy <编号> 1` 填入输入框）、购买提示。
 商品文本只展示名称与单价，编号不出现在 show 属性中；其余平台仍发送纯文本列表。
+每个分类自成一个块（块之间空一行），否则分类标题会被解析成上一个列表项的续行。
 """
 
 from pathlib import Path
@@ -26,7 +27,7 @@ _GOODS_NAMES = [
     "牛奶",
     "临时屏障",
 ]
-_CATEGORY_HEADERS = {1: "【礼物】", 9: "【消耗品】", 10: "【装备】"}
+_CATEGORY_HEADERS = {1: "【礼物】", 7: "【道具】", 9: "【消耗品】", 10: "【装备】"}
 
 
 def _flatten(data: dict[str, Any], prefix: str = "") -> dict[str, str]:
@@ -75,12 +76,18 @@ def shop_env(monkeypatch: pytest.MonkeyPatch) -> Any:
 
 
 def _expected_markdown(goods: list[tuple[str, int]]) -> str:
-    items = []
+    blocks: list[str] = []
+    current: list[str] = []
     for index, (name, (_, price)) in enumerate(zip(_GOODS_NAMES, goods), start=1):
         if index in _CATEGORY_HEADERS:
-            items.append(_CATEGORY_HEADERS[index])
-        items.append(f'- <qqbot-cmd-input text="/shop buy {index} 1" show="{name} ({price}vi)" reference="false" />')
-    return "\n".join(["## 商店", "> 当前持有：40399.6 VimCoin", "", *items, "", "点击可以进行购买"])
+            if current:
+                blocks.append("\n".join(current))
+            current = [_CATEGORY_HEADERS[index]]
+        current.append(f'- <qqbot-cmd-input text="/shop buy {index} 1" show="{name} ({price}vi)" reference="false" />')
+    if current:
+        blocks.append("\n".join(current))
+    title = "## 商店\n> 当前持有：40399.6 VimCoin"
+    return "\n\n".join([title, *blocks, "点击可以进行购买"])
 
 
 @pytest.mark.asyncio
@@ -93,6 +100,9 @@ async def test_build_markdown_list(shop_env: Any) -> None:
     assert 'text="/shop buy 1 1"' in markdown
     assert 'show="小鱼干 (20vi)"' in markdown
     assert "【Moonlark 商店】" not in markdown
+    # 每个分类标题自成一段，紧跟在上一个分类的列表项后面会带上无序列表缩进
+    for header in _CATEGORY_HEADERS.values():
+        assert f"\n\n{header}\n" in f"\n{markdown}\n"
 
 
 @pytest.mark.asyncio
@@ -137,7 +147,10 @@ async def test_handle_main_other_adapter_sends_plain_text(shop_env: Any, monkeyp
     finish.assert_awaited_once()
     plain = finish.await_args.args[0]
     assert plain.splitlines()[0] == "【Moonlark 商店】当前持有：40399.6 VimCoin"
-    assert "【礼物】" in plain and "【消耗品】" in plain and "【装备】" in plain
+    assert "【礼物】" in plain
+    assert "【道具】" in plain
+    assert "【消耗品】" in plain
+    assert "【装备】" in plain
     assert "[1] 小鱼干 - 20 VimCoin" in plain
     assert "[9] 牛奶 - 35 VimCoin" in plain
     assert "[10] 临时屏障 - 150 VimCoin" in plain
