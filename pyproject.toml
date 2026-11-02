@@ -112,6 +112,7 @@ plugins = [
     "nonebot_plugin_md",
     "nonebot_plugin_sticker_dl",
     "nonebot_plugin_updates",
+    "nonebot_plugin_sweet_potato",
 ]
 plugin_dirs = []
 builtin_plugins = []

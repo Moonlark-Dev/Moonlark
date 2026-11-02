@@ -1,0 +1,3 @@
+plugin: sweet_potato
+commands:
+  sweet-potato: help;9;game

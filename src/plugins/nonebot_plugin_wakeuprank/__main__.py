@@ -129,16 +129,8 @@ async def _filter_ranked_data(
     return [item for item in ranked_data if item["user_id"] in allowed_ids]
 
 
-@wakeuprank.assign("$main")
-async def _(
-    matcher: Matcher,
-    user_id: str = get_user_id(),
-    group_id: str = get_group_id(),
-    result: Arparma | None = None,
-) -> None:
-    registered = result is not None and result.find("registered") if result else False
-    group_flag = result is not None and result.find("group") if result else False
-
+async def get_rise_ranking_data(user_id: str) -> list[RankingData]:
+    """按成为当日最早起床者的次数排行，供指令与 WebRanking 共用。"""
     async with get_session() as session:
         subq = (
             select(
@@ -159,7 +151,7 @@ async def _(
             )
         ).all()
     if not winners:
-        await lang.finish("wakeuprank.no_data", user_id)
+        return []
 
     user_counts: dict[str, int] = {}
     for row in winners:
@@ -168,8 +160,8 @@ async def _(
 
     sorted_users = sorted(user_counts.items(), key=lambda x: x[1], reverse=True)
 
+    ranked_data: list[RankingData] = []
     async with get_session() as session:
-        ranked_data: list[RankingData] = []
         for uid, count in sorted_users:
             rows = await _get_user_valid_records(session, uid)
             if rows:
@@ -181,26 +173,11 @@ async def _(
             ranked_data.append(
                 {"user_id": uid, "data": count, "info": await lang.text("wakeuprank.avg_time", user_id, avg_time_str)}
             )
-
-    ranked_data = await _filter_ranked_data(ranked_data, registered, group_flag, group_id)
-    if not ranked_data:
-        await lang.finish("wakeuprank.no_data", user_id)
-
-    title = await lang.text("wakeuprank.title", user_id)
-    image = await generate_image(ranked_data, user_id, title)
-    await wakeuprank.finish(await UniMessage().image(raw=image, name="image.png").export())
+    return ranked_data
 
 
-@wakeuprank.assign("avg")
-async def _(
-    matcher: Matcher,
-    user_id: str = get_user_id(),
-    group_id: str = get_group_id(),
-    result: Arparma | None = None,
-) -> None:
-    registered = result is not None and result.find("registered") if result else False
-    group_flag = result is not None and result.find("group") if result else False
-
+async def get_avg_ranking_data(user_id: str) -> list[RankingData]:
+    """按平均起床时间从早到晚排行，供指令与 WebRanking 共用。"""
     async with get_session() as session:
         rows = (
             await session.execute(
@@ -210,7 +187,7 @@ async def _(
             )
         ).all()
     if not rows:
-        await lang.finish("wakeuprank.no_data", user_id)
+        return []
 
     user_times: dict[str, list[float]] = {}
     for row in rows:
@@ -238,7 +215,40 @@ async def _(
                 "info": await lang.text("wakeuprank.record_count", user_id, count),
             }
         )
+    return ranked_data
 
+
+@wakeuprank.assign("$main")
+async def _(
+    matcher: Matcher,
+    user_id: str = get_user_id(),
+    group_id: str = get_group_id(),
+    result: Arparma | None = None,
+) -> None:
+    registered = result is not None and result.find("registered") if result else False
+    group_flag = result is not None and result.find("group") if result else False
+
+    ranked_data = await get_rise_ranking_data(user_id)
+    ranked_data = await _filter_ranked_data(ranked_data, registered, group_flag, group_id)
+    if not ranked_data:
+        await lang.finish("wakeuprank.no_data", user_id)
+
+    title = await lang.text("wakeuprank.title", user_id)
+    image = await generate_image(ranked_data, user_id, title)
+    await wakeuprank.finish(await UniMessage().image(raw=image, name="image.png").export())
+
+
+@wakeuprank.assign("avg")
+async def _(
+    matcher: Matcher,
+    user_id: str = get_user_id(),
+    group_id: str = get_group_id(),
+    result: Arparma | None = None,
+) -> None:
+    registered = result is not None and result.find("registered") if result else False
+    group_flag = result is not None and result.find("group") if result else False
+
+    ranked_data = await get_avg_ranking_data(user_id)
     ranked_data = await _filter_ranked_data(ranked_data, registered, group_flag, group_id)
     if not ranked_data:
         await lang.finish("wakeuprank.no_data", user_id)

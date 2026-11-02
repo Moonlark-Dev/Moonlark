@@ -6,4 +6,5 @@ commands:
     usages:
       - h.u1
       - h.u2
+      - h.u3
     category: game

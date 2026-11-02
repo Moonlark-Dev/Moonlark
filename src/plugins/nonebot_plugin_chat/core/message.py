@@ -94,7 +94,7 @@ class MessageQueue:
     # 请求
     # ------------------------------------------------------------------
 
-    async def fetch_reply(self, wait_if_busy: bool = False) -> None:
+    async def fetch_reply(self, wait_if_busy: bool = False, important: bool = False) -> None:
         if self.fetcher_lock.locked():
             if not wait_if_busy:
                 return
@@ -106,17 +106,24 @@ class MessageQueue:
         timing_stats_manager.record_fetch_start(session_id)
 
         async with self.fetcher_lock:
-            self.fetcher_task = asyncio.create_task(self._fetch_reply())
+            # 被 @ / 重要事件触发的轮次，首条消息允许突破 Token 限制（见
+            # MessageProcessor._resolve_message_token_cost）。在锁内标记，
+            # 避免并发的非重要请求把这次的额度清掉。
+            self.processor.important_turn_quota = important
             try:
-                status = await self.fetcher_task
-            except asyncio.CancelledError:
-                # chat context 锁定超时会取消 fetcher task；外层任务自身被取消时继续向上抛
-                current = asyncio.current_task()
-                if current is not None and current.cancelling() > 0:
-                    raise
-                logger.warning("LLM 请求已被取消（chat context 锁定超时）")
-                status = FetchStatus.FAILED
-            logger.info(f"Reply fetcher ended with status: {status.name}")
+                self.fetcher_task = asyncio.create_task(self._fetch_reply())
+                try:
+                    status = await self.fetcher_task
+                except asyncio.CancelledError:
+                    # chat context 锁定超时会取消 fetcher task；外层任务自身被取消时继续向上抛
+                    current = asyncio.current_task()
+                    if current is not None and current.cancelling() > 0:
+                        raise
+                    logger.warning("LLM 请求已被取消（chat context 锁定超时）")
+                    status = FetchStatus.FAILED
+                logger.info(f"Reply fetcher ended with status: {status.name}")
+            finally:
+                self.processor.important_turn_quota = False
 
         if self.continuous_response and self.processor.session.get_session_type() == "group":
             self.continuous_response = False

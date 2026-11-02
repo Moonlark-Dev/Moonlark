@@ -30,6 +30,7 @@ from ..config import config
 from .message import generate_message
 from .client import client
 from .model_config import get_model_for_identify
+from .sanitize import strip_nul
 
 T = TypeVar("T")
 T2 = TypeVar("T2", bound=BaseModel)
@@ -113,11 +114,16 @@ class LLMRequestSession(Generic[T2]):
     async def create_completion(self) -> ChatCompletion:
         self._sanitize_messages()
         tool_choice = self.tool_choice if self.func_list else "none"
+        # 请求体里出现 NUL（U+0000）会让网关（AxonHub 等）把整次请求的请求体写成
+        # {"message": "invalid text"} 占位，因此发送前剔除。只清理副本：self.messages
+        # 还要与 chat context 做前缀对齐，就地改写会让两边错位。
+        messages = strip_nul(self.messages)
+        tools = strip_nul(self.func_list)
         if not self.response_format:
             completion = await client.chat.completions.create(
-                messages=self.messages,  # type: ignore
+                messages=messages,  # type: ignore
                 model=self.model,
-                tools=self.func_list,
+                tools=tools,
                 tool_choice=tool_choice,
                 extra_headers=self._build_extra_headers(),
                 timeout=self.timeout_per_request,
@@ -126,9 +132,9 @@ class LLMRequestSession(Generic[T2]):
             )
         else:
             completion = await client.chat.completions.parse(
-                messages=self.messages,  # type: ignore
+                messages=messages,  # type: ignore
                 model=self.model,
-                tools=self.func_list,
+                tools=tools,
                 tool_choice=tool_choice,
                 extra_headers=self._build_extra_headers(),
                 timeout=self.timeout_per_request,
@@ -222,6 +228,9 @@ class LLMRequestSession(Generic[T2]):
             content = result
         else:
             content = json.dumps(result, ensure_ascii=False)
+        # 工具返回来自外部（命令输出、网页正文等），可能带 NUL；它在同一次请求的后续
+        # 轮次里会再次进入请求体，所以在这里就清掉，context 落库的内容也保持一致。
+        content = strip_nul(content)
         msg: ChatCompletionToolMessageParam = {
             "role": "tool",
             "tool_call_id": call_id,

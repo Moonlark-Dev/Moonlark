@@ -1,6 +1,7 @@
 from datetime import UTC, date, datetime, timedelta, timezone
 
 from nonebot_plugin_larkutils.jrrp import get_luck_value
+from nonebot_plugin_larkutils.sql import retry_on_db_conflict
 from nonebot_plugin_orm import get_session
 from sqlalchemy import select
 
@@ -41,15 +42,32 @@ async def get_luck_message(user_id: str) -> str:
 
 async def save_luck_trend(user_id: str, luck_value: int, reroll_count: int = 0) -> None:
     """记录今日人品值到走势表."""
-    async with get_session() as session:
-        record = LuckTrend(
-            user_id=user_id,
-            record_date=_today(),
-            luck_value=luck_value,
-            reroll_count=reroll_count,
-        )
-        await session.merge(record)
-        await session.commit()
+    today = _today()
+
+    async def save() -> None:
+        async with get_session() as session:
+            # 同一个用户可能同时跑多个 jrrp 指令，先读后写时需要锁定这一行，
+            # 否则 MySQL / MariaDB 会因记录在事务期间被改动而返回 1020
+            record = await session.get(
+                LuckTrend,
+                {"user_id": user_id, "record_date": today},
+                with_for_update=True,
+            )
+            if record is None:
+                session.add(
+                    LuckTrend(
+                        user_id=user_id,
+                        record_date=today,
+                        luck_value=luck_value,
+                        reroll_count=reroll_count,
+                    ),
+                )
+            else:
+                record.luck_value = luck_value
+                record.reroll_count = reroll_count
+            await session.commit()
+
+    await retry_on_db_conflict(save)
 
 
 async def get_luck_trend(

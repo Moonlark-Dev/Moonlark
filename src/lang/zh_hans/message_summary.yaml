@@ -57,6 +57,8 @@ check_history:
   content: 消息内容
 mvp_ranking:
   title: MVP 排行榜
+  web_title: 全局 MVP 排行榜
+  web_info: 共 {} 个群
   no_data: 暂无数据
 decision:
   no_messages: 群内暂无消息记录，无法生成处分通知。

@@ -1,0 +1,158 @@
+help:
+  description: 烫手山芋
+  details: 群聊 2～8 人参与的联机小游戏。山芋会不断升温，持有者每回合都要决定传给谁、还是继续捂热，小心别在手里爆炸。
+  usage1: sweet-potato info (查看烫手山芋的规则介绍)
+  usage2: sweet-potato rank (查看成功捂热次数排行)
+  usage3: sweet-potato create (在当前群聊创建房间)
+  usage4: sweet-potato join (加入当前会话的房间)
+  usage5: sweet-potato start (开始游戏，仅房主可用)
+  usage6: sweet-potato pass <序号|@玩家|random> (把山芋传给指定玩家)
+  usage7: sweet-potato hold (捂热山芋，重新抽取爆炸概率)
+  usage8: sweet-potato quit (退出房间；房主使用则解散房间，游戏中不可用)
+  usage9: sweet-potato restart (游戏结束后在当前房间再开一把)
+
+button:
+  create: 创建房间
+  join: 加入房间
+  start: 开始游戏
+  quit: 退出房间
+  restart: 再开一把
+  random_pass: 随机传递
+  hold: 捂热
+
+risk:
+  safe: 安全
+  low: 低危
+  medium: 中危
+  high: 高危
+  extreme: 极危
+  imminent: 即将爆炸
+
+potato:
+  default: 普通山芋
+
+room:
+  title: "### 烫手山芋房间"
+  title_plain: "【烫手山芋房间】"
+  count: "当前人数：{}/{}"
+  player: "{}. {}{}"
+  owner_mark: "（房主）"
+  self_mark: "（你）"
+  waiting_hint: "发送 {__prefix__}sweet-potato join 加入，房主发送 {__prefix__}sweet-potato start 开始（2～8 人）。"
+  ended_hint: "本局已结束，发送 {__prefix__}sweet-potato restart 再开一把，或发送 {__prefix__}sweet-potato quit 退出房间。"
+  created: "房间已创建。"
+  joined: "{} 加入了房间。"
+  player_left: "{} 离开了房间。"
+  disbanded: "房间已解散。"
+  auto_disbanded: "房间已闲置 5 分钟，自动解散。"
+  aborted: "游戏出现异常，房间已解散。"
+
+game:
+  summary_start: "游戏开始！山芋在你手里。"
+  summary_passed: "{} 把山芋传给了你。"
+  summary_hold: "你捂热了山芋，温度更高了。"
+  no_targets: "（没有可以传递的玩家）"
+  panel_markdown: |
+    {at}{summary}
+
+    ### 下一次传递时爆炸概率
+
+    **{risk}**
+
+    > ### 可传递对象
+    {targets}
+  panel_target_line: '> {}. <qqbot-cmd-input text="{}" show="{}" reference="false" />'
+  panel_text: |
+    {summary}
+
+    下一次传递时爆炸概率：{risk}
+
+    可传递对象：
+    {targets}
+
+    发送 {__prefix__}sweet-potato pass <序号> 传递，或 {__prefix__}sweet-potato hold 捂热；60 秒内没有操作会爆炸！
+
+result:
+  title: "### 烫手山芋 · 结算"
+  burned: "**{}** 被山芋烫死了！"
+  reason_pass: "爆炸原因：传递时被烫到。"
+  reason_hold: "爆炸原因：捂热时抽到了 100%。"
+  reason_timeout: "爆炸原因：60 秒内没有操作。"
+  reason_unknown: "爆炸原因：未知。"
+  penalty: "惩罚：-{} HP"
+  counts: "山芋被捂热 **{}** 次，被传递 **{}** 次。"
+  reward_title: "#### 本局奖励"
+  burned_mark: "（被烫死）"
+  reward_row: "- {}：捂热 {} 次，传递 {} 次，获得 **{} vi**{}"
+  hint_plain: "发送 {__prefix__}sweet-potato restart 再开一把，或 {__prefix__}sweet-potato quit 退出房间。"
+
+rank:
+  title: "成功捂热次数排行"
+  info: "成功捂热 {} 次 · 传递 {} 次 · 被烫 {} 次 · 参与 {} 局"
+  no_data: "还没有人成功捂热过山芋，快去创造纪录吧！"
+
+info:
+  rules: |
+    # 烫手山芋
+
+    群内 2～8 人参与，机器人随机选一名玩家持有山芋。轮到持有者时二选一：
+
+    - **传递**：按当前爆炸概率判定，没被烫到就把山芋传给指定玩家，下家重新抽取爆炸概率。
+    - **捂热**：重新抽取当前山芋的爆炸概率，抽到 100% 立即爆炸。
+
+    每次重新抽取只能从当前概率下限到 100% 之间抽取；抽取后概率下限更新为抽到的值（传递后的特例除外）。
+    传递后重新抽取时，如果抽到高于 90% 的概率，有 10% 概率在「下限 − 5% ~ 下限」之间抽取下一次传递的概率，此时不更新下限。
+
+    持有者连续 60 秒没有操作也会爆炸。山芋爆炸时本局结束，被烫到的玩家 -10 HP。
+
+    **概率档位**（不显示具体数值）：
+    - 0～50%：安全
+    - 51～70%：低危
+    - 71～89%：中危
+    - 90～94%：高危
+    - 95～98%：极危
+    - 99～100%：即将爆炸
+
+    **计奖**（按操作前的档位计算，游戏结束后统一发放）：
+
+    | 档位 | 传递 | 捂热 |
+    | --- | --- | --- |
+    | 低危 | 1vi | 3vi |
+    | 中危 | 2vi | 5vi |
+    | 高危 | 3vi | 8vi |
+    | 极危 | 6vi | 15vi |
+    | 即将爆炸 | 12vi | 30vi |
+
+    安全档不计奖。操作导致自己爆炸时，本次不计奖，此前累计的 vi 保留，但仍扣 10 HP。
+
+    「成功捂热」指捂热时没有爆炸，并且之后成功把山芋传给了下一位玩家；这个次数会累加到排行榜。
+
+    **指令**
+    - {__prefix__}sweet-potato create（创建房间）
+    - {__prefix__}sweet-potato join（加入当前会话的房间）
+    - {__prefix__}sweet-potato start（开始游戏，仅房主可用）
+    - {__prefix__}sweet-potato pass <序号|@玩家|random>（传递山芋）
+    - {__prefix__}sweet-potato hold（捂热山芋）
+    - {__prefix__}sweet-potato quit（退出房间 / 解散房间，游戏中不可用）
+    - {__prefix__}sweet-potato restart（游戏结束后再开一把）
+    - {__prefix__}sweet-potato rank（成功捂热次数排行）
+
+    只有已注册用户才能参与游戏。
+
+error:
+  only_group: 烫手山芋只能在群聊中游玩。
+  not_registered: 只有已注册用户才能参与游戏，请先发送 {__prefix__}register 注册。
+  no_room: 当前会话还没有烫手山芋房间，发送 {__prefix__}sweet-potato create 创建一个吧。
+  room_exists: 当前会话已经有等待中的房间了，发送 {__prefix__}sweet-potato join 加入吧。
+  game_running: 游戏正在进行中，请稍候。
+  not_in_room: 你不在这个房间里。
+  room_full: 房间人数已满（最多 {} 人）。
+  already_in_room: 你已经在房间里了。
+  not_owner: 只有房主才能开始游戏。
+  need_more_players: 至少需要 {} 名玩家才能开始游戏。
+  not_playing: 游戏还没有开始。
+  quit_in_game: 游戏进行中不能退出房间，请等本局结束。
+  not_ended: 本局还没有结束。
+  use_restart: 本局已经结束，发送 {__prefix__}sweet-potato restart 再开一把吧。
+  not_your_turn: 现在不是你的回合，山芋在{}手里。
+  invalid_target: 无效的传递目标，请输入可传递对象的序号，或 @ 一名房间内的玩家。
