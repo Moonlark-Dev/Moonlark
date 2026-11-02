@@ -173,6 +173,29 @@ async def authenticate(request: Request, *, allow_pending: bool = False) -> Auth
         return context
 
 
+async def get_rotated_session_id(request: Request) -> Optional[str]:
+    """用轮换前的旧 session ID 找回激活后的新会话 ID。
+
+    登录激活（`account verify`）会轮换 session_id 防 fixation：旧行被删除，
+    新行以 `previous_session_id` 指回旧 ID。`/api/login/pending` 的长轮询仍持有
+    旧 ID，收到 401 时调用本函数即可把新 ID 交还前端替换本地凭据；否则前端会把
+    「会话已被轮换」误判成「验证超时」。
+
+    找不到、已过期或设备标识不匹配时返回 None（调用方仍按 401 处理）。
+    """
+    session_id = _parse_bearer_session_id(request)
+    async with get_session() as session:
+        data = (await session.scalars(select(SessionData).where(SessionData.previous_session_id == session_id))).first()
+        if data is None:
+            return None
+        now = utcnow()
+        if data.expiration_time is not None and now >= data.expiration_time:
+            return None
+        if data.identifier not in (get_identifier(request), get_legacy_identifier(request)):
+            return None
+        return data.session_id
+
+
 async def _get_user_id(request: Request) -> str:
     return (await authenticate(request)).user_id
 

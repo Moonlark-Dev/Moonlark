@@ -23,8 +23,9 @@ async def _(session: async_scoped_session, code: str, user_id: str = get_user_id
         await lang.finish("command.not_found", user_id)
     data = result[0]
     # 激活是一次权限提升（待激活 -> 已登录），按惯例轮换会话 ID 防 fixation：
-    # 以新 ID 重建同一行（保留创建时间等元数据，绝对寿命上限不受影响），
-    # 前端通过 /api/login/pending 响应中的 session_id 感知并替换本地凭据。
+    # 以新 ID 重建同一行（保留创建时间等元数据，绝对寿命上限不受影响）。
+    # 旧 ID 在这条 commit 后立即失效，因此新行记下 previous_session_id：
+    # /api/login/pending 的长轮询仍拿着旧 ID，凭它取回新 ID 替换前端本地凭据。
     rotated = SessionData(
         session_id=uuid.uuid4().hex,
         user_id=data.user_id,
@@ -34,6 +35,7 @@ async def _(session: async_scoped_session, code: str, user_id: str = get_user_id
         created_at=data.created_at,
         last_active_at=data.last_active_at,
         device=data.device,
+        previous_session_id=data.session_id,
     )
     await session.delete(data)
     session.add(rotated)
