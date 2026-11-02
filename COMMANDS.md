@@ -127,6 +127,18 @@
 - `/sudoku answer (展示答案)`
 - `/sudoku undo (撤销操作)`
 - `/sudoku redo (重做操作)`
+## `sweet-potato`: 烫手山芋
+
+群聊 2～8 人参与的联机小游戏。山芋会不断升温，持有者每回合都要决定传给谁、还是继续捂热，小心别在手里爆炸。
+- `/sweet-potato info (查看烫手山芋的规则介绍)`
+- `/sweet-potato rank (查看成功捂热次数排行)`
+- `/sweet-potato create (在当前群聊创建房间)`
+- `/sweet-potato join (加入当前会话的房间)`
+- `/sweet-potato start (开始游戏，仅房主可用)`
+- `/sweet-potato pass <序号|@玩家|random> (把山芋传给指定玩家)`
+- `/sweet-potato hold (捂热山芋，重新抽取爆炸概率)`
+- `/sweet-potato quit (退出房间；房主使用则解散房间，游戏中不可用)`
+- `/sweet-potato restart (游戏结束后在当前房间再开一把)`
 ## `tol`: 关灯挑战
 
 尝试关掉所有的灯_一盏灯被开启或关闭时它上、下、左、右边的灯的状态也会发生改变。
