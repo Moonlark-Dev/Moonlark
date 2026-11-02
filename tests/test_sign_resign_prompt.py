@@ -1,3 +1,4 @@
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -101,6 +102,81 @@ async def test_build_button_adds_updates_when_new_update(monkeypatch: pytest.Mon
     assert len(buttons) == 3
     assert str(buttons[-1].label) == "text::button.updates"
     assert buttons[-1].text == "/updates"
+
+
+@pytest.mark.asyncio
+async def test_build_button_adds_setu_original_when_header_from_setu(monkeypatch: pytest.MonkeyPatch) -> None:
+    """头图来自 setu 时键盘应额外包含「查看原图」按钮，指向 setu-g 指令"""
+    from nonebot_plugin_sign.__main__ import config
+
+    handler = _make_handler(bot=MagicMock())
+    handler._setu_image_id = "123_0"  # ruff: ignore[private-member-access]
+    monkeypatch.setattr("nonebot_plugin_sign.__main__.get_unread_email_count", AsyncMock(return_value=0))
+    monkeypatch.setattr("nonebot_plugin_sign.__main__.has_new_update", AsyncMock(return_value=False))
+    monkeypatch.setattr(config, "command_start", ["#"])
+
+    buttons = await handler.build_button()
+
+    assert [str(button.label) for button in buttons] == [
+        "text::button.invite",
+        "text::button.setu_original",
+        "text::button.jrrp",
+    ]
+    assert buttons[1].text == "#setu-g 123_0"
+
+
+@pytest.mark.parametrize("ext", ["jpg", "png"])
+@pytest.mark.asyncio
+async def test_render_result_remembers_setu_image_id(monkeypatch: pytest.MonkeyPatch, ext: str) -> None:
+    """用 setu 横版图做头图时记录缓存 ID，供「查看原图」按钮使用"""
+    from nonebot_plugin_larksetu.models import ImageData
+    from nonebot_plugin_sign.__main__ import SignHandler
+
+    data = ImageData(
+        pid=123,
+        p=0,
+        uid=1,
+        title="title",
+        author="author",
+        r18=False,
+        width=1920,
+        height=1080,
+        tags=[],
+        ext=ext,
+        aiType=0,
+        uploadDate=0,
+        urls={"original": "https://example.com/image.jpg"},
+    )
+    render_template = AsyncMock(return_value=b"card")
+    monkeypatch.setattr(
+        "nonebot_plugin_sign.__main__.get_landscape_image",
+        AsyncMock(return_value={"data": data, "image": b"background"}),
+    )
+    monkeypatch.setattr("nonebot_plugin_sign.__main__._get_hitokoto", AsyncMock(return_value="hitokoto"))
+    monkeypatch.setattr("nonebot_plugin_sign.__main__._get_luck", AsyncMock(return_value="a"))
+    monkeypatch.setattr(
+        "nonebot_plugin_sign.__main__.get_user",
+        AsyncMock(return_value=SimpleNamespace(nickname="nick", avatar=None)),
+    )
+    monkeypatch.setattr("nonebot_plugin_sign.__main__.render_template", render_template)
+
+    handler = SignHandler(user_id="10", bot=MagicMock(), event=MagicMock(), matcher=MagicMock())
+    handler._result = {
+        "sign_days": 3,
+        "rank": 1,
+        "exp": {"text": "", "origin": 0, "now": 1, "add": 1},
+        "vim": {"text": "", "add": 1, "origin": 0, "now": 1},
+        "fav": {"text": "", "add": 1, "now": 1, "origin": 0},
+        "ticket_gained": 0,
+    }
+    handler.send_card = AsyncMock()  # type: ignore[method-assign]
+
+    await handler.render_result()
+
+    assert handler._setu_image_id == "123_0"  # ruff: ignore[private-member-access]
+    background_url = handler._bg_kwargs["background_url"]  # ruff: ignore[private-member-access]
+    assert background_url.startswith(f"data:image/{'png' if ext == 'png' else 'jpeg'};base64,")
+    handler.send_card.assert_awaited_once_with(b"card")
 
 
 def _make_markdown_handler(monkeypatch: pytest.MonkeyPatch, event: MagicMock) -> tuple[object, list]:
