@@ -18,6 +18,7 @@ from nonebot_plugin_larkutils.subaccount import get_main_account
 from nonebot_plugin_openai import generate_message, get_message, get_message_text
 from nonebot_plugin_openai.types import Message as OpenAIMessage
 from nonebot_plugin_openai.utils.chat import fetch_json, fetch_message
+from nonebot_plugin_openai.utils.sanitize import strip_nul
 from nonebot_plugin_orm import get_session
 from pydantic import BaseModel
 
@@ -727,8 +728,10 @@ class MessageProcessor:
 
     def build_message_content(self, msg_str: str, images: list[bytes]) -> list:
         """把文本与图片组装成传给 OpenAI SDK 的 content"""
+        # 群名片与消息正文都可能带 NUL（U+0000）：它会让网关把整次请求的请求体写成
+        # {"message": "invalid text"} 占位，而且对话内容里本来也不需要它。
         content: list = [
-            {"type": "text", "text": msg_str},
+            {"type": "text", "text": strip_nul(msg_str)},
         ]
         for img in images:
             part = try_build_image_part(img)
