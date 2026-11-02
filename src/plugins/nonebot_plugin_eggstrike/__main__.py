@@ -68,6 +68,18 @@ async def build_ranking(column: Any, span: str) -> list[Row]:
         return list((await session.execute(stmt)).all())
 
 
+async def get_splat_ranking_data(span: SpanType = "total") -> list[RankingData]:
+    """按被砸次数排行，供指令与 WebRanking 共用。"""
+    rows = await build_ranking(AttackRecord.target_id, span)
+    return [RankingData(user_id=row.target_id, data=row.total_count, info=None) for row in rows]
+
+
+async def get_throwers_ranking_data(span: SpanType = "total") -> list[RankingData]:
+    """按丢鸡蛋次数排行，供指令与 WebRanking 共用。"""
+    rows = await build_ranking(AttackRecord.user_id, span)
+    return [RankingData(user_id=row.user_id, data=row.total_count, info=None) for row in rows]
+
+
 async def sum_count(column: Any, value: str, start: datetime | None) -> int:
     stmt = select(func.sum(AttackRecord.count)).where(column == value)
     if start is not None:
@@ -349,12 +361,10 @@ async def show_eggs(bot: Bot, event: Event, user_id: str = get_user_id()) -> Non
 
 @splat.assign("rank")
 async def rank(span: SpanType = "total", user_id: str = get_user_id()) -> None:
-    rows = await build_ranking(AttackRecord.target_id, span)
-    if not rows:
+    ranked_data = await get_splat_ranking_data(span)
+    if not ranked_data:
         await lang.finish("rank.no_data", user_id)
     span_text = await get_span_text(span, user_id)
-    ranked_data = [RankingData(user_id=row.target_id, data=row.total_count, info=None) for row in rows]
-    # TODO 兼容 WebRanking
     title = await lang.text("rank.title", user_id, span_text)
     image = await generate_image(ranked_data, user_id, title)
     await splat.finish(await UniMessage().image(raw=image, name="image.png").export())
@@ -362,12 +372,10 @@ async def rank(span: SpanType = "total", user_id: str = get_user_id()) -> None:
 
 @splat.assign("throwers")
 async def throwers(span: SpanType = "total", user_id: str = get_user_id()) -> None:
-    rows = await build_ranking(AttackRecord.user_id, span)
-    if not rows:
+    ranked_data = await get_throwers_ranking_data(span)
+    if not ranked_data:
         await lang.finish("throwers.no_data", user_id)
     span_text = await get_span_text(span, user_id)
-    # ranked_data = [{"user_id": row.user_id, "data": row.total_count, "info": None} for row in rows]
-    ranked_data = [RankingData(user_id=row.user_id, data=row.total_count, info=None) for row in rows]
     title = await lang.text("throwers.title", user_id, span_text)
     image = await generate_image(ranked_data, user_id, title)
     await splat.finish(await UniMessage().image(raw=image, name="image.png").export())

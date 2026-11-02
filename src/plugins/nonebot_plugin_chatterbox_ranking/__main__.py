@@ -6,7 +6,7 @@ from sqlalchemy import func, select
 from nonebot.adapters import Bot, Event
 from nonebot.adapters.qq import Bot as Bot_QQ
 from nonebot import on_message
-from nonebot_plugin_orm import async_scoped_session
+from nonebot_plugin_orm import async_scoped_session, get_session
 from nonebot_plugin_alconna import (
     on_alconna,
     Alconna,
@@ -21,6 +21,7 @@ from nonebot_plugin_alconna import (
 from nonebot_plugin_larkutils import get_user_id, get_group_id, open_file
 from nonebot_plugin_larkutils.cache import create_image_markdown
 from nonebot_plugin_larkutils.command import get_command_prefix
+from nonebot_plugin_ranking import RankingData
 from .image import render_bar
 from .lang import lang
 from .models import GroupChatterbox, GroupChatterboxWithNickname
@@ -123,6 +124,13 @@ def build_rank_statement(span: SpanType, group_id: str | None):
     if start_date is not None:
         stmt = stmt.where(GroupChatterbox.record_date >= start_date)
     return stmt.group_by(GroupChatterbox.user_id).order_by(total.desc())
+
+
+async def get_global_ranking_data(span: SpanType = "total") -> list[RankingData]:
+    """跨群汇总各用户的发言量，供 WebRanking 使用。"""
+    async with get_session() as session:
+        rows = (await session.execute(build_rank_statement(span, None))).all()
+    return [{"user_id": row.user_id, "data": row.total_count, "info": None} for row in rows]
 
 
 async def get_scope_span_text(user_id: str, span: SpanType, global_flag: bool) -> tuple[str, str]:

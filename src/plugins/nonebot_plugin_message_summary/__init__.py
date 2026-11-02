@@ -22,7 +22,9 @@ require("nonebot_plugin_bots")
 require("nonebot_plugin_broadcast")
 require("nonebot_plugin_chat")
 require("nonebot_plugin_qq_group")
+require("nonebot_plugin_ranking")
 
 
 from . import __main__
 from . import matcher
+from . import ranking  # noqa: F401, E402 - 注册 WebRanking

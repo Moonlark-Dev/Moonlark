@@ -13,6 +13,7 @@ bar:
   span_7d: 7 天
   span_1d: 1 天
   subtitle_global: 全局
+  web_title: 全局话痨排行（总榜）
 button:
   span_total: 总榜
   span_7d: 近 7 天

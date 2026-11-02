@@ -12,7 +12,7 @@ from .models import OnlineTimeRecord
 import asyncio
 from io import BytesIO
 from PIL import Image, ImageDraw, ImageFont
-from nonebot_plugin_ranking import generate_image
+from nonebot_plugin_ranking import RankingData, generate_image
 from nonebot_plugin_alconna.uniseg import UniMessage
 
 
@@ -81,44 +81,36 @@ async def handle_message(user_id: str = get_user_id()):
         await session.commit()
 
 
-async def handle_ranking(sender_id: str) -> NoReturn:
-    # Handle ranking
-    # Calculate the total online time for each user in the last 3 days
+async def get_sorted_ranking_data() -> list[RankingData]:
+    """统计近三天各用户的在线分钟数，按降序返回，供指令与 WebRanking 共用。"""
+    # Get the time range (last 3 days)
+    start_time = datetime.now() - timedelta(days=3)
     async with get_session() as session:
-        # Get the time range (last 3 days)
-        start_time = datetime.now() - timedelta(days=3)
-
-        # Query to get all records in the last 3 days
         stmt = select(OnlineTimeRecord).where(OnlineTimeRecord.start_time >= start_time)
+        records = (await session.scalars(stmt)).all()
 
-        result = await session.scalars(stmt)
-        records = result.all()
+    # Calculate total online time for each user
+    user_online_time: dict[str, timedelta] = {}
+    for record in records:
+        user_online_time.setdefault(record.user_id, timedelta())
+        user_online_time[record.user_id] += record.end_time - record.start_time
 
-        # Calculate total online time for each user
-        user_online_time = {}
-        for record in records:
-            user_id = record.user_id
-            # Calculate the time this record contributes to online time
-            record_duration = record.end_time - record.start_time
-            if user_id not in user_online_time:
-                user_online_time[user_id] = timedelta()
-            user_online_time[user_id] += record_duration
+    # Convert to minutes, drop empty entries and sort
+    user_minutes: list[RankingData] = [
+        {"user_id": user_id, "info": None, "data": total_minutes}
+        for user_id, total_time in user_online_time.items()
+        if (total_minutes := int(total_time.total_seconds() / 60)) > 0
+    ]
+    user_minutes.sort(key=lambda x: x["data"], reverse=True)
+    return user_minutes
 
-        # Convert to minutes and sort
-        user_minutes = []
-        for user_id, total_time in user_online_time.items():
-            total_minutes = int(total_time.total_seconds() / 60)
-            if total_minutes > 0:  # Only include users with more than 0 minutes
-                user_minutes.append({"user_id": user_id, "info": None, "data": total_minutes})
 
-        # Sort by minutes in descending order
-        user_minutes.sort(key=lambda x: x["data"], reverse=True)
-
+async def handle_ranking(sender_id: str) -> NoReturn:
     # Generate ranking image
     return await online_timer.finish(
         UniMessage().image(
             raw=await generate_image(
-                user_minutes,
+                await get_sorted_ranking_data(),
                 sender_id,
                 await lang.text("rank.title", sender_id),
             ),

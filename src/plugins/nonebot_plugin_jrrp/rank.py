@@ -21,8 +21,13 @@ async def get_user_list() -> AsyncGenerator[tuple[str, int], None]:
         await session.close()
 
 
+async def get_sorted_luck_data(reverse: bool = False) -> list[tuple[str, int]]:
+    """按今日人品值排序，默认从高到低，供指令与 WebRanking 共用。"""
+    return sorted([data async for data in get_user_list()], key=lambda x: x[1], reverse=not reverse)
+
+
 async def get_rank(sender_id: str, reverse: bool = False) -> NoReturn:
-    data = sorted([data async for data in get_user_list()], key=lambda x: x[1], reverse=not reverse)
+    data = await get_sorted_luck_data(reverse)
     templates = {}
     for i in range(3):
         if i >= len(data):
