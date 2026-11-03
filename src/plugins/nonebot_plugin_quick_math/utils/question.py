@@ -15,11 +15,11 @@ from .generator.levels.options import OPTION_LETTERS
 from .image import generate_image
 from .latex import ensure_math_mode, latex_to_plain
 
-# 仅一元二次方程（L5）的选项由 sympy 生成 LaTeX（\frac、\sqrt），QQ markdown 不解析
-# LaTeX，会把它显示成 "- (9)/(2) - √(57)2" 这类难以辨认的纯文本；因此只有该等级把
-# 题目信息渲染成图片，其余等级继续使用纯文本卡片，避免为简单题目平白增加一次浏览器
-# 渲染与图床上传。
-_QUESTION_IMAGE_LEVELS = frozenset({5})
+# 需要 LaTeX 的等级把题目信息渲染成图片：L5 的选项由 sympy 生成（\frac、\sqrt），
+# L8 的题面与选项是矩阵（pmatrix）。QQ markdown 不解析 LaTeX，直接发送会显示成
+# "- (9)/(2) - √(57)2" 这类难以辨认的纯文本；其余等级继续使用纯文本卡片，避免为简单
+# 题目平白增加一次浏览器渲染与图床上传。
+_QUESTION_IMAGE_LEVELS = frozenset({5, 8})
 
 
 async def build_choices_markdown(user_id: str, options: list[str], to_plain: bool = False) -> str:
@@ -59,10 +59,10 @@ async def build_question_info_markdown(user_id: str, question: QuestionData, to_
 async def build_question_info(user_id: str, question: QuestionData) -> str:
     """构建 QQ 官方机器人的题目信息。
 
-    一元二次方程（见 ``_QUESTION_IMAGE_LEVELS``）的选项是 LaTeX，直接用 md_to_pic 把
-    题目信息（题干 + “请选择答案” + 选项）渲染为图片，再上传图床并返回可供 markdown
-    引用的图片代码；图床未配置或渲染失败时回退为 ``latex_to_plain`` 的纯文本。其余
-    等级继续使用纯文本题目信息。
+    LaTeX 题目（见 ``_QUESTION_IMAGE_LEVELS``，如 L5 的公式选项与 L8 的矩阵）直接用
+    md_to_pic 把题目信息（题干 + “请选择答案” + 选项）渲染为图片，再上传图床并返回
+    可供 markdown 引用的图片代码；图床未配置或渲染失败时回退为 ``latex_to_plain`` 的
+    纯文本。其余等级继续使用纯文本题目信息。
     """
     if question["level"] not in _QUESTION_IMAGE_LEVELS:
         return await build_question_info_markdown(user_id, question, to_plain=True)

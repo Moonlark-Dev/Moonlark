@@ -11,6 +11,8 @@ import re
 
 _SUPERSCRIPT_PATTERN = re.compile(r"\^\{([^{}]*)\}|\^([0-9+\-()a-zA-Z])")
 _SUBSCRIPT_PATTERN = re.compile(r"_\{([^{}]*)\}|_([0-9+\-()a-zA-Z])")
+# pmatrix / bmatrix 等矩阵环境：整体转换为 “[a, b; c, d]” 的可读形式
+_MATRIX_PATTERN = re.compile(r"\\begin\{(?P<env>[pbvBV]?matrix)\}(?P<body>.*?)\\end\{(?P=env)\}", re.DOTALL)
 
 # 裸 LaTeX 的特征：命令反斜杠、上下标、花括号
 _LATEX_HINT_PATTERN = re.compile(r"[\\_^{}]")
@@ -41,6 +43,12 @@ def _translate_script(match: re.Match, script_map: str) -> str:
     return content.translate(script_map)
 
 
+def _matrix_to_plain(match: re.Match) -> str:
+    """把矩阵环境转换为 ``[a, b; c, d]``：行用 ``;``、元素用 ``,`` 分隔。"""
+    rows = [row for row in re.split(r"\\\\", match.group("body")) if row.strip()]
+    return "[" + "; ".join(", ".join(cell.strip() for cell in row.split("&")) for row in rows) + "]"
+
+
 def ensure_math_mode(latex: str) -> str:
     """把裸 LaTeX 包进 ``$...$``，供 md_to_pic 交给 KaTeX 渲染。
 
@@ -61,6 +69,8 @@ def latex_to_plain(latex: str) -> str:
     text = re.sub(r"\$\$", "", latex)
     text = re.sub(r"\$", "", text)
     text = re.sub(r"\\[()]", "", text)
+    # 矩阵（pmatrix 等）优先转换，避免后续清理命令时把环境名与 & 分隔符丢掉
+    text = _MATRIX_PATTERN.sub(_matrix_to_plain, text)
     # 分式 a/b 与根式 √
     text = re.sub(r"\\dfrac\s*\{([^{}]*)\}\s*\{([^{}]*)\}", lambda m: f"({m.group(1)})/({m.group(2)})", text)
     text = re.sub(r"\\frac\s*\{([^{}]*)\}\s*\{([^{}]*)\}", lambda m: f"({m.group(1)})/({m.group(2)})", text)
