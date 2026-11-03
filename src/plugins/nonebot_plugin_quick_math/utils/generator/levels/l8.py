@@ -25,7 +25,7 @@ from .options import build_choices
 
 Matrix = list[list[int]]
 
-# (A 的行, A 的列 / B 的行, B 的列)：2×2 最常见，另外两种用于考查维度对齐
+# (A 的行, A 的列 / B 的行, B 的列)：2×2 最常见，另外三种用于考查维度对齐
 _SHAPES: list[tuple[int, int, int]] = [
     (2, 2, 2),
     (2, 2, 2),
@@ -38,7 +38,7 @@ _SHAPES: list[tuple[int, int, int]] = [
 def _random_matrix(rows: int, cols: int, bound: int) -> Matrix:
     """生成一个元素在 [-bound, bound] 内且不全为零的矩阵。"""
     while True:
-        matrix = [[random.randint(-bound, bound) for _ in range(cols)] for _ in range(rows)]
+        matrix = [[random.randint(-bound, bound) for _ in range(cols)] for _ in range(rows)]  # nosec B311
         if any(value for row in matrix for value in row):
             return matrix
 
@@ -105,9 +105,9 @@ def _wrong_shape(answer: Matrix) -> Matrix:
 def _perturbed(answer: Matrix) -> Matrix:
     """把答案中随机一个元素加上 ±1/±2，作为兜底干扰项。"""
     result = [row[:] for row in answer]
-    row = random.randrange(len(result))
-    col = random.randrange(len(result[0]))
-    result[row][col] += random.choice([-2, -1, 1, 2])
+    row = random.randrange(len(result))  # nosec B311
+    col = random.randrange(len(result[0]))  # nosec B311
+    result[row][col] += random.choice([-2, -1, 1, 2])  # nosec B311
     return result
 
 
@@ -134,7 +134,7 @@ def build_distractors(left: Matrix, right: Matrix, answer: Matrix) -> list[Matri
 
 
 async def generate_question(user_id: str) -> Question:
-    rows, inner, cols = random.choice(_SHAPES)
+    rows, inner, cols = random.choice(_SHAPES)  # nosec B311
     # 结果元素越多、点积越长，数字就越小，避免选项里的数值过大
     bound = 6 if rows * cols * inner <= 8 else 4
     left = _random_matrix(rows, inner, bound)
