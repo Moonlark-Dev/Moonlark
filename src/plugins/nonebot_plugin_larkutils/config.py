@@ -26,7 +26,41 @@ class Config(BaseModel):
     r2_region: str = "auto"
     # R2 对象自动清理过期时间（秒），默认 7 天
     r2_object_ttl: int = 604800
+    # markdown 消息图床模式：object_storage=S3 兼容对象存储（Cloudflare R2 / 腾讯云 COS 等）；
+    # self_hosted=自建图床，由 nonebot 的 FastAPI app 直接提供图片访问，不需要任何 R2_* 配置
+    image_host_mode: Literal["object_storage", "self_hosted"] = "object_storage"
+    # 自建图床对外可访问的基础 URL，独立于 MOONLARK_API_BASE；如 https://bot.example.com
+    image_host_base_url: str = ""
+    # 自建图床在 FastAPI app 中的路由前缀
+    image_host_route: str = "/image-host"
+    # 自建图床图片存储目录；留空时使用 localstore 的缓存目录
+    image_host_storage_dir: str = ""
+    # 自建图床图片保留时间（秒），默认 7 天；<=0 表示不自动清理
+    image_host_object_ttl: int = 604800
     command_start: list[str]
+
+    @field_validator("image_host_mode", mode="before")
+    @classmethod
+    def _empty_image_host_mode_to_default(cls, value: Any) -> Any:
+        # `.env` 中该行留空（IMAGE_HOST_MODE=）时应回退到默认的对象存储模式
+        if value == "":
+            return "object_storage"
+        return value
+
+    @field_validator("image_host_route", mode="before")
+    @classmethod
+    def _normalize_image_host_route(cls, value: Any) -> Any:
+        # 统一为以 / 开头的路径；留空或 "/" 时回退到默认 /image-host
+        route = str(value or "").strip().strip("/")
+        return f"/{route}" if route else "/image-host"
+
+    @field_validator("image_host_object_ttl", mode="before")
+    @classmethod
+    def _empty_image_host_object_ttl_to_default(cls, value: Any) -> Any:
+        # `.env` 中该行留空（IMAGE_HOST_OBJECT_TTL=）时应回退到默认 7 天
+        if value == "":
+            return 604800
+        return value
 
     @field_validator("r2_addressing_style", mode="before")
     @classmethod
