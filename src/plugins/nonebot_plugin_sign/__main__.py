@@ -24,9 +24,7 @@ from nonebot_plugin_items.registry.registry import ResourceLocation
 from nonebot_plugin_larksetu import get_image_id, get_landscape_image
 from nonebot_plugin_larkuser import get_user
 from nonebot_plugin_updates.utils import has_new_update
-from nonebot_plugin_larkuser.user.utils import is_user_registered
 from nonebot_plugin_larkuser.utils.matcher import patch_matcher
-from nonebot_plugin_larkuser.utils.register import register_user
 from nonebot_plugin_alconna import Button
 from nonebot_plugin_larkuser.utils.waiter import PromptRetryTooMuch, PromptTimeout, prompt
 from nonebot_plugin_larkutils.command import get_command_prefix
@@ -35,7 +33,6 @@ from nonebot_plugin_larkutils.cache import create_image_markdown
 from nonebot_plugin_larkutils.jrrp import get_luck_value
 from nonebot_plugin_orm import AsyncSession, get_session
 from nonebot_plugin_render.render import render_template
-from nonebot_plugin_userinfo import get_user_info
 from sqlalchemy import func, select
 from sqlalchemy.exc import NoResultFound
 
@@ -284,21 +281,8 @@ class SignHandler:
         # 头图来自 setu 时的缓存 ID，用于在键盘上提供「查看原图」按钮
         self._setu_image_id: Optional[str] = None
 
-    async def process_register(self) -> None:
-        """判断用户是否注册，如果未注册就触发注册流程。"""
-        bot = self.bot
-        event = self.event
-        user = await get_user(self.user_id)
-        if not user.is_registered():
-            if not (user_info := await get_user_info(bot, event, self.user_id)):
-                await lang.finish("sign.get_userinfo_failed", self.user_id)
-            async with get_session() as session:
-                await register_user(session, self.user_id, user_info, self.bot, self.event)
-
     async def process_data(self) -> None:
         """收集信息并操作数据（SignData 表操作由全局锁保护）"""
-
-        await self.process_register()
 
         # ====== Phase 1: 预检查 ======
         if await _is_user_signed(self.user_id):

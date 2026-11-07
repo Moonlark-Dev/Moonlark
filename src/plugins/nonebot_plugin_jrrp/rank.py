@@ -1,4 +1,4 @@
-from typing import AsyncGenerator, NoReturn
+from typing import AsyncGenerator, NoReturn, Optional
 from nonebot.log import logger
 from nonebot_plugin_alconna import UniMessage
 from nonebot_plugin_larkuser.utils.user import get_registered_user_ids
@@ -8,8 +8,9 @@ from nonebot_plugin_render import render_template
 from nonebot_plugin_larkutils.jrrp import get_luck_value
 from nonebot_plugin_larkutils import get_user_id, get_group_id
 from .__main__ import jrrp
-from nonebot_plugin_larkuser import get_user
+from nonebot_plugin_larkuser import ensure_registered, get_user
 from nonebot_plugin_chat.core.session import post_group_event
+from nonebot_plugin_userinfo import EventUserInfo, UserInfo
 
 
 async def get_user_list() -> AsyncGenerator[tuple[str, int], None]:
@@ -98,10 +99,13 @@ async def get_rank(sender_id: str, reverse: bool = False) -> NoReturn:
 
 
 @jrrp.assign("rank")
-async def _(sender_id: str = get_user_id()) -> None:
+async def _(sender_id: str = get_user_id(), user: Optional[UserInfo] = EventUserInfo()) -> None:
+    # 排行榜只包含已注册用户，先静默注册调用方，保证其自身名次能正常显示
+    await ensure_registered(sender_id, user)
     await get_rank(sender_id)
 
 
 @jrrp.assign("rank-r")
-async def _(sender_id: str = get_user_id()) -> None:
+async def _(sender_id: str = get_user_id(), user: Optional[UserInfo] = EventUserInfo()) -> None:
+    await ensure_registered(sender_id, user)
     await get_rank(sender_id, True)

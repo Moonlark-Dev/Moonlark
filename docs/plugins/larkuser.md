@@ -62,6 +62,29 @@ async def get_registered_users() -> AsyncGenerator[MoonlarkRegisteredUser, None]
 
 `AsyncGenerator[MoonlarkRegisteredUser, None]` - 已注册用户的异步生成器。
 
+## 静默注册用户 `ensure_registered`
+
+```python
+async def ensure_registered(user_id: str, user: Optional[UserInfo] = None) -> bool:
+```
+
+确保用户已经注册；未注册时静默完成注册。
+
+Moonlark 已不再提供独立的 `register` 指令：需要注册的指令通过
+[`patch_matcher`](#将响应器设置为需要已注册用户使用-patch_matcher) 挂载的
+`check_access` 自动调用本函数，需要读取已注册用户列表的指令（如 `jrrp rank`）
+也应显式调用它，保证调用方自己出现在列表中。注册过程不会发送任何提示，
+昵称优先使用平台展示名，拿不到时回退为 `用户-{user_id}`。
+
+### 参数
+
+- `user_id`: 用户 ID（主账号 ID）。
+- `user`: 平台用户信息，用于获取昵称；为空时使用兜底昵称。
+
+### 返回
+
+`bool` - 本次是否真的写入了注册数据。
+
 ## 获取已经注册的用户列表 `get_registered_user_list`
 
 ```python
@@ -102,13 +125,14 @@ def get_level_by_experience(exp: int) -> int:
 
 `int` - 用户等级。
 
-## 将响应器设置为只允许已注册用户使用 `patch_matcher`
+## 将响应器设置为需要已注册用户使用 `patch_matcher`
 
 ```python
 def patch_matcher(matcher: type[Matcher]) -> type[Matcher]:
 ```
 
-将响应器设置为只允许已注册用户使用。
+为响应器挂载 `check_access`：用户在指令执行前会被静默自动注册，无需手动注册；
+用户处于倒地状态时发送倒地提示并终止该响应器。
 
 ### 参数
 
