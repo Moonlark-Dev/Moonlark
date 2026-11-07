@@ -101,6 +101,32 @@ async def test_create_image_markdown_upload_flow(monkeypatch: pytest.MonkeyPatch
     assert puts[0][1].content_type == "image/png"
 
 
+async def test_complete_prefers_etag_from_upload(monkeypatch: pytest.MonkeyPatch) -> None:
+    """complete 使用 COS 返回的 ETag（去掉引号），缺失时才回退到本地 MD5"""
+    from nonebot_plugin_larkutils import media_image
+
+    calls: list[tuple[str, tuple[str, ...], dict[str, Any]]] = []
+
+    async def fake_api(bot: Any, method: str, *segments: str, **kwargs: Any) -> dict[str, Any]:
+        calls.append((method, segments, kwargs))
+        if segments[-1] == "prepare":
+            return _prepare_response()
+        if segments[-1] == "complete":
+            return _complete_response()
+        raise AssertionError(f"未预期的素材接口调用：{method} {segments}")
+
+    async def fake_put(bot: Any, url: str, payload: Any) -> str:
+        return "etag-from-cos"
+
+    monkeypatch.setattr(media_image, "_api_request", fake_api)
+    monkeypatch.setattr(media_image, "_put_presigned", fake_put)
+
+    await media_image.create_image_markdown(_png(), _bot())
+
+    complete = next(call for call in calls if call[1][-1] == "complete")
+    assert complete[2]["json"]["md5"] == "etag-from-cos"
+
+
 async def test_same_image_is_uploaded_once_per_bot(monkeypatch: pytest.MonkeyPatch) -> None:
     """相同图片在同一机器人上复用引用；不同机器人的引用不互通"""
     from nonebot_plugin_larkutils import media_image

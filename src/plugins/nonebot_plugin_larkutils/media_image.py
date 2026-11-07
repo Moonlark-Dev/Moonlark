@@ -149,8 +149,12 @@ async def _api_request(bot: QQBot, method: str, *segments: str, **kwargs: Any) -
     return data if isinstance(data, dict) else {}
 
 
-async def _put_presigned(bot: QQBot, url: str, payload: _ImagePayload) -> None:
-    """把图片二进制直传到预签名 URL（该请求不能携带 Authorization 头）"""
+async def _put_presigned(bot: QQBot, url: str, payload: _ImagePayload) -> str | None:
+    """把图片二进制直传到预签名 URL（该请求不能携带 Authorization 头）
+
+    返回 COS 响应中的 ETag（去掉引号），也就是单次 PUT 写入对象的 MD5；
+    没有返回 ETag 时由调用方回退到本地计算的 MD5。
+    """
     response = await bot.adapter.request(
         Request(
             "PUT",
@@ -162,6 +166,10 @@ async def _put_presigned(bot: QQBot, url: str, payload: _ImagePayload) -> None:
     )
     if not 200 <= response.status_code < 300:
         raise RuntimeError(f"上传图片到 QQ 素材库失败（HTTP {response.status_code}）")
+    etag = response.headers.get("ETag") or response.headers.get("etag")
+    if not etag:
+        return None
+    return etag.strip().removeprefix("W/").strip('"')
 
 
 async def _upload_once(bot: QQBot, payload: _ImagePayload, digest: str) -> tuple[str, str]:
@@ -180,13 +188,14 @@ async def _upload_once(bot: QQBot, payload: _ImagePayload, digest: str) -> tuple
         },
     )
     upload_id = str(prepare["upload_id"])
-    await _put_presigned(bot, str(prepare["presigned_url"]), payload)
+    # complete 需要与对象实际 ETag 一致；单次 PUT 的 ETag 就是文件 MD5
+    uploaded_md5 = await _put_presigned(bot, str(prepare["presigned_url"]), payload) or digest
     complete = await _api_request(
         bot,
         "POST",
         "media-images",
         "complete",
-        json={"upload_id": upload_id, "md5": digest},
+        json={"upload_id": upload_id, "md5": uploaded_md5},
     )
     return str(complete["url"]), str(complete["image_id"])
 
