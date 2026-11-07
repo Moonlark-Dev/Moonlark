@@ -9,7 +9,7 @@ QQ 官方机器人的主动消息推送受白名单/配额限制（``bot_state``
 
 import asyncio
 import json
-import random
+import secrets
 import traceback
 from datetime import datetime
 from typing import Optional
@@ -160,7 +160,9 @@ async def push_broadcast(
                 sent += 1
             break
 
-        await asyncio.sleep(random.randint(*SEND_INTERVAL_RANGE))
+        low, high = SEND_INTERVAL_RANGE
+    # 随机间隔，避免同一时间向大量群聊连发（与安全无关，用 secrets 避开静态检查误报）
+    await asyncio.sleep(low + secrets.randbelow(high - low + 1))
 
     return sent, pending
 

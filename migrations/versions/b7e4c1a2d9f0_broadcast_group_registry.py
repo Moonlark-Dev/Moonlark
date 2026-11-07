@@ -30,6 +30,21 @@ OLD_READ_STATUS_TABLE = "nonebot_plugin_updates_updatereadstatus"
 NEW_READ_STATUS_TABLE = "nonebot_plugin_broadcast_update_read_status"
 
 
+def _copy_read_status_rows(source_table_name: str, target_table_name: str) -> None:
+    """把已读记录从一张表复制到另一张（表不存在时跳过）"""
+    bind = op.get_bind()
+    if source_table_name not in sa.inspect(bind).get_table_names():
+        return
+    source = sa.Table(source_table_name, sa.MetaData(), autoload_with=bind)
+    target = sa.Table(target_table_name, sa.MetaData(), autoload_with=bind)
+    bind.execute(
+        sa.insert(target).from_select(
+            ["user_id", "last_update_id"],
+            sa.select(source.c.user_id, source.c.last_update_id),
+        )
+    )
+
+
 def upgrade(name: str = "") -> None:
     if name:
         return
@@ -104,12 +119,9 @@ def upgrade(name: str = "") -> None:
     )
 
     # 旧 updates 插件的已读记录：先复制再删除旧表（生产环境已有数据）
+    _copy_read_status_rows(OLD_READ_STATUS_TABLE, NEW_READ_STATUS_TABLE)
     bind = op.get_bind()
     if OLD_READ_STATUS_TABLE in sa.inspect(bind).get_table_names():
-        op.execute(
-            f"INSERT INTO {NEW_READ_STATUS_TABLE} (user_id, last_update_id) "
-            f"SELECT user_id, last_update_id FROM {OLD_READ_STATUS_TABLE}"
-        )
         op.drop_table(OLD_READ_STATUS_TABLE)
 
 
@@ -123,12 +135,7 @@ def downgrade(name: str = "") -> None:
         sa.PrimaryKeyConstraint("user_id", name=op.f(f"pk_{OLD_READ_STATUS_TABLE}")),
         info={"bind_key": "nonebot_plugin_updates"},
     )
-    bind = op.get_bind()
-    if NEW_READ_STATUS_TABLE in sa.inspect(bind).get_table_names():
-        op.execute(
-            f"INSERT INTO {OLD_READ_STATUS_TABLE} (user_id, last_update_id) "
-            f"SELECT user_id, last_update_id FROM {NEW_READ_STATUS_TABLE}"
-        )
+    _copy_read_status_rows(NEW_READ_STATUS_TABLE, OLD_READ_STATUS_TABLE)
     op.drop_table(NEW_READ_STATUS_TABLE)
     op.drop_table("nonebot_plugin_broadcast_push_event")
     op.drop_table("nonebot_plugin_broadcast_record")

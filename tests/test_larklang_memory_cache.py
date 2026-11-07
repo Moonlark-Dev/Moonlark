@@ -55,5 +55,5 @@ async def test_trailing_blank_lines_removed_from_memory_text() -> None:
     from nonebot_plugin_larklang.__main__ import get_text, load_languages
 
     await load_languages()
-    text = get_text("zh_hans", "broadcast", "bc.state", True)
-    assert text == "功能开关：True\n最后一次广播内容："
+    text = get_text("zh_hans", "broadcast", "bcsu.menu", 2, 3)
+    assert text == "广播管理菜单：\n本月已发送广播：2 条\n当前启用广播的群聊数：3 个"
