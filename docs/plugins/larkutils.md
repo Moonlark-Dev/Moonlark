@@ -258,3 +258,38 @@ async def get_luck_value(user_id: str) -> int:
 ### 返回
 
 `int` - 用户今日的人品值，范围在 0-100 之间
+
+## 生成 markdown 图片代码 `create_image_markdown`
+
+```python
+async def create_image_markdown(data: bytes, bot: QQBot) -> str:
+```
+
+把图片上传到 QQ 官方机器人的「素材管理」接口，并生成 QQ markdown 消息可用的图片代码。
+上传后返回形如 `![text #380px #760px](qqbot-media://image/v1/6awbXUy...)` 的字符串，
+不依赖任何外部图床。
+
+接口流程（见 [素材管理](https://bot.q.qq.com/wiki/develop/api-v2/server-inter/message/material-management.html)）：
+
+1. `POST /v2/media-images/prepare` 申请上传，拿到预签名 URL；
+2. `PUT <presigned_url>` 直传图片二进制；
+3. `POST /v2/media-images/complete` 换取 `image_id` 与 `qqbot-media://` 引用链接。
+
+### 参数
+
+- `data`：图片字节数据。支持 png/jpeg/gif/webp；其它格式会尝试转成 PNG，超过 10MB 的图片会
+  重新编码为 JPEG 直到满足平台限制
+- `bot`：将要发送这条 markdown 消息的 QQ 官方机器人。`qqbot-media://` 引用与机器人绑定，
+  因此不能用其它机器人上传的引用
+
+### 返回
+
+`str` - markdown 图片代码
+
+### 平台限制与清理
+
+- 单张图片不超过 10MB，只支持 png/jpeg/gif/webp；
+- 单机器人最多保存 100 张图片，图片自最后一次被消息引用起 90 天滑动过期；
+- 相同图片会按 `(bot.self_id, md5)` 复用缓存，不重复上传；
+- `prepare`/`complete` 返回 40035007（数量超限）时，会自动删除最早上传的一批图片
+  （优先删除上传超过 5 分钟的图片）后重试。

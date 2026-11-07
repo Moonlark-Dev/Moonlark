@@ -6,7 +6,7 @@
   input 类型，点击后预填指令供用户自行填入等级，而不是直接发送固定等级 5 的
   ``/qm zen 5``；
 - 一元二次方程（L5）的题目信息（题干 + “请选择答案” + 选项）改用 md_to_pic 渲染成
-  图片后经图床发送，避免 QQ markdown 不解析 LaTeX 导致 ``\frac``/``\sqrt`` 显示成
+  图片后经 QQ 素材库上传发送，避免 QQ markdown 不解析 LaTeX 导致 ``\frac``/``\sqrt`` 显示成
   ``√(57)2`` 这类纯文本；该等级的选项按钮内容改为选项字母（A/B/C/D），选项原文已随
   题目信息进入图片。其余等级的题目信息与选项按钮保持原有纯文本表现；
 - 所有题目统一为选择题，判题只比较选项字母（A/B/C/D），不再把字母映射回选项原文、
@@ -33,8 +33,11 @@ import yaml
 
 _LANG_FILE = Path(__file__).resolve().parents[1] / "src" / "lang" / "zh_hans" / "quick_math.yaml"
 
-# 图床返回的 markdown 图片代码（含 QQ 需要的宽高标注）
+# 素材库返回的 markdown 图片代码（含 QQ 需要的宽高标注）
 _FAKE_IMAGE_MARKDOWN = "![text #100px #50px](https://example.com/question.jpg)"
+
+# build_markdown_message 需要 QQ 官方机器人实例；本文件里图片上传总被替换为假实现
+_FAKE_BOT: Any = object()
 
 
 def _load_template(key: str) -> str:
@@ -68,7 +71,7 @@ def patched_lang(monkeypatch: pytest.MonkeyPatch) -> None:
 
 @pytest.fixture(autouse=True)
 def patched_image_renderer(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
-    """拦截题目信息渲染与图床上传，避免测试依赖浏览器与对象存储。
+    """拦截题目信息渲染与素材上传，避免测试依赖浏览器与 QQ 素材库。
 
     返回的字典记录传给 md_to_pic 的 markdown 与上传的图片数据，便于断言题目信息
     （题干 + 选项）确实被渲染为图片、而不是继续以纯文本发送。
@@ -81,7 +84,7 @@ def patched_image_renderer(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
         captured["markdown"] = markdown
         return b"fake-image"
 
-    async def fake_create_image_markdown(data: bytes, **_kwargs: object) -> str:
+    async def fake_create_image_markdown(data: bytes, *_args: object, **_kwargs: object) -> str:
         captured["image"] = data
         return _FAKE_IMAGE_MARKDOWN
 
@@ -151,7 +154,7 @@ async def test_question_card_question_info_is_image(patched_image_renderer: dict
     from nonebot_plugin_quick_math.utils.question import build_markdown_message
 
     question = _make_choice_question(level=5)
-    message, _ = await build_markdown_message("user", question, 0, 0, 0, 0, "qq_openid")
+    message, _ = await build_markdown_message(_FAKE_BOT, "user", question, 0, 0, 0, 0, "qq_openid")
     assert isinstance(message, UniMessage)
     content = next(segment for segment in message if isinstance(segment, Text)).text
     # 图片紧跟在“题目信息”标题之后
@@ -170,13 +173,13 @@ async def test_question_card_question_info_is_image(patched_image_renderer: dict
 
 @pytest.mark.asyncio
 async def test_question_card_other_levels_stay_plain_text(patched_image_renderer: dict[str, Any]) -> None:
-    """只有 L5 走图片：其余等级仍以纯文本发送题目信息，不触发渲染与图床上传。"""
+    """只有 L5 走图片：其余等级仍以纯文本发送题目信息，不触发渲染与素材上传。"""
     from nonebot_plugin_alconna import Text
     from nonebot_plugin_quick_math.utils.question import build_markdown_message
 
     for level in (1, 3, 7):
         patched_image_renderer["markdown"] = None
-        message, _ = await build_markdown_message("user", _make_choice_question(level=level), 0, 0, 0, 0)
+        message, _ = await build_markdown_message(_FAKE_BOT, "user", _make_choice_question(level=level), 0, 0, 0, 0)
         content = next(segment for segment in message if isinstance(segment, Text)).text
         assert "1 + 2 = ?" in content
         assert "\n\n## 请选择答案\n\n" in content
@@ -193,24 +196,24 @@ async def test_question_card_wraps_latex_options_in_math_mode(patched_image_rend
     question = _make_choice_question(level=5)
     question["question"]["options"] = ["x_{1} = \\frac{1}{2}", "-3"]
 
-    await build_markdown_message("user", question, 0, 0, 0, 0)
+    await build_markdown_message(_FAKE_BOT, "user", question, 0, 0, 0, 0)
     markdown: str = patched_image_renderer["markdown"]
     assert "A. $x_{1} = \\frac{1}{2}$  \nB. -3" in markdown
 
 
 @pytest.mark.asyncio
 async def test_question_card_falls_back_to_plain_text(monkeypatch: pytest.MonkeyPatch) -> None:
-    """图床不可用时 L5 的题目信息应回退为纯文本，保证题目卡片仍可发送。"""
+    """素材上传失败时 L5 的题目信息应回退为纯文本，保证题目卡片仍可发送。"""
     from nonebot_plugin_alconna import Text
     from nonebot_plugin_quick_math.utils import question as question_module
     from nonebot_plugin_quick_math.utils.question import build_markdown_message
 
-    async def failing_create_image_markdown(_data: bytes, **_kwargs: object) -> str:
-        raise RuntimeError("S3 图床未配置")
+    async def failing_create_image_markdown(_data: bytes, *_args: object, **_kwargs: object) -> str:
+        raise RuntimeError("上传 QQ 素材库失败")
 
     monkeypatch.setattr(question_module, "create_image_markdown", failing_create_image_markdown)
 
-    message, _ = await build_markdown_message("user", _make_choice_question(level=5), 0, 0, 0, 0)
+    message, _ = await build_markdown_message(_FAKE_BOT, "user", _make_choice_question(level=5), 0, 0, 0, 0)
     content = next(segment for segment in message if isinstance(segment, Text)).text
     assert "1 + 2 = ?" in content
     assert "\n\n## 请选择答案\n\n" in content
@@ -225,12 +228,12 @@ async def test_question_card_leave_button_only_when_enabled() -> None:
     from nonebot_plugin_quick_math.utils.question import build_markdown_message
 
     question = _make_choice_question()
-    message, _ = await build_markdown_message("user", question, 0, 0, 0, 0, enable_leave_button=True)
+    message, _ = await build_markdown_message(_FAKE_BOT, "user", question, 0, 0, 0, 0, enable_leave_button=True)
     assert isinstance(message, UniMessage)
     keyboard = next(segment for segment in message if isinstance(segment, Keyboard))
     assert any(button.text == "leave" for button in keyboard.children)
 
-    message, _ = await build_markdown_message("user", question, 0, 0, 0, 0, enable_leave_button=False)
+    message, _ = await build_markdown_message(_FAKE_BOT, "user", question, 0, 0, 0, 0, enable_leave_button=False)
     assert isinstance(message, UniMessage)
     keyboard = next(segment for segment in message if isinstance(segment, Keyboard))
     assert all(button.text != "leave" for button in keyboard.children)
@@ -257,7 +260,7 @@ async def test_question_card_prepends_at_user_in_group() -> None:
     from nonebot_plugin_alconna import Text
     from nonebot_plugin_quick_math.utils.question import build_markdown_message
 
-    message, _ = await build_markdown_message("user", _make_choice_question(), 0, 0, 0, 0, "qq_openid")
+    message, _ = await build_markdown_message(_FAKE_BOT, "user", _make_choice_question(), 0, 0, 0, 0, "qq_openid")
     content = next(segment for segment in message if isinstance(segment, Text)).text
     assert content.startswith('<qqbot-at-user id="qq_openid" />')
     # @ 标签后接空行，再是统计表格与题目信息
@@ -270,7 +273,7 @@ async def test_question_card_omits_at_user_in_c2c() -> None:
     from nonebot_plugin_alconna import Text
     from nonebot_plugin_quick_math.utils.question import build_markdown_message
 
-    message, _ = await build_markdown_message("user", _make_choice_question(), 0, 0, 0, 0, None)
+    message, _ = await build_markdown_message(_FAKE_BOT, "user", _make_choice_question(), 0, 0, 0, 0, None)
     content = next(segment for segment in message if isinstance(segment, Text)).text
     assert "qqbot-at-user" not in content
     assert content.startswith("| 已答 |")
@@ -338,7 +341,7 @@ async def test_question_card_option_buttons_show_letters_for_image_level() -> No
     from nonebot_plugin_quick_math.utils.question import build_markdown_message
 
     question = _make_choice_question(level=5)
-    message, _ = await build_markdown_message("user", question, 0, 0, 0, 0, "qq_openid")
+    message, _ = await build_markdown_message(_FAKE_BOT, "user", question, 0, 0, 0, 0, "qq_openid")
     keyboard = next(segment for segment in message if isinstance(segment, Keyboard))
     assert [button.label for button in keyboard.children] == ["A", "B", "C"]
     assert [button.text for button in keyboard.children] == ["A", "B", "C"]
@@ -350,7 +353,9 @@ async def test_question_card_option_buttons_keep_text_for_other_levels() -> None
     from nonebot_plugin_alconna import Keyboard
     from nonebot_plugin_quick_math.utils.question import build_markdown_message
 
-    message, _ = await build_markdown_message("user", _make_choice_question(level=1), 0, 0, 0, 0, "qq_openid")
+    message, _ = await build_markdown_message(
+        _FAKE_BOT, "user", _make_choice_question(level=1), 0, 0, 0, 0, "qq_openid"
+    )
     keyboard = next(segment for segment in message if isinstance(segment, Keyboard))
     assert [button.label for button in keyboard.children] == ["1", "2", "3"]
     assert [button.text for button in keyboard.children] == ["A", "B", "C"]

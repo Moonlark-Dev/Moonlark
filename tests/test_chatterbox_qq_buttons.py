@@ -138,7 +138,7 @@ async def test_rank_buttons_are_parseable_commands() -> None:
 
 @pytest.mark.asyncio
 async def test_send_rank_card_embeds_image_and_buttons_in_one_message(monkeypatch: pytest.MonkeyPatch) -> None:
-    """QQ 官方：排行榜图片上传图床后以 markdown 内嵌，与跳转按钮合成一条消息（与 sign 一致）"""
+    """QQ 官方：排行榜图片上传到 QQ 素材库后以 markdown 内嵌，与跳转按钮合成一条消息（与 sign 一致）"""
     from nonebot.adapters.qq import Bot as QQBot
     from nonebot_plugin_alconna import Image, Keyboard, Text, UniMessage
     from nonebot_plugin_chatterbox_ranking.__main__ import send_rank_card
@@ -153,9 +153,10 @@ async def test_send_rank_card_embeds_image_and_buttons_in_one_message(monkeypatc
     monkeypatch.setattr("nonebot_plugin_chatterbox_ranking.__main__.create_image_markdown", upload)
     monkeypatch.setattr(UniMessage, "send", fake_send)
 
-    await send_rank_card(MagicMock(spec=QQBot), MagicMock(), "10", "7d", global_flag=False, image=b"png-bytes")
+    bot = MagicMock(spec=QQBot)
+    await send_rank_card(bot, MagicMock(), "10", "7d", global_flag=False, image=b"png-bytes")
 
-    upload.assert_awaited_once_with(b"png-bytes")
+    upload.assert_awaited_once_with(b"png-bytes", bot)
     assert len(sent) == 1
     # 图片以 markdown 内嵌，不再单独发图片消息
     assert not any(isinstance(seg, Image) for seg in sent[0])
