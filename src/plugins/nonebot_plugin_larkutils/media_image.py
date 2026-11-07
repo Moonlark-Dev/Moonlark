@@ -184,7 +184,8 @@ async def _upload_once(bot: QQBot, payload: _ImagePayload, digest: str) -> tuple
             "file_size": len(payload.data),
             "content_type": payload.content_type,
             "md5": digest,
-            "sha1": hashlib.sha1(payload.data, usedforsecurity=False).hexdigest(),
+            # 平台要求提供文件 SHA1 登记上传任务，仅用于完整性校验，不是安全用途
+            "sha1": hashlib.sha1(payload.data, usedforsecurity=False).hexdigest(),  # nosemgrep - 平台要求
         },
     )
     upload_id = str(prepare["upload_id"])
