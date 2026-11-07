@@ -23,7 +23,7 @@ from nonebot_plugin_items.utils.string import get_location_by_id
 from nonebot_plugin_items.registry.registry import ResourceLocation
 from nonebot_plugin_larksetu import get_image_id, get_landscape_image
 from nonebot_plugin_larkuser import get_user
-from nonebot_plugin_updates.utils import has_new_update
+from nonebot_plugin_broadcast import has_new_update
 from nonebot_plugin_larkuser.user.utils import is_user_registered
 from nonebot_plugin_larkuser.utils.matcher import patch_matcher
 from nonebot_plugin_larkuser.utils.register import register_user
@@ -481,7 +481,7 @@ class SignHandler:
                 Button(
                     "enter",
                     await lang.text("button.updates", self.user_id),
-                    text=f"{get_command_prefix()}updates",
+                    text=f"{get_command_prefix()}bc",
                 ),
             )
         return buttons

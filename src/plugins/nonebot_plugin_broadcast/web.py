@@ -1,19 +1,8 @@
-#  Moonlark - A new ChatBot
-#  Copyright (C) 2026  Moonlark Development Team
-#
-#  This program is free software: you can redistribute it and/or modify
-#  it under the terms of the GNU Affero General Public License as published
-#  by the Free Software Foundation, either version 3 of the License, or
-#  (at your option) any later version.
-#
-#  This program is distributed in the hope that it will be useful,
-#  but WITHOUT ANY WARRANTY; without even the implied warranty of
-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#  GNU Affero General Public License for more details.
-#
-#  You should have received a copy of the GNU Affero General Public License
-#  along with this program.  If not, see <https://www.gnu.org/licenses/>.
-# ##############################################################################
+"""更新公告 Web 接口
+
+原 ``nonebot_plugin_updates`` 的 ``/api/updates/*`` 接口整体搬到 broadcast，
+路径保持不变，前端无需改动。
+"""
 
 import time
 from typing import cast
@@ -22,9 +11,9 @@ from fastapi import FastAPI, HTTPException, Request, status
 from nonebot import get_app
 from nonebot_plugin_larkuid.session import get_user_id
 
+from .announcement import clear_announcement, load_announcement, save_announcement
+from .announcement import UpdateAnnouncement, UpdateAnnouncementInput
 from .config import config
-from .store import clear_announcement, load_announcement, save_announcement
-from .types import UpdateAnnouncement, UpdateAnnouncementInput
 
 app = cast(FastAPI, get_app())
 
