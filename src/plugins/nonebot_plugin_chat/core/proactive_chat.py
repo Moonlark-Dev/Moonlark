@@ -128,6 +128,23 @@ def get_proactive_target_user_id(chat_session: PrivateChatSession, adapter_name:
     return chat_session.user_id
 
 
+def build_proactive_target(chat_session: PrivateChatSession, adapter_name: str) -> Target:
+    """构造主动私聊使用的 Target
+
+    ``Target.user`` 不带 ``source``，所以 QQ 官方适配器会把它当作主动消息发送。
+    主动私聊不能复用会话里上一次消息的 Target：那样会带着上一条用户消息的
+    ``source``（即被动回复的 ``msg_id``），该 id 过期后发送会报错。
+
+    Args:
+        chat_session: 私聊会话记录
+        adapter_name: 当前 bot 的适配器名称
+
+    Returns:
+        用于主动发送的 Target
+    """
+    return Target.user(get_proactive_target_user_id(chat_session, adapter_name), adapter=adapter_name)
+
+
 async def send_proactive_private_message(bot: Bot, user_id: str, subject: str) -> None:
     """发送主动私聊消息
 
@@ -151,10 +168,14 @@ async def send_proactive_private_message(bot: Bot, user_id: str, subject: str) -
             f"与 bot {chat_session.bot_id} 的实际适配器 {adapter_name} 不一致，"
             "将回退到 Moonlark 主账号 ID 发送",
         )
-    target = Target.user(get_proactive_target_user_id(chat_session, adapter_name), adapter=adapter_name)
+    target = build_proactive_target(chat_session, adapter_name)
 
     # 创建或获取 PrivateSession
     session = await create_private_session(chat_session.session_key, target, bot)
+    # 会话已初始化时 create_private_session 会复用旧会话，连同它的旧 target：
+    # 旧 target.source 是上一次被动回复的消息 id，QQ 官方适配器下早已过期。
+    # 主动私聊必须用主动消息，因此这里显式把会话切换到新构造的 target（同时轮换 bot）。
+    session.set_target(target, bot)
 
     # 获取提示语
     prompt = await lang.text("proactive_message.prompt", user_id, subject)

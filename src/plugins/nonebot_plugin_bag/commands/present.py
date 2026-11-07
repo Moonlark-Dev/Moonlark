@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 from nonebot import logger
 from nonebot.adapters import Bot, Event
-from nonebot_plugin_alconna import Alconna, Args, Option, Target, UniMessage, get_target, on_alconna
+from nonebot_plugin_alconna import Alconna, Args, Option, UniMessage, get_target, on_alconna
 from nonebot_plugin_items.base.gift import GiftItem
 from nonebot_plugin_larkuser import get_nickname, get_user, patch_matcher
 from nonebot_plugin_larkutils.group import get_group_id
@@ -80,7 +80,7 @@ async def _trigger_gift_response(
 
 async def _send_proactive_gift(bot: Bot, user_id: str, nickname: str, item_name: str) -> None:
     from nonebot_plugin_chat.models import PrivateChatSession
-    from nonebot_plugin_chat.core.proactive_chat import get_proactive_target_user_id
+    from nonebot_plugin_chat.core.proactive_chat import build_proactive_target
     from nonebot_plugin_chat.core.session import create_private_session
     from nonebot_plugin_orm import get_session
     from sqlalchemy import select
@@ -98,8 +98,11 @@ async def _send_proactive_gift(bot: Bot, user_id: str, nickname: str, item_name:
     in_cooldown = last_time is not None and (now - last_time) < PROACTIVE_COOLDOWN_SECONDS
 
     adapter_name = bot.adapter.get_name()
-    target = Target.user(get_proactive_target_user_id(chat_session, adapter_name), adapter=adapter_name)
+    target = build_proactive_target(chat_session, adapter_name)
     session = await create_private_session(chat_session.session_key, target, bot)
+    # 会话已存在时会复用旧 target，其中 source 是上一次被动回复的消息 id；
+    # 主动礼物私聊必须用主动消息，显式切到新建的 target。
+    session.set_target(target, bot)
 
     gift_prompt = f"{nickname} 送给你 {item_name}"
 
