@@ -91,8 +91,8 @@ async def test_create_image_markdown_upload_flow(monkeypatch: pytest.MonkeyPatch
     assert prepare["file_size"] == len(data)
     assert prepare["content_type"] == "image/png"
     assert prepare["file_name"].endswith(".png")
-    assert prepare["md5"] == hashlib.md5(data).hexdigest()
-    assert prepare["sha1"] == hashlib.sha1(data).hexdigest()
+    assert prepare["md5"] == hashlib.md5(data, usedforsecurity=False).hexdigest()
+    assert prepare["sha1"] == hashlib.sha1(data, usedforsecurity=False).hexdigest()
     assert calls[1][2]["json"]["md5"] == prepare["md5"]
 
     assert len(puts) == 1
