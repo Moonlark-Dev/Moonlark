@@ -4402,7 +4402,7 @@ nonebot2 = ">=2.5.0"
 
 [[package]]
 name = "nonebot-plugin-userinfo"
-version = "0.2.6"
+version = "0.2.7"
 description = "Nonebot2 用户信息获取插件"
 optional = false
 python-versions = "^3.9"
@@ -4421,7 +4421,7 @@ strenum = "^0.4.15"
 type = "git"
 url = "https://github.com/Moonlark-Dev/nonebot-plugin-userinfo.git"
 reference = "HEAD"
-resolved_reference = "685f1ec620a088e7c5d28afdc6d250c895c53849"
+resolved_reference = "2245148c400835b4a8bfca44b3aa43d333a32938"
 
 [[package]]
 name = "nonebot-plugin-waiter"
