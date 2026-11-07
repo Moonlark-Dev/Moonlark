@@ -90,7 +90,7 @@ async def test_build_button_adds_email_when_unread(monkeypatch: pytest.MonkeyPat
 
 @pytest.mark.asyncio
 async def test_build_button_adds_updates_when_new_update(monkeypatch: pytest.MonkeyPatch) -> None:
-    """有未阅读的更新公告时键盘应额外包含 查看更新 按钮并指向 updates 指令"""
+    """有未阅读的更新公告时键盘应额外包含 查看更新 按钮并指向 bc 指令"""
     from nonebot_plugin_sign.__main__ import config
 
     handler = _make_handler(bot=MagicMock())
@@ -101,7 +101,7 @@ async def test_build_button_adds_updates_when_new_update(monkeypatch: pytest.Mon
 
     assert len(buttons) == 3
     assert str(buttons[-1].label) == "text::button.updates"
-    assert buttons[-1].text == "/updates"
+    assert buttons[-1].text == "/bc"
 
 
 @pytest.mark.asyncio
