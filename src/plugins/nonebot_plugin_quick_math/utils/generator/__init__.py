@@ -3,7 +3,7 @@ import traceback
 from nonebot.log import logger
 
 from ...types import GeneratorData, QuestionData
-from .levels import l1, l2, l3, l4, l5, l6, l7
+from .levels import l1, l2, l3, l4, l5, l6, l7, l8
 
 GENERATOR_LIST: dict[int, GeneratorData] = {
     1: {"limit_in_second": 7, "max_point": 10, "function": l1.generate_question},
@@ -13,6 +13,7 @@ GENERATOR_LIST: dict[int, GeneratorData] = {
     5: {"limit_in_second": 42, "max_point": 50, "function": l5.generate_question},
     6: {"limit_in_second": 68, "max_point": 60, "function": l6.generate_question},
     7: {"limit_in_second": 72, "max_point": 70, "function": l7.generate_question},
+    8: {"limit_in_second": 90, "max_point": 80, "function": l8.generate_question},
 }
 
 

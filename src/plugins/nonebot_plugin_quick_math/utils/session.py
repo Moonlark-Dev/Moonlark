@@ -71,7 +71,8 @@ class QuickMathSession:
         await self.send_result()
 
     def set_max_level(self, max_level: int) -> LevelMode:
-        self.level = self.level[0], min(7, max(max_level, 1))
+        # 上限跟随 GENERATOR_LIST，新增等级时无需再改这里
+        self.level = self.level[0], min(get_max_level(), max(max_level, 1))
         return self.level
 
     def set_level_mode(self, level_mode: LevelModeString) -> LevelMode:
