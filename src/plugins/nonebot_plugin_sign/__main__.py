@@ -30,8 +30,7 @@ from nonebot_plugin_larkuser.utils.register import register_user
 from nonebot_plugin_alconna import Button
 from nonebot_plugin_larkuser.utils.waiter import PromptRetryTooMuch, PromptTimeout, prompt
 from nonebot_plugin_larkutils.command import get_command_prefix
-from nonebot_plugin_larkutils import get_user_id
-from nonebot_plugin_larkutils.cache import create_image_markdown
+from nonebot_plugin_larkutils import create_image_markdown, get_user_id
 from nonebot_plugin_larkutils.jrrp import get_luck_value
 from nonebot_plugin_orm import AsyncSession, get_session
 from nonebot_plugin_render.render import render_template
@@ -438,7 +437,7 @@ class SignHandler:
         )
         await (
             UniMessage()
-            .style(f"{at_user}{await create_image_markdown(image_raw)}", "markdown")
+            .style(f"{at_user}{await create_image_markdown(image_raw, self.bot)}", "markdown")
             .keyboard(*await self.build_button())
             .send()
         )

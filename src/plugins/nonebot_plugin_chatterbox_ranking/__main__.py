@@ -18,8 +18,7 @@ from nonebot_plugin_alconna import (
     Subcommand,
     UniMessage,
 )
-from nonebot_plugin_larkutils import get_user_id, get_group_id, open_file
-from nonebot_plugin_larkutils.cache import create_image_markdown
+from nonebot_plugin_larkutils import create_image_markdown, get_group_id, get_user_id, open_file
 from nonebot_plugin_larkutils.command import get_command_prefix
 from nonebot_plugin_ranking import RankingData
 from .image import render_bar
@@ -86,7 +85,7 @@ async def build_rank_buttons(user_id: str, span: SpanType, global_flag: bool) ->
 
 
 async def send_rank_card(
-    bot: Bot,
+    bot: Bot_QQ,
     event: Event,
     user_id: str,
     span: SpanType,
@@ -96,11 +95,11 @@ async def send_rank_card(
     """QQ 官方：排行榜图片与跳转按钮合成一条 markdown 消息发送。
 
     QQ 官方的图片消息（msg_type 7）无法携带按钮，因此与 sign 一致，
-    先把图片上传图床再用 markdown 内嵌，按钮作为同一条消息的键盘下发。
+    先把图片上传到 QQ 素材库再用 markdown 内嵌，按钮作为同一条消息的键盘下发。
     """
     await (
         UniMessage()
-        .style(await create_image_markdown(image), "markdown")
+        .style(await create_image_markdown(image, bot), "markdown")
         # row=3：三个时间段按钮占一行，统计范围与本人排名占第二行
         .keyboard(*await build_rank_buttons(user_id, span, global_flag), row=3)
         .send(target=event, bot=bot)
