@@ -5,7 +5,7 @@ from nonebot.adapters import Bot
 from nonebot.adapters.qq import Bot as QQBot
 from nonebot_plugin_alconna import Button, UniMessage
 from nonebot_plugin_htmlrender import md_to_pic
-from nonebot_plugin_larkutils.cache import create_image_markdown
+from nonebot_plugin_larkutils import create_image_markdown
 
 from ..__main__ import lang
 from ..config import config
@@ -18,7 +18,7 @@ from .latex import ensure_math_mode, latex_to_plain
 # 需要 LaTeX 的等级把题目信息渲染成图片：L5 的选项由 sympy 生成（\frac、\sqrt），
 # L8 的题面与选项是矩阵（pmatrix）。QQ markdown 不解析 LaTeX，直接发送会显示成
 # "- (9)/(2) - √(57)2" 这类难以辨认的纯文本；其余等级继续使用纯文本卡片，避免为简单
-# 题目平白增加一次浏览器渲染与图床上传。
+# 题目平白增加一次浏览器渲染与素材上传。
 _QUESTION_IMAGE_LEVELS = frozenset({5, 8})
 
 
@@ -56,19 +56,19 @@ async def build_question_info_markdown(user_id: str, question: QuestionData, to_
     return content + "\n\n" + await build_choices_markdown(user_id, question["question"]["options"], to_plain=to_plain)
 
 
-async def build_question_info(user_id: str, question: QuestionData) -> str:
+async def build_question_info(user_id: str, question: QuestionData, bot: QQBot) -> str:
     """构建 QQ 官方机器人的题目信息。
 
     LaTeX 题目（见 ``_QUESTION_IMAGE_LEVELS``，如 L5 的公式选项与 L8 的矩阵）直接用
-    md_to_pic 把题目信息（题干 + “请选择答案” + 选项）渲染为图片，再上传图床并返回
-    可供 markdown 引用的图片代码；图床未配置或渲染失败时回退为 ``latex_to_plain`` 的
+    md_to_pic 把题目信息（题干 + “请选择答案” + 选项）渲染为图片，再上传到 QQ 素材库
+    并返回可供 markdown 引用的图片代码；渲染或上传失败时回退为 ``latex_to_plain`` 的
     纯文本。其余等级继续使用纯文本题目信息。
     """
     if question["level"] not in _QUESTION_IMAGE_LEVELS:
         return await build_question_info_markdown(user_id, question, to_plain=True)
     markdown = await build_question_info_markdown(user_id, question)
     try:
-        image = await create_image_markdown(await md_to_pic(markdown, type="jpeg"))
+        image = await create_image_markdown(await md_to_pic(markdown, type="jpeg"), bot)
     except Exception:
         logger.exception("Quick Math 题目信息渲染为图片失败，回退为纯文本")
         return await build_question_info_markdown(user_id, question, to_plain=True)
@@ -109,6 +109,7 @@ async def get_question(
     )
     if isinstance(bot, QQBot):
         return await build_markdown_message(
+            bot,
             user_id,
             question,
             answered,
@@ -138,6 +139,7 @@ async def get_question(
 
 
 async def build_markdown_message(
+    bot: QQBot,
     user_id: str,
     question: QuestionData,
     answered: int,
@@ -153,7 +155,7 @@ async def build_markdown_message(
     content = build_at_user_markdown(qq_user_id) + await lang.text(
         "main.qq_markdown",
         user_id,
-        await build_question_info(user_id, question),
+        await build_question_info(user_id, question, bot),
         answered,
         question["limit_in_sec"],
         question["level"],
@@ -163,7 +165,7 @@ async def build_markdown_message(
     )
     message = UniMessage().style(content, "markdown")
     if question["level"] in _QUESTION_IMAGE_LEVELS:
-        # L5 的选项原文（LaTeX）已随题目信息渲染进图片，按钮只显示并回传选项字母
+        # L5 的公式选项与 L8 的矩阵原文已随题目信息渲染进图片，按钮只显示并回传选项字母
         buttons: list[Button] = [
             Button("enter", OPTION_LETTERS[index], text=OPTION_LETTERS[index]) for index in range(len(options))
         ]

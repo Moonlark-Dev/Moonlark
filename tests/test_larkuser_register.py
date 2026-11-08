@@ -1,45 +1,21 @@
-"""注册流程昵称兜底的回归测试。
+"""静默自动注册的回归测试。
 
-``UserData.nickname`` 是非空列。历史实现中 :func:`get_nickname` 在等待超时、
-昵称审查连续不通过时会返回 ``None``，随后被写进 ``UserData`` 并提交，抛出
-``IntegrityError: (1048, "Column 'nickname' cannot be null")``。
+Moonlark 删除了独立的 ``register`` 指令：需要注册的指令会在执行前通过
+:func:`ensure_registered` 静默完成注册，且不再询问昵称。
 
-这里覆盖两件事：
+这里覆盖：
 
-- :func:`get_nickname` 无论用户如何操作都返回非空昵称；
-- :func:`register_user` 对空昵称再兜底一次，绝不写入 ``NULL`` / 空白昵称。
+- 平台能提供昵称时直接使用，拿不到时回退为 ``用户-{user_id}``；
+- 已注册用户重复触发注册时不会覆盖昵称与注册时间；
+- :func:`ensure_registered` 只在未注册时写入数据。
 """
 
 import json
+from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-
-
-@pytest.fixture
-def patched_lang(monkeypatch):
-    """替换 LarkUser 共享的 LangHelper 实例方法，隔离数据库与消息发送"""
-    from nonebot.exception import FinishedException
-    from nonebot_plugin_larkuser.lang import lang
-
-    sent: list[tuple[str, str]] = []
-    finished: list[tuple[str, str]] = []
-
-    async def fake_send(key, user_id, *args, **kwargs):
-        sent.append((key, str(user_id)))
-
-    async def fake_finish(key, user_id, *args, **kwargs):
-        finished.append((key, str(user_id)))
-        raise FinishedException
-
-    async def fake_text(key, user_id, *args, **kwargs):
-        return f"text::{key}"
-
-    monkeypatch.setattr(lang, "send", fake_send)
-    monkeypatch.setattr(lang, "finish", fake_finish)
-    monkeypatch.setattr(lang, "text", fake_text)
-    return {"sent": sent, "finished": finished}
 
 
 @pytest.fixture
@@ -69,138 +45,164 @@ async def _load(factory, user_id: str):
         return await session.get(UserData, {"user_id": user_id})
 
 
-# ----------------------------------------------------------- get_nickname --
-
-
-@pytest.mark.asyncio
-async def test_get_nickname_prefers_platform_name(monkeypatch, patched_lang):
-    """平台能提供昵称时直接使用，不再询问用户"""
-    from nonebot_plugin_larkuser.utils import register
-
-    prompt = AsyncMock()
-    monkeypatch.setattr(register, "prompt", prompt)
-
-    assert await register.get_nickname(_user_info("小明"), "10001") == ("小明", False)
-    prompt.assert_not_awaited()
-
-
-@pytest.mark.asyncio
-async def test_get_nickname_ignores_blank_platform_name(monkeypatch, patched_lang):
-    """平台昵称为空白时应继续询问用户，而不是把空白当作昵称"""
-    from nonebot_plugin_larkuser.utils import register
-
-    prompt = AsyncMock(return_value="小明")
-    monkeypatch.setattr(register, "prompt", prompt)
-    monkeypatch.setattr(register, "review_text", AsyncMock(return_value={"conclusion": True, "message": ""}))
-
-    assert await register.get_nickname(_user_info("   "), "10001") == ("小明", True)
-    prompt.assert_awaited_once()
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize("answer", ["", "   ", "q", "Q"])
-async def test_get_nickname_blank_answer_falls_back(answer, monkeypatch, patched_lang):
-    """用户留空或发送 q 表示不设置昵称，回退为 用户-{user_id}"""
-    from nonebot_plugin_larkuser.utils import register
-
-    monkeypatch.setattr(register, "prompt", AsyncMock(return_value=answer))
-    review = AsyncMock()
-    monkeypatch.setattr(register, "review_text", review)
-
-    assert await register.get_nickname(_user_info(None), "10001") == ("用户-10001", False)
-    review.assert_not_awaited()
-
-
-@pytest.mark.asyncio
-async def test_get_nickname_timeout_falls_back(monkeypatch, patched_lang):
-    """等待超时时回退为兜底昵称，并提示用户之后仍可修改"""
-    from nonebot_plugin_larkuser.exceptions import PromptTimeout
-    from nonebot_plugin_larkuser.utils import register
-
-    monkeypatch.setattr(register, "prompt", AsyncMock(side_effect=PromptTimeout))
-    monkeypatch.setattr(register, "review_text", AsyncMock())
-
-    assert await register.get_nickname(_user_info(None), "10001") == ("用户-10001", False)
-    assert patched_lang["sent"] == [("input.nickname_failed", "10001")]
-
-
-@pytest.mark.asyncio
-async def test_get_nickname_review_failed_falls_back(monkeypatch, patched_lang):
-    """昵称审查连续不通过时回退为兜底昵称，不再返回 None"""
-    from nonebot_plugin_larkuser.utils import register
-
-    prompt = AsyncMock(return_value="违规昵称")
-    monkeypatch.setattr(register, "prompt", prompt)
-    monkeypatch.setattr(register, "review_text", AsyncMock(return_value={"conclusion": False, "message": "违规"}))
-
-    assert await register.get_nickname(_user_info(None), "10001") == ("用户-10001", False)
-    assert prompt.await_count == register.NICKNAME_PROMPT_ATTEMPTS
-    assert patched_lang["sent"] == [("input.nickname_failed", "10001")]
-
-
-@pytest.mark.asyncio
-async def test_get_nickname_accepts_reviewed_nickname(monkeypatch, patched_lang):
-    """审查通过的昵称应去除首尾空白并标记为手动设置（锁定）"""
-    from nonebot_plugin_larkuser.utils import register
-
-    monkeypatch.setattr(register, "prompt", AsyncMock(return_value=" 小明 "))
-    monkeypatch.setattr(register, "review_text", AsyncMock(return_value={"conclusion": True, "message": ""}))
-
-    assert await register.get_nickname(_user_info(None), "10001") == ("小明", True)
-
-
 # ---------------------------------------------------------- register_user --
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("nickname_result", [(None, False), ("", False), ("   ", False)])
-async def test_register_user_never_writes_null_nickname(nickname_result, monkeypatch, patched_lang, user_session):
-    """即使 get_nickname 返回空昵称，也必须写入兜底昵称而不是 NULL"""
+async def test_register_user_uses_platform_nickname(user_session):
+    """平台能提供昵称时直接使用，不再询问用户"""
     from nonebot_plugin_larkuser.utils import register
 
     session, factory = user_session
-    monkeypatch.setattr(register, "is_user_registered", AsyncMock(return_value=False))
-    monkeypatch.setattr(register, "prompt", AsyncMock(return_value=True))
-    monkeypatch.setattr(register, "get_nickname", AsyncMock(return_value=nickname_result))
 
-    assert await register.register_user(session, "10001", _user_info(None)) == "用户-10001"
+    assert await register.register_user(session, "10001", _user_info("小明")) == "小明"
 
     row = await _load(factory, "10001")
     assert row is not None
-    assert row.nickname == "用户-10001"
+    assert row.nickname == "小明"
+    assert row.register_time is not None
     assert json.loads(row.config)["lock_nickname"] is False
 
 
 @pytest.mark.asyncio
-async def test_register_user_persists_reviewed_nickname(monkeypatch, patched_lang, user_session):
-    """正常路径：写入用户输入并通过审查的昵称，同时锁定昵称"""
+@pytest.mark.parametrize("user_name", [None, "", "   "])
+async def test_register_user_falls_back_to_default_nickname(user_name, user_session):
+    """平台昵称为空时回退为 用户-{user_id}，不写入 NULL / 空白昵称"""
     from nonebot_plugin_larkuser.utils import register
 
     session, factory = user_session
-    monkeypatch.setattr(register, "is_user_registered", AsyncMock(return_value=False))
-    monkeypatch.setattr(register, "prompt", AsyncMock(return_value=True))
-    monkeypatch.setattr(register, "get_nickname", AsyncMock(return_value=("小明", True)))
 
-    assert await register.register_user(session, "10002", _user_info(None)) == "小明"
+    assert await register.register_user(session, "10001", _user_info(user_name)) == "用户-10001"
 
-    row = await _load(factory, "10002")
+    row = await _load(factory, "10001")
     assert row is not None
-    assert row.nickname == "小明"
-    assert json.loads(row.config)["lock_nickname"] is True
+    assert row.nickname == "用户-10001"
 
 
 @pytest.mark.asyncio
-async def test_register_user_cancel_does_not_write(monkeypatch, patched_lang, user_session):
-    """用户拒绝最终许可协议时不应写入任何数据"""
-    from nonebot.exception import FinishedException
+async def test_register_user_without_user_info_uses_default(user_session):
+    """拿不到平台用户信息时同样使用兜底昵称，而不是等待用户输入"""
     from nonebot_plugin_larkuser.utils import register
 
     session, factory = user_session
+
+    assert await register.register_user(session, "10002") == "用户-10002"
+    assert (await _load(factory, "10002")).nickname == "用户-10002"
+
+
+@pytest.mark.asyncio
+async def test_register_user_is_idempotent(user_session):
+    """已注册用户重复触发注册时不应覆盖昵称与注册时间"""
+    from nonebot_plugin_larkuser.models import UserData
+    from nonebot_plugin_larkuser.utils import register
+
+    session, factory = user_session
+    original_time = datetime(2020, 1, 1)
+    async with factory() as seed_session:
+        seed_session.add(UserData(user_id="10003", nickname="老昵称", register_time=original_time))
+        await seed_session.commit()
+
+    assert await register.register_user(session, "10003", _user_info("新昵称")) == "老昵称"
+
+    row = await _load(factory, "10003")
+    assert row.nickname == "老昵称"
+    assert row.register_time == original_time
+
+
+# ------------------------------------------------------- ensure_registered --
+
+
+@pytest.mark.asyncio
+async def test_ensure_registered_writes_for_unregistered_user(monkeypatch, user_session):
+    """未注册用户会被静默写入 UserData，且返回 True 表示确实注册了"""
+    from nonebot_plugin_larkuser.utils import register
+
+    _, factory = user_session
     monkeypatch.setattr(register, "is_user_registered", AsyncMock(return_value=False))
-    monkeypatch.setattr(register, "prompt", AsyncMock(return_value=False))
+    monkeypatch.setattr(register, "get_session", lambda: factory())
+
+    assert await register.ensure_registered("10004", _user_info("小明")) is True
+    assert (await _load(factory, "10004")).nickname == "小明"
+
+
+@pytest.mark.asyncio
+async def test_ensure_registered_skips_registered_user(monkeypatch, user_session):
+    """已注册用户不会再次写库，也不产生任何提示"""
+    from nonebot_plugin_larkuser.utils import register
+
+    _, factory = user_session
+    monkeypatch.setattr(register, "is_user_registered", AsyncMock(return_value=True))
+
+    def _unexpected_session():
+        raise AssertionError("已注册用户不应再打开会话写库")
+
+    monkeypatch.setattr(register, "get_session", _unexpected_session)
+
+    assert await register.ensure_registered("10005", _user_info("小明")) is False
+
+
+# ------------------------------------------------------------ check_access --
+
+
+@pytest.mark.asyncio
+async def test_check_access_registers_unregistered_user_silently(monkeypatch):
+    """未注册用户使用需要注册的指令时静默注册，不发送任何提示"""
+    from nonebot_plugin_larkuser.utils import matcher as matcher_module
+
+    user = MagicMock()
+    user.is_down = AsyncMock(return_value=False)
+    user.get_register_time = MagicMock(return_value=None)
+    monkeypatch.setattr(matcher_module, "get_user", AsyncMock(return_value=user))
+    ensure_registered = AsyncMock(return_value=True)
+    monkeypatch.setattr(matcher_module, "ensure_registered", ensure_registered)
+    send_down_prompt = AsyncMock()
+    monkeypatch.setattr(matcher_module, "send_down_prompt", send_down_prompt)
+    user_info = _user_info("小明")
+
+    await matcher_module.check_access(user_id="10001", user_info=user_info)
+
+    ensure_registered.assert_awaited_once_with("10001", user_info)
+    send_down_prompt.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_check_access_keeps_registered_user_untouched(monkeypatch):
+    """已注册用户不会被重复注册"""
+    from datetime import datetime
+
+    from nonebot_plugin_larkuser.utils import matcher as matcher_module
+
+    user = MagicMock()
+    user.is_down = AsyncMock(return_value=False)
+    user.get_register_time = MagicMock(return_value=datetime.now())
+    monkeypatch.setattr(matcher_module, "get_user", AsyncMock(return_value=user))
+    ensure_registered = AsyncMock()
+    monkeypatch.setattr(matcher_module, "ensure_registered", ensure_registered)
+
+    await matcher_module.check_access(user_id="10002", user_info=None)
+
+    ensure_registered.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_check_access_blocks_downed_user(monkeypatch):
+    """倒地用户会收到提示并终止当前响应器"""
+    from datetime import timedelta
+
+    from nonebot.exception import FinishedException
+    from nonebot_plugin_larkuser.utils import matcher as matcher_module
+
+    user = MagicMock()
+    user.is_down = AsyncMock(return_value=True)
+    user.get_down_remaining = MagicMock(return_value=timedelta(minutes=10))
+    monkeypatch.setattr(matcher_module, "get_user", AsyncMock(return_value=user))
+    send_down_prompt = AsyncMock()
+    monkeypatch.setattr(matcher_module, "send_down_prompt", send_down_prompt)
+    matcher = MagicMock()
+    matcher.finish = AsyncMock(side_effect=FinishedException)
 
     with pytest.raises(FinishedException):
-        await register.register_user(session, "10003", _user_info(None))
+        await matcher_module.check_access(matcher=matcher, user_id="10003", user_info=None)
 
-    assert await _load(factory, "10003") is None
-    assert patched_lang["finished"] == [("command.cancel", "10003")]
+    send_down_prompt.assert_awaited_once_with("10003", timedelta(minutes=10))
+    matcher.finish.assert_awaited_once()

@@ -2,7 +2,7 @@
 
 题目生成器产生的是裸 LaTeX（例如选项 ``x_{1} = \\frac{1}{2}``）。题目信息在
 QQ 官方机器人下通过 md_to_pic 渲染成图片，因此需要 :func:`ensure_math_mode` 把
-裸 LaTeX 包进 ``$...$`` 交给 KaTeX；图床不可用需要回退为纯文本时，则用
+裸 LaTeX 包进 ``$...$`` 交给 KaTeX；素材库不可用需要回退为纯文本时，则用
 :func:`latex_to_plain` 把公式转换为可读的 Unicode 符号。转换失败时保持原样，
 由调用方兜底。
 """

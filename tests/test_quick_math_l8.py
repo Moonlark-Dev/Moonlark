@@ -6,7 +6,7 @@
 - 干扰项覆盖常见错误：转置、哈达玛积（对应元素相乘）、A·Bᵀ、漏加项、
   列下标错位、顺序颠倒（B·A）与维度不符的矩阵；
 - L8 在 QQ 官方机器人下与 L5 一样把题面和选项渲染成图片，按钮只显示字母；
-- 图床不可用时 ``latex_to_plain`` 能把矩阵转成可读的 ``[a, b; c, d]``；
+- 素材库不可用时 ``latex_to_plain`` 能把矩阵转成可读的 ``[a, b; c, d]``；
 - 普通/禅/PvP 会话的等级上限跟随 ``GENERATOR_LIST``，不再写死为 7。
 """
 
@@ -21,8 +21,11 @@ _LANG_FILE = Path(__file__).resolve().parents[1] / "src" / "lang" / "zh_hans" / 
 
 _PMATRIX_PATTERN = re.compile(r"\\begin\{pmatrix\}(.*?)\\end\{pmatrix\}", re.DOTALL)
 
-# 图床返回的 markdown 图片代码（含 QQ 需要的宽高标注）
+# 素材库返回的 markdown 图片代码（含 QQ 需要的宽高标注）
 _FAKE_IMAGE_MARKDOWN = "![text #100px #50px](https://example.com/question.jpg)"
+
+# build_markdown_message 需要 QQ 官方机器人实例；本文件里素材上传总被替换为假实现
+_FAKE_BOT: Any = object()
 
 
 def _load_template(key: str) -> str:
@@ -132,7 +135,7 @@ def test_latex_to_plain_renders_pmatrix() -> None:
 
 @pytest.fixture
 def patched_image_renderer(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
-    """拦截题目信息渲染与图床上传，避免测试依赖浏览器与对象存储。"""
+    """拦截题目信息渲染与素材上传，避免测试依赖浏览器与 QQ 素材库。"""
     from nonebot_plugin_quick_math.utils import question as question_module
 
     captured: dict[str, Any] = {"markdown": None, "image": None}
@@ -141,7 +144,7 @@ def patched_image_renderer(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
         captured["markdown"] = markdown
         return b"fake-image"
 
-    async def fake_create_image_markdown(data: bytes, **_kwargs: object) -> str:
+    async def fake_create_image_markdown(data: bytes, *_args: object, **_kwargs: object) -> str:
         captured["image"] = data
         return _FAKE_IMAGE_MARKDOWN
 
@@ -172,7 +175,7 @@ async def test_l8_question_card_renders_matrices_as_image(patched_image_renderer
     from nonebot_plugin_alconna import Keyboard, Text
     from nonebot_plugin_quick_math.utils.question import build_markdown_message
 
-    message, _ = await build_markdown_message("user", _make_l8_question(), 0, 0, 0, 0, "qq_openid")
+    message, _ = await build_markdown_message(_FAKE_BOT, "user", _make_l8_question(), 0, 0, 0, 0, "qq_openid")
     content = next(segment for segment in message if isinstance(segment, Text)).text
     assert f"## 题目信息\n\n{_FAKE_IMAGE_MARKDOWN}" in content
     # 矩阵原文不应直接出现在 QQ markdown 卡片里
