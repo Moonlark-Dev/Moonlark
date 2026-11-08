@@ -1,16 +1,18 @@
 from datetime import date, datetime, time, timedelta
+from typing import Optional
 
 from nonebot import on_message
 from nonebot.adapters import Bot, Event
 from nonebot.matcher import Matcher
 from nonebot_plugin_alconna import Alconna, Arparma, Option, Subcommand, UniMessage, on_alconna
 from nonebot_plugin_apscheduler import scheduler
-from nonebot_plugin_larkuser import get_registered_user_ids
+from nonebot_plugin_larkuser import ensure_registered, get_registered_user_ids
 from nonebot_plugin_larkutils import get_group_id, get_user_id
 from nonebot_plugin_last_seen.models import LastSeenRecord
 from nonebot_plugin_orm import get_session
 from nonebot_plugin_ranking import generate_image
 from nonebot_plugin_ranking.types import RankingData
+from nonebot_plugin_userinfo import EventUserInfo, UserInfo
 from sqlalchemy import delete, func, select
 
 from .lang import lang
@@ -224,9 +226,13 @@ async def _(
     user_id: str = get_user_id(),
     group_id: str = get_group_id(),
     result: Arparma | None = None,
+    user: Optional[UserInfo] = EventUserInfo(),
 ) -> None:
     registered = result is not None and result.find("registered") if result else False
     group_flag = result is not None and result.find("group") if result else False
+    if registered:
+        # --registered 会读取已注册用户列表，先静默注册调用方，保证其自身名次能正常显示
+        await ensure_registered(user_id, user)
 
     ranked_data = await get_rise_ranking_data(user_id)
     ranked_data = await _filter_ranked_data(ranked_data, registered, group_flag, group_id)
@@ -244,9 +250,13 @@ async def _(
     user_id: str = get_user_id(),
     group_id: str = get_group_id(),
     result: Arparma | None = None,
+    user: Optional[UserInfo] = EventUserInfo(),
 ) -> None:
     registered = result is not None and result.find("registered") if result else False
     group_flag = result is not None and result.find("group") if result else False
+    if registered:
+        # --registered 会读取已注册用户列表，先静默注册调用方，保证其自身名次能正常显示
+        await ensure_registered(user_id, user)
 
     ranked_data = await get_avg_ranking_data(user_id)
     ranked_data = await _filter_ranked_data(ranked_data, registered, group_flag, group_id)
@@ -264,9 +274,13 @@ async def _(
     user_id: str = get_user_id(),
     group_id: str = get_group_id(),
     result: Arparma | None = None,
+    user: Optional[UserInfo] = EventUserInfo(),
 ) -> None:
     registered = result is not None and result.find("registered") if result else False
     group_flag = result is not None and result.find("group") if result else False
+    if registered:
+        # --registered 会读取已注册用户列表，先静默注册调用方，保证其自身名次能正常显示
+        await ensure_registered(user_id, user)
 
     today = date.today()
     async with get_session() as session:

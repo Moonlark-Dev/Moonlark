@@ -1,14 +1,17 @@
 from __future__ import annotations
 
+from typing import Optional
+
 from nonebot.adapters import Bot, Event
 from nonebot.adapters.qq import Bot as QQBot
 from nonebot_plugin_alconna import Alconna, Args, At, Button, Match, Subcommand, UniMessage, on_alconna
 from nonebot_plugin_htmlrender import md_to_pic
-from nonebot_plugin_larkuser import get_user
+from nonebot_plugin_larkuser import ensure_registered, get_user
 from nonebot_plugin_larkutils import get_group_id, get_user_id
 from nonebot_plugin_larkutils.command import get_command_prefix
 from nonebot_plugin_larkutils.user import is_private_message
 from nonebot_plugin_ranking import generate_image
+from nonebot_plugin_userinfo import EventUserInfo, UserInfo
 
 from .lang import lang
 from .potatoes import get_active_potato
@@ -33,11 +36,6 @@ sweet_potato = on_alconna(
 async def require_group(private: bool, user_id: str) -> None:
     if private:
         await lang.finish("error.only_group", user_id)
-
-
-async def require_registered(user_id: str) -> None:
-    if not (await get_user(user_id)).is_registered():
-        await lang.finish("error.not_registered", user_id)
 
 
 async def get_play_room(group_id: str, user_id: str) -> HotPotatoRoom:
@@ -107,9 +105,10 @@ async def create_handler(
     user_id: str = get_user_id(),
     group_id: str = get_group_id(),
     private: bool = is_private_message(),
+    user_info: Optional[UserInfo] = EventUserInfo(),
 ) -> None:
     await require_group(private, user_id)
-    await require_registered(user_id)
+    await ensure_registered(user_id, user_info)
     existing = get_room(group_id)
     if existing is not None:
         if existing.status == "playing":
@@ -132,9 +131,10 @@ async def join_handler(
     user_id: str = get_user_id(),
     group_id: str = get_group_id(),
     private: bool = is_private_message(),
+    user_info: Optional[UserInfo] = EventUserInfo(),
 ) -> None:
     await require_group(private, user_id)
-    await require_registered(user_id)
+    await ensure_registered(user_id, user_info)
     room = get_room(group_id)
     if room is None:
         await lang.finish("error.no_room", user_id)
