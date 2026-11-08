@@ -1,8 +1,0 @@
-plugin: updates
-commands:
-  updates:
-    description: help.description
-    details: help.details
-    usages:
-      - help.usage1
-    category: community

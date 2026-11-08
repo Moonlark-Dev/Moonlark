@@ -123,10 +123,11 @@ def test_qq_broadcast_message_without_buttons() -> None:
 async def test_qq_broadcast_skips_image_rendering(monkeypatch: pytest.MonkeyPatch) -> None:
     """QQ 官方下长广播也直接发 markdown，不再渲染图片"""
     import nonebot_plugin_broadcast.__main__ as module
+    import nonebot_plugin_broadcast.message as message_module
     from nonebot.adapters.qq import Bot as QQBot
 
     md_to_pic = AsyncMock()
-    monkeypatch.setattr(module, "md_to_pic", md_to_pic)
+    monkeypatch.setattr(message_module, "md_to_pic", md_to_pic)
 
     content = "长广播内容" * 100
     message = await module.build_broadcast_message(MagicMock(spec=QQBot), content, [])
@@ -140,10 +141,11 @@ async def test_qq_broadcast_skips_image_rendering(monkeypatch: pytest.MonkeyPatc
 async def test_other_adapter_keeps_image_behavior(monkeypatch: pytest.MonkeyPatch, broadcast_env) -> None:
     """其余平台保持原行为：长内容渲染为图片，短内容发送纯文本"""
     module, _, _ = broadcast_env
+    import nonebot_plugin_broadcast.message as message_module
     from nonebot_plugin_alconna.uniseg import Image, Text
 
     md_to_pic = AsyncMock(return_value=b"image-bytes")
-    monkeypatch.setattr(module, "md_to_pic", md_to_pic)
+    monkeypatch.setattr(message_module, "md_to_pic", md_to_pic)
 
     long_message = await module.build_broadcast_message(MagicMock(), "长内容" * 100, [])
     md_to_pic.assert_awaited_once()
@@ -174,6 +176,10 @@ async def test_get_available_groups_includes_qq_and_dedupes(broadcast_env, monke
     qq_bot.self_id = "qq"
 
     monkeypatch.setattr(module, "get_bots", lambda: {"v11": v11_bot, "qq": qq_bot})
+    # sync_ob11_groups 在 groups 模块里读取 get_bots，同样要指到假 bot
+    import nonebot_plugin_broadcast.groups as groups_module
+
+    monkeypatch.setattr(groups_module, "get_bots", lambda: {"v11": v11_bot, "qq": qq_bot})
 
     groups = await module.get_available_groups()
     # 已绑定且 OB11 在线覆盖的群不再通过 QQ 推送，未绑定的群使用 openid
