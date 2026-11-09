@@ -47,3 +47,4 @@ from .escape import escape_markdown as escape_markdown
 from .escape import escape_cmd_input as escape_cmd_input
 from . import mention_cache
 from .media_image import create_image_markdown as create_image_markdown
+from .qq_at_markdown import skip_at_markdown as skip_at_markdown
