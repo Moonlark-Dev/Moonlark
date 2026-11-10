@@ -117,6 +117,12 @@ command:
     enabled: 私聊 Chat 功能已启用
     disabled: 私聊 Chat 功能已禁用
   private_only_switch: 私聊中仅支持 chat on / chat off / chat switch / chat reset 命令。
+  gal_mode:
+    private_only: 私聊中才能使用 {__prefix__}gal-mode 指令。
+    enabled: 已开启私聊备选回复。
+    disabled: 已关闭私聊备选回复。
+    current_on: 当前私聊备选回复已开启，使用 {__prefix__}gal-mode off 关闭。
+    current_off: 当前私聊备选回复已关闭，使用 {__prefix__}gal-mode on 开启。
   mode:
     name:
       passionate: 热情
@@ -186,6 +192,12 @@ help:
   usage16: chat mode [passionate|standard|silent] (查看或切换互动模式，切换将重置会话上下文)
   usage17: chat reset <会话ID> (重置指定会话的所有历史消息并重置会话状态[SU])
   usage18: chat review-all (对所有会话执行记忆整理并重置其消息队列[SU])
+
+help_gal_mode:
+  description: 私聊备选回复
+  details: 开启后，私聊中的回复会延迟一条发送，并在每轮结束时附带 1~3 条备选回复按钮，点击按钮即可发送对应内容。
+  usage1: gal-mode on (开启私聊备选回复)
+  usage2: gal-mode off (关闭私聊备选回复)
 
 pending_note:
   not_found: 未找到 ID 为 {} 的待定笔记。
@@ -436,6 +448,7 @@ message:
     消息发送成功(消息ID: {})。
     本条消息字数: {}
     已连续发送消息数: {}{}
+  sent_queued: 消息发送成功。
   stop_response: "[错误] 你已连续发送 {} 条消息，超过系统限制，本次发送已被阻止。请等待用户回复后再继续发言。"
   reaction_success: "已发送回应：{}"
   token_insufficient: 发送这条消息所需的 Token 不足，请等待用户回复后再继续发言。

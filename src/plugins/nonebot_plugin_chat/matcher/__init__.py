@@ -16,4 +16,4 @@
 # ##############################################################################
 
 # from . import profile
-from . import chat as chat, rua as rua
+from . import chat as chat, gal_mode as gal_mode, rua as rua
