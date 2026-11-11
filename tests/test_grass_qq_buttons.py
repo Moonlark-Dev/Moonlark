@@ -81,6 +81,27 @@ async def test_build_qq_message_c2c_skips_at_user(monkeypatch: pytest.MonkeyPatc
 
 
 @pytest.mark.asyncio
+async def test_build_qq_message_group_at_uses_adapter_user_id(monkeypatch: pytest.MonkeyPatch) -> None:
+    """群聊 @ 必须使用适配器原生 ID（member_openid），而非 larkutils 主账号 ID"""
+    from unittest.mock import MagicMock
+
+    from nonebot.adapters.qq.event import GroupAtMessageCreateEvent
+    from nonebot_plugin_alconna import Text
+    from nonebot_plugin_larkutils.command import config
+    from nonebot_plugin_shengcao.main import _build_qq_message
+
+    monkeypatch.setattr(config, "command_start", ["/"])
+    event = MagicMock(spec=GroupAtMessageCreateEvent)
+    event.get_user_id.return_value = "MEMBER_OPENID_GRASS"
+
+    message = await _build_qq_message("10001", "草*草", "原始文本", "grass", event)
+
+    text = next(seg for seg in message if isinstance(seg, Text))
+    assert text.text == '<qqbot-at-user id="MEMBER_OPENID_GRASS" />草\\*草'
+    assert 'id="10001"' not in text.text
+
+
+@pytest.mark.asyncio
 async def test_fury_text_replaces_all_with_uniform_random_pool() -> None:
     """狂怒模式：命中词典的词必须全部被替换；合并释义池等概率随机选取（同义/近义均可能出现）"""
     from nonebot_plugin_shengcao.main import _dict_data, fury_text
