@@ -31,11 +31,13 @@
 
 import os
 import struct
+from nonebot.adapters import Bot, Event
 from nonebot_plugin_alconna.uniseg import UniMessage
+from nonebot_plugin_larkuser.utils.waiter2 import Waiter
+from nonebot_plugin_larkutils import LatestEvent, get_user_id
 from nonebot_plugin_schedule.utils import complete_schedule
-from nonebot_plugin_waiter import prompt
-from nonebot_plugin_larkutils import get_user_id
 from nonebot_plugin_minigame_api import create_minigame_session
+from .config import config
 from .exceptions import Quited, CannotMove
 from .utils.fttmap import FttMap
 from .utils.enums import Directions, Blocks
@@ -73,12 +75,19 @@ async def get_block_info(user_id: str) -> tuple[dict[Blocks, str], dict[Blocks, 
     return block_names, block_descs, title
 
 
-async def is_user_continue(user_id: str, d_list: list[Directions]) -> bool:
+async def is_user_continue(user_id: str, d_list: list[Directions], tracker: LatestEvent) -> bool:
     while True:
-        inp = await prompt(await lang.text("ftt.done", user_id, await get_command_list_string(d_list, user_id)))
-        if inp is None:
-            continue
-        text = inp.extract_plain_text().lower()
+        waiter = Waiter(
+            UniMessage(await lang.text("ftt.done", user_id, await get_command_list_string(d_list, user_id))),
+            user_id,
+            event=tracker.event,
+        )
+        try:
+            await waiter.wait(timeout=config.ftt_input_timeout, auto_finish=False)
+        except TimeoutError:
+            raise Quited from None
+        tracker.update(waiter.get_event())
+        text = waiter.get(lambda message: message.extract_plain_text()).lower()
         if text == "ok":
             return True
         elif text == "clear":
@@ -86,7 +95,7 @@ async def is_user_continue(user_id: str, d_list: list[Directions]) -> bool:
 
 
 @ftt.handle()
-async def _(seed: str, user_id: str = get_user_id()) -> None:
+async def _(bot: Bot, event: Event, seed: str, user_id: str = get_user_id()) -> None:
     # 如果 seed 是 "help"，不处理，让 help 子命令处理器处理
     if seed in ["legend", "help"]:
         await get_legend(user_id)
@@ -95,33 +104,31 @@ async def _(seed: str, user_id: str = get_user_id()) -> None:
     ftt_map = FttMap(map_seed)
     points = ftt_map.difficulty["points"]
     session = await create_minigame_session(user_id, "ftt")
+    # 连续输入过程中始终回复用户最新消息，避免 QQ 官方被动回复次数超限
+    tracker = LatestEvent(event, bot)
     while points >= 2:
-        getter = AnswerGetter(user_id, ftt_map)
+        getter = AnswerGetter(user_id, ftt_map, tracker)
         try:
             d_list = await getter.get_commands()
+            if not await is_user_continue(user_id, d_list, tracker):
+                continue
         except Quited:
-            await session.quit(
-                await lang.text(
-                    "ftt.example", user_id, await get_command_list_string(ftt_map.answer, user_id), map_seed
-                )
-            )
-        if not await is_user_continue(user_id, d_list):
-            continue
+            break
         try:
             result = ftt_map.test_answer(d_list)
         except CannotMove as e:
             if points / 2 >= 2:
                 points /= 2
-                await lang.send("ftt.cannot_move", user_id, e.step_length + 1)
+                await tracker.send(await lang.text("ftt.cannot_move", user_id, e.step_length + 1), at_sender=True)
                 continue
             else:
-                await lang.send("ftt.cannot_move_end", user_id, e.step_length + 1)
+                await tracker.send(await lang.text("ftt.cannot_move_end", user_id, e.step_length + 1), at_sender=True)
                 break
         if points / 2 >= 2 and not result:
             points /= 2
-            await lang.send("ftt.failed", user_id)
+            await tracker.send(await lang.text("ftt.failed", user_id), at_sender=True)
         elif not result:
-            await lang.send("ftt.big_failed", user_id)
+            await tracker.send(await lang.text("ftt.big_failed", user_id), at_sender=True)
             break
         else:
             if seed != "-1":
@@ -129,9 +136,12 @@ async def _(seed: str, user_id: str = get_user_id()) -> None:
             t, points = await session.finish(round(points * (ftt_map.step_length / 5)), 1.6)
             if ftt_map.difficulty_name != "easy":
                 await complete_schedule(user_id, "ftt")
-            await lang.finish("ftt.success", user_id, points, map_seed)
+            await tracker.send(await lang.text("ftt.success", user_id, points, map_seed), at_sender=True)
+            await ftt.finish()
     await session.quit(
-        await lang.text("ftt.example", user_id, await get_command_list_string(ftt_map.answer, user_id), map_seed)
+        await lang.text("ftt.example", user_id, await get_command_list_string(ftt_map.answer, user_id), map_seed),
+        event=tracker.event,
+        bot=bot,
     )
 
 
