@@ -298,8 +298,10 @@ Guidelines:
   initialises NoneBot only in a session-scoped autouse fixture, so a module-level plugin import fails during
   collection with `NoneBot has not been initialized`.
 - `tests/conftest.py` also registers the Console/OneBot V11 adapters, loads every plugin from
-  `pyproject.toml`, and sets `ALEMBIC_STARTUP_CHECK=False`; it only falls back to the in-memory SQLite URL
-  (`setdefault`) when `SQLALCHEMY_DATABASE_URL` is not already set — CI sets it to the job's MySQL service.
+  `pyproject.toml`, skips `nonebot_plugin_htmlrender` startup browser launch / auto-install (tests mock
+  rendering calls instead of starting Playwright), and sets `ALEMBIC_STARTUP_CHECK=False`; it only falls back
+  to the in-memory SQLite URL (`setdefault`) when `SQLALCHEMY_DATABASE_URL` is not already set — CI sets it to
+  the job's MySQL service.
 - `nonebug` is installed but most tests use plain `unittest.mock`; follow the file you are editing.
 - Prefer a single test file: the full suite loads every plugin and is memory hungry.
 
