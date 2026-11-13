@@ -45,5 +45,6 @@ from .jrrp import get_luck_value
 from .gift_session import get_or_create_session, trigger_gift_event
 from .escape import escape_markdown as escape_markdown
 from .escape import escape_cmd_input as escape_cmd_input
+from .latest_event import LatestEvent
 from . import mention_cache
 from .media_image import create_image_markdown as create_image_markdown

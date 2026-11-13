@@ -23,6 +23,8 @@ from pathlib import Path
 
 class Config(BaseModel):
     ftt_assets_path: Optional[Path] = None
+    # 等待用户输入的超时时间（秒）；超时后按退出处理
+    ftt_input_timeout: int = 300
 
 
 config = get_plugin_config(Config)
