@@ -8,6 +8,8 @@ from __future__ import annotations
 import random
 from typing import Literal, TypeVar
 
+from nonebot import logger
+
 RiskLevel = Literal["safe", "low", "medium", "high", "extreme", "imminent"]
 Action = Literal["pass", "hold"]
 
@@ -74,6 +76,17 @@ def draw_initial_probability(initial_range: tuple[int, int] = INITIAL_PROBABILIT
     return _RNG.randint(*initial_range)
 
 
+def calculate_min_proability(probability: int) -> int:
+    """
+    取当前等级的下界作为最低概率
+    """
+    for max_prob in [EXTREME_MAX, HIGH_MAX, MEDIUM_MAX, LOW_MAX, SAFE_MAX]:
+        if max_prob <= probability:
+            return max_prob
+    return 25
+
+
+
 def draw_probability(min_probability: int, *, after_pass: bool = False) -> tuple[int, int]:
     """从 [当前下限, 100%] 重新抽取爆炸概率。
 
@@ -82,12 +95,10 @@ def draw_probability(min_probability: int, *, after_pass: bool = False) -> tuple
     :return: ``(新的爆炸概率, 新的概率下限)``
     """
     probability = _RNG.randint(min_probability, MAX_PROBABILITY)
-    if after_pass and probability > SHORT_CIRCUIT_THRESHOLD and _RNG.random() < SHORT_CIRCUIT_CHANCE:
-        lower_bound = max(0, min_probability - SHORT_CIRCUIT_DROP)
-        return _RNG.randint(lower_bound, min_probability), min_probability
-    return probability, probability
+    logger.debug(f"山芋被烫到概率: {probability}")
+    return probability, calculate_min_proability(probability)
 
 
 def roll_explosion(probability: int) -> bool:
     """按当前爆炸概率判定是否爆炸；100% 必定爆炸，0% 永不爆炸。"""
-    return _RNG.randint(1, MAX_PROBABILITY) <= probability
+    return _RNG.randint(probability, MAX_PROBABILITY) == MAX_PROBABILITY
