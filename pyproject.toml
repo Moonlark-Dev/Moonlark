@@ -58,6 +58,7 @@ plugins = [
     "nonebot_plugin_luxun_works",
     "nonebot_plugin_minigame_api",
     "nonebot_plugin_openai",
+    "nonebot_plugin_gemini",
     "nonebot_plugin_pacman",
     "nonebot_plugin_preview",
     "nonebot_plugin_qq_group",

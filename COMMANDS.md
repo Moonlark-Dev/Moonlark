@@ -383,6 +383,7 @@ Moonlark 投票
 - `/chat mode [passionate|standard|silent] (查看或切换互动模式，切换将重置会话上下文)`
 - `/chat reset <会话ID> (重置指定会话的所有历史消息并重置会话状态[SU])`
 - `/chat review-all (对所有会话执行记忆整理并重置其消息队列[SU])`
+- `/chat model [openai|gemini] (查看或切换全局模型 Provider[SU])`
 ## `decision`: 虚假处分通知
 
 根据群内最近 300 条消息，对指定群员生成一份符合公文格式的虚假处分通知（整活用）。
@@ -481,6 +482,14 @@ Moonlark 投票
 - `/bcsu button remove <按钮名> (移除广播按钮)`
 - `/bcsu button clear (清空全部广播按钮)`
 - `/bcsu button list (查看当前广播按钮)`
+## `gem-model`: Gemini 模型管理
+
+管理 Gemini 模型配置（仅限超级用户）
+> 此指令仅 Moonlark 管理员可用。
+- `/gem-model (查看模型配置信息)`
+- `/gem-model <模型名> (更换默认模型)`
+- `/gem-model <模型名> <应用标识> (设置应用专用模型)`
+- `/gem-model :default: <应用标识> (删除应用配置)`
 ## `md`: Markdown 渲染测试
 
 将参数中的 Markdown 原样发送到当前群聊，用于测试 QQ 官方机器人的 Markdown 渲染效果（仅超管可用）

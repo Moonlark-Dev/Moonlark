@@ -10,7 +10,9 @@ from nonebot_plugin_openai.utils.chat import MessageFetcher
 from nonebot_plugin_chat.enums import FetchStatus
 from nonebot_plugin_chat.utils.role import get_role
 
-from ..utils.image_format import image_data_url, normalize_image
+from ..utils.image import request_describe_image
+from ..utils.image_format import decode_image_data_url, image_data_url, normalize_image
+from ..utils.provider import get_model_provider, get_sliding_window_idle_seconds
 from ..utils.timing_stats import timing_stats_manager
 from .context import ChatContext, ContextMessage, MessageCursor, MessageCursorClosed
 
@@ -37,7 +39,8 @@ class MessageQueue:
         # chat context 由 message queue 实例化，一个 message queue 对应一个 context
         self.context = ChatContext(processor.session)
         self.context.set_lock_timeout_handler(self._on_lock_timeout)
-        self.fetcher: Optional[MessageFetcher] = None
+        # OpenAI / Gemini 两个插件的 fetcher 接口一致，按全局 Provider 选择
+        self.fetcher: Optional[Any] = None
         self.fetcher_lock = asyncio.Lock()
         self.continuous_response = False
         self.fetcher_task = None
@@ -69,17 +72,35 @@ class MessageQueue:
         """重置上下文：保存现有记录后切换到新的 context_index"""
         await self.context.reset()
 
-    async def _create_fetcher(self) -> MessageFetcher:
+    async def _create_fetcher(self) -> Any:
+        """按全局 Provider 选择 SDK 创建 fetcher（两者的 session 接口一致）"""
         messages = await self.context.build_openai_messages()
-        fetcher = await MessageFetcher.create(
-            messages,
-            False,
-            identify="Chat",
-            functions=await self.processor.tool_manager.select_tools("group"),
-            pre_function_call=self.processor.send_function_call_feedback,
-            post_function_call=self.processor.send_function_call_result,
-            reasoning_effort="medium",
-        )
+        functions = await self.processor.tool_manager.select_tools("group")
+        provider = await get_model_provider()
+        if provider == "gemini":
+            from nonebot_plugin_gemini.utils.chat import MessageFetcher as GeminiMessageFetcher
+
+            fetcher: Any = await GeminiMessageFetcher.create(
+                messages,
+                False,
+                identify="Chat",
+                functions=functions,
+                pre_function_call=self.processor.send_function_call_feedback,
+                post_function_call=self.processor.send_function_call_result,
+                reasoning_effort="medium",
+                # 图片被 Gemini 安全策略拦截时，把图片换成 Image Describe 模型的描述后重试
+                on_image_blocked=self.handle_blocked_images,
+            )
+        else:
+            fetcher = await MessageFetcher.create(
+                messages,
+                False,
+                identify="Chat",
+                functions=functions,
+                pre_function_call=self.processor.send_function_call_feedback,
+                post_function_call=self.processor.send_function_call_result,
+                reasoning_effort="medium",
+            )
         fetcher.session.set_custom_trace_id(self.context.thread_id)
         return fetcher
 
@@ -152,9 +173,10 @@ class MessageQueue:
         if get_role(messages[-1]) == "assistant":
             return FetchStatus.SKIP
 
-        # provider 缓存超过 10 分钟后会被清除，此时清理不再相关的历史 block
+        # provider 前缀缓存过期后清理不再相关的历史 block：OpenAI 约 10 分钟，
+        # Gemini 只有 5 分钟（见 utils/provider.py）
         try:
-            if await self.context.run_sliding_window():
+            if await self.context.run_sliding_window(await get_sliding_window_idle_seconds()):
                 logger.info("已执行滑动窗口清理")
         except Exception as e:
             logger.warning(f"滑动窗口清理失败: {e}")
@@ -310,6 +332,65 @@ class MessageQueue:
             {"type": "image_url", "image_url": {"url": image_data_url(normalized, actual_mime_type)}},
         ]
         self.fetcher.session.insert_message(generate_message(content, "user"))
+
+    async def handle_blocked_images(self, fetcher_session: Any) -> bool:
+        """Gemini 模式下图片被安全策略拦截时的兜底处理
+
+        把被拦截的内嵌图片交给 OpenAI 插件的 Image Describe 模型总结成文字，替换掉
+        payload 里的图片块后重试请求。优先替换本轮新加消息中的图片；如果本轮消息里
+        没有图片（说明触发拦截的是更早的历史图片），则回退为替换整个上下文中的图片，
+        否则每次请求都会在同一张图上被拦下。
+
+        替换必须同时写回 message queue 的消息列表与 chat context：只改前者会让
+        ``absorb_messages`` 的前缀对齐失败（消息被重复追加），只改后者则本次重试仍然
+        带着原图。
+
+        Returns:
+            是否至少替换了一张图片（False 表示没有可替换的内容，放弃重试）
+        """
+        from nonebot_plugin_gemini.utils.convert import image_part_indices
+
+        messages = getattr(fetcher_session, "messages", None)
+        if not isinstance(messages, list) or not messages:
+            return False
+
+        def has_image(message: Any) -> bool:
+            content = message.get("content") if isinstance(message, dict) else None
+            return bool(image_part_indices(content))
+
+        start = max(0, int(getattr(fetcher_session, "request_start_index", 0)))
+        targets = [index for index in range(start, len(messages)) if has_image(messages[index])]
+        if not targets:
+            targets = [index for index, message in enumerate(messages) if has_image(message)]
+        if not targets:
+            return False
+
+        replaced = 0
+        for index in targets:
+            content = messages[index].get("content")
+            if not isinstance(content, list):
+                continue
+            new_content = list(content)
+            for part_index in image_part_indices(content):
+                image_url = content[part_index].get("image_url")
+                url = image_url.get("url") if isinstance(image_url, dict) else image_url
+                image = decode_image_data_url(url)
+                if image is None:
+                    placeholder = await self.processor.session.text("parser.image_failed")
+                else:
+                    description, image_id = await request_describe_image(image, self.processor.session.lang_str)
+                    placeholder = await self.processor.session.text(
+                        "parser.image_with_id",
+                        image_id,
+                        description,
+                    )
+                new_content[part_index] = {"type": "text", "text": placeholder}
+                replaced += 1
+            messages[index]["content"] = new_content
+            await self.context.replace_llm_message_content(index, new_content)
+        if replaced:
+            logger.info(f"已将 {replaced} 张被 Gemini 拦截的图片替换为文字描述，准备重试请求")
+        return replaced > 0
 
     def is_last_message_from_user(self) -> bool:
         messages = self.messages

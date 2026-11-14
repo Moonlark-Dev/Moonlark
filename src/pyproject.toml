@@ -19,6 +19,7 @@ pypinyin = ">=0.51.0, <0.52.0"
 jieba = ">=0.42.1, <0.43.0"
 sympy = ">=1.12.1, <2.0.0"
 openai = ">=1.34.0, <2.0.0"
+google-genai = ">=3.3.0, <4.0.0"
 aiosqlite = ">=0.20.0, <0.21.0"
 aiomysql = ">=0.3.0, <0.4.0"
 # aiomysql 依赖 pymysql.converters.escape_bytes_prefixed，pymysql 1.2.1 移除了该符号、
@@ -86,6 +87,7 @@ packages = [
     { include = "nonebot_plugin_luxun_works", from = "./plugins" },
     { include = "nonebot_plugin_minigame_api", from = "./plugins" },
     { include = "nonebot_plugin_openai", from = "./plugins" },
+    { include = "nonebot_plugin_gemini", from = "./plugins" },
     { include = "nonebot_plugin_pacman", from = "./plugins" },
     { include = "nonebot_plugin_preview", from = "./plugins" },
     { include = "nonebot_plugin_qq_group", from = "./plugins" },

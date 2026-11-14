@@ -6,6 +6,7 @@ from nonebot_plugin_alconna import UniMessage
 from nonebot_plugin_openai import MessageFetcher
 from nonebot_plugin_openai.utils.message import generate_message, get_message
 
+from .provider import get_model_provider
 from .tool_manager import ToolManager
 
 
@@ -27,15 +28,26 @@ class AskAISession:
         self.functions = await self.tool_manager.select_tools("agent")
 
     async def fetch_answer(self, query: str) -> str:
-        fetcher = await MessageFetcher.create(
-            [
-                await get_message("system", "chat_agent.md.jinja"),
-                generate_message(query, "user"),
-            ],
-            False,
-            functions=self.functions,
-            identify="Ask AI",
-        )
+        messages = [
+            await get_message("system", "chat_agent.md.jinja"),
+            generate_message(query, "user"),
+        ]
+        if await get_model_provider() == "gemini":
+            from nonebot_plugin_gemini.utils.chat import MessageFetcher as GeminiMessageFetcher
+
+            fetcher = await GeminiMessageFetcher.create(
+                messages,
+                False,
+                functions=self.functions,
+                identify="Ask AI",
+            )
+        else:
+            fetcher = await MessageFetcher.create(
+                messages,
+                False,
+                functions=self.functions,
+                identify="Ask AI",
+            )
         return await fetcher.fetch_last_message()
 
     async def ask_ai(self, query: str) -> str:
