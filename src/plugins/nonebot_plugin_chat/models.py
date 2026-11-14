@@ -154,6 +154,8 @@ class PrivateChatConfig(Model):
 
     user_id: Mapped[str] = mapped_column(String(128), primary_key=True)
     enabled: Mapped[bool] = mapped_column(default=True)
+    # 私聊备选回复开关，默认关闭（见 core/gal_mode.py）
+    gal_mode: Mapped[bool] = mapped_column(Boolean(), default=False, server_default=false())
 
 
 class ChatGlobalSetting(Model):

@@ -8,11 +8,13 @@ from typing import TYPE_CHECKING, Any, Literal, Optional
 
 from nonebot.adapters import Event
 from nonebot.adapters.onebot.v11 import Bot as OB11Bot
+from nonebot.adapters.qq import Bot as QQBot
 from nonebot.exception import ActionFailed
 from nonebot.log import logger
 from nonebot.typing import T_State
-from nonebot_plugin_alconna import Target, UniMessage
+from nonebot_plugin_alconna import Button, Target, UniMessage
 from nonebot_plugin_larkuser import get_user
+from nonebot_plugin_larkutils import escape_markdown
 from nonebot_plugin_larkutils.subaccount import get_main_account
 from nonebot_plugin_openai import generate_message, get_message, get_message_text
 from nonebot_plugin_openai.types import Message as OpenAIMessage
@@ -44,6 +46,7 @@ from ..utils.tool_manager import ToolManager
 from ..utils.tools.meme import MemeTools
 from ..utils.tools.sticker import StickerTools
 from .context import serialize_cached_message
+from .gal_mode import BufferedMessage, GalModeManager
 from .message import MessageQueue
 
 
@@ -72,6 +75,8 @@ class MessageProcessor:
         self._latest_reasioning_content_cache = ""
         self.sticker_tools = StickerTools(self.session)
         self.meme_tools = MemeTools(self.session)
+        # 私聊备选回复：发送缓存与备选回复生成
+        self.gal_mode = GalModeManager(self)
         self.functions = []
         self.loop_task = None
         self._processing_task = None
@@ -614,14 +619,84 @@ class MessageProcessor:
                     return await self.session.text("message.token_insufficient", self.token_bucket.get())
         else:
             token_cost = 0
-        message = await self.session.format_message(message_content)
+        if self.gal_mode.should_buffer():
+            # 开启备选回复后，消息先进入发送缓存：当前消息留下，把上一条挤出去的消息发出。
+            # 缓存里最后一条会在本轮结束时以 markdown（附带备选回复按钮）的形式发出。
+            flushed = await self.gal_mode.enqueue(message_content, reply_message_id, token_cost)
+            if flushed is not None:
+                await self._deliver_message(flushed.content, flushed.reply_message_id, flushed.token_cost)
+            return await self.session.text("message.sent_queued")
+        return await self._send_and_report(message_content, reply_message_id, token_cost)
+
+    async def _send_and_report(self, message_content: str, reply_message_id: str | None, token_cost: int) -> str:
+        """发送消息并把发送结果反馈给模型"""
+        sent_msg_id = await self._deliver_message(message_content, reply_message_id, token_cost)
+        # 检查待定笔记是否有新内容
+        pending_notes_text = self._format_pending_notes_for_tool_result()
+        return (
+            await self.session.text(
+                "message.sent",
+                sent_msg_id,
+                len(message_content),
+                self.consecutive_message_count,
+                (
+                    await self.session.text("message.token", self.token_bucket.get(), token_cost)
+                    if self.session.get_session_type() == "group"
+                    else ""
+                ),
+            )
+            + pending_notes_text
+        )
+
+    async def deliver_buffered_message(self, message: BufferedMessage, suggestions: list[str]) -> None:
+        """发出缓存中的最后一条消息（附带备选回复按钮）
+
+        以 markdown + 按钮发送失败时退回普通消息，避免消息因为平台差异而丢失。
+        """
+        try:
+            await self._deliver_message(
+                message.content,
+                message.reply_message_id,
+                message.token_cost,
+                markdown=True,
+                suggestions=suggestions,
+            )
+        except Exception as e:
+            logger.exception(f"以 markdown 发送缓存消息失败，回退为普通消息: {e}")
+            await self._deliver_message(message.content, None, message.token_cost)
+
+    async def _deliver_message(
+        self,
+        message_content: str,
+        reply_message_id: str | None,
+        token_cost: int,
+        *,
+        markdown: bool = False,
+        suggestions: list[str] | None = None,
+    ) -> str:
+        """实际发送一条消息并写入上下文，返回平台消息 ID"""
+        target = self.session.target
+        bot = self.session.bot
+        is_qq_bot = isinstance(bot, QQBot)
+        message: UniMessage
+        if markdown and is_qq_bot:
+            # 带按钮的消息在 QQ 官方适配器下必须以 markdown 发送；
+            # 转义消息原文，避免模型输出里的 markdown 字符破坏排版。
+            formatted = await self.session.format_message(message_content)
+            message = UniMessage().style(escape_markdown(formatted.extract_plain_text()), "markdown")
+            if suggestions:
+                message = message.keyboard(
+                    *[Button("enter", self._button_label(reply), text=reply) for reply in suggestions],
+                )
+            # markdown 消息不再附带引用：部分平台不接受 msg_type=2 的引用字段
+            reply_message_id = None
+        else:
+            message = await self.session.format_message(message_content)
         if reply_message_id is not None:
             reply_message_id = str(reply_message_id)
             message = message.reply(reply_message_id)
         # QQ 官方机器人适配器特殊处理：设置 msg_seq 防止消息去重
         # 见 https://github.com/AstrBotDevs/AstrBot/issues/4382
-        target = self.session.target
-        bot = self.session.bot
         if isinstance(target, Target) and bot.adapter.get_name() == "QQ" and "qq.reply_seq" not in target.extra:
             target.extra["qq.reply_seq"] = random.randint(1, 1000000)
         try:
@@ -635,7 +710,13 @@ class MessageProcessor:
             # 回复消息 msg_id 已过期等错误：去掉 reply 后重试
             # 注意：code 仅 QQ 适配器提供，其他适配器没有该字段
             if reply_message_id is not None and getattr(e, "code", None) == 40034005:
-                return await self.send_message(message_content, None)
+                return await self._deliver_message(
+                    message_content,
+                    None,
+                    token_cost,
+                    markdown=markdown,
+                    suggestions=suggestions,
+                )
             raise
         # 记录回应用时（使用 reply_message_id 查找对应的原消息）
         self._record_reply_timing(reply_message_id)
@@ -668,27 +749,16 @@ class MessageProcessor:
         )
         await self.session.on_cache_posted()
 
-        # 检查待定笔记是否有新内容
-        pending_notes_text = self._format_pending_notes_for_tool_result()
-
         # 发送消息后检查是否需要分析待定笔记
         if self.unanalyzed_message_count > 5:
             asyncio.create_task(self._analyze_pending_notes())
 
-        return (
-            await self.session.text(
-                "message.sent",
-                sent_msg_id or "",
-                len(message_content),
-                self.consecutive_message_count,
-                (
-                    await self.session.text("message.token", self.token_bucket.get(), token_cost)
-                    if self.session.get_session_type() == "group"
-                    else ""
-                ),
-            )
-            + pending_notes_text
-        )
+        return sent_msg_id or ""
+
+    @staticmethod
+    def _button_label(reply: str) -> str:
+        """按钮展示文本（QQ 键盘按钮的 label 长度有限）"""
+        return reply if len(reply) <= 20 else f"{reply[:19]}…"
 
     def _record_reply_timing(self, reply_message_id: str | None = None) -> None:
         """记录回应用时（从 reply_message_id 对应的消息到发送回复的时间）"""

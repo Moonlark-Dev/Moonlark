@@ -204,6 +204,11 @@ async def evaluate_reply(
         and message.get("message_id")
         and (message.get("send_time") or round_start) >= round_start
     ]
+    # 私聊备选回复开启时，本轮最后一条消息还在发送缓存里、尚未产生平台消息 ID，
+    # 但它一定会在一轮结束时发出，这里一并视为已发送，避免判定漏发。
+    gal_mode = getattr(processor, "gal_mode", None)
+    if gal_mode is not None:
+        sent_messages.extend(gal_mode.pending_contents)
 
     participants: list[str] = []
     for message in session.cached_messages:
