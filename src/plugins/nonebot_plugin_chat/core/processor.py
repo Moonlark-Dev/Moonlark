@@ -13,6 +13,7 @@ from nonebot.log import logger
 from nonebot.typing import T_State
 from nonebot_plugin_alconna import Target, UniMessage
 from nonebot_plugin_larkuser import get_user
+from nonebot_plugin_larkutils import skip_at_markdown
 from nonebot_plugin_larkutils.subaccount import get_main_account
 from nonebot_plugin_openai import generate_message, get_message, get_message_text
 from nonebot_plugin_openai.types import Message as OpenAIMessage
@@ -625,7 +626,10 @@ class MessageProcessor:
         if isinstance(target, Target) and bot.adapter.get_name() == "QQ" and "qq.reply_seq" not in target.extra:
             target.extra["qq.reply_seq"] = random.randint(1, 1000000)
         try:
-            receipt = await message.send(target=target, bot=bot)
+            # chat 的回复保持纯文本：QQ 官方下 at 需要 markdown，但聊天回复的
+            # 排版比 @ 更重要，这里显式跳过 larkutils 的 at → markdown 转换。
+            with skip_at_markdown():
+                receipt = await message.send(target=target, bot=bot)
             # 扣除 token
             if token_cost > 0:
                 self.token_bucket.consume(token_cost)
