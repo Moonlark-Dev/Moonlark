@@ -41,7 +41,7 @@ Gemini 3 及以后用 `GEMINI_THINKING_LEVELS`（如 `{"low": "LOW", "medium": "
 
 - `/gem-model`：查看 Gemini 模型配置与可用模型列表；
 - `/gem-model <模型名>`：更换默认模型；
-- `/gem-model <模型名> <应用标识>`：设置应用专用模型（如 `Chat`、`Ask AI`）；
+- `/gem-model <模型名> <应用标识>`：设置应用专用模型（如 `Chat`）；
 - `/gem-model :default: <应用标识>`：删除应用配置。
 
 仅超级用户可用，配置保存在 `nonebot_plugin_gemini_geminimodelconfig`。

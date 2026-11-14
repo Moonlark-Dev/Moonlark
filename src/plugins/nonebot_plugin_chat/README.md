@@ -218,12 +218,13 @@ Chat 的主模型可以在两套 SDK 之间切换，由超级用户通过 `/chat
 在全局范围内选择（设置保存在 `ChatGlobalSetting` 的 `model_provider` 键中，所有会话
 共用；不带参数时显示当前 Provider）。
 
-- `openai`（默认）：主模型与 Ask AI 走 `nonebot_plugin_openai`，模型用 `/model` 管理；
-- `gemini`：主模型与 Ask AI 走 `nonebot_plugin_gemini`，模型用 `/gem-model` 管理。
+- `openai`（默认）：Chat 主模型走 `nonebot_plugin_openai`，模型用 `/model` 管理；
+- `gemini`：Chat 主模型走 `nonebot_plugin_gemini`，模型用 `/gem-model` 管理。
 
 切换只影响新建的请求：上下文里的消息始终是 OpenAI 风格的结构，两边可以原样互读，
-不需要重置会话。辅助性的判定与总结（Jev 判定、滑动窗口相关性判断、笔记整理、Image
-Describe 等）仍然使用各自插件配置的模型。
+不需要重置会话。除 Chat 主模型以外的调用都不随这里切换，仍使用各自插件配置的模型：
+Ask AI 固定使用 `nonebot_plugin_openai`，Jev 判定、滑动窗口相关性判断、笔记整理、
+Image Describe 等辅助调用同样如此。
 
 Gemini 模式下还有两处差异：
 
