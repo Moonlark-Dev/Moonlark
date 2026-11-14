@@ -131,7 +131,12 @@ async def _build_qq_message(
     retry_label = "UwU" if mode == "furry" else await lang.text("button.retry", user_id)
     fury_label = "OwO" if mode == "furry" else await lang.text("button.fury", user_id)
     retry_command = "grass-furry" if mode == "furry" else "grass"
-    at_user = "" if isinstance(event, C2CMessageCreateEvent) else f'<qqbot-at-user id="{user_id}" />'
+    if isinstance(event, C2CMessageCreateEvent):
+        at_user = ""
+    else:
+        native_id = event.get_user_id() if event is not None else None
+        at_id = native_id if isinstance(native_id, str) and native_id else user_id
+        at_user = f'<qqbot-at-user id="{at_id}" />'
     return (
         UniMessage()
         .style(f"{at_user}{escape_markdown(output_text)}", "markdown")
