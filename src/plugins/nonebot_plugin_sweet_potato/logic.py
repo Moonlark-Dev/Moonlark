@@ -86,7 +86,6 @@ def calculate_min_proability(probability: int) -> int:
     return 25
 
 
-
 def draw_probability(min_probability: int, *, after_pass: bool = False) -> tuple[int, int]:
     """从 [当前下限, 100%] 重新抽取爆炸概率。
 
