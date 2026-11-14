@@ -126,3 +126,44 @@ async def test_generate_image_strips_nul_from_prompt(monkeypatch: pytest.MonkeyP
         await image_generation.generate_image("画\x00一只猫")
 
     assert captured["prompt"] == "画一只猫"
+
+
+def test_strip_tool_call_extras_removes_gemini_fields() -> None:
+    """Gemini 模式下 tool_calls 里会带上 thought_signature 等字段，发给 OpenAI 前要剔除"""
+    from nonebot_plugin_gemini.utils.convert import THOUGHT_SIGNATURE_KEY
+    from nonebot_plugin_openai.utils.sanitize import strip_tool_call_extras
+
+    messages = [
+        {
+            "role": "assistant",
+            "content": None,
+            "tool_calls": [
+                {
+                    "id": "call-1",
+                    "type": "function",
+                    "function": {"name": "f", "arguments": "{}", "extra": "x"},
+                    THOUGHT_SIGNATURE_KEY: "c2lnbmF0dXJl",
+                }
+            ],
+        },
+        {"role": "user", "content": "hi"},
+    ]
+
+    cleaned = strip_tool_call_extras(messages)
+
+    assert cleaned[0]["tool_calls"] == [
+        {"id": "call-1", "type": "function", "function": {"name": "f", "arguments": "{}"}}
+    ]
+    # 入参不被改写（chat context 依靠它与请求列表一致做前缀对齐）
+    assert THOUGHT_SIGNATURE_KEY in messages[0]["tool_calls"][0]
+
+
+def test_strip_tool_call_extras_keeps_messages_without_tool_calls() -> None:
+    from nonebot_plugin_openai.utils.sanitize import strip_tool_call_extras
+
+    messages = [
+        {"role": "user", "content": "你好"},
+        {"role": "assistant", "content": "在", "tool_calls": None},
+    ]
+
+    assert strip_tool_call_extras(messages) == messages

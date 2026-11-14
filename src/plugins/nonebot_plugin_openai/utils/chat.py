@@ -30,7 +30,7 @@ from ..config import config
 from .message import generate_message
 from .client import client
 from .model_config import get_model_for_identify
-from .sanitize import strip_nul
+from .sanitize import strip_nul, strip_tool_call_extras
 
 T = TypeVar("T")
 T2 = TypeVar("T2", bound=BaseModel)
@@ -117,7 +117,7 @@ class LLMRequestSession(Generic[T2]):
         # 请求体里出现 NUL（U+0000）会让网关（AxonHub 等）把整次请求的请求体写成
         # {"message": "invalid text"} 占位，因此发送前剔除。只清理副本：self.messages
         # 还要与 chat context 做前缀对齐，就地改写会让两边错位。
-        messages = strip_nul(self.messages)
+        messages = strip_tool_call_extras(strip_nul(self.messages))
         tools = strip_nul(self.func_list)
         if not self.response_format:
             completion = await client.chat.completions.create(

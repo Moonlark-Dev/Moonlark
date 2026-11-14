@@ -933,6 +933,37 @@ class ChatContext:
                 valid.update(call.get("id") for call in message.tool_calls)
         return valid
 
+    async def replace_llm_message_content(self, index: int, content: Any) -> bool:
+        """替换第 ``index`` 条 LLM 消息的 content
+
+        用于 Gemini 模式下图片被安全策略拦截后，把内嵌图片换成文字描述：既要让当前
+        请求的 payload 变化（由调用方同步修改 message queue 的消息列表），也要让
+        chat context 保持一致，否则下一轮 ``absorb_messages`` 的前缀对齐会失败、
+        整段对话被当成新消息重复追加。
+
+        Args:
+            index: LLM 消息列表（``[m for m in self._messages if m.in_llm_context]``）中的下标
+            content: 新的 content
+
+        Returns:
+            是否替换成功（下标越界时返回 False）
+        """
+        llm_messages = [message for message in self._messages if message.in_llm_context]
+        if index < 0 or index >= len(llm_messages):
+            return False
+        message = llm_messages[index]
+        normalized = _normalize(content)
+        if message.content == normalized:
+            return True
+        message.content = normalized
+        message.invalidate_signature()
+        self._cached_messages = None
+        # 内容变了要重新落库：save() 只写 _pending，已保存过的消息必须重新加入
+        if message not in self._pending:
+            self._pending.append(message)
+        logger.info(f"[ChatContext:{self.session_id}] 第 {index} 条 LLM 消息的内容已被替换（图片转文字描述）")
+        return True
+
     async def _delete_messages(self, messages: Sequence[ContextMessage]) -> None:
         if not messages:
             return
@@ -1087,12 +1118,16 @@ class ChatContext:
         timestamps = [message.timestamp for message in self._messages if message.request_id]
         return max(timestamps) if timestamps else None
 
-    async def run_sliding_window(self) -> bool:
+    async def run_sliding_window(self, idle_seconds: float = SLIDING_WINDOW_IDLE_SECONDS) -> bool:
         """provider 缓存过期后清理不再相关的历史 block
 
         从新到旧遍历当前 context 的所有 block（最新 block 不参与删除）：如果某个
         block 的事件不再出现在最后一个 block 的事件中（由 Jev 判断），则从这个
         block 开始、此前的消息全部删除，并更新 meta 消息。
+
+        Args:
+            idle_seconds: 距离上次请求超过该时长才执行清理。不同 provider 的前缀缓存
+                过期时间不同（Gemini 为 5 分钟，OpenAI 约 10 分钟），由调用方传入。
 
         Returns:
             是否真的执行了清理
@@ -1100,7 +1135,7 @@ class ChatContext:
         last_request = await self.last_request_time()
         if last_request is None:
             return False
-        if datetime.now() - last_request <= timedelta(seconds=SLIDING_WINDOW_IDLE_SECONDS):
+        if datetime.now() - last_request <= timedelta(seconds=idle_seconds):
             return False
 
         blocks = sorted({message.block_id for message in self._messages if message.block_id > PREAMBLE_BLOCK_ID})

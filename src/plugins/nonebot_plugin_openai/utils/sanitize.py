@@ -43,3 +43,41 @@ def strip_nul(value: Any) -> Any:
     if isinstance(value, BaseModel):
         return strip_nul(value.model_dump(mode="json", exclude_unset=True))
     return value
+
+
+# OpenAI 兼容接口只认识 tool_calls 里的这几个字段。Gemini 模式下为了让
+# thought_signature 随 Chat 上下文保存，会把它塞进 tool_calls 条目；切回 OpenAI 时
+# 这些额外字段必须剔除，否则部分网关会拒绝整个请求。
+_TOOL_CALL_KEYS = frozenset({"id", "type", "function"})
+_FUNCTION_KEYS = frozenset({"name", "arguments"})
+
+
+def strip_tool_call_extras(messages: list[Any]) -> list[Any]:
+    """复制消息列表并剔除 tool_calls 中 OpenAI 不认识的字段
+
+    与 :func:`strip_nul` 一样只返回副本：chat context 依靠消息内容与请求列表一致
+    做前缀对齐，就地改写会让两边错位。
+
+    Args:
+        messages: OpenAI 风格的消息列表
+
+    Returns:
+        list[Any]: 清理后的消息列表
+    """
+    cleaned: list[Any] = []
+    for message in messages:
+        tool_calls = message.get("tool_calls") if isinstance(message, dict) else None
+        if tool_calls:
+            stripped_calls: list[Any] = []
+            for call in tool_calls:
+                if not isinstance(call, dict):
+                    stripped_calls.append(call)
+                    continue
+                new_call = {key: value for key, value in call.items() if key in _TOOL_CALL_KEYS}
+                function = new_call.get("function")
+                if isinstance(function, dict):
+                    new_call["function"] = {key: value for key, value in function.items() if key in _FUNCTION_KEYS}
+                stripped_calls.append(new_call)
+            message = {**message, "tool_calls": stripped_calls}
+        cleaned.append(message)
+    return cleaned

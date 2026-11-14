@@ -1,0 +1,3 @@
+plugin: gemini
+commands:
+  gem-model: help_gem_model;4;superuser
