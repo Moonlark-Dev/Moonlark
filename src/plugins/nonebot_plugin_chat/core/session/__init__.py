@@ -183,7 +183,7 @@ async def review_and_reset_all_sessions(source: str = "DailyReset") -> tuple[int
     整理的步骤：
     1. 补齐各会话尚未生成事件的消息，保证事件列表是完整的；
     2. 对每个会话执行 Note 整理——用整个聊天记录匹配出所有笔记，连同当天的事件列表
-       交给 Jev 判定是否应当删除，命中则删除（见 ``review_session_notes``）；
+       交给 Decisions API 判定是否应当删除，命中则删除（见 ``review_session_notes``）；
     3. 重置每个会话的消息队列。
 
     Args:

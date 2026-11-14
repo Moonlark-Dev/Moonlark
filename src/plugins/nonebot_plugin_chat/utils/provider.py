@@ -3,7 +3,7 @@
 Chat 的主模型可以在 OpenAI 与 Gemini 两套 SDK 之间切换，选择结果保存在
 ``ChatGlobalSetting`` 里（键 ``model_provider``），对整个进程生效——不是按群或按用户
 设置，由超级用户通过 ``/chat model <openai|gemini>`` 修改。这里只影响 Chat 主模型
-（``MessageProcessor`` / ``MessageQueue`` 的会话请求）；Ask AI、Jev 判定、笔记整理、
+（``MessageProcessor`` / ``MessageQueue`` 的会话请求）；Ask AI、Decision 判定、笔记整理、
 Image Describe 等其它调用仍使用各自插件配置的模型。
 
 除主模型外，Gemini 模式下还有两处行为随之变化（见 ``core/message.py`` 与

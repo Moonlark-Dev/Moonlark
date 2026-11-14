@@ -15,38 +15,39 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
-"""基于 Jev（TypeSafe System One）的判定
+"""基于 OpenRouter Decisions API（``nonebot_plugin_decision``）的判定
 
 模型（Chat 应用）的输出不再要求是 JSON：它只输出自然语言的思考文本，
-mood / 兴趣 / 好感度 / 是否需要回复改由 Jev 依据
+mood / 兴趣 / 好感度 / 是否需要回复改由 Decisions API 依据
 
 - 聊天上下文（``chat_context``）
 - 模型的 ``reasoning_content``
 - 模型本轮的输出（``model_output``）
 - 实际通过 ``send_message`` 发送的消息（``sent_messages``）
 
-来判定。问题文本全部放在 ``src/lang/<lang>/jev.yaml``，经 LarkLang 本地化。
+来判定。问题文本全部放在 ``src/lang/<lang>/decision.yaml``，经 LarkLang 本地化。
 """
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Literal, Optional, Sequence
+from typing import TYPE_CHECKING, Any, Literal, Optional
 
 from nonebot.log import logger
 
-from nonebot_plugin_jev import (
+from nonebot_plugin_decision import (
     ChoiceAnswer,
-    JevNotConfigured,
+    DecisionNotConfiguredError,
     NoulAnswer,
     Question,
     ScoreAnswer,
     ask,
     choice,
+    lang as decision_lang,
     lang_ref,
     noul,
     score,
 )
-from nonebot_plugin_jev import lang as jev_lang
 
 from ..models import PreTriggerSignals
 from ..types import EMOTIONS
@@ -61,22 +62,29 @@ MOOD_INTENSITY_RANGE = (0.5, 1.2)  # 与旧版 ModelResponse.mood_intensity 的�
 REPLY_REQUIRED_THRESHOLD = 0.7  # reply_required Noul 达到该值才提示模型补发消息
 NUL_THRESHOLD = 0.5  # 触发预处理的 Noul 判定阈值
 SLIDING_WINDOW_RELEVANT_THRESHOLD = 0.5  # 滑动窗口：旧 block 的事件仍与最新 block 相关的最低置信度
+MAX_PARTICIPANT_OPTIONS = 254  # OpenRouter / Gemini Decision 1 单个选择题最多 255 个选项（预留 1 个给 none）
 
 # 表情包判定的常量
-STICKER_CONTEXT_MESSAGES = 5  # 提交给 Jev 的最近聊天消息条数
+STICKER_CONTEXT_MESSAGES = 5  # 提交给 Decisions API 的最近聊天消息条数
 STICKER_MIN_CONFIDENCE = 0.6  # 选表情包的置信度低于该值时不发送
 
-# 好感度评价的选项（与 src/lang/zh_hans/jev.yaml 中 reply.favor_score.criteria 的键一致）
-FAVOR_SCORE_KEYS = ("2", "1", "0", "-1", "-2")
+# 好感度评价选项键 -> 分值（与 src/lang/zh_hans/decision.yaml 中 reply.favor_score.criteria 的键一致）
+FAVOR_SCORE_MAP: dict[str, int] = {
+    "plus_2": 2,
+    "plus_1": 1,
+    "zero": 0,
+    "minus_1": -1,
+    "minus_2": -2,
+}
 
 # 未配置 API Key 时每轮回复都会走到这里，只提示一次避免刷屏
 _not_configured_warned = False
 
 
-def _log_jev_failure(identify: str, session_id: str, error: Exception) -> None:
+def _log_decision_failure(identify: str, session_id: str, error: Exception) -> None:
     global _not_configured_warned
-    where = f"[JevJudge:{session_id}]" if session_id else "[JevJudge]"
-    if isinstance(error, JevNotConfigured):
+    where = f"[DecisionJudge:{session_id}]" if session_id else "[DecisionJudge]"
+    if isinstance(error, DecisionNotConfiguredError):
         if not _not_configured_warned:
             _not_configured_warned = True
             logger.warning(f"{where} {identify} 跳过：{error}（此后不再重复提示）")
@@ -103,7 +111,7 @@ def _extract_reasoning(message: Any) -> str:
 
 @dataclass
 class ReplyEvaluation:
-    """一轮回复的 Jev 判定结果"""
+    """一轮回复的决策判定结果"""
 
     mood: Optional[str] = None  # MoodEnum 的值；None 表示无需变动
     mood_intensity: float = 0.8
@@ -113,7 +121,7 @@ class ReplyEvaluation:
     favor_score: int = 0  # -2 ~ 2（0 表示不变动）
     favor_reason: str = ""
     favor_message: str = ""  # 触发这次评价的消息原文（用于重复消息门控与落库）
-    favor_confidence: float = 0.0  # Jev 对 favor_score 的置信度（0-1）
+    favor_confidence: float = 0.0  # 判定模型对 favor_score 的置信度（0-1）
     reply_required: bool = False
 
     @property
@@ -133,7 +141,7 @@ def _score_level(answer: ScoreAnswer, levels: int) -> int:
 def _get_private_target(session: Any) -> Optional[str]:
     """私聊会话中唯一的对话者昵称；群聊返回 None
 
-    私聊只有一个人，好感度评价的对象是确定的，因此不必再让 Jev 去挑人。
+    私聊只有一个人，好感度评价的对象是确定的，因此不必再让判定模型去挑人。
     昵称优先取 ``PrivateSession.nickname``（setup 时已解析），拿不到时退回
     消息缓存中唯一的非自身昵称。
     """
@@ -172,11 +180,11 @@ def _get_latest_message_text(session: Any, nickname: str) -> str:
 
 async def evaluate_reply(
     processor: "MessageProcessor",
-    reply_messages: list,
+    reply_messages: list[Any],
     outputs: list[str],
     round_start: datetime,
 ) -> Optional[ReplyEvaluation]:
-    """在一轮回复结束后，用 Jev 判定 mood / 兴趣 / 好感度 / 是否漏发消息
+    """在一轮回复结束后，判定 mood / 兴趣 / 好感度 / 是否漏发消息
 
     Args:
         processor: 当前会话的处理器
@@ -185,7 +193,7 @@ async def evaluate_reply(
         round_start: 本轮回复开始的时间，用于筛选本轮实际发送出去的消息
 
     Returns:
-        判定结果；Jev 不可用或未取得任何答案时返回 None（调用方按「跳过判定」处理）
+        判定结果；Decisions API 不可用或未取得任何答案时返回 None（调用方按「跳过判定」处理）
     """
     session = processor.session
     lang_str = session.lang_str
@@ -195,7 +203,7 @@ async def evaluate_reply(
     reasoning_content = "\n".join(rc for rc in (_extract_reasoning(message) for message in reply_messages) if rc)
     if reasoning_content:
         # 供 chat-monitor 的 thought 接口读取
-        processor._latest_reasioning_content_cache = reasoning_content
+        processor._latest_reasioning_content_cache = reasoning_content  # ruff: ignore[private-member-access]
 
     sent_messages = [
         str(message.get("content", ""))
@@ -213,7 +221,7 @@ async def evaluate_reply(
         if nickname and nickname not in participants:
             participants.append(nickname)
 
-    # 私聊里只有一位对话者，不存在「评价谁」的问题：不再向 Jev 提问 favor_target，
+    # 私聊里只有一位对话者，不存在「评价谁」的问题：不再提问 favor_target，
     # 直接把他作为被评价对象，只保留 favor_score 的判定。
     private_target = _get_private_target(session)
 
@@ -230,7 +238,9 @@ async def evaluate_reply(
         "participants": participants,
     }
 
-    mood_criteria = {value: lang_ref(f"reply.mood.criteria.{value}") for value in [*EMOTIONS, "none"]}
+    mood_criteria: dict[str, Optional[Any]] = {
+        value: lang_ref(f"reply.mood.criteria.{value}") for value in [*EMOTIONS, "none"]
+    }
     questions: dict[str, Question] = {
         "mood": choice(lang_ref("reply.mood.instructions"), criteria=mood_criteria),
         "mood_intensity": score(
@@ -243,24 +253,33 @@ async def evaluate_reply(
         ),
         "reply_required": noul(lang_ref("reply.reply_required")),
     }
+    # 群聊参与者的昵称可能含中文、空格、Emoji 或字面量 "none"，不满足 OpenRouter 选项键
+    # `[A-Za-z0-9_-]+` 的约束；统一映射为 ASCII 键 `p_0`, `p_1`, ...，描述文本保持原昵称。
+    participant_map = {f"p_{idx}": name for idx, name in enumerate(participants[:MAX_PARTICIPANT_OPTIONS])}
     if participants:
         if private_target is None:
             questions["favor_target"] = choice(
                 lang_ref("reply.favor_target.instructions"),
-                criteria={**{name: name for name in participants}, "none": lang_ref("reply.favor_target.none")},
+                criteria={**participant_map, "none": lang_ref("reply.favor_target.none")},
             )
         questions["favor_score"] = choice(
             lang_ref("reply.favor_score.instructions"),
-            criteria={key: lang_ref(f"reply.favor_score.criteria.{key}") for key in FAVOR_SCORE_KEYS},
+            criteria={key: lang_ref(f"reply.favor_score.criteria.{key}") for key in FAVOR_SCORE_MAP},
         )
 
     try:
-        answers = await ask(state, questions, lang_str=lang_str, identify="Chat Reply Judge")
+        answers = await ask(
+            state,
+            questions,
+            lang_str=lang_str,
+            identify="Chat Reply Judge",
+            session_id=session.session_id,
+        )
     except Exception as e:
-        _log_jev_failure("回复判定", session.session_id, e)
+        _log_decision_failure("回复判定", session.session_id, e)
         return None
     if not answers:
-        logger.warning(f"[JevJudge:{session.session_id}] 回复判定没有取得任何答案")
+        logger.warning(f"[DecisionJudge:{session.session_id}] 回复判定没有取得任何答案")
         return None
 
     evaluation = ReplyEvaluation()
@@ -268,9 +287,12 @@ async def evaluate_reply(
     mood_answer = answers.get("mood")
     if isinstance(mood_answer, ChoiceAnswer) and mood_answer.choice in EMOTIONS:
         evaluation.mood = mood_answer.choice
-        mood_label = await jev_lang.text(f"reply.mood.criteria.{mood_answer.choice}", lang_str)
-        evaluation.mood_reason = await jev_lang.text(
-            "reply.mood_reason", lang_str, mood_label, f"{mood_answer.confidence:.0%}"
+        mood_label = await decision_lang.text(f"reply.mood.criteria.{mood_answer.choice}", lang_str)
+        evaluation.mood_reason = await decision_lang.text(
+            "reply.mood_reason",
+            lang_str,
+            mood_label,
+            f"{mood_answer.confidence:.0%}",
         )
         intensity_answer = answers.get("mood_intensity")
         if isinstance(intensity_answer, ScoreAnswer):
@@ -292,26 +314,26 @@ async def evaluate_reply(
     score_answer = answers.get("favor_score")
     if private_target is not None:
         favor_target_name: Optional[str] = private_target
-    elif isinstance(target_answer, ChoiceAnswer) and target_answer.choice in participants:
-        favor_target_name = target_answer.choice
+    elif isinstance(target_answer, ChoiceAnswer):
+        favor_target_name = participant_map.get(target_answer.choice)
     else:
         favor_target_name = None
     if favor_target_name is not None and isinstance(score_answer, ChoiceAnswer):
-        try:
-            score_value = int(score_answer.choice)
-        except ValueError:
-            score_value = 0
+        score_value = FAVOR_SCORE_MAP.get(score_answer.choice, 0)
         if score_value != 0:
             evaluation.favor_target = favor_target_name
             evaluation.favor_score = score_value
             evaluation.favor_confidence = score_answer.confidence
             evaluation.favor_message = _get_latest_message_text(session, favor_target_name)
-            score_label = await jev_lang.text(f"reply.favor_score.criteria.{score_answer.choice}", lang_str)
-            evaluation.favor_reason = await jev_lang.text(
-                "reply.favor_reason", lang_str, score_label, f"{score_answer.confidence:.0%}"
+            score_label = await decision_lang.text(f"reply.favor_score.criteria.{score_answer.choice}", lang_str)
+            evaluation.favor_reason = await decision_lang.text(
+                "reply.favor_reason",
+                lang_str,
+                score_label,
+                f"{score_answer.confidence:.0%}",
             )
 
-    logger.debug(f"[JevJudge:{session.session_id}] {evaluation}")
+    logger.debug(f"[DecisionJudge:{session.session_id}] {evaluation}")
     return evaluation
 
 
@@ -321,11 +343,13 @@ async def apply_reply_evaluation(processor: "MessageProcessor", evaluation: Repl
 
     if evaluation.mood:
         await processor.tool_manager.set_mood(evaluation.mood, evaluation.mood_reason, evaluation.mood_intensity)
-        logger.debug(f"[JevJudge:{session.session_id}] 心情变动: {evaluation.mood} ({evaluation.mood_intensity:.2f})")
+        logger.debug(
+            f"[DecisionJudge:{session.session_id}] 心情变动: {evaluation.mood} ({evaluation.mood_intensity:.2f})",
+        )
 
     if evaluation.interest is not None:
         session.set_interest(evaluation.interest)
-        logger.debug(f"[JevJudge:{session.session_id}] Cached interest: {evaluation.interest:.2f}")
+        logger.debug(f"[DecisionJudge:{session.session_id}] Cached interest: {evaluation.interest:.2f}")
 
     if evaluation.favor_changed:
         result_text, changed = await processor.judge_user_behavior(
@@ -339,8 +363,8 @@ async def apply_reply_evaluation(processor: "MessageProcessor", evaluation: Repl
             # 好感度变动成功：向会话推送一条事件，让上下文知道这次变动
             await session.add_event(result_text, "none")
             logger.info(
-                f"[JevJudge:{session.session_id}] 好感度变动事件已推送: "
-                f"{evaluation.favor_target} {evaluation.favor_score:+d}"
+                f"[DecisionJudge:{session.session_id}] 好感度变动事件已推送: "
+                f"{evaluation.favor_target} {evaluation.favor_score:+d}",
             )
 
 
@@ -348,20 +372,23 @@ PRE_TRIGGER_FIELDS = ("truncate", "help_needed", "emotional_support_needed", "ch
 
 
 async def analyze_pre_trigger(chat_history: str, lang_str: str) -> Optional[PreTriggerSignals]:
-    """触发概率的预处理：用 Jev 的 Noul 问题从最近的聊天记录中读出五个布尔信号
+    """触发概率的预处理：用 Noul 问题从最近的聊天记录中读出五个布尔信号
 
     Args:
         chat_history: 最近的聊天记录
         lang_str: 会话语言
 
     Returns:
-        信号集合；Jev 不可用或没有取得任何答案时返回 None（此时跳过门控，按原概率处理）
+        信号集合；输入为空、Decisions API 不可用或没有取得任何答案时返回 None（此时跳过门控，按原概率处理）
     """
+    if not chat_history or not chat_history.strip():
+        return None
+
     questions = {field: noul(lang_ref(f"pre_trigger.{field}")) for field in PRE_TRIGGER_FIELDS}
     try:
         answers = await ask(chat_history, questions, lang_str=lang_str, identify="Pre-Trigger Analysis")
     except Exception as e:
-        _log_jev_failure("触发预处理", "", e)
+        _log_decision_failure("触发预处理", "", e)
         return None
     if not answers:
         return None
@@ -378,22 +405,22 @@ async def analyze_pre_trigger(chat_history: str, lang_str: str) -> Optional[PreT
 
 @dataclass
 class StickerSelection:
-    """一次 send_sticker 的 Jev 判定结果
+    """一次 send_sticker 的决策判定结果
 
-    - ``send``：Jev 选出了要发送的表情包，``sticker_id`` 有效
-    - ``declined``：Jev 明确决定不发送（选了 none）
+    - ``send``：判定选出了要发送的表情包，``sticker_id`` 有效
+    - ``declined``：判定明确决定不发送（选了 none）
     - ``low_confidence``：选中的结果置信度过低，不发送
-    - ``skipped``：Jev 不可用或未取得有效答案，不发送
+    - ``skipped``：Decisions API 不可用或未取得有效答案，不发送
     """
 
     status: Literal["send", "declined", "low_confidence", "skipped"]
     sticker_id: Optional[int] = None  # 要发送的表情包；仅 status 为 send 时保证有效
     description: str = ""  # 选中表情包的描述（用于回复 Chat 模型）
-    confidence: float = 0.0  # Jev 对选择结果的置信度（0-1）
+    confidence: float = 0.0  # 判定对选择结果的置信度（0-1）
 
 
 def _describe_sticker(sticker: Any) -> str:
-    """生成候选表情包的一句话描述，作为 Jev choice 问题里该选项的 criteria 文本"""
+    """生成候选表情包的一句话描述，作为 choice 问题里该选项的 criteria 文本"""
     parts = []
     description = str(getattr(sticker, "description", "") or "").strip()
     if description:
@@ -408,13 +435,13 @@ def _describe_sticker(sticker: Any) -> str:
 
 
 def _get_thinking_content(processor: "MessageProcessor") -> str:
-    """读取 Moonlark 当前的思考内容，作为 Jev 的辅助参考
+    """读取 Moonlark 当前的思考内容，作为判定的辅助参考
 
     工具调用发生在本轮 LLM 请求内部，优先从进行中的请求消息里取最新的
     reasoning_content；请求尚未产生思考内容时退回上一轮的缓存。
     """
     try:
-        messages = processor.openai_messages.fetcher.session.messages
+        messages = processor.openai_messages.fetcher.session.messages  # type: ignore[union-attr]
     except Exception:
         messages = []
     for message in reversed(messages):
@@ -431,11 +458,11 @@ async def select_sticker(
     query: str,
     candidates: Sequence[Any],
 ) -> StickerSelection:
-    """根据请求关键词，让 Jev 从候选表情包中选出要发送的一个
+    """根据请求关键词，从候选表情包中选出要发送的一个
 
     判定以 ``requested_keyword``（Chat 模型请求的关键词）为主，
     最近的聊天消息与 Moonlark 的思考内容仅作辅助参考。
-    Jev 可以通过选择 none 决定不发送；置信度过低时同样不发送。
+    判定可以通过选择 none 决定不发送；置信度过低时同样不发送。
 
     Args:
         processor: 当前会话的处理器
@@ -453,34 +480,41 @@ async def select_sticker(
     state = {
         "requested_keyword": query,
         "chat_context": await processor.session.get_cached_messages_string(
-            length=STICKER_CONTEXT_MESSAGES, include_self_message=True
+            length=STICKER_CONTEXT_MESSAGES,
+            include_self_message=True,
         ),
         "thinking_content": _get_thinking_content(processor),
     }
 
-    criteria = {str(sticker.id): _describe_sticker(sticker) for sticker in candidates}
+    criteria: dict[str, Optional[Any]] = {str(sticker.id): _describe_sticker(sticker) for sticker in candidates}
     criteria["none"] = lang_ref("sticker.none")
     questions: dict[str, Question] = {
         "pick": choice(lang_ref("sticker.instructions"), criteria=criteria),
     }
 
     try:
-        answers = await ask(state, questions, lang_str=local_str, identify="Sticker Selection")
+        answers = await ask(
+            state,
+            questions,
+            lang_str=local_str,
+            identify="Sticker Selection",
+            session_id=processor.session.session_id,
+        )
     except Exception as e:
-        _log_jev_failure("表情包判定", processor.session.session_id, e)
+        _log_decision_failure("表情包判定", processor.session.session_id, e)
         return StickerSelection(status="skipped")
     if not answers:
-        logger.warning(f"[JevJudge:{processor.session.session_id}] 表情包判定没有取得任何答案")
+        logger.warning(f"[DecisionJudge:{processor.session.session_id}] 表情包判定没有取得任何答案")
         return StickerSelection(status="skipped")
 
     answer = answers.get("pick")
     if not isinstance(answer, ChoiceAnswer):
         return StickerSelection(status="skipped")
 
-    # Jev 选择 none：明确决定不发送
+    # 判定选择 none：明确决定不发送
     if answer.choice == "none":
         logger.debug(
-            f"[JevJudge:{processor.session.session_id}] 表情包判定选择不发送 (confidence={answer.confidence:.0%})"
+            f"[DecisionJudge:{processor.session.session_id}] 表情包判定选择不发送 (confidence={answer.confidence:.0%})",
         )
         return StickerSelection(status="declined", confidence=answer.confidence)
 
@@ -495,8 +529,8 @@ async def select_sticker(
 
     if answer.confidence < STICKER_MIN_CONFIDENCE:
         logger.debug(
-            f"[JevJudge:{processor.session.session_id}] 表情包 {sticker_id} 置信度过低，"
-            f"不发送 ({answer.confidence:.0%} < {STICKER_MIN_CONFIDENCE:.0%})"
+            f"[DecisionJudge:{processor.session.session_id}] 表情包 {sticker_id} 置信度过低，"
+            f"不发送 ({answer.confidence:.0%} < {STICKER_MIN_CONFIDENCE:.0%})",
         )
         return StickerSelection(status="low_confidence", sticker_id=sticker_id, confidence=answer.confidence)
 

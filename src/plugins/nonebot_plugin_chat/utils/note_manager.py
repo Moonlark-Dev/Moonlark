@@ -297,13 +297,15 @@ async def check_note(
 
 
 # ========================================================================
-# 每日 Note 整理（上下文重置前，交给 Jev 判定是否删除）
+# 每日 Note 整理（上下文重置前，交给 Decisions API 判定是否删除）
 # ========================================================================
 
-# 交给 Jev 的 state 中聊天记录的最大字符数（关键词匹配仍使用完整记录）
+# 交给 Decisions API 的 state 中聊天记录的最大字符数（关键词匹配仍使用完整记录）
 NOTE_REVIEW_CHAT_CHAR_LIMIT = 20000
-# Jev 判定为 delete 且置信度达到该值才删除笔记
+# 判定为 delete 且置信度达到该值才删除笔记
 NOTE_DELETE_MIN_CONFIDENCE = 0.72
+# 单次审查最多提交的问题数（OpenRouter / Gemini Decision 1 上限为 1000，分批审查避免超限）
+NOTE_REVIEW_BATCH_SIZE = 200
 
 
 def _content_to_text(content: Any) -> str:
@@ -344,7 +346,7 @@ def serialize_openai_history(messages: list) -> str:
 
 
 def _note_description(note: Note) -> str:
-    """笔记的可读描述，作为 Jev 判定时的题目数据"""
+    """笔记的可读描述，作为判定时的题目数据"""
     created = datetime.fromtimestamp(note.created_time).strftime("%Y-%m-%d %H:%M")
     parts = [f"[#{note.id}] {note.content}"]
     if note.keywords:
@@ -368,14 +370,14 @@ async def review_session_notes(session: "BaseSession") -> int:
     """每天聊天上下文重置前的 Note 整理
 
     根据所选会话的整个聊天记录读出所有能被匹配到的 Note（``filter_note`` 关键词匹配，
-    含无关键词的常驻笔记），连同该会话当天的事件列表一起交给 Jev 分析每条笔记是否
+    含无关键词的常驻笔记），连同该会话当天的事件列表一起交给 Decisions API 分析每条笔记是否
     应当删除（delete：内容错误、已经过期，或已被后续事件/更新的笔记取代）；判定为
     delete 且置信度足够的笔记会被删除。
 
     Returns:
-        删除的笔记数量；无可整理内容或 Jev 不可用时返回 0
+        删除的笔记数量；无可整理内容或 Decisions API 不可用时返回 0
     """
-    from nonebot_plugin_jev import ChoiceAnswer, ask, choice, lang_ref
+    from nonebot_plugin_decision import ChoiceAnswer, ask, choice, lang_ref
 
     chat_history = serialize_openai_history(session.processor.openai_messages.messages)
     if not chat_history.strip():
@@ -396,26 +398,36 @@ async def review_session_notes(session: "BaseSession") -> int:
     events = await event_collector.get_session_events(session.session_id)
     events_text = _format_events_for_review(events)
 
-    state = {
-        # 关键词匹配使用完整聊天记录，交给 Jev 的 state 只保留尾部以控制体积
-        "chat_history": chat_history[-NOTE_REVIEW_CHAT_CHAR_LIMIT:],
-        "events": events_text,
-        "notes": [_note_description(note) for note in matched_notes],
-        "now": datetime.now().isoformat(timespec="seconds"),
-    }
-    questions = {
-        f"note_{note.id}": choice(
-            lang_ref("note_review.question", _note_description(note)),
-            criteria={key: lang_ref(f"note_review.criteria.{key}") for key in ("keep", "delete")},
-        )
-        for note in matched_notes
-    }
-
-    try:
-        answers = await ask(state, questions, lang_str=session.lang_str, identify="Note Review")
-    except Exception as e:
-        logger.warning(f"[NoteReview:{session.session_id}] Jev 审查失败: {e}")
-        return 0
+    now_iso = datetime.now().isoformat(timespec="seconds")
+    answers: dict[str, Any] = {}
+    for start in range(0, len(matched_notes), NOTE_REVIEW_BATCH_SIZE):
+        batch = matched_notes[start : start + NOTE_REVIEW_BATCH_SIZE]
+        state = {
+            # 关键词匹配使用完整聊天记录，交给 Decisions API 的 state 只保留尾部以控制体积
+            "chat_history": chat_history[-NOTE_REVIEW_CHAT_CHAR_LIMIT:],
+            "events": events_text,
+            "notes": [_note_description(note) for note in batch],
+            "now": now_iso,
+        }
+        questions = {
+            f"note_{note.id}": choice(
+                lang_ref("note_review.question", _note_description(note)),
+                criteria={key: lang_ref(f"note_review.criteria.{key}") for key in ("keep", "delete")},
+            )
+            for note in batch
+        }
+        try:
+            batch_answers = await ask(
+                state,
+                questions,
+                lang_str=session.lang_str,
+                identify="Note Review",
+                session_id=session.session_id,
+            )
+            answers.update(batch_answers)
+        except Exception as e:
+            logger.warning(f"[NoteReview:{session.session_id}] 笔记审查失败: {e}")
+            return 0
 
     deleted = 0
     for note in matched_notes:

@@ -69,7 +69,7 @@
   message queue 每轮请求先提交完整消息列表、再拉取该队列的增量消息（拉取即写入
   context）。请求结束后 processor 缓冲队列的剩余消息全部加入 context。
 - **滑动窗口**：距离上一次请求（最后一条带 `request_id` 的消息）超过 10 分钟时，
-  从新到旧遍历 block，用 Jev 判断某个 block 的事件是否仍出现在最新 block 的事件中，
+  从新到旧遍历 block，用 Decisions API 判断某个 block 的事件是否仍出现在最新 block 的事件中，
   不再相关则删除该 block 及其之前的全部消息并更新 meta；最新 block 永不删除。
 - **归档**：每天 7:00 把最后一条消息超过三天的 context 从数据库搬到 LocalStore 的
   json（`core/context_archive.py`）。
@@ -223,7 +223,7 @@ Chat 的主模型可以在两套 SDK 之间切换，由超级用户通过 `/chat
 
 切换只影响新建的请求：上下文里的消息始终是 OpenAI 风格的结构，两边可以原样互读，
 不需要重置会话。除 Chat 主模型以外的调用都不随这里切换，仍使用各自插件配置的模型：
-Ask AI 固定使用 `nonebot_plugin_openai`，Jev 判定、滑动窗口相关性判断、笔记整理、
+Ask AI 固定使用 `nonebot_plugin_openai`，Decision 判定、滑动窗口相关性判断、笔记整理、
 Image Describe 等辅助调用同样如此。
 
 Gemini 模式下还有两处差异：

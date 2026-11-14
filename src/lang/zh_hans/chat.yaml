@@ -336,7 +336,7 @@ sticker:
   search_empty: '没有找到匹配的表情包'
   sent: '表情包已发送'
   sent_detail: "已发送表情包：{}"
-  jev_declined: "经过判定，本次不适合发送表情包，没有发送"
+  declined: "经过判定，本次不适合发送表情包，没有发送"
   low_confidence: "表情包判定的置信度过低（{}），本次没有发送表情包"
   judge_failed: "表情包判定暂时不可用，本次没有发送表情包"
   send_failed: '发送失败: {}'
@@ -528,7 +528,7 @@ judge:
   user_not_registered: "用户 {} 还未注册（其好感度在注册之前是只读的），无法评价。"
   cooldown: "你在一小时内只可以评价 {} 一次。"
   daily_limit: "今天对 {} 的评价次数已达上限。"
-  low_confidence: "对 {} 的评价置信度不足：这条消息最近出现过 {} 次，需要 Jev 的置信度不低于 {}，本次好感度未变动。"
+  low_confidence: "对 {} 的评价置信度不足：这条消息最近出现过 {} 次，需要判定的置信度不低于 {}，本次好感度未变动。"
   success: "已记录对 {} 的评价：{}。好感度变化已生效。"
   message_analysis_system: |
     你是一个消息分析助手。

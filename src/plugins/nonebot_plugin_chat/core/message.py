@@ -19,7 +19,7 @@ from .context import ChatContext, ContextMessage, MessageCursor, MessageCursorCl
 if TYPE_CHECKING:
     from nonebot_plugin_chat.core.processor import MessageProcessor
 
-# Jev 判定「需要回复但没发消息」时，最多提示模型补发的次数
+# 判定「需要回复但没发消息」时，最多提示模型补发的次数
 MAX_REPLY_REMINDERS = 2
 
 
@@ -161,7 +161,7 @@ class MessageQueue:
 
     async def _fetch_reply(self) -> FetchStatus:
         from .ego.moonlark_main import moonlark_main
-        from ..utils.jev_judge import apply_reply_evaluation, evaluate_reply
+        from ..utils.decision_judge import apply_reply_evaluation, evaluate_reply
 
         moonlark_main.on_reply_sent()
 
@@ -219,7 +219,7 @@ class MessageQueue:
                     and reply_reminders < MAX_REPLY_REMINDERS
                 ):
                     reply_reminders += 1
-                    logger.info("Jev 判定本轮需要回复但尚未发送消息，提示模型补发 ...")
+                    logger.info("判定本轮需要回复但尚未发送消息，提示模型补发 ...")
                     # 复位 stop 并插入提示，让 fetcher 再跑一轮
                     self.fetcher.session.stop = False
                     self.fetcher.session.insert_message(
