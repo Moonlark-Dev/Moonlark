@@ -51,7 +51,13 @@ from .tools import (
 )
 from ..utils.emoji import QQ_EMOJI_MAP
 from .portrait import PORTRAIT_FILE_NAME, PORTRAIT_MIME_TYPE, get_moonlark_portrait
-from .note_manager import check_note, get_context_notes
+from .note_manager import (
+    NOTE_TYPE_BASIC_INFO,
+    NOTE_TYPE_USER,
+    check_note,
+    get_context_notes,
+    normalize_note_type,
+)
 from .status_manager import get_status_manager
 
 if TYPE_CHECKING:
@@ -389,6 +395,21 @@ class ToolManager:
         if not success:
             return await self.text("note.remove_not_found", note_id)
 
+    async def _validate_note_subject(self, note_type: str, subject: str) -> Optional[str]:
+        """校验中心词：必填；用户画像类笔记必须使用当前会话中的用户昵称"""
+        if not subject:
+            return await self.text("note.missing_subject")
+        if note_type not in (NOTE_TYPE_USER, NOTE_TYPE_BASIC_INFO) or self.processor is None:
+            return None
+        try:
+            users = await self.processor.session.get_users()
+        except Exception:
+            # 拿不到用户列表时不阻断笔记创建，交给 Check Note 的提示词约束
+            return None
+        if users and subject not in users:
+            return await self.text("note.subject_not_user", subject)
+        return None
+
     async def push_note(
         self, text: str, expire_hours: Optional[float] = None, keywords: Optional[str] = None
     ) -> Optional[str]:
@@ -397,12 +418,23 @@ class ToolManager:
             raise RuntimeError("Session is None")
         note_manager = await get_context_notes(self.processor.session.session_id)
         note_check_result = await check_note(self.processor.session, keywords, text, expire_hours)
-        if note_check_result["create"] == False:
+        if not note_check_result["create"]:
             return await self.text("note.not_create", note_check_result["comment"])
         text = note_check_result["text"]
         keywords = note_check_result["keywords"]
         expire_hours = note_check_result["expire_hours"]
-        await note_manager.create_note(content=text, keywords=keywords or "", expire_hours=expire_hours or 87600)
+        note_type = normalize_note_type(note_check_result["type"])
+        subject = (note_check_result["subject"] or "").strip()
+        if error_text := await self._validate_note_subject(note_type, subject):
+            return error_text
+        await note_manager.create_note(
+            content=text,
+            keywords=keywords or "",
+            expire_hours=expire_hours or 87600,
+            note_type=note_type,
+            subject=subject,
+            private=bool(note_check_result["private"]),
+        )
 
     async def apply_pending_note(self, note_id: int) -> str:
         """应用一条待定笔记到永久存储
@@ -416,18 +448,39 @@ class ToolManager:
         if self.processor is None:
             raise RuntimeError("processor is None")
 
-        pending = self.processor.pending_notes.pop(note_id, None)
+        pending = self.processor.pending_notes.get(note_id)
         if pending is None:
             return await self.text("pending_note.not_found", note_id)
 
+        # 待定笔记也必须经过 Check Note 审查后才能写入永久存储
+        note_check_result = await check_note(
+            self.processor.session,
+            pending.get("keywords"),
+            pending["content"],
+            pending.get("expire_hours"),
+        )
+        if not note_check_result["create"]:
+            return await self.text("note.not_create", note_check_result["comment"])
+        content = note_check_result["text"]
+        keywords = note_check_result["keywords"]
+        expire_hours = note_check_result["expire_hours"]
+        note_type = normalize_note_type(note_check_result["type"])
+        subject = (note_check_result["subject"] or "").strip()
+        if error_text := await self._validate_note_subject(note_type, subject):
+            return error_text
+
         note_manager = await get_context_notes(self.processor.session.session_id)
         await note_manager.create_note(
-            content=pending["content"],
-            keywords=pending.get("keywords", ""),
-            expire_hours=pending.get("expire_hours", 87600),
+            content=content,
+            keywords=keywords or "",
+            expire_hours=expire_hours or 87600,
+            note_type=note_type,
+            subject=subject,
+            private=bool(note_check_result["private"]),
         )
+        self.processor.pending_notes.pop(note_id, None)
 
-        return await self.text("pending_note.applied", note_id, pending["content"])
+        return await self.text("pending_note.applied", note_id, content)
 
     async def recall_global_events(self) -> str:
         from ..core.session import groups

@@ -82,6 +82,8 @@ note:
     内容：{}
     过期时间：{}
   not_create: 笔记创建请求被拒绝。(原因：{})
+  missing_subject: 笔记缺少中心词，未创建。
+  subject_not_user: 笔记中心词「{}」不是当前会话中的用户昵称，未创建。
   remove_not_found: '未找到 ID 为 {} 的笔记，或该笔记不属于当前群聊。'
 
 command:
