@@ -18,17 +18,84 @@
 from datetime import datetime, timedelta
 import json
 import re
-from typing import TYPE_CHECKING, Any, List, Optional
+from typing import TYPE_CHECKING, Any, List, Optional, cast
 
 from nonebot import logger
 from nonebot_plugin_apscheduler import scheduler
-from nonebot_plugin_chat.types import AvailableNote, NoteCheckResult
+from nonebot_plugin_chat.types import NOTE_TYPES, NoteCheckResult, NoteType
 from nonebot_plugin_openai.utils.chat import fetch_message
 from nonebot_plugin_openai.utils.message import generate_message, get_messages
 from nonebot_plugin_orm import get_session
 from sqlalchemy import select
 
 from ..models import Note
+
+NOTE_TYPE_EVENT: NoteType = "event"
+NOTE_TYPE_BASIC_INFO: NoteType = "basic_info"
+NOTE_TYPE_USER: NoteType = "user"
+NOTE_TYPE_PROMPT: NoteType = "prompt"
+
+
+def normalize_note_type(value: Optional[str]) -> NoteType:
+    """把外部传入的记忆类型归一化，未知类型按事件处理"""
+    normalized = (value or "").strip().lower()
+    if normalized in NOTE_TYPES:
+        return cast(NoteType, normalized)
+    return NOTE_TYPE_EVENT
+
+
+def parse_keywords(keywords_str: str) -> List[str]:
+    """Parse keywords string, supporting both space and comma separators for backward compatibility"""
+    if not keywords_str:
+        return []
+    # Support both space and comma separators (existing data uses space, docs mentioned comma)
+    return [k.strip() for k in re.split(r"[\s,]+", keywords_str) if k.strip()]
+
+
+def sanitize_keywords(keywords_str: str, subject: str) -> str:
+    """去掉与中心词重复的关键词：中心词不能出现在 keywords 中
+
+    不同笔记的中心词可以重复，但同一条笔记的 keywords 不应再包含自己的中心词，
+    否则中心词会被当成普通关键词参与匹配。比较时忽略大小写，关键词包含中心词
+    也视为重复（例如中心词「小明」与关键词「小明的生日」）。
+    """
+    normalized_subject = (subject or "").strip().lower()
+    keywords = []
+    for keyword in parse_keywords(keywords_str or ""):
+        if normalized_subject and normalized_subject in keyword.lower():
+            continue
+        keywords.append(keyword)
+    return " ".join(keywords)
+
+
+def _term_in_chat(term: str, haystack: str) -> bool:
+    normalized_term = (term or "").strip().lower()
+    return bool(normalized_term) and normalized_term in haystack
+
+
+def note_matches_chat(note: Note, chat_text: str, nickname: str = "") -> bool:
+    """判断一条笔记是否应在本轮聊天中被召回
+
+    「聊天中出现」包括消息文本中出现，或发送者昵称中出现。召回规则：
+
+    - ``basic_info`` / ``prompt``：中心词出现即召回；
+    - ``event``：中心词出现，或至少两个关键词出现；
+    - ``user``：中心词出现且至少一个关键词出现。
+    """
+    haystack = f"{chat_text}\n{nickname}".lower()
+    note_type = normalize_note_type(getattr(note, "type", None))
+    subject_matched = _term_in_chat(getattr(note, "subject", "") or "", haystack)
+    matched_keywords = {
+        keyword.lower()
+        for keyword in parse_keywords(getattr(note, "keywords", "") or "")
+        if _term_in_chat(keyword, haystack)
+    }
+
+    if note_type in (NOTE_TYPE_BASIC_INFO, NOTE_TYPE_PROMPT):
+        return subject_matched
+    if note_type == NOTE_TYPE_USER:
+        return subject_matched and len(matched_keywords) >= 1
+    return subject_matched or len(matched_keywords) >= 2
 
 
 class NoteManager:
@@ -37,7 +104,15 @@ class NoteManager:
     def __init__(self, context_id: str):
         self.context_id = context_id  # user_id for private, group_id for groups
 
-    async def create_note(self, content: str, keywords: str = "", expire_hours: Optional[float] = None) -> Note:
+    async def create_note(
+        self,
+        content: str,
+        keywords: str = "",
+        expire_hours: Optional[float] = None,
+        note_type: str = NOTE_TYPE_EVENT,
+        subject: str = "",
+        private: bool = False,
+    ) -> Note:
         """
         Create a new note
 
@@ -45,11 +120,17 @@ class NoteManager:
             content: The content of the note
             keywords: Space-separated keywords for the note (e.g., "keyword1 keyword2 keyword3")
             expire_hours: Number of hours until the note expires (default: 7 days = 168 hours)
+            note_type: 记忆类型（event / basic_info / user / prompt）
+            subject: 召回用的中心词；user / basic_info 必须为用户昵称
+            private: 是否私密（私密笔记不跨会话共享）
 
         Returns:
             The created Note object
         """
         current_time = datetime.now()
+        note_type = normalize_note_type(note_type)
+        subject = (subject or "").strip()
+        keywords = sanitize_keywords(keywords, subject)
 
         # Calculate expiration time (default 7 days = 168 hours)
         expire_time = None
@@ -57,17 +138,42 @@ class NoteManager:
             if expire_hours != -1:  # -1 means no expiration
                 expire_time = current_time + timedelta(hours=expire_hours)
 
-        # Create the note
-        note = Note(
-            context_id=self.context_id,
-            content=content,
-            keywords=keywords,
-            created_time=current_time.timestamp(),
-            expire_time=expire_time,
-        )
-
-        # Save to database
         async with get_session() as session:
+            # basic_info 每个用户只能有一句话：同一中心词只保留一条，再次写入时直接替换
+            if note_type == NOTE_TYPE_BASIC_INFO and subject:
+                result = await session.scalars(
+                    select(Note)
+                    .where(
+                        Note.context_id == self.context_id,
+                        Note.type == NOTE_TYPE_BASIC_INFO,
+                        Note.subject == subject,
+                    )
+                    .order_by(Note.created_time.asc())
+                )
+                existing_notes = list(result.all())
+                if existing_notes:
+                    note = existing_notes[0]
+                    note.content = content
+                    note.keywords = keywords
+                    note.expire_time = expire_time
+                    note.private = private
+                    for extra_note in existing_notes[1:]:
+                        await session.delete(extra_note)
+                    await session.commit()
+                    await session.refresh(note)
+                    return note
+
+            # Create the note
+            note = Note(
+                context_id=self.context_id,
+                content=content,
+                keywords=keywords,
+                type=note_type,
+                subject=subject,
+                private=private,
+                created_time=current_time.timestamp(),
+                expire_time=expire_time,
+            )
             session.add(note)
             await session.commit()
             await session.refresh(note)
@@ -119,6 +225,9 @@ class NoteManager:
         content: Optional[str] = None,
         keywords: Optional[str] = None,
         expire_hours: Optional[float] = None,
+        note_type: Optional[str] = None,
+        subject: Optional[str] = None,
+        private: Optional[bool] = None,
     ) -> bool:
         """
         Update a note
@@ -128,6 +237,9 @@ class NoteManager:
             content: New content for the note (optional)
             keywords: New keywords for the note (optional)
             expire_hours: New expiration time in hours (optional)
+            note_type: New memory type for the note (optional)
+            subject: New subject for the note (optional)
+            private: New privacy flag for the note (optional)
 
         Returns:
             True if the note was updated, False if not found
@@ -142,12 +254,20 @@ class NoteManager:
                 note.content = content
             if keywords is not None:
                 note.keywords = keywords
+            if note_type is not None:
+                note.type = normalize_note_type(note_type)
+            if subject is not None:
+                note.subject = subject.strip()
+            if private is not None:
+                note.private = private
             if expire_hours is not None:
                 current_time = datetime.now()
                 if expire_hours == -1:  # No expiration
                     note.expire_time = None
                 else:
                     note.expire_time = current_time + timedelta(hours=expire_hours)
+            # 中心词不能出现在 keywords 中（修改中心词或关键词时都要重新清洗）
+            note.keywords = sanitize_keywords(note.keywords or "", note.subject or "")
 
             await session.commit()
             return True
@@ -201,31 +321,22 @@ class NoteManager:
 
     def _parse_keywords(self, keywords_str: str) -> List[str]:
         """Parse keywords string, supporting both space and comma separators for backward compatibility"""
-        if not keywords_str:
-            return []
-        # Support both space and comma separators (existing data uses space, docs mentioned comma)
-        return [k.strip() for k in re.split(r"[\s,]+", keywords_str) if k.strip()]
+        return parse_keywords(keywords_str)
 
-    async def filter_note(self, chat_history: str, include_expired: bool = False) -> tuple[List[Note], list[Note]]:
-        notes = []
-        for note in await self.get_notes(include_expired):
-            if not note.keywords:
-                notes.append(note)
-                continue
-            keywords = self._parse_keywords(note.keywords)
-            for keyword in keywords:
-                if keyword in chat_history:
-                    notes.append(note)
-                    break
-        notes_from_other_groups = []
-        for note in await self.get_notes(include_expired, except_current_context=True):
-            if not note.keywords:
-                continue
-            keywords = self._parse_keywords(note.keywords)
-            for keyword in keywords:
-                if keyword in chat_history:
-                    notes_from_other_groups.append(note)
-                    break
+    async def filter_note(
+        self, chat_text: str, nickname: str = "", include_expired: bool = False
+    ) -> tuple[List[Note], list[Note]]:
+        """按记忆类型召回当前会话与其它会话的笔记
+
+        ``nickname`` 是发送者昵称，用于实现「聊天中出现」的第二种定义：消息文本中
+        出现，或用户昵称中出现。其它会话的私密笔记永远不会跨会话召回。
+        """
+        notes = [note for note in await self.get_notes(include_expired) if note_matches_chat(note, chat_text, nickname)]
+        notes_from_other_groups = [
+            note
+            for note in await self.get_notes(include_expired, except_current_context=True)
+            if not note.private and note_matches_chat(note, chat_text, nickname)
+        ]
         return notes, notes_from_other_groups
 
 
@@ -348,9 +459,14 @@ def serialize_openai_history(messages: list) -> str:
 def _note_description(note: Note) -> str:
     """笔记的可读描述，作为判定时的题目数据"""
     created = datetime.fromtimestamp(note.created_time).strftime("%Y-%m-%d %H:%M")
-    parts = [f"[#{note.id}] {note.content}"]
+    note_type = normalize_note_type(getattr(note, "type", None))
+    subject = (getattr(note, "subject", "") or "").strip()
+    type_text = f"类型: {note_type}" + (f"，中心词: {subject}" if subject else "")
+    parts = [f"[#{note.id}] ({type_text}) {note.content}"]
     if note.keywords:
         parts.append(f"关键词: {note.keywords}")
+    if getattr(note, "private", False):
+        parts.append("私密")
     parts.append(f"创建于 {created}")
     if note.expire_time:
         parts.append(f"过期时间: {note.expire_time.strftime('%Y-%m-%d %H:%M')}")
@@ -369,8 +485,8 @@ def _format_events_for_review(events: list["SessionEvent"]) -> str:
 async def review_session_notes(session: "BaseSession") -> int:
     """每天聊天上下文重置前的 Note 整理
 
-    根据所选会话的整个聊天记录读出所有能被匹配到的 Note（``filter_note`` 关键词匹配，
-    含无关键词的常驻笔记），连同该会话当天的事件列表一起交给 Decisions API 分析每条笔记是否
+    根据所选会话的整个聊天记录读出所有能被匹配到的 Note（``filter_note`` 按记忆类型
+    与中心词/关键词匹配），连同该会话当天的事件列表一起交给 Decisions API 分析每条笔记是否
     应当删除（delete：内容错误、已经过期，或已被后续事件/更新的笔记取代）；判定为
     delete 且置信度足够的笔记会被删除。
 

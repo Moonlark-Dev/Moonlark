@@ -65,6 +65,9 @@ async def list_notes(
                 "context_id": n.context_id,
                 "content": n.content,
                 "keywords": n.keywords,
+                "type": n.type,
+                "subject": n.subject,
+                "private": n.private,
                 "created_time": n.created_time,
                 "expire_time": n.expire_time.isoformat() if n.expire_time else None,
             }
@@ -78,11 +81,15 @@ async def create_note(request: Request):
     """创建新笔记"""
     await verify_admin_request(request)
     from nonebot_plugin_chat.models import Note
+    from nonebot_plugin_chat.utils.note_manager import normalize_note_type, sanitize_keywords
 
     body = await request.json()
     context_id = body.get("context_id", "chat-monitor")
     content = body.get("content", "")
-    keywords = body.get("keywords", "")
+    subject = str(body.get("subject") or "").strip()
+    keywords = sanitize_keywords(str(body.get("keywords") or ""), subject)
+    note_type = normalize_note_type(str(body.get("type") or ""))
+    private = bool(body.get("private", False))
     expire_hours = body.get("expire_hours")
 
     if not content:
@@ -93,6 +100,9 @@ async def create_note(request: Request):
         context_id=context_id,
         content=content,
         keywords=keywords,
+        type=note_type,
+        subject=subject,
+        private=private,
         created_time=now.timestamp(),
         expire_time=(
             datetime.fromtimestamp(now.timestamp() + expire_hours * 3600) if expire_hours and expire_hours > 0 else None
@@ -108,6 +118,9 @@ async def create_note(request: Request):
         "context_id": note.context_id,
         "content": note.content,
         "keywords": note.keywords,
+        "type": note.type,
+        "subject": note.subject,
+        "private": note.private,
         "created_time": note.created_time,
         "expire_time": note.expire_time.isoformat() if note.expire_time else None,
     }
@@ -118,6 +131,7 @@ async def update_note(note_id: int, request: Request):
     """更新笔记"""
     await verify_admin_request(request)
     from nonebot_plugin_chat.models import Note
+    from nonebot_plugin_chat.utils.note_manager import normalize_note_type, sanitize_keywords
 
     body = await request.json()
     async with get_session() as db_session:
@@ -128,7 +142,15 @@ async def update_note(note_id: int, request: Request):
         if "content" in body:
             note.content = body["content"]
         if "keywords" in body:
-            note.keywords = body["keywords"]
+            note.keywords = str(body["keywords"] or "")
+        if "type" in body:
+            note.type = normalize_note_type(str(body["type"] or ""))
+        if "subject" in body:
+            note.subject = str(body["subject"] or "").strip()
+        if "private" in body:
+            note.private = bool(body["private"])
+        if "keywords" in body or "subject" in body:
+            note.keywords = sanitize_keywords(note.keywords or "", note.subject or "")
         if "expire_hours" in body:
             h = body["expire_hours"]
             note.expire_time = datetime.fromtimestamp(datetime.now().timestamp() + h * 3600) if h and h > 0 else None
@@ -140,6 +162,9 @@ async def update_note(note_id: int, request: Request):
         "context_id": note.context_id,
         "content": note.content,
         "keywords": note.keywords,
+        "type": note.type,
+        "subject": note.subject,
+        "private": note.private,
         "created_time": note.created_time,
         "expire_time": note.expire_time.isoformat() if note.expire_time else None,
     }

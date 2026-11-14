@@ -786,6 +786,7 @@ class MessageProcessor:
                 msg_str,
                 msg_dict["user_id"],
                 msg_dict.get("fake_rich_text", []),
+                nickname=msg_dict["nickname"],
             )
             msg_dict["mq_text"] = msg_str
 
@@ -887,10 +888,12 @@ class MessageProcessor:
         message_str: str,
         sender_id: str,
         fake_rich_text: Optional[list[str]] = None,
+        nickname: Optional[str] = None,
     ) -> str:
         note_manager = await get_context_notes(self.session.session_id)
         sender = await get_user(sender_id)
-        notes, notes_from_other_group = await note_manager.filter_note(message_str)
+        # 「聊天中出现」包括消息文本与发送者昵称；优先使用消息自带的群名片/昵称
+        notes, notes_from_other_group = await note_manager.filter_note(message_str, nickname or sender.get_nickname())
         notes.extend(notes_from_other_group)
         status_manager = get_status_manager()
         mood, mood_reason = status_manager.get_status()
