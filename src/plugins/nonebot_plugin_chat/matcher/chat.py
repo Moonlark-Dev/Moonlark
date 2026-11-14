@@ -370,7 +370,7 @@ class CommandHandler:
 
         # 如果有缓存消息，先分析待定笔记
         if session.cached_messages:
-            await session.processor._analyze_pending_notes()
+            await session.processor.analyze_pending_notes()
             await lang.send("command.compact.pending_notes_analyzed", self.user_id)
 
         # 重置上下文（保存现有记录并换用新的 context index）

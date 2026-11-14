@@ -92,7 +92,6 @@ class MessageProcessor:
         # Pending notes 相关属性
         self.pending_notes: dict[int, dict[str, Any]] = {}
         self._next_pending_note_id: int = 0
-        self.unanalyzed_message_count: int = 0
         self._pending_note_lock = asyncio.Lock()
         self._shown_pending_note_ids: set[int] = set()
 
@@ -671,10 +670,6 @@ class MessageProcessor:
         # 检查待定笔记是否有新内容
         pending_notes_text = self._format_pending_notes_for_tool_result()
 
-        # 发送消息后检查是否需要分析待定笔记
-        if self.unanalyzed_message_count > 5:
-            asyncio.create_task(self._analyze_pending_notes())
-
         return (
             await self.session.text(
                 "message.sent",
@@ -811,11 +806,6 @@ class MessageProcessor:
             from .ego.moonlark_main import moonlark_main
 
             moonlark_main.on_message_received()
-
-            # 消息入队后更新未分析计数并检查是否需要分析待定笔记
-            self.unanalyzed_message_count += 1
-            if self.unanalyzed_message_count >= 20:
-                asyncio.create_task(self._analyze_pending_notes())
 
     def get_message_content_list(self) -> list[str]:
         l = []
@@ -1149,18 +1139,23 @@ class MessageProcessor:
             lines.append(line)
         return "\n".join(lines)
 
-    async def _analyze_pending_notes(self) -> None:
-        if self._pending_note_lock.locked():
-            return
+    async def analyze_pending_notes(self, chat_history: Optional[str] = None) -> None:
+        """从聊天记录中提取待定笔记
 
+        生成时机与 Event 总结一致：``EventCollector`` 在每个 block 的事件总结成功后
+        把同一份 block 聊天记录传进来，两者针对同一批消息一起生成，不再按消息条数
+        单独触发。``chat_history`` 为 ``None`` 时回退到最近 50 条缓存消息
+        （``compact`` 等手动场景使用）。同一会话的分析串行执行，不会并发生成。
+        """
         async with self._pending_note_lock:
             try:
-                chat_history = await self.session.get_cached_messages_string(
-                    length=50,
-                    include_self_message=True,
-                    # 旧名字（今日计划）用于过滤改名之前已经落库的消息队列缓存
-                    exclude_content_prefixes=("今日计划已更新", "今日背景意图已更新"),
-                )
+                if chat_history is None:
+                    chat_history = await self.session.get_cached_messages_string(
+                        length=50,
+                        include_self_message=True,
+                        # 旧名字（今日计划）用于过滤改名之前已经落库的消息队列缓存
+                        exclude_content_prefixes=("今日计划已更新", "今日背景意图已更新"),
+                    )
                 if not chat_history.strip():
                     return
 
@@ -1225,7 +1220,6 @@ class MessageProcessor:
                     }
                     new_count += 1
 
-                self.unanalyzed_message_count = 0
                 if new_count > 0:
                     logger.info(f"[PendingNotes:{self.session.session_id}] 生成了 {new_count} 条待定笔记")
 

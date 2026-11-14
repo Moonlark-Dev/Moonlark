@@ -82,10 +82,13 @@ class _FakeContext:
         return self._history
 
 
-def _fake_session(context: _FakeContext) -> Any:
+def _fake_session(context: _FakeContext, pending_notes: Any = None) -> Any:
     return SimpleNamespace(
         session_id="pytest_reliability_group",
-        processor=SimpleNamespace(openai_messages=SimpleNamespace(context=context)),
+        processor=SimpleNamespace(
+            openai_messages=SimpleNamespace(context=context),
+            analyze_pending_notes=pending_notes if pending_notes is not None else AsyncMock(),
+        ),
         get_session_name=AsyncMock(return_value="测试群"),
     )
 
@@ -193,3 +196,78 @@ async def test_collect_does_not_freeze_block_below_threshold() -> None:
     fetch.assert_not_awaited()
     assert context.current_block_id == 3
     assert context.pending_block_message_count == 5
+
+
+def _fake_db() -> AsyncMock:
+    class _DB:
+        def add(self, obj: object) -> None:
+            return None
+
+        async def commit(self) -> None:
+            return None
+
+    db_cm = AsyncMock()
+    db_cm.__aenter__.return_value = _DB()
+    return db_cm
+
+
+async def test_pending_notes_generated_within_event_summarization() -> None:
+    """待定笔记与事件总结一起生成，用的是同一个 block 的聊天记录"""
+    import importlib
+
+    ec_module = importlib.import_module("nonebot_plugin_chat.core.ego.event_collector")
+    collector = ec_module.EventCollector()
+    context = _FakeContext(pending=50)
+    analyze_pending_notes = AsyncMock()
+    session = _fake_session(context, pending_notes=analyze_pending_notes)
+
+    with (
+        patch.object(ec_module, "get_message_text", AsyncMock(return_value="身份")),
+        patch.object(ec_module, "fetch_json", AsyncMock(return_value={"topics": [], "events": ["事件A"]})),
+        patch.object(ec_module, "get_session", lambda: _fake_db()),
+    ):
+        await collector._collect(session, min_pending=collector.COLLECTION_INTERVAL - 1)
+
+    assert context.summarized == [3]
+    analyze_pending_notes.assert_awaited_once_with(context._history)
+
+
+async def test_pending_notes_skipped_when_event_summarization_fails() -> None:
+    """事件总结失败时 block 等待重试，不能先产出待定笔记（否则重试会重复生成）"""
+    import importlib
+
+    ec_module = importlib.import_module("nonebot_plugin_chat.core.ego.event_collector")
+    collector = ec_module.EventCollector()
+    context = _FakeContext(pending=50)
+    analyze_pending_notes = AsyncMock()
+    session = _fake_session(context, pending_notes=analyze_pending_notes)
+
+    with (
+        patch.object(ec_module, "get_message_text", AsyncMock(return_value="身份")),
+        patch.object(ec_module, "fetch_json", AsyncMock(side_effect=RuntimeError("上游炸了"))),
+    ):
+        await collector._collect(session, min_pending=collector.COLLECTION_INTERVAL - 1)
+
+    analyze_pending_notes.assert_not_awaited()
+    assert context.unsummarized_blocks == [3]
+
+
+async def test_pending_note_failure_does_not_discard_event_summary() -> None:
+    """待定笔记失败不影响已入库的事件和 block 状态"""
+    import importlib
+
+    ec_module = importlib.import_module("nonebot_plugin_chat.core.ego.event_collector")
+    collector = ec_module.EventCollector()
+    context = _FakeContext(pending=50)
+    analyze_pending_notes = AsyncMock(side_effect=RuntimeError("笔记炸了"))
+    session = _fake_session(context, pending_notes=analyze_pending_notes)
+
+    with (
+        patch.object(ec_module, "get_message_text", AsyncMock(return_value="身份")),
+        patch.object(ec_module, "fetch_json", AsyncMock(return_value={"topics": [], "events": ["事件A"]})),
+        patch.object(ec_module, "get_session", lambda: _fake_db()),
+    ):
+        await collector._collect(session, min_pending=collector.COLLECTION_INTERVAL - 1)
+
+    assert context.summarized == [3]
+    assert context.unsummarized_blocks == []
