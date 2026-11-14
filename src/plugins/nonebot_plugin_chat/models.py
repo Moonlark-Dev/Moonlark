@@ -156,6 +156,17 @@ class PrivateChatConfig(Model):
     enabled: Mapped[bool] = mapped_column(default=True)
 
 
+class ChatGlobalSetting(Model):
+    """Chat 的全局设置（键值对）
+
+    目前只用来保存模型 Provider（``model_provider``）：由超级用户通过
+    ``/chat model <openai|gemini>`` 在全局范围内切换，所有会话共用。
+    """
+
+    key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    value: Mapped[str] = mapped_column(String(512), default="")
+
+
 class PrivateChatSession(Model):
     """记录用户私聊会话信息，用于主动消息时获取正确的 bot"""
 

@@ -950,7 +950,7 @@ version = "3.5.2"
 description = "The Real First Universal Charset Detector. Open, modern and actively maintained alternative to Chardet."
 optional = false
 python-versions = ">=3.7"
-groups = ["dev", "test"]
+groups = ["main", "dev", "test"]
 files = [
     {file = "charset_normalizer-3.5.2-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:195c26fb65950f8fce54e26349852b7bdd7c5f120aeefbcc440b8a20faaed4a3"},
     {file = "charset_normalizer-3.5.2-cp310-cp310-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:9373ad13ef0d2c0fb761e04e55bfdee5a08b52cef2c882c8fbe9935b1517152e"},
@@ -1713,6 +1713,69 @@ unicode = ["unicodedata2 (>=18.0.0) ; python_version <= \"3.15\""]
 woff = ["brotli (>=1.0.1) ; platform_python_implementation == \"CPython\"", "brotlicffi (>=0.8.0) ; platform_python_implementation != \"CPython\"", "zopfli (>=0.1.4)"]
 
 [[package]]
+name = "google-auth"
+version = "2.62.2"
+description = "Google Authentication Library"
+optional = false
+python-versions = ">=3.10"
+groups = ["main"]
+files = [
+    {file = "google_auth-2.62.2-py3-none-any.whl", hash = "sha256:e9bcdb0679b6a4369ac327c5c59f06d92f7b4cd2624e7100294c14632f55a36b"},
+    {file = "google_auth-2.62.2.tar.gz", hash = "sha256:046c61a72d3a847d6df6417a7f0d5cf054e3b82bbcb54fb1e69d47880964049c"},
+]
+
+[package.dependencies]
+cryptography = [
+    {version = ">=38.0.3", markers = "python_version < \"3.14\""},
+    {version = ">=41.0.5", markers = "python_version >= \"3.14\""},
+]
+pyasn1-modules = ">=0.2.1"
+requests = {version = ">=2.30.0,<3.0.0", optional = true, markers = "extra == \"requests\""}
+
+[package.extras]
+aiohttp = ["aiohttp (>=3.8.0,<4.0.0) ; python_version < \"3.14\"", "aiohttp (>=3.9.0,<4.0.0) ; python_version >= \"3.14\"", "requests (>=2.30.0,<3.0.0)"]
+cryptography = ["cryptography (>=38.0.3) ; python_version < \"3.14\"", "cryptography (>=41.0.5) ; python_version >= \"3.14\""]
+enterprise-cert = ["cryptography (>=38.0.3) ; python_version < \"3.14\"", "cryptography (>=41.0.5) ; python_version >= \"3.14\""]
+grpc = ["grpcio (>=1.59.0,<2.0.0) ; python_version < \"3.14\"", "grpcio (>=1.75.1,<2.0.0) ; python_version >= \"3.14\""]
+pyjwt = ["pyjwt (>=2.0)"]
+pyopenssl = ["cryptography (>=38.0.3) ; python_version < \"3.14\"", "cryptography (>=41.0.5) ; python_version >= \"3.14\""]
+reauth = ["pyu2f (>=0.1.5)"]
+requests = ["requests (>=2.30.0,<3.0.0)"]
+testing = ["aiohttp (>=3.8.0,<4.0.0) ; python_version < \"3.14\"", "aiohttp (>=3.9.0,<4.0.0) ; python_version >= \"3.14\"", "aioresponses", "flask", "freezegun", "grpcio (>=1.59.0,<2.0.0) ; python_version < \"3.14\"", "grpcio (>=1.75.1,<2.0.0) ; python_version >= \"3.14\"", "packaging (>=20.0)", "pyjwt (>=2.0)", "pytest", "pytest-asyncio", "pytest-cov", "pytest-localserver", "pyu2f (>=0.1.5)", "requests (>=2.30.0,<3.0.0)", "responses", "urllib3 (>=1.26.15,<3.0.0)"]
+urllib3 = ["packaging (>=20.0)", "urllib3 (>=1.26.15,<3.0.0)"]
+
+[[package]]
+name = "google-genai"
+version = "3.3.0"
+description = "GenAI Python SDK"
+optional = false
+python-versions = ">=3.11"
+groups = ["main"]
+files = [
+    {file = "google_genai-3.3.0-py3-none-any.whl", hash = "sha256:86bd1830fec4b12e474237414fa52383aa0f49458910f6c9c938c207715559b5"},
+    {file = "google_genai-3.3.0.tar.gz", hash = "sha256:c0ab7bfbf13d4a24a5798ec9e4200773b2fa150eb620317db337f751a9c9576c"},
+]
+
+[package.dependencies]
+anyio = ">=4.8.0,<5.0.0"
+distro = ">=1.7.0,<2"
+google-auth = {version = ">=2.56.0,<3.0.0", extras = ["requests"]}
+httpx2 = ">=2.0.0,<3.0.0"
+pydantic = ">=2.12.5,<3.0.0"
+requests = ">=2.28.1,<3.0.0"
+sniffio = "*"
+tenacity = ">=8.2.3,<9.2.0"
+typing-extensions = ">=4.14.0,<5.0.0"
+websockets = ">=13.0.0,<18.0"
+
+[package.extras]
+aiohttp = ["aiohttp (>=3.10.11,<4.0.0)"]
+httpx = ["httpx (>=0.28.1,<1.0.0)"]
+local-tokenizer = ["protobuf", "sentencepiece (>=0.2.0)"]
+local-tokenizer-transformers = ["pillow", "protobuf", "sentencepiece (>=0.2.0)", "torch", "torchvision", "transformers"]
+pyopenssl = ["pyopenssl"]
+
+[[package]]
 name = "greenlet"
 version = "3.5.6"
 description = "Lightweight in-process concurrent programming"
@@ -1852,6 +1915,28 @@ socks = ["socksio (==1.*)"]
 trio = ["trio (>=0.22.0,<1.0)"]
 
 [[package]]
+name = "httpcore2"
+version = "2.3.0"
+description = "A minimal low-level HTTP client."
+optional = false
+python-versions = ">=3.10"
+groups = ["main"]
+files = [
+    {file = "httpcore2-2.3.0-py3-none-any.whl", hash = "sha256:477e9e334f74e5240dcac002e890580f36a57d40ff0fb14cc9655731d23b8415"},
+    {file = "httpcore2-2.3.0.tar.gz", hash = "sha256:07327e251560960eea8e969d92d4c6a325feb13cca39e25340731336c3baf924"},
+]
+
+[package.dependencies]
+h11 = ">=0.16"
+truststore = ">=0.10"
+
+[package.extras]
+asyncio = ["anyio (>=4.5.0,<5.0)"]
+http2 = ["h2 (>=3,<5)"]
+socks = ["socksio (==1.*)"]
+trio = ["trio (>=0.22.0,<1.0)"]
+
+[[package]]
 name = "httptools"
 version = "0.8.0"
 description = "A collection of framework independent HTTP protocol utils."
@@ -1936,6 +2021,31 @@ cli = ["click (==8.*)", "pygments (==2.*)", "rich (>=10,<14)"]
 http2 = ["h2 (>=3,<5)"]
 socks = ["socksio (==1.*)"]
 zstd = ["zstandard (>=0.18.0)"]
+
+[[package]]
+name = "httpx2"
+version = "2.3.0"
+description = "The next generation HTTP client."
+optional = false
+python-versions = ">=3.10"
+groups = ["main"]
+files = [
+    {file = "httpx2-2.3.0-py3-none-any.whl", hash = "sha256:6f393663bdf6dbe7fe90118e3eb5b2bd024a675cae0390ac08cec9198812d8b7"},
+    {file = "httpx2-2.3.0.tar.gz", hash = "sha256:227e7c41d95a76d4077a52640564132777215fc3394e07b66a3116c33d668fa9"},
+]
+
+[package.dependencies]
+anyio = "*"
+httpcore2 = "2.3.0"
+idna = "*"
+truststore = ">=0.10"
+
+[package.extras]
+brotli = ["brotli ; platform_python_implementation == \"CPython\"", "brotlicffi ; platform_python_implementation != \"CPython\""]
+cli = ["click (==8.*)", "pygments (==2.*)", "rich (>=10,<15)"]
+http2 = ["h2 (>=3,<5)"]
+socks = ["socksio (==1.*)"]
+zstd = ["zstandard (>=0.18.0) ; python_version <= \"3.13\""]
 
 [[package]]
 name = "identify"
@@ -3213,6 +3323,7 @@ aiomysql = ">=0.3.0, <0.4.0"
 aiosqlite = ">=0.20.0, <0.21.0"
 beautifulsoup4 = ">=4.12.3, <5.0.0"
 cryptography = ">=48.0.0, <49.0.0"
+google-genai = ">=3.3.0, <4.0.0"
 html2text = ">=2025.4.15, <2026.0.0"
 httpx = {version = ">=0.28.1, <0.29.0", extras = ["socks"]}
 imagehash = ">=4.3.2, <5.0.0"
@@ -4815,6 +4926,21 @@ files = [
 ]
 
 [[package]]
+name = "pyasn1-modules"
+version = "0.4.2"
+description = "A collection of ASN.1-based protocols modules"
+optional = false
+python-versions = ">=3.8"
+groups = ["main"]
+files = [
+    {file = "pyasn1_modules-0.4.2-py3-none-any.whl", hash = "sha256:29253a9207ce32b64c3ac6600edc75368f98473906e8fd1043bd6b5b1de2c14a"},
+    {file = "pyasn1_modules-0.4.2.tar.gz", hash = "sha256:677091de870a80aae844b1ca6134f54652fa2c8c5a52aa396440ac3106e941e6"},
+]
+
+[package.dependencies]
+pyasn1 = ">=0.6.1,<0.7.0"
+
+[[package]]
 name = "pybind11"
 version = "3.1.0"
 description = "Seamless operability between C++11 and Python"
@@ -5691,7 +5817,7 @@ version = "2.34.2"
 description = "Python HTTP for Humans."
 optional = false
 python-versions = ">=3.10"
-groups = ["dev", "test"]
+groups = ["main", "dev", "test"]
 files = [
     {file = "requests-2.34.2-py3-none-any.whl", hash = "sha256:2a0d60c172f83ac6ab31e4554906c0f3b3588d37b5cb939b1c061f4907e278e0"},
     {file = "requests-2.34.2.tar.gz", hash = "sha256:f288924cae4e29463698d6d60bc6a4da69c89185ad1e0bcc4104f584e960b9ed"},
@@ -6538,6 +6664,22 @@ typing-extensions = ">=4.4.0"
 yaml = ["ruamel-yaml (>=0.18.10)"]
 
 [[package]]
+name = "tenacity"
+version = "9.1.4"
+description = "Retry code until it succeeds"
+optional = false
+python-versions = ">=3.10"
+groups = ["main"]
+files = [
+    {file = "tenacity-9.1.4-py3-none-any.whl", hash = "sha256:6095a360c919085f28c6527de529e76a06ad89b23659fa881ae0649b867a9d55"},
+    {file = "tenacity-9.1.4.tar.gz", hash = "sha256:adb31d4c263f2bd041081ab33b498309a57c77f9acf2db65aadf0898179cf93a"},
+]
+
+[package.extras]
+doc = ["reno", "sphinx"]
+test = ["pytest", "tornado (>=4.5)", "typeguard"]
+
+[[package]]
 name = "text-unidecode"
 version = "1.3"
 description = "The most basic Text::Unidecode port"
@@ -6708,6 +6850,18 @@ files = [
 [package.extras]
 docs = ["myst-parser", "pydata-sphinx-theme", "sphinx"]
 test = ["argcomplete (>=3.0.3) ; python_version < \"3.12\"", "argcomplete (>=3.5.2) ; python_version >= \"3.12\"", "mypy (>=2.0) ; implementation_name != \"pypy\"", "pre-commit", "pytest (>=7.0,<10.0)", "pytest-mock", "pytest-mypy-testing ; implementation_name != \"pypy\""]
+
+[[package]]
+name = "truststore"
+version = "0.10.5"
+description = "Verify certificates using native system trust stores"
+optional = false
+python-versions = ">=3.10"
+groups = ["main"]
+files = [
+    {file = "truststore-0.10.5-py3-none-any.whl", hash = "sha256:9aaaedaefaf06d8b206278cf8b5012bc897f485a874503501e12d776df78951c"},
+    {file = "truststore-0.10.5.tar.gz", hash = "sha256:30d36967ccaded5cbb38d602c433f53600036c79d502f4533a49b60a03bbefcd"},
+]
 
 [[package]]
 name = "typing-extensions"

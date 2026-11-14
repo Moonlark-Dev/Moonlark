@@ -34,6 +34,7 @@ from ..utils.image import query_image_content
 from ..utils.image_format import try_build_image_part
 from ..utils.message import MessageParser, generate_message_string
 from ..utils.note_manager import get_context_notes
+from ..utils.provider import get_model_provider
 from ..utils.simhash import build_message_fingerprint
 from ..utils.status_manager import get_status_manager
 from ..utils.sticker_manager import get_sticker_manager
@@ -1000,10 +1001,15 @@ class MessageProcessor:
 
     async def generate_system_prompt(self) -> OpenAIMessage:
         is_private = self.session.get_session_type() == "private"
+        # Gemini 模式下图片除了内嵌进上下文，还可能因为安全策略被拦下、替换成
+        # 「[图片(图片ID): 描述]」文本（见 MessageQueue.handle_blocked_images），
+        # 所以 System Prompt 需要同时定义这两种图片格式
+        dual_image_format = self.ENABLE_EMBEDDED_IMAGE and await get_model_provider() == "gemini"
         return await get_message(
             "system",
             "chat.md.jinja",
             image_placeholder=self.ENABLE_EMBEDDED_IMAGE,
+            dual_image_format=dual_image_format,
             is_group_session=not is_private,
             is_private=is_private,
             session_nickname=getattr(self.session, "nickname", None),

@@ -126,6 +126,12 @@ command:
     unchanged: 当前已是{}模式，无需切换。
     changed: 已切换到{}模式，当前会话的所有上下文已重置。
   no_argv: 无效参数，请使用 {__prefix__}help chat 获取该命令的使用方法！
+  model:
+    no_permission: 权限不足，仅超级用户可以使用此命令。
+    current: 当前全局模型 Provider：{}。可用 {__prefix__}chat model <{}> 切换。
+    changed: 已切换全局模型 Provider 为 {}。
+    unchanged: 当前全局模型 Provider 已经是 {}，无需切换。
+    invalid: 无效的模型 Provider：{}。可选值：{}
   desire:
     get: |
       消息触发概率: {}%
@@ -186,6 +192,7 @@ help:
   usage16: chat mode [passionate|standard|silent] (查看或切换互动模式，切换将重置会话上下文)
   usage17: chat reset <会话ID> (重置指定会话的所有历史消息并重置会话状态[SU])
   usage18: chat review-all (对所有会话执行记忆整理并重置其消息队列[SU])
+  usage19: chat model [openai|gemini] (查看或切换全局模型 Provider[SU])
 
 pending_note:
   not_found: 未找到 ID 为 {} 的待定笔记。
