@@ -1,6 +1,6 @@
 """`/chat review-all` 的行为测试
 
-对所有会话执行记忆整理（Jev 判定并删除笔记）后重置它们的消息队列，属于管理操作，
+对所有会话执行记忆整理（Decisions API 判定并删除笔记）后重置它们的消息队列，属于管理操作，
 仅超级用户可用。
 """
 
@@ -145,7 +145,7 @@ async def test_review_and_reset_all_sessions_counts() -> None:
 
     async def fake_review(session: Any) -> int:
         if session._review_error:
-            raise RuntimeError("jev down")
+            raise RuntimeError("decision down")
         return session._review_result
 
     fake_event_collector = SimpleNamespace(flush_pending=AsyncMock(return_value=[]))
@@ -174,7 +174,7 @@ async def test_review_and_reset_all_sessions_survives_failures() -> None:
 
     async def fake_review(session: Any) -> int:
         if session._review_error:
-            raise RuntimeError("jev down")
+            raise RuntimeError("decision down")
         return session._review_result
 
     with (

@@ -60,7 +60,7 @@ class UserProfile(Model):
 
 
 class FavorJudgeRecord(Model):
-    """一次好感度评价（Jev 判定）的落库记录
+    """一次好感度评价（Decisions API 判定）的落库记录
 
     取代原先存在 LarkUser config 里的 ``chat_fav_judge_cache``（不做数据迁移）：
     冷却时间与每日上限直接由本表推导，重复消息的门控则靠 ``message_key`` 比对。
@@ -140,7 +140,7 @@ class ChatContextMessage(Model):
 
 
 class PreTriggerSignals(BaseModel):
-    """回复触发前的预处理信号，由 Jev 依据最近的聊天记录判定（见 utils/jev_judge.py）"""
+    """回复触发前的预处理信号，由 Decisions API 依据最近的聊天记录判定（见 utils/decision_judge.py）"""
 
     truncate: bool
     help_needed: bool

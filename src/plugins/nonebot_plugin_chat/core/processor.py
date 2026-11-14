@@ -199,9 +199,9 @@ class MessageProcessor:
         Args:
             nickname: 被评价用户的昵称
             score: -2 ~ 2 的档位（0 不会走到这里）
-            reason: Jev 给出的判定理由
+            reason: 判定给出的理由
             message: 触发这次评价的消息原文，用于重复消息门控与落库
-            confidence: Jev 对本次 favor_score 的置信度（0-1）
+            confidence: 判定对本次 favor_score 的置信度（0-1）
 
         Returns:
             (给上层的结果文本, 好感度是否真的发生了变动)
@@ -1235,8 +1235,8 @@ class MessageProcessor:
                 logger.exception(f"[PendingNotes:{self.session.session_id}] 分析失败: {e}")
 
     async def analyze_pre_trigger_signals(self) -> PreTriggerSignals | None:
-        """触发概率的预处理：由 Jev 依据最近的聊天记录判定五个布尔信号"""
-        from ..utils.jev_judge import analyze_pre_trigger
+        """触发概率的预处理：由 Decisions API 依据最近的聊天记录判定五个布尔信号"""
+        from ..utils.decision_judge import analyze_pre_trigger
 
         chat_history = await self.session.get_cached_messages_string(length=10, include_self_message=False)
         return await analyze_pre_trigger(chat_history, self.session.lang_str)

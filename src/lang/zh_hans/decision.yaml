@@ -1,4 +1,4 @@
-# nonebot-plugin-jev 的提示词（问题 instructions / criteria），经 LangHelper 解析后提交给 Jev
+# nonebot-plugin-decision 的提示词（问题 instructions / criteria），经 LangHelper 解析后提交给 Decisions API
 # 注意：不要在本文件中使用名为 `text` 的键（larklang KeysParser 会把含 text 的 dict 当作叶子节点）
 
 pre_trigger:
@@ -16,7 +16,7 @@ pre_trigger:
 reply:
   mood:
     instructions: |
-      结合 `chat_context`（聊天上下文）、`reasoning_content`（模型的思考过程）、`model_output`（模型本轮的输出）与 `sent_messages`（实际发送出去的消息），判断 Moonlark 的心情应当朝哪个方向变化。这代表心情变动的方向，不必与 `current_mood`（当前心情）相同；如果没有变化的理由，选择 none。
+      结合 `chat_context`（聊天上下文）、`reasoning_content`（模型的思考过程）、`model_output`（模型本轮的输出）与 `sent_messages`（实际发送出去的消息），判断 Moonlark 的心情应当朝哪个方向变化。这代表心情变动的方向，不必与 `current_mood`（当前心情）相同；如果没有变化的理由，选择「没有变化」。
     criteria:
       joy: 开心——愉悦、兴奋、被逗乐
       sadness: 悲伤——失落、难过、沮丧
@@ -48,17 +48,17 @@ reply:
       "3": 非常感兴趣——主动想深入聊下去
   favor_target:
     instructions: |
-      结合 `chat_context`、`reasoning_content` 与 `sent_messages`，本轮是否有 `participants` 中的某位参与者，其行为值得 Moonlark 调整好感度？只在有明确理由时选择具体的人，否则选择 none。（本问题只在群聊中提出；私聊中的对话者已确定，不会问到这个问题。）
+      结合 `chat_context`、`reasoning_content` 与 `sent_messages`，本轮是否有 `participants` 中的某位参与者，其行为值得 Moonlark 调整好感度？只在有明确理由时选择对应的参与者，否则选择「没有需要评价的对象」。（本问题只在群聊中提出；私聊中的对话者已确定，不会问到这个问题。）
     none: 没有需要评价的对象
   favor_score:
     instructions: |
-      结合 `chat_context`、`reasoning_content` 与 `sent_messages`，应当给这位参与者怎样程度的好感度评价？没有评价必要或不确定时选择 0。
+      结合 `chat_context`、`reasoning_content` 与 `sent_messages`，应当给这位参与者怎样程度的好感度评价？没有评价必要或不确定时选择「没有评价必要，不改变好感度」。
     criteria:
-      "2": 表现非常贴心或帮了大忙，值得明显提升好感度
-      "1": 表现友善或令人愉快，值得小幅提升好感度
-      "0": 没有评价必要，不改变好感度
-      "-1": 有轻微的冒犯或令人不快，小幅降低好感度
-      "-2": 有严重的冒犯或伤害，明显降低好感度
+      plus_2: 表现非常贴心或帮了大忙，值得明显提升好感度
+      plus_1: 表现友善或令人愉快，值得小幅提升好感度
+      zero: 没有评价必要，不改变好感度
+      minus_1: 有轻微的冒犯或令人不快，小幅降低好感度
+      minus_2: 有严重的冒犯或伤害，明显降低好感度
   reply_required: |
     Moonlark 本轮是否需要在会话中回复，却没有真正把回复发出去？请特别注意「输出异常」的情况，它与「深思熟虑后决定不回复」完全不同，必须判为「是」。
 
@@ -70,13 +70,13 @@ reply:
     判为「否」的情形：她经过思考后明确决定不回应（`sent_messages` 为空，且 `reasoning_content` / `model_output` 中写明了不回复的理由，如话题已结束、只是群友之间的闲聊、自己插不上话）；或本轮确实没有需要回应的事情。
 
     不确定时判为「否」。
-  mood_reason: "由 Jev 判定的心情变动：{0}（置信度 {1}）"
-  favor_reason: "{0}（Jev 置信度 {1}）"
+  mood_reason: "由判定模型给出的心情变动：{0}（置信度 {1}）"
+  favor_reason: "{0}（判定置信度 {1}）"
 
 sticker:
   instructions: |
     请从候选表情包中选出最适合发送的一条，主要依据 `requested_keyword`（请求的关键词）：
-    哪个候选最能表达这个关键词的含义？并没有贴合关键词的候选，或此时不适合发表情包，就选择 none。
+    哪个候选最能表达这个关键词的含义？若没有贴合关键词的候选，或此时不适合发表情包，就选择「不发送」。
     `chat_context`（最近的聊天记录）与 `thinking_content`（Moonlark 当前的思考内容）仅作辅助参考，
     例如：关键词是情绪词时，可参考聊天记录判断这个情绪想回应谁；判定为辅助信息与关键词冲突时，以关键词为准。
   none: 不发送——没有贴合关键词的候选表情包，或此时不适合发送
@@ -84,14 +84,14 @@ sticker:
 note_review:
   question: |
     以下是待审查的笔记：{0}
-    请结合 state 中的 `chat_history`（该会话的完整聊天记录）、`events`（该会话当天的事件列表）与 `notes`（本次一起送审的全部笔记，含各自的编号与创建时间）判断这条笔记。
-    判断 delete 时，优先看：
-    1. 后续事件是否明确覆盖了旧信息？覆盖了就是 delete——**同一事实只保留最新的一条**，旧笔记即使当时是对的、现在也不算错，也一律删除（例如先记「周六有考试」、后来改期，或同一件事先后留下了内容不同的多条笔记）。
+    请结合 state 中的 `chat_history`（该会话的完整聊天记录）、`events`（该会话当天的事件列表）与 `notes`（本次一起送审的全部笔记，含各自的编号与创建时间）判断这条笔记应当「保留」还是「删除」。
+    判断「删除」时，优先看：
+    1. 后续事件是否明确覆盖了旧信息？覆盖了就是删除——**同一事实只保留最新的一条**，旧笔记即使当时是对的、现在也不算错，也一律删除（例如先记「周六有考试」、后来改期，或同一件事先后留下了内容不同的多条笔记）。
     2. 该事项是否已经完成、结束、取消？
     3. 当前 `now` 是否已经超过事项发生的日期？
     4. 该信息是否只在特定短期场景成立？
-    以上四条命中任意一条，或笔记内容与聊天记录/事件矛盾、事实不对，都判为 delete。
-    只有在笔记内容仍然正确、仍然有效，且没有被后续事件或更新的笔记取代时，才判为 keep。
+    以上四条命中任意一条，或笔记内容与聊天记录/事件矛盾、事实不对，都判为「删除」。
+    只有在笔记内容仍然正确、仍然有效，且没有被后续事件或更新的笔记取代时，才判为「保留」。
   criteria:
     keep: 保留——笔记仍然正确、仍然有效，且没有被后续事件或更新的笔记取代
     delete: 删除——笔记内容错误、已经过期，或已被后续事件/更新的笔记取代（同一事实只保留最新的那一条）

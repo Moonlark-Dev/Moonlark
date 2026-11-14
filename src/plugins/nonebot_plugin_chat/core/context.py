@@ -1122,7 +1122,7 @@ class ChatContext:
         """provider 缓存过期后清理不再相关的历史 block
 
         从新到旧遍历当前 context 的所有 block（最新 block 不参与删除）：如果某个
-        block 的事件不再出现在最后一个 block 的事件中（由 Jev 判断），则从这个
+        block 的事件不再出现在最后一个 block 的事件中（由 Decisions API 判断），则从这个
         block 开始、此前的消息全部删除，并更新 meta 消息。
 
         Args:
@@ -1178,9 +1178,9 @@ class ChatContext:
         return "\n".join(format_event_content(event.content) for event in events)
 
     async def _block_still_relevant(self, history_events: str, latest_events: str) -> bool:
-        from nonebot_plugin_jev import JevNotConfigured, NoulAnswer, ask, lang_ref, noul
+        from nonebot_plugin_decision import DecisionNotConfiguredError, NoulAnswer, ask, lang_ref, noul
 
-        from ..utils.jev_judge import SLIDING_WINDOW_RELEVANT_THRESHOLD
+        from ..utils.decision_judge import SLIDING_WINDOW_RELEVANT_THRESHOLD
 
         state = {"history_events": history_events, "latest_events": latest_events}
         try:
@@ -1189,8 +1189,9 @@ class ChatContext:
                 {"still_relevant": noul(lang_ref("context_window.block_relevant"))},
                 lang_str=self.session.lang_str,
                 identify="Chat Context Window",
+                session_id=self.session_id,
             )
-        except JevNotConfigured as e:
+        except DecisionNotConfiguredError as e:
             logger.warning(f"[ChatContext:{self.session_id}] 滑动窗口判断跳过：{e}")
             return True
         except Exception as e:
