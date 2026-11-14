@@ -23,6 +23,7 @@ from .logic import (
     HOLD_ACTION,
     TRANSFER_ACTION,
     Action,
+    calculate_min_proability,
     draw_initial_probability,
     draw_probability,
     get_reward,
@@ -289,7 +290,7 @@ class HotPotatoRoom:
         self.holder = pick_random(self.players)
         initial = draw_initial_probability(self.potato_type.initial_probability_range)
         self.probability = initial
-        self.min_probability = initial
+        self.min_probability = calculate_min_proability(self.probability)
 
     def begin(self) -> None:
         self.reset_game()
