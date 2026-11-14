@@ -245,12 +245,15 @@ async def get_session_openai_messages(session_id: str, request: Request):
                     "tool_calls": getattr(msg, "tool_calls", None),
                 },
             )
-    # 将最近一次 OpenAI API 响应体序列化（持久化在 MessageQueue 上）
+    # 将最近一次模型响应体序列化（持久化在 MessageQueue 上）
+    # Gemini 模式下 last_response 是 GenerateContentResponse，个别字段可能无法 JSON 序列化
     oai_mq = session.processor.openai_messages
+    last_response_raw = None
     if hasattr(oai_mq, "last_response") and oai_mq.last_response is not None:
-        last_response_raw = oai_mq.last_response.model_dump(mode="json")
-    else:
-        last_response_raw = None
+        try:
+            last_response_raw = oai_mq.last_response.model_dump(mode="json")
+        except Exception:
+            last_response_raw = None
 
     return {"messages": serialized, "count": len(serialized), "last_response": last_response_raw}
 

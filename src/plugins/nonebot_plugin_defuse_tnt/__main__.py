@@ -16,11 +16,12 @@
 # ##############################################################################
 
 import math
+from nonebot.adapters import Bot, Event
 from nonebot_plugin_alconna import Alconna, on_alconna
 import random
 from nonebot_plugin_larkuser import prompt
 from nonebot.log import logger
-from nonebot_plugin_larkutils import get_user_id
+from nonebot_plugin_larkutils import LatestEvent, get_user_id
 from nonebot_plugin_alconna import UniMessage
 from nonebot_plugin_render import render_template
 import re
@@ -33,12 +34,14 @@ matcher = on_alconna(alc)
 
 
 @matcher.assign("$main")
-async def _(user_id: str = get_user_id()) -> None:
+async def _(bot: Bot, event: Event, user_id: str = get_user_id()) -> None:
     answer = [random.randint(1, 9) for i in range(3)]
     logger.debug(f"Defuse TNT Answer: {answer}")
     r = 6
     history = []
     session = await create_minigame_session(user_id, "defuse-tnt")
+    # 连续猜测时始终回复用户最新消息，避免 QQ 官方被动回复次数超限
+    tracker = LatestEvent(event, bot)
     while r >= 0:
         image = await render_template(
             "defuseTNT.html.jinja",
@@ -57,19 +60,25 @@ async def _(user_id: str = get_user_id()) -> None:
                 "history": [{"password": item, "result": get_result_dict(item, answer)} for item in history],
             },
         )
+        events: list[Event] = []
         password = await prompt(
             UniMessage.image(raw=image),
             user_id,
             checker=lambda msg: len([int(c) for c in list(msg) if re.match("[1-9]", c)]) == 3,
             parser=lambda msg: [int(c) for c in list(msg) if re.match("[1-9]", c)],
+            event=tracker.event,
+            events=events,
         )
+        tracker.update(events[-1] if events else None)
         if len(password) != 3:
             continue
         if password == answer:
             t, p = await session.finish(40 ** ((r + 5) / 2), 0.8)
-            await lang.finish("result.success", user_id, r, 6, t, p)
+            await tracker.send(await lang.text("result.success", user_id, r, 6, t, p), at_sender=True)
+            await matcher.finish()
         else:
             history.append(password)
             r -= 1
     await session.finish()
-    await lang.finish("result.failed", user_id, answer)
+    await tracker.send(await lang.text("result.failed", user_id, answer), at_sender=True)
+    await matcher.finish()

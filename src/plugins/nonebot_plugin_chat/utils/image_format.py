@@ -30,6 +30,7 @@
 from __future__ import annotations
 
 import base64
+import binascii
 import io
 from typing import Any, Optional
 
@@ -128,6 +129,29 @@ def image_data_url(data: bytes, mime_type: str) -> str:
         str: ``data:<mime>;base64,...`` 形式的字符串
     """
     return f"data:{mime_type};base64,{base64.b64encode(data).decode('ascii')}"
+
+
+def decode_image_data_url(url: Any) -> Optional[bytes]:
+    """从内联图片的 data URL 中取出图片二进制
+
+    只处理 ``data:image/...;base64,...``；远程 URL、损坏的 base64 或空内容返回 None。
+
+    Args:
+        url: 图片 data URL
+
+    Returns:
+        Optional[bytes]: 图片二进制；无法解析时返回 None
+    """
+    if not isinstance(url, str) or not url.startswith("data:image/"):
+        return None
+    header, separator, payload = url.partition(",")
+    if not separator or ";base64" not in header:
+        return None
+    try:
+        data = base64.b64decode(payload, validate=True)
+    except (ValueError, binascii.Error):
+        return None
+    return data or None
 
 
 def build_image_part(data: bytes) -> tuple[dict[str, Any], str]:

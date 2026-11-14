@@ -16,13 +16,15 @@
 # ##############################################################################
 
 from nonebot import on_command
-from nonebot_plugin_waiter import prompt_until
+from nonebot.adapters import Bot, Event
 
+from .config import config
 from .map2048 import Map2048
 from nonebot_plugin_finding_the_trail.exceptions import Quited
 from nonebot_plugin_larklang import LangHelper
-from nonebot_plugin_larkutils import get_user_id
+from nonebot_plugin_larkutils import LatestEvent, get_user_id
 from nonebot_plugin_larkuser import patch_matcher
+from nonebot_plugin_larkuser.utils.waiter2 import WaitUserInput
 from nonebot_plugin_finding_the_trail.utils.enums.directions import Directions
 from nonebot_plugin_minigame_api import create_minigame_session
 from nonebot_plugin_alconna import UniMessage
@@ -33,41 +35,47 @@ cmd = on_command("2048")
 patch_matcher(cmd)
 
 
-async def get_input(game_map: Map2048, user_id: str) -> Directions:
+async def get_input(game_map: Map2048, user_id: str, tracker: LatestEvent) -> Directions:
     while True:
         buffer = BytesIO()
         game_map.draw().save(buffer, format="PNG")
-        message = await prompt_until(
-            await UniMessage()
+        waiter = WaitUserInput(
+            UniMessage()
             .image(raw=buffer.getvalue())
-            .text(await lang.text("game.prompt", user_id, game_map.get_score()))
-            .export(),
-            lambda msg: msg.extract_plain_text().lower() in ["w", "s", "a", "d", "q"],
-            retry_prompt=await lang.text("game.input", user_id),
+            .text(await lang.text("game.prompt", user_id, game_map.get_score())),
+            user_id,
+            checker=lambda text: text.lower() in ["w", "s", "a", "d", "q"],
+            event=tracker.event,
         )
-        if message is None:
-            continue
-        text = message.extract_plain_text().lower()
+        try:
+            await waiter.wait(timeout=config.mg2048_input_timeout, auto_finish=False)
+        except TimeoutError:
+            raise Quited from None
+        tracker.update(waiter.get_event())
+        text = waiter.get().lower()
         if text == "q":
             raise Quited
         return {"w": Directions.UP, "s": Directions.DOWN, "a": Directions.LEFT, "d": Directions.RIGHT}[text]
 
 
 @cmd.handle()
-async def _(user_id: str = get_user_id()) -> None:
+async def _(bot: Bot, event: Event, user_id: str = get_user_id()) -> None:
     session = await create_minigame_session(user_id, "2048")
     game_map = Map2048()
+    # 连续输入时始终回复用户最新消息，避免 QQ 官方被动回复次数超限
+    tracker = LatestEvent(event, bot)
     while True:
         try:
             game_map.put_number()
         except ValueError:
             break
         try:
-            direction = await get_input(game_map, user_id)
+            direction = await get_input(game_map, user_id, tracker)
         except Quited:
             break
         if not game_map.move(direction):
-            await lang.text("game.cannot_move", user_id)
+            await tracker.send(await lang.text("game.cannot_move", user_id), at_sender=True)
     score = game_map.get_score()
     t, p = await session.finish(score, 0.75)
-    await lang.finish("game.failed", user_id, t, p, score)
+    await tracker.send(await lang.text("game.failed", user_id, t, p, score), at_sender=True)
+    await cmd.finish()

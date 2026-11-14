@@ -36,6 +36,7 @@ from ..utils.image import query_image_content
 from ..utils.image_format import try_build_image_part
 from ..utils.message import MessageParser, generate_message_string
 from ..utils.note_manager import get_context_notes
+from ..utils.provider import get_model_provider
 from ..utils.simhash import build_message_fingerprint
 from ..utils.status_manager import get_status_manager
 from ..utils.sticker_manager import get_sticker_manager
@@ -203,9 +204,9 @@ class MessageProcessor:
         Args:
             nickname: 被评价用户的昵称
             score: -2 ~ 2 的档位（0 不会走到这里）
-            reason: Jev 给出的判定理由
+            reason: 判定给出的理由
             message: 触发这次评价的消息原文，用于重复消息门控与落库
-            confidence: Jev 对本次 favor_score 的置信度（0-1）
+            confidence: 判定对本次 favor_score 的置信度（0-1）
 
         Returns:
             (给上层的结果文本, 好感度是否真的发生了变动)
@@ -1070,10 +1071,15 @@ class MessageProcessor:
 
     async def generate_system_prompt(self) -> OpenAIMessage:
         is_private = self.session.get_session_type() == "private"
+        # Gemini 模式下图片除了内嵌进上下文，还可能因为安全策略被拦下、替换成
+        # 「[图片(图片ID): 描述]」文本（见 MessageQueue.handle_blocked_images），
+        # 所以 System Prompt 需要同时定义这两种图片格式
+        dual_image_format = self.ENABLE_EMBEDDED_IMAGE and await get_model_provider() == "gemini"
         return await get_message(
             "system",
             "chat.md.jinja",
             image_placeholder=self.ENABLE_EMBEDDED_IMAGE,
+            dual_image_format=dual_image_format,
             is_group_session=not is_private,
             is_private=is_private,
             session_nickname=getattr(self.session, "nickname", None),
@@ -1299,8 +1305,8 @@ class MessageProcessor:
                 logger.exception(f"[PendingNotes:{self.session.session_id}] 分析失败: {e}")
 
     async def analyze_pre_trigger_signals(self) -> PreTriggerSignals | None:
-        """触发概率的预处理：由 Jev 依据最近的聊天记录判定五个布尔信号"""
-        from ..utils.jev_judge import analyze_pre_trigger
+        """触发概率的预处理：由 Decisions API 依据最近的聊天记录判定五个布尔信号"""
+        from ..utils.decision_judge import analyze_pre_trigger
 
         chat_history = await self.session.get_cached_messages_string(length=10, include_self_message=False)
         return await analyze_pre_trigger(chat_history, self.session.lang_str)

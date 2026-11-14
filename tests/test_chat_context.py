@@ -225,7 +225,7 @@ async def test_absorb_messages_only_appends_new_tail() -> None:
 async def test_request_id_only_marks_message_queue_messages() -> None:
     """request id 只打在 message queue 推送上来的消息（LLM 输出与工具返回）上
 
-    user / system 消息（注入进请求的图片、Jev 补发提示等）不带 request id，
+    user / system 消息（注入进请求的图片、补发提示等）不带 request id，
     请求失败时不会跟着被删掉。
     """
     db = _FakeDB()

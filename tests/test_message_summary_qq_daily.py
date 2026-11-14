@@ -2,12 +2,13 @@
 
 覆盖点：
 
-- 群内只剩 QQ 适配器 Bot 可用时，6:00 之后由第一条消息触发总结的生成与发送；
+- 群内只剩 QQ 适配器 Bot 且未开启主动消息时，6:00 之后由第一条消息被动触发总结；
+- 官方机器人允许发送主动消息时，6:00 定时任务与补偿推送均使用主动消息推送；
 - 每个群每天只推送一次；
 - 6:00 之前、未开启每日总结、群里仍有可用 OneBot bot、当天已推送时都不触发；
 - group-daily 指令消息让位给指令处理器，避免同一条消息推送两次；
 - 已绑定 OneBot 群号的群用群号统一推送状态，避免两条链路各推送一次；
-- OB11 定时推送只使用 OneBot V11 bot。
+- OB11 定时推送优先使用 OneBot V11 bot，未开启主动消息的 QQ 群不会在定时任务中发送。
 """
 
 from unittest.mock import AsyncMock, MagicMock
@@ -67,11 +68,24 @@ def _qq_event(text: str = "早上好", group_openid: str = "openid-1"):
     return event
 
 
-def _qq_bot():
+def _qq_bot(allow_proactive: bool | None = None):
+    from types import SimpleNamespace
     from nonebot.adapters.qq import Bot as QQBot
 
     bot = MagicMock(spec=QQBot)
     bot.self_id = "qq-bot"
+    if allow_proactive is None:
+        bot.get_group_bot_state = AsyncMock(side_effect=RuntimeError("11253 应用无接口访问权限"))
+    else:
+        bot.get_group_bot_state = AsyncMock(
+            return_value=SimpleNamespace(
+                allow_proactive_msg=allow_proactive,
+                recv_msg_setting="all",
+                member_role="member",
+                member_openid="bot-openid",
+                joined_at=None,
+            ),
+        )
     return bot
 
 
@@ -229,13 +243,142 @@ async def test_ob11_push_uses_v11_bot_and_marks_state(qq_daily_env, stub_summary
 
 @pytest.mark.asyncio
 async def test_ob11_push_ignores_qq_bots(qq_daily_env, stub_summary, monkeypatch) -> None:
-    """广播插件支持枚举 QQ 群后，定时任务也不能把 group_openid 当成群号发送"""
+    """未开启主动消息推送的 QQ 群在定时任务中不生成、不发送"""
     module, _, _ = qq_daily_env
+    monkeypatch.setattr(module, "get_bound_qq_number", AsyncMock(return_value=None))
     monkeypatch.setattr(module, "get_available_groups", AsyncMock(return_value={"openid-1": [_qq_bot()]}))
 
     await module.send_daily_summary_to_group("qq_openid-1")
 
     assert stub_summary.await_count == 0
+
+
+@pytest.mark.asyncio
+async def test_qq_scheduled_push_uses_active_message_when_allowed(
+    qq_daily_env, stub_summary, sent_messages, monkeypatch
+) -> None:
+    """官方机器人允许发送主动消息时，6:00 定时任务直接以主动消息推送，当天后续消息不再重复推送"""
+    from nonebot_plugin_alconna import Target
+
+    module, enabled, state = qq_daily_env
+    openid = "openid-summary-active-cron"
+    bot = _qq_bot(allow_proactive=True)
+    enabled.data.append(f"qq_{openid}")
+    monkeypatch.setattr(module, "get_bound_qq_number", AsyncMock(return_value=None))
+    monkeypatch.setattr(module, "get_available_groups", AsyncMock(return_value={openid: [bot]}))
+
+    await module.send_daily_summary_to_group(f"qq_{openid}")
+
+    assert stub_summary.await_count == 1
+    assert len(sent_messages) == 1
+    target = sent_messages[0][1]
+    assert isinstance(target, Target)
+    assert target.id == openid
+    assert target.private is False
+    assert target.source == ""
+    assert state.data[f"qq_{openid}"] == module.today_key()
+
+    await module.try_send_qq_daily_summary(bot, _qq_event(group_openid=openid), f"qq_{openid}")
+    assert stub_summary.await_count == 1
+    assert len(sent_messages) == 1
+
+
+@pytest.mark.asyncio
+async def test_qq_scheduled_push_skips_when_proactive_disabled(
+    qq_daily_env, stub_summary, sent_messages, monkeypatch
+) -> None:
+    """bot_state 明确禁止主动消息时，6:00 定时任务不推送，留给首条消息被动触发"""
+    module, _, state = qq_daily_env
+    openid = "openid-summary-disabled-cron"
+    bot = _qq_bot(allow_proactive=False)
+    monkeypatch.setattr(module, "get_bound_qq_number", AsyncMock(return_value=None))
+    monkeypatch.setattr(module, "get_available_groups", AsyncMock(return_value={openid: [bot]}))
+
+    await module.send_daily_summary_to_group(f"qq_{openid}")
+
+    assert stub_summary.await_count == 0
+    assert not sent_messages
+    assert f"qq_{openid}" not in state.data
+
+
+@pytest.mark.asyncio
+async def test_bound_group_falls_back_to_qq_active_push_when_ob11_offline(
+    qq_daily_env, stub_summary, sent_messages, monkeypatch
+) -> None:
+    """已绑定群在 OB11 离线且官方机器人支持主动消息时，定时任务改走 QQ 主动消息并写入群号状态键"""
+    from nonebot_plugin_alconna import Target
+
+    module, _, state = qq_daily_env
+    openid = "openid-summary-bound-active"
+    bot = _qq_bot(allow_proactive=True)
+    monkeypatch.setattr(module, "get_bound_group_openid", AsyncMock(return_value=openid))
+    monkeypatch.setattr(module, "get_available_groups", AsyncMock(return_value={openid: [bot]}))
+
+    await module.send_daily_summary_to_group("qq_30001")
+
+    assert stub_summary.await_count == 1
+    assert len(sent_messages) == 1
+    target = sent_messages[0][1]
+    assert isinstance(target, Target)
+    assert target.id == openid
+    assert target.source == ""
+    assert state.data["qq_30001"] == module.today_key()
+
+
+@pytest.mark.asyncio
+async def test_qq_message_trigger_uses_active_message_when_allowed(
+    qq_daily_env, stub_summary, sent_messages, monkeypatch
+) -> None:
+    """收到消息触发补偿推送时，若官方机器人允许发送主动消息则优先使用主动消息"""
+    from nonebot_plugin_alconna import Target
+
+    module, enabled, state = qq_daily_env
+    openid = "openid-summary-msg-active"
+    bot = _qq_bot(allow_proactive=True)
+    event = _qq_event(group_openid=openid)
+    enabled.data.append(f"qq_{openid}")
+    monkeypatch.setattr(module, "get_bound_qq_number", AsyncMock(return_value=None))
+
+    await module.try_send_qq_daily_summary(bot, event, f"qq_{openid}")
+
+    assert stub_summary.await_count == 1
+    assert len(sent_messages) == 1
+    target = sent_messages[0][1]
+    assert isinstance(target, Target)
+    assert target.id == openid
+    assert target.source == ""
+    assert state.data[f"qq_{openid}"] == module.today_key()
+
+
+@pytest.mark.asyncio
+async def test_qq_active_send_failure_falls_back_to_passive_event(qq_daily_env, stub_summary, monkeypatch) -> None:
+    """收到消息触发推送时，若主动消息发送失败（如配额耗尽），回退为复用当前事件被动发送"""
+    from nonebot_plugin_alconna import Target, UniMessage
+
+    module, enabled, state = qq_daily_env
+    openid = "openid-summary-msg-fallback"
+    bot = _qq_bot(allow_proactive=True)
+    event = _qq_event(group_openid=openid)
+    enabled.data.append(f"qq_{openid}")
+    monkeypatch.setattr(module, "get_bound_qq_number", AsyncMock(return_value=None))
+
+    attempts: list = []
+
+    async def fake_send(self, target=None, bot=None, **kwargs):
+        attempts.append(target)
+        if isinstance(target, Target):
+            raise RuntimeError("主动消息配额已用尽")
+        return MagicMock()
+
+    monkeypatch.setattr(UniMessage, "send", fake_send)
+
+    await module.try_send_qq_daily_summary(bot, event, f"qq_{openid}")
+
+    assert stub_summary.await_count == 1
+    assert len(attempts) == 2
+    assert isinstance(attempts[0], Target)
+    assert attempts[1] is event
+    assert state.data[f"qq_{openid}"] == module.today_key()
 
 
 @pytest.mark.asyncio

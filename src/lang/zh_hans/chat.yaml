@@ -132,6 +132,12 @@ command:
     unchanged: 当前已是{}模式，无需切换。
     changed: 已切换到{}模式，当前会话的所有上下文已重置。
   no_argv: 无效参数，请使用 {__prefix__}help chat 获取该命令的使用方法！
+  model:
+    no_permission: 权限不足，仅超级用户可以使用此命令。
+    current: 当前全局模型 Provider：{}。可用 {__prefix__}chat model <{}> 切换。
+    changed: 已切换全局模型 Provider 为 {}。
+    unchanged: 当前全局模型 Provider 已经是 {}，无需切换。
+    invalid: 无效的模型 Provider：{}。可选值：{}
   desire:
     get: |
       消息触发概率: {}%
@@ -192,6 +198,7 @@ help:
   usage16: chat mode [passionate|standard|silent] (查看或切换互动模式，切换将重置会话上下文)
   usage17: chat reset <会话ID> (重置指定会话的所有历史消息并重置会话状态[SU])
   usage18: chat review-all (对所有会话执行记忆整理并重置其消息队列[SU])
+  usage19: chat model [openai|gemini] (查看或切换全局模型 Provider[SU])
 
 help_gal_mode:
   description: 私聊备选回复
@@ -341,7 +348,7 @@ sticker:
   search_empty: '没有找到匹配的表情包'
   sent: '表情包已发送'
   sent_detail: "已发送表情包：{}"
-  jev_declined: "经过判定，本次不适合发送表情包，没有发送"
+  declined: "经过判定，本次不适合发送表情包，没有发送"
   low_confidence: "表情包判定的置信度过低（{}），本次没有发送表情包"
   judge_failed: "表情包判定暂时不可用，本次没有发送表情包"
   send_failed: '发送失败: {}'
@@ -534,7 +541,7 @@ judge:
   user_not_registered: "用户 {} 还未注册（其好感度在注册之前是只读的），无法评价。"
   cooldown: "你在一小时内只可以评价 {} 一次。"
   daily_limit: "今天对 {} 的评价次数已达上限。"
-  low_confidence: "对 {} 的评价置信度不足：这条消息最近出现过 {} 次，需要 Jev 的置信度不低于 {}，本次好感度未变动。"
+  low_confidence: "对 {} 的评价置信度不足：这条消息最近出现过 {} 次，需要判定的置信度不低于 {}，本次好感度未变动。"
   success: "已记录对 {} 的评价：{}。好感度变化已生效。"
   message_analysis_system: |
     你是一个消息分析助手。
@@ -659,6 +666,11 @@ proactive_message:
   prompt: |
     你被授权在私聊中发起一次"主动消息"。你的回复必须完全符合你的人格设定，并严格遵守所有的输出规则。
     本次主动消息的主题为：{}
+    发起方式提示：像平时找朋友私聊一样自然开口，不要一上来就一次性发一大段话把内容全倒出来，也避免每次都用同一种固定问句千篇一律地开场。请结合当前时间、上下文与好感度灵活选择开场方式：
+    - 结合时段与近况轻寒暄：根据早晚、饭点、深夜、周末或近期聊过的事随口打个招呼、关心一句（也可搭配合适的表情包），等对方回应后再引出主题；
+    - 抛半句引子：想分享趣事、新发现或吐槽时，先发一句简短起头勾起好奇，把具体细节留到对方接话后再展开；
+    - 简短小事直接说：若主题本身只是一句简短关心或随手分享，直接自然说出即可，不必强行拆成两轮。
+    注意：若选择先寒暄或抛引子，本轮点到为止，不要在同一轮紧接着把正题一股脑发完；之后若对方隔了很久才回或直接聊起了别的事，顺着对方当下的话聊即可，不必强行拉回原主题。
 
 tool_executor:
   error: |

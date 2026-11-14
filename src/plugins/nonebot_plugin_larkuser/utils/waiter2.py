@@ -49,6 +49,7 @@ class Waiter:
         checker: Optional[Callable[[UniMessage], bool]] = None,
         default: Optional[UniMessage] = None,
         event: Optional[Event] = None,
+        rule: Optional[Callable[..., bool]] = None,
     ) -> None:
         self.prompt_text = prompt_text
         self.user_id = user_id
@@ -57,7 +58,8 @@ class Waiter:
         self.answer: Optional[UniMessage] = None
         # 发送 prompt 时所针对的事件；收到新消息后更新为最新事件
         self.event = event
-        self.message_matcher = on_message(block=True, rule=self.check_user)
+        # 默认只接收等待者本人的消息；子类可传入自定义规则（如按群聊匹配）
+        self.message_matcher = on_message(block=True, rule=rule or self.check_user)
         self.message_matcher.handle()(self.handle_message)
 
     def get_event(self) -> Optional[Event]:
@@ -131,6 +133,7 @@ class WaitUserInput(Waiter):
         checker: Optional[Callable[[str], bool]] = None,
         default: Optional[str] = None,
         event: Optional[Event] = None,
+        rule: Optional[Callable[..., bool]] = None,
     ) -> None:
         super().__init__(
             prompt_text=prompt_text,
@@ -138,6 +141,7 @@ class WaitUserInput(Waiter):
             checker=self.wrap_text_checker(checker),
             default=UniMessage(default) if isinstance(default, str) else default,
             event=event,
+            rule=rule,
         )
 
     @staticmethod

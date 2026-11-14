@@ -18,6 +18,7 @@
 from datetime import datetime
 import math
 import random
+from nonebot.adapters import Bot, Event
 from nonebot_plugin_alconna import UniMessage
 from nonebot_plugin_bag.utils.bag import give_special_item
 from nonebot_plugin_orm import get_session
@@ -69,9 +70,26 @@ class MiniGameSession:
                 user_data.success_count += 1
             await session.commit()
 
-    async def quit(self, text: Optional[str] = None, matcher: Matcher = Matcher()) -> NoReturn:
+    async def quit(
+        self,
+        text: Optional[str] = None,
+        matcher: Matcher = Matcher(),
+        event: Optional[Event] = None,
+        bot: Optional[Bot] = None,
+    ) -> NoReturn:
+        """结束小游戏。
+
+        连续交互的小游戏传入最新的 ``event`` 时，退出提示会显式回复到该事件，
+        避免 QQ 官方机器人对最初那条消息的被动回复次数超限。
+        """
         if text is not None:
+            if event is not None:
+                await UniMessage(text).send(target=event, bot=bot)
+                await matcher.finish()
             await matcher.finish(text)
+        if event is not None:
+            await UniMessage(await lang.text("quit.quit", self.user_id)).send(target=event, bot=bot)
+            await matcher.finish()
         await lang.finish("quit.quit", self.user_id)
 
     async def finish(self, game_point: int = 100, rate: float = 1) -> tuple[int, int]:
@@ -91,8 +109,10 @@ class MiniGameSession:
         message: str | UniMessage,
         checker: Optional[Callable[[str], bool]] = None,
         parser: Callable[[str], T] = lambda msg: msg,
+        event: Optional[Event] = None,
+        events: Optional[list[Event]] = None,
     ) -> T:
-        return await prompt(message, self.user_id, checker, parser=parser)
+        return await prompt(message, self.user_id, checker, parser=parser, event=event, events=events)
 
     async def gain_vimcoin(self, point: int, rate: float) -> None:
         if point <= 25:

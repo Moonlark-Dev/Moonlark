@@ -1,18 +1,20 @@
-"""每日 Note 整理测试：聊天记录匹配 → Jev 判定 delete → 删除"""
+"""每日 Note 整理测试：聊天记录匹配 → Decisions API 判定 delete → 删除"""
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any
 from unittest.mock import AsyncMock, patch
 
+import pytest
+
 if TYPE_CHECKING:
     from nonebot_plugin_chat.models import Note
 
 
-def _note(note_id: int, content: str, keywords: str = "") -> "Note":
+def _note(note_id: int, content: str, keywords: str = "") -> Note:
     from nonebot_plugin_chat.models import Note
 
     return Note(
@@ -20,7 +22,7 @@ def _note(note_id: int, content: str, keywords: str = "") -> "Note":
         context_id="pytest_note_group",
         content=content,
         keywords=keywords,
-        created_time=datetime(2026, 9, 1, 12, 0).timestamp(),
+        created_time=datetime(2026, 9, 1, 12, 0, tzinfo=timezone.utc).timestamp(),
         expire_time=None,
     )
 
@@ -34,7 +36,7 @@ def _fake_session(messages: list[Any]) -> Any:
 
 
 def _choice_answer(value: str, confidence: float) -> Any:
-    from nonebot_plugin_jev.types import ChoiceAnswer
+    from nonebot_plugin_decision.types import ChoiceAnswer
 
     return ChoiceAnswer(choice=value, confidence=confidence)
 
@@ -67,7 +69,7 @@ async def test_serialize_openai_history_skips_system_and_images() -> None:
 
 
 async def test_review_deletes_notes_marked_delete() -> None:
-    """Jev 判定 delete 且置信度达到下限的笔记被删除，keep 或低置信度保留"""
+    """判定 delete 且置信度达到下限的笔记被删除，keep 或低置信度保留"""
     from nonebot_plugin_chat.utils import note_manager as note_manager_module
 
     notes = [
@@ -83,7 +85,7 @@ async def test_review_deletes_notes_marked_delete() -> None:
         delete_note=AsyncMock(side_effect=lambda note_id: deleted.append(note_id) or True),
     )
 
-    assert note_manager_module.NOTE_DELETE_MIN_CONFIDENCE == 0.72
+    assert pytest.approx(0.72) == note_manager_module.NOTE_DELETE_MIN_CONFIDENCE
 
     answers = {
         "note_1": _choice_answer("delete", confidence=0.9),  # 删除
@@ -94,7 +96,7 @@ async def test_review_deletes_notes_marked_delete() -> None:
     }
     captured: dict[str, Any] = {}
 
-    async def fake_ask(state: Any, questions: dict, **kwargs: Any) -> dict:
+    async def fake_ask(state: Any, questions: dict[str, Any], **_kwargs: Any) -> dict[str, Any]:
         captured["state"] = state
         captured["questions"] = questions
         return answers
@@ -105,7 +107,7 @@ async def test_review_deletes_notes_marked_delete() -> None:
             return_value=[
                 SimpleNamespace(
                     date="2026-09-29",
-                    created_at=datetime(2026, 9, 29, 10, 0),
+                    created_at=datetime(2026, 9, 29, 10, 0, tzinfo=timezone.utc),
                     content='{"topics": ["生日"], "events": ["小明过了生日"]}',
                 ),
             ],
@@ -117,36 +119,32 @@ async def test_review_deletes_notes_marked_delete() -> None:
     with (
         patch.object(note_manager_module, "get_context_notes", AsyncMock(return_value=fake_manager)),
         patch.object(note_manager_module, "event_collector", fake_event_collector),
-        patch("nonebot_plugin_jev.ask", AsyncMock(side_effect=fake_ask)),
+        patch("nonebot_plugin_decision.ask", AsyncMock(side_effect=fake_ask)),
     ):
         deleted_count = await note_manager_module.review_session_notes(session)
 
     assert deleted_count == 2
     assert deleted == [1, 4]
 
-    # state 里包含聊天记录与事件列表
     state = captured["state"]
     assert "小明 生日 考试 都提到了" in state["chat_history"]
     assert "小明过了生日" in state["events"]
-    # 每条匹配到的笔记都有一个对应的问题
     assert set(captured["questions"]) == {"note_1", "note_2", "note_3", "note_4", "note_5"}
-    # 问题文本是本地化键引用，标签只剩 keep / delete
     question = captured["questions"]["note_1"]
     assert question.criteria.keys() == {"keep", "delete"}
 
 
-async def test_note_review_lang_matches_keep_delete_tags() -> None:
+def test_note_review_lang_matches_keep_delete_tags() -> None:
     """语言文件里的审查提示词已合并为 keep / delete，并保留「只保留最新」规则"""
     import yaml
 
-    lang_file = Path(__file__).resolve().parents[1] / "src" / "lang" / "zh_hans" / "jev.yaml"
+    lang_file = Path(__file__).resolve().parents[1] / "src" / "lang" / "zh_hans" / "decision.yaml"
     review = yaml.safe_load(lang_file.read_text(encoding="utf-8"))["note_review"]
 
     assert set(review["criteria"]) == {"keep", "delete"}
     assert "wrong" not in review["criteria"]
     assert "expired" not in review["criteria"]
     assert "只保留最新" in review["question"]
-    # 用户的 delete 判定清单
     for clue in ("后续事件是否明确覆盖了旧信息", "已经完成、结束、取消", "超过事项发生的日期", "特定短期场景"):
         assert clue in review["question"]
 
@@ -163,8 +161,8 @@ async def test_review_skips_when_no_matched_notes() -> None:
     fake_manager.delete_note.assert_not_awaited()
 
 
-async def test_review_survives_jev_failure() -> None:
-    """Jev 不可用时整理步骤直接跳过，不抛异常、不删笔记"""
+async def test_review_survives_decision_failure() -> None:
+    """Decisions API 不可用时整理步骤直接跳过，不抛异常、不删笔记"""
     from nonebot_plugin_chat.utils import note_manager as note_manager_module
 
     notes = [_note(1, "内容", keywords="")]
@@ -181,7 +179,7 @@ async def test_review_survives_jev_failure() -> None:
     with (
         patch.object(note_manager_module, "get_context_notes", AsyncMock(return_value=fake_manager)),
         patch.object(note_manager_module, "event_collector", fake_event_collector),
-        patch("nonebot_plugin_jev.ask", AsyncMock(side_effect=RuntimeError("no key"))),
+        patch("nonebot_plugin_decision.ask", AsyncMock(side_effect=RuntimeError("no key"))),
     ):
         result = await note_manager_module.review_session_notes(session)
 

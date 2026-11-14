@@ -3,12 +3,12 @@ from datetime import datetime, timedelta
 from nonebot import get_bots, logger
 from nonebot.adapters import Event
 from nonebot.adapters.onebot.v11 import Bot as V11Bot
-from nonebot.adapters.qq import Bot as QQBot
+from nonebot.adapters.qq import Adapter as QQAdapter, Bot as QQBot
 from nonebot.adapters.qq.event import GroupMessageCreateEvent
-from nonebot_plugin_alconna import UniMessage
+from nonebot_plugin_alconna import Target, UniMessage
 from nonebot_plugin_apscheduler import scheduler
 from nonebot_plugin_bots.models import GroupBind
-from nonebot_plugin_broadcast import get_available_groups
+from nonebot_plugin_broadcast import get_available_groups, record_group_message, refresh_group_bot_state
 from nonebot_plugin_htmlrender import md_to_pic
 from nonebot_plugin_larkutils import FileType, open_file
 from nonebot_plugin_larkutils.command import get_command_prefix
@@ -24,7 +24,7 @@ from .models import GroupMessage, GroupDailySummary, MVPRecord
 # This file is kept for backward compatibility and scheduler tasks
 # Most logic has been moved to matcher.py, ai_utils.py, render_utils.py
 
-# 每日总结定时推送的时刻。群内只剩 QQ 适配器 Bot 可用时，无法主动推送，
+# 每日总结定时推送的时刻。群内只剩 QQ 官方 Bot 且未开启主动消息推送时，
 # 改为在该时刻之后由当天收到的第一条消息触发（见 try_send_qq_daily_summary）。
 DAILY_SUMMARY_HOUR = 6
 
@@ -60,6 +60,57 @@ async def get_bound_qq_number(group_openid: str) -> str | None:
     async with get_session() as session:
         bind = await session.scalar(select(GroupBind).where(GroupBind.group_openid == group_openid))
     return bind.group_qq_number if bind is not None else None
+
+
+async def get_bound_group_openid(group_qq_number: str) -> str | None:
+    """获取 OneBot 群号绑定的 QQ 群 openid，未绑定时返回 None"""
+    async with get_session() as session:
+        bind = await session.scalar(select(GroupBind).where(GroupBind.group_qq_number == group_qq_number))
+    return bind.group_openid if bind is not None else None
+
+
+async def resolve_related_group_ids(group_id: str) -> list[str]:
+    """返回同一物理群在 OB11 / QQ 官方下的全部群标识（含自身）"""
+    raw = group_id.removeprefix("qq_")
+    if raw.isdigit():
+        bound_openid = await get_bound_group_openid(raw)
+        if bound_openid:
+            openid_key = f"qq_{bound_openid}"
+            if openid_key != group_id:
+                return [group_id, openid_key]
+        return [group_id]
+    bound_qq_number = await get_bound_qq_number(raw)
+    if bound_qq_number:
+        qq_key = f"qq_{bound_qq_number}"
+        if qq_key != group_id:
+            return [group_id, qq_key]
+    return [group_id]
+
+
+def build_qq_active_group_target(bot: QQBot, group_openid: str) -> Target:
+    """构造 QQ 官方群主动消息 Target（不带 source，适配器按主动消息发送）"""
+    return Target(group_openid, source="", adapter=QQAdapter.get_name(), self_id=bot.self_id)
+
+
+async def can_send_qq_active_message(
+    bot: QQBot,
+    group_openid: str,
+    bound_qq_number: str | None = None,
+) -> bool:
+    """检查 QQ 官方机器人在指定群聊中是否允许发送主动消息
+
+    复用 broadcast 插件维护的 ``BroadcastGroup`` 缓存（每小时最多刷新一次
+    ``bot_state``）；查询失败或未开启主动消息推送时返回 ``False``。
+    """
+    if not group_openid:
+        return False
+    try:
+        group_key = await record_group_message(bound_qq_number, group_openid)
+        allow_proactive = await refresh_group_bot_state(group_key, bot)
+    except Exception as e:
+        logger.debug(f"检查群 {group_openid} 主动消息权限失败: {e}")
+        return False
+    return allow_proactive is True
 
 
 async def resolve_state_key(group_id: str) -> str:
@@ -125,21 +176,32 @@ def is_group_daily_invocation(event: Event) -> bool:
 async def get_cached_daily_summary(group_id: str) -> str | None:
     """Get cached daily summary for a group if it exists for today"""
     today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    related_ids = await resolve_related_group_ids(group_id)
     async with get_session() as session:
-        record = await session.get(GroupDailySummary, {"group_id": group_id, "date": today})
-        return record.summary if record else None
+        for candidate_id in related_ids:
+            record = await session.get(GroupDailySummary, {"group_id": candidate_id, "date": today})
+            if record:
+                return record.summary
+        return None
 
 
-async def update_mvp_records(group_id: str, summary_string: str, start_time: datetime, end_time: datetime) -> None:
+async def update_mvp_records(
+    group_id: str,
+    summary_string: str,
+    start_time: datetime,
+    end_time: datetime,
+    related_group_ids: list[str] | None = None,
+) -> None:
     """根据总结中选出的 MVP 更新 MVP 排行榜"""
     mvp_data = await extract_mvp_from_summary(summary_string)
     if not mvp_data:
         return
     mvp_nickname, _ = mvp_data
+    group_ids = related_group_ids or [group_id]
     async with get_session() as session:
         mvp_result = await session.scalars(
             select(GroupMessage)
-            .where(GroupMessage.group_id == group_id)
+            .where(GroupMessage.group_id.in_(group_ids))
             .where(GroupMessage.timestamp >= start_time)
             .where(GroupMessage.timestamp <= end_time)
             .where(GroupMessage.sender_nickname == mvp_nickname),
@@ -161,11 +223,12 @@ async def generate_daily_summary(group_id: str) -> str | None:
     """
     end_time = datetime.now()
     start_time = end_time - timedelta(days=1)
+    related_ids = await resolve_related_group_ids(group_id)
 
     async with get_session() as session:
         result = await session.scalars(
             select(GroupMessage)
-            .where(GroupMessage.group_id == group_id)
+            .where(GroupMessage.group_id.in_(related_ids))
             .where(GroupMessage.timestamp >= start_time)
             .where(GroupMessage.timestamp <= end_time)
             .order_by(GroupMessage.id_),
@@ -195,41 +258,92 @@ async def generate_daily_summary(group_id: str) -> str | None:
             session.add(GroupDailySummary(group_id=group_id, date=today, summary=summary_string))
         await session.commit()
 
-    await update_mvp_records(group_id, summary_string, start_time, end_time)
+    await update_mvp_records(group_id, summary_string, start_time, end_time, related_ids)
     return summary_string
 
 
 async def send_daily_summary_to_group(group_id: str) -> None:
-    """6:00 定时任务使用：通过 OneBot V11 主动推送
+    """6:00 定时任务使用：主动推送当日群聊总结
 
-    只处理有可用 OB11 bot 的群聊；群内只剩 QQ 适配器 Bot 时跳过，
-    由 try_send_qq_daily_summary 在收到消息时被动推送。
+    优先通过 OneBot V11 推送；群内没有可用 OB11 bot 时，若存在已开启主动消息推送的
+    QQ 官方机器人，则使用主动消息推送；否则跳过，交由 try_send_qq_daily_summary 在
+    收到消息时补发。
     """
-    target_group_id = group_id.split("_", 1)[1]
+    raw_id = group_id.removeprefix("qq_")
+    if raw_id.isdigit():
+        group_qq_number: str | None = raw_id
+        group_openid: str | None = None
+    else:
+        group_qq_number = await get_bound_qq_number(raw_id)
+        group_openid = raw_id
+
     available_groups = await get_available_groups()
-    bot = next((item for item in available_groups.get(target_group_id, []) if isinstance(item, V11Bot)), None)
-    if bot is None:
+    v11_bot = (
+        next((item for item in available_groups.get(group_qq_number, []) if isinstance(item, V11Bot)), None)
+        if group_qq_number
+        else None
+    )
+    if v11_bot is not None and group_qq_number is not None:
+        state_key = daily_state_key(group_id, group_qq_number)
+        if state_key in _qq_daily_summary_pending:
+            return
+        _qq_daily_summary_pending.add(state_key)
+        try:
+            summary_string = await generate_daily_summary(group_id)
+            if summary_string is None:
+                return
+            image_bytes = await md_to_pic(summary_string)
+            msg = await UniMessage().image(raw=image_bytes).export(v11_bot)
+            await v11_bot.send_group_msg(group_id=int(group_qq_number), message=msg)
+            await mark_daily_summary_sent(state_key)
+        except Exception as e:
+            logger.exception(e)
+        finally:
+            _qq_daily_summary_pending.discard(state_key)
         return
 
-    summary_string = await generate_daily_summary(group_id)
-    if summary_string is None:
+    if group_openid is None and group_qq_number is not None:
+        group_openid = await get_bound_group_openid(group_qq_number)
+    if group_openid is None:
         return
 
+    qq_bot = next((item for item in available_groups.get(group_openid, []) if isinstance(item, QQBot)), None)
+    if qq_bot is None:
+        return
+    if not await can_send_qq_active_message(qq_bot, group_openid, group_qq_number):
+        return
+
+    state_key = daily_state_key(group_id, group_qq_number)
+    if state_key in _qq_daily_summary_pending:
+        return
+    _qq_daily_summary_pending.add(state_key)
     try:
+        summary_string = await generate_daily_summary(group_id)
+        if summary_string is None:
+            return
         image_bytes = await md_to_pic(summary_string)
-        msg = await UniMessage().image(raw=image_bytes).export(bot)
-        await bot.send_group_msg(group_id=int(target_group_id), message=msg)
+        target = build_qq_active_group_target(qq_bot, group_openid)
+        await UniMessage().image(raw=image_bytes).send(target=target, bot=qq_bot)
+        await mark_daily_summary_sent(state_key)
     except Exception as e:
         logger.exception(e)
-        return
+    finally:
+        _qq_daily_summary_pending.discard(state_key)
 
-    await mark_daily_summary_sent(await resolve_state_key(group_id))
 
+async def send_daily_summary_to_qq(
+    bot: QQBot,
+    event: GroupMessageCreateEvent,
+    group_id: str,
+    state_key: str,
+    *,
+    bound_qq_number: str | None = None,
+    prefer_active: bool = True,
+) -> None:
+    """QQ 适配器使用：发送当日群聊总结
 
-async def send_daily_summary_to_qq(bot: QQBot, event: GroupMessageCreateEvent, group_id: str, state_key: str) -> None:
-    """QQ 适配器使用：复用当前消息事件被动发送当日总结
-
-    QQ 官方的主动消息受限，因此必须挂在收到的事件上发送。
+    官方机器人支持主动消息（且 ``prefer_active`` 为真）时优先通过主动消息推送；
+    否则（或主动推送失败时）复用当前消息事件被动发送。
     """
     summary_string = await generate_daily_summary(group_id)
     if summary_string is None:
@@ -237,18 +351,35 @@ async def send_daily_summary_to_qq(bot: QQBot, event: GroupMessageCreateEvent, g
 
     try:
         image_bytes = await md_to_pic(summary_string)
-        await UniMessage().image(raw=image_bytes).send(target=event, bot=bot)
+        message = UniMessage().image(raw=image_bytes)
     except Exception as e:
         logger.exception(e)
         return
+
+    sent = False
+    if prefer_active and await can_send_qq_active_message(bot, event.group_openid, bound_qq_number):
+        try:
+            target = build_qq_active_group_target(bot, event.group_openid)
+            await message.send(target=target, bot=bot)
+            sent = True
+        except Exception as e:
+            logger.warning(f"群 {event.group_openid} 主动推送每日总结失败，回退为被动消息: {e}")
+
+    if not sent:
+        try:
+            await message.send(target=event, bot=bot)
+        except Exception as e:
+            logger.exception(e)
+            return
 
     await mark_daily_summary_sent(state_key)
 
 
 async def try_send_qq_daily_summary(bot: QQBot, event: GroupMessageCreateEvent, group_id: str) -> None:
-    """群内只剩 QQ 适配器 Bot 可用时的每日总结推送
+    """群内只剩 QQ 适配器 Bot 可用时的每日总结补偿推送
 
-    在 6:00 之后收到当天第一条消息时生成并发送；每个群每天只推送一次。
+    若当天尚未完成主动推送，则在 6:00 之后收到消息时生成并推送（支持主动消息时优先
+    使用主动消息，否则使用被动消息）；每个群每天只推送一次。
     """
     if datetime.now().hour < DAILY_SUMMARY_HOUR:
         return
@@ -260,6 +391,8 @@ async def try_send_qq_daily_summary(bot: QQBot, event: GroupMessageCreateEvent, 
 
     bound_qq_number = await get_bound_qq_number(event.group_openid)
     state_key = daily_state_key(group_id, bound_qq_number)
+    if state_key in _qq_daily_summary_pending:
+        return
 
     if not await is_daily_summary_enabled(group_id, state_key):
         return
@@ -270,12 +403,14 @@ async def try_send_qq_daily_summary(bot: QQBot, event: GroupMessageCreateEvent, 
         return
 
     _qq_daily_summary_pending.add(group_id)
+    _qq_daily_summary_pending.add(state_key)
     try:
-        await send_daily_summary_to_qq(bot, event, group_id, state_key)
+        await send_daily_summary_to_qq(bot, event, group_id, state_key, bound_qq_number=bound_qq_number)
     except Exception as e:
         logger.exception(e)
     finally:
         _qq_daily_summary_pending.discard(group_id)
+        _qq_daily_summary_pending.discard(state_key)
 
 
 @scheduler.scheduled_job("cron", hour=6, minute=0, id="daily_message_summary")
@@ -288,6 +423,8 @@ async def send_daily_message_summary() -> None:
     # Send summary to each enabled group
     for group_id in enabled_groups:
         try:
+            if await is_daily_summary_sent(await resolve_state_key(group_id)):
+                continue
             await send_daily_summary_to_group(group_id)
         except Exception as e:
             logger.exception(e)

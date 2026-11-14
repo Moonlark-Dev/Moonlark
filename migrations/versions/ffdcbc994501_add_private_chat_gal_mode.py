@@ -1,7 +1,7 @@
 """给 PrivateChatConfig 添加 gal_mode
 
 迁移 ID: ffdcbc994501
-父迁移: b7e4c1a2d9f0
+父迁移: a7c3e5f9b1d4
 创建时间: 2026-11-10 10:00:00.000000
 
 nonebot_plugin_chat_privatechatconfig.gal_mode：私聊备选回复开关，默认关闭。
@@ -19,7 +19,7 @@ from alembic import op
 from sqlalchemy import inspect
 
 revision: str = "ffdcbc994501"
-down_revision: str | Sequence[str] | None = "b7e4c1a2d9f0"
+down_revision: str | Sequence[str] | None = "a7c3e5f9b1d4"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

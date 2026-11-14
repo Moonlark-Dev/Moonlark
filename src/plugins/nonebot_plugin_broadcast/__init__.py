@@ -24,7 +24,7 @@ from . import web  # noqa: E402, F401 - 注册更新公告 Web 接口
 from . import __main__
 from .__main__ import get_available_groups
 from .announcement import has_new_update, load_announcement, mark_update_read  # noqa: E402
-from .groups import list_group_snapshots  # noqa: E402
+from .groups import list_group_snapshots, record_group_message, refresh_group_bot_state  # noqa: E402
 
 __all__ = [
     "get_available_groups",
@@ -32,4 +32,6 @@ __all__ = [
     "list_group_snapshots",
     "load_announcement",
     "mark_update_read",
+    "record_group_message",
+    "refresh_group_bot_state",
 ]

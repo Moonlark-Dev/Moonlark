@@ -42,6 +42,8 @@ class Config(BaseModel):
         "block_2048": (255, 0, 0),
     }
     mg2048_font_size: int = 72
+    # 等待移动输入的超时时间（秒）
+    mg2048_input_timeout: int = 300
 
 
 config = get_plugin_config(Config)

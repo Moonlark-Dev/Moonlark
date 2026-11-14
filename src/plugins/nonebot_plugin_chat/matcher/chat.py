@@ -18,6 +18,7 @@
 import json
 
 from nonebot import on_command
+from nonebot.log import logger
 from nonebot.adapters import Bot, Event, Message
 from nonebot.matcher import Matcher
 from nonebot.params import CommandArg
@@ -36,9 +37,10 @@ from nonebot_plugin_chat.core.session.base import BaseSession
 
 from ..lang import lang
 from ..models import ChatGroup, PrivateChatConfig
+from ..utils.provider import VALID_PROVIDERS, get_model_provider, normalize_provider, set_model_provider
 from ..utils.timing_stats import timing_stats_manager
 
-PRIVATE_CHAT_COMMANDS = ("switch", "on", "off", "reset")
+PRIVATE_CHAT_COMMANDS = ("switch", "on", "off", "reset", "model")
 
 
 class CommandHandler:
@@ -302,6 +304,34 @@ class CommandHandler:
             else:
                 await lang.finish("command.ignore_mention.not_found", self.user_id, target_id)
 
+    async def handle_model(self) -> None:
+        """查看或切换全局模型 Provider（仅超级用户可用）"""
+        if not await is_superuser(self.event, self.bot):
+            await lang.finish("command.model.no_permission", self.user_id)
+
+        current_provider = await get_model_provider()
+        if len(self.argv) < 2:
+            await lang.finish("command.model.current", self.user_id, current_provider)
+
+        provider = normalize_provider(self.argv[1])
+        if provider is None:
+            await lang.finish(
+                "command.model.invalid",
+                self.user_id,
+                self.argv[1],
+                "|".join(VALID_PROVIDERS),
+            )
+        if provider == current_provider:
+            await lang.finish("command.model.unchanged", self.user_id, provider)
+        await set_model_provider(provider)
+        logger.info(f"全局模型 Provider 已切换为 {provider}（操作者 {self.user_id}）")
+        if provider == "gemini":
+            from nonebot_plugin_gemini.config import config as gemini_config
+
+            if not gemini_config.gemini_api_key:
+                logger.warning("已切换为 gemini，但未配置 GEMINI_API_KEY，Chat 请求会失败")
+        await lang.finish("command.model.changed", self.user_id, provider)
+
     async def handle_mode(self) -> None:
         """处理互动模式切换命令"""
         if len(self.argv) < 2:
@@ -392,6 +422,8 @@ class CommandHandler:
                 await self.handle_stats()
             case "mode":
                 await self.handle_mode()
+            case "model":
+                await self.handle_model()
             case "compact":
                 await self.handle_compact()
             case "review-all":

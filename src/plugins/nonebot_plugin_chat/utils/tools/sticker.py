@@ -27,7 +27,7 @@ from ..sticker_manager import get_sticker_manager
 if TYPE_CHECKING:
     from ...core.session.base import BaseSession
 
-# 每次发送时提交给 Jev 的候选表情包数量
+# 每次发送时提交给判定模型的候选表情包数量
 SEND_STICKER_CANDIDATE_LIMIT = 5
 
 
@@ -82,8 +82,8 @@ class StickerTools:
         """根据关键词发送表情包
 
         流程：用关键词在数据库中搜索候选表情包，然后把请求的关键词、
-        最近五条消息与 Moonlark 的思考内容提交给 Jev，由它选出最优的
-        一张发送；Jev 决定不发送或置信度过低时不发送。
+        最近五条消息与 Moonlark 的思考内容提交给判定模型，由它选出最优的
+        一张发送；判定决定不发送或置信度过低时不发送。
 
         Args:
             query: 描述要发送的表情包的关键词
@@ -91,7 +91,7 @@ class StickerTools:
         Returns:
             工具执行结果：发送了什么，或为什么不发送
         """
-        from ..jev_judge import select_sticker
+        from ..decision_judge import select_sticker
 
         # 根据关键词在数据库中搜索候选
         stickers = await self.manager.search_sticker(query, limit=SEND_STICKER_CANDIDATE_LIMIT)
@@ -115,11 +115,11 @@ class StickerTools:
                     self.session.lang_str,
                     selection.description,
                 )
-            # Jev 选中的表情包在发送前被删除，按不可用处理
-            logger.warning(f"Jev 选中的表情包不存在: {selection.sticker_id}")
+            # 判定选中的表情包在发送前被删除，按不可用处理
+            logger.warning(f"判定选中的表情包不存在: {selection.sticker_id}")
 
         if selection.status == "declined":
-            return await lang.text("sticker.jev_declined", self.session.lang_str)
+            return await lang.text("sticker.declined", self.session.lang_str)
         if selection.status == "low_confidence":
             return await lang.text("sticker.low_confidence", self.session.lang_str, f"{selection.confidence:.0%}")
         return await lang.text("sticker.judge_failed", self.session.lang_str)

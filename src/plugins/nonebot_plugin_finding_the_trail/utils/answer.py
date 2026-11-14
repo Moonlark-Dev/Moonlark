@@ -16,12 +16,13 @@
 # ##############################################################################
 
 import io
-from nonebot.internal.adapter import Message
 from nonebot_plugin_alconna import UniMessage
+from nonebot_plugin_larkuser.utils.waiter2 import Waiter
+from nonebot_plugin_larkutils import LatestEvent
 from typing import TYPE_CHECKING
-from nonebot_plugin_waiter import prompt
 from .string import get_command_list_string
 from nonebot_plugin_finding_the_trail.__main__ import lang
+from nonebot_plugin_finding_the_trail.config import config
 from nonebot_plugin_finding_the_trail.exceptions import Quited
 from .enums import Directions
 from nonebot_plugin_finding_the_trail.utils.image import generate_map_image
@@ -34,24 +35,31 @@ DIRECTIONS_DICT = {"w": Directions.UP, "a": Directions.LEFT, "s": Directions.DOW
 
 class AnswerGetter:
 
-    def __init__(self, user_id: str, ftt_map: "FttMap") -> None:
+    def __init__(self, user_id: str, ftt_map: "FttMap", tracker: LatestEvent) -> None:
         self.user_id = user_id
         self.map = ftt_map
-        self.next_message = ""
+        self.tracker = tracker
+        self.next_message: str | UniMessage = ""
         self.command_list = []
 
     async def send(self) -> str:
-        return (await prompt(self.next_message)).extract_plain_text()
+        prompt = self.next_message if isinstance(self.next_message, UniMessage) else UniMessage(self.next_message)
+        waiter = Waiter(prompt, self.user_id, event=self.tracker.event)
+        try:
+            await waiter.wait(timeout=config.ftt_input_timeout, auto_finish=False)
+        except TimeoutError:
+            raise Quited from None
+        self.tracker.update(waiter.get_event())
+        return waiter.get(lambda message: message.extract_plain_text())
 
-    async def get_map_message(self) -> Message:
+    async def get_map_message(self) -> UniMessage:
         fp = io.BytesIO()
         generate_map_image(self.map.map).save(fp, "PNG")
-        message = (
+        return (
             UniMessage()
             .image(raw=fp.getvalue())
             .text(await lang.text("ftt.start", self.user_id, len(self.command_list), len(self.map.answer)))
         )
-        return await message.export()
 
     async def get_input(self) -> list[Directions]:
         msg = await self.send()
@@ -60,7 +68,7 @@ class AnswerGetter:
             if o in DIRECTIONS_DICT:
                 d_list.append(DIRECTIONS_DICT[o])
             elif o == "q":
-                raise Quited()
+                raise Quited
             elif o == "c":
                 d_list.clear()
                 self.command_list.clear()

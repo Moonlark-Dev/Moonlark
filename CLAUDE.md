@@ -298,8 +298,10 @@ Guidelines:
   initialises NoneBot only in a session-scoped autouse fixture, so a module-level plugin import fails during
   collection with `NoneBot has not been initialized`.
 - `tests/conftest.py` also registers the Console/OneBot V11 adapters, loads every plugin from
-  `pyproject.toml`, and sets `ALEMBIC_STARTUP_CHECK=False`; it only falls back to the in-memory SQLite URL
-  (`setdefault`) when `SQLALCHEMY_DATABASE_URL` is not already set — CI sets it to the job's MySQL service.
+  `pyproject.toml`, skips `nonebot_plugin_htmlrender` startup browser launch / auto-install (tests mock
+  rendering calls instead of starting Playwright), and sets `ALEMBIC_STARTUP_CHECK=False`; it only falls back
+  to the in-memory SQLite URL (`setdefault`) when `SQLALCHEMY_DATABASE_URL` is not already set — CI sets it to
+  the job's MySQL service.
 - `nonebug` is installed but most tests use plain `unittest.mock`; follow the file you are editing.
 - Prefer a single test file: the full suite loads every plugin and is memory hungry.
 
@@ -341,8 +343,8 @@ Key variables in `.env` (see `.env.template` for full list):
 - `OPENAI_API_KEY`, `OPENAI_BASE_URL`: OpenAI API configuration
 - `OPENAI_DEFAULT_MODEL`: Default model for OpenAI-compatible APIs
 - `MODEL_OVERRIDE`: JSON mapping for model overrides per application
-- `TYPESAFE_API_KEY`, `TYPESAFE_BASE_URL`, `TYPESAFE_MODEL`: TypeSafe Jev (System One) API used by
-  `nonebot_plugin_jev` (chat 的心情/好感度判定、触发概率预处理、每日 Note 整理；不配置时这些调用跳过)
+- `DECISION_API_KEY`, `DECISION_BASE_URL`, `DECISION_MODEL`: OpenRouter Decisions API used by
+  `nonebot_plugin_decision` (chat 的心情/好感度判定、滑动窗口相关性判断、触发概率预处理、每日 Note 整理；不配置时这些调用跳过)
 - `WOLFRAM_API_KEY`: Wolfram Alpha API
 - `BAIDU_API_KEY`, `BAIDU_SECRET_KEY`: Baidu translation API
 - `SENTRY_DSN`: Error tracking

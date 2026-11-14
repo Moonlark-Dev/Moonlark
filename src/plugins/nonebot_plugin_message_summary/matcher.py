@@ -406,8 +406,14 @@ async def handle_group_daily(
         await group_daily.finish(UniMessage().image(raw=image_bytes))
 
     if isinstance(bot, QQBot) and isinstance(event, GroupMessageCreateEvent):
-        # QQ 适配器只能复用当前消息事件被动发送
-        await send_daily_summary_to_qq(bot, event, group_id, await resolve_state_key(group_id))
+        # 用户手动触发 group-daily 时直接复用当前消息事件被动回复，不消耗主动消息配额
+        await send_daily_summary_to_qq(
+            bot,
+            event,
+            group_id,
+            await resolve_state_key(group_id),
+            prefer_active=False,
+        )
     else:
         await send_daily_summary_to_group(group_id)
     await group_daily.finish()

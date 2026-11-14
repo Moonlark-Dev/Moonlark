@@ -60,7 +60,7 @@ class UserProfile(Model):
 
 
 class FavorJudgeRecord(Model):
-    """一次好感度评价（Jev 判定）的落库记录
+    """一次好感度评价（Decisions API 判定）的落库记录
 
     取代原先存在 LarkUser config 里的 ``chat_fav_judge_cache``（不做数据迁移）：
     冷却时间与每日上限直接由本表推导，重复消息的门控则靠 ``message_key`` 比对。
@@ -140,7 +140,7 @@ class ChatContextMessage(Model):
 
 
 class PreTriggerSignals(BaseModel):
-    """回复触发前的预处理信号，由 Jev 依据最近的聊天记录判定（见 utils/jev_judge.py）"""
+    """回复触发前的预处理信号，由 Decisions API 依据最近的聊天记录判定（见 utils/decision_judge.py）"""
 
     truncate: bool
     help_needed: bool
@@ -156,6 +156,17 @@ class PrivateChatConfig(Model):
     enabled: Mapped[bool] = mapped_column(default=True)
     # 私聊备选回复开关，默认关闭（见 core/gal_mode.py）
     gal_mode: Mapped[bool] = mapped_column(Boolean(), default=False, server_default=false())
+
+
+class ChatGlobalSetting(Model):
+    """Chat 的全局设置（键值对）
+
+    目前只用来保存模型 Provider（``model_provider``）：由超级用户通过
+    ``/chat model <openai|gemini>`` 在全局范围内切换，所有会话共用。
+    """
+
+    key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    value: Mapped[str] = mapped_column(String(512), default="")
 
 
 class PrivateChatSession(Model):
