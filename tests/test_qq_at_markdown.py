@@ -68,10 +68,11 @@ async def test_mention_everyone_and_emoji_converted() -> None:
 @pytest.mark.asyncio
 async def test_existing_markdown_not_double_escaped_and_preserves_buttons() -> None:
     """已有 markdown 段保持原样不重复转义，键盘与引用段原样保留。"""
-    from nonebot.adapters.qq.message import Message, MessageSegment
+    from nonebot.adapters.qq.message import Message, MessageSegment, Text
     from nonebot_plugin_larkutils.qq_at_markdown import convert_group_message
 
-    button_seg = MessageSegment("$qq:button", {"button": "ok"})
+    # 适配器的 MessageSegment 基类是抽象类，用 Text 承载自定义段类型
+    button_seg = Text("$qq:button", {"button": "ok"})
     message = Message(
         [
             MessageSegment.mention_user("member_openid"),
@@ -188,10 +189,11 @@ async def test_image_failure_or_internal_url_falls_back_without_raw_mention_tags
 @pytest.mark.asyncio
 async def test_unsupported_rich_segment_strips_mention_fallback() -> None:
     """含 ARK 等无法内嵌的富媒体段时应剥离提及段后回退原消息。"""
-    from nonebot.adapters.qq.message import Message, MessageSegment
+    from nonebot.adapters.qq.message import Message, MessageSegment, Text
     from nonebot_plugin_larkutils.qq_at_markdown import convert_group_message
 
-    ark_seg = MessageSegment("ark", {"ark": {"template_id": 23}})
+    # 适配器的 MessageSegment 基类是抽象类，用 Text 承载自定义段类型
+    ark_seg = Text("ark", {"ark": {"template_id": 23}})
     message = Message([MessageSegment.mention_user("member_openid"), ark_seg])
     fallback = await convert_group_message(message)
 
@@ -295,7 +297,8 @@ async def test_bot_send_to_group_converts_mentions(monkeypatch: pytest.MonkeyPat
     msg = MessageSegment.mention_user("member_openid") + MessageSegment.text("主动消息 *提示*")
     await QQBot.send_to_group(bot, group_openid="group_openid", message=msg)
 
-    sent = raw_send_to_group.call_args.kwargs["message"]
+    # _patched_send_to_group 以位置参数转调原始方法：args[2] 才是 message
+    sent = raw_send_to_group.call_args.args[2]
     assert sent["mention_user"] == []
     assert sent["markdown"][0].data["markdown"].content == '<qqbot-at-user id="member_openid" />主动消息 \\*提示\\*'
 
@@ -314,7 +317,8 @@ async def test_exporter_converts_group_target_and_keeps_private_or_channel(monke
     bot = _make_qq_bot()
     uni_msg = UniMessage().at("member_openid").text(" @你好 <tag>")
     await uni_msg.send(target=Target.group("group_openid", adapter="QQ"), bot=bot)
-    sent_group = raw_exporter_send.call_args.args[2]
+    # _patched_exporter_send_to 以位置参数转调原始方法：args[3] 才是 message
+    sent_group = raw_exporter_send.call_args.args[3]
     assert sent_group["mention_user"] == []
     assert sent_group["markdown"][0].data["markdown"].content == '<qqbot-at-user id="member_openid" /> @你好 \\<tag\\>'
 
@@ -322,11 +326,11 @@ async def test_exporter_converts_group_target_and_keeps_private_or_channel(monke
 
     private_msg = MessageSegment.mention_user("user_openid") + MessageSegment.text("hi")
     await exporter.send_to(Target.user("user_openid", adapter="QQ"), bot, private_msg)
-    assert raw_exporter_send.call_args.args[2] is private_msg
+    assert raw_exporter_send.call_args.args[3] is private_msg
 
     channel_msg = MessageSegment.mention_user("guild_uid") + MessageSegment.text("hi")
     await exporter.send_to(Target("channel_1", parent_id="guild_1", channel=True, adapter="QQ"), bot, channel_msg)
-    assert raw_exporter_send.call_args.args[2] is channel_msg
+    assert raw_exporter_send.call_args.args[3] is channel_msg
 
 
 @pytest.mark.asyncio
