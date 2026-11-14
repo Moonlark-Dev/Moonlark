@@ -279,6 +279,40 @@ from nonebot_plugin_openai import fetch_json
 
 from ..core.ego.event_collector import event_collector, format_event_content
 
+# 交给 Check Note 的单条工具结果上限：browse_webpage 之类可能返回上万字，全量塞进
+# 判断请求会把真正的聊天记录挤掉
+NOTE_CHECK_TOOL_RESULT_LIMIT = 800
+# 工具参数（URL、查询词等）同样需要截断
+NOTE_CHECK_TOOL_PARAM_LIMIT = 200
+
+
+def serialize_tool_calls(tool_calls: list[dict[str, Any]]) -> str:
+    """把工具调用记录渲染成 Check Note 能读懂的文本
+
+    笔记经常是 Moonlark 通过 ``browse_webpage`` 之类的工具查到内容之后写的：聊天记录里
+    只有用户的问题，没有工具返回，判断模型会认为笔记「无法验证」而拒绝。把工具调用与
+    返回一起交给它，笔记才有依据可查。
+
+    只保留已经拿到结果的调用：正在执行的 ``push_note`` 自己还没有结果（``result`` 为
+    None），写进判断上下文没有意义。
+    """
+    blocks: list[str] = []
+    for call in tool_calls:
+        result = call.get("result")
+        if result is None:
+            continue
+        name = call.get("name") or "unknown"
+        params = json.dumps(call.get("params") or {}, ensure_ascii=False)
+        if len(params) > NOTE_CHECK_TOOL_PARAM_LIMIT:
+            params = f"{params[:NOTE_CHECK_TOOL_PARAM_LIMIT]}…"
+        text = (result if isinstance(result, str) else json.dumps(result, ensure_ascii=False)).strip()
+        if not text:
+            text = "(无返回内容)"
+        elif len(text) > NOTE_CHECK_TOOL_RESULT_LIMIT:
+            text = f"{text[:NOTE_CHECK_TOOL_RESULT_LIMIT]}…"
+        blocks.append(f"### {name}\n参数: {params}\n结果: {text}")
+    return "\n\n".join(blocks)
+
 
 async def check_note(
     session: "BaseSession", keywords: Optional[str], text: str, expire_hours: Optional[float]
@@ -287,6 +321,7 @@ async def check_note(
         await get_messages(
             "check_note",
             messages=await session.get_cached_messages_string(),
+            tool_calls=serialize_tool_calls(session.tool_calls_history),
             keywords=keywords or "",
             content=text,
             expire_time=(datetime.now() + timedelta(hours=expire_hours or 87600)).isoformat(),  # 默认10年
