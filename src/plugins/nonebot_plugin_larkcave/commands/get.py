@@ -16,8 +16,9 @@
 # ##############################################################################
 
 import traceback
+from nonebot.adapters import Bot
 from nonebot.log import logger
-from nonebot_plugin_larkcave.utils.decoder import decode_cave
+from nonebot_plugin_larkcave.utils.decoder import build_cave_message
 from nonebot_plugin_larkcave.models import CaveData
 from nonebot_plugin_larkcave.__main__ import cave
 from nonebot_plugin_larkutils import get_user_id, is_user_superuser
@@ -30,11 +31,15 @@ from nonebot_plugin_larkcave.utils.comment.get import get_comments
 
 @cave.assign("get.cave_id")
 async def _(
-    session: async_scoped_session, cave_id: int, user_id: str = get_user_id(), is_superuser: bool = is_user_superuser()
+    session: async_scoped_session,
+    cave_id: int,
+    bot: Bot,
+    user_id: str = get_user_id(),
+    is_superuser: bool = is_user_superuser(),
 ) -> None:
     try:
         cave_data = await session.get_one(CaveData, {"id": cave_id})
-        content = await decode_cave(cave_data, session, user_id)
+        content = await build_cave_message(cave_data, session, user_id, bot)
     except NoResultFound:
         await lang.finish("get.not_found", user_id, cave_id)
     if (not cave_data.public) and not is_superuser:

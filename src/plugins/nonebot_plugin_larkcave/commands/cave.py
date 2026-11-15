@@ -15,6 +15,7 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
+from nonebot.adapters import Bot
 from nonebot.exception import ActionFailed
 from nonebot_plugin_orm import async_scoped_session
 from nonebot_plugin_larkutils import get_user_id, get_group_id, is_public_qq_bot
@@ -28,13 +29,18 @@ from ..utils.cool_down import is_user_cooled
 
 
 async def handle_get_cave(
-    session: async_scoped_session, user_id: str, group_id: str, reverse: bool = False, is_public_bot: bool = False
+    session: async_scoped_session,
+    user_id: str,
+    group_id: str,
+    bot: Bot,
+    reverse: bool = False,
+    is_public_bot: bool = False,
 ) -> None:
     if not (user_cd_data := await is_user_cooled(user_id, session, is_public_bot))[0]:
         await lang.finish("cave.user_cd", user_id, round(user_cd_data[1] / 60, 3))
     for _ in range(3):
         try:
-            await send_cave(session, user_id, group_id, reverse)
+            await send_cave(session, user_id, group_id, bot, reverse)
         except ActionFailed:
             continue
         break
@@ -46,14 +52,20 @@ async def handle_get_cave(
 @cave.assign("$main")
 async def _(
     session: async_scoped_session,
+    bot: Bot,
     user_id: str = get_user_id(),
     group_id: str = get_group_id(),
     is_public_bot: bool = is_public_qq_bot(),
 ) -> None:
     await complete_schedule(user_id, "cave")
-    await handle_get_cave(session, user_id, group_id, False, is_public_bot)
+    await handle_get_cave(session, user_id, group_id, bot, False, is_public_bot)
 
 
 @on_fullmatch("evac\\").handle()
-async def _(session: async_scoped_session, user_id: str = get_user_id(), group_id: str = get_group_id()) -> None:
-    await handle_get_cave(session, user_id, group_id, True)
+async def _(
+    session: async_scoped_session,
+    bot: Bot,
+    user_id: str = get_user_id(),
+    group_id: str = get_group_id(),
+) -> None:
+    await handle_get_cave(session, user_id, group_id, bot, True)
