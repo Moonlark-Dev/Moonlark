@@ -105,6 +105,10 @@ class MessageQueue:
         return fetcher
 
     async def stop_fetcher(self) -> None:
+        # 主动停止或上下文锁定超时：缓存中的消息与备选回复都不再补发
+        gal_mode = getattr(self.processor, "gal_mode", None)
+        if gal_mode is not None:
+            gal_mode.abort_round()
         if self.fetcher_task:
             self.fetcher_task.cancel()
 
@@ -131,7 +135,13 @@ class MessageQueue:
             # MessageProcessor._resolve_message_token_cost）。在锁内标记，
             # 避免并发的非重要请求把这次的额度清掉。
             self.processor.important_turn_quota = important
+            gal_mode = getattr(self.processor, "gal_mode", None)
+            gal_round = False
             try:
+                # 私聊备选回复在每轮回复开始时记录回复前的对话快照与开关状态
+                if gal_mode is not None:
+                    await gal_mode.begin_round()
+                    gal_round = True
                 self.fetcher_task = asyncio.create_task(self._fetch_reply())
                 try:
                     status = await self.fetcher_task
@@ -145,6 +155,9 @@ class MessageQueue:
                 logger.info(f"Reply fetcher ended with status: {status.name}")
             finally:
                 self.processor.important_turn_quota = False
+            if gal_round and gal_mode is not None:
+                # 本轮结束后才生成备选回复并发出缓存中的最后一条消息
+                await gal_mode.finish_round()
 
         if self.continuous_response and self.processor.session.get_session_type() == "group":
             self.continuous_response = False
@@ -253,7 +266,14 @@ class MessageQueue:
         return state
 
     def _has_sent_message_since(self, since: datetime) -> bool:
-        """本轮回复是否已经通过 send_message 实际发出过消息"""
+        """本轮回复是否已经通过 send_message 实际发出过消息
+
+        私聊备选回复开启时消息会先进入发送缓存，平台消息 ID 要等缓存刷新后才产生，
+        因此这里同时参考发送缓存里本轮已有的消息。
+        """
+        gal_mode = getattr(self.processor, "gal_mode", None)
+        if gal_mode is not None and gal_mode.has_sent_since(since):
+            return True
         return any(
             bool(msg.get("message_id")) and (msg.get("send_time") or since) >= since
             for msg in self.processor.session.cached_messages

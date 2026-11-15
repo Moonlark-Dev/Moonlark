@@ -168,6 +168,11 @@ Moonlark 权限控制 (仅 SUPERUSER 可用)
 - `/bag tidy (整理背包)`
 - `/bag move <from> <to> (移动物品)`
 - `/bag usage <INDEX> / bag use <INDEX> (查看物品的使用指令，QQ 平台可点击按钮快速填入指令)`
+## `gal-mode`: 私聊备选回复
+
+开启后，私聊中的回复会延迟一条发送，并在每轮结束时附带 1~3 条备选回复按钮，点击按钮即可发送对应内容。
+- `/gal-mode on (开启私聊备选回复)`
+- `/gal-mode off (关闭私聊备选回复)`
 ## `id`: 查询用户 ID
 
 查看指定用户（或自己）的主账号 ID 和当前账号 ID
