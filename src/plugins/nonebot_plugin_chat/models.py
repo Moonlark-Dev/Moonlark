@@ -36,12 +36,20 @@ class SleepDecisionResponse(BaseModel):
 
 
 class Note(Model):
-    """Note model for storing user-generated notes with optional expiration and keywords"""
+    """Note model for storing user-generated notes with optional expiration and keywords
+
+    ``type`` 是记忆类型（event / basic_info / user / prompt），``subject`` 是召回用的
+    中心词（用户画像类笔记必须使用用户昵称），``private`` 表示笔记是否私密（不跨会话
+    共享）。这些字段由 Check Note 生成。
+    """
 
     id: Mapped[int] = mapped_column(Integer(), primary_key=True, autoincrement=True)
     context_id: Mapped[str] = mapped_column(String(128), index=True)  # user_id for private, group_id for groups
     content: Mapped[str] = mapped_column(Text())
     keywords: Mapped[str] = mapped_column(String(length=256), default="")
+    type: Mapped[str] = mapped_column(String(length=16), default="event", server_default="event")
+    subject: Mapped[str] = mapped_column(String(length=256), default="", server_default="")
+    private: Mapped[bool] = mapped_column(Boolean(), default=False, server_default=false())
     created_time: Mapped[float] = mapped_column(Float())
     expire_time: Mapped[Optional[datetime]] = mapped_column(nullable=True)  # Optional expiration time
 

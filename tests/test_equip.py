@@ -52,7 +52,8 @@ async def test_handle_barrier_block_and_destroy(monkeypatch: pytest.MonkeyPatch)
         )
         await session.commit()
 
-    # 最后一层：挡下后屏障损坏
+    # 最后一层：挡下后屏障损坏（固定随机值，避免 2% 反弹概率让断言偶发失败）
+    monkeypatch.setattr(api, "random", lambda: 1.0)
     result = await api.handle_barrier(user_id, is_rotten_egg_ex=False)
     assert result.blocked and not result.reflected
     assert result.destroyed and result.remaining == 0

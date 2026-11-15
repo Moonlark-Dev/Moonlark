@@ -62,6 +62,9 @@ class MoonlarkMain:
 
             lines = []
             for note in notes:
+                # 私密笔记只在其所属会话内生效，不进入跨会话的备忘录
+                if note.private:
+                    continue
                 if note.id in self.state["injected_note_ids"]:
                     continue
                 created_time = datetime.fromtimestamp(note.created_time).strftime("%m-%d %H:%M")

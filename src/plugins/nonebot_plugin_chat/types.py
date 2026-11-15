@@ -44,8 +44,21 @@ class PendingInteraction(TypedDict):
     message_id: str  # 触发交互的消息 ID，用于 reaction
 
 
+NoteType = Literal["event", "basic_info", "user", "prompt"]
+
+# 记忆类型：
+# - event：事件，发生过或即将发生的事、约定、活动、群梗、事实知识等；
+# - basic_info：用户基础信息，用户画像里最基础的那部分，每个用户只能有一句话；
+# - user：用户画像，中心词必须是用户昵称；
+# - prompt：用户对 Moonlark 的指令或要求。
+NOTE_TYPES: tuple[NoteType, ...] = ("event", "basic_info", "user", "prompt")
+
+
 class AvailableNote(TypedDict):
     create: Literal[True]
+    type: NoteType
+    subject: str
+    private: bool
     text: str
     expire_hours: float
     keywords: Optional[str]
