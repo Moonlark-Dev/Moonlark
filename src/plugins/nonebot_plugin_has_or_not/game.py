@@ -155,7 +155,8 @@ class HasOrNotGame:  # pylint: disable=too-many-instance-attributes
     # ---------- 出题 ----------
 
     async def send_question(self) -> None:
-        assert self.question is not None
+        if self.question is None:
+            return
         markdown = format_question(self.question)
         if self.qq_mode:
             prefix = get_command_prefix()
