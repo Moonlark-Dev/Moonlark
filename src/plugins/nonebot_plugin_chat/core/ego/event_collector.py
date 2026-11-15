@@ -67,6 +67,22 @@ def format_event_content(content: str) -> str:
     return "\n".join(lines)
 
 
+def format_events_only(content: str) -> str:
+    """只把事件 JSON 里的 ``events`` 渲染成一行文本，结构异常时降级为原文片段
+
+    会话元数据只需要「发生了什么」，不必把 ``topics`` 与整段 JSON 一起塞进提示词。
+    多条事件用「；」连接，方便与同一行的时间戳拼接。
+    """
+    try:
+        data = json.loads(content)
+    except (json.JSONDecodeError, TypeError):
+        return str(content)[:200]
+    normalized = normalize_event_content(data)
+    if normalized is None:
+        return str(content)[:200]
+    return "；".join(normalized["events"])
+
+
 class EventCollector:
     """会话事件收集器"""
 

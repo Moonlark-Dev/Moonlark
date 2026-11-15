@@ -2,3 +2,4 @@ plugin: 'chat'
 commands:
   chat: help;19;community
   rua: help_rua;7;community
+  gal-mode: help_gal_mode;2;setting

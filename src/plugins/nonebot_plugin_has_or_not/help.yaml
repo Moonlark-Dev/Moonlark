@@ -1,0 +1,3 @@
+plugin: 'has_or_not'
+commands:
+  'has-or-not': help;3;game

@@ -1,5 +1,11 @@
 ## 消息记录
 {{ messages }}
+{% if tool_calls %}
+
+## 工具调用记录
+以下是 Moonlark 在聊天过程中实际调用工具得到的结果，笔记内容可以以此为依据：
+{{ tool_calls }}
+{% endif %}
 
 ## 笔记内容
 关键词：{{ keywords }}

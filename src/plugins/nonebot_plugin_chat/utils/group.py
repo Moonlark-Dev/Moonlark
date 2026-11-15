@@ -74,6 +74,11 @@ class BrowserErrorOccurred(Exception):
     pass
 
 
+def _is_client_error(status_code: object) -> bool:
+    """HTTP 4xx（客户端错误）：多半是 URL 被消息里的标点带脏了，值得修一次再试"""
+    return isinstance(status_code, int) and 400 <= status_code < 500
+
+
 class LinkParser:
     def __init__(self, message: str, lang_str: str) -> None:
         self.message = message
@@ -109,6 +114,16 @@ class LinkParser:
         if not result["success"]:
             raise BrowserErrorOccurred(f"解析失败: {result}")
         status_code = result["metadata"].get("status_code")
+        if _is_client_error(status_code) and link.endswith(")") and len(link) > 1:
+            # 群消息里常见的 Markdown 写法 ``[标题](https://example.com/a)`` 会让链接
+            # 正则把收尾的半角右括号一起吞进 URL，服务端因此返回 4xx。去掉这个括号
+            # 再试一次：只有真的拿到 200 才采用重试结果，否则仍报告原来的错误。
+            trimmed_link = link[:-1]
+            logger.debug(f"链接以 ')' 结尾且返回 HTTP {status_code}，去掉括号重试: {trimmed_link}")
+            retry_result = await browser_tool.browse(trimmed_link)
+            retry_status_code = retry_result["metadata"].get("status_code") if retry_result["success"] else None
+            if retry_status_code == 200:
+                result, status_code = retry_result, retry_status_code
         if status_code != 200:
             return f"HTTP {status_code}"
         return await fetch_message(

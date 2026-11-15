@@ -1,0 +1,22 @@
+## 本轮之前的最近对话
+
+{{ recent_messages }}
+
+## 你这一轮发出的消息
+
+{{ sent_messages }}
+
+## 你的思考
+
+{{ thought }}
+
+## 你当前的状态
+
+心情：{{ mood }}（强度 {{ mood_intensity }}{% if mood_reason %}；原因：{{ mood_reason }}{% endif %}）
+困倦度：{{ tiredness }}%
+
+## 对方
+
+昵称：{{ nickname }}
+
+请按系统提示中的输出格式，只返回一个严格的 JSON 对象，包含 1~3 条对方可能接着发来的消息。

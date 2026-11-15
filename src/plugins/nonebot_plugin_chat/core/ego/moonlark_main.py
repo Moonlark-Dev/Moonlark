@@ -21,7 +21,7 @@ from ...lang import lang
 from ...models import AgentEvent, DiaryPost, DiaryProcessResponse, PrivateChatSession
 from ...utils.status_manager import get_status_manager
 from .blog_writer import BlogWriter
-from .event_collector import event_collector
+from .event_collector import event_collector, format_events_only
 from .planner import Planner
 from .proactive_chat_ctrl import ProactiveChatController
 from .sleep_controller import SleepController
@@ -260,8 +260,12 @@ class MoonlarkMain:
         if events:
             event_texts = []
             for e in events:
-                event_texts.append(f"[{e.created_at.strftime('%H:%M')}] {e.content}")
-            parts.append("## 此前的事件\n" + "\n".join(event_texts))
+                # 只取事件 JSON 里的 events，不再把整段 JSON 塞进 meta 消息
+                content = format_events_only(e.content)
+                if content:
+                    event_texts.append(f"[{e.created_at.strftime('%H:%M')}] {content}")
+            if event_texts:
+                parts.append("## 此前的事件\n" + "\n".join(event_texts))
 
         plan_text = self.planner.get_plan_text()
         if plan_text and plan_text != "今日暂无背景意图。" and plan_text != "暂无备忘录。":
