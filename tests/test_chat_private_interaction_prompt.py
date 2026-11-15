@@ -114,7 +114,7 @@ async def test_favorability_table_keeps_group_wording_in_group_chat() -> None:
     text = await _render_chat_prompt(is_group_session=True, is_private=False, interaction_mode="standard")
 
     assert "群聊中对他人的称呼" in text
-    assert "“你”“这位群友”指代" in text
+    assert "“你”或“这位群友”指代" in text
     assert "对私聊请求冷淡回避" in text
     assert "群内@会回应" in text
     assert "在群内会下意识维护对方" in text
