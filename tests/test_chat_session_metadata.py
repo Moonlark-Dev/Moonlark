@@ -176,6 +176,25 @@ async def test_build_group_session_metadata_lines(
 
 
 @pytest.mark.asyncio
+async def test_build_group_session_metadata_master_absent_hint(
+    session_factory: async_sessionmaker[AsyncSession], master_config: str
+) -> None:
+    """主人不在群聊时，元数据在「否」之后追加「不要主动提及主人」提示"""
+    from nonebot_plugin_chat.utils.session_metadata import build_group_session_metadata
+
+    await _add_group(session_factory, "qq_1")
+    await _add_messages(session_factory, "qq_1", "u-b", "b", 2)
+
+    async with session_factory() as session:
+        lines = await build_group_session_metadata("qq_1", session=session)
+    assert lines == [
+        "当前会话成员/最近发言者：b……",
+        "XiaoDeng3386 是否在当前会话：否",
+        "主人当前不在本群聊，回复时不要主动提及主人。",
+    ]
+
+
+@pytest.mark.asyncio
 async def test_build_group_session_metadata_without_master_config(
     monkeypatch, session_factory: async_sessionmaker[AsyncSession]
 ) -> None:

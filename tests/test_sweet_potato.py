@@ -7,7 +7,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 
 import pytest
 import yaml
@@ -99,42 +99,41 @@ def test_draw_probability_updates_floor(monkeypatch: pytest.MonkeyPatch) -> None
         return upper
 
     monkeypatch.setattr(logic._RNG, "randint", fake_randint)
-    assert logic.draw_probability(60) == (100, 100)
+    # 100% 落在 imminent 档，档位下界是 98
+    assert logic.draw_probability(60) == (100, 98)
     assert calls == [(60, 100)]
 
 
-def test_draw_probability_short_circuit_after_pass(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_draw_probability_after_pass_uses_risk_floor(monkeypatch: pytest.MonkeyPatch) -> None:
+    """#1537 之后不再有传递后的回落特例，floor 直接取抽中概率所在档位的下界。"""
     from nonebot_plugin_sweet_potato import logic
 
-    values: Iterator[int] = iter([95, 57])
     calls: list[tuple[int, int]] = []
 
     def fake_randint(lower: int, upper: int) -> int:
         calls.append((lower, upper))
-        return next(values)
+        return 95
 
     monkeypatch.setattr(logic._RNG, "randint", fake_randint)
-    monkeypatch.setattr(logic._RNG, "random", lambda: 0.0)
 
     probability, floor = logic.draw_probability(60, after_pass=True)
-    assert probability == 57
-    # 特例不更新下限
-    assert floor == 60
-    assert calls == [(60, 100), (55, 60)]
+    assert probability == 95
+    # 95% 落在 extreme 档（95~98），档位下界是 94
+    assert floor == 94
+    assert calls == [(60, 100)]
 
 
-def test_draw_probability_no_short_circuit_when_not_triggered(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_draw_probability_upper_bound_uses_risk_floor(monkeypatch: pytest.MonkeyPatch) -> None:
     from nonebot_plugin_sweet_potato import logic
 
     monkeypatch.setattr(logic._RNG, "randint", lambda _lower, upper: upper)
-    monkeypatch.setattr(logic._RNG, "random", lambda: 0.5)
 
     probability, floor = logic.draw_probability(60, after_pass=True)
     assert probability == 100
-    assert floor == 100
+    assert floor == 98
 
 
-def test_draw_probability_short_circuit_requires_above_90(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_draw_probability_high_value_floor(monkeypatch: pytest.MonkeyPatch) -> None:
     from nonebot_plugin_sweet_potato import logic
 
     calls: list[tuple[int, int]] = []
@@ -144,25 +143,25 @@ def test_draw_probability_short_circuit_requires_above_90(monkeypatch: pytest.Mo
         return 90
 
     monkeypatch.setattr(logic._RNG, "randint", fake_randint)
-    monkeypatch.setattr(logic._RNG, "random", lambda: 0.0)
 
     probability, floor = logic.draw_probability(60, after_pass=True)
     assert probability == 90
-    assert floor == 90
-    # 只有一次抽取，没有触发回落下限的特例
+    # 90% 落在 high 档（90~94），档位下界是 89
+    assert floor == 89
     assert calls == [(60, 100)]
 
 
 def test_roll_explosion_bounds(monkeypatch: pytest.MonkeyPatch) -> None:
     from nonebot_plugin_sweet_potato import logic
 
-    monkeypatch.setattr(logic._RNG, "randint", lambda _lower, _upper: 100)
+    # 新逻辑：randint(probability, 100) == 100 时爆炸，返回下界即完全不爆炸
+    monkeypatch.setattr(logic._RNG, "randint", lambda lower, _upper: lower)
     assert logic.roll_explosion(100) is True
     assert logic.roll_explosion(99) is False
-
-    monkeypatch.setattr(logic._RNG, "randint", lambda _lower, _upper: 1)
     assert logic.roll_explosion(0) is False
-    assert logic.roll_explosion(1) is True
+
+    monkeypatch.setattr(logic._RNG, "randint", lambda _lower, _upper: 100)
+    assert logic.roll_explosion(0) is True
 
 
 # ---------- 房间状态 ----------

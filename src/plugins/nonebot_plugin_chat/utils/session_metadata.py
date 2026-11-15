@@ -18,8 +18,9 @@
 """群聊会话元数据：最近发言者与主人存在指示。
 
 ``MessageProcessor.generate_session_info`` 在群聊会话创建/重置时调用这里，把
-「当前会话成员/最近发言者」与「主人是否在当前会话」两行注入会话信息；私聊不会
-调用这里，因此这两项在私聊中均不生效。
+「当前会话成员/最近发言者」与「主人是否在当前会话」两行注入会话信息；主人不在
+当前群聊时额外补一行「不要主动提及主人」的提示，避免 Moonlark 在没有主人的群里
+主动把话题引向主人。私聊不会调用这里，因此这些内容在私聊中均不生效。
 
 数据来自 nonebot_plugin_message_summary 的 GroupMessage 表——它只保留最近约两天
 的消息，所以主人判定结果会落库到 ``ChatGroup.master_present`` 并只增不减：一旦
@@ -44,6 +45,8 @@ RECENT_SPEAKER_HOURS = 12
 RECENT_SPEAKER_LIMIT = 5
 # 主人的展示名，与 src/prompt/identity.md.jinja 中的称呼保持一致
 MASTER_DISPLAY_NAME = "XiaoDeng3386"
+# 主人不在当前群聊时追加的提示：避免 Moonlark 主动把话题引向并不在场的主人
+MASTER_ABSENT_HINT = "主人当前不在本群聊，回复时不要主动提及主人。"
 
 
 def _load_group_message_model() -> Optional[type]:
@@ -173,7 +176,7 @@ async def build_group_session_metadata(
     group_id: str,
     session: Optional["AsyncSession"] = None,
 ) -> list[str]:
-    """构建群聊会话元数据行（最近发言者 + 主人是否在当前会话）
+    """构建群聊会话元数据行（最近发言者 + 主人是否在当前会话 + 主人缺席提示）
 
     只应在群聊会话中调用；任何查询失败都退化为不输出对应信息，不影响会话创建。
     """
@@ -188,6 +191,8 @@ async def build_group_session_metadata(
         if config.chat_master_user_id.strip():
             present = await is_master_present(group_id, session=session)
             lines.append(f"{MASTER_DISPLAY_NAME} 是否在当前会话：{'是' if present else '否'}")
+            if not present:
+                lines.append(MASTER_ABSENT_HINT)
     except Exception as e:
         logger.debug(f"[session_metadata] 生成群聊会话元数据失败: {e}")
         return lines
