@@ -215,6 +215,34 @@ async def test_store_exclusions_are_passed_to_generation(tmp_path: Path, monkeyp
     assert "+" in captured["exclusions"]
 
 
+@pytest.mark.asyncio
+async def test_generate_questions_requests_question_array(monkeypatch: pytest.MonkeyPatch) -> None:
+    from nonebot_plugin_has_or_not import store as store_module
+    from nonebot_plugin_has_or_not.types import GeneratedQuestion
+
+    question = make_question()
+    captured: dict[str, Any] = {}
+
+    async def fake_get_message(role: str, name: str) -> Any:
+        return store_module.generate_message(f"{role}:{name}", "system")
+
+    async def fake_fetch_json(messages: list[Any], response_format: Any, **kwargs: Any) -> list[GeneratedQuestion]:
+        captured["messages"] = messages
+        captured["response_format"] = response_format
+        captured["kwargs"] = kwargs
+        return [question]
+
+    monkeypatch.setattr(store_module, "get_message", fake_get_message)
+    monkeypatch.setattr(store_module, "fetch_json", fake_fetch_json)
+
+    questions = await store_module.generate_questions(["圆形"], [["日历"]], 20)
+    assert questions == [question]
+    assert len(captured["messages"]) == 2
+    assert captured["response_format"] == list[GeneratedQuestion]
+    assert captured["kwargs"]["identify"] == "Has Or Not (Generate)"
+    assert "圆形" in captured["messages"][1]["content"]
+
+
 def test_get_question_store_uses_localstore_data_file() -> None:
     from nonebot_plugin_has_or_not.store import get_question_store
 
