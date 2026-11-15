@@ -212,6 +212,18 @@ class EventCollector:
             logger.info(f"[EventCollector] 已收集会话 {session_name} 的 block {block_id} 事件和话题")
         except Exception as e:
             logger.warning(f"[EventCollector] 收集失败（block {block_id} 将重试）: {e}")
+            return
+
+        # 待定笔记与事件总结共用同一批聊天记录：事件总结成功后立刻为同一个 block 生成，
+        # 不再按消息条数单独触发，避免两者看到的消息范围不一致或重复分析同一段聊天。
+        await self._generate_pending_notes(session, chat_history)
+
+    async def _generate_pending_notes(self, session: "BaseSession", chat_history: str) -> None:
+        """与事件总结一起生成待定笔记，失败不影响已提交的事件"""
+        try:
+            await session.processor.analyze_pending_notes(chat_history)
+        except Exception as e:
+            logger.warning(f"[EventCollector] 会话 {session.session_id} 的待定笔记生成失败: {e}")
 
     async def get_session_events(self, session_id: str, start_date: Optional[str] = None) -> list[SessionEvent]:
         """获取指定会话的事件，范围为 start_date（默认前一天）0:00 至今天"""
