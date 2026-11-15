@@ -8,16 +8,25 @@ help:
   usage1: has-or-not (开始一局游戏)
   usage2: has-or-not <答案> (作答)
   usage3: has-or-not 查看答案 (查看答案并结束本局)
+  usage4: has-or-not 规则说明 (查看玩法规则)
 
 button:
   guess: 作答
   reveal: 查看答案
+  rules: 规则说明
+  again: 再玩一次
 
 game:
   preparing: 正在生成题目，请稍候……
   preparing_short: 题目还在生成中，请稍候再作答。
   generate_failed: 出题失败了，请稍后再试。
   error: 游戏出错了，本局已结束。
+  rules: |
+    「有无有无」玩法
+    - 题目给出 ⭕、❌ 两行词语，同一列的两个词为一组：⭕ 里的词包含答案的特征，❌ 里的词不包含。
+    - 根据这六组词语的对比猜出答案；每局最多作答 {} 次，猜中可以获得 VimCoin 奖励。
+    - 发送 {__prefix__}has-or-not <答案> 作答（QQ 官方机器人下本局所有成员都可以作答，其它平台只有发起者可以作答）。
+    - 发送 {__prefix__}has-or-not 查看答案 公布答案并结束本局；发送 {__prefix__}has-or-not 规则说明 可以随时再看这份说明。
   not_playing_start: 当前会话没有正在进行的「有无有无」，请先发送 {__prefix__}has-or-not 开始一局。
   already_playing: 当前会话已经有一局「有无有无」了，发送 {__prefix__}has-or-not <答案> 作答，或发送 {__prefix__}has-or-not 查看答案 结束本局。
   only_owner: 当前适配器下只有发起这局游戏的人可以作答。
@@ -27,7 +36,9 @@ game:
   reveal_timeout: ⌛ 三分钟没有任何消息，游戏结束。答案是「{}」。
   reveal_manual: 已查看答案，游戏结束。答案是「{}」。
   reveal_attempts: 十次作答机会用完了，游戏结束。答案是「{}」。
-  hint: 发送 {__prefix__}has-or-not <答案> 作答（只有发起者可以作答）；发送 {__prefix__}has-or-not 查看答案 可直接公布答案。
+  reveal_before_question: 题目还没生成出来，本局已结束。
+  again_hint: 发送 {__prefix__}has-or-not 可以再来一局。
+  hint: 发送 {__prefix__}has-or-not <答案> 作答（只有发起者可以作答）；发送 {__prefix__}has-or-not 规则说明 查看规则；发送 {__prefix__}has-or-not 查看答案 可直接公布答案。
 
 judge:
   instructions: 判断玩家的猜测与正确答案是否指代同一个事物或概念。
