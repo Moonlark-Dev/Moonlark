@@ -1,7 +1,8 @@
 """nonebot_plugin_larksetu 缓存与 #setu-g 的回归测试。
 
 覆盖：签到卡片头图使用的图片在 TTL 内可按 ID 取回、过期后可被清理、
-随机抽取的图片不保留原图、旧版缓存索引兼容、以及 #setu-g 不计入 setu 排行。
+随机抽取的图片不保留原图、旧版缓存索引兼容、#setu-g 不计入 setu 排行，
+以及发送图片被平台内容审核拦截时提示用户而不是抛出异常。
 """
 
 import json
@@ -236,4 +237,82 @@ async def test_setu_g_finishes_when_image_expired(monkeypatch: pytest.MonkeyPatc
         await main_module._setu_get_handler("123_0", user_id="10")
 
     assert fake_lang.finished == ["setu.expired"]
+    assert sent == []
+
+
+def _qq_action_failed(code: int = 40034006, message: str = "消息内容违规"):
+    """构造 QQ 官方适配器的 ActionFailed（错误码取自响应体）"""
+    from nonebot.adapters.qq.exception import ActionFailed
+    from nonebot.drivers import Response
+
+    return ActionFailed(Response(400, content=json.dumps({"code": code, "message": message}).encode()))
+
+
+@pytest.mark.asyncio
+async def test_setu_g_prompts_when_image_blocked(monkeypatch: pytest.MonkeyPatch, setu_g_env) -> None:
+    """#setu-g 发送的图片被内容审核拦截时提示用户，而不是把异常抛给上层"""
+    main_module, fake_lang, _, sent = setu_g_env
+    monkeypatch.setattr(
+        main_module,
+        "get_cached_image",
+        AsyncMock(return_value={"data": _make_data(pid=42), "image": b"blocked"}),
+    )
+
+    async def blocked_send(_self: object, *_args: object, **_kwargs: object) -> None:
+        raise _qq_action_failed()
+
+    monkeypatch.setattr(main_module.UniMessage, "send", blocked_send)
+
+    with pytest.raises(FinishedException):
+        await main_module._setu_get_handler("42_0", user_id="10")
+
+    assert fake_lang.finished == ["setu.blocked"]
+    assert sent == []
+
+
+@pytest.mark.asyncio
+async def test_setu_g_reraises_other_action_failed(monkeypatch: pytest.MonkeyPatch, setu_g_env) -> None:
+    """其它错误码的 ActionFailed 仍按原样抛出，不被当作内容违规吞掉"""
+    from nonebot.adapters.qq.exception import ActionFailed
+
+    main_module, fake_lang, _, _ = setu_g_env
+    monkeypatch.setattr(
+        main_module,
+        "get_cached_image",
+        AsyncMock(return_value={"data": _make_data(pid=42), "image": b"original"}),
+    )
+
+    async def failing_send(_self: object, *_args: object, **_kwargs: object) -> None:
+        raise _qq_action_failed(code=40034003, message="其它错误")
+
+    monkeypatch.setattr(main_module.UniMessage, "send", failing_send)
+
+    with pytest.raises(ActionFailed):
+        await main_module._setu_get_handler("42_0", user_id="10")
+
+    assert fake_lang.finished == []
+
+
+@pytest.mark.asyncio
+async def test_setu_prompts_when_image_blocked(monkeypatch: pytest.MonkeyPatch, setu_g_env) -> None:
+    """#setu 抽到的图片被内容审核拦截时提示用户，不消耗冷却也不计入排行"""
+    main_module, fake_lang, counter_add, sent = setu_g_env
+    monkeypatch.setattr(main_module, "last_use", 0.0)
+    monkeypatch.setattr(
+        main_module,
+        "_get_image",
+        AsyncMock(return_value={"data": _make_data(pid=7), "image": b"blocked"}),
+    )
+
+    async def blocked_send(_self: object, *_args: object, **_kwargs: object) -> None:
+        raise _qq_action_failed()
+
+    monkeypatch.setattr(main_module.UniMessage, "send", blocked_send)
+
+    with pytest.raises(FinishedException):
+        await main_module._(session=AsyncMock(), user_id="10")
+
+    assert fake_lang.finished == ["setu.blocked"]
+    counter_add.assert_not_awaited()
+    assert main_module.last_use == 0
     assert sent == []
