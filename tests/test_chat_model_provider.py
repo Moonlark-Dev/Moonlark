@@ -323,9 +323,12 @@ def test_normalize_provider(value: str, expected: Any) -> None:
     assert normalize_provider(value) == expected
 
 
-@pytest.mark.parametrize(("value", "expected"), [("default", True), (" DEFAULT ", True), ("openai", False)])
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [("default", True), (" DEFAULT ", True), (":default:", True), ("openai", False)],
+)
 def test_is_default_provider(value: str, expected: bool) -> None:
-    """``default`` 是恢复默认的保留值，大小写与空白不敏感"""
+    """``default`` 是恢复默认的保留值（也接受 ``:default:``），大小写与空白不敏感"""
     from nonebot_plugin_chat.utils.provider import is_default_provider
 
     assert is_default_provider(value) is expected

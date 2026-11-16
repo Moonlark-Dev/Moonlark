@@ -47,8 +47,8 @@ def normalize_provider(value: str) -> Optional[ModelProvider]:
 
 
 def is_default_provider(value: str) -> bool:
-    """用户输入是否为恢复默认的保留值 ``default``"""
-    return value.strip().lower() == "default"
+    """用户输入是否为恢复默认的保留值 ``default``（也接受写法 ``:default:``）"""
+    return value.strip().strip(":").lower() == "default"
 
 
 async def get_global_model_provider() -> ModelProvider:
