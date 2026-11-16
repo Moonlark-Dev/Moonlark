@@ -114,15 +114,28 @@ def filter_questions(
 
 
 def format_question(question: GeneratedQuestion, escape: bool = True) -> str:
-    """按游戏要求的格式渲染题目。
+    """按通用两行对照格式渲染题目（用于非 QQ 官方适配器的图片渲染与纯文本回退）。
 
-    默认转义 Markdown 特殊字符：题目会在 QQ 官方机器人里以 markdown 发送、在其他
-    适配器上渲染成图片，模型生成的词语若带 ``*`` 等字符不应破坏排版。
+    默认转义 Markdown 特殊字符，避免模型生成的词语带 ``*`` 等字符时破坏排版。
     """
     escaper = escape_markdown if escape else (lambda value: value)
     contains = " ".join(escaper(pair.contain.strip()) for pair in question.prompts)
     missing = " ".join(escaper(pair.missing.strip()) for pair in question.prompts)
     return f"**有无有无**\n⭕：{contains}\n❌：{missing}"
+
+
+def format_question_table(question: GeneratedQuestion, escape: bool = True) -> str:
+    """按 QQ 官方机器人的 Markdown 表格样式渲染题目。"""
+    escaper = escape_markdown if escape else (lambda value: value)
+    rows = [
+        "| ⭕ 有 | ❌ 无 |",
+        "| ----------- | ----------- |",
+    ]
+    for pair in question.prompts:
+        contain = escaper(pair.contain.strip())
+        missing = escaper(pair.missing.strip())
+        rows.append(f"| {contain} | {missing} |")
+    return "\n".join(rows)
 
 
 def build_generation_extra(exclusions: list[str], word_sets: list[list[str]], count: int) -> str:

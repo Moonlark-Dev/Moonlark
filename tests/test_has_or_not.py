@@ -75,6 +75,30 @@ def test_format_question_escapes_markdown_when_requested() -> None:
     assert "\\*" in text
 
 
+def test_format_question_table_matches_qq_markdown_table_layout() -> None:
+    from nonebot_plugin_has_or_not.store import format_question_table
+
+    expected = (
+        "| ⭕ 有 | ❌ 无 |\n"
+        "| ----------- | ----------- |\n"
+        "| 日历 | 闹钟 |\n"
+        "| 医院 | 药店 |\n"
+        "| 键盘 | 鼠标 |"
+    )
+    assert format_question_table(make_question(), escape=False) == expected
+
+
+def test_format_question_table_escapes_markdown_and_pipe_in_cells() -> None:
+    from nonebot_plugin_has_or_not.store import format_question_table
+
+    text = format_question_table(make_question(contains=("*", "a|b", "键盘")), escape=True)
+    lines = text.splitlines()
+    assert lines[0] == "| ⭕ 有 | ❌ 无 |"
+    assert lines[1] == "| ----------- | ----------- |"
+    assert lines[2] == "| \\* | 闹钟 |"
+    assert lines[3] == "| a\\|b | 药店 |"
+
+
 # ---------- 题目合法性 ----------
 
 
@@ -288,7 +312,10 @@ async def test_game_wrong_guess_decrements_and_correct_ends(monkeypatch: pytest.
     async def fake_text(key: str, _user_id: str, *args: Any, **_kwargs: Any) -> str:
         return f"{key}:{args}"
 
-    async def wrong_judge(*_args: Any, **_kwargs: Any) -> bool:
+    judged_calls: list[tuple[str, Any, str]] = []
+
+    async def wrong_judge(guess: str, question: Any, user_id: str) -> bool:
+        judged_calls.append((guess, question, user_id))
         return False
 
     monkeypatch.setattr(game, "send_text", fake_send)
@@ -299,8 +326,10 @@ async def test_game_wrong_guess_decrements_and_correct_ends(monkeypatch: pytest.
     await game.handle_guess(game_module.PlayerAction("user", "球", object()))
     assert game.attempts_left == 9
     assert sent[-1].startswith("game.wrong")
+    assert judged_calls == [("球", game.question, "user")]
 
-    async def right_judge(*_args: Any, **_kwargs: Any) -> bool:
+    async def right_judge(guess: str, question: Any, user_id: str) -> bool:
+        judged_calls.append((guess, question, user_id))
         return True
 
     async def grant_reward(_user_id: str) -> float:
@@ -311,6 +340,7 @@ async def test_game_wrong_guess_decrements_and_correct_ends(monkeypatch: pytest.
     await game.handle_guess(game_module.PlayerAction("user", "圆", object()))
     assert game.finished
     assert sent[-1].startswith("game.correct")
+    assert judged_calls[-1] == ("圆", game.question, "user")
 
 
 @pytest.mark.asyncio
@@ -417,8 +447,50 @@ async def test_game_reveal_now_is_idempotent(monkeypatch: pytest.MonkeyPatch) ->
 
 
 @pytest.mark.asyncio
+async def test_qq_question_message_uses_markdown_table_and_buttons(monkeypatch: pytest.MonkeyPatch) -> None:
+    """QQ 官方发题时使用 Markdown 表格展示，并附带作答、查看答案、规则说明按钮。"""
+    from unittest.mock import create_autospec
+
+    from nonebot.adapters.qq import Bot as QQBot
+    from nonebot_plugin_alconna.uniseg import Keyboard, Text
+    from nonebot_plugin_has_or_not import game as game_module
+    from nonebot_plugin_has_or_not.store import format_question_table
+
+    labels = {
+        "button.guess": "作答",
+        "button.reveal": "查看答案",
+        "button.rules": "规则说明",
+    }
+
+    async def fake_text(key: str, _user_id: str, *_args: Any, **_kwargs: Any) -> str:
+        return labels[key]
+
+    monkeypatch.setattr(game_module.lang, "text", fake_text)
+
+    game = game_module.HasOrNotGame("session", "owner", create_autospec(QQBot, instance=True), object())
+    game.question = make_question(
+        answer="会发光",
+        contains=("台灯", "萤火虫", "路灯"),
+        missing=("书架", "蚯蚓", "电线杆"),
+    )
+    message = await game.build_question_message()
+    assert message is not None
+
+    text = next(seg for seg in message if isinstance(seg, Text))
+    assert text.text == format_question_table(game.question)
+    assert any("markdown" in styles for styles in text.styles.values())
+
+    buttons = next(seg for seg in message if isinstance(seg, Keyboard)).children
+    assert [(button.flag, str(button.label), button.text) for button in buttons] == [
+        ("input", "作答", "/has-or-not "),
+        ("enter", "查看答案", "/has-or-not 查看答案"),
+        ("enter", "规则说明", "/has-or-not 规则说明"),
+    ]
+
+
+@pytest.mark.asyncio
 async def test_qq_result_message_has_again_button(monkeypatch: pytest.MonkeyPatch) -> None:
-    """QQ 官方公布结果时附带「再玩一次」按钮，正文按 markdown 转义。"""
+    """QQ 官方猜对或结束公布结果时附带「再来一局」按钮，正文按 markdown 转义。"""
     from unittest.mock import create_autospec
 
     from nonebot.adapters.qq import Bot as QQBot
@@ -426,23 +498,105 @@ async def test_qq_result_message_has_again_button(monkeypatch: pytest.MonkeyPatc
     from nonebot_plugin_has_or_not import game as game_module
     from nonebot_plugin_larkutils import escape_markdown
 
-    async def fake_text(key: str, _user_id: str, *args: Any, **_kwargs: Any) -> str:
-        return "再玩一次"
+    async def fake_text(_key: str, _user_id: str, *_args: Any, **_kwargs: Any) -> str:
+        return "再来一局"
 
     monkeypatch.setattr(game_module.lang, "text", fake_text)
 
     game = game_module.HasOrNotGame("session", "owner", create_autospec(QQBot, instance=True), object())
-    result = "已查看答案，游戏结束。答案是「+」。"
-    message = await game.build_result_message(result)
+    for result in (
+        "🎉 猜对了！答案是「+」，获得 3 VimCoin。",
+        "已查看答案，游戏结束。答案是「+」。",
+    ):
+        message = await game.build_result_message(result)
 
-    text = next(seg for seg in message if isinstance(seg, Text))
-    assert text.text == escape_markdown(result)
-    assert any("markdown" in styles for styles in text.styles.values())
+        text = next(seg for seg in message if isinstance(seg, Text))
+        assert text.text == escape_markdown(result)
+        assert any("markdown" in styles for styles in text.styles.values())
 
-    buttons = next(seg for seg in message if isinstance(seg, Keyboard)).children
-    assert [(button.flag, str(button.label), button.text) for button in buttons] == [
-        ("enter", "再玩一次", "/has-or-not"),
+        buttons = next(seg for seg in message if isinstance(seg, Keyboard)).children
+        assert [(button.flag, str(button.label), button.text) for button in buttons] == [
+            ("enter", "再来一局", "/has-or-not"),
+        ]
+
+
+@pytest.mark.asyncio
+async def test_qq_generate_failed_uses_result_with_again_button(monkeypatch: pytest.MonkeyPatch) -> None:
+    """出题失败结束本局时也走 send_result，在 QQ 官方下提供「再来一局」按钮。"""
+    from unittest.mock import create_autospec
+
+    from nonebot.adapters.qq import Bot as QQBot
+    from nonebot_plugin_has_or_not import game as game_module
+
+    class BrokenStore:
+        async def count(self) -> int:
+            return 1
+
+        async def ensure_ready(self) -> None:
+            raise RuntimeError("generation failed")
+
+    results: list[str] = []
+
+    async def fake_send_result(text: str) -> None:
+        results.append(text)
+
+    async def fake_text(key: str, _user_id: str, *_args: Any, **_kwargs: Any) -> str:
+        return f"{key}"
+
+    game = game_module.HasOrNotGame("session", "owner", create_autospec(QQBot, instance=True), object())
+    monkeypatch.setattr(game_module, "get_question_store", lambda: BrokenStore())
+    monkeypatch.setattr(game, "send_result", fake_send_result)
+    monkeypatch.setattr(game_module.lang, "text", fake_text)
+
+    await game.run()
+
+    assert game.finished
+    assert results == ["game.generate_failed"]
+
+
+@pytest.mark.asyncio
+async def test_qq_rules_message_switches_buttons_by_game_state(monkeypatch: pytest.MonkeyPatch) -> None:
+    """QQ 官方查看规则说明：局内附带作答/查看答案按钮，局外附带开始一局按钮。"""
+    from unittest.mock import create_autospec
+
+    from nonebot.adapters.qq import Bot as QQBot
+    from nonebot_plugin_alconna.uniseg import Keyboard, Text
+    from nonebot_plugin_has_or_not import game as game_module
+
+    texts = {
+        "game.rules": "纯文本规则",
+        "game.rules_markdown": "### 「有无有无」规则说明",
+        "button.start": "开始一局",
+        "button.guess": "作答",
+        "button.reveal": "查看答案",
+    }
+
+    async def fake_text(key: str, _user_id: str, *_args: Any, **_kwargs: Any) -> str:
+        return texts[key]
+
+    monkeypatch.setattr(game_module.lang, "text", fake_text)
+    qq_bot = create_autospec(QQBot, instance=True)
+
+    idle_msg = await game_module.build_rules_message(qq_bot, "user", None)
+    idle_text = next(seg for seg in idle_msg if isinstance(seg, Text))
+    assert idle_text.text == "### 「有无有无」规则说明"
+    assert any("markdown" in styles for styles in idle_text.styles.values())
+    idle_buttons = next(seg for seg in idle_msg if isinstance(seg, Keyboard)).children
+    assert [(button.flag, str(button.label), button.text) for button in idle_buttons] == [
+        ("enter", "开始一局", "/has-or-not"),
     ]
+
+    active_game = game_module.HasOrNotGame("session", "owner", qq_bot, object())
+    in_game_msg = await game_module.build_rules_message(qq_bot, "user", active_game)
+    in_game_buttons = next(seg for seg in in_game_msg if isinstance(seg, Keyboard)).children
+    assert [(button.flag, str(button.label), button.text) for button in in_game_buttons] == [
+        ("input", "作答", "/has-or-not "),
+        ("enter", "查看答案", "/has-or-not 查看答案"),
+    ]
+
+    non_qq_msg = await game_module.build_rules_message(object(), "user", active_game)
+    assert non_qq_msg.extract_plain_text() == "纯文本规则"
+    assert not any(isinstance(seg, Keyboard) for seg in non_qq_msg)
 
 
 @pytest.mark.asyncio
@@ -528,38 +682,92 @@ def test_plain_keyword_rule_matches_reveal_and_rules() -> None:
 
 
 @pytest.mark.asyncio
-async def test_judge_uses_exact_match_without_calling_decision(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_judge_uses_exact_match_and_rejects_prompt_words_without_calling_decision(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     from nonebot_plugin_has_or_not import judge as judge_module
 
     async def fail(*_args: Any, **_kwargs: Any) -> dict[str, Any]:
-        raise AssertionError("精确匹配不应调用 Decisions API")
+        raise AssertionError("本地可直接判定时不应调用 Decisions API")
 
     monkeypatch.setattr(judge_module, "ask", fail)
-    assert await judge_module.judge_guess("O", "o", "user") is True
+    question = make_question(
+        answer="o",
+        contains=("轮胎", "盘子", "钟表"),
+        missing=("排气管", "杯子", "瓶子"),
+    )
+    assert await judge_module.judge_guess("O", question, "user") is True
+    assert await judge_module.judge_guess("   ", question, "user") is False
+    # 直接照搬题面词语不应通过，也不需要请求 Decisions API
+    assert await judge_module.judge_guess("轮胎", question, "user") is False
+    assert await judge_module.judge_guess("排气管", question, "user") is False
 
 
 @pytest.mark.asyncio
-async def test_judge_accepts_semantic_match_from_decision(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_judge_passes_question_rules_and_reference_answer_to_decision(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     from nonebot_plugin_decision import NoulAnswer
     from nonebot_plugin_has_or_not import judge as judge_module
 
-    async def fake_text(key: str, _user_id: str, *_args: Any, **_kwargs: Any) -> str:
-        return {"judge.instructions": "判断", "judge.true": "相同", "judge.false": "不同"}[key]
+    light_question = make_question(
+        answer="会发光",
+        contains=("台灯", "萤火虫", "路灯"),
+        missing=("书架", "蚯蚓", "电线杆"),
+    )
 
-    async def fake_ask(state: Any, _questions: Any, **kwargs: Any) -> dict[str, Any]:
-        assert state == {"answer": "圆形", "guess": "o"}
+    async def fake_text(key: str, _user_id: str, *_args: Any, **_kwargs: Any) -> str:
+        return {
+            "judge.rules": "有无有无玩法规则",
+            "judge.instructions": "结合规则与参考答案判断是否符合规则",
+            "judge.true": "符合规则或本质特征一致",
+            "judge.false": "不符合规则",
+        }[key]
+
+    seen_guesses: list[str] = []
+
+    async def fake_ask(state: Any, questions: Any, **kwargs: Any) -> dict[str, Any]:
+        seen_guesses.append(state["guess"])
+        assert state == {
+            "rules": "有无有无玩法规则",
+            "question": {
+                "contains": ["台灯", "萤火虫", "路灯"],
+                "missing": ["书架", "蚯蚓", "电线杆"],
+                "pairs": [
+                    {"contain": "台灯", "missing": "书架"},
+                    {"contain": "萤火虫", "missing": "蚯蚓"},
+                    {"contain": "路灯", "missing": "电线杆"},
+                ],
+            },
+            "reference_answer": "会发光",
+            "guess": state["guess"],
+        }
         assert kwargs["identify"] == "Has Or Not (Judge)"
-        return {"same": NoulAnswer(noul=0.92)}
+        question_spec = questions["correct"]
+        assert question_spec.type == "noul"
+        assert question_spec.instructions == "结合规则与参考答案判断是否符合规则"
+        assert question_spec.criteria == {
+            "true": "符合规则或本质特征一致",
+            "false": "不符合规则",
+        }
+        return {"correct": NoulAnswer(noul=0.92)}
 
     monkeypatch.setattr(judge_module.lang, "text", fake_text)
     monkeypatch.setattr(judge_module, "ask", fake_ask)
-    assert await judge_module.judge_guess("o", "圆形", "user") is True
+    for equivalent_guess in ("光", "发光", "光源"):
+        assert await judge_module.judge_guess(equivalent_guess, light_question, "user") is True
+    assert seen_guesses == ["光", "发光", "光源"]
 
     async def low_probability(*_args: Any, **_kwargs: Any) -> dict[str, Any]:
-        return {"same": NoulAnswer(noul=0.1)}
+        return {"correct": NoulAnswer(noul=0.1)}
 
     monkeypatch.setattr(judge_module, "ask", low_probability)
-    assert await judge_module.judge_guess("球", "圆形", "user") is False
+    circle_question = make_question(
+        answer="圆形",
+        contains=("轮胎", "盘子", "钟表"),
+        missing=("排气管", "杯子", "瓶子"),
+    )
+    assert await judge_module.judge_guess("球", circle_question, "user") is False
 
 
 @pytest.mark.asyncio
@@ -577,4 +785,82 @@ async def test_judge_falls_back_to_exact_match_when_decision_not_configured(
 
     monkeypatch.setattr(judge_module.lang, "text", fake_text)
     monkeypatch.setattr(judge_module, "ask", raise_not_configured)
-    assert await judge_module.judge_guess("球", "圆形", "user") is False
+    circle_question = make_question(
+        answer="圆形",
+        contains=("轮胎", "盘子", "钟表"),
+        missing=("排气管", "杯子", "瓶子"),
+    )
+    assert await judge_module.judge_guess("球", circle_question, "user") is False
+
+
+@pytest.mark.asyncio
+async def test_real_lang_helper_resolves_has_or_not_judge_prompts() -> None:
+    """不打桩 lang.text，验证 src/lang/zh_hans/has_or_not.yaml 中判题提示词能正常解析。"""
+    from nonebot_plugin_decision import build_payload, noul
+    from nonebot_plugin_has_or_not.judge import build_judge_state
+    from nonebot_plugin_has_or_not.lang import lang
+    from nonebot_plugin_larklang.__main__ import load_languages
+
+    await load_languages()
+    user_id = "mlsid::--lang=zh_hans"
+    rules = await lang.text("judge.rules", user_id)
+    instructions = await lang.text("judge.instructions", user_id)
+    true_text = await lang.text("judge.true", user_id)
+    false_text = await lang.text("judge.false", user_id)
+
+    for resolved in (rules, instructions, true_text, false_text):
+        assert resolved
+        assert not resolved.startswith("[缺失:")
+
+    assert "有无有无" in rules
+    assert "reference_answer" in instructions
+    assert "会发光" in true_text
+    assert "光源" in true_text
+    assert "用电" in false_text
+
+    question = make_question(
+        answer="会发光",
+        contains=("台灯", "萤火虫", "路灯"),
+        missing=("书架", "蚯蚓", "电线杆"),
+    )
+    payload = await build_payload(
+        build_judge_state(question, "发光", rules),
+        {"correct": noul(instructions, true=true_text, false=false_text)},
+        "zh_hans",
+    )
+    assert "台灯" in payload["state"]
+    assert "会发光" in payload["state"]
+    assert payload["questions"]["correct"]["criteria"]["true"] == true_text
+    assert payload["questions"]["correct"]["criteria"]["false"] == false_text
+
+
+@pytest.mark.asyncio
+async def test_real_lang_helper_resolves_has_or_not_rules_and_buttons() -> None:
+    """验证规则说明文案（纯文本与 Markdown 表格版）及按钮文案能由 LangHelper 正常格式化。"""
+    from nonebot_plugin_has_or_not.lang import lang
+    from nonebot_plugin_larklang.__main__ import load_languages
+
+    await load_languages()
+    user_id = "mlsid::--lang=zh_hans"
+
+    details = await lang.text("help.details", user_id)
+    rules_plain = await lang.text("game.rules", user_id, 10, "3")
+    rules_markdown = await lang.text("game.rules_markdown", user_id, 10, "3")
+    again_label = await lang.text("button.again", user_id)
+    start_label = await lang.text("button.start", user_id)
+
+    for resolved in (details, rules_plain, rules_markdown, again_label, start_label):
+        assert resolved
+        assert not resolved.startswith("[缺失:")
+
+    assert again_label == "再来一局"
+    assert start_label == "开始一局"
+    assert "会发光" in rules_plain
+    assert "10" in rules_plain
+    assert "3 VimCoin" in rules_plain
+    assert "| ⭕ 有 | ❌ 无 |" in rules_markdown
+    assert "| ----------- | ----------- |" in rules_markdown
+    assert "10" in rules_markdown
+    assert "3 VimCoin" in rules_markdown
+    assert "<" not in rules_markdown
+    assert ">" not in rules_markdown

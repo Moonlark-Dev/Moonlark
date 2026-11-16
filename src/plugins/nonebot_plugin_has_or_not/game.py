@@ -19,7 +19,7 @@ from nonebot_plugin_larkutils.command import get_command_prefix
 from .config import config
 from .judge import judge_guess
 from .lang import lang
-from .store import format_question, get_question_store
+from .store import format_question, format_question_table, get_question_store
 from .types import GeneratedQuestion
 
 # “查看答案”的关键词（与按钮发送的内容一致），额外接受“结束游戏 / 结束本局”的同义说法
@@ -44,6 +44,67 @@ class PlayerAction:  # pylint: disable=too-few-public-methods
 def format_reward(value: float) -> str:
     """奖励展示：整数去掉小数点，其他保留两位。"""
     return str(int(value)) if float(value).is_integer() else str(round(value, 2))
+
+
+async def build_rules_message(
+    bot: Bot,
+    user_id: str,
+    game: Optional["HasOrNotGame"] = None,
+) -> UniMessage:
+    """构建规则说明消息：QQ 官方使用带示例表格的 Markdown 与操作按钮，其他平台返回纯文本。"""
+    attempts = config.has_or_not_max_attempts
+    reward = format_reward(config.has_or_not_reward)
+    if not isinstance(bot, QQBot):
+        return UniMessage(await lang.text("game.rules", user_id, attempts, reward))
+    prefix = get_command_prefix()
+    markdown = await lang.text("game.rules_markdown", user_id, attempts, reward)
+    message = UniMessage().style(markdown, "markdown")
+    if game is not None and not game.finished:
+        return message.keyboard(
+            Button(
+                "input",
+                await lang.text("button.guess", user_id),
+                text=f"{prefix}has-or-not ",
+            ),
+            Button(
+                "enter",
+                await lang.text("button.reveal", user_id),
+                text=f"{prefix}has-or-not {REVEAL_KEYWORD}",
+            ),
+            row=2,
+        )
+    return message.keyboard(
+        Button(
+            "enter",
+            await lang.text("button.start", user_id),
+            text=f"{prefix}has-or-not",
+        ),
+    )
+
+
+async def send_rules(
+    bot: Bot,
+    event: Event,
+    user_id: str,
+    game: Optional["HasOrNotGame"] = None,
+) -> None:
+    """向当前会话发送规则说明；QQ 官方发送失败时回退纯文本。"""
+    try:
+        await (await build_rules_message(bot, user_id, game)).send(target=event, bot=bot)
+    except Exception:
+        logger.opt(exception=True).warning("有无有无：发送规则说明消息失败，回退纯文本")
+    else:
+        return
+    plain = await lang.text(
+        "game.rules",
+        user_id,
+        config.has_or_not_max_attempts,
+        format_reward(config.has_or_not_reward),
+    )
+    try:
+        await UniMessage(plain).send(target=event, bot=bot)
+    except Exception:
+        logger.opt(exception=True).warning("有无有无：发送纯文本规则说明失败")
 
 
 class HasOrNotGame:  # pylint: disable=too-many-instance-attributes
@@ -84,11 +145,11 @@ class HasOrNotGame:  # pylint: disable=too-many-instance-attributes
                 await store.ensure_ready()
             except Exception:
                 logger.opt(exception=True).warning("有无有无：生成题目失败")
-                await self.send_lang("game.generate_failed")
+                await self.send_result(await lang.text("game.generate_failed", self.owner))
                 return
             self.question = await store.pop()
             if self.question is None:
-                await self.send_lang("game.generate_failed")
+                await self.send_result(await lang.text("game.generate_failed", self.owner))
                 return
             # 从题目真正发出开始计算三分钟无消息计时（生成题目可能很慢）
             self.touch()
@@ -110,7 +171,7 @@ class HasOrNotGame:  # pylint: disable=too-many-instance-attributes
         except Exception:
             logger.opt(exception=True).error("有无有无：游戏运行异常")
             if not self.finished:
-                await self.send_lang("game.error")
+                await self.send_result(await lang.text("game.error", self.owner))
         finally:
             self.finished = True
             games.pop(self.session_id, None)
@@ -132,8 +193,10 @@ class HasOrNotGame:  # pylint: disable=too-many-instance-attributes
     # ---------- 输入 ----------
 
     def touch(self, event: Optional[Event] = None, bot: Optional[Bot] = None) -> None:
-        """刷新活跃时间；顺带把被动回复目标与发送机器人更新为最新事件。"""
+        """刷新活跃时间；顺带把被动回复目标与发送机器人更新为同适配器的最新事件。"""
         self.last_activity = time.monotonic()
+        if bot is not None and isinstance(bot, QQBot) != self.qq_mode:
+            return
         if event is not None:
             self.last_event = event
         if bot is not None:
@@ -149,36 +212,43 @@ class HasOrNotGame:  # pylint: disable=too-many-instance-attributes
 
     # ---------- 出题 ----------
 
+    async def build_question_message(self) -> Optional[UniMessage]:
+        """构建 QQ 官方机器人的题目消息（Markdown 表格 + 操作按钮）。"""
+        if self.question is None:
+            return None
+        prefix = get_command_prefix()
+        return (
+            UniMessage()
+            .style(format_question_table(self.question), "markdown")
+            .keyboard(
+                Button(
+                    "input",
+                    await lang.text("button.guess", self.owner),
+                    text=f"{prefix}has-or-not ",
+                ),
+                Button(
+                    "enter",
+                    await lang.text("button.reveal", self.owner),
+                    text=f"{prefix}has-or-not {REVEAL_KEYWORD}",
+                ),
+                Button(
+                    "enter",
+                    await lang.text("button.rules", self.owner),
+                    text=f"{prefix}has-or-not {RULES_KEYWORD}",
+                ),
+                row=2,
+            )
+        )
+
     async def send_question(self) -> None:
         if self.question is None:
             return
-        markdown = format_question(self.question)
         if self.qq_mode:
-            prefix = get_command_prefix()
-            message = (
-                UniMessage()
-                .style(markdown, "markdown")
-                .keyboard(
-                    Button(
-                        "input",
-                        await lang.text("button.guess", self.owner),
-                        text=f"{prefix}has-or-not ",
-                    ),
-                    Button(
-                        "enter",
-                        await lang.text("button.reveal", self.owner),
-                        text=f"{prefix}has-or-not {REVEAL_KEYWORD}",
-                    ),
-                    Button(
-                        "enter",
-                        await lang.text("button.rules", self.owner),
-                        text=f"{prefix}has-or-not {RULES_KEYWORD}",
-                    ),
-                    row=2,
-                )
-            )
-            await message.send(target=self.last_event, bot=self.bot)
+            message = await self.build_question_message()
+            if message is not None:
+                await message.send(target=self.last_event, bot=self.bot)
             return
+        markdown = format_question(self.question)
         hint = await lang.text("game.hint", self.owner)
         try:
             image = await md_to_pic(markdown)
@@ -196,7 +266,7 @@ class HasOrNotGame:  # pylint: disable=too-many-instance-attributes
         guess = action.text.strip()
         if not guess:
             return
-        if await judge_guess(guess, self.question.answer, action.user_id):
+        if await judge_guess(guess, self.question, action.user_id):
             self.finished = True
             reward = await self.grant_reward(action.user_id)
             if reward > 0:
@@ -256,7 +326,7 @@ class HasOrNotGame:  # pylint: disable=too-many-instance-attributes
     # ---------- 发送 ----------
 
     async def build_result_message(self, text: str) -> UniMessage:
-        """构建结算消息：QQ 官方附带「再玩一次」按钮，其它适配器退回纯文本。"""
+        """构建结算消息：QQ 官方附带「再来一局」按钮，其它适配器退回纯文本。"""
         if not self.qq_mode:
             return UniMessage(text)
         return (
@@ -267,7 +337,7 @@ class HasOrNotGame:  # pylint: disable=too-many-instance-attributes
                     "enter",
                     await lang.text("button.again", self.owner),
                     text=f"{get_command_prefix()}has-or-not",
-                )
+                ),
             )
         )
 

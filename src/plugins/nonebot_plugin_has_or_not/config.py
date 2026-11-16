@@ -19,7 +19,7 @@ class Config(BaseModel):
     has_or_not_reward: float = 3.0
     # 本地保留多少个近期答案 / 六个词语组合用于去重
     has_or_not_history_size: int = 60
-    # Decisions API 判定“意思相同”的 Noul 概率阈值
+    # Decisions API 判定作答正确的 Noul 概率阈值
     has_or_not_judge_threshold: float = 0.5
 
 
