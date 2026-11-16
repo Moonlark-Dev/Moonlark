@@ -90,6 +90,11 @@ def creator(template_name: str):
 
 添加缓存创建函数的修饰器。
 
+缓存在启动的 ready 阶段（所有插件的 `on_startup` 钩子执行完、bot 连接之前）统一创建：
+先清空上一次运行的缓存文件，再起一个后台任务按 模板 × 语言 × 主题 逐个调用缓存创建函数，
+入参为 `mlsid::--lang={lang};--theme={theme};--ignore-cache=y`。预热不阻塞启动，因此缓存创建
+函数可以接受重复调用；单个组合渲染失败只会跳过该组合，不会中断启动。
+
 ### 参数
 
 - `template_name`: 模板名称
