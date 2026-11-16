@@ -146,18 +146,14 @@ def build_generation_extra(exclusions: list[str], word_sets: list[list[str]], co
             f"1. 把 {count} 个题目放进一个 JSON 数组中，数组的每一项都是上面规定格式的题目对象；"
             "不要输出任何其他内容，不要使用 Markdown 代码块。"
         ),
-        (
-            "2. 每一组的两个词必须是同一类型的常见事物，"
-            "missing 的词在常见场景下必须完全不包含答案的特征；找不齐三组词就换一个答案。"
-        ),
     ]
     recent_answers = [answer for answer in exclusions[-_MAX_PROMPT_EXCLUSIONS:] if answer]
     if recent_answers:
-        lines.append("3. 以下答案近期已经出过，请勿重复使用：" + "、".join(recent_answers))
+        lines.append("2. 以下答案近期已经出过，请勿重复使用：" + "、".join(recent_answers))
     recent_word_sets = [word_set for word_set in word_sets[-_MAX_PROMPT_WORD_SETS:] if word_set]
     if recent_word_sets:
         lines.append(
-            "4. 不要与以下近期题目使用完全相同的六个词语："
+            "3. 不要与以下近期题目使用完全相同的六个词语："
             + "；".join("/".join(word_set) for word_set in recent_word_sets)
         )
     return "\n".join(lines)
