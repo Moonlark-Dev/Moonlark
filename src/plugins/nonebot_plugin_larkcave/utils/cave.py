@@ -18,6 +18,7 @@
 import datetime
 import random
 
+from nonebot.adapters import Bot
 from nonebot_plugin_orm import AsyncSession, async_scoped_session
 from sqlalchemy import func, or_, select
 from sqlalchemy.exc import NoResultFound
@@ -26,7 +27,7 @@ from ..lang import lang
 from ..models import CaveData
 from .comment import add_cave_message, get_comments
 from .cool_down import on_use
-from .decoder import decode_cave
+from .decoder import build_cave_message
 
 THURSDAY_KEYWORDS = ("星期四", "50", "KFC")
 
@@ -71,11 +72,13 @@ async def get_cave(session: async_scoped_session | AsyncSession) -> CaveData:
     return cave
 
 
-async def send_cave(session: async_scoped_session, user_id: str, group_id: str, reverse: bool = False) -> None:
+async def send_cave(
+    session: async_scoped_session, user_id: str, group_id: str, bot: Bot, reverse: bool = False
+) -> None:
     try:
         cave_data = await get_cave(session)
         cave_id = cave_data.id
-        content = await decode_cave(cave_data, session, user_id, cave_id == 398 or reverse)
+        content = await build_cave_message(cave_data, session, user_id, bot, cave_id == 398 or reverse)
     except NoResultFound:
         await lang.finish("cave.noresult", user_id)
     except IndexError:

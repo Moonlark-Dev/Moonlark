@@ -35,7 +35,7 @@ from ..lang import lang
 
 from ..models import CaveData
 from .checker import check_cave
-from .decoder import decode_cave
+from .decoder import build_cave_message
 from .encoder import encode_text, encode_image
 
 lock = asyncio.Lock()
@@ -63,9 +63,14 @@ async def post_cave(
     except EmptyImage:
         await lang.finish("add.image_empty", user_id, reply_message=True)
     except DuplicateCave as e:
-        msg = UniMessage(await lang.text("add.similarity_title", user_id))
-        msg.extend(await decode_cave(e.cave, session, user_id))
-        msg.append(Text(await lang.text("add.similarity_footer", user_id, round(e.score * 100, 3))))
+        msg = await build_cave_message(
+            e.cave,
+            session,
+            user_id,
+            bot,
+            prefix=await lang.text("add.similarity_title", user_id),
+            suffix=await lang.text("add.similarity_footer", user_id, round(e.score * 100, 3)),
+        )
         await cave.finish(msg, reply_message=True)
     async with lock:
         await session.commit()
