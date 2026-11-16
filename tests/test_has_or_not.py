@@ -292,10 +292,11 @@ async def test_game_wrong_guess_decrements_and_correct_ends(monkeypatch: pytest.
         return False
 
     monkeypatch.setattr(game, "send_text", fake_send)
+    monkeypatch.setattr(game, "send_result", fake_send)
     monkeypatch.setattr(game_module.lang, "text", fake_text)
     monkeypatch.setattr(game_module, "judge_guess", wrong_judge)
 
-    await game.handle_guess(game_module.PlayerAction("guess", "user", "球", object()))
+    await game.handle_guess(game_module.PlayerAction("user", "球", object()))
     assert game.attempts_left == 9
     assert sent[-1].startswith("game.wrong")
 
@@ -307,7 +308,7 @@ async def test_game_wrong_guess_decrements_and_correct_ends(monkeypatch: pytest.
 
     monkeypatch.setattr(game_module, "judge_guess", right_judge)
     monkeypatch.setattr(game, "grant_reward", grant_reward)
-    await game.handle_guess(game_module.PlayerAction("guess", "user", "圆", object()))
+    await game.handle_guess(game_module.PlayerAction("user", "圆", object()))
     assert game.finished
     assert sent[-1].startswith("game.correct")
 
@@ -326,9 +327,201 @@ async def test_game_wait_action_returns_queued_action() -> None:
     from nonebot_plugin_has_or_not import game as game_module
 
     game = game_module.HasOrNotGame("session", "owner", object(), object())
-    action = game_module.PlayerAction("guess", "user", "圆形", object())
+    action = game_module.PlayerAction("user", "圆形", object())
     game.queue.put_nowait(action)
     assert await game.wait_action() is action
+
+
+@pytest.mark.asyncio
+async def test_game_reveal_now_ends_immediately_and_cancels_task(monkeypatch: pytest.MonkeyPatch) -> None:
+    """按下「查看答案」时在处理器里直接结算，并取消仍在等待的游戏循环。"""
+    import asyncio
+
+    from nonebot_plugin_has_or_not import game as game_module
+
+    game = game_module.HasOrNotGame("session", "owner", object(), object())
+    game.question = make_question("圆形")
+    game_module.games["session"] = game
+    sent: list[str] = []
+
+    async def fake_send_result(text: str) -> None:
+        sent.append(text)
+
+    async def fake_text(key: str, _user_id: str, *args: Any, **_kwargs: Any) -> str:
+        return f"{key}:{args}"
+
+    async def never_finishes() -> None:
+        await asyncio.sleep(3600)
+
+    monkeypatch.setattr(game, "send_result", fake_send_result)
+    monkeypatch.setattr(game_module.lang, "text", fake_text)
+
+    task = asyncio.create_task(never_finishes())
+    game.task = task
+    await game.reveal_now()
+
+    assert game.finished
+    assert "session" not in game_module.games
+    assert sent == ["game.reveal_manual:('圆形',)"]
+    with pytest.raises(asyncio.CancelledError):
+        await task
+
+
+@pytest.mark.asyncio
+async def test_game_reveal_now_before_question_ready(monkeypatch: pytest.MonkeyPatch) -> None:
+    """题目还在生成时按「查看答案」也要给出明确回应并结束本局。"""
+    from nonebot_plugin_has_or_not import game as game_module
+
+    game = game_module.HasOrNotGame("session", "owner", object(), object())
+    game_module.games["session"] = game
+    sent: list[str] = []
+
+    async def fake_send_result(text: str) -> None:
+        sent.append(text)
+
+    async def fake_text(key: str, _user_id: str, *args: Any, **_kwargs: Any) -> str:
+        return f"{key}:{args}"
+
+    monkeypatch.setattr(game, "send_result", fake_send_result)
+    monkeypatch.setattr(game_module.lang, "text", fake_text)
+
+    await game.reveal_now()
+
+    assert game.finished
+    assert "session" not in game_module.games
+    assert sent == ["game.reveal_before_question:()"]
+
+
+@pytest.mark.asyncio
+async def test_game_reveal_now_is_idempotent(monkeypatch: pytest.MonkeyPatch) -> None:
+    """重复按「查看答案」（早先消息上的按钮）不会重复公布答案。"""
+    from nonebot_plugin_has_or_not import game as game_module
+
+    game = game_module.HasOrNotGame("session", "owner", object(), object())
+    game.question = make_question("圆形")
+    sent: list[str] = []
+
+    async def fake_send_result(text: str) -> None:
+        sent.append(text)
+
+    async def fake_text(key: str, _user_id: str, *args: Any, **_kwargs: Any) -> str:
+        return f"{key}:{args}"
+
+    monkeypatch.setattr(game, "send_result", fake_send_result)
+    monkeypatch.setattr(game_module.lang, "text", fake_text)
+
+    await game.reveal_now()
+    await game.reveal_now()
+
+    assert len(sent) == 1
+
+
+@pytest.mark.asyncio
+async def test_qq_result_message_has_again_button(monkeypatch: pytest.MonkeyPatch) -> None:
+    """QQ 官方公布结果时附带「再玩一次」按钮，正文按 markdown 转义。"""
+    from unittest.mock import create_autospec
+
+    from nonebot.adapters.qq import Bot as QQBot
+    from nonebot_plugin_alconna.uniseg import Keyboard, Text
+    from nonebot_plugin_has_or_not import game as game_module
+    from nonebot_plugin_larkutils import escape_markdown
+
+    async def fake_text(key: str, _user_id: str, *args: Any, **_kwargs: Any) -> str:
+        return "再玩一次"
+
+    monkeypatch.setattr(game_module.lang, "text", fake_text)
+
+    game = game_module.HasOrNotGame("session", "owner", create_autospec(QQBot, instance=True), object())
+    result = "已查看答案，游戏结束。答案是「+」。"
+    message = await game.build_result_message(result)
+
+    text = next(seg for seg in message if isinstance(seg, Text))
+    assert text.text == escape_markdown(result)
+    assert any("markdown" in styles for styles in text.styles.values())
+
+    buttons = next(seg for seg in message if isinstance(seg, Keyboard)).children
+    assert [(button.flag, str(button.label), button.text) for button in buttons] == [
+        ("enter", "再玩一次", "/has-or-not"),
+    ]
+
+
+@pytest.mark.asyncio
+async def test_qq_result_falls_back_to_plain_text(monkeypatch: pytest.MonkeyPatch) -> None:
+    """带键盘的结算消息发送失败时，回退纯文本，避免按键看起来毫无回应。"""
+    from unittest.mock import create_autospec
+
+    from nonebot.adapters.qq import Bot as QQBot
+    from nonebot_plugin_has_or_not import game as game_module
+
+    class BrokenMessage:
+        async def send(self, **_kwargs: Any) -> None:
+            raise RuntimeError("send failed")
+
+    sent: list[str] = []
+
+    async def fake_build(_text: str) -> Any:
+        return BrokenMessage()
+
+    async def fake_send_text(text: str) -> None:
+        sent.append(text)
+
+    async def fake_text(key: str, _user_id: str, *args: Any, **_kwargs: Any) -> str:
+        return "发送 /has-or-not 可以再来一局。"
+
+    game = game_module.HasOrNotGame("session", "owner", create_autospec(QQBot, instance=True), object())
+    monkeypatch.setattr(game, "build_result_message", fake_build)
+    monkeypatch.setattr(game, "send_text", fake_send_text)
+    monkeypatch.setattr(game_module.lang, "text", fake_text)
+
+    await game.send_result("游戏结束。答案是「+」。")
+
+    assert sent == ["游戏结束。答案是「+」。\n发送 /has-or-not 可以再来一局。"]
+
+
+@pytest.mark.asyncio
+async def test_non_qq_result_appends_again_hint(monkeypatch: pytest.MonkeyPatch) -> None:
+    """其它适配器没有键盘，结算消息末尾附上再来一局的指令提示。"""
+    from nonebot_plugin_has_or_not import game as game_module
+
+    game = game_module.HasOrNotGame("session", "owner", object(), object())
+    sent: list[str] = []
+
+    async def fake_send_text(text: str) -> None:
+        sent.append(text)
+
+    async def fake_text(key: str, _user_id: str, *args: Any, **_kwargs: Any) -> str:
+        return "发送 /has-or-not 可以再来一局。"
+
+    monkeypatch.setattr(game, "send_text", fake_send_text)
+    monkeypatch.setattr(game_module.lang, "text", fake_text)
+
+    await game.send_result("游戏结束。答案是「+」。")
+
+    assert sent == ["游戏结束。答案是「+」。\n发送 /has-or-not 可以再来一局。"]
+
+
+def test_reveal_keywords_accept_end_game_words() -> None:
+    from nonebot_plugin_has_or_not.game import REVEAL_KEYWORDS
+
+    assert {"查看答案", "结束游戏", "结束本局"} <= REVEAL_KEYWORDS
+
+
+def test_plain_keyword_rule_matches_reveal_and_rules() -> None:
+    """按键指令丢掉前缀时，直接发送中文关键词也能被兜底识别。"""
+    from nonebot_plugin_has_or_not.matcher import _is_plain_keyword
+
+    class FakeEvent:
+        def __init__(self, text: str) -> None:
+            self._text = text
+
+        def get_plaintext(self) -> str:
+            return self._text
+
+    assert _is_plain_keyword(FakeEvent("查看答案"))
+    assert _is_plain_keyword(FakeEvent(" 结束游戏 "))
+    assert _is_plain_keyword(FakeEvent("规则说明"))
+    assert not _is_plain_keyword(FakeEvent("圆形"))
+    assert not _is_plain_keyword(FakeEvent("/has-or-not 查看答案"))
 
 
 # ---------- 判题 ----------
