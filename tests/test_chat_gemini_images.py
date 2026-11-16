@@ -128,14 +128,14 @@ async def test_system_prompt_includes_dual_image_format_in_gemini_mode(
         captured.update(kwargs)
         return {"role": "system", "content": "系统提示"}
 
-    async def fake_provider() -> str:
+    async def fake_provider(_session_id: str | None = None) -> str:
         return "gemini"
 
     monkeypatch.setattr(processor_module, "get_message", fake_get_message)
     monkeypatch.setattr(processor_module, "get_model_provider", fake_provider)
     processor = SimpleNamespace(
         ENABLE_EMBEDDED_IMAGE=True,
-        session=SimpleNamespace(get_session_type=lambda: "group"),
+        session=SimpleNamespace(get_session_type=lambda: "group", session_id="qq_1"),
         get_interaction_mode=AsyncMock(return_value="standard"),
         is_intimate_interaction_prompt_beta_enabled=AsyncMock(return_value=False),
     )
@@ -159,14 +159,14 @@ async def test_system_prompt_single_image_format_in_openai_mode(
         captured.update(kwargs)
         return {"role": "system", "content": "系统提示"}
 
-    async def fake_provider() -> str:
+    async def fake_provider(_session_id: str | None = None) -> str:
         return "openai"
 
     monkeypatch.setattr(processor_module, "get_message", fake_get_message)
     monkeypatch.setattr(processor_module, "get_model_provider", fake_provider)
     processor = SimpleNamespace(
         ENABLE_EMBEDDED_IMAGE=True,
-        session=SimpleNamespace(get_session_type=lambda: "group"),
+        session=SimpleNamespace(get_session_type=lambda: "group", session_id="qq_1"),
         get_interaction_mode=AsyncMock(return_value="standard"),
         is_intimate_interaction_prompt_beta_enabled=AsyncMock(return_value=False),
     )

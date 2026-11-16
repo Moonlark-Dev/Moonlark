@@ -1067,7 +1067,7 @@ class MessageProcessor:
         # Gemini 模式下图片除了内嵌进上下文，还可能因为安全策略被拦下、替换成
         # 「[图片(图片ID): 描述]」文本（见 MessageQueue.handle_blocked_images），
         # 所以 System Prompt 需要同时定义这两种图片格式
-        dual_image_format = self.ENABLE_EMBEDDED_IMAGE and await get_model_provider() == "gemini"
+        dual_image_format = self.ENABLE_EMBEDDED_IMAGE and await get_model_provider(self.session.session_id) == "gemini"
         return await get_message(
             "system",
             "chat.md.jinja",

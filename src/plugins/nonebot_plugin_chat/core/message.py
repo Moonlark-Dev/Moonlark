@@ -73,10 +73,10 @@ class MessageQueue:
         await self.context.reset()
 
     async def _create_fetcher(self) -> Any:
-        """按全局 Provider 选择 SDK 创建 fetcher（两者的 session 接口一致）"""
+        """按会话的 Provider 选择 SDK 创建 fetcher（两者的 session 接口一致）"""
         messages = await self.context.build_openai_messages()
         functions = await self.processor.tool_manager.select_tools("group")
-        provider = await get_model_provider()
+        provider = await get_model_provider(self.processor.session.session_id)
         if provider == "gemini":
             from nonebot_plugin_gemini.utils.chat import MessageFetcher as GeminiMessageFetcher
 
@@ -189,7 +189,8 @@ class MessageQueue:
         # provider 前缀缓存过期后清理不再相关的历史 block：OpenAI 约 10 分钟，
         # Gemini 只有 5 分钟（见 utils/provider.py）
         try:
-            if await self.context.run_sliding_window(await get_sliding_window_idle_seconds()):
+            idle_seconds = await get_sliding_window_idle_seconds(self.processor.session.session_id)
+            if await self.context.run_sliding_window(idle_seconds):
                 logger.info("已执行滑动窗口清理")
         except Exception as e:
             logger.warning(f"滑动窗口清理失败: {e}")
