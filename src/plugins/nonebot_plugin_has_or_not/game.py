@@ -13,6 +13,7 @@ from nonebot.adapters.qq import Bot as QQBot
 from nonebot_plugin_alconna import Button, UniMessage
 from nonebot_plugin_htmlrender import md_to_pic
 from nonebot_plugin_larkuser import get_user
+from nonebot_plugin_larkutils import escape_markdown
 from nonebot_plugin_larkutils.command import get_command_prefix
 
 from .config import config
@@ -21,10 +22,11 @@ from .lang import lang
 from .store import format_question, get_question_store
 from .types import GeneratedQuestion
 
-ActionKind = Literal["guess", "reveal"]
-
-# 查看答案的关键词（与按钮发送的内容一致）
+# “查看答案”的关键词（与按钮发送的内容一致），额外接受“结束游戏 / 结束本局”的同义说法
 REVEAL_KEYWORD = "查看答案"
+REVEAL_KEYWORDS = frozenset({REVEAL_KEYWORD, "结束游戏", "结束本局"})
+# “规则说明”的关键词（与按钮发送的内容一致），不消耗作答次数、也不会结束本局
+RULES_KEYWORD = "规则说明"
 
 # 会话 ID -> 当前进行中的游戏
 games: dict[str, "HasOrNotGame"] = {}
@@ -34,7 +36,6 @@ games: dict[str, "HasOrNotGame"] = {}
 class PlayerAction:  # pylint: disable=too-few-public-methods
     """玩家消息进入游戏循环后的动作。"""
 
-    kind: ActionKind
     user_id: str
     text: str
     event: Event
@@ -48,9 +49,10 @@ def format_reward(value: float) -> str:
 class HasOrNotGame:  # pylint: disable=too-many-instance-attributes
     """一个会话内的一局游戏。
 
-    输入统一走 ``asyncio.Queue``，由 ``run`` 串行处理，避免多个答题指令同时
-    到来时并发判题、把次数扣乱。任何会话消息都会刷新 ``last_activity``：
-    三分钟没有任何消息时自动公开答案。
+    作答统一走 ``asyncio.Queue``，由 ``run`` 串行处理，避免多个答题指令同时
+    到来时并发判题、把次数扣乱；「查看答案」不走队列，由处理器调用
+    :meth:`reveal_now` 立即结算，保证按键一定有回应。任何会话消息都会刷新
+    ``last_activity``：三分钟没有任何消息时自动公开答案。
     """
 
     def __init__(self, session_id: str, owner: str, bot: Bot, event: Event) -> None:
@@ -96,9 +98,6 @@ class HasOrNotGame:  # pylint: disable=too-many-instance-attributes
                 action = await self.wait_action()
                 if action is None:
                     await self.reveal("timeout")
-                    break
-                if action.kind == "reveal":
-                    await self.reveal("manual")
                     break
                 await self.handle_guess(action)
                 if self.finished:
@@ -146,11 +145,7 @@ class HasOrNotGame:  # pylint: disable=too-many-instance-attributes
 
     def submit_guess(self, user_id: str, text: str, event: Event, bot: Optional[Bot] = None) -> None:
         self.touch(event, bot)
-        self.queue.put_nowait(PlayerAction("guess", user_id, text, event))
-
-    def request_reveal(self, event: Event, bot: Optional[Bot] = None) -> None:
-        self.touch(event, bot)
-        self.queue.put_nowait(PlayerAction("reveal", self.owner, "", event))
+        self.queue.put_nowait(PlayerAction(user_id, text, event))
 
     # ---------- 出题 ----------
 
@@ -173,6 +168,11 @@ class HasOrNotGame:  # pylint: disable=too-many-instance-attributes
                         "enter",
                         await lang.text("button.reveal", self.owner),
                         text=f"{prefix}has-or-not {REVEAL_KEYWORD}",
+                    ),
+                    Button(
+                        "enter",
+                        await lang.text("button.rules", self.owner),
+                        text=f"{prefix}has-or-not {RULES_KEYWORD}",
                     ),
                     row=2,
                 )
@@ -203,7 +203,7 @@ class HasOrNotGame:  # pylint: disable=too-many-instance-attributes
                 text = await lang.text("game.correct", self.owner, self.question.answer, format_reward(reward))
             else:
                 text = await lang.text("game.correct_no_reward", self.owner, self.question.answer)
-            await self.send_text(text)
+            await self.send_result(text)
             return
         self.attempts_left -= 1
         if self.attempts_left > 0:
@@ -218,19 +218,70 @@ class HasOrNotGame:  # pylint: disable=too-many-instance-attributes
             logger.opt(exception=True).warning(f"有无有无：向 {user_id} 发放 VimCoin 失败")
             return 0.0
 
-    async def reveal(self, reason: Literal["timeout", "manual", "attempts"]) -> None:
+    async def reveal(self, reason: Literal["timeout", "attempts"]) -> None:
+        """公布答案并结束本局（幂等）：由游戏循环在超时 / 次数用尽时调用。"""
         if self.finished:
             return
         self.finished = True
         answer = self.question.answer if self.question is not None else "?"
         key = {
             "timeout": "game.reveal_timeout",
-            "manual": "game.reveal_manual",
             "attempts": "game.reveal_attempts",
         }[reason]
-        await self.send_text(await lang.text(key, self.owner, answer))
+        await self.send_result(await lang.text(key, self.owner, answer))
+
+    async def reveal_now(self) -> None:
+        """玩家按下「查看答案」时立即结算。
+
+        之前只往 ``queue`` 里塞一个动作，等 ``run`` 处理：只要循环正卡在判题 /
+        渲染 / 出题上，按钮按下去就迟迟没有反应；现在直接在处理器里结束本局并
+        取消后台任务，保证按键一定有即时回应。
+        """
+        if self.finished:
+            return
+        self.stop()
+        if self.question is None:
+            await self.send_result(await lang.text("game.reveal_before_question", self.owner))
+            return
+        await self.send_result(await lang.text("game.reveal_manual", self.owner, self.question.answer))
+
+    def stop(self) -> None:
+        """结束本局：标记完成、从会话表移除并取消仍在等待的后台任务。"""
+        self.finished = True
+        games.pop(self.session_id, None)
+        task = self.task
+        if task is not None and not task.done() and task is not asyncio.current_task():
+            task.cancel()
 
     # ---------- 发送 ----------
+
+    async def build_result_message(self, text: str) -> UniMessage:
+        """构建结算消息：QQ 官方附带「再玩一次」按钮，其它适配器退回纯文本。"""
+        if not self.qq_mode:
+            return UniMessage(text)
+        return (
+            UniMessage()
+            .style(escape_markdown(text), "markdown")
+            .keyboard(
+                Button(
+                    "enter",
+                    await lang.text("button.again", self.owner),
+                    text=f"{get_command_prefix()}has-or-not",
+                )
+            )
+        )
+
+    async def send_result(self, text: str) -> None:
+        """发送结算 / 答案消息，并在末尾提供再来一局的入口。"""
+        if self.qq_mode:
+            try:
+                await (await self.build_result_message(text)).send(target=self.last_event, bot=self.bot)
+                return
+            except Exception:
+                # 带键盘的 markdown 消息发送失败（例如被动回复窗口过期）时，
+                # 至少把答案用纯文本发出去，避免按键看起来毫无回应。
+                logger.opt(exception=True).warning(f"有无有无：向会话 {self.session_id} 发送结算消息失败，回退纯文本")
+        await self.send_text(f"{text}\n{await lang.text('game.again_hint', self.owner)}")
 
     async def send_text(self, text: str) -> None:
         try:
