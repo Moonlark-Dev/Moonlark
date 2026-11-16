@@ -7,7 +7,7 @@
 
     playwright._impl._errors.Error: Browser.new_page: viewport: expected object, got boolean
 
-触发点是 bot 连接时的 ``setup_cache()``——它用
+触发点是启动阶段的 ``setup_cache()``——它用
 ``mlsid::--lang={lang};--theme={theme};--ignore-cache=y`` 预热每个 creator 模板的缓存，
 所以 ``/help`` 与 ``/menu`` 在启动时就已经渲染失败（``--ignore-cache=y`` 只跳过读取
 已有缓存，仍然会真的渲染一次）。
