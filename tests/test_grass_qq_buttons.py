@@ -128,9 +128,11 @@ def test_escape_markdown_escapes_special_characters() -> None:
     from nonebot_plugin_larkutils import escape_markdown
 
     assert escape_markdown("草*草 _x_ [a](b) <tag> #h |p| `c`!") == (
-        "草\\*草 \\_x\\_ \\[a\\]\\(b\\) \\<tag\\> \\#h \\|p\\| \\`c\\`\\!"
+        "草\\*草 \\_x\\_ \\[a\\](b) \\<tag\\> \\#h \\|p\\| \\`c\\`\\!"
     )
     assert escape_markdown("普通文本，没有特殊字符 🐾") == "普通文本，没有特殊字符 🐾"
+    # 括号不转义：QQ markdown 会把 \(...\) 当成行内公式定界符，回声洞编号 (1234) 会被渲染成公式
+    assert escape_markdown("回声洞 —— (1234)") == "回声洞 —— (1234)"
 
 
 @pytest.mark.asyncio

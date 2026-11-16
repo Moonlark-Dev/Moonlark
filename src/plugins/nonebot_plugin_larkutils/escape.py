@@ -1,7 +1,11 @@
 import re
 
 # QQ 官方机器人 markdown 消息中的特殊字符，用于转义展示文本
-_MARKDOWN_ESCAPE_RE = re.compile(r"([\\`*_\[\]{}()#+\-!.<>|])")
+#
+# 不含圆括号：括号在 CommonMark 里本身不是特殊字符（链接/图片语法由已转义的 ``[`` ``]``
+# 拦截），而 QQ 的 markdown 渲染器会把 ``\(...\)`` 当成行内公式的定界符，转义后
+# ``回声洞 —— (1234)`` 会变成 ``\(1234\)`` 被渲染成公式（编号、评论等括号因此显示异常）。
+_MARKDOWN_ESCAPE_RE = re.compile(r"([\\`*_\[\]{}#+\-!.<>|])")
 
 # `<qqbot-cmd-input>` 标签属性中会破坏标签解析的保留字符
 _CMD_INPUT_ESCAPE_RE = re.compile(r"[<>&\"'%]")

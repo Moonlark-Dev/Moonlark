@@ -73,7 +73,26 @@ async def test_decode_cave_markdown_keeps_image_between_text(monkeypatch: pytest
 
     markdown = await decoder.decode_cave_markdown(cave, None, "u", _qq_bot())
 
-    assert markdown == "回声洞 —— \\(42\\)\n前文![text #1px #1px](qqbot-media://token)后文\n——作者"
+    assert markdown == "回声洞 —— (42)\n前文![text #1px #1px](qqbot-media://token)后文\n——作者"
+
+
+@pytest.mark.asyncio
+async def test_decode_cave_markdown_keeps_cave_id_parentheses(monkeypatch: pytest.MonkeyPatch) -> None:
+    """回声洞编号的括号不能被转义：QQ markdown 会把 \\(...\\) 当成行内公式，编号因此变成公式。"""
+    from nonebot_plugin_larkcave.utils import decoder
+
+    cave = SimpleNamespace(id=1234, content="正文", author="author")
+
+    async def fake_text(key: str, _user_id: str, *args: object) -> str:
+        return {"render.header": "回声洞 —— ({})", "render.footer": "\n——{}"}[key].format(*args)
+
+    monkeypatch.setattr(decoder, "lang", SimpleNamespace(text=fake_text))
+    monkeypatch.setattr(decoder, "get_user", AsyncMock(return_value=SimpleNamespace(get_nickname=lambda: "作者")))
+
+    markdown = await decoder.decode_cave_markdown(cave, None, "u", _qq_bot())
+
+    assert markdown == "回声洞 —— (1234)\n正文\n——作者"
+    assert "\\(" not in markdown
 
 
 @pytest.mark.asyncio
@@ -100,7 +119,7 @@ async def test_decode_cave_markdown_special_mode_keeps_image_syntax(monkeypatch:
     markdown = await decoder.decode_cave_markdown(cave, None, "u", _qq_bot(), use_special=True)
 
     assert "![text #1px #1px](qqbot-media://token)" in markdown
-    assert "\\)24\\( —— 洞声回" in markdown
+    assert ")24( —— 洞声回" in markdown
     assert "文前" in markdown
     assert "文后" in markdown
 
