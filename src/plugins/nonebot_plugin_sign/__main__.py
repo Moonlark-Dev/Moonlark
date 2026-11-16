@@ -264,6 +264,15 @@ async def perform_sign(user_id: str, missed_days: int = 0, auto: bool = False) -
     }
 
 
+def _keyboard_row(button_count: int) -> Optional[int]:
+    """签到结果键盘每行的按钮数：按钮超过 3 个时分两行显示（5 个时 3+2）
+
+    QQ 官方机器人把 4~5 个按钮塞在同一行时标签会被截断，按两行排布后每行
+    最多 3 个按钮；3 个及以下按钮保持单行，返回 None 交给适配器默认处理。
+    """
+    return math.ceil(button_count / 2) if button_count > 3 else None
+
+
 class SignHandler:
     """签到处理类：数据操作与渲染分离"""
 
@@ -419,10 +428,12 @@ class SignHandler:
             if isinstance(self.event, C2CMessageCreateEvent)
             else f'<qqbot-at-user id="{self.event.get_user_id()}" />'
         )
+        buttons = await self.build_button()
         await (
             UniMessage()
             .style(f"{at_user}{await create_image_markdown(image_raw, self.bot)}", "markdown")
-            .keyboard(*await self.build_button())
+            # 按钮超过 3 个时分两行显示，避免挤在同一行时标签被截断
+            .keyboard(*buttons, row=_keyboard_row(len(buttons)))
             .send()
         )
         await self.matcher.finish()
