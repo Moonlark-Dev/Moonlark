@@ -145,7 +145,7 @@ def build_generation_extra(exclusions: list[str], word_sets: list[list[str]], co
         (
             f"1. 把 {count} 个题目放进一个 JSON 数组中，数组的每一项都是上面规定格式的题目对象；"
             "不要输出任何其他内容，不要使用 Markdown 代码块。"
-        )
+        ),
     ]
     recent_answers = [answer for answer in exclusions[-_MAX_PROMPT_EXCLUSIONS:] if answer]
     if recent_answers:
