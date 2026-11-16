@@ -147,6 +147,25 @@ def text_width(text: str, size: int) -> float:
     return _font(size).getlength(text) / SCALE
 
 
+@lru_cache
+def baseline_offset(size: int) -> float:
+    """文字视觉中心 → Pillow 基线的偏移（逻辑像素）。
+
+    设计稿（moonlark-help-panel/build_demo.py）里每个文本的 y 都是**视觉中心**，
+    再由 baseline_offset() 换算成 SVG 的基线；Pillow 直接按基线绘制，所以这里必须
+    把同一个偏移补回去，否则整张图里所有文字都会相对背景上浮约 0.35em。
+    参考串固定为「汉国Ag」，让同一字号的所有文本共用一条基线，避免基线抖动；
+    偏移用与设计稿相同的逻辑字号字体量取，保证与设计稿逐像素对齐。
+    """
+    path = _resolve(FONT_PATH)
+    if path is None:
+        raise FileNotFoundError(f"帮助面板字体缺失: {FONT_PATH}")
+    f = ImageFont.truetype(str(path), size)
+    ascent, _ = f.getmetrics()
+    _, y0, _, y1 = f.getbbox("汉国Ag")
+    return ascent - (y0 + y1) / 2
+
+
 def fit_text(text: str, ladder: tuple[int, ...], limit: float) -> tuple[str, int, bool]:
     """把 text 塞进 limit 宽度：先降字号，仍超出才省略号。
 
@@ -453,7 +472,11 @@ class Canvas:
         opacity: Optional[float] = None,
         spacing: Optional[float] = None,
     ) -> float:
-        """x/y 是基线坐标（与设计稿 SVG 一致）。返回该行在当前字号下的总宽（不含尾部 spacing）。"""
+        """x/y 是文字视觉中心（与设计稿一致）。返回该行在当前字号下的总宽（不含尾部 spacing）。
+
+        Pillow 按基线绘制，所以这里统一补上 baseline_offset(size)：设计稿的 y 是
+        视觉中心，换算成基线后文字才会与自己的胶囊/卡片底对齐，而不是整体上浮。
+        """
         if not s:
             return 0.0
         f = _font(size)
@@ -462,6 +485,7 @@ class Canvas:
         alpha = 255 if opacity is None else max(1, round(255 * opacity))
         color = (*fill, alpha)
         tw = self.text_width(s, size)
+        base_y = y + baseline_offset(size)
         if spacing is not None:
             # letter-spacing：逐字符绘制
             dev_tw = self.px(tw) + self.px(spacing) * max(0, len(s) - 1)
@@ -484,7 +508,7 @@ class Canvas:
                 cx_dev += f.getlength(ch) + self.px(spacing)
             tw_sp = tw + spacing * max(0, len(s) - 1) / SCALE
             left_x = {"start": x, "middle": x - tw_sp / 2, "end": x - tw_sp}[anchor]
-            self.stamp(left_x - head / SCALE, y - base_dev / SCALE, layer)
+            self.stamp(left_x - head / SCALE, base_y - base_dev / SCALE, layer)
             return tw
         if opacity is not None and opacity < 1:
             ascent, descent = f.getmetrics()
@@ -501,10 +525,10 @@ class Canvas:
                 stroke_width=stroke_w,
                 stroke_fill=color,
             )
-            self.stamp(x - head / SCALE, y - (ascent + stroke_w + 4) / SCALE, layer)
+            self.stamp(x - head / SCALE, base_y - (ascent + stroke_w + 4) / SCALE, layer)
             return tw
         ImageDraw.Draw(self.img).text(
-            (self.px(x), self.px(y)),
+            (self.px(x), self.px(base_y)),
             s,
             font=f,
             fill=color,

@@ -106,6 +106,22 @@ def test_hot_provider_graceful_degradation():
     assert asyncio.run(panel._get_hot()) == []
 
 
+def test_text_vertical_center():
+    """text() 的 y 是文字视觉中心：墨迹中心应落在 y 上，而不是整体上浮半个字高"""
+    panel = _panel()
+    size, center_y = 15, 40
+    canvas = panel.Canvas(140, 90)
+    canvas.text(70, center_y, "指令手册", size, (255, 255, 255), anchor="middle")
+    # 画布背景是纯黑，阈值化后取非黑区域即文字墨迹
+    ink = canvas.img.convert("RGB").convert("L").point(lambda v: 255 if v > 8 else 0).getbbox()
+    assert ink is not None
+    ink_center = (ink[1] + ink[3]) / 2 / panel.SCALE
+    # 墨迹中心对齐 y（允许 1 逻辑像素的字体墨迹偏差）；
+    # 旧实现按基线绘制，中心会高出 4~6 像素
+    assert abs(ink_center - center_y) <= 1.0, f"ink center {ink_center} != {center_y}"
+    assert panel.baseline_offset(size) > 0
+
+
 def test_no_hot_provider_skips_band():
     """无热门数据时版面里没有热门条带预留"""
     panel = _panel()
