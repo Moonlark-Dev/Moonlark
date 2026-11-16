@@ -136,9 +136,27 @@ command:
   no_argv: 无效参数，请使用 {__prefix__}help chat 获取该命令的使用方法！
   model:
     no_permission: 权限不足，仅超级用户可以使用此命令。
-    current: 当前全局模型 Provider：{}。可用 {__prefix__}chat model <{}> 切换。
-    changed: 已切换全局模型 Provider 为 {}。
+    rules: |
+      模型 Provider 规则：
+      {__prefix__}chat model <openai|gemini> (设置全局默认 Provider)
+      {__prefix__}chat model <openai|gemini> <会话ID> (为指定会话单独设置 Provider)
+      {__prefix__}chat model default [会话ID] (不带会话ID时恢复全局默认，带会话ID时该会话恢复跟随全局)
+      {__prefix__}chat model (查看上述规则与当前设置)
+    global: 全局默认 Provider：{}
+    current: 当前会话（{}）：{}（{}）
+    source:
+      global: 跟随全局
+      session: 单独设置
+    sessions: 已单独设置的会话：
+    session_line: "· {}：{}"
+    no_sessions: 暂无单独设置的会话。
+    changed: 已切换全局默认模型 Provider 为 {}。
+    reset: 已恢复全局默认模型 Provider 为 {}。
     unchanged: 当前全局模型 Provider 已经是 {}，无需切换。
+    session_changed: 已将会话 {} 的模型 Provider 设置为 {}。
+    session_reset: 已将会话 {} 的模型 Provider 恢复为跟随全局（{}）。
+    session_unchanged: 会话 {} 的模型 Provider 已经是 {}，无需切换。
+    session_default_unchanged: 会话 {} 没有单独设置模型 Provider，已经在跟随全局。
     invalid: 无效的模型 Provider：{}。可选值：{}
   desire:
     get: |
@@ -200,7 +218,8 @@ help:
   usage16: chat mode [passionate|standard|silent] (查看或切换互动模式，切换将重置会话上下文)
   usage17: chat reset <会话ID> (重置指定会话的所有历史消息并重置会话状态[SU])
   usage18: chat review-all (对所有会话执行记忆整理并重置其消息队列[SU])
-  usage19: chat model [openai|gemini] (查看或切换全局模型 Provider[SU])
+  usage19: chat model [openai|gemini] [会话ID] (查看或设置模型 Provider，省略会话ID时设置全局默认[SU])
+  usage20: chat model default [会话ID] (恢复全局默认模型 Provider，带会话ID时该会话恢复跟随全局[SU])
 
 help_gal_mode:
   description: 私聊备选回复

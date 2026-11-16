@@ -170,9 +170,27 @@ class ChatGlobalSetting(Model):
     """Chat 的全局设置（键值对）
 
     目前只用来保存模型 Provider（``model_provider``）：由超级用户通过
-    ``/chat model <openai|gemini>`` 在全局范围内切换，所有会话共用。
+    ``/chat model <openai|gemini>`` 设置默认值，所有没有单独设置的会话共用。
     """
 
+    key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    value: Mapped[str] = mapped_column(String(512), default="")
+
+
+class ChatSessionSetting(Model):
+    """Chat 的分会话设置（键值对）
+
+    目前只用来保存模型 Provider（``model_provider``）：由超级用户通过
+    ``/chat model <openai|gemini> <session_id>`` 为单个会话单独设置，没有记录时
+    跟随 :class:`ChatGlobalSetting` 里的全局默认。
+
+    ``session_id`` 与 Chat Context / 消息队列使用同一个会话键：群聊为群 ID
+    （``qq_<群号>`` / ``qq_<group_openid>``），私聊为 ``qq_<用户 ID>``。
+    """
+
+    __tablename__ = "nonebot_plugin_chat_chatsessionsetting"
+
+    session_id: Mapped[str] = mapped_column(String(128), primary_key=True)
     key: Mapped[str] = mapped_column(String(128), primary_key=True)
     value: Mapped[str] = mapped_column(String(512), default="")
 

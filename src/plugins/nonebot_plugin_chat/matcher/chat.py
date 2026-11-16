@@ -37,10 +37,51 @@ from nonebot_plugin_chat.core.session.base import BaseSession
 
 from ..lang import lang
 from ..models import ChatGroup, PrivateChatConfig
-from ..utils.provider import VALID_PROVIDERS, get_model_provider, normalize_provider, set_model_provider
+from ..utils.provider import (
+    DEFAULT_PROVIDER,
+    VALID_PROVIDERS,
+    ModelProvider,
+    clear_session_model_provider,
+    get_global_model_provider,
+    get_model_provider,
+    get_session_model_provider,
+    is_default_provider,
+    list_session_model_providers,
+    normalize_provider,
+    reset_global_model_provider,
+    set_global_model_provider,
+    set_session_model_provider,
+)
 from ..utils.timing_stats import timing_stats_manager
 
 PRIVATE_CHAT_COMMANDS = ("switch", "on", "off", "reset", "model")
+
+
+async def resolve_session_name(session_id: str) -> str:
+    """用现有缓存解析会话名称，拿不到时返回空串
+
+    只有仍然留在 ``groups`` 里的活跃会话才有缓存可用：私聊取会话建立时缓存的
+    昵称；群聊走 ``get_session_name()``（QQ 官方群优先命中群信息缓存）。非活跃
+    会话通常已经被重置或归档，没有现成的名称数据，这里不额外调用接口。
+    """
+    session = groups.get(session_id)
+    if session is None:
+        return ""
+    try:
+        if session.get_session_type() == "private":
+            return getattr(session, "nickname", "") or ""
+        return (await session.get_session_name()) or ""
+    except Exception as e:
+        logger.debug(f"获取会话 {session_id} 的名称失败: {e}")
+        return ""
+
+
+async def format_session_label(session_id: str) -> str:
+    """会话展示标签：``qq_xxx（会话名称）``，拿不到名称时只显示会话 ID"""
+    name = await resolve_session_name(session_id)
+    if not name or name == session_id:
+        return session_id
+    return f"{session_id}（{name}）"
 
 
 class CommandHandler:
@@ -304,32 +345,99 @@ class CommandHandler:
             else:
                 await lang.finish("command.ignore_mention.not_found", self.user_id, target_id)
 
+    async def _warn_if_gemini_unavailable(self, provider: ModelProvider) -> None:
+        if provider != "gemini":
+            return
+        from nonebot_plugin_gemini.config import config as gemini_config
+
+        if not gemini_config.gemini_api_key:
+            logger.warning("已切换为 gemini，但未配置 GEMINI_API_KEY，Chat 请求会失败")
+
+    async def show_model_rules(self) -> None:
+        """展示 ``/chat model`` 的用法与当前 Provider 规则（仅超级用户可用）"""
+        global_provider = await get_global_model_provider()
+        current_provider = await get_model_provider(self.group_id)
+        current_is_custom = await get_session_model_provider(self.group_id) is not None
+        source_key = "command.model.source.session" if current_is_custom else "command.model.source.global"
+        lines = [
+            await lang.text("command.model.rules", self.user_id),
+            "",
+            await lang.text("command.model.global", self.user_id, global_provider),
+            await lang.text(
+                "command.model.current",
+                self.user_id,
+                await format_session_label(self.group_id),
+                current_provider,
+                await lang.text(source_key, self.user_id),
+            ),
+        ]
+        providers = await list_session_model_providers()
+        lines.append("")
+        if providers:
+            lines.append(await lang.text("command.model.sessions", self.user_id))
+            for session_id, provider in providers.items():
+                session_line = await lang.text(
+                    "command.model.session_line",
+                    self.user_id,
+                    await format_session_label(session_id),
+                    provider,
+                )
+                lines.append(session_line)
+        else:
+            lines.append(await lang.text("command.model.no_sessions", self.user_id))
+        await self.matcher.finish("\n".join(lines))
+
     async def handle_model(self) -> None:
-        """查看或切换全局模型 Provider（仅超级用户可用）"""
+        """查看规则或设置模型 Provider（全局默认 / 指定会话，仅超级用户可用）"""
         if not await is_superuser(self.event, self.bot):
             await lang.finish("command.model.no_permission", self.user_id)
 
-        current_provider = await get_model_provider()
         if len(self.argv) < 2:
-            await lang.finish("command.model.current", self.user_id, current_provider)
+            await self.show_model_rules()
+            return
 
-        provider = normalize_provider(self.argv[1])
+        arguments = [argument for argument in self.argv[1:] if argument.strip()]
+        raw_provider = arguments[0] if arguments else ""
+        target_session_id = arguments[1] if len(arguments) > 1 else ""
+
+        if is_default_provider(raw_provider):
+            if target_session_id:
+                global_provider = await get_global_model_provider()
+                if await clear_session_model_provider(target_session_id):
+                    logger.info(f"会话 {target_session_id} 的模型 Provider 已恢复为跟随全局（操作者 {self.user_id}）")
+                    await lang.finish(
+                        "command.model.session_reset",
+                        self.user_id,
+                        target_session_id,
+                        global_provider,
+                    )
+                await lang.finish("command.model.session_default_unchanged", self.user_id, target_session_id)
+            await reset_global_model_provider()
+            logger.info(f"全局模型 Provider 已恢复默认 {DEFAULT_PROVIDER}（操作者 {self.user_id}）")
+            await lang.finish("command.model.reset", self.user_id, DEFAULT_PROVIDER)
+
+        provider = normalize_provider(raw_provider)
         if provider is None:
             await lang.finish(
                 "command.model.invalid",
                 self.user_id,
-                self.argv[1],
-                "|".join(VALID_PROVIDERS),
+                raw_provider,
+                "|".join((*VALID_PROVIDERS, "default")),
             )
-        if provider == current_provider:
-            await lang.finish("command.model.unchanged", self.user_id, provider)
-        await set_model_provider(provider)
-        logger.info(f"全局模型 Provider 已切换为 {provider}（操作者 {self.user_id}）")
-        if provider == "gemini":
-            from nonebot_plugin_gemini.config import config as gemini_config
 
-            if not gemini_config.gemini_api_key:
-                logger.warning("已切换为 gemini，但未配置 GEMINI_API_KEY，Chat 请求会失败")
+        if target_session_id:
+            if await get_session_model_provider(target_session_id) == provider:
+                await lang.finish("command.model.session_unchanged", self.user_id, target_session_id, provider)
+            await set_session_model_provider(target_session_id, provider)
+            logger.info(f"会话 {target_session_id} 的模型 Provider 已切换为 {provider}（操作者 {self.user_id}）")
+            await self._warn_if_gemini_unavailable(provider)
+            await lang.finish("command.model.session_changed", self.user_id, target_session_id, provider)
+
+        if await get_global_model_provider() == provider:
+            await lang.finish("command.model.unchanged", self.user_id, provider)
+        await set_global_model_provider(provider)
+        logger.info(f"全局模型 Provider 已切换为 {provider}（操作者 {self.user_id}）")
+        await self._warn_if_gemini_unavailable(provider)
         await lang.finish("command.model.changed", self.user_id, provider)
 
     async def handle_mode(self) -> None:

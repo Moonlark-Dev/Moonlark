@@ -214,9 +214,20 @@ await judge_user_behavior(nickname, score=1, reason="有趣的发言")
 
 ## 模型 Provider
 
-Chat 的主模型可以在两套 SDK 之间切换，由超级用户通过 `/chat model <openai|gemini>`
-在全局范围内选择（设置保存在 `ChatGlobalSetting` 的 `model_provider` 键中，所有会话
-共用；不带参数时显示当前 Provider）。
+Chat 的主模型可以在两套 SDK 之间切换，Provider 分两层（仅超级用户可修改）：
+
+- **全局默认**：`/chat model <openai|gemini>`，保存在 `ChatGlobalSetting` 的
+  `model_provider` 键中，所有没有单独设置的会话共用；`/chat model default` 恢复成
+  `openai`；
+- **分会话设置**：`/chat model <openai|gemini> <会话ID>`，保存在 `ChatSessionSetting`
+  的 `(session_id, model_provider)` 中，只影响该会话（群聊与私聊都算会话，会话 ID 与
+  Chat Context / 消息队列使用的是同一个键）；`/chat model default <会话ID>` 清除设置、
+  重新跟随全局默认。
+
+不带参数时显示命令规则与当前设置：全局默认、当前会话实际使用的 Provider，以及所有
+单独设置的会话。会话名称只在现有缓存数据能支持时显示——活跃会话（仍在内存 `groups`
+里）直接复用会话对象上的数据（私聊昵称、群聊经 `get_session_name()`，QQ 官方群优先命中
+群信息缓存）；非活跃会话没有缓存可用，只显示会话 ID。
 
 - `openai`（默认）：Chat 主模型走 `nonebot_plugin_openai`，模型用 `/model` 管理；
 - `gemini`：Chat 主模型走 `nonebot_plugin_gemini`，模型用 `/gem-model` 管理。
@@ -226,11 +237,11 @@ Chat 的主模型可以在两套 SDK 之间切换，由超级用户通过 `/chat
 Ask AI 固定使用 `nonebot_plugin_openai`，Decision 判定、滑动窗口相关性判断、笔记整理、
 Image Describe 等辅助调用同样如此。
 
-Gemini 模式下还有两处差异：
+Gemini 模式下还有两处差异（分会话设置同理）：
 
 - **block 选择的等待时间缩短到 5 分钟**：`ChatContext.run_sliding_window` 的
-  `idle_seconds` 由 `utils/provider.py` 按 Provider 给出（Gemini 前缀缓存约 5 分钟过期，
-  OpenAI 约 10 分钟），缓存过期后才会清理不再相关的历史 block；
+  `idle_seconds` 由 `utils/provider.py` 按该会话当前的 Provider 给出（Gemini 前缀缓存约
+  5 分钟过期，OpenAI 约 10 分钟），缓存过期后才会清理不再相关的历史 block；
 - **图片被拦截后自动替换重试**：Gemini 返回 `IMAGE_SAFETY` / `SAFETY` /
   `PROHIBITED_CONTENT` 等拦截结果时，`MessageQueue.handle_blocked_images` 会把这些图片
   交给 OpenAI 插件的 Image Describe 模型总结成文字，替换掉请求里的图片与本地的上下文
