@@ -232,3 +232,31 @@ async def test_format_markdown_group_chat_prepends_at_user(monkeypatch: pytest.M
     text = next(seg for seg in sent[0] if isinstance(seg, Text))
     assert text.text == '<qqbot-at-user id="member_openid_1" />![签到卡片]'
     handler.matcher.finish.assert_awaited_once()
+
+
+@pytest.mark.parametrize(("count", "expected"), [(2, None), (3, None), (4, 2), (5, 3)])
+def test_keyboard_row_keeps_two_rows_for_many_buttons(count: int, expected: int | None) -> None:
+    """按钮超过 3 个时分两行显示（4 个 2+2、5 个 3+2），3 个及以下保持单行"""
+    from nonebot_plugin_sign.__main__ import _keyboard_row
+
+    assert _keyboard_row(count) == expected
+
+
+@pytest.mark.asyncio
+async def test_format_markdown_keyboard_splits_buttons_into_two_rows(monkeypatch: pytest.MonkeyPatch) -> None:
+    """签到结果键盘的 5 个按钮应按每行 3 个排成两行，避免挤在同一行时标签被截断"""
+    from nonebot.adapters.qq.event import GroupAtMessageCreateEvent
+    from nonebot_plugin_alconna import Button, Keyboard
+
+    event = MagicMock(spec=GroupAtMessageCreateEvent)
+    event.get_user_id.return_value = "member_openid_1"
+    handler, sent = _make_markdown_handler(monkeypatch, event=event)
+    handler.build_button = AsyncMock(  # type: ignore[method-assign]
+        return_value=[Button("enter", f"按钮{index}", text=f"/cmd{index}") for index in range(5)],
+    )
+
+    await handler.format_markdown(b"image")
+
+    keyboard = next(seg for seg in sent[0] if isinstance(seg, Keyboard))
+    assert keyboard.row == 3
+    assert len(keyboard.children) == 5
