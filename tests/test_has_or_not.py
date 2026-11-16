@@ -288,7 +288,10 @@ async def test_game_wrong_guess_decrements_and_correct_ends(monkeypatch: pytest.
     async def fake_text(key: str, _user_id: str, *args: Any, **_kwargs: Any) -> str:
         return f"{key}:{args}"
 
-    async def wrong_judge(*_args: Any, **_kwargs: Any) -> bool:
+    judged_calls: list[tuple[str, Any, str]] = []
+
+    async def wrong_judge(guess: str, question: Any, user_id: str) -> bool:
+        judged_calls.append((guess, question, user_id))
         return False
 
     monkeypatch.setattr(game, "send_text", fake_send)
@@ -299,8 +302,10 @@ async def test_game_wrong_guess_decrements_and_correct_ends(monkeypatch: pytest.
     await game.handle_guess(game_module.PlayerAction("user", "球", object()))
     assert game.attempts_left == 9
     assert sent[-1].startswith("game.wrong")
+    assert judged_calls == [("球", game.question, "user")]
 
-    async def right_judge(*_args: Any, **_kwargs: Any) -> bool:
+    async def right_judge(guess: str, question: Any, user_id: str) -> bool:
+        judged_calls.append((guess, question, user_id))
         return True
 
     async def grant_reward(_user_id: str) -> float:
@@ -311,6 +316,7 @@ async def test_game_wrong_guess_decrements_and_correct_ends(monkeypatch: pytest.
     await game.handle_guess(game_module.PlayerAction("user", "圆", object()))
     assert game.finished
     assert sent[-1].startswith("game.correct")
+    assert judged_calls[-1] == ("圆", game.question, "user")
 
 
 @pytest.mark.asyncio
@@ -528,38 +534,92 @@ def test_plain_keyword_rule_matches_reveal_and_rules() -> None:
 
 
 @pytest.mark.asyncio
-async def test_judge_uses_exact_match_without_calling_decision(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_judge_uses_exact_match_and_rejects_prompt_words_without_calling_decision(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     from nonebot_plugin_has_or_not import judge as judge_module
 
     async def fail(*_args: Any, **_kwargs: Any) -> dict[str, Any]:
-        raise AssertionError("精确匹配不应调用 Decisions API")
+        raise AssertionError("本地可直接判定时不应调用 Decisions API")
 
     monkeypatch.setattr(judge_module, "ask", fail)
-    assert await judge_module.judge_guess("O", "o", "user") is True
+    question = make_question(
+        answer="o",
+        contains=("轮胎", "盘子", "钟表"),
+        missing=("排气管", "杯子", "瓶子"),
+    )
+    assert await judge_module.judge_guess("O", question, "user") is True
+    assert await judge_module.judge_guess("   ", question, "user") is False
+    # 直接照搬题面词语不应通过，也不需要请求 Decisions API
+    assert await judge_module.judge_guess("轮胎", question, "user") is False
+    assert await judge_module.judge_guess("排气管", question, "user") is False
 
 
 @pytest.mark.asyncio
-async def test_judge_accepts_semantic_match_from_decision(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_judge_passes_question_rules_and_reference_answer_to_decision(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     from nonebot_plugin_decision import NoulAnswer
     from nonebot_plugin_has_or_not import judge as judge_module
 
-    async def fake_text(key: str, _user_id: str, *_args: Any, **_kwargs: Any) -> str:
-        return {"judge.instructions": "判断", "judge.true": "相同", "judge.false": "不同"}[key]
+    light_question = make_question(
+        answer="会发光",
+        contains=("台灯", "萤火虫", "路灯"),
+        missing=("书架", "蚯蚓", "电线杆"),
+    )
 
-    async def fake_ask(state: Any, _questions: Any, **kwargs: Any) -> dict[str, Any]:
-        assert state == {"answer": "圆形", "guess": "o"}
+    async def fake_text(key: str, _user_id: str, *_args: Any, **_kwargs: Any) -> str:
+        return {
+            "judge.rules": "有无有无玩法规则",
+            "judge.instructions": "结合规则与参考答案判断是否符合规则",
+            "judge.true": "符合规则或本质特征一致",
+            "judge.false": "不符合规则",
+        }[key]
+
+    seen_guesses: list[str] = []
+
+    async def fake_ask(state: Any, questions: Any, **kwargs: Any) -> dict[str, Any]:
+        seen_guesses.append(state["guess"])
+        assert state == {
+            "rules": "有无有无玩法规则",
+            "question": {
+                "contains": ["台灯", "萤火虫", "路灯"],
+                "missing": ["书架", "蚯蚓", "电线杆"],
+                "pairs": [
+                    {"contain": "台灯", "missing": "书架"},
+                    {"contain": "萤火虫", "missing": "蚯蚓"},
+                    {"contain": "路灯", "missing": "电线杆"},
+                ],
+            },
+            "reference_answer": "会发光",
+            "guess": state["guess"],
+        }
         assert kwargs["identify"] == "Has Or Not (Judge)"
-        return {"same": NoulAnswer(noul=0.92)}
+        question_spec = questions["correct"]
+        assert question_spec.type == "noul"
+        assert question_spec.instructions == "结合规则与参考答案判断是否符合规则"
+        assert question_spec.criteria == {
+            "true": "符合规则或本质特征一致",
+            "false": "不符合规则",
+        }
+        return {"correct": NoulAnswer(noul=0.92)}
 
     monkeypatch.setattr(judge_module.lang, "text", fake_text)
     monkeypatch.setattr(judge_module, "ask", fake_ask)
-    assert await judge_module.judge_guess("o", "圆形", "user") is True
+    for equivalent_guess in ("光", "发光", "光源"):
+        assert await judge_module.judge_guess(equivalent_guess, light_question, "user") is True
+    assert seen_guesses == ["光", "发光", "光源"]
 
     async def low_probability(*_args: Any, **_kwargs: Any) -> dict[str, Any]:
-        return {"same": NoulAnswer(noul=0.1)}
+        return {"correct": NoulAnswer(noul=0.1)}
 
     monkeypatch.setattr(judge_module, "ask", low_probability)
-    assert await judge_module.judge_guess("球", "圆形", "user") is False
+    circle_question = make_question(
+        answer="圆形",
+        contains=("轮胎", "盘子", "钟表"),
+        missing=("排气管", "杯子", "瓶子"),
+    )
+    assert await judge_module.judge_guess("球", circle_question, "user") is False
 
 
 @pytest.mark.asyncio
@@ -577,4 +637,50 @@ async def test_judge_falls_back_to_exact_match_when_decision_not_configured(
 
     monkeypatch.setattr(judge_module.lang, "text", fake_text)
     monkeypatch.setattr(judge_module, "ask", raise_not_configured)
-    assert await judge_module.judge_guess("球", "圆形", "user") is False
+    circle_question = make_question(
+        answer="圆形",
+        contains=("轮胎", "盘子", "钟表"),
+        missing=("排气管", "杯子", "瓶子"),
+    )
+    assert await judge_module.judge_guess("球", circle_question, "user") is False
+
+
+@pytest.mark.asyncio
+async def test_real_lang_helper_resolves_has_or_not_judge_prompts() -> None:
+    """不打桩 lang.text，验证 src/lang/zh_hans/has_or_not.yaml 中判题提示词能正常解析。"""
+    from nonebot_plugin_decision import build_payload, noul
+    from nonebot_plugin_has_or_not.judge import build_judge_state
+    from nonebot_plugin_has_or_not.lang import lang
+    from nonebot_plugin_larklang.__main__ import load_languages
+
+    await load_languages()
+    user_id = "mlsid::--lang=zh_hans"
+    rules = await lang.text("judge.rules", user_id)
+    instructions = await lang.text("judge.instructions", user_id)
+    true_text = await lang.text("judge.true", user_id)
+    false_text = await lang.text("judge.false", user_id)
+
+    for resolved in (rules, instructions, true_text, false_text):
+        assert resolved
+        assert not resolved.startswith("[缺失:")
+
+    assert "有无有无" in rules
+    assert "reference_answer" in instructions
+    assert "会发光" in true_text
+    assert "光源" in true_text
+    assert "用电" in false_text
+
+    question = make_question(
+        answer="会发光",
+        contains=("台灯", "萤火虫", "路灯"),
+        missing=("书架", "蚯蚓", "电线杆"),
+    )
+    payload = await build_payload(
+        build_judge_state(question, "发光", rules),
+        {"correct": noul(instructions, true=true_text, false=false_text)},
+        "zh_hans",
+    )
+    assert "台灯" in payload["state"]
+    assert "会发光" in payload["state"]
+    assert payload["questions"]["correct"]["criteria"]["true"] == true_text
+    assert payload["questions"]["correct"]["criteria"]["false"] == false_text

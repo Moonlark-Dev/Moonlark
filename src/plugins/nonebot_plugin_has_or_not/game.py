@@ -196,7 +196,7 @@ class HasOrNotGame:  # pylint: disable=too-many-instance-attributes
         guess = action.text.strip()
         if not guess:
             return
-        if await judge_guess(guess, self.question.answer, action.user_id):
+        if await judge_guess(guess, self.question, action.user_id):
             self.finished = True
             reward = await self.grant_reward(action.user_id)
             if reward > 0:
