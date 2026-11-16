@@ -8,8 +8,7 @@ from nonebot_plugin_alconna import Alconna, Args, Match, on_alconna
 from nonebot_plugin_larkuser.utils.matcher import patch_matcher
 from nonebot_plugin_larkutils import get_group_id, get_user_id
 
-from .config import config
-from .game import REVEAL_KEYWORDS, RULES_KEYWORD, HasOrNotGame, games
+from .game import REVEAL_KEYWORDS, RULES_KEYWORD, HasOrNotGame, games, send_rules
 from .lang import lang
 
 has_or_not = on_alconna(Alconna("has-or-not", Args["guess?", str]), aliases={"有无有无"})
@@ -58,10 +57,16 @@ async def handle_plain_command(
     user_id: str = get_user_id(),
 ) -> None:
     text = _plain_text(event)
-    if text == RULES_KEYWORD:
-        await plain_command.finish(await lang.text("game.rules", user_id, config.has_or_not_max_attempts))
     game = games.get(group_id)
-    if game is None or game.finished or not game.can_answer(user_id):
+    if game is not None and game.finished:
+        games.pop(group_id, None)
+        game = None
+    if text == RULES_KEYWORD:
+        if game is not None:
+            game.touch(event, bot)
+        await send_rules(bot, event, user_id, game)
+        await plain_command.finish()
+    if game is None or not game.can_answer(user_id):
         return
     game.touch(event, bot)
     await game.reveal_now()
@@ -82,7 +87,10 @@ async def handle_has_or_not(
         game = None
     # 规则说明与是否在局中无关，也不会消耗作答次数
     if text == RULES_KEYWORD:
-        await has_or_not.finish(await lang.text("game.rules", user_id, config.has_or_not_max_attempts))
+        if game is not None:
+            game.touch(event, bot)
+        await send_rules(bot, event, user_id, game)
+        await has_or_not.finish()
     # 查看答案直接在处理器里结算，不再依赖后台循环，保证按键立刻有回应
     if text in REVEAL_KEYWORDS:
         if game is None:
