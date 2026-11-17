@@ -162,6 +162,23 @@ def test_wrap_phrase_breaks_after_comma() -> None:
     assert lines == ["今天幸运值拉满，", "想做的事就放心去做吧～"]
 
 
+def test_is_group_event_only_matches_group_sessions() -> None:
+    """只有群聊会话需要在图片前 @ 发送者，私聊/单聊不加。"""
+    from nonebot_plugin_jrrp.__main__ import is_group_event
+
+    group = MagicMock()
+    group.get_session_id.return_value = "group_123_456"
+    private = MagicMock()
+    private.get_session_id.return_value = "private_456"
+    c2c = MagicMock()
+    c2c.get_session_id.return_value = "friend_openid"
+
+    assert is_group_event(group)
+    assert not is_group_event(private)
+    assert not is_group_event(c2c)
+    assert not is_group_event(None)
+
+
 def test_message_lang_has_no_value_prefix() -> None:
     """「你今天的人品值是: {值}，」这行提示已删掉，聊天直接是完整句子。"""
     lang_file = Path(__file__).resolve().parents[1] / "src" / "lang" / "zh_hans" / "jrrp.yaml"

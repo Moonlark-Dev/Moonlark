@@ -46,6 +46,11 @@ def _extract_msg_id(result: Any) -> str | None:
     return getattr(result, "message_id", None)
 
 
+def is_group_event(event: Optional[Event]) -> bool:
+    """群聊事件的 session id 以 group_ 开头（QQ 官方与 OneBot 都是这个约定）。"""
+    return event is not None and event.get_session_id().startswith("group_")
+
+
 def get_qq_at_user(event: Optional[Event]) -> str:
     """构建 QQ 官方机器人 markdown 卡片开头的 @ 前缀。
 
@@ -117,7 +122,7 @@ async def send_jrrp_text(bot: Bot, user_id: str, event: Optional[Event]) -> str 
     if isinstance(message, UniMessage):
         receipt = await message.send(target=event, bot=bot)
         return _extract_msg_id(receipt.msg_ids)
-    return _extract_msg_id(await jrrp.send(message, at_sender=True))
+    return _extract_msg_id(await jrrp.send(message, at_sender=is_group_event(event)))
 
 
 async def send_jrrp_card(bot: Bot, user_id: str, event: Event, card: bytes) -> str | None:
@@ -125,7 +130,7 @@ async def send_jrrp_card(bot: Bot, user_id: str, event: Event, card: bytes) -> s
     if isinstance(bot, QQBot):
         receipt = await message.send(target=event, bot=bot)
         return _extract_msg_id(receipt.msg_ids)
-    return _extract_msg_id(await jrrp.send(await message.export(), at_sender=True))
+    return _extract_msg_id(await jrrp.send(await message.export(), at_sender=is_group_event(event)))
 
 
 async def process_jrrp_command(group_id: str, user_id: str, bot: Bot, event: Event) -> None:
