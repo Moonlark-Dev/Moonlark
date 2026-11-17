@@ -69,9 +69,6 @@ _BREAK_AFTER = set("，。！？；：、")
 # 超过 100 时不再展示 / 100，避免「150 / 100」看起来像出错
 _MAX_LUCK = 100
 
-# 用来从现有的 message.<tier> 模板里切出「人品值后面那句话」的哨兵值
-_LUCK_VALUE_SENTINEL = "__MOONLARK_JRRP_VALUE__"
-
 
 def _static_file(*parts: str) -> Path:
     for root in _STATIC_ROOTS:
@@ -120,37 +117,18 @@ def _today() -> date:
     return datetime.now(UTC).astimezone(timezone(timedelta(hours=8))).date()
 
 
-async def get_luck_phrase(user_id: str, luck_value: int) -> str:
-    """取 jrrp 现有文案里人品值后面的那句话（如「，是不错的一天呢！」）。
-
-    文案只有一份：把哨兵值传给 ``message.<tier>`` 的模板，再把哨兵前面的
-    「你今天的人品值是: 」切掉，剩下的就是那句话。不要在卡片里复制一份。
-    """
-    tier = get_luck_type(luck_value)
-    message = await lang.text(f"message.{tier.name.lower()}", user_id, _LUCK_VALUE_SENTINEL)
-    _, sentinel, phrase = message.partition(_LUCK_VALUE_SENTINEL)
-    if not sentinel:  # 语言没套模板时原文就是后缀
-        phrase = message
-    phrase = phrase.lstrip("，, ").strip()
-    # 「！0！0！！！」这类原文是接着人品值念的，单独放上卡片只有半句，
-    # 把分值补回句首，读起来就是完整的「0！0！0！！！」。
-    if phrase.startswith(("！", "!")):
-        phrase = f"{luck_value}{phrase}"
-    return phrase
-
-
 async def render_luck_card(user_id: str, luck_value: int) -> bytes:
     """渲染今日人品卡，返回 PNG 字节。"""
     key = get_fortune_key(luck_value)
-    phrase = await get_luck_phrase(user_id, luck_value)
-    if not phrase:
-        phrase = await lang.text("card.empty_phrase", user_id)
+    # 卡面上的句子按 jrrp 的 11 档文案取，完整句子（含分值占位）都写在
+    # card.phrase.<tier> 里，这里只负责把分值 format 进去，不在代码里改标点。
+    tier = get_luck_type(luck_value).name.lower()
     texts = CardTexts(
         title=await lang.text("card.title", user_id),
         unit=await lang.text("card.unit", user_id),
         unit_max=await lang.text("card.unit_max", user_id),
         fortune=await lang.text(f"card.fortune.{key}", user_id),
-        phrase=phrase,
+        phrase=await lang.text(f"card.phrase.{tier}", user_id, luck_value),
     )
     # Pillow 是同步阻塞的，放到线程里跑，避免卡住事件循环
     return await asyncio.to_thread(render_card_image, luck_value, key, texts, _today().strftime("%Y.%m.%d"))

@@ -15,31 +15,41 @@ from PIL import Image
 CARD_SIZE = (920, 580)
 TIERS = ["a", "b", "c", "d", "e", "f"]
 
-MESSAGE_SUFFIXES = {
-    "beyond_perfect": "！！突破天际！！！",
-    "perfect_luck": "！100！100！！！",
-    "almost_perfect": "！可惜不是 100",
-    "great_day": "，是不错的一天呢！",
-    "good_day": "，还行啦还行啦。",
-    "fair_day": "",
-    "average_day": "，………………",
-    "below_average": "…………………………………………",
-    "poor_day": "，呜哇——",
-    "bad_day": "，呜哇——（没错，是百分制）",
-    "terrible_luck": "！0！0！！！",
-}
+JRRP_TIERS = [
+    "beyond_perfect",
+    "perfect_luck",
+    "almost_perfect",
+    "great_day",
+    "good_day",
+    "fair_day",
+    "average_day",
+    "below_average",
+    "poor_day",
+    "bad_day",
+    "terrible_luck",
+]
 
 FAKE_TEXTS = {
     "card.title": "MOONLARK · 今日人品",
     "card.unit": "/ 100",
     "card.unit_max": "MAX",
-    "card.empty_phrase": "平平稳稳，也挺好。",
     "card.fortune.a": "大吉",
     "card.fortune.b": "吉",
     "card.fortune.c": "小吉",
     "card.fortune.d": "末吉",
     "card.fortune.e": "凶",
     "card.fortune.f": "大凶",
+    "card.phrase.beyond_perfect": "{}！！突破天际！！！",
+    "card.phrase.perfect_luck": "{}！100！100！！！",
+    "card.phrase.almost_perfect": "{}！可惜不是 100",
+    "card.phrase.great_day": "是不错的一天呢！",
+    "card.phrase.good_day": "还行啦还行啦。",
+    "card.phrase.fair_day": "平平稳稳，也挺好。",
+    "card.phrase.average_day": "………………",
+    "card.phrase.below_average": "…………………………………………",
+    "card.phrase.poor_day": "呜哇——",
+    "card.phrase.bad_day": "呜哇——（没错，是百分制）",
+    "card.phrase.terrible_luck": "{}！0！0！！！",
 }
 
 
@@ -49,9 +59,8 @@ def patched_lang(monkeypatch: pytest.MonkeyPatch) -> None:
     from nonebot_plugin_jrrp.lang import lang
 
     async def fake_text(key: str, _user_id: str, *args: object, **_kwargs: object) -> str:
-        if key.startswith("message."):
-            value = args[0] if args else ""
-            return f"你今天的人品值是: {value}{MESSAGE_SUFFIXES[key.removeprefix('message.')]}"
+        if key.startswith("card.phrase."):
+            return str(FAKE_TEXTS[key]).format(*args)
         return FAKE_TEXTS.get(key, f"text::{key}")
 
     monkeypatch.setattr(lang, "text", fake_text)
@@ -114,38 +123,34 @@ async def test_every_tier_has_illustration(value: int, tier: str) -> None:
     assert (await render_luck_card("10", value)).startswith(b"\x89PNG")
 
 
-@pytest.mark.asyncio
 @pytest.mark.parametrize(
-    ("value", "expected"),
+    ("value", "tier", "expected"),
     [
-        (150, "150！！突破天际！！！"),
-        (100, "100！100！100！！！"),
-        (99, "99！可惜不是 100"),
-        (85, "是不错的一天呢！"),
-        (75, "还行啦还行啦。"),
-        (52, "………………"),
-        (0, "0！0！0！！！"),
+        (150, "beyond_perfect", "150！！突破天际！！！"),
+        (100, "perfect_luck", "100！100！100！！！"),
+        (99, "almost_perfect", "99！可惜不是 100"),
+        (85, "great_day", "是不错的一天呢！"),
+        (75, "good_day", "还行啦还行啦。"),
+        (60, "fair_day", "平平稳稳，也挺好。"),
+        (52, "average_day", "………………"),
+        (25, "poor_day", "呜哇——"),
+        (12, "bad_day", "呜哇——（没错，是百分制）"),
+        (0, "terrible_luck", "0！0！0！！！"),
     ],
 )
-async def test_luck_phrase_reuses_jrrp_message_suffix(value: int, expected: str) -> None:
-    """卡片上的句子直接复用 jrrp 现有 message.<tier> 文案里人品值后面的部分。"""
-    from nonebot_plugin_jrrp.card import get_luck_phrase
+def test_card_phrase_values(value: int, tier: str, expected: str) -> None:
+    """卡面上的句子直接写在 card.phrase.<tier> 里，代码只做 format，不改标点。"""
+    lang_file = Path(__file__).resolve().parents[1] / "src" / "lang" / "zh_hans" / "jrrp.yaml"
+    data = yaml.safe_load(lang_file.read_text(encoding="utf-8"))
 
-    assert await get_luck_phrase("10", value) == expected
-
-
-@pytest.mark.asyncio
-async def test_luck_phrase_empty_for_fair_day() -> None:
-    """fair_day 原文里人品值后面没有句子，返回空串交给卡片兜底。"""
-    from nonebot_plugin_jrrp.card import get_luck_phrase
-
-    assert await get_luck_phrase("10", 60) == ""
+    assert data["card"]["phrase"][tier].format(value) == expected
 
 
 @pytest.mark.asyncio
-async def test_render_uses_empty_phrase_fallback() -> None:
+async def test_render_fair_day_phrase() -> None:
     from nonebot_plugin_jrrp.card import render_luck_card
 
+    # fair_day 原文没有人品值后面的句子，语言文件里给了完整兜底句
     assert (await render_luck_card("10", 60)).startswith(b"\x89PNG")
 
 
@@ -162,7 +167,7 @@ def test_card_language_keys_cover_all_tiers() -> None:
     data = yaml.safe_load(lang_file.read_text(encoding="utf-8"))
 
     assert set(data["card"]["fortune"]) == set(TIERS)
-    assert data["card"]["empty_phrase"]
+    assert set(data["card"]["phrase"]) == set(JRRP_TIERS)
 
 
 @pytest.mark.asyncio
