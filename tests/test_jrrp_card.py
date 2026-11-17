@@ -90,6 +90,32 @@ def test_fortune_key_boundaries(value: int, expected: str) -> None:
     assert get_fortune_key(value) == expected
 
 
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        (150, "perfect"),
+        (101, "perfect"),
+        (100, "perfect"),
+        (99, "a"),
+        (81, "a"),
+        (80, "b"),
+        (61, "b"),
+        (60, "c"),
+        (41, "c"),
+        (40, "d"),
+        (21, "d"),
+        (20, "e"),
+        (1, "e"),
+        (0, "f"),
+    ],
+)
+def test_illustration_key_boundaries(value: int, expected: str) -> None:
+    """人品 >= 100 使用橙底满值插画，其余与 a~f 六档运势一致。"""
+    from nonebot_plugin_jrrp.card import get_illustration_key
+
+    assert get_illustration_key(value) == expected
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize("value", [150, 100, 81, 80, 61, 60, 41, 40, 21, 20, 1, 0])
 async def test_fortune_matches_sign_plugin(monkeypatch: pytest.MonkeyPatch, value: int) -> None:
@@ -114,13 +140,20 @@ async def test_render_luck_card_png() -> None:
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize(("value", "tier"), [(90, "a"), (70, "b"), (50, "c"), (30, "d"), (10, "e"), (0, "f")])
+@pytest.mark.parametrize(
+    ("value", "tier"),
+    [(150, "perfect"), (100, "perfect"), (90, "a"), (70, "b"), (50, "c"), (30, "d"), (10, "e"), (0, "f")],
+)
 async def test_every_tier_has_illustration(value: int, tier: str) -> None:
     from nonebot_plugin_jrrp.card import render_luck_card
 
     illustration = Path(__file__).resolve().parents[1] / "src" / "static" / "jrrp" / "moonlark" / f"{tier}.png"
     assert illustration.is_file(), f"缺少运势 {tier} 的插画"
-    assert (await render_luck_card("10", value)).startswith(b"\x89PNG")
+    data = await render_luck_card("10", value)
+    assert data.startswith(b"\x89PNG")
+    with Image.open(BytesIO(data)) as image:
+        assert image.size == CARD_SIZE
+        assert image.mode == "RGB"
 
 
 @pytest.mark.parametrize(
