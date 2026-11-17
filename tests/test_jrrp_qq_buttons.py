@@ -19,7 +19,7 @@ def patched_lang(monkeypatch: pytest.MonkeyPatch) -> None:
 
 @pytest.mark.asyncio
 async def test_build_jrrp_message_qq_prepends_at_and_adds_buttons(monkeypatch: pytest.MonkeyPatch) -> None:
-    """QQ 官方机器人 jrrp 回复应保持原有文本并在最前面附加 @，同时附带三个键盘按钮"""
+    """QQ 官方机器人的人品卡发送失败时，回退文本应保留 @ 前缀与三个键盘按钮"""
     from nonebot.adapters.qq import Bot as QQBot
     from nonebot_plugin_alconna import Keyboard, Text, UniMessage
     from nonebot_plugin_jrrp.__main__ import build_jrrp_message
@@ -101,7 +101,7 @@ async def test_build_jrrp_message_c2c_skips_at_user(monkeypatch: pytest.MonkeyPa
 
 @pytest.mark.asyncio
 async def test_build_jrrp_message_plain_text_on_other_adapters(monkeypatch: pytest.MonkeyPatch) -> None:
-    """非 QQ 平台应保持原有纯文本消息（由 matcher.send(at_sender=True) 附加 @）"""
+    """非 QQ 平台的人品卡发送失败时，回退文本由 matcher.send(at_sender=True) 附加 @"""
     from nonebot_plugin_jrrp.__main__ import build_jrrp_message
 
     monkeypatch.setattr("nonebot_plugin_jrrp.__main__.get_luck_message", AsyncMock(return_value="你今天的人品值是: 66"))

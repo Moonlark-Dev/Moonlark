@@ -53,3 +53,15 @@ button:
   lucky_star: 🌟 幸运星
   unlucky_one: 🌚 倒霉蛋
   reroll: 重新抽取
+card:
+  title: MOONLARK · 今日人品
+  unit: / 100
+  unit_max: MAX
+  fortune:
+    a: 大吉
+    b: 吉
+    c: 小吉
+    d: 末吉
+    e: 凶
+    f: 大凶
+  empty_phrase: 平平稳稳，也挺好。
