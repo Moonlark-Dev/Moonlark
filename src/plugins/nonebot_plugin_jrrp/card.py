@@ -1,9 +1,9 @@
 """今日人品卡（Pillow 绘制）。
 
-浅色二次元风格：左侧大字号展示人品值，下方是这一档运势的一句话；右侧是从
-整张 Moonlark 插画里裁出的对应格子。六档运势与 ``nonebot_plugin_sign`` 的
-``_get_luck`` 完全一致（>80 / 61-80 / 41-60 / 21-40 / 1-20 / 0 以下），这样
-同一分值在签到卡和人品卡上拿到的是同一张插画。
+浅色二次元风格：左侧大字号展示人品值，下方是这一档运势的一句话；右侧是对应的
+Moonlark 插画。六档运势与 ``nonebot_plugin_sign`` 的 ``_get_luck`` 完全一致
+（>80 / 61-80 / 41-60 / 21-40 / 1-20 / 0 以下）；人品值 >= 100 时保持「大吉」
+分档，同时插画与卡片配色切到专属的橙色背景满值版本。
 """
 
 from __future__ import annotations
@@ -49,8 +49,9 @@ class _Palette:
     soft: Color
 
 
-# 配色尽量贴近每张插画自己的背景：黄 / 蓝 / 绿 / 紫 / 灰蓝 / 深紫
+# 配色尽量贴近每张插画自己的背景：橙（>=100）/ 黄 / 蓝 / 绿 / 紫 / 灰蓝 / 深紫
 _PALETTES: dict[str, _Palette] = {
+    "perfect": _Palette((0xB8, 0x4E, 0x08), (0xFA, 0x94, 0x3A), (0xFF, 0xEE, 0xDE), (0xFF, 0xDC, 0xBD)),
     "a": _Palette((0xA2, 0x66, 0x0A), (0xF0, 0xB8, 0x38), (0xFF, 0xF3, 0xD6), (0xFF, 0xE7, 0xA8)),
     "b": _Palette((0x2A, 0x67, 0xA2), (0x7C, 0xC4, 0xFF), (0xE7, 0xF3, 0xFF), (0xD7, 0xEC, 0xFF)),
     "c": _Palette((0x2D, 0x78, 0x4B), (0x8C, 0xD9, 0x8F), (0xE9, 0xF8, 0xE4), (0xDC, 0xF3, 0xD5)),
@@ -99,6 +100,13 @@ def get_fortune_key(luck_value: int) -> str:
     if luck_value > 0:
         return "e"
     return "f"
+
+
+def get_illustration_key(luck_value: int) -> str:
+    """人品值 → 插画文件名（不含扩展名）；>= 100 用橙底满值插画，其余按 a~f 六档。"""
+    if luck_value >= _MAX_LUCK:
+        return "perfect"
+    return get_fortune_key(luck_value)
 
 
 @dataclass(frozen=True)
@@ -261,7 +269,8 @@ def _wrap_phrase(text: str, size: int, max_width: float, max_lines: int = 3) -> 
 # ---------------------------------------------------------------------------
 def render_card_image(luck_value: int, key: str, texts: CardTexts, date_text: str) -> bytes:
     """同步绘制人品卡并编码为 PNG。"""
-    palette = _PALETTES[key]
+    illustration_key = get_illustration_key(luck_value)
+    palette = _PALETTES.get(illustration_key, _PALETTES[key])
     base = Image.new("RGBA", (CARD_WIDTH, CARD_HEIGHT), (0, 0, 0, 255))
     base.alpha_composite(
         _linear_gradient(
@@ -356,9 +365,14 @@ def render_card_image(luck_value: int, key: str, texts: CardTexts, date_text: st
         anchor="ls",
     )
 
-    # 插画（原图每一格自带圆角，裁切时已向内缩 1px，这里再套一层圆角遮罩）
-    illustration = Image.open(_static_file(*_ILLUSTRATION_DIR, f"{key}.png")).convert("RGBA")
-    illustration_width, illustration_height = 253, 500
+    # 插画（原图自带圆角，裁切时已去掉白边并做圆角透明化，这里再套一层圆角遮罩）
+    illustration = Image.open(_static_file(*_ILLUSTRATION_DIR, f"{illustration_key}.png")).convert("RGBA")
+    illustration_height = 500
+    illustration_width = (
+        min(280, round(illustration_height * illustration.width / illustration.height))
+        if illustration.width / illustration.height > 0.52
+        else 253
+    )
     illustration = ImageOps.fit(illustration, (illustration_width, illustration_height), Image.Resampling.LANCZOS)
     illustration_x = CARD_BOX[2] - 32 - illustration_width
     illustration_y = 40
