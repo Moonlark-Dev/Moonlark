@@ -7,9 +7,9 @@
 可能赶在缓存创建之前。
 
 现在改为在启动的 ready 阶段（所有插件的 ``on_startup`` 钩子执行完、bot 连接之前）
-清空旧缓存并起一个后台任务重建。这里锁住四件事：钩子注册在 ready 阶段（而不是
-``on_startup`` 或 bot 连接）、旧缓存会被清掉、预热在后台按 模板 × 语言 × 主题 重建、
-单个模板失败不会中断启动。
+清空旧缓存并同步重建，预热直接阻塞启动。这里锁住四件事：钩子注册在 ready 阶段
+（而不是 ``on_startup`` 或 bot 连接）、旧缓存会被清掉、预热按 模板 × 语言 × 主题
+重建并在 ``prepare_cache`` 返回前完成、单个模板失败不会中断启动。
 """
 
 from pathlib import Path
@@ -56,14 +56,11 @@ def fake_cache_environment(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> l
 
 
 @pytest.mark.asyncio
-async def test_prepare_cache_clears_stale_files_and_starts_warm_up(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+async def test_prepare_cache_clears_stale_files_and_warms_up_synchronously(
+    fake_cache_environment: list[str], tmp_path: Path
 ) -> None:
-    """启动阶段先清掉上次运行的缓存，再把重建交给后台任务"""
+    """启动阶段先清掉上次运行的缓存，再同步重建——返回时缓存必须已经就绪"""
     import nonebot_plugin_render.cache as cache
-
-    started: list[None] = []
-    monkeypatch.setattr(cache, "start_cache_warm_up", lambda: started.append(None))
 
     stale = tmp_path / "stale-cache"
     stale.write_bytes(b"old")
@@ -74,7 +71,9 @@ async def test_prepare_cache_clears_stale_files_and_starts_warm_up(
 
     assert not stale.exists(), "上次运行的缓存必须被清掉"
     assert subdirectory.is_dir(), "清理缓存不能误删目录"
-    assert started == [None], "预热必须交给后台任务，不能阻塞启动"
+    assert await cache.get_cache("demo.html.jinja", "zh_hans", "default") is not None
+    assert len(fake_cache_environment) == 4, "预热必须在 prepare_cache 返回前完成，不能留给后台任务"
+    assert len([path for path in tmp_path.iterdir() if path.is_file()]) == 4
 
 
 @pytest.mark.asyncio
@@ -84,8 +83,6 @@ async def test_prepare_cache_respects_disabled_config(
     """RENDER_CACHE=false 时仍然清理旧缓存，但不做预热"""
     import nonebot_plugin_render.cache as cache
 
-    started: list[None] = []
-    monkeypatch.setattr(cache, "start_cache_warm_up", lambda: started.append(None))
     monkeypatch.setattr(cache.config, "render_cache", False)
     stale = tmp_path / "stale-cache"
     stale.write_bytes(b"old")
@@ -93,13 +90,13 @@ async def test_prepare_cache_respects_disabled_config(
     await cache.prepare_cache()
 
     assert not stale.exists()
-    assert not started, "关闭缓存时不应预热"
     assert not fake_cache_environment, "关闭缓存时不应调用 creator"
+    assert not any(path.is_file() for path in tmp_path.iterdir()), "关闭缓存时不应写入缓存"
 
 
 @pytest.mark.asyncio
 async def test_warm_up_cache_rebuilds_every_combination(tmp_path: Path) -> None:
-    """后台预热按 模板 × 语言 × 主题 逐个重建缓存"""
+    """启动预热按 模板 × 语言 × 主题 逐个重建缓存"""
     import nonebot_plugin_render.cache as cache
 
     await cache.warm_up_cache()

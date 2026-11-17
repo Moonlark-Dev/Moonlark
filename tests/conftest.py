@@ -11,8 +11,8 @@ from nonebot.adapters.onebot.v11 import Adapter as OneBotV11Adapter
 # CI 通过环境变量把数据库指向 MySQL；本地未设置时才回落到内存 SQLite
 os.environ.setdefault("SQLALCHEMY_DATABASE_URL", "sqlite+aiosqlite://")
 os.environ["ALEMBIC_STARTUP_CHECK"] = "False"
-# Render 缓存在启动的 ready 阶段按 模板 × 语言 × 主题 真渲染一遍（帮助面板每张要数秒），
-# 单元测试用不到这些缓存，关掉预热以免拖慢每一次测试会话；预热本身由
+# Render 缓存在启动的 ready 阶段按 模板 × 语言 × 主题 真渲染一遍（帮助面板每张要数秒，
+# 且预热会阻塞启动），单元测试用不到这些缓存，关掉预热以免拖慢每一次测试会话；预热本身由
 # tests/test_render_cache_startup.py 用假 creator 验证。
 os.environ["RENDER_CACHE"] = "False"
 

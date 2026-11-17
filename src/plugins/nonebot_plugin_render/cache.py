@@ -64,27 +64,20 @@ async def setup_cache() -> None:
 
 
 async def warm_up_cache() -> None:
-    """后台预热入口：预渲染失败只记日志，不影响后续渲染与机器人运行"""
+    """启动阶段预热缓存：预渲染失败只记日志，不影响后续渲染与机器人运行
+
+    调用方会等待它返回，因此预热未完成前启动不会结束；单个组合渲染失败只跳过
+    该组合，不会让启动失败。
+    """
     try:
         await setup_cache()
     except Exception:
         logger.opt(exception=True).warning("Render 缓存预热失败，后续渲染将回退到实时渲染")
 
 
-def start_cache_warm_up() -> None:
-    """把预热放进后台任务，不阻塞启动
-
-    预热要真渲染每个 creator 的 模板 × 语言 × 主题（帮助面板单张就要数秒），
-    同步等待会明显拖慢启动。任务是 lifespan task group 的子任务，停止时会随
-    任务组一起取消。
-    """
-    logger.info("正在后台创建 Render 缓存...")
-    get_driver().task_group.start_soon(warm_up_cache)
-
-
 @get_driver()._lifespan.on_ready
 async def prepare_cache() -> None:
-    """启动阶段清空旧缓存，并在后台重建
+    """启动阶段清空旧缓存，并同步重建
 
     此前缓存挂在 ``on_bot_connect`` 上创建：多账号进程里第一个 bot 连接时
     ``len(get_bots())`` 恰为 1，缓存会被生成；第二个 bot 连接时 ``len(get_bots())``
@@ -95,12 +88,16 @@ async def prepare_cache() -> None:
     里初始化，而钩子按插件加载顺序执行，本插件的钩子会排在它们前面。nonebot 的
     ``Lifespan.startup()`` 先跑完所有 ``on_startup`` 钩子再跑 ready 钩子，所以
     ready 阶段既在启动时、又保证各插件的数据已经就绪。
+
+    预热直接阻塞启动：全部 模板 × 语言 × 主题 渲染完成后 ready 钩子才返回，避免
+    第一条消息赶在缓存就绪之前。单个组合渲染失败只会跳过该组合，不会中断启动。
     """
     clear_cache()
     if not config.render_cache:
         logger.info("Render 缓存已关闭（RENDER_CACHE=false），跳过预热")
         return
-    start_cache_warm_up()
+    logger.info("正在创建 Render 缓存...")
+    await warm_up_cache()
 
 
 async def get_cache(template: str, lang: str, theme: str) -> Optional[bytes]:
