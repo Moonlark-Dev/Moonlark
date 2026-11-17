@@ -130,8 +130,13 @@ async def get_luck_phrase(user_id: str, luck_value: int) -> str:
     message = await lang.text(f"message.{tier.name.lower()}", user_id, _LUCK_VALUE_SENTINEL)
     _, sentinel, phrase = message.partition(_LUCK_VALUE_SENTINEL)
     if not sentinel:  # 语言没套模板时原文就是后缀
-        return message.lstrip("，, ").strip()
-    return phrase.lstrip("，, ")
+        phrase = message
+    phrase = phrase.lstrip("，, ").strip()
+    # 「！0！0！！！」这类原文是接着人品值念的，单独放上卡片只有半句，
+    # 把分值补回句首，读起来就是完整的「0！0！0！！！」。
+    if phrase.startswith(("！", "!")):
+        phrase = f"{luck_value}{phrase}"
+    return phrase
 
 
 async def render_luck_card(user_id: str, luck_value: int) -> bytes:
@@ -331,7 +336,7 @@ def render_card_image(luck_value: int, key: str, texts: CardTexts, date_text: st
 
     # 运势胶囊
     pill_font = _font(32)
-    pill_x, pill_y, pill_height = left, 320, 58
+    pill_x, pill_y, pill_height = left, 330, 58
     pill_width = 24 + 16 + 12 + pill_font.getlength(texts.fortune) + 24
     pill = Image.new("RGBA", (CARD_WIDTH, CARD_HEIGHT), (0, 0, 0, 0))
     ImageDraw.Draw(pill).rounded_rectangle(
@@ -344,26 +349,25 @@ def render_card_image(luck_value: int, key: str, texts: CardTexts, date_text: st
     base.alpha_composite(pill)
     _star(draw, pill_x + 32, pill_y + pill_height / 2, 8, palette.accent + (255,))
     draw.text(
-        (pill_x + 52, pill_y + pill_height / 2 + 2),
+        (pill_x + 52, pill_y + pill_height / 2),
         texts.fortune,
         font=pill_font,
         fill=palette.deep + (255,),
-        anchor="ls",
+        anchor="lm",
     )
 
     # 那一句话
     phrase_font = _font(26)
-    lines = _wrap_phrase(texts.phrase, 26, 486)
-    baseline = 406
+    lines = _wrap_phrase(texts.phrase, 26, 486, max_lines=2)
+    baseline = 432
     for line in lines:
         draw.text((left, baseline), line, font=phrase_font, fill=_BODY + (255,), anchor="ls")
         baseline += 38
 
     # 细分割线 + 底部日期
-    if len(lines) <= 2:
-        divider = Image.new("RGBA", (CARD_WIDTH, CARD_HEIGHT), (0, 0, 0, 0))
-        ImageDraw.Draw(divider).rounded_rectangle((left, 495, left + 96, 497), radius=1, fill=palette.accent + (90,))
-        base.alpha_composite(divider)
+    divider = Image.new("RGBA", (CARD_WIDTH, CARD_HEIGHT), (0, 0, 0, 0))
+    ImageDraw.Draw(divider).rounded_rectangle((left, 495, left + 96, 497), radius=1, fill=palette.accent + (90,))
+    base.alpha_composite(divider)
     footer_font = _font(18)
     draw.text((left, 522), date_text, font=footer_font, fill=_MUTED + (255,), anchor="ls")
     draw.text(

@@ -118,12 +118,13 @@ async def test_every_tier_has_illustration(value: int, tier: str) -> None:
 @pytest.mark.parametrize(
     ("value", "expected"),
     [
-        (100, "！100！100！！！"),
-        (99, "！可惜不是 100"),
+        (150, "150！！突破天际！！！"),
+        (100, "100！100！100！！！"),
+        (99, "99！可惜不是 100"),
         (85, "是不错的一天呢！"),
         (75, "还行啦还行啦。"),
         (52, "………………"),
-        (0, "！0！0！！！"),
+        (0, "0！0！0！！！"),
     ],
 )
 async def test_luck_phrase_reuses_jrrp_message_suffix(value: int, expected: str) -> None:
