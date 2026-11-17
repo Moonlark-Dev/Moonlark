@@ -32,6 +32,20 @@ async def test_text_with_mention_escapes_markdown() -> None:
 
 
 @pytest.mark.asyncio
+async def test_text_parentheses_are_not_escaped() -> None:
+    """括号不是 Markdown 特殊字符：转义成 \\( \\) 会被 QQ 当成行内公式（回声洞编号括号问题）。"""
+    from nonebot.adapters.qq.message import MessageSegment
+    from nonebot_plugin_larkutils.qq_at_markdown import convert_group_message
+
+    message = MessageSegment.mention_user("member_openid") + MessageSegment.text("回声洞 (1234) 投稿成功")
+    converted = await convert_group_message(message)
+
+    assert converted is not None
+    content = converted["markdown"][0].data["markdown"].content
+    assert content == '<qqbot-at-user id="member_openid" />回声洞 (1234) 投稿成功'
+
+
+@pytest.mark.asyncio
 async def test_standalone_at_line_inserts_blank_line() -> None:
     """独占一行的 <qqbot-at-user /> 后接单换行时应自动补成双换行，闭合 CommonMark HTML 块。"""
     from nonebot.adapters.qq.message import MessageSegment
