@@ -162,6 +162,25 @@ def test_wrap_phrase_breaks_after_comma() -> None:
     assert lines == ["今天幸运值拉满，", "想做的事就放心去做吧～"]
 
 
+def test_message_lang_has_no_value_prefix() -> None:
+    """「你今天的人品值是: {值}，」这行提示已删掉，聊天直接是完整句子。"""
+    lang_file = Path(__file__).resolve().parents[1] / "src" / "lang" / "zh_hans" / "jrrp.yaml"
+    data = yaml.safe_load(lang_file.read_text(encoding="utf-8"))
+
+    assert "__template__" not in data["message"]
+    assert data["message"]["great_day"].format(85) == "是不错的一天呢！"
+    assert data["message"]["terrible_luck"].format(0) == "0！0！0！！！"
+
+
+def test_card_phrase_matches_message() -> None:
+    """卡片句子与聊天句子共用同一份文案，改一边时必须同步。"""
+    lang_file = Path(__file__).resolve().parents[1] / "src" / "lang" / "zh_hans" / "jrrp.yaml"
+    data = yaml.safe_load(lang_file.read_text(encoding="utf-8"))
+
+    for tier in JRRP_TIERS:
+        assert data["card"]["phrase"][tier] == data["message"][tier]
+
+
 def test_card_language_keys_cover_all_tiers() -> None:
     lang_file = Path(__file__).resolve().parents[1] / "src" / "lang" / "zh_hans" / "jrrp.yaml"
     data = yaml.safe_load(lang_file.read_text(encoding="utf-8"))
