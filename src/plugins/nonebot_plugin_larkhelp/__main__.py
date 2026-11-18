@@ -19,7 +19,6 @@ from nonebot_plugin_alconna.uniseg import UniMessage
 from nonebot_plugin_larkutils.command import get_command_prefix
 from nonebot_plugin_larkutils.escape import escape_cmd_input
 from nonebot_plugin_render.render import render_template
-from nonebot_plugin_render.cache import creator
 
 from nonebot_plugin_larklang.__main__ import LangHelper
 from nonebot_plugin_larkutils import get_user_id
@@ -196,16 +195,6 @@ def generate_help_markdown() -> None:
     # nb larkhelp-generate <lang> <file>
     with open(Path(sys.argv[2]), "w", encoding="utf-8") as f:
         f.write(asyncio.run(generate_markdown()))
-
-
-@creator("help_panel")
-async def _render_panel_warm(user_id: str) -> bytes:
-    """注册到 Render 预渲染任务：启动时按 lang × theme 预热面板内存缓存。"""
-    try:
-        return await help_panel.render_help_panel(user_id, help_list)
-    except Exception:
-        logger.warning("帮助面板预渲染失败，跳过\n" + traceback.format_exc())
-        return b""
 
 
 async def render(user_id: str) -> bytes:
