@@ -25,7 +25,6 @@ from __future__ import annotations
 import asyncio
 import io
 import math
-import time
 import traceback
 from itertools import pairwise
 from operator import itemgetter
@@ -984,6 +983,11 @@ async def _get_hot() -> list[tuple[str, int]]:
     return out
 
 
+async def get_hot_commands() -> list[tuple[str, int]]:
+    """获取当前热门指令列表 ``[(command, count), ...]``（委托 ``_get_hot``）。"""
+    return await _get_hot()
+
+
 # --------------------------------------------------------------------------
 # 图像编码 / 降级素材
 # --------------------------------------------------------------------------
@@ -1008,33 +1012,15 @@ def load_logo() -> Optional[Image.Image]:
 
 
 # --------------------------------------------------------------------------
-# 渲染入口（内存缓存：lang × hot_sig，10 分钟 TTL）
+# 渲染入口（优先读取 cache.py 维护的按语言磁盘缓存）
 # --------------------------------------------------------------------------
-_PANEL_CACHE: dict[tuple[str, str], tuple[float, bytes]] = {}
-_PANEL_CACHE_TTL = 600  # 10 分钟
-_CACHE_MAX = 32
+def _should_ignore_cache(user_id: str) -> bool:
+    if not user_id.startswith("mlsid::"):
+        return False
+    from nonebot_plugin_larkutils import parse_special_user_id
 
-
-def cache_get(key: tuple[str, str]) -> Optional[bytes]:
-    item = _PANEL_CACHE.get(key)
-    if item is None:
-        return None
-    ts, data = item
-    if time.time() - ts > _PANEL_CACHE_TTL:
-        _PANEL_CACHE.pop(key, None)
-        return None
-    return data
-
-
-def cache_set(key: tuple[str, str], data: bytes) -> None:
-    now = time.time()
-    for k, (ts, _) in list(_PANEL_CACHE.items()):
-        if now - ts > _PANEL_CACHE_TTL:
-            _PANEL_CACHE.pop(k, None)
-    if len(_PANEL_CACHE) >= _CACHE_MAX:
-        oldest = min(_PANEL_CACHE, key=lambda k: _PANEL_CACHE[k][0])
-        _PANEL_CACHE.pop(oldest, None)
-    _PANEL_CACHE[key] = (now, data)
+    args = parse_special_user_id(user_id)
+    return args.get("--ignore-cache") == "y" or args.get("ignore-cache") == "y"
 
 
 async def _get_lang(user_id: str) -> str:
@@ -1054,13 +1040,14 @@ async def _lang_text(key: str, user_id: str, *args) -> str:
     return await LangHelper("larkhelp").text(key, user_id, *args)
 
 
-async def _collect_texts(user_id: str) -> PanelTexts:
+async def _collect_texts(user_id: str, *, date_override: Optional[str] = None) -> PanelTexts:
     import datetime
 
+    date_str = date_override or datetime.datetime.now().astimezone().date().isoformat()
     return PanelTexts(
         title=await _lang_text("panel.title", user_id),
         eyebrow=await _lang_text("panel.eyebrow", user_id),
-        subtitle=await _lang_text("panel.subtitle", user_id, datetime.datetime.now().astimezone().date().isoformat()),
+        subtitle=await _lang_text("panel.subtitle", user_id, date_str),
         hint=await _lang_text("panel.hint", user_id),
         badge=await _lang_text("panel.badge", user_id),
         hot_title=await _lang_text("panel.hot_title", user_id),
@@ -1088,40 +1075,53 @@ async def _collect_rows(user_id: str, help_list: dict) -> list[Cmd]:
     return rows
 
 
-async def render_help_panel(user_id: str, help_list: dict) -> bytes:
+async def render_help_panel(
+    user_id: str,
+    help_list: dict,
+    *,
+    ignore_cache: bool = False,
+    hot_override: Optional[list[tuple[str, int]]] = None,
+    date_override: Optional[str] = None,
+) -> bytes:
     """渲染帮助面板（方案 A），返回 WebP 字节。
 
     help_list 是 larkhelp 主模块维护的 {指令名: CommandHelp} 映射；
     superuser 分类不参与渲染，热门前三名会从列表里移出。
-    数据（描述、热门榜）就绪后整图绘制在线程池里完成，不阻塞事件循环。
+    启用缓存时直接按用户语言读取磁盘缓存（无需收集全部指令文案或查库）；
+    未命中或绕过缓存时在线程池里绘制整图，不阻塞事件循环。
     """
     if not help_list:
         raise ValueError("No Command")
     if not font_available():
         raise RuntimeError("帮助面板字体缺失，回退 HTML 渲染")
 
-    texts = await _collect_texts(user_id)
-    rows = await _collect_rows(user_id, help_list)
+    from . import cache as panel_cache
+
+    bypass_cache = ignore_cache or _should_ignore_cache(user_id)
+    lang_key = await _get_lang(user_id)
+    if not bypass_cache and panel_cache.config.larkhelp_cache:
+        if cached := await panel_cache.get_cache(lang_key):
+            return cached
+
+    lang_user_id = f"mlsid::--lang={lang_key}"
+    texts = await _collect_texts(lang_user_id, date_override=date_override)
+    rows = await _collect_rows(lang_user_id, help_list)
     if not rows:
         raise ValueError("No Command")
 
-    hot_raw = await _get_hot()
+    hot_raw = hot_override if hot_override is not None else await _get_hot()
     row_names = {c.name for c in rows}
     hot = [(n, cnt) for n, cnt in hot_raw if n in row_names][:3]
     category_of = {name: data.category for name, data in help_list.items()}
     for cat in {c.cat for c in rows} | {category_of[name] for name, _ in hot}:
-        texts.cat_names.setdefault(cat, await _lang_text(f"list.category.{cat}", user_id))
-
-    lang_key = await _get_lang(user_id)
-    key = (lang_key, "|".join(f"{n}:{c}" for n, c in hot))
-    if cached := cache_get(key):
-        return cached
+        texts.cat_names.setdefault(cat, await _lang_text(f"list.category.{cat}", lang_user_id))
 
     logo = load_logo()
     loop = asyncio.get_running_loop()
     image = await loop.run_in_executor(None, draw_panel, rows, hot, texts, logo)
     data = to_webp(image)
-    cache_set(key, data)
+    if not bypass_cache and panel_cache.config.larkhelp_cache:
+        await panel_cache.set_cache(lang_key, data)
     return data
 
 
