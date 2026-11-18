@@ -4,7 +4,7 @@ message:
   almost_perfect: '{}！可惜不是 100'
   great_day: 是不错的一天呢！
   good_day: 还行啦还行啦。
-  fair_day: 平平稳稳，也挺好。
+  fair_day: ''
   average_day: ………………
   below_average: …………………………………………
   poor_day: 呜哇——
