@@ -195,3 +195,21 @@ async def test_upgrade_costs(fake_user: _FakeUser) -> None:
     fake_user.vimcoin = 100.0
     with pytest.raises(NotEnoughVimcoin):
         await try_upgrade("upgrader1")
+
+
+@pytest.mark.asyncio
+async def test_format_item_list_awaits_each_item_name(monkeypatch: pytest.MonkeyPatch) -> None:
+    """回归：名称需要在循环里逐项 await，不能用含 await 的生成器表达式拼字符串。
+
+    含 ``await`` 的生成器表达式会被编译成异步生成器，``str.join`` 收到它只会抛
+    ``TypeError: can only join an iterable``；这个异常此前会让 ``/craft`` 的主菜单
+    什么都不回。
+    """
+    from nonebot_plugin_craft import utils
+
+    async def fake_get_item_name(item_id: str, user_id: str) -> str:
+        return f"{item_id}-{user_id}"
+
+    monkeypatch.setattr(utils, "get_item_name", fake_get_item_name)
+    assert await utils.format_item_list([("egg", 2), ("milk", 1)], "crafter1") == "egg-crafter1x2、milk-crafter1x1"
+    assert await utils.format_item_list([], "crafter1") == ""

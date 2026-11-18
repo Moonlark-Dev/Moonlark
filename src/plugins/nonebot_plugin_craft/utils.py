@@ -1,5 +1,6 @@
 """合成机的读写逻辑：机器等级、合成任务的生命周期管理。"""
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -265,3 +266,15 @@ async def get_item_name(item_id: str, user_id: str) -> str:
 
     stack = await get_item(get_location_by_id(item_id), user_id)
     return await stack.getName()
+
+
+async def format_item_list(items: Iterable[tuple[str, int]], user_id: str) -> str:
+    """把若干 (物品 ID, 数量) 格式化成「名称x数量、名称x数量」的展示文本。
+
+    这里必须用显式循环：含 ``await`` 的生成器表达式会被编译成异步生成器，
+    而异步生成器不是可迭代对象，``"、".join(...)`` 会直接抛 TypeError。
+    """
+    parts: list[str] = []
+    for item_id, count in items:
+        parts.append(f"{await get_item_name(item_id, user_id)}x{count}")
+    return "、".join(parts)
