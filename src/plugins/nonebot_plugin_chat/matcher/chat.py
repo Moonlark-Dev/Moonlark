@@ -55,6 +55,7 @@ from ..utils.provider import (
 from ..utils.timing_stats import timing_stats_manager
 
 PRIVATE_CHAT_COMMANDS = ("switch", "on", "off", "reset", "model")
+GROUP_ONLY_CHAT_COMMANDS = ("enhance",)
 
 
 async def resolve_session_name(session_id: str) -> str:
@@ -459,6 +460,23 @@ class CommandHandler:
         await reset_session(self.group_id)
         await lang.finish("command.mode.changed", self.user_id, mode_name)
 
+    async def handle_enhance(self) -> None:
+        """处理群聊回复增强开关：不带参数时展示当前状态"""
+        if self.is_private_chat:
+            await lang.finish("command.enhance.group_only", self.user_id)
+        action = self.argv[1].strip().lower() if len(self.argv) > 1 else ""
+        if action not in ("on", "off"):
+            key = "command.enhance.current_on" if self.group_config.enhance else "command.enhance.current_off"
+            await lang.finish(key, self.user_id)
+        enabled = action == "on"
+        self.group_config.enhance = enabled
+        await self.merge_group_config()
+        logger.info(f"群聊 {self.group_id} 的回复增强已{'开启' if enabled else '关闭'}（操作者 {self.user_id}）")
+        provider = await get_model_provider(self.group_id)
+        if enabled and provider != "openai":
+            await lang.finish("command.enhance.enabled_provider_warning", self.user_id, provider)
+        await lang.finish("command.enhance.enabled" if enabled else "command.enhance.disabled", self.user_id)
+
     async def handle_compact(self) -> None:
         """处理 compact 命令：分析待定笔记并重置消息队列"""
         from nonebot_plugin_larkutils.config import config as lark_config
@@ -501,7 +519,11 @@ class CommandHandler:
     async def handle(self) -> None:
         if not self.argv or not self.argv[0]:
             await lang.finish("command.no_argv", self.user_id)
-        if self.is_private_chat and self.argv[0] not in PRIVATE_CHAT_COMMANDS:
+        if (
+            self.is_private_chat
+            and self.argv[0] not in PRIVATE_CHAT_COMMANDS
+            and self.argv[0] not in GROUP_ONLY_CHAT_COMMANDS
+        ):
             await lang.finish("command.private_only_switch", self.user_id)
         match self.argv[0]:
             case "switch":
@@ -532,6 +554,8 @@ class CommandHandler:
                 await self.handle_mode()
             case "model":
                 await self.handle_model()
+            case "enhance":
+                await self.handle_enhance()
             case "compact":
                 await self.handle_compact()
             case "review-all":
