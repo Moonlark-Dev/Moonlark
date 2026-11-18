@@ -149,13 +149,15 @@ def test_no_hot_provider_skips_band():
     )
 
 
-def test_cache_roundtrip_and_ttl():
-    panel = _panel()
-    key = ("zh_hans", "sig")
-    panel.cache_set(key, b"data")
-    assert panel.cache_get(key) == b"data"
-    panel._PANEL_CACHE[key] = (0.0, b"stale")
-    assert panel.cache_get(key) is None
+async def test_disk_cache_roundtrip_and_clear(tmp_path, monkeypatch):
+    from nonebot_plugin_larkhelp import cache
+
+    monkeypatch.setattr(cache, "cache_dir", tmp_path)
+    await cache.set_cache("zh_hans", b"webp-data")
+    assert await cache.get_cache("zh_hans") == b"webp-data"
+    assert (tmp_path / "panel_zh_hans.webp").is_file()
+    cache.clear_cache()
+    assert await cache.get_cache("zh_hans") is None
 
 
 class _FakeHelp:
@@ -265,12 +267,16 @@ async def test_render_uses_provider_and_deduplicates(monkeypatch):
     monkeypatch.setattr(panel, "_get_lang", fake_lang)
     monkeypatch.setattr(panel, "_lang_text", fake_text)
     monkeypatch.setattr(panel, "_get_hot", fake_hot)
-    panel._PANEL_CACHE.clear()
 
-    data = await panel.render_help_panel("lang-test-user-2", fake_help_list)
-    # 缓存键含 hot_sig：同 lang 下带热门与不带热门的缓存互不干扰
-    other_key = ("zh_hans", "")
-    panel.cache_set(other_key, b"base")
-    assert panel.cache_get(("zh_hans", "sign:100")) is not None
-    img = Image.open(io.BytesIO(data))
-    assert img.format == "WEBP"
+    data_with_hot = await panel.render_help_panel("lang-test-user-2", fake_help_list, ignore_cache=True)
+    data_without_hot = await panel.render_help_panel(
+        "lang-test-user-2",
+        fake_help_list,
+        ignore_cache=True,
+        hot_override=[],
+    )
+    img_hot = Image.open(io.BytesIO(data_with_hot))
+    img_plain = Image.open(io.BytesIO(data_without_hot))
+    assert img_hot.format == "WEBP"
+    # sign 进入热门条带后 game 分类被剔空，同时增加了热门条带高度
+    assert img_hot.height != img_plain.height
