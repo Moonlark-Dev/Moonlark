@@ -1,5 +1,5 @@
 from datetime import date, datetime
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -398,3 +398,30 @@ def test_help_does_not_expose_internal_mechanism():
     assert "目标时间" not in details
     assert "11:00" not in details
     assert "20:00" not in details
+
+
+def test_keyboard_row():
+    from nonebot_plugin_trade.__main__ import _keyboard_row
+
+    assert _keyboard_row(3) is None
+    assert _keyboard_row(4) == 2
+    assert _keyboard_row(5) == 3
+
+
+@pytest.mark.asyncio
+async def test_trade_keyboard_buttons():
+    from nonebot_plugin_trade import __main__ as trade_main
+
+    with (
+        patch.object(trade_main.lang, "text", new=AsyncMock(return_value="按钮")),
+        patch.object(trade_main, "get_command_prefix", return_value="/"),
+    ):
+        buttons = await trade_main.build_trade_keyboard("10001")
+
+    assert [button.text for button in buttons] == [
+        "/trade buy 100",
+        "/trade buy all",
+        "/trade sell 100",
+        "/trade sell all",
+        "/trade",
+    ]

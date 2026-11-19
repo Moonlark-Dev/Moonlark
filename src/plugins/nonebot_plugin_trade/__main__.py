@@ -6,10 +6,11 @@ from typing import TYPE_CHECKING
 
 from nonebot.adapters import Bot, Event  # ruff: ignore[typing-only-third-party-import]
 from nonebot.adapters.qq import Bot as QQBot
-from nonebot_plugin_alconna import Alconna, Args, Subcommand, UniMessage, on_alconna
+from nonebot_plugin_alconna import Alconna, Args, Button, Subcommand, UniMessage, on_alconna
 from nonebot_plugin_larklang import LangHelper
 from nonebot_plugin_larkuser import get_user, patch_matcher
 from nonebot_plugin_larkutils import create_image_markdown, get_user_id
+from nonebot_plugin_larkutils.command import get_command_prefix
 from nonebot_plugin_orm import get_session
 
 from .chart import CandlePoint, render_kline_chart
@@ -55,11 +56,6 @@ def _fmt_signed(value: float) -> str:
     if abs(value) < 0.005:
         value = 0.0
     return f"{value:+.2f}"
-
-
-def _fmt_impact(value: float) -> str:
-    text = f"{value:.4f}"
-    return text.rstrip("0").rstrip(".") if "." in text else text
 
 
 def _holding_texts(holding_shares: int, cost_basis: float, price: float) -> tuple[str, str, str]:
@@ -136,24 +132,69 @@ async def render_chart(
         return None
 
 
-async def send_market_info(bot: Bot, event: Event, info: str, chart: Optional[bytes]) -> None:
+def _keyboard_row(button_count: int) -> int | None:
+    """按钮超过 3 个时分两行，每行最多 3 个，避免 QQ 标签被截断"""
+    return (button_count + 1) // 2 if button_count > 3 else None
+
+
+async def build_trade_keyboard(user_id: str) -> list[Button]:
+    prefix = get_command_prefix()
+    return [
+        Button("enter", await lang.text("button.buy_100", user_id), text=f"{prefix}trade buy 100"),
+        Button("enter", await lang.text("button.buy_all", user_id), text=f"{prefix}trade buy all"),
+        Button("enter", await lang.text("button.sell_100", user_id), text=f"{prefix}trade sell 100"),
+        Button("enter", await lang.text("button.sell_all", user_id), text=f"{prefix}trade sell all"),
+        Button("enter", await lang.text("button.refresh", user_id), text=f"{prefix}trade"),
+    ]
+
+
+async def send_trade_text_with_keyboard(bot: Bot, event: Event, user_id: str, text: str) -> None:
+    buttons = await build_trade_keyboard(user_id)
+    await (
+        UniMessage()
+        .style(text, "markdown")
+        .keyboard(*buttons, row=_keyboard_row(len(buttons)))
+        .send(target=event, bot=bot)
+    )
+    await trade.finish()
+
+
+async def send_market_info(
+    bot: Bot,
+    event: Event,
+    user_id: str,
+    info: str,
+    chart: Optional[bytes],
+) -> None:
+    if isinstance(bot, QQBot):
+        text = info
+        if chart is not None:
+            try:
+                image_markdown = await create_image_markdown(chart, bot)
+                text = f"{info}\n\n{image_markdown}"
+            except Exception:
+                logger.exception("发送 K 线图失败，回退到文本消息")
+        await send_trade_text_with_keyboard(bot, event, user_id, text)
+        return
     if chart is None:
         await trade.finish(info)
-    if isinstance(bot, QQBot):
-        try:
-            image_markdown = await create_image_markdown(chart, bot)
-            await UniMessage().style(f"{info}\n\n{image_markdown}", "markdown").send(target=event, bot=bot)
-        except Exception:
-            logger.exception("发送 K 线图失败，回退到文本消息")
-            await trade.finish(info)
-        await trade.finish()
+        return
     try:
         message = UniMessage().text(info) + UniMessage().image(raw=chart)
         await message.send(target=event, bot=bot)
     except Exception:
         logger.exception("发送 K 线图失败，回退到文本消息")
         await trade.finish(info)
+        return
     await trade.finish()
+
+
+async def send_trade_result(bot: Bot, event: Event, user_id: str, key: str, **kwargs: object) -> None:
+    if isinstance(bot, QQBot):
+        text = await lang.text(key, user_id, **kwargs)
+        await send_trade_text_with_keyboard(bot, event, user_id, text)
+        return
+    await lang.finish(key, user_id, **kwargs)
 
 
 async def cap_note(side: str, user_id: str, result: TradeResult) -> str:
@@ -187,11 +228,11 @@ async def handle_trade_main(bot: Bot, event: Event, user_id: str = get_user_id()
             reference_price = state.day_open if chart_day == state.day else None
             await session.commit()
     chart = await render_chart(user_id, chart_day, points, reference_price)
-    await send_market_info(bot, event, info, chart)
+    await send_market_info(bot, event, user_id, info, chart)
 
 
 @trade.assign("buy")
-async def handle_trade_buy(amount: str, user_id: str = get_user_id()) -> None:
+async def handle_trade_buy(bot: Bot, event: Event, amount: str, user_id: str = get_user_id()) -> None:
     if not amount.strip():
         await lang.finish("error.usage_buy", user_id)
     now = now_local()
@@ -206,16 +247,16 @@ async def handle_trade_buy(amount: str, user_id: str = get_user_id()) -> None:
                 await lang.finish(error.key, user_id, *error.format_args)
             await session.commit()
     note = await cap_note("buy", user_id, result)
-    await lang.finish(
-        "buy.success",
+    await send_trade_result(
+        bot,
+        event,
         user_id,
+        "buy.success",
         price=_fmt(result.price),
         shares=result.shares,
         gross=_fmt(result.gross),
         fee=_fmt(result.fee),
         amount=_fmt(result.amount),
-        impact=_fmt_impact(result.impact * 100),
-        new_price=_fmt(result.new_price),
         shares_after=result.shares_after,
         sellable_after=result.sellable_after,
         frozen_after=result.frozen_after,
@@ -227,7 +268,7 @@ async def handle_trade_buy(amount: str, user_id: str = get_user_id()) -> None:
 
 
 @trade.assign("sell")
-async def handle_trade_sell(amount: str, user_id: str = get_user_id()) -> None:
+async def handle_trade_sell(bot: Bot, event: Event, amount: str, user_id: str = get_user_id()) -> None:
     if not amount.strip():
         await lang.finish("error.usage_sell", user_id)
     now = now_local()
@@ -242,16 +283,16 @@ async def handle_trade_sell(amount: str, user_id: str = get_user_id()) -> None:
                 await lang.finish(error.key, user_id, *error.format_args)
             await session.commit()
     note = await cap_note("sell", user_id, result)
-    await lang.finish(
-        "sell.success",
+    await send_trade_result(
+        bot,
+        event,
         user_id,
+        "sell.success",
         price=_fmt(result.price),
         shares=result.shares,
         gross=_fmt(result.gross),
         fee=_fmt(result.fee),
         amount=_fmt(result.amount),
-        impact=_fmt_impact(result.impact * 100),
-        new_price=_fmt(result.new_price),
         shares_after=result.shares_after,
         sellable_after=result.sellable_after,
         frozen_after=result.frozen_after,
