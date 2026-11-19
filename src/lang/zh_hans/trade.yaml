@@ -79,7 +79,7 @@ error:
   usage_buy: 用法：{__prefix__}trade buy <股数|比例|all>（例：{__prefix__}trade buy 100、{__prefix__}trade buy 50%、{__prefix__}trade buy all）
   usage_sell: 用法：{__prefix__}trade sell <股数|all>（例：{__prefix__}trade sell 100、{__prefix__}trade sell all）
 button:
-  buy_100: 买入 100 股
+  buy: 买入
   buy_all: 买入全部
   sell_100: 卖出 100 股
   sell_all: 卖出全部
