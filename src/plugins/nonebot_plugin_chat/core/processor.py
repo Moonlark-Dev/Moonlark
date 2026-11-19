@@ -699,8 +699,10 @@ class MessageProcessor:
             formatted = await self.session.format_message(message_content)
             message = UniMessage().style(escape_markdown(formatted.extract_plain_text()), "markdown")
             if suggestions:
+                # row=1：每条备选回复独占一行，避免长文本按钮挤在同一行
                 message = message.keyboard(
                     *[Button("enter", self._button_label(reply), text=reply) for reply in suggestions],
+                    row=1,
                 )
             # markdown 消息不再附带引用：部分平台不接受 msg_type=2 的引用字段
             reply_message_id = None
