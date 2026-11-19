@@ -37,7 +37,10 @@ def get_luck_type(luck_value: int) -> LuckType:
 
 async def get_luck_message(user_id: str) -> str:
     luck_value = await get_luck_value(user_id)
-    return await lang.text(f"message.{get_luck_type(luck_value).name.lower()}", user_id, luck_value)
+    text = await lang.text(f"message.{get_luck_type(luck_value).name.lower()}", user_id, luck_value)
+    # 语言文件里允许某一档不写文案（如 fair_day 聊天不回任何句子），
+    # 但渲染卡片失败回退到文本时不能发空消息，至少要把人品值说出来。
+    return text if text.strip() else str(luck_value)
 
 
 async def save_luck_trend(user_id: str, luck_value: int, reroll_count: int = 0) -> None:
