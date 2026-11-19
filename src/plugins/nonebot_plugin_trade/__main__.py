@@ -116,9 +116,10 @@ async def render_chart(
 ) -> Optional[bytes]:
     if chart_day is None:
         return None
-    title = await lang.text("chart.title", user_id, chart_day.strftime("%Y-%m-%d"))
-    empty_text = await lang.text("chart.empty", user_id)
     try:
+        # chart.title 使用命名占位符 {date}，必须按关键字传参，位置参数会抛 KeyError
+        title = await lang.text("chart.title", user_id, date=chart_day.strftime("%Y-%m-%d"))
+        empty_text = await lang.text("chart.empty", user_id)
         return await asyncio.to_thread(
             render_kline_chart,
             chart_day,

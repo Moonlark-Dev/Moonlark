@@ -438,3 +438,28 @@ async def test_trade_keyboard_buttons():
         "/trade sell all",
         "/trade",
     ]
+
+
+@pytest.mark.asyncio
+async def test_chart_title_uses_named_date_placeholder():
+    """回归：chart.title's template uses the named placeholder ``{date}``.
+
+    渲染 K 线时必须按关键字传 date；传位置参数会让 ``str.format`` 抛
+    ``KeyError: 'date'``，异常被 nonebot 吞掉后 ``/trade`` 静默无响应
+    （私聊、群聊与适配器无关）。
+    """
+    from nonebot_plugin_trade.__main__ import lang, render_chart
+
+    assert "2026-11-19" in await lang.text("chart.title", "tester", date="2026-11-19")
+
+    with patch("nonebot_plugin_trade.__main__.render_kline_chart", return_value=b"png"):
+        assert await render_chart("tester", TRADE_DAY, [], 10.0) == b"png"
+
+
+@pytest.mark.asyncio
+async def test_render_chart_falls_back_when_text_formatting_fails(monkeypatch: pytest.MonkeyPatch):
+    """文案格式化失败时不应让整条 /trade 静默失败，应回退到文本消息"""
+    from nonebot_plugin_trade import __main__ as trade_main
+
+    monkeypatch.setattr(trade_main.lang, "text", AsyncMock(side_effect=KeyError("date")))
+    assert await trade_main.render_chart("tester", TRADE_DAY, [], 10.0) is None
