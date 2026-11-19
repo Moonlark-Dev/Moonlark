@@ -6,7 +6,7 @@ from .config import Config
 __plugin_meta__ = PluginMetadata(
     name="nonebot_plugin_trade",
     description="模拟股票市场",
-    usage="trade | trade buy <股数|all|比例> | trade sell <股数|all>",
+    usage="trade | trade buy <股数|比例|all> | trade sell <股数|all>",
     config=Config,
 )
 

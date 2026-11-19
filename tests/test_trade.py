@@ -387,17 +387,30 @@ def test_chart_renders_png():
 
 
 def test_help_does_not_expose_internal_mechanism():
+    import re
     from pathlib import Path
 
     import yaml
 
     path = Path(__file__).parent.parent / "src" / "lang" / "zh_hans" / "trade.yaml"
+    help_yaml = Path(__file__).parent.parent / "src" / "plugins" / "nonebot_plugin_trade" / "help.yaml"
     data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    help_cfg = yaml.safe_load(help_yaml.read_text(encoding="utf-8"))
     details = data["help"]["details"]
     assert "标签" not in details
     assert "目标时间" not in details
     assert "11:00" not in details
     assert "20:00" not in details
+    # 避免在 Markdown 渲染时把尖括号当成 HTML 标签吞掉，或 4 空格缩进触发代码块
+    assert not re.search(r"<[^>\n]+>", details)
+    assert not any(line.startswith("    ") for line in details.splitlines())
+
+    usage_keys = [key.removeprefix("help.") for key in help_cfg["commands"]["trade"]["usages"]]
+    for key in usage_keys:
+        usage = data["help"][key]
+        match = re.search(r"\s*\([^)]*\)\s*$", usage)
+        assert match is not None, f"{key} 缺少末尾 (说明) 或含嵌套圆括号: {usage}"
+        assert usage[: match.start()].strip().startswith("trade")
 
 
 def test_keyboard_row():
