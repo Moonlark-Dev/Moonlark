@@ -1,0 +1,79 @@
+help:
+  description: 模拟股票市场
+  details: |
+    每天 08:00–24:00 开市，每 5 分钟更新一次价格；休市期间不能交易。
+    K 线图红涨绿跌。
+    买入和卖出均收取 1% 手续费。股票为 T+1：当日买入的股票次日开市后才能卖出。
+    每人每天买入、卖出各最多 1000 股；市场共 100000 股流通股，买卖会立即影响价格（单笔冲击不超过 1%）。
+    初始价格 10 VimCoin/股，价格最低 0.01 VimCoin/股。
+  usage1: trade (查看行情、K 线、持股与盈亏)
+  usage2: trade buy <股数> (按当前价买入指定股数)
+  usage3: trade buy all (用全部 VimCoin 买入)
+  usage4: trade buy <比例> (按余额比例买入，如 0.5 或 50% 表示 50%)
+  usage5: trade sell <股数> (卖出指定股数)
+  usage6: trade sell all (卖出全部可卖持股)
+main:
+  status_open: 交易中（08:00–24:00）
+  status_closed: 休市（每日 08:00 开市）
+  info: |
+    📈 Moonlark 证券交易所
+    状态：{status}
+    当前价格：{price} VimCoin
+    今日开盘：{day_open} VimCoin
+    昨日收盘：{prev_close} VimCoin
+    今日涨跌：{change}
+    你的持股：{shares} 股（可卖 {sellable} 股，今日买入冻结 {frozen} 股）
+    持仓成本：{avg_cost} VimCoin/股
+    浮动盈亏：{pnl} VimCoin（{pnl_pct}）
+    今日交易：买入 {daily_bought}/{daily_limit} 股，卖出 {daily_sold}/{daily_limit} 股
+    市场流通：{float_shares}/{total_shares} 股
+    {hint}
+  hint: 使用 {__prefix__}trade buy/sell 进行交易。
+  hint_closed: 休市期间无法交易，开市后可继续操作。
+buy:
+  success: |
+    买入成功！
+    成交价：{price} VimCoin/股
+    成交股数：{shares} 股
+    成交额：{gross} VimCoin
+    手续费：{fee} VimCoin
+    总支出：{amount} VimCoin
+    价格冲击：+{impact}%（成交后 {new_price} VimCoin）
+    当前持股：{shares_after} 股（可卖 {sellable_after} 股，冻结 {frozen_after} 股）
+    今日买入：{daily_bought}/{daily_limit} 股
+    当前余额：{balance_after} VimCoin
+    {note}
+  note_daily: 受每日买入限额限制，实际只买入了 {shares} 股。
+  note_float: 受市场流通股限制，实际只买入了 {shares} 股。
+sell:
+  success: |
+    卖出成功！
+    成交价：{price} VimCoin/股
+    成交股数：{shares} 股
+    成交额：{gross} VimCoin
+    手续费：{fee} VimCoin
+    实际到账：{amount} VimCoin
+    价格冲击：-{impact}%（成交后 {new_price} VimCoin）
+    当前持股：{shares_after} 股（可卖 {sellable_after} 股，冻结 {frozen_after} 股）
+    今日卖出：{daily_sold}/{daily_limit} 股
+    当前余额：{balance_after} VimCoin
+    {note}
+  note_daily: 受每日卖出限额限制，实际只卖出了 {shares} 股。
+chart:
+  title: Moonlark 证券交易所 · {date} 5 分钟 K 线
+  empty: 暂无 K 线数据
+error:
+  not_trading: 当前为休市时间，交易时段为每日 08:00–24:00。
+  invalid_buy_amount: 买入数量无效：请填写整数股数、all，或 0~1 的比例（如 0.5 表示 50%）。
+  invalid_sell_amount: 卖出数量无效：请填写整数股数或 all。
+  percent_range: 比例必须在 0 到 1 之间（0.5 表示 50%）。
+  amount_too_small: 按当前价格和余额计算，不足 1 股。
+  not_enough_vimcoin: VimCoin 不足：需要 {:.2f}，当前只有 {:.2f}。
+  not_enough_float: 市场流通股不足，当前最多可买 {} 股。
+  daily_buy_limit: 今日买入额度不足，当前还可买入 {} 股。
+  daily_sell_limit: 今日卖出额度不足，当前还可卖出 {} 股。
+  not_enough_shares: 可卖股数不足，当前可卖 {} 股。
+  no_sellable: 没有可卖出的股票（T+1：当日买入的股票次日开市后才能卖出）。
+  market_empty: 市场已无流通股可买。
+  usage_buy: 用法：{__prefix__}trade buy <股数|all|比例>
+  usage_sell: 用法：{__prefix__}trade sell <股数|all>
