@@ -1,4 +1,5 @@
 from datetime import timedelta
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -213,3 +214,140 @@ async def test_format_item_list_awaits_each_item_name(monkeypatch: pytest.Monkey
     monkeypatch.setattr(utils, "get_item_name", fake_get_item_name)
     assert await utils.format_item_list([("egg", 2), ("milk", 1)], "crafter1") == "egg-crafter1x2、milk-crafter1x1"
     assert await utils.format_item_list([], "crafter1") == ""
+
+
+@pytest.fixture
+def panel_texts(monkeypatch: pytest.MonkeyPatch) -> None:
+    """把物品名与指令前缀固定下来，让面板断言不依赖物品库与运行配置"""
+    from nonebot_plugin_craft import panel
+    from nonebot_plugin_craft import utils as craft_utils
+    from nonebot_plugin_larkutils.command import config as command_config
+
+    monkeypatch.setattr(command_config, "command_start", ["/"])
+
+    names = {
+        "moonlark:egg": "鸡蛋",
+        "moonlark:milk": "牛奶",
+        "moonlark:rotten_egg": "臭鸡蛋",
+        "moonlark:rotten_egg_ex": "精华臭鸡蛋",
+        "moonlark:cake": "蛋糕",
+    }
+
+    async def fake_get_item_name(item_id: str, _user_id: str) -> str:
+        return names.get(item_id, item_id)
+
+    monkeypatch.setattr(panel, "get_item_name", fake_get_item_name)
+    monkeypatch.setattr(craft_utils, "get_item_name", fake_get_item_name)
+
+
+@pytest.mark.asyncio
+async def test_panel_markdown_for_qq_has_hierarchy_and_cmd_input(panel_texts: None) -> None:
+    """QQ 官方机器人：标题 / 状态 / 分组用 markdown 拉开层次，配方下带 cmd-input"""
+    from nonebot_plugin_craft.panel import PanelData, PanelJob, build_panel_markdown
+
+    data = PanelData(
+        level=1,
+        total=2,
+        used=1,
+        collected="",
+        jobs=[PanelJob(name="臭鸡蛋", count=1, remaining="5 小时 12 分钟")],
+    )
+    markdown = await build_panel_markdown("panel-user", data, clickable=True)
+
+    assert markdown.startswith("## 🛠 合成机 · Lv.1")
+    assert "> 槽位 **1/2** · 升级至 Lv.2（4 槽位）需 **300 VimCoin**" in markdown
+    assert "### 进行中的合成" in markdown
+    assert "- **臭鸡蛋 x1** · 剩余 5 小时 12 分钟" in markdown
+    assert "### 配方" in markdown
+    assert "**臭鸡蛋 x1** · 耗时 6 小时 0 分钟" in markdown
+    assert "> 材料：鸡蛋x1 · 费用：**10 VimCoin**" in markdown
+    assert '<qqbot-cmd-input text="/craft start rotten_egg 1" show="开始合成臭鸡蛋" reference="false" />' in markdown
+    assert "/craft collect" in markdown
+
+
+@pytest.mark.asyncio
+async def test_panel_markdown_plain_for_other_adapters(panel_texts: None) -> None:
+    """其它适配器没有 cmd-input 渲染能力，配方改用完整指令，避免未知标签变成空白"""
+    from nonebot_plugin_craft.panel import PanelData, build_panel_markdown
+
+    markdown = await build_panel_markdown(
+        "panel-user",
+        PanelData(level=2, total=4, used=0, collected="", jobs=[]),
+        clickable=False,
+    )
+
+    assert "qqbot-cmd-input" not in markdown
+    assert "> 指令：/craft start rotten_egg 1" in markdown
+    assert "> 暂无进行中的合成，还有 4 个空槽位" in markdown
+
+
+@pytest.mark.asyncio
+async def test_panel_buttons_target_craft_commands(panel_texts: None) -> None:
+    from nonebot_plugin_craft.panel import build_panel_buttons
+
+    buttons = await build_panel_buttons("panel-user")
+
+    assert [button.flag for button in buttons] == ["enter", "enter", "enter"]
+    assert [button.text for button in buttons] == ["/craft collect", "/craft upgrade", "/craft"]
+
+
+@pytest.mark.asyncio
+async def test_panel_text_fallback_keeps_previous_layout(panel_texts: None) -> None:
+    from nonebot_plugin_craft.panel import PanelData, PanelJob, build_panel_text
+
+    data = PanelData(
+        level=1,
+        total=2,
+        used=0,
+        collected="已完成合成：鸡蛋x1（产物已放入背包）",
+        jobs=[PanelJob(name="臭鸡蛋", count=1, remaining="1 小时 0 分钟")],
+    )
+    text = await build_panel_text("panel-user", data)
+
+    assert text.startswith("【合成机】等级 1（可同时合成 2 个物品）")
+    assert "槽位占用：0 / 2" in text
+    assert "已完成合成：鸡蛋x1（产物已放入背包）" in text
+    assert "· 臭鸡蛋 —— 剩余 1 小时 0 分钟" in text
+    assert "recipe" not in text  # 配方行里展示配方 ID，不应把键名拼进去
+
+
+@pytest.mark.asyncio
+async def test_send_panel_renders_markdown_image_on_other_adapters(monkeypatch: pytest.MonkeyPatch) -> None:
+    from nonebot_plugin_craft import __main__ as craft_main
+    from nonebot_plugin_craft.panel import PanelData
+
+    rendered: dict[str, str] = {}
+
+    async def fake_md_to_pic(markdown: str) -> bytes:
+        rendered["markdown"] = markdown
+        return b"fake-image"
+
+    finished = AsyncMock()
+    monkeypatch.setattr(craft_main, "md_to_pic", fake_md_to_pic)
+    monkeypatch.setattr(craft_main.craft, "finish", finished)
+
+    await craft_main.send_panel(MagicMock(), MagicMock(), "panel-user", PanelData(1, 2, 0, "", []))
+
+    assert "合成机" in rendered["markdown"]
+    assert "qqbot-cmd-input" not in rendered["markdown"]
+    message = finished.await_args.args[0]
+    assert any(segment.type == "image" for segment in message)
+
+
+@pytest.mark.asyncio
+async def test_send_panel_falls_back_to_text_when_rendering_fails(monkeypatch: pytest.MonkeyPatch) -> None:
+    from nonebot_plugin_craft import __main__ as craft_main
+    from nonebot_plugin_craft.panel import PanelData
+
+    async def broken_md_to_pic(_markdown: str) -> bytes:
+        raise RuntimeError("browser not available")
+
+    finished = AsyncMock()
+    monkeypatch.setattr(craft_main, "md_to_pic", broken_md_to_pic)
+    monkeypatch.setattr(craft_main.craft, "finish", finished)
+
+    await craft_main.send_panel(MagicMock(), MagicMock(), "panel-user", PanelData(1, 2, 0, "", []))
+
+    sent = finished.await_args.args[0]
+    assert isinstance(sent, str)
+    assert "合成机" in sent

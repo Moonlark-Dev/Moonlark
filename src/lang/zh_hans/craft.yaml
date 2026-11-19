@@ -45,3 +45,23 @@ help:
   usage2: craft start <配方ID> [数量] (开始合成)
   usage3: craft collect (收取已完成的合成产物)
   usage4: craft upgrade (升级合成机，等级 1-4 对应 2/4/6/10 个槽位)
+
+panel:
+  title: "## 🛠 合成机 · Lv.{}"
+  status: "> 槽位 **{}/{}** · {}"
+  upgrade: "升级至 Lv.{}（{} 槽位）需 **{} VimCoin**"
+  upgrade_max: "已满级（Lv.{}）"
+  collected: "> ✅ {}"
+  jobs_title: "### 进行中的合成"
+  job: "- **{} x{}** · 剩余 {}"
+  jobs_empty: "> 暂无进行中的合成，还有 {} 个空槽位"
+  recipes_title: "### 配方"
+  recipe_title: "**{} x{}** · 耗时 {}"
+  recipe_meta: "> 材料：{} · 费用：**{} VimCoin**"
+  recipe_start: '- <qqbot-cmd-input text="{}" show="{}" reference="false" />'
+  recipe_start_plain: "> 指令：{}"
+  footer: "点击配方下的「开始合成」会填入指令，可再补数量；{__prefix__}craft collect 收取成品，{__prefix__}craft upgrade 升级合成机。"
+  footer_plain: "使用 {__prefix__}craft start <配方ID> [数量] 开始合成，{__prefix__}craft collect 收取成品，{__prefix__}craft upgrade 升级合成机。"
+  button_collect: 收取成品
+  button_upgrade: 升级合成机
+  button_refresh: 刷新面板

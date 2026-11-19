@@ -1,10 +1,11 @@
 from datetime import datetime
 
 from nonebot import logger
-from nonebot.adapters import Bot
+from nonebot.adapters import Bot, Event
 from nonebot.adapters.qq import Bot as QQBot
 from nonebot_plugin_alconna import Alconna, Args, Button, Subcommand, UniMessage, on_alconna
 from nonebot_plugin_apscheduler import scheduler
+from nonebot_plugin_htmlrender import md_to_pic
 from nonebot_plugin_larkuser import patch_matcher
 from nonebot_plugin_larkuser.utils.waiter import PromptRetryTooMuch, PromptTimeout, prompt
 from nonebot_plugin_larkutils import get_user_id
@@ -14,7 +15,8 @@ from sqlalchemy import select
 
 from .lang import lang
 from .models import CraftingJob
-from .recipes import LEVEL_SLOTS, MAX_LEVEL, RECIPES
+from .panel import PanelData, PanelJob, build_panel_buttons, build_panel_markdown, build_panel_text
+from .recipes import LEVEL_SLOTS, RECIPES
 from .utils import (
     NoFreeSlot,
     NotEnoughMaterial,
@@ -46,29 +48,6 @@ craft = on_alconna(alc)
 patch_matcher(craft)
 
 
-def format_duration(seconds: float) -> str:
-    hours = int(seconds // 3600)
-    minutes = int((seconds % 3600) // 60)
-    if hours:
-        return f"{hours} 小时 {minutes} 分钟"
-    return f"{minutes} 分钟"
-
-
-async def _render_recipe_line(recipe, user_id: str) -> str:
-    inputs = await format_item_list(recipe.inputs.items(), user_id)
-    output_name = await get_item_name(recipe.output_id, user_id)
-    return await lang.text(
-        "recipe.item",
-        user_id,
-        recipe.id,
-        output_name,
-        recipe.output_count,
-        inputs,
-        recipe.vimcoin,
-        format_duration(recipe.duration.total_seconds()),
-    )
-
-
 async def _maybe_collect(user_id: str) -> tuple[str, str]:
     """收集已完成的任务，返回 (收集文本, 产物文本)"""
     deliveries = await collect_finished_jobs(user_id)
@@ -78,41 +57,54 @@ async def _maybe_collect(user_id: str) -> tuple[str, str]:
     return await lang.text("list.collected", user_id, delivered), delivered
 
 
-@craft.assign("$main")
-async def _(user_id: str = get_user_id()) -> None:
+async def _build_panel_data(user_id: str) -> PanelData:
+    """查询合成机状态、槽位与进行中的任务，组装成面板数据"""
     machine = await get_machine(user_id)
     total, used = await get_slots_info(user_id)
-    lines = [
-        await lang.text("list.title", user_id, machine.level, total),
-        await lang.text("list.slots", user_id, used, total),
-    ]
-    upgrade_cost = get_upgrade_cost(machine.level)
-    if upgrade_cost is not None:
-        lines.append(
-            await lang.text("list.upgrade", user_id, upgrade_cost, machine.level + 1, LEVEL_SLOTS[machine.level + 1])
-        )
-    else:
-        lines.append(await lang.text("list.upgrade_max", user_id, MAX_LEVEL))
-
     collected_text, delivered = await _maybe_collect(user_id)
-    if delivered:
-        lines.append(collected_text)
+    jobs = []
+    for job in await get_running_jobs(user_id):
+        recipe = RECIPES.get(job.recipe_id)
+        name = await get_item_name(recipe.output_id, user_id) if recipe else job.recipe_id
+        jobs.append(
+            PanelJob(
+                name=name,
+                count=recipe.output_count if recipe else 1,
+                remaining=format_remaining(job.finish_time),
+            )
+        )
+    return PanelData(
+        level=machine.level,
+        total=total,
+        used=used,
+        collected=collected_text,
+        jobs=jobs,
+    )
 
-    jobs = await get_running_jobs(user_id)
-    if jobs:
-        lines.append(await lang.text("list.jobs_title", user_id))
-        for job in jobs:
-            recipe = RECIPES.get(job.recipe_id)
-            name = await get_item_name(recipe.output_id, user_id) if recipe else job.recipe_id
-            lines.append(await lang.text("list.job", user_id, name, format_remaining(job.finish_time)))
-    else:
-        lines.append(await lang.text("list.jobs_empty", user_id, total - used, total))
-    if RECIPES:
-        lines.append(await lang.text("recipe.title", user_id))
-        for recipe in RECIPES.values():
-            lines.append(await _render_recipe_line(recipe, user_id))
-    lines.append(await lang.text("list.footer", user_id))
-    await craft.finish("\n".join(lines))
+
+async def send_panel(bot: Bot, event: Event, user_id: str, data: PanelData) -> None:
+    """发送合成机面板：QQ 官方用 markdown + 按钮，其它适配器渲染成图片（失败回退纯文本）"""
+    if isinstance(bot, QQBot):
+        message = (
+            UniMessage()
+            .style(await build_panel_markdown(user_id, data, clickable=True), "markdown")
+            .keyboard(*await build_panel_buttons(user_id))
+        )
+        await message.send(target=event, bot=bot)
+        await craft.finish()
+
+    try:
+        image = await md_to_pic(await build_panel_markdown(user_id, data, clickable=False))
+    except Exception:
+        logger.exception("渲染合成机面板失败，回退到文本消息")
+        await craft.finish(await build_panel_text(user_id, data))
+        return
+    await craft.finish(UniMessage().image(raw=image))
+
+
+@craft.assign("$main")
+async def _(bot: Bot, event: Event, user_id: str = get_user_id()) -> None:
+    await send_panel(bot, event, user_id, await _build_panel_data(user_id))
 
 
 @craft.assign("start")
