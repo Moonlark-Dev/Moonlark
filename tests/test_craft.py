@@ -262,7 +262,10 @@ async def test_panel_markdown_for_qq_has_hierarchy_and_cmd_input(panel_texts: No
     assert "**臭鸡蛋 x1** · 耗时 6 小时 0 分钟" in markdown
     assert "> 材料：鸡蛋x1 · 费用：**10 VimCoin**" in markdown
     assert '<qqbot-cmd-input text="/craft start rotten_egg 1" show="开始合成臭鸡蛋" reference="false" />' in markdown
-    assert "/craft collect" in markdown
+    # 文本指令提示已从 QQ 面板移除，只保留 cmd-input 与下方键盘按钮
+    assert "/craft collect" not in markdown
+    assert "/craft upgrade" not in markdown
+    assert "收取成品与升级合成机请使用下方按钮" in markdown
 
 
 @pytest.mark.asyncio
@@ -289,6 +292,18 @@ async def test_panel_buttons_target_craft_commands(panel_texts: None) -> None:
 
     assert [button.flag for button in buttons] == ["enter", "enter", "enter"]
     assert [button.text for button in buttons] == ["/craft collect", "/craft upgrade", "/craft"]
+
+
+@pytest.mark.asyncio
+async def test_start_buttons_open_machine_panel(panel_texts: None) -> None:
+    """「已开始合成」提示下方只放一个回到合成机面板的按钮"""
+    from nonebot_plugin_craft.panel import build_start_buttons
+
+    buttons = await build_start_buttons("panel-user")
+
+    assert [button.flag for button in buttons] == ["enter"]
+    assert [button.label for button in buttons] == ["查看合成机"]
+    assert [button.text for button in buttons] == ["/craft"]
 
 
 @pytest.mark.asyncio
@@ -351,3 +366,63 @@ async def test_send_panel_falls_back_to_text_when_rendering_fails(monkeypatch: p
     sent = finished.await_args.args[0]
     assert isinstance(sent, str)
     assert "合成机" in sent
+
+
+@pytest.mark.asyncio
+async def test_send_started_adds_view_machine_button_for_qq(panel_texts: None, monkeypatch: pytest.MonkeyPatch) -> None:
+    """QQ 官方机器人：开始合成提示改用 markdown 消息，并附上「查看合成机」按钮"""
+    from nonebot.adapters.qq import Bot as QQBot
+    from nonebot.exception import FinishedException
+    from nonebot_plugin_alconna.uniseg import Keyboard, Text, UniMessage
+
+    from nonebot_plugin_craft import __main__ as craft_main
+
+    sent: list[UniMessage] = []
+
+    async def fake_send(self: UniMessage, *_args: object, **_kwargs: object) -> None:
+        sent.append(self)
+
+    async def fake_finish(*_args: object, **_kwargs: object) -> None:
+        raise FinishedException
+
+    monkeypatch.setattr(UniMessage, "send", fake_send)
+    monkeypatch.setattr(craft_main.craft, "finish", fake_finish)
+
+    with pytest.raises(FinishedException):
+        await craft_main.send_started(MagicMock(spec=QQBot), MagicMock(), "started-user", "臭鸡蛋", 4, "5 小时 59 分钟")
+
+    assert len(sent) == 1
+    text = next(segment for segment in sent[0] if isinstance(segment, Text))
+    assert any("markdown" in styles for styles in text.styles.values())
+    assert text.text == "已开始合成 臭鸡蛋 x4，预计 5 小时 59 分钟 后完成，完成后会被定时发放到背包。"
+    keyboard = next(segment for segment in sent[0] if isinstance(segment, Keyboard))
+    assert [(button.label, button.text) for button in keyboard.children] == [("查看合成机", "/craft")]
+
+
+@pytest.mark.asyncio
+async def test_send_started_keeps_plain_text_for_other_adapters(
+    panel_texts: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """其它适配器没有键盘按钮，开始合成提示保持纯文本"""
+    from nonebot_plugin_alconna.uniseg import UniMessage
+
+    from nonebot_plugin_craft import __main__ as craft_main
+
+    send = AsyncMock()
+    finished = AsyncMock()
+    finished_text = AsyncMock()
+    monkeypatch.setattr(UniMessage, "send", send)
+    monkeypatch.setattr(craft_main.craft, "finish", finished)
+    monkeypatch.setattr(craft_main.lang, "finish", finished_text)
+
+    await craft_main.send_started(MagicMock(), MagicMock(), "started-user", "臭鸡蛋", 4, "5 小时 59 分钟")
+
+    send.assert_not_awaited()
+    finished.assert_not_awaited()
+    assert finished_text.await_args.args == (
+        "start.started",
+        "started-user",
+        "臭鸡蛋",
+        4,
+        "5 小时 59 分钟",
+    )

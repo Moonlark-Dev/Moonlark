@@ -19,6 +19,7 @@ start:
   not_enough_material: "材料不足：{} 还需要 {} 个（当前只有 {} 个）。"
   not_enough_vimcoin: "VimCoin 不足！本次合成需要 {}，当前持有 {}。"
   started: "已开始合成 {} x{}，预计 {} 后完成，完成后会被定时发放到背包。"
+  button_view_machine: 查看合成机
 collect:
   done: "没有可以领取的合成成品。"
   success: "领取完成！已放入背包：{}"
@@ -60,7 +61,7 @@ panel:
   recipe_meta: "> 材料：{} · 费用：**{} VimCoin**"
   recipe_start: '- <qqbot-cmd-input text="{}" show="{}" reference="false" />'
   recipe_start_plain: "> 指令：{}"
-  footer: "点击配方下的「开始合成」会填入指令，可再补数量；{__prefix__}craft collect 收取成品，{__prefix__}craft upgrade 升级合成机。"
+  footer: "点击配方下的「开始合成」会填入合成指令，可再补数量；收取成品与升级合成机请使用下方按钮。"
   footer_plain: "使用 {__prefix__}craft start <配方ID> [数量] 开始合成，{__prefix__}craft collect 收取成品，{__prefix__}craft upgrade 升级合成机。"
   button_collect: 收取成品
   button_upgrade: 升级合成机

@@ -164,3 +164,8 @@ async def build_panel_buttons(user_id: str) -> list[Button]:
         Button("enter", await lang.text("panel.button_upgrade", user_id), text=f"{prefix}craft upgrade"),
         Button("enter", await lang.text("panel.button_refresh", user_id), text=f"{prefix}craft"),
     ]
+
+
+async def build_start_buttons(user_id: str) -> list[Button]:
+    """开始合成提示下方的操作按钮：回到合成机面板"""
+    return [Button("enter", await lang.text("start.button_view_machine", user_id), text=f"{get_command_prefix()}craft")]
