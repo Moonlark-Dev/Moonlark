@@ -304,8 +304,15 @@ async def test_gal_mode_prompt_renders_expected_inputs() -> None:
 
     assert '"replies"' in system
     assert "1~3" in system
+    # 备选回复要以用户（而不是 Moonlark）的身份生成
+    assert "不是 Moonlark 本人" in system
+    assert "此用户的第一人称口吻" in system
     for expected in ("小明: 你好", "晚上好呀", "今天也很有精神", "开心", "0.6", "被夸了", "12%", "小明"):
         assert expected in user
+    # 提示词里 Moonlark 的信息要标注清楚属于 Moonlark，避免模型误当成自己的
+    assert "## Moonlark 这一轮发出的消息" in user
+    assert "## Moonlark 的思考" in user
+    assert "## 你" in user
 
 
 class _FakeQQBot:
@@ -321,6 +328,7 @@ class _FakeUniMessage:
         self.content = text
         self.styles: list[str] = []
         self.buttons: list[Any] = []
+        self.keyboard_row: int | None = None
         self.reply_id: str | None = None
         self.send = AsyncMock(return_value=SimpleNamespace(msg_ids=[{"message_id": "mid-1"}]))
         _FakeUniMessage.instances.append(self)
@@ -334,8 +342,9 @@ class _FakeUniMessage:
         self.content = text
         return self
 
-    def keyboard(self, *buttons: Any) -> "_FakeUniMessage":
+    def keyboard(self, *buttons: Any, row: int | None = None) -> "_FakeUniMessage":
         self.buttons = list(buttons)
+        self.keyboard_row = row
         return self
 
     def reply(self, reply_id: str) -> "_FakeUniMessage":
@@ -392,6 +401,8 @@ async def test_deliver_message_sends_markdown_with_suggestion_buttons(
     assert "\\." in sent.content
     assert [button.label for button in sent.buttons] == ["选项一", "选项二"]
     assert [button.text for button in sent.buttons] == ["选项一", "选项二"]
+    # 每个备选回复按钮各占一行：row=1 交给 QQ 键盘排版
+    assert sent.keyboard_row == 1
     # markdown 消息不附带引用
     assert sent.reply_id is None
     sent.send.assert_awaited_once()

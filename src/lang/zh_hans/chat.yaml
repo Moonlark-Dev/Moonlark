@@ -125,6 +125,13 @@ command:
     disabled: 已关闭私聊备选回复。
     current_on: 当前私聊备选回复已开启，使用 {__prefix__}gal-mode off 关闭。
     current_off: 当前私聊备选回复已关闭，使用 {__prefix__}gal-mode on 开启。
+  enhance:
+    group_only: 群聊中才能使用 {__prefix__}chat enhance 指令。
+    enabled: 已开启群聊回复增强。
+    disabled: 已关闭群聊回复增强。
+    current_on: 当前群聊回复增强已开启，使用 {__prefix__}chat enhance off 关闭。
+    current_off: 当前群聊回复增强已关闭，使用 {__prefix__}chat enhance on 开启。
+    enabled_provider_warning: 已开启群聊回复增强。当前会话正在使用 {} Provider，回复增强仅在使用 OpenAI Provider 时生效。
   mode:
     name:
       passionate: 热情
@@ -198,7 +205,7 @@ command:
       • 平均抓取用时: {} ({} 次)
       • 平均回应用时: {} ({} 次)
 help:
-  details: 基于 LLM 的主动水群功能，可以尝试用于活跃群气氛。（启用后将会收集、处理、并储存启用群聊的聊天记录和群员的昵称；在私聊中使用 chat on / chat off 可以开关私聊 Chat）
+  details: 基于 LLM 的主动水群功能，可以尝试用于活跃群气氛。（启用后将会收集、处理、并储存启用群聊的聊天记录和群员的昵称；在私聊中使用 chat on / chat off 可以开关私聊 Chat）在群聊中可通过 chat enhance 开关启用回复增强：开启后 Moonlark 发送的每条消息都会先按当前 Chat 提示词与最近对话重写一次（仅 OpenAI Provider 生效）。
   description: 主动水群
   usage1: chat switch (切换功能启用状态)
   usage2: chat on (启用功能)
@@ -220,6 +227,7 @@ help:
   usage18: chat review-all (对所有会话执行记忆整理并重置其消息队列[SU])
   usage19: chat model [openai|gemini] [会话ID] (查看或设置模型 Provider，省略会话ID时设置全局默认[SU])
   usage20: chat model default [会话ID] (恢复全局默认模型 Provider，带会话ID时该会话恢复跟随全局[SU])
+  usage21: chat enhance <on|off> (在群聊中开启或关闭回复增强)
 
 help_gal_mode:
   description: 私聊备选回复
@@ -477,6 +485,11 @@ message:
     本条消息字数: {}
     已连续发送消息数: {}{}
   sent_queued: 消息发送成功。
+  enhanced: |
+
+
+    本条消息经过回复增强重写，实际发送的内容为：
+    {}
   stop_response: "[错误] 你已连续发送 {} 条消息，超过系统限制，本次发送已被阻止。请等待用户回复后再继续发言。"
   reaction_success: "已发送回应：{}"
   token_insufficient: 发送这条消息所需的 Token 不足，请等待用户回复后再继续发言。

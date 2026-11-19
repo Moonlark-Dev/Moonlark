@@ -44,7 +44,7 @@ FAKE_TEXTS = {
     "card.phrase.almost_perfect": "{}！可惜不是 100",
     "card.phrase.great_day": "是不错的一天呢！",
     "card.phrase.good_day": "还行啦还行啦。",
-    "card.phrase.fair_day": "平平稳稳，也挺好。",
+    "card.phrase.fair_day": "",
     "card.phrase.average_day": "………………",
     "card.phrase.below_average": "…………………………………………",
     "card.phrase.poor_day": "呜哇——",
@@ -164,7 +164,7 @@ async def test_every_tier_has_illustration(value: int, tier: str) -> None:
         (99, "almost_perfect", "99！可惜不是 100"),
         (85, "great_day", "是不错的一天呢！"),
         (75, "good_day", "还行啦还行啦。"),
-        (60, "fair_day", "平平稳稳，也挺好。"),
+        (60, "fair_day", ""),
         (52, "average_day", "………………"),
         (25, "poor_day", "呜哇——"),
         (12, "bad_day", "呜哇——（没错，是百分制）"),
@@ -183,8 +183,26 @@ def test_card_phrase_values(value: int, tier: str, expected: str) -> None:
 async def test_render_fair_day_phrase() -> None:
     from nonebot_plugin_jrrp.card import render_luck_card
 
-    # fair_day 原文没有人品值后面的句子，语言文件里给了完整兜底句
+    # fair_day 这一档不写文案：卡片照常渲染，只是不画那句话
     assert (await render_luck_card("10", 60)).startswith(b"\x89PNG")
+
+
+def test_wrap_empty_phrase_returns_no_lines() -> None:
+    from nonebot_plugin_jrrp.card import _wrap_phrase
+
+    # 空文案只留一个空行，绘制层不会画出任何可见文字
+    assert _wrap_phrase("", 26, 486) == [""]
+
+
+@pytest.mark.asyncio
+async def test_luck_message_falls_back_to_value_when_text_is_empty(monkeypatch: pytest.MonkeyPatch) -> None:
+    """fair_day 没有文案时，卡片渲染失败的回退文本不能是空消息。"""
+    from nonebot_plugin_jrrp import utils
+
+    monkeypatch.setattr(utils, "get_luck_value", AsyncMock(return_value=60))
+    monkeypatch.setattr(utils.lang, "text", AsyncMock(return_value=""))
+
+    assert await utils.get_luck_message("10") == "60"
 
 
 def test_wrap_phrase_breaks_after_comma() -> None:

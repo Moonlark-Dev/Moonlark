@@ -46,6 +46,7 @@ from ..utils.tool_manager import ToolManager
 from ..utils.tools.meme import MemeTools
 from ..utils.tools.sticker import StickerTools
 from .context import serialize_cached_message
+from .enhance import ReplyEnhancer
 from .gal_mode import BufferedMessage, GalModeManager
 from .message import MessageQueue
 
@@ -77,6 +78,8 @@ class MessageProcessor:
         self.meme_tools = MemeTools(self.session)
         # 私聊备选回复：发送缓存与备选回复生成
         self.gal_mode = GalModeManager(self)
+        # 群聊回复增强：发送前按 Chat 提示词与最近对话重写一次消息
+        self.enhancer = ReplyEnhancer(self)
         self.functions = []
         self.loop_task = None
         self._processing_task = None
@@ -618,6 +621,11 @@ class MessageProcessor:
                     return await self.session.text("message.token_insufficient", self.token_bucket.get())
         else:
             token_cost = 0
+        # 群聊回复增强：发送前由模型按 Chat 提示词与最近对话重写一次（仅 openai provider 生效）
+        enhancer = getattr(self, "enhancer", None)
+        enhanced = False
+        if enhancer is not None:
+            message_content, enhanced = await enhancer.process(message_content)
         if self.gal_mode.should_buffer():
             # 开启备选回复后，消息先进入发送缓存：当前消息留下，把上一条挤出去的消息发出。
             # 缓存里最后一条会在本轮结束时以 markdown（附带备选回复按钮）的形式发出。
@@ -625,9 +633,15 @@ class MessageProcessor:
             if flushed is not None:
                 await self._deliver_message(flushed.content, flushed.reply_message_id, flushed.token_cost)
             return await self.session.text("message.sent_queued")
-        return await self._send_and_report(message_content, reply_message_id, token_cost)
+        return await self._send_and_report(message_content, reply_message_id, token_cost, enhanced=enhanced)
 
-    async def _send_and_report(self, message_content: str, reply_message_id: str | None, token_cost: int) -> str:
+    async def _send_and_report(
+        self,
+        message_content: str,
+        reply_message_id: str | None,
+        token_cost: int,
+        enhanced: bool = False,
+    ) -> str:
         """发送消息并把发送结果反馈给模型"""
         sent_msg_id = await self._deliver_message(message_content, reply_message_id, token_cost)
         # 检查待定笔记是否有新内容
@@ -645,6 +659,7 @@ class MessageProcessor:
                 ),
             )
             + pending_notes_text
+            + (await self.session.text("message.enhanced", message_content) if enhanced else "")
         )
 
     async def deliver_buffered_message(self, message: BufferedMessage, suggestions: list[str]) -> None:
@@ -684,8 +699,10 @@ class MessageProcessor:
             formatted = await self.session.format_message(message_content)
             message = UniMessage().style(escape_markdown(formatted.extract_plain_text()), "markdown")
             if suggestions:
+                # row=1：每条备选回复独占一行，避免长文本按钮挤在同一行
                 message = message.keyboard(
                     *[Button("enter", self._button_label(reply), text=reply) for reply in suggestions],
+                    row=1,
                 )
             # markdown 消息不再附带引用：部分平台不接受 msg_type=2 的引用字段
             reply_message_id = None

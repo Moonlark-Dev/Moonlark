@@ -22,6 +22,8 @@ class ChatGroup(Model):
     ignore_mention_user: Mapped[str] = mapped_column(Text(), default="[]")
     enabled: Mapped[bool]
     interaction_mode: Mapped[str] = mapped_column(String(16), default="standard")
+    # 群聊回复增强开关，默认关闭（见 core/enhance.py）
+    enhance: Mapped[bool] = mapped_column(Boolean(), default=False, server_default=false())
     # 主人是否在本群的 Message Summary 记录中出现过；一旦为 True 不再自动改回 False
     master_present: Mapped[bool] = mapped_column(default=False, server_default=false())
 

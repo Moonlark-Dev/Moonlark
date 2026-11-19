@@ -20,6 +20,7 @@ from .utils import (
     NotEnoughMaterial,
     NotEnoughVimcoin,
     collect_finished_jobs,
+    format_item_list,
     format_remaining,
     get_item_name,
     get_machine,
@@ -54,7 +55,7 @@ def format_duration(seconds: float) -> str:
 
 
 async def _render_recipe_line(recipe, user_id: str) -> str:
-    inputs = "、".join(f"{await get_item_name(item_id, user_id)}x{count}" for item_id, count in recipe.inputs.items())
+    inputs = await format_item_list(recipe.inputs.items(), user_id)
     output_name = await get_item_name(recipe.output_id, user_id)
     return await lang.text(
         "recipe.item",
@@ -73,7 +74,7 @@ async def _maybe_collect(user_id: str) -> tuple[str, str]:
     deliveries = await collect_finished_jobs(user_id)
     if not deliveries:
         return "", ""
-    delivered = "、".join(f"{await get_item_name(recipe.output_id, user_id)}x{count}" for recipe, count in deliveries)
+    delivered = await format_item_list([(recipe.output_id, count) for recipe, count in deliveries], user_id)
     return await lang.text("list.collected", user_id, delivered), delivered
 
 
@@ -151,7 +152,7 @@ async def _(user_id: str = get_user_id()) -> None:
     deliveries = await collect_finished_jobs(user_id)
     if not deliveries:
         await lang.finish("collect.done", user_id)
-    delivered = "、".join(f"{await get_item_name(recipe.output_id, user_id)}x{count}" for recipe, count in deliveries)
+    delivered = await format_item_list([(recipe.output_id, count) for recipe, count in deliveries], user_id)
     await lang.finish("collect.success", user_id, delivered)
 
 
