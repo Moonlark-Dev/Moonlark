@@ -141,11 +141,11 @@ def _keyboard_row(button_count: int) -> int | None:
 async def build_trade_keyboard(user_id: str) -> list[Button]:
     prefix = get_command_prefix()
     return [
-        # 股数由用户自行填写，所以用 input 类型：点击后把 `/trade buy ` 预填进输入框，
-        # 用户补上股数（或 50%、all）再发送；enter 类型会直接发出固定股数，改不了数量。
+        # 股数由用户自行填写，所以用 input 类型：点击后把 `/trade buy `、`/trade sell ` 预填进输入框，
+        # 用户补上股数（买入还可填 50%、all）再发送；enter 类型会直接发出固定股数，改不了数量。
         Button("input", await lang.text("button.buy", user_id), text=f"{prefix}trade buy "),
         Button("enter", await lang.text("button.buy_all", user_id), text=f"{prefix}trade buy all"),
-        Button("enter", await lang.text("button.sell_100", user_id), text=f"{prefix}trade sell 100"),
+        Button("input", await lang.text("button.sell", user_id), text=f"{prefix}trade sell "),
         Button("enter", await lang.text("button.sell_all", user_id), text=f"{prefix}trade sell all"),
         Button("enter", await lang.text("button.refresh", user_id), text=f"{prefix}trade"),
     ]

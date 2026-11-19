@@ -81,6 +81,6 @@ error:
 button:
   buy: 买入
   buy_all: 买入全部
-  sell_100: 卖出 100 股
+  sell: 卖出
   sell_all: 卖出全部
   refresh: 刷新行情

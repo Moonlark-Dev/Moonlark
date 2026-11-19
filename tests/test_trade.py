@@ -434,14 +434,14 @@ async def test_trade_keyboard_buttons():
     assert [button.text for button in buttons] == [
         "/trade buy ",
         "/trade buy all",
-        "/trade sell 100",
+        "/trade sell ",
         "/trade sell all",
         "/trade",
     ]
-    # 买入按钮改成 input 类型：点击只预填指令，股数由用户自己填（enter 会直接发出固定数量）
-    assert buttons[0].flag == "input"
+    # 买入/卖出按钮改成 input 类型：点击只预填指令，股数由用户自己填（enter 会直接发出固定数量）
+    assert [button.flag for button in buttons] == ["input", "enter", "input", "enter", "enter"]
     assert buttons[0].label == "按钮"
-    assert [button.flag for button in buttons[1:]] == ["enter"] * 4
+    assert buttons[2].label == "按钮"
 
 
 @pytest.mark.asyncio
