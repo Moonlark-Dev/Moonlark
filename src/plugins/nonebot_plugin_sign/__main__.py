@@ -22,7 +22,7 @@ from nonebot_plugin_items.utils.get import get_item
 from nonebot_plugin_items.utils.string import get_location_by_id
 from nonebot_plugin_items.registry.registry import ResourceLocation
 from nonebot_plugin_larksetu import get_image_id, get_landscape_image
-from nonebot_plugin_larkuser import get_user
+from nonebot_plugin_larkuser import get_user, MoonlarkUser
 from nonebot_plugin_broadcast import has_new_update
 from nonebot_plugin_larkuser.utils.matcher import patch_matcher
 from nonebot_plugin_alconna import Button
@@ -52,6 +52,17 @@ _global_sign_lock = asyncio.Lock()
 # 自动签到券物品 ID 与连续签到奖励周期（天）
 AUTO_SIGN_TICKET_ID = "moonlark:auto_sign_ticket"
 AUTO_SIGN_TICKET_REWARD_DAYS = 5
+
+# 签到 VimCoin 公式中连续签到天数的封顶值
+SIGN_VIM_DAY_CAP = 15
+
+# 补签的 VimCoin 回收率：只补 1 天可收回 50%，补满 15 天只能收回 10%，中间线性递减。
+# 补签费用 = 补签奖励的期望值 / 回收率，因此补的天数越多，花掉的 VimCoin 越亏。
+# 注意：补签只允许漏签 14 天以内（距上次签到 15 天），因此实际最高回收率约 12.9%，
+# 若以后放宽到补 15 天，正好落在 10%。
+RESIGN_RECOVERY_RATE_AT_1_DAY = 0.5
+RESIGN_RECOVERY_RATE_AT_15_DAYS = 0.1
+RESIGN_RECOVERY_CURVE_DAYS = 15
 
 
 def get_auto_sign_ticket_location() -> ResourceLocation:
@@ -126,20 +137,27 @@ async def _calc_sign_exp(user_id: str, sign_days: int) -> dict:
     }
 
 
+def _sign_vim_formula(level: int, fav: float, sign_days: int, roll: float, luck_roll: float) -> float:
+    """签到 VimCoin 公式；两处随机数由调用方给出，便于用期望值估算补签花费"""
+    return round(
+        1
+        + math.sqrt(math.sqrt((1000 + roll) * level * max(fav, 0.1) / 5 * min(sign_days, SIGN_VIM_DAY_CAP) / 8 + 1))
+        * 25
+        * luck_roll,
+        1,
+    )
+
+
+def _expected_sign_vim(level: int, fav: float, sign_days: int) -> float:
+    """签到 VimCoin 的期望值：两处随机数都取 (0, 1) 的期望 0.5"""
+    return _sign_vim_formula(level, fav, sign_days, 0.5, 0.5)
+
+
 async def _calc_sign_vim(user_id: str, sign_days: int) -> dict:
     """计算并增加签到虚拟币。返回 (text, origin, add, now)。"""
     user = await get_user(user_id)
-    level = user.get_level()
     origin = user.get_vimcoin()
-    vim = round(
-        1
-        + math.sqrt(
-            math.sqrt((1000 + random.random()) * level * max(user.get_fav(), 0.1) / 5 * min(sign_days, 15) / 8 + 1)
-        )
-        * 25
-        * random.random(),
-        1,
-    )
+    vim = _sign_vim_formula(user.get_level(), user.get_fav(), sign_days, random.random(), random.random())
     # 霉运 buff：签到获得的 VimCoin 按层数减半
     vim = round(vim * await get_bad_luck_multiplier(user_id), 1)
     await user.add_vimcoin(vim)
@@ -171,6 +189,27 @@ async def _calc_sign_fav(user_id: str) -> dict:
     }
 
 
+def get_resign_recovery_rate(missed_days: int) -> float:
+    """补签的 VimCoin 回收率：补 1 天收回 50%，线性降到补 15 天的 10%"""
+    if missed_days <= 1:
+        return RESIGN_RECOVERY_RATE_AT_1_DAY
+    step = (RESIGN_RECOVERY_RATE_AT_1_DAY - RESIGN_RECOVERY_RATE_AT_15_DAYS) / (RESIGN_RECOVERY_CURVE_DAYS - 1)
+    return max(RESIGN_RECOVERY_RATE_AT_15_DAYS, RESIGN_RECOVERY_RATE_AT_1_DAY - step * (missed_days - 1))
+
+
+def get_resign_cost(user: MoonlarkUser, missed_days: int) -> int:
+    """补签需要花费的 VimCoin
+
+    补签会逐天发放第 1 天到第 missed_days 天档位的签到奖励，这里用同一公式的期望值
+    估算补签收益，再按回收率折算成费用：补 1 天只能收回 50%，补 15 天只能收回 10%。
+    霉运 buff 只降低实际收益、不计入费用，因此受霉运影响时实际回收率会更低。
+    """
+    level = user.get_level()
+    fav = user.get_fav()
+    expected_vim = sum(_expected_sign_vim(level, fav, day) for day in range(1, missed_days + 1))
+    return max(1, round(expected_vim / get_resign_recovery_rate(missed_days)))
+
+
 async def _is_user_signed(user_id: str) -> bool:
     async with get_session() as session:
         data = await _get_sign_data(session, user_id)
@@ -183,13 +222,19 @@ async def _give_auto_sign_tickets(user_id: str, count: int) -> None:
     await give_item(user_id, item)
 
 
-async def perform_sign(user_id: str, missed_days: int = 0, auto: bool = False) -> Optional[dict[str, Any]]:
+async def perform_sign(
+    user_id: str,
+    missed_days: int = 0,
+    auto: bool = False,
+    resign_cost: Optional[int] = None,
+) -> Optional[dict[str, Any]]:
     """执行签到：更新 SignData 并按正常流程发放奖励（不包含补签询问与结果渲染）
 
     Args:
         user_id (str): 用户 ID
         missed_days (int, optional): 补签天数，仅普通签到的补签流程会传入. Defaults to 0.
         auto (bool, optional): 是否为自动签到（累计自动签到数据）. Defaults to False.
+        resign_cost (int, optional): 补签询问时报给用户的价格；省略时按当前用户状态计算.
 
     Returns:
         Optional[dict[str, Any]]: 签到结果；当天已签到时返回 None
@@ -203,6 +248,16 @@ async def perform_sign(user_id: str, missed_days: int = 0, auto: bool = False) -
             days_since = (date.today() - sd.last_sign).days
             if days_since < 1:
                 return None
+
+            # 补签先扣费；余额不足时按未补签处理（重置连续签到）
+            if do_resign and days_since > 1:
+                user = await get_user(user_id)
+                if resign_cost is None:
+                    resign_cost = get_resign_cost(user, missed_days)
+                if not await user.use_vimcoin(resign_cost):
+                    do_resign = False
+            else:
+                do_resign = False
 
             # 计算新签到天数
             if days_since == 1:
@@ -245,7 +300,7 @@ async def perform_sign(user_id: str, missed_days: int = 0, auto: bool = False) -
             got_exp += (await _calc_sign_exp(user_id, day_count))["add"]
         user = await get_user(user_id)
         await user.add_fav(0.001 * missed_days * await get_bad_luck_multiplier(user_id))
-        resign_result = {"days": missed_days, "vim": round(got_vim, 1), "exp": got_exp}
+        resign_result = {"days": missed_days, "vim": round(got_vim, 1), "exp": got_exp, "cost": resign_cost or 0}
 
     # ====== 连续签到奖励：每连续签到 5 天奖励一张自动签到券 ======
     ticket_gained = 0
@@ -302,11 +357,12 @@ class SignHandler:
         days_since = (date.today() - data.last_sign).days
         self._do_resign = False
         self._missed_days = 0
+        needed = 0
         if days_since > 1:
             self._missed_days = days_since - 1
             if self._missed_days < 15:
                 user = await get_user(self.user_id)
-                needed = self._missed_days * 30
+                needed = get_resign_cost(user, self._missed_days)
                 if await user.has_vimcoin(needed):
                     try:
                         self._do_resign = await prompt(
@@ -321,7 +377,11 @@ class SignHandler:
                         pass
 
         # ====== Phase 3+4: 签到数据操作与奖励发放 ======
-        self._result = await perform_sign(self.user_id, self._missed_days if self._do_resign else 0)
+        self._result = await perform_sign(
+            self.user_id,
+            self._missed_days if self._do_resign else 0,
+            resign_cost=needed if self._do_resign else None,
+        )
         if self._result is not None and (resign := self._result["resign"]):
             await lang.send(
                 "resign.success",
