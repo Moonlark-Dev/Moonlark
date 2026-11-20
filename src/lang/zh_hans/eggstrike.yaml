@@ -13,18 +13,15 @@ throw:
   blocked_broken: "对方的临时屏障被打碎了！"
   pierced: "{} 击穿了对方的临时屏障！"
   explode_hand: "有 {} 个{}在你手上爆炸了！你被溅得一脸臭，扣掉 {} 点 HP，霉运缠身。"
-list:
-  title: "【当前选择的鸡蛋】{}"
-  item: "[{}] {} - 每个造成 {} 点伤害"
-  item_buff: "[{}] {} - 每个造成 {} 点伤害，恶臭 {} 小时，手上爆炸率 {}%"
-  footer: "使用 {__prefix__}splat switch <数字> 切换默认鸡蛋"
 eggs:
   title: "## 鸡蛋列表\n> 当前选择：{}"
+  title_text: "【鸡蛋列表】当前选择：{}"
   item: "- <qqbot-cmd-input text=\"{__prefix__}splat switch {}\" show=\"{}\" reference=\"false\" /> x{}"
-  item_plain: "· {} x{}"
+  item_plain: "[{}] {} x{}"
   current: "（当前使用）"
   effect_plain: "每个造成 {} 点伤害"
-  effect_buff: "每个造成 {} 点伤害、恶臭 {} 小时；{}% 概率命中爆炸，{}% 概率在手上爆炸"
+  effect_buff: "每个造成 {} 点伤害、恶臭 {} 小时；{}% 概率在手上爆炸"
+  footer: "使用 {__prefix__}splat switch <数字> 切换默认鸡蛋"
 switch:
   invalid_index: "无效的鸡蛋编号，可用编号 1-{}。"
   success: "已将默认鸡蛋切换为 {}。"
