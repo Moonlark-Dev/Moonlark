@@ -9,6 +9,8 @@ from typing import TYPE_CHECKING, Optional, Sequence
 if TYPE_CHECKING:
     from datetime import date
 
+    from matplotlib.axes import Axes
+
 from matplotlib import font_manager, rcParams
 from matplotlib.backends.backend_agg import FigureCanvasAgg
 from matplotlib.figure import Figure
@@ -48,6 +50,18 @@ class CandlePoint:
     volume: int = 0
 
 
+@dataclass(frozen=True)
+class DailyCandlePoint:
+    """一根日 K 线：由该交易日已落库的 5 分钟 K 线聚合而来"""
+
+    day: date
+    open: float
+    high: float
+    low: float
+    close: float
+    volume: int = 0
+
+
 def _slot_label(slot: int) -> str:
     minutes = 8 * 60 + slot * 5
     return f"{minutes // 60:02d}:{minutes % 60:02d}"
@@ -72,6 +86,96 @@ def _to_png(figure: Figure) -> bytes:
     buffer = BytesIO()
     FigureCanvasAgg(figure).print_png(buffer)
     return buffer.getvalue()
+
+
+def _create_axes() -> tuple[Figure, Axes]:
+    figure = Figure(figsize=(13, 6.2), dpi=150, facecolor=_BACKGROUND)
+    axes = figure.add_subplot(111)
+    axes.set_facecolor(_BACKGROUND)
+    return figure, axes
+
+
+def _price_bounds(highs: Sequence[float], lows: Sequence[float]) -> tuple[float, float, float]:
+    """返回 (y 轴下界, y 轴上界, 实体最小高度)"""
+    price_span = max(highs) - min(lows)
+    padding = max(price_span * 0.08, max(highs) * 0.002, 0.01)
+    body_floor = max(price_span * 0.002, max(highs) * 0.0001, 1e-4)
+    return min(lows) - padding, max(highs) + padding, body_floor
+
+
+def _draw_candle(
+    axes: Axes,
+    position: float,
+    open_price: float,
+    high: float,
+    low: float,
+    close: float,
+    *,
+    body_floor: float,
+    body_alpha: float = 1.0,
+    wick_alpha: float = 1.0,
+) -> None:
+    """在 position 处画一根红涨绿跌的蜡烛"""
+    color = _UP_COLOR if close >= open_price else _DOWN_COLOR
+    axes.vlines(position, low, high, color=color, linewidth=0.9, alpha=wick_alpha, zorder=3)
+    bottom = min(open_price, close)
+    height = max(abs(close - open_price), body_floor)
+    axes.add_patch(
+        Rectangle(
+            (position - 0.32, bottom),
+            0.64,
+            height,
+            facecolor=color,
+            edgecolor=color,
+            linewidth=0.5,
+            alpha=body_alpha,
+            zorder=4,
+        ),
+    )
+
+
+def _style_axes(axes: Axes, title: str) -> None:
+    """标题、网格与坐标轴样式的统一收尾"""
+    axes.set_title(title, fontsize=15, fontweight="bold", color=_TEXT_COLOR, pad=16)
+    axes.grid(visible=True, axis="y", alpha=0.25, linestyle="--", linewidth=0.6)
+    axes.set_axisbelow(True)
+    for spine in ("top", "right"):
+        axes.spines[spine].set_visible(False)
+    for spine in ("left", "bottom"):
+        axes.spines[spine].set_color("#D0D7DE")
+    axes.tick_params(colors=_MUTED_COLOR, labelsize=9)
+
+
+def _annotate_last_close(axes: Axes, position: float, close: float) -> None:
+    axes.annotate(
+        f"{close:.2f}",
+        (position, close),
+        textcoords="offset points",
+        xytext=(0, 14),
+        ha="center",
+        fontsize=10,
+        fontweight="bold",
+        color=_TEXT_COLOR,
+        bbox={"boxstyle": "round,pad=0.2", "facecolor": "white", "edgecolor": _MUTED_COLOR, "alpha": 0.9},
+    )
+
+
+def _day_tick_indexes(candle_count: int, total: int) -> list[int]:
+    """日 K 的日期刻度：从最新一根往回按步长取，标签之间至少隔 label_gap 根蜡烛
+
+    数据不足时所有蜡烛都挤在右侧、间距只有 1 个 slot，日期标签必须更稀疏，
+    否则会互相重叠；此时宁可只标最新一根。
+    """
+    if candle_count <= 0:
+        return []
+    label_gap = max(2, round(total * 0.05))
+    step = max(1, candle_count // 8)
+    candidates = sorted(set(range(candle_count - 1, -1, -step)) | {0}, reverse=True)
+    indexes = [candidates[0]]
+    for index in candidates[1:]:
+        if abs(index - indexes[-1]) >= label_gap:
+            indexes.append(index)
+    return sorted(indexes)
 
 
 def _day_start_indexes(candles: Sequence[CandlePoint]) -> set[int]:
@@ -107,44 +211,26 @@ def render_kline_chart(
 
         total = max(1, visible_candles, len(candles))
         offset = total - len(candles)
-        lows = [candle.low for candle in candles]
-        highs = [candle.high for candle in candles]
-        price_span = max(highs) - min(lows)
-        padding = max(price_span * 0.08, max(highs) * 0.002, 0.01)
-        y_bottom = min(lows) - padding
-        y_top = max(highs) + padding
-        body_floor = max(price_span * 0.002, max(highs) * 0.0001, 1e-4)
+        y_bottom, y_top, body_floor = _price_bounds(
+            [candle.high for candle in candles],
+            [candle.low for candle in candles],
+        )
 
-        figure = Figure(figsize=(13, 6.2), dpi=150, facecolor=_BACKGROUND)
-        axes = figure.add_subplot(111)
-        axes.set_facecolor(_BACKGROUND)
+        figure, axes = _create_axes()
 
         for index, candle in enumerate(candles):
             position = offset + index
-            color = _UP_COLOR if candle.close >= candle.open else _DOWN_COLOR
             is_current_day = candle.day == current_day
-            axes.vlines(
+            _draw_candle(
+                axes,
                 position,
-                candle.low,
+                candle.open,
                 candle.high,
-                color=color,
-                linewidth=0.9,
-                alpha=1.0 if is_current_day else _PREVIOUS_DAY_WICK_ALPHA,
-                zorder=3,
-            )
-            bottom = min(candle.open, candle.close)
-            height = max(abs(candle.close - candle.open), body_floor)
-            axes.add_patch(
-                Rectangle(
-                    (position - 0.32, bottom),
-                    0.64,
-                    height,
-                    facecolor=color,
-                    edgecolor=color,
-                    linewidth=0.5,
-                    alpha=1.0 if is_current_day else _PREVIOUS_DAY_BODY_ALPHA,
-                    zorder=4,
-                ),
+                candle.low,
+                candle.close,
+                body_floor=body_floor,
+                body_alpha=1.0 if is_current_day else _PREVIOUS_DAY_BODY_ALPHA,
+                wick_alpha=1.0 if is_current_day else _PREVIOUS_DAY_WICK_ALPHA,
             )
 
         day_starts = _day_start_indexes(candles)
@@ -191,27 +277,58 @@ def render_kline_chart(
         axes.set_xlim(-1.5, total + 2.5)
         axes.set_ylim(y_bottom, y_top)
         axes.set_ylabel("VimCoin", fontsize=10, color=_MUTED_COLOR)
+        _annotate_last_close(axes, offset + len(candles) - 1, candles[-1].close)
+        _style_axes(axes, title)
+        figure.tight_layout()
+        return _to_png(figure)
 
-        last = candles[-1]
-        axes.annotate(
-            f"{last.close:.2f}",
-            (offset + len(candles) - 1, last.close),
-            textcoords="offset points",
-            xytext=(0, 14),
-            ha="center",
-            fontsize=10,
-            fontweight="bold",
-            color=_TEXT_COLOR,
-            bbox={"boxstyle": "round,pad=0.2", "facecolor": "white", "edgecolor": _MUTED_COLOR, "alpha": 0.9},
+
+def render_daily_kline_chart(
+    candles: Sequence[DailyCandlePoint],
+    title: str,
+    empty_text: str,
+    visible_candles: int = VISIBLE_CANDLES,
+) -> bytes:
+    """渲染最近若干根日 K 线，红涨绿跌。
+
+    日 K 线由该交易日实际落库的 5 分钟 K 线聚合：开盘/收盘取当日首尾 5 分钟 K 线，
+    影线直接取当日实际最高/最低价（含玩家买卖冲击写入的极值），不额外合成日线影线。
+
+    横轴按 ``visible_candles`` 固定宽度，数据不足时所有蜡烛仍紧靠右侧排列、只在左侧
+    留白——宁可让少量蜡烛挤在一边，也不把它们拉开到整条横轴上留下大片空隙。
+    """
+    if not title:
+        title = "日 K 线"
+    with _RENDER_LOCK:
+        if not candles:
+            return _render_empty(title, empty_text)
+
+        total = max(1, visible_candles, len(candles))
+        offset = total - len(candles)
+        y_bottom, y_top, body_floor = _price_bounds(
+            [candle.high for candle in candles],
+            [candle.low for candle in candles],
         )
+        figure, axes = _create_axes()
 
-        axes.set_title(title, fontsize=15, fontweight="bold", color=_TEXT_COLOR, pad=16)
-        axes.grid(visible=True, axis="y", alpha=0.25, linestyle="--", linewidth=0.6)
-        axes.set_axisbelow(True)
-        for spine in ("top", "right"):
-            axes.spines[spine].set_visible(False)
-        for spine in ("left", "bottom"):
-            axes.spines[spine].set_color("#D0D7DE")
-        axes.tick_params(colors=_MUTED_COLOR, labelsize=9)
+        for index, candle in enumerate(candles):
+            _draw_candle(
+                axes,
+                offset + index,
+                candle.open,
+                candle.high,
+                candle.low,
+                candle.close,
+                body_floor=body_floor,
+            )
+
+        tick_indexes = _day_tick_indexes(len(candles), total)
+        axes.set_xticks([offset + index for index in tick_indexes])
+        axes.set_xticklabels([_day_label(candles[index].day) for index in tick_indexes], fontsize=8)
+        axes.set_xlim(-1.5, total + 1.5)
+        axes.set_ylim(y_bottom, y_top)
+        axes.set_ylabel("VimCoin", fontsize=10, color=_MUTED_COLOR)
+        _annotate_last_close(axes, offset + len(candles) - 1, candles[-1].close)
+        _style_axes(axes, title)
         figure.tight_layout()
         return _to_png(figure)
