@@ -8,14 +8,21 @@ from nonebot_plugin_apscheduler import scheduler
 from nonebot_plugin_htmlrender import md_to_pic
 from nonebot_plugin_larkuser import patch_matcher
 from nonebot_plugin_larkuser.utils.waiter import PromptRetryTooMuch, PromptTimeout, prompt
-from nonebot_plugin_larkutils import get_user_id
+from nonebot_plugin_larkutils import escape_markdown, get_user_id
 from nonebot_plugin_orm import get_session
 
 from sqlalchemy import select
 
 from .lang import lang
 from .models import CraftingJob
-from .panel import PanelData, PanelJob, build_panel_buttons, build_panel_markdown, build_panel_text
+from .panel import (
+    PanelData,
+    PanelJob,
+    build_panel_buttons,
+    build_panel_markdown,
+    build_panel_text,
+    build_start_buttons,
+)
 from .recipes import LEVEL_SLOTS, RECIPES
 from .utils import (
     NoFreeSlot,
@@ -107,8 +114,21 @@ async def _(bot: Bot, event: Event, user_id: str = get_user_id()) -> None:
     await send_panel(bot, event, user_id, await _build_panel_data(user_id))
 
 
+async def send_started(bot: Bot, event: Event, user_id: str, name: str, started: int, remaining: str) -> None:
+    """发送开始合成提示：QQ 官方附上「查看合成机」按钮，其它适配器保持纯文本"""
+    if isinstance(bot, QQBot):
+        message = (
+            UniMessage()
+            .style(await lang.text("start.started", user_id, escape_markdown(name), started, remaining), "markdown")
+            .keyboard(*await build_start_buttons(user_id))
+        )
+        await message.send(target=event, bot=bot)
+        await craft.finish()
+    await lang.finish("start.started", user_id, name, started, remaining)
+
+
 @craft.assign("start")
-async def _(recipe_id: str, count: int = 1, user_id: str = get_user_id()) -> None:
+async def _(bot: Bot, event: Event, recipe_id: str, count: int = 1, user_id: str = get_user_id()) -> None:
     recipe = RECIPES.get(recipe_id)
     if recipe is None:
         await lang.finish("start.invalid_recipe", user_id, recipe_id)
@@ -136,7 +156,7 @@ async def _(recipe_id: str, count: int = 1, user_id: str = get_user_id()) -> Non
         started += 1
         finish_time = job.finish_time
     name = await get_item_name(recipe.output_id, user_id)
-    await lang.finish("start.started", user_id, name, started, format_remaining(finish_time))
+    await send_started(bot, event, user_id, name, started, format_remaining(finish_time))
 
 
 @craft.assign("collect")
