@@ -33,6 +33,7 @@ class PanelData:
     prev_close: str
     change: str
     change_pct: str
+    change_formula: str
     gap_pct: str
     trend: str
     shares: int
@@ -56,6 +57,28 @@ def _fmt_signed(value: float) -> str:
     return f"{value:+.2f}"
 
 
+# 涨跌文本用行内公式着色：QQ 官方 markdown 没有给文字上色的语法，但 ``\(...\)``
+# 会交给公式渲染器，``\color{...}`` 可以给数字上色；非 QQ 适配器把同一份 markdown
+# 交给 md_to_pic，KaTeX 也支持 ``\color``，两边效果一致。红涨绿跌与 K 线图一致。
+_CHANGE_STYLES = {
+    1: (r"red", r"\blacktriangle"),
+    -1: (r"green", r"\blacktriangledown"),
+    0: (r"gray", r"\cdot"),
+}
+
+
+def _change_formula(change: float, change_pct: str) -> str:
+    """把涨跌文本包成 LaTeX 行内公式（颜色 + 箭头 + 百分比）
+
+    百分比连同正负号放进一组花括号：``+6.06`` 直接跟在 ``\\ `` 后面会被当成
+    二元运算符排成「+ 6.06」，分组后才和纯文本一样是「+6.06」。
+    """
+    color, arrow = _CHANGE_STYLES[1 if change > 0 else -1 if change < 0 else 0]
+    # 公式里的 % 是注释符，必须转义
+    percent = "{" + change_pct.replace("%", r"\%") + "}"
+    return rf"\(\color{{{color}}}{{{arrow}\ {percent}}}\)"
+
+
 def _holding_texts(shares: int, cost_basis: float, price: float) -> tuple[str, str, str]:
     """返回 (平均成本, 浮动盈亏, 盈亏比例) 的展示文本"""
     if shares <= 0 or cost_basis <= 0:
@@ -77,6 +100,7 @@ def build_panel_data(state: MarketState, holding: Holding, now: datetime) -> Pan
     prev_close = state.prev_close or price
     change = price - prev_close
     change_pct = change / prev_close * 100 if prev_close > 0 else 0.0
+    change_pct_text = f"{_fmt_signed(change_pct)}%"
     gap_pct = (day_open - prev_close) / prev_close * 100 if prev_close > 0 else 0.0
     shares = holding.shares
     frozen = holding.frozen_shares
@@ -93,7 +117,8 @@ def build_panel_data(state: MarketState, holding: Holding, now: datetime) -> Pan
         day_open=_fmt(day_open),
         prev_close=_fmt(prev_close),
         change=_fmt_signed(change),
-        change_pct=f"{_fmt_signed(change_pct)}%",
+        change_pct=change_pct_text,
+        change_formula=_change_formula(change, change_pct_text),
         gap_pct=f"{_fmt_signed(gap_pct)}%",
         trend=trend,
         shares=shares,
@@ -120,8 +145,7 @@ async def build_panel_markdown(user_id: str, data: PanelData) -> str:
             await lang.text(
                 "panel.change",
                 user_id,
-                trend=data.trend,
-                change_pct=data.change_pct,
+                change_formula=data.change_formula,
                 change=data.change,
             ),
             await lang.text(

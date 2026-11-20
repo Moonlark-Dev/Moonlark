@@ -38,7 +38,7 @@ panel:
   status_closed: "> ⚪ **休市** · 每日 08:00 开市"
   market_title: "### 行情"
   price: "- **最新价**：**{price} VimCoin**"
-  change: "- 今日涨跌：**{trend} {change_pct}**（{change}）"
+  change: "- 今日涨跌：{change_formula}（{change}）"
   open_close: "- 今开 {day_open}（跳空 {gap_pct}） · 昨收 {prev_close}"
   holding_title: "### 我的持仓"
   holding_shares: "- 持股 **{shares}** 股 · 可卖 {sellable} 股 · 冻结 {frozen} 股"

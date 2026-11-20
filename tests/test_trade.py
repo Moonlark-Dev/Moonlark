@@ -591,7 +591,7 @@ async def test_panel_markdown_has_hierarchy_and_hides_float_shares():
     assert "**交易中**" in markdown
     assert "### 行情" in markdown
     assert "- **最新价**：**10.50 VimCoin**" in markdown
-    assert "- 今日涨跌：**▲ +6.06%**（+0.60）" in markdown
+    assert r"- 今日涨跌：\(\color{red}{\blacktriangle\ {+6.06\%}}\)（+0.60）" in markdown
     assert "- 今开 10.00（跳空 +1.01%） · 昨收 9.90" in markdown
     assert "### 我的持仓" in markdown
     assert "- 持股 **200** 股 · 可卖 100 股 · 冻结 100 股" in markdown
@@ -600,6 +600,25 @@ async def test_panel_markdown_has_hierarchy_and_hides_float_shares():
     assert "- 买入 **100/1000** 股" in markdown
     assert "市场流通" not in markdown
     assert "100000" not in markdown
+
+
+@pytest.mark.asyncio
+async def test_panel_markdown_renders_change_text_as_colored_formula():
+    """涨跌文本用 LaTeX 行内公式显示：红涨绿跌，平盘用灰色
+
+    QQ 官方 markdown 没有给文字上色的语法，``\\(...\\)`` 会交给公式渲染器，
+    ``\\color{...}`` 才能上色；公式里的 ``%`` 必须转义，否则会被当成 LaTeX 注释。
+    """
+    from nonebot_plugin_trade.panel import build_panel_markdown
+
+    up = await build_panel_markdown("panel-user", make_panel_data({"price": 10.5, "prev_close": 10.0}))
+    assert r"\(\color{red}{\blacktriangle\ {+5.00\%}}\)（+0.50）" in up
+
+    down = await build_panel_markdown("panel-user", make_panel_data({"price": 9.5, "prev_close": 10.0}))
+    assert r"\(\color{green}{\blacktriangledown\ {-5.00\%}}\)（-0.50）" in down
+
+    flat = await build_panel_markdown("panel-user", make_panel_data({"price": 10.0, "prev_close": 10.0}))
+    assert r"\(\color{gray}{\cdot\ {+0.00\%}}\)（+0.00）" in flat
 
 
 @pytest.mark.asyncio
@@ -628,6 +647,7 @@ async def test_panel_text_fallback_hides_float_shares():
     assert "状态：交易中（08:00–24:00）" in text
     assert "当前价格：10.50 VimCoin" in text
     assert "今日涨跌：▲ +6.06%（+0.60）" in text
+    assert "\\(" not in text
     assert "今开：10.00 VimCoin（跳空 +1.01%） · 昨收：9.90 VimCoin" in text
     assert "你的持股：200 股（可卖 200 股，冻结 0 股）" in text
     assert "市场流通" not in text
