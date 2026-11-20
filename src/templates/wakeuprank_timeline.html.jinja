@@ -2,13 +2,16 @@
 
 {% block header %}
 <style>
-    /* 时间轴：左边固定宽度的时间文本，右边是可伸缩的轨道，圆点与刻度线都按百分比定位。
-       标签、竖线、圆点都用同一个 percent 换算结果，所以换 viewport 宽度也不会错位。
+    /* 垂直时间轴：纵轴从上到下是 4:00 → 14:00，时刻标签在轴左侧，圆点落在轴上，
+       右侧单列标签写「时刻 + 昵称」。刻度标签、网格线、圆点、标签都用同一个 percent
+       换算结果，所以换 viewport 宽度也不会错位。
+
+       标签的纵向位置跟圆点不完全相同：同一簇里贴太近的标签会被上下摊开（由
+       image.spread_labels 算好），再用一条引线从圆点连回标签，避免文字叠在一起。
 
        注意：文字颜色靠 .text-dark 继承主题（default/wide 是深色字、redpacket 主题把
        .text-dark 覆盖成 #F9A633）。不能只依赖 body 的颜色——MDB 的 .card 会给后代设
-       #4f4f4f，在 redpacket 的深红卡片上几乎看不见。次要信息用 opacity 压暗，
-       行列分隔线用半透明灰，这样四个主题下都不会出现「深色字压深色卡片」。 */
+       #4f4f4f，在 redpacket 的深红卡片上几乎看不见。 */
     .wake-timeline {
         font-size: 14px;
     }
@@ -16,7 +19,7 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
-        margin-bottom: 8px;
+        margin-bottom: 10px;
         font-size: 85%;
         opacity: 0.75;
     }
@@ -32,85 +35,63 @@
         border-radius: 50%;
         background: #f5941f;
     }
-    .wake-timeline .tl-axis {
-        display: flex;
-        align-items: flex-end;
+    .wake-timeline .tl-body {
+        padding: 6px 0;
     }
-    .wake-timeline .tl-axis-spacer {
-        flex: 0 0 68px;
-    }
-    /* 与 .tl-track 一样带左右 1px 边框，保证标签的百分比基准和轨道一致 */
-    .wake-timeline .tl-axis-track {
+    /* border-left 就是时间轴本体；52px 的 margin 留给轴左侧的时刻标签 */
+    .wake-timeline .tl-chart {
         position: relative;
-        flex: 1 1 auto;
-        height: 16px;
-        border-left: 1px solid transparent;
-        border-right: 1px solid transparent;
+        margin-left: 52px;
+        border-left: 1px solid rgba(128, 128, 128, 0.45);
     }
     .wake-timeline .tl-axis-label {
         position: absolute;
-        bottom: 3px;
+        left: -52px;
+        width: 44px;
+        text-align: right;
         font-size: 75%;
         opacity: 0.65;
         white-space: nowrap;
         font-variant-numeric: tabular-nums;
     }
     .wake-timeline .tl-axis-start {
-        transform: translateX(0);
+        transform: translateY(0);
     }
     .wake-timeline .tl-axis-center {
-        transform: translateX(-50%);
+        transform: translateY(-50%);
     }
     .wake-timeline .tl-axis-end {
-        transform: translateX(-100%);
+        transform: translateY(-100%);
     }
-    .wake-timeline .tl-rows {
-        border-top: 1px solid rgba(128, 128, 128, 0.45);
+    .wake-timeline .tl-grid {
+        position: absolute;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: rgba(128, 128, 128, 0.15);
     }
-    .wake-timeline .tl-row {
-        display: flex;
-        align-items: center;
-        height: 32px;
-    }
-    .wake-timeline .tl-row:nth-child(even) {
-        background: rgba(128, 128, 128, 0.1);
-    }
-    .wake-timeline .tl-row.tl-row-me {
-        background: rgba(245, 148, 31, 0.22);
-        font-weight: 600;
-    }
-    .wake-timeline .tl-time {
-        flex: 0 0 68px;
-        font-size: 85%;
-        opacity: 0.85;
-        font-variant-numeric: tabular-nums;
-    }
-    .wake-timeline .tl-track {
-        position: relative;
-        flex: 1 1 auto;
-        height: 100%;
-        border-left: 1px solid rgba(128, 128, 128, 0.45);
-        border-right: 1px solid rgba(128, 128, 128, 0.45);
-    }
-    .wake-timeline .tl-tick {
+    /* 引线层：viewBox 用 0-100 的百分比坐标系，preserveAspectRatio="none" 让它铺满
+       图表，non-scaling-stroke 保证线宽不随缩放变形 */
+    .wake-timeline .tl-links {
         position: absolute;
         top: 0;
-        bottom: 0;
-        width: 1px;
-        background: rgba(128, 128, 128, 0.28);
+        left: 0;
+        width: 100%;
+        height: 100%;
+        overflow: visible;
     }
-    .wake-timeline .tl-marker {
-        position: absolute;
-        top: 50%;
-        width: 0;
-        height: 0;
+    .wake-timeline .tl-links line {
+        stroke: rgba(128, 128, 128, 0.4);
+        stroke-width: 1px;
+        vector-effect: non-scaling-stroke;
     }
     .wake-timeline .tl-dot {
         position: absolute;
+        left: 0;
         width: 9px;
         height: 9px;
         margin-top: -4.5px;
-        margin-left: -4.5px;
+        margin-left: -5px;
         border-radius: 50%;
         background: #4a9eff;
         box-shadow: 0 0 0 2px rgba(74, 158, 255, 0.18);
@@ -119,22 +100,35 @@
         background: #f5941f;
         box-shadow: 0 0 0 2px rgba(245, 148, 31, 0.2);
     }
-    .wake-timeline .tl-name {
+    .wake-timeline .tl-item {
         position: absolute;
-        top: 50%;
-        max-width: 150px;
+        left: 6%;
+        display: flex;
+        align-items: baseline;
+        gap: 6px;
+        max-width: 88%;
+        padding: 1px 4px;
+        line-height: 1.25;
+        transform: translateY(-50%);
+    }
+    .wake-timeline .tl-item-me {
+        border-radius: 4px;
+        background: rgba(245, 148, 31, 0.18);
+    }
+    .wake-timeline .tl-time {
+        flex: 0 0 auto;
+        font-size: 72%;
+        opacity: 0.7;
+        font-variant-numeric: tabular-nums;
+    }
+    .wake-timeline .tl-name {
         overflow: hidden;
         white-space: nowrap;
         text-overflow: ellipsis;
-        transform: translateY(-50%);
-        font-size: 85%;
+        font-size: 82%;
     }
-    .wake-timeline .tl-name.tl-name-right {
-        left: 11px;
-    }
-    .wake-timeline .tl-name.tl-name-left {
-        right: 11px;
-        text-align: right;
+    .wake-timeline .tl-item-me .tl-name {
+        font-weight: 600;
     }
 </style>
 {% endblock header %}
@@ -147,25 +141,19 @@
         <span class="tl-legend"><span class="tl-legend-dot"></span>{{ me_label }}</span>
         {% endif %}
     </div>
-    <div class="tl-axis">
-        <span class="tl-axis-spacer"></span>
-        <span class="tl-axis-track">
-            {% for tick in axis_ticks %}<span class="tl-axis-label tl-axis-{{ tick.align }}" style="left: {{ tick.percent }}%">{{ tick.text }}</span>{% endfor %}
-        </span>
-    </div>
-    <div class="tl-rows">
-        {% for point in points %}
-        <div class="tl-row{% if point.is_me %} tl-row-me{% endif %}">
-            <span class="tl-time">{{ point.time }}</span>
-            <span class="tl-track">
-                {% for tick in axis_ticks if 0 < tick.percent < 100 %}<span class="tl-tick" style="left: {{ tick.percent }}%"></span>{% endfor %}
-                <span class="tl-marker" style="left: clamp(5px, {{ point.percent }}%, calc(100% - 5px))">
-                    <span class="tl-dot{% if point.is_me %} tl-dot-me{% endif %}"></span>
-                    <span class="tl-name{% if point.percent > 55 %} tl-name-left{% else %} tl-name-right{% endif %}">{{ point.nickname }}</span>
-                </span>
-            </span>
+    <div class="tl-body">
+        <div class="tl-chart" style="height: {{ chart_height }}px">
+            {% for tick in axis_ticks %}<span class="tl-axis-label tl-axis-{{ tick.align }}" style="top: {{ tick.percent }}%">{{ tick.text }}</span>{% endfor %}
+            {% for tick in axis_ticks %}<span class="tl-grid" style="top: {{ tick.percent }}%"></span>{% endfor %}
+            <svg class="tl-links" viewBox="0 0 100 100" preserveAspectRatio="none">
+                {% for point in points %}<line x1="0" y1="{{ point.percent }}" x2="6" y2="{{ point.label_percent }}" />{% endfor %}
+            </svg>
+            {% for point in points %}<span class="tl-dot{% if point.is_me %} tl-dot-me{% endif %}" style="top: {{ point.percent }}%"></span>
+            <span class="tl-item{% if point.is_me %} tl-item-me{% endif %}" style="top: {{ point.label_percent }}%">
+                <span class="tl-time">{{ point.time }}</span>
+                <span class="tl-name">{{ point.nickname }}</span>
+            </span>{% endfor %}
         </div>
-        {% endfor %}
     </div>
 </div>
 {% endblock body %}

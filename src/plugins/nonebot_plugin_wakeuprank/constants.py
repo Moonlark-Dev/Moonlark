@@ -19,3 +19,9 @@ TIMELINE_SPAN_SECONDS = (
 # 时间轴刻度间隔（小时）：每 2 小时一个标签
 TIMELINE_TICK_HOURS = 2
 TIMELINE_AXIS_HOURS = tuple(range(WAKE_START.hour, WAKE_END.hour + 1, TIMELINE_TICK_HOURS))
+
+# 时间轴画布高度（CSS px）：4:00 在顶部、14:00 在底部。固定高度而不是按人数撑开，
+# 这样「同一时刻有多早」在图上永远是同一个位置，不同天数的图也能直接对比。
+TIMELINE_CHART_HEIGHT = 480
+# 一条标签占掉的纵向高度（单行「时刻 + 昵称」），贴得比这个近的标签会被上下摊开
+TIMELINE_LABEL_GAP = 22
