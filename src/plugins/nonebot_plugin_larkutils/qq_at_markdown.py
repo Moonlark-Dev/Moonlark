@@ -17,6 +17,7 @@ QQ 官方机器人已不再支持在普通文本消息（``msg_type=0``）中渲
 本模块统一拦截 ``QQMessageExporter.send_to``、``QQBot.send`` 与 ``QQBot.send_to_group``：
 - 仅对 QQ 群聊目标生效（排除不支持 ``<qqbot-at-user>`` 的 C2C 单聊与原生支持纯文本提及的频道）；
 - 纯文本段自动经 ``escape_markdown`` 转义，已有 ``markdown`` 段保持原样；
+- ``at_sender`` 补出的 ``@`` 位于消息最前面时，在标签后补一个空格，避免渲染成「@成员正文」粘连；
 - 独占一行的 ``<qqbot-at-*>`` 标签后若紧跟单换行，自动补齐空行以避免触发 CommonMark HTML 块吞掉后续格式；
 - 同时包含图片（``file_image`` / ``image``）与 ``@`` 时，自动通过 QQ 素材管理接口（``create_image_markdown``）
   上传并内嵌到 Markdown 中；若下载/上传失败，或含有 ARK、音视频等无法内嵌的富媒体段，则自动剥离提及段后回退原消息，
@@ -245,6 +246,21 @@ def _ensure_at_block_separation(content: str) -> str:
     return _AT_LINE_RE.sub(r"\1\n\n", content)
 
 
+def _space_after_prepended_at(content: str, at_user_id: str) -> str:
+    """``at_sender`` 补出的 ``@`` 位于最前面时，在标签后补一个空格。
+
+    QQ 的 Markdown 渲染会把紧贴标签的正文渲染成「@成员正文」，补一个空格后才呈现为「@成员 正文」。
+    若正文本身以空白（换行、空格）开头则不再补——那种情况交给 ``_ensure_at_block_separation`` 处理。
+    """
+    tag = f'<qqbot-at-user id="{at_user_id}" />'
+    if not content.startswith(tag):
+        return content
+    rest = content[len(tag) :]
+    if not rest or rest[0].isspace():
+        return content
+    return f"{tag} {rest}"
+
+
 async def convert_group_message(
     message: Message,
     bot: Optional[QQBot] = None,
@@ -260,7 +276,8 @@ async def convert_group_message(
         return None
 
     working = Message(message)
-    if at_user_id and not _already_mentions_user(working, at_user_id):
+    prepended_at = bool(at_user_id) and not _already_mentions_user(working, at_user_id)
+    if prepended_at:
         working = Message([MessageSegment.mention_user(at_user_id), *working])
 
     if not any(seg.type in _MENTION_SEGMENTS for seg in working):
@@ -302,6 +319,8 @@ async def convert_group_message(
             return _strip_mention_segments(message)
 
     content = _ensure_at_block_separation("".join(parts))
+    if prepended_at and at_user_id:
+        content = _space_after_prepended_at(content, at_user_id)
     if not content.strip():
         return _strip_mention_segments(message)
     return Message([MessageSegment.markdown(content), *preserved])
