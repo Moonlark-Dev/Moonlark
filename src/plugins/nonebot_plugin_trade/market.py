@@ -31,6 +31,10 @@ LABEL_FLAT = "flat"
 LABELS = (LABEL_UP, LABEL_DOWN, LABEL_FLAT)
 # 段内进度对涨跌概率的最大偏移：进度 1 时 p_up = 0.95 / 0.05
 MAX_BIAS = 0.45
+# 布朗桥插值的采样点数：每两根 tick 之间补出的盘中路径
+BRIDGE_STEPS = 16
+# 隔夜跳空的最小幅度（相对前一交易日收盘价），保证开市时能看到缺口
+GAP_MIN_RATIO = 0.005
 _RANDOM_SCALE = 1_000_000_000
 _BUY_SHARES_PATTERN = re.compile(r"\d+")
 _SELL_SHARES_PATTERN = re.compile(r"\d+")
@@ -116,9 +120,49 @@ def trade_candle_slot(minute: int) -> Optional[int]:
     return (minute - OPEN_MINUTE) // TICK_MINUTES
 
 
-def _rand_float() -> float:
+def _rand_unit() -> float:
     """[0, 1) 均匀分布，底层使用 urandom"""
     return secrets.randbelow(_RANDOM_SCALE) / _RANDOM_SCALE
+
+
+def _rand_float() -> float:
+    """[0, 1) 均匀分布；测试通过打桩它控制 tick 的方向与幅度"""
+    return _rand_unit()
+
+
+def _rand_normal() -> float:
+    """标准正态随机数（Box-Muller），用于布朗桥插值"""
+    u1 = max(_rand_unit(), 1e-12)
+    u2 = _rand_unit()
+    return math.sqrt(-2.0 * math.log(u1)) * math.cos(2.0 * math.pi * u2)
+
+
+def _random_gap_ratio() -> float:
+    """隔夜跳空幅度：方向随机，绝对值落在 GAP_MIN_RATIO~trade_gap_sigma 之间"""
+    cap = max(GAP_MIN_RATIO, config.trade_gap_sigma)
+    magnitude = GAP_MIN_RATIO + _rand_float() * (cap - GAP_MIN_RATIO)
+    return magnitude if _rand_float() >= 0.5 else -magnitude
+
+
+def _brownian_bridge_extremes(start: float, end: float, volatility: float) -> tuple[float, float]:
+    """在两个 tick 的价格之间用布朗桥补出盘中路径，返回 (最高价, 最低价)
+
+    布朗桥的起点、终点分别固定为两根 tick 的价格，中间采样点按
+    ``B(t) = start + (end - start) * t + Z * volatility * sqrt(t * (1 - t))`` 生成，
+    这样即使开收盘价相同，K 线也会出现合理的上下影线。
+    """
+    high = max(start, end)
+    low = min(start, end)
+    spread = max(PRICE_FLOOR, end) * volatility
+    if spread <= 0:
+        return high, low
+    for step in range(1, BRIDGE_STEPS):
+        t = step / BRIDGE_STEPS
+        deviation = max(-3.0, min(3.0, _rand_normal())) * spread * math.sqrt(t * (1.0 - t))
+        point = max(PRICE_FLOOR, start + (end - start) * t + deviation)
+        high = max(high, point)
+        low = min(low, point)
+    return high, low
 
 
 def _random_target_minute() -> int:
@@ -131,13 +175,19 @@ def _random_label() -> str:
 
 
 def init_day(state: MarketState, day: date) -> None:
-    """开市初始化：开盘价 = 前一交易日收盘价，并抽取当日内部行情参数"""
+    """开市初始化：开盘价暂取前一交易日收盘价，并抽取当日内部行情参数"""
     state.prev_close = state.price
     state.day_open = state.price
     state.day = day
     state.target_minute = _random_target_minute()
     state.label1 = _random_label()
     state.label2 = _random_label()
+
+
+def apply_open_gap(state: MarketState) -> None:
+    """开市跳空：立即 tick 一次，从昨收直接跳到当日开盘价（不写 K 线，形成缺口）"""
+    state.day_open = _round_price(state.price * (1 + _random_gap_ratio()))
+    state.price = state.day_open
 
 
 def segment_label_and_progress(state: MarketState, minute: int) -> tuple[str, float]:
@@ -187,6 +237,7 @@ async def apply_tick(state: MarketState, tick: datetime, session: AsyncSession) 
     slot = candle_slot(minute)
     if slot is None:
         return
+    high, low = _brownian_bridge_extremes(old_price, new_price, config.trade_sigma * config.trade_bridge_vol)
     candle = await session.get(Candle, (tick.date(), slot))
     if candle is None:
         session.add(
@@ -194,15 +245,15 @@ async def apply_tick(state: MarketState, tick: datetime, session: AsyncSession) 
                 day=tick.date(),
                 slot=slot,
                 open=old_price,
-                high=max(old_price, new_price),
-                low=min(old_price, new_price),
+                high=high,
+                low=low,
                 close=new_price,
                 volume=0,
             ),
         )
         return
-    candle.high = max(candle.high, new_price)
-    candle.low = min(candle.low, new_price)
+    candle.high = max(candle.high, high)
+    candle.low = min(candle.low, low)
     candle.close = new_price
 
 
@@ -229,6 +280,7 @@ async def ensure_market(session: AsyncSession, now: Optional[datetime] = None) -
     if state.last_tick_at is None:
         if is_trading_time(now):
             init_day(state, now.date())
+            apply_open_gap(state)
             state.last_tick_at = datetime.combine(now.date(), time(8, 0))
         else:
             day = trading_day(now)
@@ -247,6 +299,7 @@ async def ensure_market(session: AsyncSession, now: Optional[datetime] = None) -
             break
         if tick.hour * 60 + tick.minute == OPEN_MINUTE:
             init_day(state, tick.date())
+            apply_open_gap(state)
         else:
             await apply_tick(state, tick, session)
         state.last_tick_at = tick
@@ -515,19 +568,17 @@ async def execute_sell(
     )
 
 
-async def load_candles(session: AsyncSession, state: MarketState) -> tuple[list[Candle], Optional[date]]:
-    """读取当前交易日 K 线；当前交易日还没有数据时回退到最近有数据的一天"""
-    if state.day is None:
-        return [], None
+async def load_recent_candles(session: AsyncSession, limit: int) -> list[Candle]:
+    """按时间升序读取最近 limit 根已收盘的 5 分钟 K 线（可跨交易日）
+
+    K 线图固定展示最近若干根蜡烛，当日蜡烛不足时自动补上此前交易日的数据。
+    """
+    if limit <= 0:
+        return []
     candles = list(
-        await session.scalars(select(Candle).where(Candle.day == state.day).order_by(Candle.slot)),
+        await session.scalars(
+            select(Candle).order_by(Candle.day.desc(), Candle.slot.desc()).limit(limit),
+        ),
     )
-    if candles:
-        return candles, state.day
-    latest_day = await session.scalar(select(Candle.day).order_by(Candle.day.desc()).limit(1))
-    if latest_day is None or latest_day == state.day:
-        return [], state.day
-    candles = list(
-        await session.scalars(select(Candle).where(Candle.day == latest_day).order_by(Candle.slot)),
-    )
-    return candles, latest_day
+    candles.reverse()
+    return candles

@@ -17,6 +17,12 @@ class Config(BaseModel):
     trade_daily_limit: int = 1000
     # 单笔买卖冲击上限
     trade_max_impact: float = 0.01
+    # K 线图固定展示的蜡烛数量（含前一交易日，不足时向前滚动补齐）
+    trade_chart_candles: int = 120
+    # 隔夜跳空幅度上限（相对前一交易日收盘价）
+    trade_gap_sigma: float = 0.03
+    # 布朗桥插值幅度（相对单次 tick 的 trade_sigma），用于生成影线
+    trade_bridge_vol: float = 0.5
 
 
 config = get_plugin_config(Config)
