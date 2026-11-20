@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import math
 import re
 import secrets
@@ -22,8 +23,6 @@ TICK_MINUTES = 5
 OPEN_MINUTE = 8 * 60
 CLOSE_MINUTE = 24 * 60
 LAST_TICK_MINUTE = CLOSE_MINUTE - TICK_MINUTES
-TARGET_MIN_MINUTE = 11 * 60
-TARGET_MAX_MINUTE = 20 * 60
 PRICE_FLOOR = 0.01
 LABEL_UP = "up"
 LABEL_DOWN = "down"
@@ -33,8 +32,12 @@ LABELS = (LABEL_UP, LABEL_DOWN, LABEL_FLAT)
 MAX_BIAS = 0.45
 # 布朗桥插值的采样点数：每两根 tick 之间补出的盘中路径
 BRIDGE_STEPS = 16
-# 隔夜跳空的最小幅度（相对前一交易日收盘价），保证开市时能看到缺口
-GAP_MIN_RATIO = 0.005
+# 每天开盘前循环抽取行情段时，每段持续时间（tick 数）的下限与上限
+MIN_SEGMENT_TICKS = 3
+MAX_SEGMENT_TICKS = 15
+# 交易时段 08:00–24:00 的 tick 总数；08:00 的开市跳空 tick 不占用当日分配
+DAY_TICKS = (CLOSE_MINUTE - OPEN_MINUTE) // TICK_MINUTES
+INTRADAY_TICKS = DAY_TICKS - 1
 _RANDOM_SCALE = 1_000_000_000
 _BUY_SHARES_PATTERN = re.compile(r"\d+")
 _SELL_SHARES_PATTERN = re.compile(r"\d+")
@@ -47,6 +50,14 @@ class TradeError(Exception):
         super().__init__(key)
         self.key = key
         self.format_args = format_args
+
+
+@dataclass(frozen=True)
+class Segment:
+    """当日行情序列的一段：标签与它持续的 tick 数"""
+
+    label: str
+    ticks: int
 
 
 @dataclass(frozen=True)
@@ -137,13 +148,6 @@ def _rand_normal() -> float:
     return math.sqrt(-2.0 * math.log(u1)) * math.cos(2.0 * math.pi * u2)
 
 
-def _random_gap_ratio() -> float:
-    """隔夜跳空幅度：方向随机，绝对值至少为 GAP_MIN_RATIO，上限为 trade_gap_sigma"""
-    cap = max(GAP_MIN_RATIO, config.trade_gap_sigma)
-    magnitude = GAP_MIN_RATIO + _rand_float() * (cap - GAP_MIN_RATIO)
-    return magnitude if _rand_float() >= 0.5 else -magnitude
-
-
 def _brownian_bridge_extremes(start: float, end: float, volatility: float) -> tuple[float, float]:
     """在两个 tick 的价格之间用布朗桥补出盘中路径，返回 (最高价, 最低价)
 
@@ -165,41 +169,64 @@ def _brownian_bridge_extremes(start: float, end: float, volatility: float) -> tu
     return high, low
 
 
-def _random_target_minute() -> int:
-    """11:00~20:00 之间随机一个分钟数（含两端）"""
-    return TARGET_MIN_MINUTE + secrets.randbelow(TARGET_MAX_MINUTE - TARGET_MIN_MINUTE + 1)
-
-
 def _random_label() -> str:
     return secrets.choice(LABELS)
 
 
-def init_day(state: MarketState, day: date) -> None:
-    """开市初始化：开盘价暂取前一交易日收盘价，并抽取当日内部行情参数"""
-    state.prev_close = state.price
-    state.day_open = state.price
-    state.day = day
-    state.target_minute = _random_target_minute()
-    state.label1 = _random_label()
-    state.label2 = _random_label()
+def allocate_segments(tick_count: int = INTRADAY_TICKS) -> list[Segment]:
+    """循环抽取标签与持续时间，直到把 tick_count 个 tick 完整分配
+
+    每轮抽一个标签和一个 MIN_SEGMENT_TICKS~MAX_SEGMENT_TICKS 的持续时间；
+    剩下的 tick 不足以再抽一段时直接并进最后一段，保证每段都不短于下限。
+    """
+    segments: list[Segment] = []
+    remaining = tick_count
+    while remaining > 0:
+        if remaining <= MAX_SEGMENT_TICKS:
+            ticks = remaining
+        else:
+            span = MAX_SEGMENT_TICKS - MIN_SEGMENT_TICKS + 1
+            ticks = min(MAX_SEGMENT_TICKS, MIN_SEGMENT_TICKS + int(_rand_float() * span))
+            if remaining - ticks < MIN_SEGMENT_TICKS:
+                ticks = remaining - MIN_SEGMENT_TICKS
+        segments.append(Segment(_random_label(), ticks))
+        remaining -= ticks
+    return segments
 
 
-def apply_open_gap(state: MarketState) -> None:
-    """开市跳空：立即 tick 一次，从昨收直接跳到当日开盘价（不写 K 线，形成缺口）"""
-    state.day_open = _round_price(state.price * (1 + _random_gap_ratio()))
-    state.price = state.day_open
+def encode_segments(segments: list[Segment]) -> str:
+    """把当日行情序列序列化成 JSON，存进 MarketState.segments"""
+    return json.dumps([{"label": segment.label, "ticks": segment.ticks} for segment in segments])
 
 
-def segment_label_and_progress(state: MarketState, minute: int) -> tuple[str, float]:
-    """返回当前分钟所在段落的标签与段内进度（0~1）"""
-    target = state.target_minute
-    if minute < target - 30:
-        span = max(1, target - 30 - OPEN_MINUTE)
-        return state.label1, min(1.0, max(0.0, (minute - OPEN_MINUTE) / span))
-    if minute <= target + 30:
-        return LABEL_FLAT, 0.5
-    span = max(1, CLOSE_MINUTE - (target + 30))
-    return state.label2, min(1.0, max(0.0, (minute - (target + 30)) / span))
+def decode_segments(raw: Optional[str]) -> list[Segment]:
+    """解析行情序列；空值或损坏的 JSON 一律视为尚未分配"""
+    if not raw:
+        return []
+    try:
+        data = json.loads(raw)
+    except (TypeError, ValueError):
+        return []
+    if not isinstance(data, list):
+        return []
+    segments: list[Segment] = []
+    for item in data:
+        if not isinstance(item, dict):
+            continue
+        label = item.get("label")
+        ticks = item.get("ticks")
+        if label in LABELS and isinstance(ticks, int) and ticks > 0:
+            segments.append(Segment(label, ticks))
+    return segments
+
+
+def get_segments(state: MarketState) -> list[Segment]:
+    """读取当日行情序列"""
+    return decode_segments(state.segments)
+
+
+def _round_price(price: float) -> float:
+    return round(max(PRICE_FLOOR, price), 6)
 
 
 def up_probability(label: str, progress: float) -> float:
@@ -211,6 +238,57 @@ def up_probability(label: str, progress: float) -> float:
     return 0.5
 
 
+def _tick_price(old_price: float, label: str, progress: float) -> float:
+    """按标签与段内进度走一个 tick：方向按概率抽，幅度不超过 trade_sigma"""
+    p_up = up_probability(label, progress)
+    direction = 1 if _rand_float() < p_up else -1
+    magnitude = _rand_float() * config.trade_sigma
+    return _round_price(old_price * (1 + direction * magnitude))
+
+
+def init_day(state: MarketState, day: date) -> None:
+    """开市初始化：开盘价暂取前一交易日收盘价
+
+    当天全天的行情序列在处理 08:00 的 tick 时一次性抽好，先于当日任何一个 tick。
+    """
+    state.prev_close = state.price
+    state.day_open = state.price
+    state.day = day
+    state.segments = encode_segments(allocate_segments())
+
+
+def last_segment_label(state: MarketState) -> str:
+    """当日行情序列最后一个标签；序列还没分配时按持平处理"""
+    segments = get_segments(state)
+    return segments[-1].label if segments else LABEL_FLAT
+
+
+def apply_open_gap(state: MarketState, last_label: str) -> None:
+    """开市跳空：按前一交易日最后一个标签再走一个 tick，形成不写 K 线的缺口"""
+    state.day_open = _tick_price(state.price, last_label, 1.0)
+    state.price = state.day_open
+
+
+def segment_label_and_progress(state: MarketState, minute: int) -> tuple[str, float]:
+    """返回当前 tick 所属段落的标签与段内进度（0~1）
+
+    08:00 的开市跳空 tick 由前一交易日最后一个标签决定，不占用当日分配，
+    当日分配的第一个 tick 是 08:05。
+    """
+    segments = get_segments(state)
+    if not segments:
+        return LABEL_FLAT, 0.5
+    total_ticks = sum(segment.ticks for segment in segments)
+    position = max(0, min((minute - OPEN_MINUTE) // TICK_MINUTES - 1, total_ticks - 1))
+    start = 0
+    for segment in segments:
+        if position < start + segment.ticks:
+            progress = (position - start) / max(1, segment.ticks - 1)
+            return segment.label, progress
+        start += segment.ticks
+    return segments[-1].label, 1.0
+
+
 def impact_rate(shares: int) -> float:
     """单笔买卖冲击，按总股本 10 万股计算，封顶 1%"""
     if shares <= 0:
@@ -219,19 +297,12 @@ def impact_rate(shares: int) -> float:
     return min(config.trade_max_impact, shares / total_shares)
 
 
-def _round_price(price: float) -> float:
-    return round(max(PRICE_FLOOR, price), 6)
-
-
 async def apply_tick(state: MarketState, tick: datetime, session: AsyncSession) -> None:
     """应用一次 tick：按段内概率决定方向，幅度不超过 sigma"""
     minute = tick.hour * 60 + tick.minute
     label, progress = segment_label_and_progress(state, minute)
-    p_up = up_probability(label, progress)
-    direction = 1 if _rand_float() < p_up else -1
-    magnitude = _rand_float() * config.trade_sigma
     old_price = state.price
-    new_price = _round_price(old_price * (1 + direction * magnitude))
+    new_price = _tick_price(old_price, label, progress)
     state.price = new_price
 
     slot = candle_slot(minute)
@@ -268,9 +339,7 @@ async def ensure_market(session: AsyncSession, now: Optional[datetime] = None) -
             price=initial_price,
             day_open=initial_price,
             prev_close=initial_price,
-            target_minute=TARGET_MIN_MINUTE,
-            label1=LABEL_FLAT,
-            label2=LABEL_FLAT,
+            segments=None,
             float_shares=config.trade_total_shares,
             last_tick_at=None,
         )
@@ -284,13 +353,11 @@ async def ensure_market(session: AsyncSession, now: Optional[datetime] = None) -
             state.last_tick_at = datetime.combine(now.date(), time(8, 0))
         else:
             day = trading_day(now)
-            state.day = day
-            state.day_open = state.price
-            state.prev_close = state.price
-            state.target_minute = _random_target_minute()
-            state.label1 = _random_label()
-            state.label2 = _random_label()
+            init_day(state, day)
             state.last_tick_at = datetime.combine(day, time(23, 55))
+    elif not get_segments(state):
+        # 从旧版本升级上来：当天还没有行情序列，先补齐再继续补算 tick
+        state.segments = encode_segments(allocate_segments())
 
     target = target_tick_time(now)
     while state.last_tick_at < target:
@@ -298,8 +365,10 @@ async def ensure_market(session: AsyncSession, now: Optional[datetime] = None) -
         if tick > target:
             break
         if tick.hour * 60 + tick.minute == OPEN_MINUTE:
+            # 隔夜跳空按前一交易日最后一个标签再走一个 tick，所以要在换日前取
+            last_label = last_segment_label(state)
             init_day(state, tick.date())
-            apply_open_gap(state)
+            apply_open_gap(state, last_label)
         else:
             await apply_tick(state, tick, session)
         state.last_tick_at = tick
