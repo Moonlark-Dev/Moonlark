@@ -55,7 +55,15 @@ class FakeUser:
         self.vimcoin += amount
 
 
+def make_segments(*specs: tuple[str, int]) -> str:
+    """把 (标签, tick 数) 列表序列化成 MarketState.segments 的 JSON"""
+    from nonebot_plugin_trade.market import Segment, encode_segments
+
+    return encode_segments([Segment(label, ticks) for label, ticks in specs])
+
+
 def make_state(**overrides):
+    from nonebot_plugin_trade.market import INTRADAY_TICKS
     from nonebot_plugin_trade.models import MarketState
 
     values = {
@@ -64,9 +72,7 @@ def make_state(**overrides):
         "day": TRADE_DAY,
         "day_open": 10.0,
         "prev_close": 10.0,
-        "target_minute": 720,
-        "label1": "up",
-        "label2": "down",
+        "segments": make_segments(("up", INTRADAY_TICKS)),
         "float_shares": 100000,
         "last_tick_at": datetime(2026, 11, 19, 10, 0),
     }
@@ -106,28 +112,114 @@ def test_trading_time_boundaries():
 
 
 def test_segment_and_probability():
+    """当日分配：08:05 起按段推进，段内进度从 0 线性涨到 1"""
     from nonebot_plugin_trade.market import segment_label_and_progress, up_probability
 
-    state = make_state(target_minute=720, label1="up", label2="down")
+    # up 5 tick -> flat 3 tick -> down 4 tick -> 剩下 179 tick 全归最后一段
+    state = make_state(segments=make_segments(("up", 5), ("flat", 3), ("down", 4), ("up", 179)))
 
-    label, progress = segment_label_and_progress(state, 540)
+    label, progress = segment_label_and_progress(state, 485)  # 08:05，第一个分配到的 tick
     assert label == "up"
-    assert progress == pytest.approx((540 - 480) / (720 - 30 - 480))
-    assert up_probability(label, progress) == pytest.approx(0.5 + 0.45 * progress)
-
-    label, progress = segment_label_and_progress(state, 720)
-    assert label == "flat"
-    assert progress == 0.5
+    assert progress == 0.0
     assert up_probability(label, progress) == 0.5
 
-    label, progress = segment_label_and_progress(state, 780)
+    label, progress = segment_label_and_progress(state, 505)  # 08:25，up 段最后一个 tick
+    assert label == "up"
+    assert progress == pytest.approx(1.0)
+    assert up_probability(label, progress) == pytest.approx(0.95)
+
+    label, progress = segment_label_and_progress(state, 510)  # 08:30，进入 flat 段
+    assert label == "flat"
+    assert progress == 0.0
+    assert up_probability(label, progress) == 0.5
+
+    label, progress = segment_label_and_progress(state, 525)  # 08:45，进入 down 段
     assert label == "down"
-    assert progress == pytest.approx((780 - 750) / (1440 - 750))
-    assert up_probability(label, progress) == pytest.approx(0.5 - 0.45 * progress)
+    assert progress == 0.0
+    assert up_probability(label, progress) == 0.5
+
+    label, progress = segment_label_and_progress(state, 540)  # 09:00，down 段最后一个 tick
+    assert label == "down"
+    assert progress == pytest.approx(1.0)
+    assert up_probability(label, progress) == pytest.approx(0.05)
+
+    # 08:00 的开市跳空 tick 不在当日分配里，兜底取第一段开头；收盘后夹到最后一段末尾
+    assert segment_label_and_progress(state, 480) == ("up", 0.0)
+    assert segment_label_and_progress(state, 1440) == ("up", 1.0)
+
+    # 还没分配（旧数据/空值）时按持平处理
+    assert segment_label_and_progress(make_state(segments=None), 600) == ("flat", 0.5)
 
     assert up_probability("up", 0.0) == 0.5
     assert up_probability("up", 1.0) == pytest.approx(0.95)
     assert up_probability("down", 1.0) == pytest.approx(0.05)
+
+
+def test_allocate_segments_covers_whole_day():
+    """循环抽取：(标签, 3~15 tick) 一段段铺满全天，每轮都重新抽标签"""
+    from nonebot_plugin_trade.market import (
+        INTRADAY_TICKS,
+        LABELS,
+        MAX_SEGMENT_TICKS,
+        MIN_SEGMENT_TICKS,
+        allocate_segments,
+    )
+
+    for value in (0.0, 0.5, 0.999):
+        with patch("nonebot_plugin_trade.market._rand_float", return_value=value):
+            segments = allocate_segments()
+        # 整天的 tick 被完整分配，不多不少
+        assert sum(segment.ticks for segment in segments) == INTRADAY_TICKS
+        assert len(segments) > 1
+        for segment in segments:
+            assert MIN_SEGMENT_TICKS <= segment.ticks <= MAX_SEGMENT_TICKS
+            assert segment.label in LABELS
+
+    # 末尾剩 1、2 个 tick 时回退当前段长度，保证最后一段也不短于下限
+    with patch("nonebot_plugin_trade.market._rand_float", return_value=0.999):
+        assert [segment.ticks for segment in allocate_segments(16)] == [13, 3]
+    with patch("nonebot_plugin_trade.market._rand_float", return_value=0.0):
+        assert [segment.ticks for segment in allocate_segments(5)] == [5]
+
+
+def test_segments_serialization_roundtrip():
+    from nonebot_plugin_trade.market import Segment, decode_segments, encode_segments, get_segments
+
+    raw = encode_segments([Segment("up", 3), Segment("flat", 15)])
+    assert decode_segments(raw) == [Segment("up", 3), Segment("flat", 15)]
+    assert get_segments(make_state(segments=raw)) == [Segment("up", 3), Segment("flat", 15)]
+
+    # 空值、损坏的 JSON、非列表、非法条目都按「尚未分配/丢弃该条」处理
+    assert decode_segments(None) == []
+    assert decode_segments("") == []
+    assert decode_segments("not json") == []
+    assert decode_segments('{"label": "up", "ticks": 3}') == []
+    assert decode_segments(
+        '[{"label": "up", "ticks": 3}, {"label": "sideways", "ticks": 5}, {"label": "down", "ticks": 0}, 42]',
+    ) == [Segment("up", 3)]
+
+
+def test_open_gap_follows_previous_last_label():
+    """隔夜跳空 = 按前一日最后一个标签再走一个 tick"""
+    from nonebot_plugin_trade.market import apply_open_gap, last_segment_label
+
+    state = make_state(price=10.0, segments=make_segments(("flat", 188), ("up", 3)))
+    assert last_segment_label(state) == "up"
+    with patch("nonebot_plugin_trade.market._rand_float", side_effect=[0.0, 0.5]):
+        apply_open_gap(state, "up")
+    # up 段末尾 p_up = 0.95，rand 0.0 命中上涨；幅度 0.5 * trade_sigma
+    assert state.day_open == pytest.approx(10.05)
+    assert state.price == pytest.approx(10.05)
+
+    state = make_state(price=10.0, segments=make_segments(("up", 188), ("down", 3)))
+    assert last_segment_label(state) == "down"
+    with patch("nonebot_plugin_trade.market._rand_float", side_effect=[0.9, 0.5]):
+        apply_open_gap(state, "down")
+    # down 段末尾 p_up = 0.05，rand 0.9 落到下跌
+    assert state.day_open == pytest.approx(9.95)
+
+    # 序列还没分配时按持平处理
+    assert last_segment_label(make_state(segments=None)) == "flat"
 
 
 def test_candle_slot():
@@ -162,7 +254,7 @@ async def test_tick_price_and_floor():
     from nonebot_plugin_trade.market import apply_tick
 
     session = FakeSession()
-    state = make_state(price=10.0, target_minute=720, label1="up", label2="up")
+    state = make_state(price=10.0)
 
     with patch("nonebot_plugin_trade.market._rand_float", side_effect=[0.0, 1.0]):
         await apply_tick(state, datetime(2026, 11, 19, 9, 0), session)
@@ -192,7 +284,7 @@ async def test_tick_generates_wicks_with_brownian_bridge():
     from nonebot_plugin_trade.models import Candle
 
     session = FakeSession()
-    state = make_state(price=10.0, target_minute=720, label1="up", label2="up")
+    state = make_state(price=10.0)
 
     with (
         patch("nonebot_plugin_trade.market._rand_float", side_effect=[0.0, 1.0]),
@@ -226,14 +318,16 @@ def test_brownian_bridge_extremes():
 
 @pytest.mark.asyncio
 async def test_ensure_market_cross_day():
-    from nonebot_plugin_trade.market import ensure_market
+    from nonebot_plugin_trade.market import INTRADAY_TICKS, apply_open_gap, ensure_market, get_segments
     from nonebot_plugin_trade.models import Candle
 
     session = FakeSession()
     with (
-        patch("nonebot_plugin_trade.market._random_target_minute", return_value=720),
+        # 只抽到 up 段：隔夜跳空一定落在 up 段末尾（p_up = 0.95）
         patch("nonebot_plugin_trade.market._random_label", return_value="up"),
-        patch("nonebot_plugin_trade.market._random_gap_ratio", return_value=0.02) as gap,
+        # 方向与幅度固定：p_up > 0.5 的 tick 全部上涨，幅度 0.5 * trade_sigma
+        patch("nonebot_plugin_trade.market._rand_float", return_value=0.5),
+        patch("nonebot_plugin_trade.market.apply_open_gap", wraps=apply_open_gap) as gap,
     ):
         state = await ensure_market(session, datetime(2026, 11, 19, 14, 0))
         # 冷启动没有历史收盘价，不制造隔夜跳空
@@ -244,6 +338,10 @@ async def test_ensure_market_cross_day():
         assert state.last_tick_at == datetime(2026, 11, 19, 14, 0)
         assert len([key for key in session.objects if key[0] is Candle]) == 72
         assert state.price > 0
+        # 开盘前已把当天全天抽好：整天的 tick 被完整分配
+        segments = get_segments(state)
+        assert sum(segment.ticks for segment in segments) == INTRADAY_TICKS
+        assert all(segment.label == "up" for segment in segments)
 
         await ensure_market(session, datetime(2026, 11, 19, 23, 59))
         assert gap.call_count == 0
@@ -253,12 +351,13 @@ async def test_ensure_market_cross_day():
         close_price = state.price
 
         await ensure_market(session, datetime(2026, 11, 20, 8, 0))
-        # 08:00 开市立即跳空一次：今开在昨收基础上跳 2%
+        # 08:00 按前一交易日最后一个标签再走一个 tick：up 段末尾上涨 0.5%
         assert gap.call_count == 1
+        assert gap.call_args.args[-1] == "up"
         assert state.day == date(2026, 11, 20)
         # 08:00 的跳空 tick 只更新价格，不写 K 线，缺口保留在昨收与今开之间
         assert state.prev_close == pytest.approx(close_price)
-        assert state.day_open == pytest.approx(round(close_price * 1.02, 6))
+        assert state.day_open == pytest.approx(round(close_price * 1.005, 6))
         assert state.price == pytest.approx(state.day_open)
         assert state.last_tick_at == datetime(2026, 11, 20, 8, 0)
         assert len([key for key in session.objects if key[0] is Candle]) == 191
@@ -279,6 +378,59 @@ async def test_ensure_market_cross_day():
         assert state.day == date(2026, 11, 22)
         assert state.last_tick_at == datetime(2026, 11, 22, 10, 0)
         assert state.price > 0
+        # 每天换日时都用前一日序列的最后一个标签
+        assert all(call.args[-1] == "up" for call in gap.call_args_list)
+
+
+@pytest.mark.asyncio
+async def test_segments_persist_through_orm():
+    """segments 以 JSON 文本落库：走真实 ORM 会话验证列类型与读写"""
+    from nonebot_plugin_orm import get_session
+
+    from nonebot_plugin_trade.market import Segment, encode_segments, get_segments
+    from nonebot_plugin_trade.models import MarketState
+
+    raw = encode_segments([Segment("down", 7), Segment("flat", 12)])
+    async with get_session() as session:
+        await session.merge(
+            MarketState(
+                id=1,
+                price=10.0,
+                day_open=10.0,
+                prev_close=10.0,
+                segments=raw,
+                float_shares=100000,
+            ),
+        )
+        await session.commit()
+
+    async with get_session() as session:
+        state = await session.get(MarketState, 1)
+        assert state is not None
+        assert state.segments == raw
+        assert get_segments(state) == [Segment("down", 7), Segment("flat", 12)]
+
+
+@pytest.mark.asyncio
+async def test_ensure_market_allocates_segments_for_legacy_row():
+    """从旧版本升级上来（当天只有价格、没有行情序列）时补抽当天序列"""
+    from nonebot_plugin_trade.market import INTRADAY_TICKS, ensure_market, get_segments
+
+    session = FakeSession()
+    session.add(make_state(segments=None, last_tick_at=datetime(2026, 11, 19, 10, 0)))
+
+    with (
+        patch("nonebot_plugin_trade.market._random_label", return_value="down"),
+        patch("nonebot_plugin_trade.market._rand_float", return_value=0.5),
+    ):
+        state = await ensure_market(session, datetime(2026, 11, 19, 10, 5))
+
+    segments = get_segments(state)
+    assert sum(segment.ticks for segment in segments) == INTRADAY_TICKS
+    assert all(segment.label == "down" for segment in segments)
+    # 当天序列补齐后照常补算 tick
+    assert state.last_tick_at == datetime(2026, 11, 19, 10, 5)
+    assert state.day == TRADE_DAY
 
 
 @pytest.mark.asyncio
@@ -778,7 +930,7 @@ async def test_tick_keeps_trade_extremes():
     from nonebot_plugin_trade.models import Candle
 
     session = FakeSession()
-    state = make_state(price=10.5, target_minute=720, label1="up", label2="up")
+    state = make_state(price=10.5)
     await update_candle_on_trade(session, state, datetime(2026, 11, 19, 8, 55), 10.0, 10.5, 100)
     candle = session.objects[(Candle, (TRADE_DAY, 11))]
     assert candle.high == pytest.approx(10.5)
