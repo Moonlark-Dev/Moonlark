@@ -576,8 +576,8 @@ async def test_panel_markdown_has_hierarchy_and_hides_float_shares():
     assert markdown.startswith("## 📈 Moonlark 证券交易所")
     assert "**交易中**" in markdown
     assert "**最新价**：**10.50 VimCoin**" in markdown
-    assert "今日涨跌：**▲ +5.00%**（+0.50）" in markdown
-    assert "今开 10.00 · 昨收 9.90" in markdown
+    assert "今日涨跌：**▲ +6.06%**（+0.60）" in markdown
+    assert "今开 10.00（跳空 +1.01%） · 昨收 9.90" in markdown
     assert "### 我的持仓" in markdown
     assert "持股 **200** 股 · 可卖 100 股 · 冻结 100 股" in markdown
     assert "浮动盈亏 **+100.00 VimCoin（+5.00%）**" in markdown
@@ -612,7 +612,8 @@ async def test_panel_text_fallback_hides_float_shares():
     assert "📈 Moonlark 证券交易所" in text
     assert "状态：交易中（08:00–24:00）" in text
     assert "当前价格：10.50 VimCoin" in text
-    assert "今日涨跌：▲ +5.00%（+0.50）" in text
+    assert "今日涨跌：▲ +6.06%（+0.60）" in text
+    assert "今开：10.00 VimCoin（跳空 +1.01%） · 昨收：9.90 VimCoin" in text
     assert "你的持股：200 股（可卖 200 股，冻结 0 股）" in text
     assert "市场流通" not in text
     assert "100000" not in text

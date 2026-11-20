@@ -33,6 +33,7 @@ class PanelData:
     prev_close: str
     change: str
     change_pct: str
+    gap_pct: str
     trend: str
     shares: int
     sellable: int
@@ -66,12 +67,17 @@ def _holding_texts(shares: int, cost_basis: float, price: float) -> tuple[str, s
 
 
 def build_panel_data(state: MarketState, holding: Holding, now: datetime) -> PanelData:
-    """把市场状态与持仓整理成面板展示数据"""
+    """把市场状态与持仓整理成面板展示数据
+
+    今日涨跌按标准口径以昨日收盘价为基准（包含隔夜跳空）；缺口幅度单独展示在
+    「今开」后面，避免跳空低开时仍显示上涨。
+    """
     price = state.price
     day_open = state.day_open or price
     prev_close = state.prev_close or price
-    change = price - day_open
-    change_pct = change / day_open * 100 if day_open > 0 else 0.0
+    change = price - prev_close
+    change_pct = change / prev_close * 100 if prev_close > 0 else 0.0
+    gap_pct = (day_open - prev_close) / prev_close * 100 if prev_close > 0 else 0.0
     shares = holding.shares
     frozen = holding.frozen_shares
     average_cost, profit, profit_rate = _holding_texts(shares, holding.cost_basis, price)
@@ -88,6 +94,7 @@ def build_panel_data(state: MarketState, holding: Holding, now: datetime) -> Pan
         prev_close=_fmt(prev_close),
         change=_fmt_signed(change),
         change_pct=f"{_fmt_signed(change_pct)}%",
+        gap_pct=f"{_fmt_signed(gap_pct)}%",
         trend=trend,
         shares=shares,
         sellable=max(0, shares - frozen),
@@ -114,6 +121,7 @@ async def build_panel_markdown(user_id: str, data: PanelData) -> str:
             change_pct=data.change_pct,
             change=data.change,
             day_open=data.day_open,
+            gap_pct=data.gap_pct,
             prev_close=data.prev_close,
         ),
         await lang.text("panel.holding_title", user_id),
@@ -154,6 +162,7 @@ async def build_panel_text(user_id: str, data: PanelData) -> str:
         trend=data.trend,
         change=data.change,
         change_pct=data.change_pct,
+        gap_pct=data.gap_pct,
         shares=data.shares,
         sellable=data.sellable,
         frozen=data.frozen,

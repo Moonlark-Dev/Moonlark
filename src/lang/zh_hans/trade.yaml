@@ -24,7 +24,7 @@ main:
     状态：{status}
     当前价格：{price} VimCoin
     今日涨跌：{trend} {change_pct}（{change}）
-    今开：{day_open} VimCoin · 昨收：{prev_close} VimCoin
+    今开：{day_open} VimCoin（跳空 {gap_pct}） · 昨收：{prev_close} VimCoin
     你的持股：{shares} 股（可卖 {sellable} 股，冻结 {frozen} 股）
     持仓成本：{avg_cost} VimCoin/股
     浮动盈亏：{pnl} VimCoin（{pnl_pct}）
@@ -39,7 +39,7 @@ panel:
   price: |
     > **最新价**：**{price} VimCoin**
     > 今日涨跌：**{trend} {change_pct}**（{change}）
-    > 今开 {day_open} · 昨收 {prev_close}
+    > 今开 {day_open}（跳空 {gap_pct}） · 昨收 {prev_close}
   holding_title: "### 我的持仓"
   holding: |
     > 持股 **{shares}** 股 · 可卖 {sellable} 股 · 冻结 {frozen} 股
