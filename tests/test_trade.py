@@ -721,13 +721,13 @@ async def test_send_panel_appends_chart_image_markdown_for_qq(monkeypatch: pytes
 
 
 def test_panel_change_uses_previous_close_when_gap_down():
-    """跳空低开但相对昨收仍上涨时，今日涨跌按昨收计，同时单独给出跳空幅度"""
-    data = make_panel_data({"price": 10.1, "day_open": 9.9, "prev_close": 10.0})
+    """跳空低开且价格低于昨收：按昨收计显示下跌；若按今开计会误显示上涨"""
+    data = make_panel_data({"price": 9.9, "day_open": 9.7, "prev_close": 10.0})
 
-    assert data.change == "+0.10"
-    assert data.change_pct == "+1.00%"
-    assert data.gap_pct == "-1.00%"
-    assert data.trend == "▲"
+    assert data.change == "-0.10"
+    assert data.change_pct == "-1.00%"
+    assert data.gap_pct == "-3.00%"
+    assert data.trend == "▼"
 
 
 @pytest.mark.asyncio
@@ -754,12 +754,23 @@ async def test_tick_keeps_trade_extremes():
     assert candle.close == pytest.approx(10.395)
 
 
-def test_chart_reference_outside_visible_range_still_renders():
-    """参考价落到可视区间外时只跳过虚线，不应留下悬浮的画布外标签或崩溃"""
+def test_chart_reference_outside_visible_range_skips_label(monkeypatch: pytest.MonkeyPatch):
+    """参考价落到可视区间外时只跳过虚线与标签，不应留下悬浮的画布外数字"""
+    from matplotlib.axes import Axes
+
     from nonebot_plugin_trade.chart import CandlePoint, render_kline_chart
 
     points = [CandlePoint(day=date(2026, 11, 19), slot=0, open=10.0, high=10.1, low=9.9, close=10.05)]
-    data = render_kline_chart(
+    labels: list[tuple] = []
+    original_text = Axes.text
+
+    def spy_text(self, *args, **kwargs):
+        labels.append(args)
+        return original_text(self, *args, **kwargs)
+
+    monkeypatch.setattr(Axes, "text", spy_text)
+
+    outside = render_kline_chart(
         date(2026, 11, 19),
         points,
         "test",
@@ -767,4 +778,17 @@ def test_chart_reference_outside_visible_range_still_renders():
         reference_price=99.0,
         visible_candles=8,
     )
-    assert data.startswith(b"\x89PNG\r\n\x1a\n")
+    assert outside.startswith(b"\x89PNG\r\n\x1a\n")
+    assert labels == []
+
+    labels.clear()
+    inside = render_kline_chart(
+        date(2026, 11, 19),
+        points,
+        "test",
+        "empty",
+        reference_price=10.05,
+        visible_candles=8,
+    )
+    assert inside.startswith(b"\x89PNG\r\n\x1a\n")
+    assert len(labels) == 1
