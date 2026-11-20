@@ -457,7 +457,7 @@ Moonlark 投票
 - `/neko-finder`
 ## `online-timer`: 在线时间段
 
-查询 Moonlark 记录的群友在线时间段
+查询 Moonlark 记录的群友在线时间段，以及某个时间点在线的概率
 - `/online-timer [@用户]`
 - `/online-timer rank (在线排行)`
 ## `rescue`: 救起倒地用户
