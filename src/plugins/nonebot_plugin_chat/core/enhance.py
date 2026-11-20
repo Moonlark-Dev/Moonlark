@@ -1,7 +1,7 @@
 """群聊回复增强：发送前由模型重写一次消息
 
 群聊打开 ``/chat enhance`` 后，Moonlark 通过 ``send_message`` 发出的内容不会直接
-发送，而是先交给模型：以 Chat 的 System Prompt（身份、输出规则、interaction 模式）
+发送，而是先交给模型：以回复增强专用的 System Prompt（身份、表达风格与措辞要求）
 为背景，参考最近几条对话，把这条消息重写一遍再发出。重写失败、超时或结果为空时
 一律回落到原文，绝不阻塞发送。
 
@@ -11,7 +11,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from nonebot.log import logger
 from nonebot_plugin_openai import generate_message, get_message_text
@@ -95,10 +95,14 @@ class ReplyEnhancer:
         return rewritten
 
     async def _build_messages(self, content: str) -> list[OpenAIMessage]:
-        """构造重写请求：Chat 的 System Prompt + 任务说明 + 最近对话 + 待发送内容"""
-        system_prompt = await self.processor.generate_system_prompt()
+        """构造重写请求：增强专用 System Prompt + 任务说明 + 最近对话 + 待发送内容"""
+        system_prompt = await get_message_text(
+            "chat_enhance/system_prompt.md.jinja",
+            is_group_session=True,
+            enhance_mode=True,
+        )
         task_prompt = await get_message_text("chat_enhance/system.md.jinja")
-        system_content = f"{self._extract_content(system_prompt).strip()}\n\n{task_prompt.strip()}".strip()
+        system_content = f"{system_prompt.strip()}\n\n{task_prompt.strip()}".strip()
         recent_messages = await self.session.get_cached_messages_string(
             length=RECENT_MESSAGE_COUNT,
             include_self_message=True,
@@ -112,21 +116,6 @@ class ReplyEnhancer:
             generate_message(system_content, "system"),
             generate_message(user_content, "user"),
         ]
-
-    @staticmethod
-    def _extract_content(message: Any) -> str:
-        """取出 System Prompt 的文本内容（content 可能是字符串或多模态分段列表）"""
-        content = message.get("content") if isinstance(message, dict) else getattr(message, "content", None)
-        if isinstance(content, str):
-            return content
-        if isinstance(content, list):
-            parts: list[str] = []
-            for part in content:
-                text = part.get("text") if isinstance(part, dict) else getattr(part, "text", None)
-                if text:
-                    parts.append(str(text))
-            return "\n".join(parts)
-        return str(content or "")
 
     @staticmethod
     def _sanitize(text: str) -> str:

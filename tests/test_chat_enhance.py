@@ -1,8 +1,8 @@
 """群聊回复增强（``/chat enhance``）的回归测试
 
-覆盖开关判定（群聊 + OpenAI Provider）、重写结果清洗与失败回落、重写上下文包含
-Chat 的 System Prompt 与最近 5 条消息，以及 ``send_message`` 发送重写后的内容
-并把重写结果写回工具结果。
+覆盖开关判定（群聊 + OpenAI Provider）、重写结果清洗与失败回落、重写上下文使用
+回复增强专用的 System Prompt 与最近 5 条消息，以及 ``send_message`` 发送重写后的
+内容并把重写结果写回工具结果。
 """
 
 from __future__ import annotations
@@ -43,7 +43,6 @@ def _make_enhancer(
     *,
     session_type: str = "group",
     cached: str = "",
-    system_content: Any = "CHAT SYSTEM",
 ) -> tuple[Any, Any]:
     """构造一个最小可用的 ReplyEnhancer 与被它持有的 processor"""
     from nonebot_plugin_chat.core.enhance import ReplyEnhancer
@@ -53,10 +52,7 @@ def _make_enhancer(
         get_session_type=lambda: session_type,
         get_cached_messages_string=AsyncMock(return_value=cached),
     )
-    processor = SimpleNamespace(
-        session=session,
-        generate_system_prompt=AsyncMock(return_value={"role": "system", "content": system_content}),
-    )
+    processor = SimpleNamespace(session=session)
     return ReplyEnhancer(processor), processor
 
 
@@ -172,8 +168,8 @@ def test_sanitize_strips_fences_quotes_and_truncates() -> None:
     assert ReplyEnhancer._sanitize("x" * (MAX_REWRITTEN_LENGTH + 50)) == "x" * MAX_REWRITTEN_LENGTH
 
 
-async def test_rewrite_uses_chat_prompt_and_recent_messages(monkeypatch: pytest.MonkeyPatch) -> None:
-    """重写请求的上下文包含 Chat 的 System Prompt、最近对话与待发送内容"""
+async def test_rewrite_uses_dedicated_prompt_and_recent_messages(monkeypatch: pytest.MonkeyPatch) -> None:
+    """重写请求使用回复增强专用的 System Prompt，并带上最近对话与待发送内容"""
     from nonebot_plugin_chat.core import enhance as module
 
     fetch = AsyncMock(return_value="重写后的消息")
@@ -186,26 +182,15 @@ async def test_rewrite_uses_chat_prompt_and_recent_messages(monkeypatch: pytest.
     messages = fetch.await_args.args[0]
     system_text = messages[0]["content"]
     user_text = messages[1]["content"]
-    assert "CHAT SYSTEM" in system_text
+    assert "Moonlark" in system_text
     assert "重写" in system_text
+    # 工具、Token、reaction 等与单条消息重写无关的规则不应出现在 System Prompt 里
+    assert "send_message" not in system_text
+    assert "apply_unlimited_tokens" not in system_text
+    assert "积极使用非文字表达" not in system_text
     assert "[12:00:00][小明]: 在吗" in user_text
     assert "你好呀" in user_text
     assert fetch.await_args.kwargs["identify"] == "Chat Enhance - Rewrite Message"
-
-
-async def test_rewrite_supports_multimodal_system_prompt(monkeypatch: pytest.MonkeyPatch) -> None:
-    """System Prompt 的 content 是分段列表时也要取出文本"""
-    from nonebot_plugin_chat.core import enhance as module
-
-    fetch = AsyncMock(return_value="重写后的消息")
-    monkeypatch.setattr(module, "fetch_message", fetch)
-    enhancer, _ = _make_enhancer(
-        system_content=[{"type": "text", "text": "CHAT SYSTEM"}],
-    )
-
-    await enhancer.rewrite("你好呀")
-
-    assert "CHAT SYSTEM" in fetch.await_args.args[0][0]["content"]
 
 
 async def test_rewrite_falls_back_to_original(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -413,6 +398,25 @@ async def test_private_chat_enhance_reports_group_only(monkeypatch: pytest.Monke
 # ---------------------------------------------------------------------------
 # 提示词模板
 # ---------------------------------------------------------------------------
+
+
+async def test_enhance_system_prompt_omits_tool_token_and_reaction_rules() -> None:
+    """增强专用 System Prompt 保留人设与措辞规则，去掉工具、Token 与 reaction 规则"""
+    from nonebot_plugin_openai.utils.message import get_message_text
+
+    prompt = await get_message_text(
+        "chat_enhance/system_prompt.md.jinja",
+        is_group_session=True,
+        enhance_mode=True,
+    )
+
+    assert "Moonlark" in prompt
+    assert "说话腔调" in prompt
+    assert "不要复述群友已经说过的内容" in prompt
+    assert "send_message" not in prompt
+    assert "apply_unlimited_tokens" not in prompt
+    assert "Token" not in prompt
+    assert "积极使用非文字表达" not in prompt
 
 
 async def test_enhance_prompt_renders_expected_inputs() -> None:
