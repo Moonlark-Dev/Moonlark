@@ -60,6 +60,48 @@ async def test_standalone_at_line_inserts_blank_line() -> None:
 
 
 @pytest.mark.asyncio
+async def test_prepended_at_is_followed_by_space() -> None:
+    """at_sender 补出的 @ 位于最前面时，标签后应补一个空格，避免渲染成「@成员正文」。"""
+    from nonebot.adapters.qq.message import Message, MessageSegment
+    from nonebot_plugin_larkutils.qq_at_markdown import convert_group_message
+
+    message = Message([MessageSegment.text("回声洞 (1234) 投稿成功")])
+    converted = await convert_group_message(message, at_user_id="member_openid")
+
+    assert converted is not None
+    assert (
+        converted["markdown"][0].data["markdown"].content
+        == '<qqbot-at-user id="member_openid" /> 回声洞 (1234) 投稿成功'
+    )
+
+
+@pytest.mark.asyncio
+async def test_prepended_at_does_not_add_space_before_whitespace() -> None:
+    """补出的 @ 后紧跟换行时不补空格，避免在标签行尾留下空格（换行由 HTML 块闭合逻辑处理）。"""
+    from nonebot.adapters.qq.message import Message, MessageSegment
+    from nonebot_plugin_larkutils.qq_at_markdown import convert_group_message
+
+    message = Message([MessageSegment.text("\n第一行")])
+    converted = await convert_group_message(message, at_user_id="member_openid")
+
+    assert converted is not None
+    assert converted["markdown"][0].data["markdown"].content == '<qqbot-at-user id="member_openid" />\n\n第一行'
+
+
+@pytest.mark.asyncio
+async def test_existing_leading_at_without_at_sender_keeps_content_as_is() -> None:
+    """消息自身写在最前面的 @ 不算「补出的 @」，不应额外插入空格。"""
+    from nonebot.adapters.qq.message import MessageSegment
+    from nonebot_plugin_larkutils.qq_at_markdown import convert_group_message
+
+    message = MessageSegment.mention_user("member_openid") + MessageSegment.text("用法: /cmd")
+    converted = await convert_group_message(message)
+
+    assert converted is not None
+    assert converted["markdown"][0].data["markdown"].content == '<qqbot-at-user id="member_openid" />用法: /cmd'
+
+
+@pytest.mark.asyncio
 async def test_mention_everyone_and_emoji_converted() -> None:
     """全体成员提及与系统表情段应一并转为 QQ Markdown 标签语法。"""
     from nonebot.adapters.qq.message import Message, MessageSegment
@@ -139,7 +181,7 @@ async def test_file_image_with_at_uploads_and_embeds_markdown(monkeypatch: pytes
     assert converted is not None
     assert converted["file_image"] == []
     assert converted["markdown"][0].data["markdown"].content == (
-        '<qqbot-at-user id="member_openid" />![text #120px #80px](qqbot-media://image/v1/tok)'
+        '<qqbot-at-user id="member_openid" /> ![text #120px #80px](qqbot-media://image/v1/tok)'
     )
 
 
@@ -242,7 +284,7 @@ async def test_skip_at_markdown_context(monkeypatch: pytest.MonkeyPatch) -> None
 
     await QQBot.send(bot, event, "plain", at_sender=True)
     sent_after = raw_send.call_args.args[2]
-    assert sent_after["markdown"][0].data["markdown"].content == '<qqbot-at-user id="member_openid" />plain'
+    assert sent_after["markdown"][0].data["markdown"].content == '<qqbot-at-user id="member_openid" /> plain'
 
 
 @pytest.mark.asyncio
@@ -267,14 +309,14 @@ async def test_bot_send_covers_group_events_and_excludes_c2c(monkeypatch: pytest
     await QQBot.send(bot, group_at_event, "你好 <@123>", at_sender=True)
     sent_msg = raw_send.call_args.args[2]
     assert "at_sender" not in raw_send.call_args.kwargs
-    assert sent_msg["markdown"][0].data["markdown"].content == '<qqbot-at-user id="member_openid_1" />你好 \\<@123\\>'
+    assert sent_msg["markdown"][0].data["markdown"].content == '<qqbot-at-user id="member_openid_1" /> 你好 \\<@123\\>'
 
     # 2. 全量群消息事件（GROUP_MESSAGE_CREATE）
     group_msg_event = MagicMock(spec=GroupMessageCreateEvent)
     group_msg_event.get_user_id.return_value = "member_openid_2"
     await QQBot.send(bot, group_msg_event, "收到", at_sender=True)
     sent_group_msg = raw_send.call_args.args[2]
-    assert sent_group_msg["markdown"][0].data["markdown"].content == '<qqbot-at-user id="member_openid_2" />收到'
+    assert sent_group_msg["markdown"][0].data["markdown"].content == '<qqbot-at-user id="member_openid_2" /> 收到'
 
     # 3. 群聊按钮交互事件（group_openid 非空）与单聊按钮交互事件（group_openid 为空）
     group_inter = MagicMock(spec=InteractionCreateEvent)
@@ -282,7 +324,7 @@ async def test_bot_send_covers_group_events_and_excludes_c2c(monkeypatch: pytest
     group_inter.get_user_id.return_value = "member_openid_3"
     await QQBot.send(bot, group_inter, "按钮响应", at_sender=True)
     sent_inter_msg = raw_send.call_args.args[2]
-    assert sent_inter_msg["markdown"][0].data["markdown"].content == '<qqbot-at-user id="member_openid_3" />按钮响应'
+    assert sent_inter_msg["markdown"][0].data["markdown"].content == '<qqbot-at-user id="member_openid_3" /> 按钮响应'
 
     c2c_inter = MagicMock(spec=InteractionCreateEvent)
     c2c_inter.group_openid = None
@@ -400,7 +442,7 @@ async def test_panel_end_to_end_group_markdown_and_c2c_native_image(monkeypatch:
     sent_group = raw_send.call_args.args[2]
     assert sent_group["file_image"] == []
     assert sent_group["markdown"][0].data["markdown"].content == (
-        '<qqbot-at-user id="member_openid" />![panel](qqbot-media://panel)'
+        '<qqbot-at-user id="member_openid" /> ![panel](qqbot-media://panel)'
     )
 
     # C2C 单聊：不调用素材上传，直接发原生 file_image
