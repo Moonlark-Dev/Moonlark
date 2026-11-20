@@ -109,32 +109,58 @@ def build_panel_data(state: MarketState, holding: Holding, now: datetime) -> Pan
 
 
 async def build_panel_markdown(user_id: str, data: PanelData) -> str:
-    """构建 markdown 面板：QQ 官方直接发送，其它适配器渲染成图片"""
+    """构建 markdown 面板：QQ 官方直接发送，其它适配器渲染成图片
+
+    多条信息用列表项分行，而不是同一个引用块里的软换行——markdown 渲染会把软换行
+    折叠成空格，面板图片里会挤成一整段。
+    """
+    market_lines = "\n".join(
+        [
+            await lang.text("panel.price", user_id, price=data.price),
+            await lang.text(
+                "panel.change",
+                user_id,
+                trend=data.trend,
+                change_pct=data.change_pct,
+                change=data.change,
+            ),
+            await lang.text(
+                "panel.open_close",
+                user_id,
+                day_open=data.day_open,
+                gap_pct=data.gap_pct,
+                prev_close=data.prev_close,
+            ),
+        ],
+    )
+    if data.shares > 0:
+        holding_lines = "\n".join(
+            [
+                await lang.text(
+                    "panel.holding_shares",
+                    user_id,
+                    shares=data.shares,
+                    sellable=data.sellable,
+                    frozen=data.frozen,
+                ),
+                await lang.text(
+                    "panel.holding_cost",
+                    user_id,
+                    average_cost=data.average_cost,
+                    profit=data.profit,
+                    profit_rate=data.profit_rate,
+                ),
+            ],
+        )
+    else:
+        holding_lines = await lang.text("panel.holding_empty", user_id)
     blocks = [
         await lang.text("panel.title", user_id),
         await lang.text("panel.status_open" if data.trading else "panel.status_closed", user_id),
-        await lang.text(
-            "panel.price",
-            user_id,
-            price=data.price,
-            trend=data.trend,
-            change_pct=data.change_pct,
-            change=data.change,
-            day_open=data.day_open,
-            gap_pct=data.gap_pct,
-            prev_close=data.prev_close,
-        ),
+        await lang.text("panel.market_title", user_id),
+        market_lines,
         await lang.text("panel.holding_title", user_id),
-        await lang.text(
-            "panel.holding" if data.shares > 0 else "panel.holding_empty",
-            user_id,
-            shares=data.shares,
-            sellable=data.sellable,
-            frozen=data.frozen,
-            average_cost=data.average_cost,
-            profit=data.profit,
-            profit_rate=data.profit_rate,
-        ),
+        holding_lines,
         await lang.text("panel.trading_title", user_id),
         await lang.text(
             "panel.trading",

@@ -61,13 +61,14 @@ async def render_chart(
 ) -> Optional[bytes]:
     if chart_day is None:
         return None
+    visible_candles = max(1, config.trade_chart_candles)
     try:
         # chart.title 使用命名占位符 {date}/{count}，必须按关键字传参，位置参数会抛 KeyError
         title = await lang.text(
             "chart.title",
             user_id,
             date=chart_day.strftime("%Y-%m-%d"),
-            count=config.trade_chart_candles,
+            count=visible_candles,
         )
         empty_text = await lang.text("chart.empty", user_id)
         return await asyncio.to_thread(
@@ -77,7 +78,7 @@ async def render_chart(
             title,
             empty_text,
             reference_price,
-            config.trade_chart_candles,
+            visible_candles,
         )
     except Exception:
         logger.exception("渲染 K 线图失败，回退到文本消息")
@@ -161,7 +162,12 @@ async def send_panel(
     message = UniMessage().image(raw=panel_image)
     if chart is not None:
         message = message + UniMessage().image(raw=chart)
-    await message.send(target=event, bot=bot)
+    try:
+        await message.send(target=event, bot=bot)
+    except Exception:
+        logger.exception("发送交易面板失败，回退到文本消息")
+        await send_plain_panel(bot, event, user_id, panel, chart)
+        return
     await trade.finish()
 
 
@@ -188,7 +194,7 @@ async def handle_trade_main(bot: Bot, event: Event, user_id: str = get_user_id()
         async with get_session() as session:
             state = await ensure_market(session, now)
             holding = await get_holding(session, user_id, trading_day(now))
-            candles = await load_recent_candles(session, config.trade_chart_candles)
+            candles = await load_recent_candles(session, max(1, config.trade_chart_candles))
             panel = build_panel_data(state, holding, now)
             points = [
                 CandlePoint(

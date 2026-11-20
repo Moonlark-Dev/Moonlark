@@ -233,24 +233,28 @@ async def test_ensure_market_cross_day():
     with (
         patch("nonebot_plugin_trade.market._random_target_minute", return_value=720),
         patch("nonebot_plugin_trade.market._random_label", return_value="up"),
-        patch("nonebot_plugin_trade.market._random_gap_ratio", return_value=0.02),
+        patch("nonebot_plugin_trade.market._random_gap_ratio", return_value=0.02) as gap,
     ):
         state = await ensure_market(session, datetime(2026, 11, 19, 14, 0))
+        # 冷启动没有历史收盘价，不制造隔夜跳空
+        assert gap.call_count == 0
         assert state.day == TRADE_DAY
-        # 开市立即跳空一次：开盘价在昨收基础上跳 2%
         assert state.prev_close == pytest.approx(10.0)
-        assert state.day_open == pytest.approx(10.2)
+        assert state.day_open == pytest.approx(10.0)
         assert state.last_tick_at == datetime(2026, 11, 19, 14, 0)
         assert len([key for key in session.objects if key[0] is Candle]) == 72
         assert state.price > 0
 
         await ensure_market(session, datetime(2026, 11, 19, 23, 59))
+        assert gap.call_count == 0
         assert state.day == TRADE_DAY
         assert state.last_tick_at == datetime(2026, 11, 19, 23, 55)
         assert len([key for key in session.objects if key[0] is Candle]) == 191
         close_price = state.price
 
         await ensure_market(session, datetime(2026, 11, 20, 8, 0))
+        # 08:00 开市立即跳空一次：今开在昨收基础上跳 2%
+        assert gap.call_count == 1
         assert state.day == date(2026, 11, 20)
         # 08:00 的跳空 tick 只更新价格，不写 K 线，缺口保留在昨收与今开之间
         assert state.prev_close == pytest.approx(close_price)
@@ -259,12 +263,22 @@ async def test_ensure_market_cross_day():
         assert state.last_tick_at == datetime(2026, 11, 20, 8, 0)
         assert len([key for key in session.objects if key[0] is Candle]) == 191
 
-        # 跳空每天只发生一次，08:05 起恢复正常 tick
+        # 跳空每天只发生一次，08:05 起恢复正常 tick；当日首根 K 线从今开起步
         day_open = state.day_open
         await ensure_market(session, datetime(2026, 11, 20, 8, 5))
+        assert gap.call_count == 1
         assert state.day_open == pytest.approx(day_open)
         assert state.last_tick_at == datetime(2026, 11, 20, 8, 5)
         assert len([key for key in session.objects if key[0] is Candle]) == 192
+        first_candle = session.objects[(Candle, (date(2026, 11, 20), 0))]
+        assert first_candle.open == pytest.approx(day_open)
+
+        # 跨多日离线补算：每个 08:00 各跳一次
+        await ensure_market(session, datetime(2026, 11, 22, 10, 0))
+        assert gap.call_count == 3
+        assert state.day == date(2026, 11, 22)
+        assert state.last_tick_at == datetime(2026, 11, 22, 10, 0)
+        assert state.price > 0
 
 
 @pytest.mark.asyncio
@@ -575,14 +589,15 @@ async def test_panel_markdown_has_hierarchy_and_hides_float_shares():
 
     assert markdown.startswith("## 📈 Moonlark 证券交易所")
     assert "**交易中**" in markdown
-    assert "**最新价**：**10.50 VimCoin**" in markdown
-    assert "今日涨跌：**▲ +6.06%**（+0.60）" in markdown
-    assert "今开 10.00（跳空 +1.01%） · 昨收 9.90" in markdown
+    assert "### 行情" in markdown
+    assert "- **最新价**：**10.50 VimCoin**" in markdown
+    assert "- 今日涨跌：**▲ +6.06%**（+0.60）" in markdown
+    assert "- 今开 10.00（跳空 +1.01%） · 昨收 9.90" in markdown
     assert "### 我的持仓" in markdown
-    assert "持股 **200** 股 · 可卖 100 股 · 冻结 100 股" in markdown
-    assert "浮动盈亏 **+100.00 VimCoin（+5.00%）**" in markdown
+    assert "- 持股 **200** 股 · 可卖 100 股 · 冻结 100 股" in markdown
+    assert "- 成本 **10.00 VimCoin** · 浮动盈亏 **+100.00 VimCoin（+5.00%）**" in markdown
     assert "### 今日交易" in markdown
-    assert "买入 **100/1000** 股" in markdown
+    assert "- 买入 **100/1000** 股" in markdown
     assert "市场流通" not in markdown
     assert "100000" not in markdown
 
@@ -595,7 +610,7 @@ async def test_panel_markdown_closed_market_and_empty_holding():
     markdown = await build_panel_markdown("panel-user", data)
 
     assert "**休市**" in markdown
-    assert "暂无持仓" in markdown
+    assert "- 暂无持仓" in markdown
     assert "浮动盈亏" not in markdown
 
 
@@ -703,3 +718,53 @@ async def test_send_panel_appends_chart_image_markdown_for_qq(monkeypatch: pytes
 
     assert sent["text"].startswith("## 📈 Moonlark 证券交易所")
     assert sent["text"].endswith("![K 线](qqbot-media://example)")
+
+
+def test_panel_change_uses_previous_close_when_gap_down():
+    """跳空低开但相对昨收仍上涨时，今日涨跌按昨收计，同时单独给出跳空幅度"""
+    data = make_panel_data({"price": 10.1, "day_open": 9.9, "prev_close": 10.0})
+
+    assert data.change == "+0.10"
+    assert data.change_pct == "+1.00%"
+    assert data.gap_pct == "-1.00%"
+    assert data.trend == "▲"
+
+
+@pytest.mark.asyncio
+async def test_tick_keeps_trade_extremes():
+    """tick 的布朗桥只扩展、不覆盖成交写入的 high/low"""
+    from nonebot_plugin_trade.market import apply_tick, update_candle_on_trade
+    from nonebot_plugin_trade.models import Candle
+
+    session = FakeSession()
+    state = make_state(price=10.5, target_minute=720, label1="up", label2="up")
+    await update_candle_on_trade(session, state, datetime(2026, 11, 19, 8, 55), 10.0, 10.5, 100)
+    candle = session.objects[(Candle, (TRADE_DAY, 11))]
+    assert candle.high == pytest.approx(10.5)
+    assert candle.low == pytest.approx(10.0)
+
+    with (
+        patch("nonebot_plugin_trade.market._rand_float", side_effect=[0.999, 1.0]),
+        patch("nonebot_plugin_trade.market._rand_normal", return_value=-2.0),
+    ):
+        await apply_tick(state, datetime(2026, 11, 19, 9, 0), session)
+
+    assert candle.high == pytest.approx(10.5)
+    assert candle.low == pytest.approx(10.0)
+    assert candle.close == pytest.approx(10.395)
+
+
+def test_chart_reference_outside_visible_range_still_renders():
+    """参考价落到可视区间外时只跳过虚线，不应留下悬浮的画布外标签或崩溃"""
+    from nonebot_plugin_trade.chart import CandlePoint, render_kline_chart
+
+    points = [CandlePoint(day=date(2026, 11, 19), slot=0, open=10.0, high=10.1, low=9.9, close=10.05)]
+    data = render_kline_chart(
+        date(2026, 11, 19),
+        points,
+        "test",
+        "empty",
+        reference_price=99.0,
+        visible_candles=8,
+    )
+    assert data.startswith(b"\x89PNG\r\n\x1a\n")

@@ -138,7 +138,7 @@ def _rand_normal() -> float:
 
 
 def _random_gap_ratio() -> float:
-    """隔夜跳空幅度：方向随机，绝对值落在 GAP_MIN_RATIO~trade_gap_sigma 之间"""
+    """隔夜跳空幅度：方向随机，绝对值至少为 GAP_MIN_RATIO，上限为 trade_gap_sigma"""
     cap = max(GAP_MIN_RATIO, config.trade_gap_sigma)
     magnitude = GAP_MIN_RATIO + _rand_float() * (cap - GAP_MIN_RATIO)
     return magnitude if _rand_float() >= 0.5 else -magnitude
@@ -279,8 +279,8 @@ async def ensure_market(session: AsyncSession, now: Optional[datetime] = None) -
 
     if state.last_tick_at is None:
         if is_trading_time(now):
+            # 冷启动没有历史收盘价，不制造隔夜跳空，只把交易日初始化到当天
             init_day(state, now.date())
-            apply_open_gap(state)
             state.last_tick_at = datetime.combine(now.date(), time(8, 0))
         else:
             day = trading_day(now)
@@ -569,7 +569,7 @@ async def execute_sell(
 
 
 async def load_recent_candles(session: AsyncSession, limit: int) -> list[Candle]:
-    """按时间升序读取最近 limit 根已收盘的 5 分钟 K 线（可跨交易日）
+    """按时间升序读取最近 limit 根 5 分钟 K 线（可跨交易日，最后一根可能是正在形成的）
 
     K 线图固定展示最近若干根蜡烛，当日蜡烛不足时自动补上此前交易日的数据。
     """

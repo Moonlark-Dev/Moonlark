@@ -30,7 +30,7 @@ _BACKGROUND = "#F8F9FA"
 _TEXT_COLOR = "#2D3436"
 _MUTED_COLOR = "#7F8C8D"
 
-# 固定展示的蜡烛数量；不足时左侧留白，最新一根始终贴在右侧
+# 固定展示的蜡烛数量；不足时左侧留白、最新一根靠右，右侧预留参考价标签的位置
 VISIBLE_CANDLES = 120
 # 前一交易日 K 线用高透明度弱化，与当日 K 线区分
 _PREVIOUS_DAY_BODY_ALPHA = 0.22
@@ -97,7 +97,7 @@ def render_kline_chart(
         current_day: 当前交易日，用于区分当日与前一交易日的蜡烛
         candles: 按时间升序排列的蜡烛，可跨交易日
         visible_candles: 固定展示的蜡烛数量；蜡烛不足时在左侧留白
-        reference_price: 参考价（通常为当日开盘价），画一条虚线
+        reference_price: 参考价（通常为当日开盘价）；落在可视价格区间内时画一条虚线
     """
     if not title:
         title = f"{current_day.isoformat()} 5 分钟 K 线"
@@ -109,13 +109,15 @@ def render_kline_chart(
         offset = total - len(candles)
         lows = [candle.low for candle in candles]
         highs = [candle.high for candle in candles]
+        price_span = max(highs) - min(lows)
+        padding = max(price_span * 0.08, max(highs) * 0.002, 0.01)
+        y_bottom = min(lows) - padding
+        y_top = max(highs) + padding
+        body_floor = max(price_span * 0.002, max(highs) * 0.0001, 1e-4)
 
         figure = Figure(figsize=(13, 6.2), dpi=150, facecolor=_BACKGROUND)
         axes = figure.add_subplot(111)
         axes.set_facecolor(_BACKGROUND)
-
-        price_span = max(highs) - min(lows)
-        body_floor = max(price_span * 0.002, max(highs) * 0.0001, 1e-4)
 
         for index, candle in enumerate(candles):
             position = offset + index
@@ -156,7 +158,8 @@ def render_kline_chart(
                 zorder=2,
             )
 
-        if reference_price is not None:
+        # 参考价落在可视价格区间外时不画（axhline 会被裁剪，text 不会，会留下悬浮数字）
+        if reference_price is not None and y_bottom <= reference_price <= y_top:
             axes.axhline(reference_price, color=_MUTED_COLOR, linestyle="--", linewidth=1, alpha=0.7, zorder=2)
             axes.text(
                 total + 2.4,
@@ -186,8 +189,7 @@ def render_kline_chart(
         axes.set_xticklabels(tick_labels, fontsize=8)
 
         axes.set_xlim(-1.5, total + 2.5)
-        padding = max(price_span * 0.08, max(highs) * 0.002, 0.01)
-        axes.set_ylim(min(lows) - padding, max(highs) + padding)
+        axes.set_ylim(y_bottom, y_top)
         axes.set_ylabel("VimCoin", fontsize=10, color=_MUTED_COLOR)
 
         last = candles[-1]

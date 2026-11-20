@@ -14,7 +14,7 @@ class MarketState(Model):
     price: Mapped[float] = mapped_column(Float())
     # 当前交易日（以 08:00 为分界）
     day: Mapped[Optional[date]] = mapped_column(Date(), nullable=True)
-    # 当日开盘价（等于前一交易日收盘价）
+    # 当日开盘价（开市跳空后的价格，可能不等于前一交易日收盘价）
     day_open: Mapped[float] = mapped_column(Float(), default=0.0)
     # 前一交易日收盘价
     prev_close: Mapped[float] = mapped_column(Float(), default=0.0)
