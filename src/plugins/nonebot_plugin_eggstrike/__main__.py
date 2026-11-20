@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any, Literal
 
@@ -6,7 +7,6 @@ from nonebot.adapters.qq import Bot as QQBot
 from nonebot_plugin_alconna import Alconna, Args, At, Match, Option, Subcommand, UniMessage, on_alconna
 from nonebot_plugin_buff import BAD_LUCK_BUFF_ID, attach_buff
 from nonebot_plugin_equip import BarrierResult, handle_barrier
-from nonebot_plugin_htmlrender import md_to_pic
 from nonebot_plugin_items.utils.string import get_location_by_id
 from nonebot_plugin_larkuser import get_nickname, get_user, patch_matcher
 from nonebot_plugin_larkutils import get_main_account, get_user_id
@@ -35,6 +35,24 @@ from .utils import (
 )
 
 SpanType = Literal["7d", "30d", "total"]
+
+
+@dataclass(frozen=True)
+class EggEntry:
+    """鸡蛋列表中的一种鸡蛋
+
+    Attributes:
+        index: 列表编号（从 1 开始），与 `/splat switch` 的编号一致
+        name: 鸡蛋的本地化名称
+        count_text: 持有数量文案（含“当前使用”标记）
+        effect: 效果说明（伤害、恶臭时长、爆炸概率）
+    """
+
+    index: int
+    name: str
+    count_text: str
+    effect: str
+
 
 alc = Alconna(
     "splat",
@@ -246,8 +264,8 @@ async def throw_egg(
     user_id: str = get_user_id(),
 ) -> None:
     if not target.available:
-        # /splat 不带参数：展示当前选择的鸡蛋种类和所有可用种类（类似 /present）
-        await show_egg_types(user_id)
+        # /splat 不带参数：展示鸡蛋列表（每种鸡蛋的持有数量、当前选择与效果）
+        await send_egg_list(bot, event, user_id)
         return
 
     egg_count, egg_key = await resolve_throw_options(user_id, count, egg_type)
@@ -274,32 +292,6 @@ async def throw_egg(
     await splat.finish("\n".join(lines))
 
 
-async def show_egg_types(user_id: str) -> None:
-    """展示当前选择的鸡蛋种类和所有可用种类（类似 /present）"""
-    current = await get_selected_egg_type(user_id)
-    current_name = await get_egg_type_name(current, user_id)
-    lines = [await lang.text("list.title", user_id, current_name)]
-    for index, egg_key in enumerate(EGG_TYPES, start=1):
-        egg_data = EGG_TYPES[egg_key]
-        name = await get_egg_type_name(egg_key, user_id)
-        if egg_data.buff_hours > 0:
-            lines.append(
-                await lang.text(
-                    "list.item_buff",
-                    user_id,
-                    index,
-                    name,
-                    egg_data.damage,
-                    egg_data.buff_hours,
-                    round(egg_data.explode_chance * 100, 1),
-                )
-            )
-        else:
-            lines.append(await lang.text("list.item", user_id, index, name, egg_data.damage))
-    lines.append(await lang.text("list.footer", user_id))
-    await splat.finish("\n".join(lines))
-
-
 @splat.assign("switch")
 async def switch_egg(index: int, user_id: str = get_user_id()) -> None:
     keys = list(EGG_TYPES)
@@ -311,24 +303,20 @@ async def switch_egg(index: int, user_id: str = get_user_id()) -> None:
     await lang.finish("switch.success", user_id, name)
 
 
-async def build_eggs_markdown(user_id: str, clickable: bool) -> str:
-    """构建鸡蛋列表的 markdown：每种鸡蛋展示持有数量与效果。
+async def collect_egg_entries(user_id: str) -> list[EggEntry]:
+    """收集鸡蛋列表的每一行：编号、名称、持有数量文案与效果说明
 
-    Args:
-        clickable: QQ 平台为 True 时把鸡蛋名渲染成可点击切换的 <qqbot-cmd-input>
+    文本与 markdown 两种渲染都基于它，保证两边展示的数量与效果完全一致。
     """
     current = await get_selected_egg_type(user_id)
-    lines = []
-    for index, (egg_key, egg_data) in enumerate(EGG_TYPES.items(), start=1):
+    entries = []
+    for index, egg_key in enumerate(EGG_TYPES, start=1):
+        egg_data = EGG_TYPES[egg_key]
         name = await get_egg_type_name(egg_key, user_id)
         count = await get_egg_count(user_id, get_location_by_id(egg_data.item_id))
-        count_text = f"x{count}"
+        count_text = str(count)
         if egg_key == current:
             count_text += await lang.text("eggs.current", user_id)
-        if clickable:
-            lines.append(await lang.text("eggs.item", user_id, index, name, count_text))
-        else:
-            lines.append(await lang.text("eggs.item_plain", user_id, name, count_text))
         if egg_data.buff_hours > 0:
             effect = await lang.text(
                 "eggs.effect_buff",
@@ -339,24 +327,52 @@ async def build_eggs_markdown(user_id: str, clickable: bool) -> str:
             )
         else:
             effect = await lang.text("eggs.effect_plain", user_id, egg_data.damage)
-        lines.append(f"> {effect}")
+        entries.append(EggEntry(index=index, name=name, count_text=count_text, effect=effect))
+    return entries
+
+
+async def build_eggs_markdown(user_id: str) -> str:
+    """构建 QQ 官方机器人的鸡蛋列表 markdown
+
+    每种鸡蛋展示持有数量与效果，鸡蛋名渲染成 <qqbot-cmd-input>：点击即把
+    `{前缀}splat switch <编号>` 填入输入框，编号与列表顺序一致。
+    """
+    current = await get_selected_egg_type(user_id)
     title = await lang.text("eggs.title", user_id, await get_egg_type_name(current, user_id))
-    return "\n".join([title, *lines])
+    # 标题与列表之间留一个空行，QQ 的 markdown 渲染才会把两者分开
+    lines = [title, ""]
+    for entry in await collect_egg_entries(user_id):
+        item = await lang.text("eggs.item", user_id, entry.index, entry.name, entry.count_text)
+        # 效果说明缩进在条目下方，保持它属于同一种鸡蛋
+        lines += [item, f"  {entry.effect}"]
+    return "\n".join(lines)
+
+
+async def build_eggs_text(user_id: str) -> str:
+    """构建非 QQ 平台的鸡蛋列表纯文本：每种鸡蛋展示持有数量与效果"""
+    current = await get_selected_egg_type(user_id)
+    title = await lang.text("eggs.title_text", user_id, await get_egg_type_name(current, user_id))
+    lines = [title]
+    for entry in await collect_egg_entries(user_id):
+        item = await lang.text("eggs.item_plain", user_id, entry.index, entry.name, entry.count_text)
+        lines += [item, f"    {entry.effect}"]
+    lines.append(await lang.text("eggs.footer", user_id))
+    return "\n".join(lines)
+
+
+async def send_egg_list(bot: Bot, event: Event, user_id: str) -> None:
+    """发送鸡蛋列表：QQ 官方机器人使用可点击的 markdown，其它平台使用纯文本"""
+    if isinstance(bot, QQBot):
+        await UniMessage().style(await build_eggs_markdown(user_id), "markdown").send(target=event, bot=bot)
+        await splat.finish()
+    else:
+        await splat.finish(await build_eggs_text(user_id))
 
 
 @splat.assign("eggs")
 async def show_eggs(bot: Bot, event: Event, user_id: str = get_user_id()) -> None:
-    """展示每种鸡蛋的持有数量与效果"""
-    if isinstance(bot, QQBot):
-        await (
-            UniMessage()
-            .style(await build_eggs_markdown(user_id, clickable=True), "markdown")
-            .send(target=event, bot=bot)
-        )
-        await splat.finish()
-    await splat.finish(
-        await UniMessage().image(raw=await md_to_pic(await build_eggs_markdown(user_id, clickable=False))).export()
-    )
+    """展示每种鸡蛋的持有数量与效果（与直接发送 /splat 相同）"""
+    await send_egg_list(bot, event, user_id)
 
 
 @splat.assign("rank")
