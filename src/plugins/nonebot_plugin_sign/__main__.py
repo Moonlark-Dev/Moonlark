@@ -157,7 +157,9 @@ async def _calc_sign_vim(user_id: str, sign_days: int) -> dict:
     """计算并增加签到虚拟币。返回 (text, origin, add, now)。"""
     user = await get_user(user_id)
     origin = user.get_vimcoin()
-    vim = _sign_vim_formula(user.get_level(), user.get_fav(), sign_days, random.random(), random.random())
+    roll = random.random()  # nosec B311
+    luck_roll = random.random()  # nosec B311
+    vim = _sign_vim_formula(user.get_level(), user.get_fav(), sign_days, roll, luck_roll)
     # 霉运 buff：签到获得的 VimCoin 按层数减半
     vim = round(vim * await get_bad_luck_multiplier(user_id), 1)
     await user.add_vimcoin(vim)
