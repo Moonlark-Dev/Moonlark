@@ -595,7 +595,8 @@ async def test_panel_markdown_has_hierarchy_and_hides_float_shares():
     assert "- 今开 10.00（跳空 +1.01%） · 昨收 9.90" in markdown
     assert "### 我的持仓" in markdown
     assert "- 持股 **200** 股 · 可卖 100 股 · 冻结 100 股" in markdown
-    assert "- 成本 **10.00 VimCoin** · 浮动盈亏 **+100.00 VimCoin（+5.00%）**" in markdown
+    assert "- 成本 **10.00 VimCoin**" in markdown
+    assert r"- 浮动盈亏 \(\color{red}{+100.00}\) VimCoin（\(\color{red}{+5.00\%}\)）" in markdown
     assert "### 今日交易" in markdown
     assert "- 买入 **100/1000** 股" in markdown
     assert "市场流通" not in markdown
@@ -619,6 +620,22 @@ async def test_panel_markdown_renders_change_text_as_colored_formula():
 
     flat = await build_panel_markdown("panel-user", make_panel_data({"price": 10.0, "prev_close": 10.0}))
     assert r"\(\color{gray}{\cdot\ {+0.00\%}}\)（+0.00）" in flat
+
+
+@pytest.mark.asyncio
+async def test_panel_markdown_renders_profit_text_as_colored_formula():
+    """浮动盈亏与盈亏比例同样用 LaTeX 行内公式上色：盈利红、亏损绿、持平灰"""
+    from nonebot_plugin_trade.panel import build_panel_markdown
+
+    holding = {"shares": 200, "frozen_shares": 0, "cost_basis": 2000.0}
+    gain = await build_panel_markdown("panel-user", make_panel_data({"price": 10.5}, holding))
+    assert r"浮动盈亏 \(\color{red}{+100.00}\) VimCoin（\(\color{red}{+5.00\%}\)）" in gain
+
+    loss = await build_panel_markdown("panel-user", make_panel_data({"price": 9.5}, holding))
+    assert r"浮动盈亏 \(\color{green}{-100.00}\) VimCoin（\(\color{green}{-5.00\%}\)）" in loss
+
+    flat = await build_panel_markdown("panel-user", make_panel_data({"price": 10.0}, holding))
+    assert r"浮动盈亏 \(\color{gray}{+0.00}\) VimCoin（\(\color{gray}{+0.00\%}\)）" in flat
 
 
 @pytest.mark.asyncio

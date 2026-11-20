@@ -42,6 +42,8 @@ class PanelData:
     average_cost: str
     profit: str
     profit_rate: str
+    profit_formula: str
+    profit_rate_formula: str
     daily_bought: int
     daily_sold: int
     daily_limit: int
@@ -57,14 +59,26 @@ def _fmt_signed(value: float) -> str:
     return f"{value:+.2f}"
 
 
-# 涨跌文本用行内公式着色：QQ 官方 markdown 没有给文字上色的语法，但 ``\(...\)``
-# 会交给公式渲染器，``\color{...}`` 可以给数字上色；非 QQ 适配器把同一份 markdown
-# 交给 md_to_pic，KaTeX 也支持 ``\color``，两边效果一致。红涨绿跌与 K 线图一致。
-_CHANGE_STYLES = {
-    1: (r"red", r"\blacktriangle"),
-    -1: (r"green", r"\blacktriangledown"),
-    0: (r"gray", r"\cdot"),
+# 涨跌/盈亏文本用行内公式着色：QQ 官方 markdown 没有给文字上色的语法，但
+# ``\(...\)`` 会交给公式渲染器，``\color{...}`` 可以给数字上色；非 QQ 适配器把
+# 同一份 markdown 交给 md_to_pic，KaTeX 也支持 ``\color``，两边效果一致。
+_TREND_ARROWS = {
+    1: r"\blacktriangle",
+    -1: r"\blacktriangledown",
+    0: r"\cdot",
 }
+
+
+def _change_color(value: float) -> str:
+    """红涨绿跌，平盘灰色（与 K 线图配色一致）"""
+    return "red" if value > 0 else "green" if value < 0 else "gray"
+
+
+def _signed_formula(value: float, text: str) -> str:
+    """把带符号的数值（浮动盈亏、盈亏比例）包成上色公式"""
+    # 公式里的 % 是注释符，必须转义
+    body = text.replace("%", r"\%")
+    return rf"\(\color{{{_change_color(value)}}}{{{body}}}\)"
 
 
 def _change_formula(change: float, change_pct: str) -> str:
@@ -73,20 +87,27 @@ def _change_formula(change: float, change_pct: str) -> str:
     百分比连同正负号放进一组花括号：``+6.06`` 直接跟在 ``\\ `` 后面会被当成
     二元运算符排成「+ 6.06」，分组后才和纯文本一样是「+6.06」。
     """
-    color, arrow = _CHANGE_STYLES[1 if change > 0 else -1 if change < 0 else 0]
-    # 公式里的 % 是注释符，必须转义
+    arrow = _TREND_ARROWS[1 if change > 0 else -1 if change < 0 else 0]
     percent = "{" + change_pct.replace("%", r"\%") + "}"
-    return rf"\(\color{{{color}}}{{{arrow}\ {percent}}}\)"
+    return rf"\(\color{{{_change_color(change)}}}{{{arrow}\ {percent}}}\)"
 
 
-def _holding_texts(shares: int, cost_basis: float, price: float) -> tuple[str, str, str]:
-    """返回 (平均成本, 浮动盈亏, 盈亏比例) 的展示文本"""
+def _holding_texts(shares: int, cost_basis: float, price: float) -> tuple[str, str, str, str, str]:
+    """返回 (平均成本, 浮动盈亏, 盈亏比例, 浮动盈亏公式, 盈亏比例公式) 的展示文本"""
     if shares <= 0 or cost_basis <= 0:
-        return "—", "—", "—"
+        return "—", "—", "—", "—", "—"
     average_cost = cost_basis / shares
     profit = shares * price - cost_basis
     profit_rate = profit / cost_basis * 100
-    return _fmt(average_cost), _fmt_signed(profit), f"{_fmt_signed(profit_rate)}%"
+    profit_text = _fmt_signed(profit)
+    profit_rate_text = f"{_fmt_signed(profit_rate)}%"
+    return (
+        _fmt(average_cost),
+        profit_text,
+        profit_rate_text,
+        _signed_formula(profit, profit_text),
+        _signed_formula(profit_rate, profit_rate_text),
+    )
 
 
 def build_panel_data(state: MarketState, holding: Holding, now: datetime) -> PanelData:
@@ -104,7 +125,11 @@ def build_panel_data(state: MarketState, holding: Holding, now: datetime) -> Pan
     gap_pct = (day_open - prev_close) / prev_close * 100 if prev_close > 0 else 0.0
     shares = holding.shares
     frozen = holding.frozen_shares
-    average_cost, profit, profit_rate = _holding_texts(shares, holding.cost_basis, price)
+    average_cost, profit, profit_rate, profit_formula, profit_rate_formula = _holding_texts(
+        shares,
+        holding.cost_basis,
+        price,
+    )
     if change > 0:
         trend = "▲"
     elif change < 0:
@@ -127,6 +152,8 @@ def build_panel_data(state: MarketState, holding: Holding, now: datetime) -> Pan
         average_cost=average_cost,
         profit=profit,
         profit_rate=profit_rate,
+        profit_formula=profit_formula,
+        profit_rate_formula=profit_rate_formula,
         daily_bought=holding.daily_bought,
         daily_sold=holding.daily_sold,
         daily_limit=config.trade_daily_limit,
@@ -171,8 +198,12 @@ async def build_panel_markdown(user_id: str, data: PanelData) -> str:
                     "panel.holding_cost",
                     user_id,
                     average_cost=data.average_cost,
-                    profit=data.profit,
-                    profit_rate=data.profit_rate,
+                ),
+                await lang.text(
+                    "panel.holding_profit",
+                    user_id,
+                    profit_formula=data.profit_formula,
+                    profit_rate_formula=data.profit_rate_formula,
                 ),
             ],
         )
