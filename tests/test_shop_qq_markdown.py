@@ -98,7 +98,7 @@ async def test_build_markdown_list(shop_env: Any) -> None:
     assert markdown == _expected_markdown(shop_env.GOODS)
     # 编号只用于拼装指令，不展示在商品文本里
     assert 'text="/shop buy 1 1"' in markdown
-    assert 'show="小鱼干 (20vi)"' in markdown
+    assert 'show="小鱼干 (200vi)"' in markdown
     assert "【Moonlark 商店】" not in markdown
     # 每个分类标题自成一段，紧跟在上一个分类的列表项后面会带上无序列表缩进
     for header in _CATEGORY_HEADERS.values():
@@ -151,7 +151,7 @@ async def test_handle_main_other_adapter_sends_plain_text(shop_env: Any, monkeyp
     assert "【道具】" in plain
     assert "【消耗品】" in plain
     assert "【装备】" in plain
-    assert "[1] 小鱼干 - 20 VimCoin" in plain
+    assert "[1] 小鱼干 - 200 VimCoin" in plain
     assert "[9] 牛奶 - 35 VimCoin" in plain
     assert "[10] 临时屏障 - 150 VimCoin" in plain
     assert "qqbot-cmd-input" not in plain

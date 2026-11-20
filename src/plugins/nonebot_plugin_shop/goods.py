@@ -4,12 +4,12 @@
 # consumable：可 /consumables use 的消耗品；equipment：可 /equip 的装备。
 GOODS_CATEGORIES: dict[str, list[tuple[str, int]]] = {
     "gift": [
-        ("moonlark:dried_fish", 20),
-        ("moonlark:yarn_ball", 30),
-        ("moonlark:bell_collar", 45),
-        ("moonlark:catnip_pouch", 45),
-        ("moonlark:cat_teaser", 60),
-        ("moonlark:cat_can", 90),
+        ("moonlark:dried_fish", 200),
+        ("moonlark:yarn_ball", 300),
+        ("moonlark:bell_collar", 450),
+        ("moonlark:catnip_pouch", 450),
+        ("moonlark:cat_teaser", 600),
+        ("moonlark:cat_can", 900),
     ],
     "tool": [
         ("moonlark:egg", 15),
