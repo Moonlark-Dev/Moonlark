@@ -35,6 +35,8 @@ MAX_BIAS = 0.45
 BRIDGE_STEPS = 16
 # 隔夜跳空的最小幅度（相对前一交易日收盘价），保证开市时能看到缺口
 GAP_MIN_RATIO = 0.005
+# 单个交易日最多落库的 5 分钟 K 线根数；批量读取日 K 时据此估算查询上限
+MAX_CANDLES_PER_DAY = (CLOSE_MINUTE - OPEN_MINUTE) // TICK_MINUTES
 _RANDOM_SCALE = 1_000_000_000
 _BUY_SHARES_PATTERN = re.compile(r"\d+")
 _SELL_SHARES_PATTERN = re.compile(r"\d+")
@@ -72,6 +74,18 @@ class TradeResult:
     daily_sold: int
     balance_after: float
     capped_reason: Optional[Literal["daily", "float"]] = None
+
+
+@dataclass(frozen=True)
+class DailyCandle:
+    """由当日实际落库的 5 分钟 K 线聚合出的日 K 线"""
+
+    day: date
+    open: float
+    high: float
+    low: float
+    close: float
+    volume: int
 
 
 def now_local() -> datetime:
@@ -582,3 +596,40 @@ async def load_recent_candles(session: AsyncSession, limit: int) -> list[Candle]
     )
     candles.reverse()
     return candles
+
+
+async def load_daily_candles(session: AsyncSession, limit: int) -> list[DailyCandle]:
+    """按日期升序读取最近 limit 个交易日的日 K 线
+
+    日 K 线完全由该交易日已落库的 5 分钟 K 线聚合：开盘价取首根、收盘价取末根，
+    影线直接取当日全部 5 分钟 K 线的最高/最低价（含玩家买卖冲击写入的极值），
+    不额外用随机模型生成日线影线。
+
+    为了在一条查询里取够 limit 个完整交易日，按 ``limit * MAX_CANDLES_PER_DAY``
+    行倒序取；多取的、被截断的旧交易日会被自然丢弃。
+    """
+    if limit <= 0:
+        return []
+    candles = list(
+        await session.scalars(
+            select(Candle).order_by(Candle.day.desc(), Candle.slot.desc()).limit(limit * MAX_CANDLES_PER_DAY),
+        ),
+    )
+    grouped: dict[date, list[Candle]] = {}
+    for candle in reversed(candles):
+        grouped.setdefault(candle.day, []).append(candle)
+
+    daily: list[DailyCandle] = []
+    for day in sorted(grouped)[-limit:]:
+        day_candles = grouped[day]
+        daily.append(
+            DailyCandle(
+                day=day,
+                open=day_candles[0].open,
+                high=max(candle.high for candle in day_candles),
+                low=min(candle.low for candle in day_candles),
+                close=day_candles[-1].close,
+                volume=sum(candle.volume or 0 for candle in day_candles),
+            ),
+        )
+    return daily

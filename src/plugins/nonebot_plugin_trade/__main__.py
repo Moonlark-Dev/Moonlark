@@ -14,7 +14,7 @@ from nonebot_plugin_larkutils import create_image_markdown, get_user_id
 from nonebot_plugin_larkutils.command import get_command_prefix
 from nonebot_plugin_orm import get_session
 
-from .chart import CandlePoint, render_kline_chart
+from .chart import CandlePoint, DailyCandlePoint, render_daily_kline_chart, render_kline_chart
 from .config import config
 from .market import (
     TradeError,
@@ -22,6 +22,7 @@ from .market import (
     execute_buy,
     execute_sell,
     get_holding,
+    load_daily_candles,
     load_recent_candles,
     now_local,
     trading_day,
@@ -44,6 +45,7 @@ trade = on_alconna(
         "trade",
         Subcommand("buy", Args["amount?", str, ""]),
         Subcommand("sell", Args["amount?", str, ""]),
+        Subcommand("history"),
     ),
 )
 patch_matcher(trade)
@@ -83,6 +85,67 @@ async def render_chart(
     except Exception:
         logger.exception("渲染 K 线图失败，回退到文本消息")
         return None
+
+
+async def render_daily_chart(user_id: str, points: list[DailyCandlePoint]) -> Optional[bytes]:
+    """渲染日 K 线历史；文案或渲染失败时返回 None，由调用方回退到文本"""
+    visible_candles = max(1, config.trade_history_candles)
+    try:
+        title = await lang.text("history.title", user_id, count=visible_candles)
+        empty_text = await lang.text("history.empty", user_id)
+        return await asyncio.to_thread(
+            render_daily_kline_chart,
+            points,
+            title,
+            empty_text,
+            visible_candles,
+        )
+    except Exception:
+        logger.exception("渲染日 K 线图失败，回退到文本消息")
+        return None
+
+
+async def build_history_caption(user_id: str, points: list[DailyCandlePoint]) -> str:
+    if not points:
+        return await lang.text("history.no_data", user_id)
+    last = points[-1]
+    return await lang.text(
+        "history.caption",
+        user_id,
+        days=len(points),
+        close=_fmt(last.close),
+        date=last.day.strftime("%Y-%m-%d"),
+    )
+
+
+async def send_history_chart(
+    bot: Bot,
+    event: Event,
+    caption: str,
+    chart: Optional[bytes],
+) -> None:
+    """发送日 K 线历史：QQ 官方用 markdown 图床，其它适配器直接发图片"""
+    if chart is None:
+        await trade.finish(caption)
+        return
+    if isinstance(bot, QQBot):
+        text = caption
+        try:
+            text = f"{text}\n\n{await create_image_markdown(chart, bot)}"
+        except Exception:
+            logger.exception("上传日 K 线图失败，回退到文本消息")
+            await trade.finish(caption)
+            return
+        await UniMessage().style(text, "markdown").send(target=event, bot=bot)
+        await trade.finish()
+        return
+    try:
+        await (UniMessage().text(caption) + UniMessage().image(raw=chart)).send(target=event, bot=bot)
+    except Exception:
+        logger.exception("发送日 K 线图失败，回退到文本消息")
+        await trade.finish(caption)
+        return
+    await trade.finish()
 
 
 def _keyboard_row(button_count: int) -> int | None:
@@ -215,6 +278,33 @@ async def handle_trade_main(bot: Bot, event: Event, user_id: str = get_user_id()
             await session.commit()
     chart = await render_chart(user_id, chart_day, points, reference_price)
     await send_panel(bot, event, user_id, panel, chart)
+
+
+@trade.assign("history")
+async def handle_trade_history(bot: Bot, event: Event, user_id: str = get_user_id()) -> None:
+    now = now_local()
+    async with _market_lock:
+        async with get_session() as session:
+            await ensure_market(session, now)
+            candles = await load_daily_candles(session, max(1, config.trade_history_candles))
+            points = [
+                DailyCandlePoint(
+                    day=candle.day,
+                    open=candle.open,
+                    high=candle.high,
+                    low=candle.low,
+                    close=candle.close,
+                    volume=candle.volume,
+                )
+                for candle in candles
+            ]
+            await session.commit()
+    caption = await build_history_caption(user_id, points)
+    if not points:
+        await trade.finish(caption)
+        return
+    chart = await render_daily_chart(user_id, points)
+    await send_history_chart(bot, event, caption, chart)
 
 
 @trade.assign("buy")
