@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from nonebot.adapters import Bot, Event  # ruff: ignore[typing-only-third-party-import]
 from nonebot.adapters.qq import Bot as QQBot
 from nonebot_plugin_alconna import Alconna, Args, Button, Subcommand, UniMessage, on_alconna
+from nonebot_plugin_htmlrender import md_to_pic
 from nonebot_plugin_larklang import LangHelper
 from nonebot_plugin_larkuser import get_user, patch_matcher
 from nonebot_plugin_larkutils import create_image_markdown, get_user_id
@@ -21,18 +22,18 @@ from .market import (
     execute_buy,
     execute_sell,
     get_holding,
-    is_trading_time,
-    load_candles,
+    load_recent_candles,
     now_local,
     trading_day,
 )
+from .panel import PanelData, build_panel_data, build_panel_markdown, build_panel_text
 
 if TYPE_CHECKING:
-    from datetime import date, datetime
+    from datetime import date
+
     from typing import Optional
 
     from .market import TradeResult
-    from .models import Holding, MarketState
 
 logger = getLogger(__name__)
 lang = LangHelper()
@@ -52,62 +53,6 @@ def _fmt(value: float) -> str:
     return f"{value:.2f}"
 
 
-def _fmt_signed(value: float) -> str:
-    if abs(value) < 0.005:
-        value = 0.0
-    return f"{value:+.2f}"
-
-
-def _holding_texts(holding_shares: int, cost_basis: float, price: float) -> tuple[str, str, str]:
-    """返回 (平均成本, 浮动盈亏, 盈亏比例) 的展示文本"""
-    if holding_shares <= 0 or cost_basis <= 0:
-        return "—", "—", "—"
-    average_cost = cost_basis / holding_shares
-    profit = holding_shares * price - cost_basis
-    profit_rate = profit / cost_basis * 100
-    return _fmt(average_cost), _fmt_signed(profit), f"{_fmt_signed(profit_rate)}%"
-
-
-async def build_market_info(
-    user_id: str,
-    now: datetime,
-    state: MarketState,
-    holding: Holding,
-) -> str:
-    trading = is_trading_time(now)
-    status = await lang.text("main.status_open" if trading else "main.status_closed", user_id)
-    price = state.price
-    day_open = state.day_open or price
-    prev_close = state.prev_close or price
-    change = (price - day_open) / day_open * 100 if day_open > 0 else 0.0
-    shares = holding.shares
-    frozen = holding.frozen_shares
-    sellable = max(0, shares - frozen)
-    average_cost, profit, profit_rate = _holding_texts(shares, holding.cost_basis, price)
-    hint = await lang.text("main.hint" if trading else "main.hint_closed", user_id)
-    return await lang.text(
-        "main.info",
-        user_id,
-        status=status,
-        price=_fmt(price),
-        day_open=_fmt(day_open),
-        prev_close=_fmt(prev_close),
-        change=f"{_fmt_signed(change)}%",
-        shares=shares,
-        sellable=sellable,
-        frozen=frozen,
-        avg_cost=average_cost,
-        pnl=profit,
-        pnl_pct=profit_rate,
-        daily_bought=holding.daily_bought,
-        daily_sold=holding.daily_sold,
-        daily_limit=config.trade_daily_limit,
-        float_shares=state.float_shares,
-        total_shares=config.trade_total_shares,
-        hint=hint,
-    )
-
-
 async def render_chart(
     user_id: str,
     chart_day: Optional[date],
@@ -116,9 +61,15 @@ async def render_chart(
 ) -> Optional[bytes]:
     if chart_day is None:
         return None
+    visible_candles = max(1, config.trade_chart_candles)
     try:
-        # chart.title 使用命名占位符 {date}，必须按关键字传参，位置参数会抛 KeyError
-        title = await lang.text("chart.title", user_id, date=chart_day.strftime("%Y-%m-%d"))
+        # chart.title 使用命名占位符 {date}/{count}，必须按关键字传参，位置参数会抛 KeyError
+        title = await lang.text(
+            "chart.title",
+            user_id,
+            date=chart_day.strftime("%Y-%m-%d"),
+            count=visible_candles,
+        )
         empty_text = await lang.text("chart.empty", user_id)
         return await asyncio.to_thread(
             render_kline_chart,
@@ -127,6 +78,7 @@ async def render_chart(
             title,
             empty_text,
             reference_price,
+            visible_candles,
         )
     except Exception:
         logger.exception("渲染 K 线图失败，回退到文本消息")
@@ -160,32 +112,61 @@ async def send_trade_text_with_keyboard(bot: Bot, event: Event, user_id: str, te
     await trade.finish()
 
 
-async def send_market_info(
+async def send_plain_panel(
     bot: Bot,
     event: Event,
     user_id: str,
-    info: str,
+    panel: PanelData,
     chart: Optional[bytes],
 ) -> None:
+    """纯文本面板 + K 线图，供面板图片渲染失败时回退"""
+    text = await build_panel_text(user_id, panel)
+    if chart is None:
+        await trade.finish(text)
+        return
+    try:
+        message = UniMessage().text(text) + UniMessage().image(raw=chart)
+        await message.send(target=event, bot=bot)
+    except Exception:
+        logger.exception("发送 K 线图失败，回退到文本消息")
+        await trade.finish(text)
+        return
+    await trade.finish()
+
+
+async def send_panel(
+    bot: Bot,
+    event: Event,
+    user_id: str,
+    panel: PanelData,
+    chart: Optional[bytes],
+) -> None:
+    """发送交易面板：QQ 官方用 markdown + 按钮，其它适配器把面板渲染成图片"""
+    markdown = await build_panel_markdown(user_id, panel)
     if isinstance(bot, QQBot):
-        text = info
+        text = markdown
         if chart is not None:
             try:
-                image_markdown = await create_image_markdown(chart, bot)
-                text = f"{info}\n\n{image_markdown}"
+                text = f"{text}\n\n{await create_image_markdown(chart, bot)}"
             except Exception:
                 logger.exception("发送 K 线图失败，回退到文本消息")
         await send_trade_text_with_keyboard(bot, event, user_id, text)
         return
-    if chart is None:
-        await trade.finish(info)
-        return
+
     try:
-        message = UniMessage().text(info) + UniMessage().image(raw=chart)
+        panel_image = await md_to_pic(markdown)
+    except Exception:
+        logger.exception("渲染交易面板失败，回退到文本消息")
+        await send_plain_panel(bot, event, user_id, panel, chart)
+        return
+    message = UniMessage().image(raw=panel_image)
+    if chart is not None:
+        message = message + UniMessage().image(raw=chart)
+    try:
         await message.send(target=event, bot=bot)
     except Exception:
-        logger.exception("发送 K 线图失败，回退到文本消息")
-        await trade.finish(info)
+        logger.exception("发送交易面板失败，回退到文本消息")
+        await send_plain_panel(bot, event, user_id, panel, chart)
         return
     await trade.finish()
 
@@ -213,10 +194,11 @@ async def handle_trade_main(bot: Bot, event: Event, user_id: str = get_user_id()
         async with get_session() as session:
             state = await ensure_market(session, now)
             holding = await get_holding(session, user_id, trading_day(now))
-            candles, chart_day = await load_candles(session, state)
-            info = await build_market_info(user_id, now, state, holding)
+            candles = await load_recent_candles(session, max(1, config.trade_chart_candles))
+            panel = build_panel_data(state, holding, now)
             points = [
                 CandlePoint(
+                    day=candle.day,
                     slot=candle.slot,
                     open=candle.open,
                     high=candle.high,
@@ -226,10 +208,11 @@ async def handle_trade_main(bot: Bot, event: Event, user_id: str = get_user_id()
                 )
                 for candle in candles
             ]
-            reference_price = state.day_open if chart_day == state.day else None
+            reference_price = state.day_open or None
+            chart_day = state.day
             await session.commit()
     chart = await render_chart(user_id, chart_day, points, reference_price)
-    await send_market_info(bot, event, user_id, info, chart)
+    await send_panel(bot, event, user_id, panel, chart)
 
 
 @trade.assign("buy")

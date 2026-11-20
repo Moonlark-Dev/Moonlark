@@ -30,9 +30,16 @@ _BACKGROUND = "#F8F9FA"
 _TEXT_COLOR = "#2D3436"
 _MUTED_COLOR = "#7F8C8D"
 
+# 固定展示的蜡烛数量；不足时左侧留白、最新一根靠右，右侧预留参考价标签的位置
+VISIBLE_CANDLES = 120
+# 前一交易日 K 线用高透明度弱化，与当日 K 线区分
+_PREVIOUS_DAY_BODY_ALPHA = 0.22
+_PREVIOUS_DAY_WICK_ALPHA = 0.32
+
 
 @dataclass(frozen=True)
 class CandlePoint:
+    day: date
     slot: int
     open: float
     high: float
@@ -46,12 +53,18 @@ def _slot_label(slot: int) -> str:
     return f"{minutes // 60:02d}:{minutes % 60:02d}"
 
 
-def _render_empty(empty_text: str) -> bytes:
-    figure = Figure(figsize=(10, 4), dpi=150, facecolor=_BACKGROUND)
+def _day_label(day: date) -> str:
+    return f"{day.month:02d}-{day.day:02d}"
+
+
+def _render_empty(title: str, empty_text: str) -> bytes:
+    figure = Figure(figsize=(13, 6.2), dpi=150, facecolor=_BACKGROUND)
     axes = figure.add_subplot(111)
     axes.set_facecolor(_BACKGROUND)
-    axes.text(0.5, 0.5, empty_text, ha="center", va="center", fontsize=18, color=_MUTED_COLOR)
     axes.axis("off")
+    if title:
+        axes.set_title(title, fontsize=15, fontweight="bold", color=_TEXT_COLOR, pad=16)
+    axes.text(0.5, 0.5, empty_text, ha="center", va="center", fontsize=18, color=_MUTED_COLOR)
     return _to_png(figure)
 
 
@@ -61,62 +74,128 @@ def _to_png(figure: Figure) -> bytes:
     return buffer.getvalue()
 
 
+def _day_start_indexes(candles: Sequence[CandlePoint]) -> set[int]:
+    """返回每段交易日在窗口中的首根蜡烛下标（窗口首根蜡烛也算一段的起点）"""
+    indexes = {0}
+    for index in range(1, len(candles)):
+        if candles[index].day != candles[index - 1].day:
+            indexes.add(index)
+    return indexes
+
+
 def render_kline_chart(
-    day: date,
+    current_day: date,
     candles: Sequence[CandlePoint],
     title: str,
     empty_text: str,
     reference_price: Optional[float] = None,
+    visible_candles: int = VISIBLE_CANDLES,
 ) -> bytes:
-    """渲染 5 分钟 K 线图，红涨绿跌；返回 PNG 字节"""
+    """渲染最近若干根 5 分钟 K 线，红涨绿跌；前一交易日的 K 线用高透明度区分。
+
+    Args:
+        current_day: 当前交易日，用于区分当日与前一交易日的蜡烛
+        candles: 按时间升序排列的蜡烛，可跨交易日
+        visible_candles: 固定展示的蜡烛数量；蜡烛不足时在左侧留白
+        reference_price: 参考价（通常为当日开盘价）；落在可视价格区间内时画一条虚线
+    """
     if not title:
-        title = f"{day.isoformat()} 5 分钟 K 线"
+        title = f"{current_day.isoformat()} 5 分钟 K 线"
     with _RENDER_LOCK:
         if not candles:
-            return _render_empty(empty_text)
+            return _render_empty(title, empty_text)
 
-        figure = Figure(figsize=(12, 6), dpi=150, facecolor=_BACKGROUND)
-        axes = figure.add_subplot(111)
-        axes.set_facecolor(_BACKGROUND)
-
+        total = max(1, visible_candles, len(candles))
+        offset = total - len(candles)
         lows = [candle.low for candle in candles]
         highs = [candle.high for candle in candles]
         price_span = max(highs) - min(lows)
+        padding = max(price_span * 0.08, max(highs) * 0.002, 0.01)
+        y_bottom = min(lows) - padding
+        y_top = max(highs) + padding
         body_floor = max(price_span * 0.002, max(highs) * 0.0001, 1e-4)
 
+        figure = Figure(figsize=(13, 6.2), dpi=150, facecolor=_BACKGROUND)
+        axes = figure.add_subplot(111)
+        axes.set_facecolor(_BACKGROUND)
+
         for index, candle in enumerate(candles):
+            position = offset + index
             color = _UP_COLOR if candle.close >= candle.open else _DOWN_COLOR
-            axes.vlines(index, candle.low, candle.high, color=color, linewidth=0.9, zorder=3)
+            is_current_day = candle.day == current_day
+            axes.vlines(
+                position,
+                candle.low,
+                candle.high,
+                color=color,
+                linewidth=0.9,
+                alpha=1.0 if is_current_day else _PREVIOUS_DAY_WICK_ALPHA,
+                zorder=3,
+            )
             bottom = min(candle.open, candle.close)
             height = max(abs(candle.close - candle.open), body_floor)
             axes.add_patch(
                 Rectangle(
-                    (index - 0.32, bottom),
+                    (position - 0.32, bottom),
                     0.64,
                     height,
                     facecolor=color,
                     edgecolor=color,
                     linewidth=0.5,
+                    alpha=1.0 if is_current_day else _PREVIOUS_DAY_BODY_ALPHA,
                     zorder=4,
                 ),
             )
 
-        if reference_price is not None:
+        day_starts = _day_start_indexes(candles)
+        for index in day_starts - {0}:
+            axes.axvline(
+                offset + index - 0.5,
+                color=_MUTED_COLOR,
+                linestyle=(0, (4, 3)),
+                linewidth=1.0,
+                alpha=0.5,
+                zorder=2,
+            )
+
+        # 参考价落在可视价格区间外时不画（axhline 会被裁剪，text 不会，会留下悬浮数字）
+        if reference_price is not None and y_bottom <= reference_price <= y_top:
             axes.axhline(reference_price, color=_MUTED_COLOR, linestyle="--", linewidth=1, alpha=0.7, zorder=2)
+            axes.text(
+                total + 2.4,
+                reference_price,
+                f"{reference_price:.2f}",
+                ha="right",
+                va="center",
+                fontsize=8,
+                color=_MUTED_COLOR,
+                bbox={"boxstyle": "round,pad=0.15", "facecolor": _BACKGROUND, "edgecolor": "none", "alpha": 0.85},
+            )
 
-        positions = list(range(0, len(candles), 12))
-        axes.set_xticks(positions)
-        axes.set_xticklabels([_slot_label(candles[position].slot) for position in positions], fontsize=9)
-        axes.set_xlim(-1, len(candles))
+        # 日期刻度优先保留；其余时间刻度之间至少留出 label_gap 根蜡烛，避免标签重叠
+        tick_indexes = sorted(day_starts)
+        label_gap = max(2, round(total * 0.05))
+        tick_step = max(1, len(candles) // 8)
+        for index in [*range(tick_step, len(candles), tick_step), len(candles) - 1]:
+            if all(abs(index - kept) >= label_gap for kept in tick_indexes):
+                tick_indexes.append(index)
+        tick_indexes.sort()
+        tick_positions = [offset + index for index in tick_indexes]
+        tick_labels = [
+            _day_label(candles[index].day) if index in day_starts else _slot_label(candles[index].slot)
+            for index in tick_indexes
+        ]
+        axes.set_xticks(tick_positions)
+        axes.set_xticklabels(tick_labels, fontsize=8)
 
-        padding = max(price_span * 0.08, max(highs) * 0.002, 0.01)
-        axes.set_ylim(min(lows) - padding, max(highs) + padding)
+        axes.set_xlim(-1.5, total + 2.5)
+        axes.set_ylim(y_bottom, y_top)
         axes.set_ylabel("VimCoin", fontsize=10, color=_MUTED_COLOR)
 
         last = candles[-1]
         axes.annotate(
             f"{last.close:.2f}",
-            (len(candles) - 1, last.close),
+            (offset + len(candles) - 1, last.close),
             textcoords="offset points",
             xytext=(0, 14),
             ha="center",
@@ -126,7 +205,7 @@ def render_kline_chart(
             bbox={"boxstyle": "round,pad=0.2", "facecolor": "white", "edgecolor": _MUTED_COLOR, "alpha": 0.9},
         )
 
-        axes.set_title(title, fontsize=16, fontweight="bold", color=_TEXT_COLOR, pad=16)
+        axes.set_title(title, fontsize=15, fontweight="bold", color=_TEXT_COLOR, pad=16)
         axes.grid(visible=True, axis="y", alpha=0.25, linestyle="--", linewidth=0.6)
         axes.set_axisbelow(True)
         for spine in ("top", "right"):

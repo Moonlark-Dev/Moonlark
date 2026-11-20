@@ -4,9 +4,10 @@ help:
     在 Moonlark 证券交易所低买高卖赚取 VimCoin 的模拟炒股玩法（全场共用同一只股票，无需填写股票代码）。
 
     1. 开市时间：每天 08:00–24:00；其余时间休市，只能查看行情、不能买卖。
-    2. 股价变化：开市期间每 5 分钟自动波动一次，玩家买入也会推高股价、卖出会压低股价（K 线图红涨绿跌）。
-    3. 隔日可卖：当天买入的股票会先冻结，第二天 08:00 开市后才能卖出。
-    4. 费用与限额：每次买卖各收 1% 手续费；每人每天最多买入 1000 股、卖出 1000 股（市场共 100000 股）。
+    2. 股价变化：开市期间每 5 分钟自动波动一次，玩家买入也会推高股价、卖出会压低股价（K 线图红涨绿跌，固定展示最近若干根蜡烛，前一交易日的蜡烛以浅色显示）。
+    3. 隔夜跳空：每天 08:00 开市时会先按随机缺口跳空一次，跳空的方向与幅度每天不同。
+    4. 隔日可卖：当天买入的股票会先冻结，第二天 08:00 开市后才能卖出。
+    5. 费用与限额：每次买卖各收 1% 手续费；每人每天最多买入 1000 股、卖出 1000 股。
 
     按比例或 all 买入时会自动预留手续费；QQ 用户可直接点击消息下方的按钮操作。
   usage1: trade (查看当前股价、K 线图与我的持仓)
@@ -22,17 +23,32 @@ main:
     📈 Moonlark 证券交易所
     状态：{status}
     当前价格：{price} VimCoin
-    今日开盘：{day_open} VimCoin
-    昨日收盘：{prev_close} VimCoin
-    今日涨跌：{change}
-    你的持股：{shares} 股（可卖 {sellable} 股，今日买入冻结 {frozen} 股）
+    今日涨跌：{trend} {change_pct}（{change}）
+    今开：{day_open} VimCoin（跳空 {gap_pct}） · 昨收：{prev_close} VimCoin
+    你的持股：{shares} 股（可卖 {sellable} 股，冻结 {frozen} 股）
     持仓成本：{avg_cost} VimCoin/股
     浮动盈亏：{pnl} VimCoin（{pnl_pct}）
     今日交易：买入 {daily_bought}/{daily_limit} 股，卖出 {daily_sold}/{daily_limit} 股
-    市场流通：{float_shares}/{total_shares} 股
     {hint}
   hint: 发送 {__prefix__}trade buy 买入、{__prefix__}trade sell 卖出（详见 {__prefix__}help trade）。
   hint_closed: 休市期间无法交易，开市后可继续操作（详见 {__prefix__}help trade）。
+panel:
+  title: "## 📈 Moonlark 证券交易所"
+  status_open: "> 🟢 **交易中** · 每日 08:00–24:00"
+  status_closed: "> ⚪ **休市** · 每日 08:00 开市"
+  market_title: "### 行情"
+  price: "- **最新价**：**{price} VimCoin**"
+  change: "- 今日涨跌：{change_formula}（{change}）"
+  open_close: "- 今开 {day_open}（跳空 {gap_pct}） · 昨收 {prev_close}"
+  holding_title: "### 我的持仓"
+  holding_shares: "- 持股 **{shares}** 股 · 可卖 {sellable} 股 · 冻结 {frozen} 股"
+  holding_cost: "- 成本 **{average_cost} VimCoin**"
+  holding_profit: "- 浮动盈亏 {profit_formula} VimCoin（{profit_rate_formula}）"
+  holding_empty: "- 暂无持仓，发送 {__prefix__}trade buy 买入"
+  trading_title: "### 今日交易"
+  trading: "- 买入 **{daily_bought}/{daily_limit}** 股 · 卖出 **{daily_sold}/{daily_limit}** 股"
+  hint: "发送 {__prefix__}trade buy 买入、{__prefix__}trade sell 卖出（详见 {__prefix__}help trade）。"
+  hint_closed: "休市期间无法交易，开市后可继续操作（详见 {__prefix__}help trade）。"
 buy:
   success: |
     买入成功！
@@ -61,7 +77,7 @@ sell:
     {note}
   note_daily: 受每日卖出限额限制，实际只卖出了 {shares} 股。
 chart:
-  title: Moonlark 证券交易所 · {date} 5 分钟 K 线
+  title: Moonlark 证券交易所 · {date} · 最近 {count} 根 5 分钟 K 线
   empty: 暂无 K 线数据
 error:
   not_trading: 当前为休市时间，交易时段为每日 08:00–24:00。

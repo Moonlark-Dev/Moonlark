@@ -1,5 +1,5 @@
 from datetime import date, datetime
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -27,6 +27,13 @@ class FakeSession:
 
     async def flush(self) -> None:
         return None
+
+    async def scalars(self, _statement):
+        """load_recent_candles 的替身：按 (day, slot) 倒序返回全部 K 线（忽略 limit）"""
+        from nonebot_plugin_trade.models import Candle
+
+        candles = [obj for (model, _key), obj in self.objects.items() if model is Candle]
+        return sorted(candles, key=lambda candle: (candle.day, candle.slot), reverse=True)
 
 
 class FakeUser:
@@ -175,6 +182,46 @@ async def test_tick_price_and_floor():
     first_candle = session.objects[(Candle, (TRADE_DAY, 11))]
     assert first_candle.open == pytest.approx(10.0)
     assert first_candle.close == pytest.approx(10.1)
+    assert first_candle.high >= max(first_candle.open, first_candle.close)
+    assert first_candle.low <= min(first_candle.open, first_candle.close)
+
+
+@pytest.mark.asyncio
+async def test_tick_generates_wicks_with_brownian_bridge():
+    from nonebot_plugin_trade.market import apply_tick
+    from nonebot_plugin_trade.models import Candle
+
+    session = FakeSession()
+    state = make_state(price=10.0, target_minute=720, label1="up", label2="up")
+
+    with (
+        patch("nonebot_plugin_trade.market._rand_float", side_effect=[0.0, 1.0]),
+        patch("nonebot_plugin_trade.market._rand_normal", return_value=2.0),
+    ):
+        await apply_tick(state, datetime(2026, 11, 19, 9, 0), session)
+
+    candle = session.objects[(Candle, (TRADE_DAY, 11))]
+    assert candle.close == pytest.approx(10.1)
+    # 布朗桥在开收盘价之间补出盘中路径，影线会超出实体
+    assert candle.high > candle.close
+    assert candle.low == pytest.approx(10.0)
+
+
+def test_brownian_bridge_extremes():
+    from nonebot_plugin_trade.market import _brownian_bridge_extremes
+
+    with patch("nonebot_plugin_trade.market._rand_normal", side_effect=[2.0, -2.0] + [0.0] * 13):
+        high, low = _brownian_bridge_extremes(10.0, 10.0, 0.005)
+    assert high > 10.0
+    assert low < 10.0
+    # 偏离上限为 3σ√(t(1-t))，不会生成夸张的影线
+    assert high - 10.0 <= 3.0 * 0.005 * 10.0 * 0.5 + 1e-9
+    assert 10.0 - low <= 3.0 * 0.005 * 10.0 * 0.5 + 1e-9
+
+    # 价格贴近地板价时，布朗桥采样点同样不会低于 0.01
+    with patch("nonebot_plugin_trade.market._rand_normal", return_value=-3.0):
+        _, low = _brownian_bridge_extremes(0.02, 0.01, 1.0)
+    assert low == pytest.approx(0.01)
 
 
 @pytest.mark.asyncio
@@ -186,26 +233,52 @@ async def test_ensure_market_cross_day():
     with (
         patch("nonebot_plugin_trade.market._random_target_minute", return_value=720),
         patch("nonebot_plugin_trade.market._random_label", return_value="up"),
+        patch("nonebot_plugin_trade.market._random_gap_ratio", return_value=0.02) as gap,
     ):
         state = await ensure_market(session, datetime(2026, 11, 19, 14, 0))
+        # 冷启动没有历史收盘价，不制造隔夜跳空
+        assert gap.call_count == 0
         assert state.day == TRADE_DAY
-        assert state.day_open == pytest.approx(10.0)
         assert state.prev_close == pytest.approx(10.0)
+        assert state.day_open == pytest.approx(10.0)
         assert state.last_tick_at == datetime(2026, 11, 19, 14, 0)
         assert len([key for key in session.objects if key[0] is Candle]) == 72
         assert state.price > 0
 
         await ensure_market(session, datetime(2026, 11, 19, 23, 59))
+        assert gap.call_count == 0
         assert state.day == TRADE_DAY
         assert state.last_tick_at == datetime(2026, 11, 19, 23, 55)
         assert len([key for key in session.objects if key[0] is Candle]) == 191
         close_price = state.price
 
         await ensure_market(session, datetime(2026, 11, 20, 8, 0))
+        # 08:00 开市立即跳空一次：今开在昨收基础上跳 2%
+        assert gap.call_count == 1
         assert state.day == date(2026, 11, 20)
-        assert state.day_open == pytest.approx(close_price)
+        # 08:00 的跳空 tick 只更新价格，不写 K 线，缺口保留在昨收与今开之间
         assert state.prev_close == pytest.approx(close_price)
+        assert state.day_open == pytest.approx(round(close_price * 1.02, 6))
+        assert state.price == pytest.approx(state.day_open)
         assert state.last_tick_at == datetime(2026, 11, 20, 8, 0)
+        assert len([key for key in session.objects if key[0] is Candle]) == 191
+
+        # 跳空每天只发生一次，08:05 起恢复正常 tick；当日首根 K 线从今开起步
+        day_open = state.day_open
+        await ensure_market(session, datetime(2026, 11, 20, 8, 5))
+        assert gap.call_count == 1
+        assert state.day_open == pytest.approx(day_open)
+        assert state.last_tick_at == datetime(2026, 11, 20, 8, 5)
+        assert len([key for key in session.objects if key[0] is Candle]) == 192
+        first_candle = session.objects[(Candle, (date(2026, 11, 20), 0))]
+        assert first_candle.open == pytest.approx(day_open)
+
+        # 跨多日离线补算：每个 08:00 各跳一次
+        await ensure_market(session, datetime(2026, 11, 22, 10, 0))
+        assert gap.call_count == 3
+        assert state.day == date(2026, 11, 22)
+        assert state.last_tick_at == datetime(2026, 11, 22, 10, 0)
+        assert state.price > 0
 
 
 @pytest.mark.asyncio
@@ -377,13 +450,32 @@ def test_chart_renders_png():
     from nonebot_plugin_trade.chart import CandlePoint, render_kline_chart
 
     points = [
-        CandlePoint(slot=0, open=10.0, high=10.1, low=9.9, close=10.05, volume=10),
-        CandlePoint(slot=1, open=10.05, high=10.2, low=10.0, close=10.1, volume=20),
+        CandlePoint(day=date(2026, 11, 18), slot=189, open=9.9, high=10.0, low=9.8, close=9.95),
+        CandlePoint(day=date(2026, 11, 18), slot=190, open=9.95, high=10.1, low=9.9, close=10.05),
+        CandlePoint(day=date(2026, 11, 19), slot=0, open=10.2, high=10.3, low=10.1, close=10.25, volume=10),
     ]
-    data = render_kline_chart(date(2026, 11, 19), points, "test", "empty")
+    data = render_kline_chart(date(2026, 11, 19), points, "test", "empty", reference_price=10.2, visible_candles=8)
     assert data.startswith(b"\x89PNG\r\n\x1a\n")
     empty = render_kline_chart(date(2026, 11, 19), [], "test", "empty")
     assert empty.startswith(b"\x89PNG\r\n\x1a\n")
+
+
+@pytest.mark.asyncio
+async def test_load_recent_candles_spans_days_in_ascending_order():
+    from nonebot_plugin_trade.market import load_recent_candles
+    from nonebot_plugin_trade.models import Candle
+
+    session = FakeSession()
+    for day, slot in ((date(2026, 11, 18), 190), (date(2026, 11, 19), 0), (date(2026, 11, 19), 1)):
+        session.add(Candle(day=day, slot=slot, open=10.0, high=10.0, low=10.0, close=10.0))
+
+    candles = await load_recent_candles(session, 120)
+
+    assert [(candle.day, candle.slot) for candle in candles] == [
+        (date(2026, 11, 18), 190),
+        (date(2026, 11, 19), 0),
+        (date(2026, 11, 19), 1),
+    ]
 
 
 def test_help_does_not_expose_internal_mechanism():
@@ -401,6 +493,10 @@ def test_help_does_not_expose_internal_mechanism():
     assert "目标时间" not in details
     assert "11:00" not in details
     assert "20:00" not in details
+    # 面板不再展示流通股数，帮助里也不应出现总股本
+    assert "100000" not in details
+    # 隔夜跳空是玩家可见的行情机制，帮助需要说明
+    assert "隔夜跳空" in details
     # 避免在 Markdown 渲染时把尖括号当成 HTML 标签吞掉，或 4 空格缩进触发代码块
     assert not re.search(r"<[^>\n]+>", details)
     assert not any(line.startswith("    ") for line in details.splitlines())
@@ -442,15 +538,17 @@ async def test_trade_keyboard_buttons():
 
 @pytest.mark.asyncio
 async def test_chart_title_uses_named_date_placeholder():
-    """回归：chart.title's template uses the named placeholder ``{date}``.
+    """回归：chart.title 的模板使用命名占位符 ``{date}`` / ``{count}``。
 
-    渲染 K 线时必须按关键字传 date；传位置参数会让 ``str.format`` 抛
-    ``KeyError: 'date'``，异常被 nonebot 吞掉后 ``/trade`` 静默无响应
+    渲染 K 线时必须按关键字传参；传位置参数会让 ``str.format`` 抛
+    ``KeyError``，异常被 nonebot 吞掉后 ``/trade`` 静默无响应
     （私聊、群聊与适配器无关）。
     """
     from nonebot_plugin_trade.__main__ import lang, render_chart
 
-    assert "2026-11-19" in await lang.text("chart.title", "tester", date="2026-11-19")
+    title = await lang.text("chart.title", "tester", date="2026-11-19", count=120)
+    assert "2026-11-19" in title
+    assert "120" in title
 
     with patch("nonebot_plugin_trade.__main__.render_kline_chart", return_value=b"png"):
         assert await render_chart("tester", TRADE_DAY, [], 10.0) == b"png"
@@ -463,3 +561,271 @@ async def test_render_chart_falls_back_when_text_formatting_fails(monkeypatch: p
 
     monkeypatch.setattr(trade_main.lang, "text", AsyncMock(side_effect=KeyError("date")))
     assert await trade_main.render_chart("tester", TRADE_DAY, [], 10.0) is None
+
+
+def make_panel_data(
+    state_overrides: dict | None = None,
+    holding_overrides: dict | None = None,
+    now: datetime | None = None,
+):
+    from nonebot_plugin_trade.panel import build_panel_data
+
+    return build_panel_data(
+        make_state(**(state_overrides or {})),
+        make_holding(**(holding_overrides or {})),
+        now or datetime(2026, 11, 19, 10, 0),
+    )
+
+
+@pytest.mark.asyncio
+async def test_panel_markdown_has_hierarchy_and_hides_float_shares():
+    from nonebot_plugin_trade.panel import build_panel_markdown
+
+    data = make_panel_data(
+        {"price": 10.5, "day_open": 10.0, "prev_close": 9.9},
+        {"shares": 200, "frozen_shares": 100, "cost_basis": 2000.0, "daily_bought": 100},
+    )
+    markdown = await build_panel_markdown("panel-user", data)
+
+    assert markdown.startswith("## 📈 Moonlark 证券交易所")
+    assert "**交易中**" in markdown
+    assert "### 行情" in markdown
+    assert "- **最新价**：**10.50 VimCoin**" in markdown
+    assert r"- 今日涨跌：\(\color{red}{\blacktriangle\ {+6.06\%}}\)（+0.60）" in markdown
+    assert "- 今开 10.00（跳空 +1.01%） · 昨收 9.90" in markdown
+    assert "### 我的持仓" in markdown
+    assert "- 持股 **200** 股 · 可卖 100 股 · 冻结 100 股" in markdown
+    assert "- 成本 **10.00 VimCoin**" in markdown
+    assert r"- 浮动盈亏 \(\color{red}{+100.00}\) VimCoin（\(\color{red}{+5.00\%}\)）" in markdown
+    assert "### 今日交易" in markdown
+    assert "- 买入 **100/1000** 股" in markdown
+    assert "市场流通" not in markdown
+    assert "100000" not in markdown
+
+
+@pytest.mark.asyncio
+async def test_panel_markdown_renders_change_text_as_colored_formula():
+    """涨跌文本用 LaTeX 行内公式显示：红涨绿跌，平盘用灰色
+
+    QQ 官方 markdown 没有给文字上色的语法，``\\(...\\)`` 会交给公式渲染器，
+    ``\\color{...}`` 才能上色；公式里的 ``%`` 必须转义，否则会被当成 LaTeX 注释。
+    """
+    from nonebot_plugin_trade.panel import build_panel_markdown
+
+    up = await build_panel_markdown("panel-user", make_panel_data({"price": 10.5, "prev_close": 10.0}))
+    assert r"\(\color{red}{\blacktriangle\ {+5.00\%}}\)（+0.50）" in up
+
+    down = await build_panel_markdown("panel-user", make_panel_data({"price": 9.5, "prev_close": 10.0}))
+    assert r"\(\color{green}{\blacktriangledown\ {-5.00\%}}\)（-0.50）" in down
+
+    flat = await build_panel_markdown("panel-user", make_panel_data({"price": 10.0, "prev_close": 10.0}))
+    assert r"\(\color{gray}{\cdot\ {+0.00\%}}\)（+0.00）" in flat
+
+
+@pytest.mark.asyncio
+async def test_panel_markdown_renders_profit_text_as_colored_formula():
+    """浮动盈亏与盈亏比例同样用 LaTeX 行内公式上色：盈利红、亏损绿、持平灰"""
+    from nonebot_plugin_trade.panel import build_panel_markdown
+
+    holding = {"shares": 200, "frozen_shares": 0, "cost_basis": 2000.0}
+    gain = await build_panel_markdown("panel-user", make_panel_data({"price": 10.5}, holding))
+    assert r"浮动盈亏 \(\color{red}{+100.00}\) VimCoin（\(\color{red}{+5.00\%}\)）" in gain
+
+    loss = await build_panel_markdown("panel-user", make_panel_data({"price": 9.5}, holding))
+    assert r"浮动盈亏 \(\color{green}{-100.00}\) VimCoin（\(\color{green}{-5.00\%}\)）" in loss
+
+    flat = await build_panel_markdown("panel-user", make_panel_data({"price": 10.0}, holding))
+    assert r"浮动盈亏 \(\color{gray}{+0.00}\) VimCoin（\(\color{gray}{+0.00\%}\)）" in flat
+
+
+@pytest.mark.asyncio
+async def test_panel_markdown_closed_market_and_empty_holding():
+    from nonebot_plugin_trade.panel import build_panel_markdown
+
+    data = make_panel_data(now=datetime(2026, 11, 19, 7, 0))
+    markdown = await build_panel_markdown("panel-user", data)
+
+    assert "**休市**" in markdown
+    assert "- 暂无持仓" in markdown
+    assert "浮动盈亏" not in markdown
+
+
+@pytest.mark.asyncio
+async def test_panel_text_fallback_hides_float_shares():
+    from nonebot_plugin_trade.panel import build_panel_text
+
+    data = make_panel_data(
+        {"price": 10.5, "day_open": 10.0, "prev_close": 9.9},
+        {"shares": 200, "frozen_shares": 0, "cost_basis": 2000.0},
+    )
+    text = await build_panel_text("panel-user", data)
+
+    assert "📈 Moonlark 证券交易所" in text
+    assert "状态：交易中（08:00–24:00）" in text
+    assert "当前价格：10.50 VimCoin" in text
+    assert "今日涨跌：▲ +6.06%（+0.60）" in text
+    assert "\\(" not in text
+    assert "今开：10.00 VimCoin（跳空 +1.01%） · 昨收：9.90 VimCoin" in text
+    assert "你的持股：200 股（可卖 200 股，冻结 0 股）" in text
+    assert "市场流通" not in text
+    assert "100000" not in text
+
+
+class _FakeUniMessage:
+    """只记录 image 段的 UniMessage 替身"""
+
+    def __init__(self) -> None:
+        self.images: list[bytes] = []
+
+    def image(self, raw: bytes = b"", **_kwargs: object) -> "_FakeUniMessage":
+        self.images.append(raw)
+        return self
+
+    def __add__(self, other: "_FakeUniMessage") -> "_FakeUniMessage":
+        self.images += other.images
+        return self
+
+    async def send(self, **_kwargs: object) -> None:
+        return None
+
+
+@pytest.mark.asyncio
+async def test_send_panel_renders_markdown_image_for_other_adapters(monkeypatch: pytest.MonkeyPatch):
+    from nonebot_plugin_trade import __main__ as trade_main
+
+    rendered: dict[str, str] = {}
+    sent: dict[str, _FakeUniMessage] = {}
+
+    async def fake_md_to_pic(markdown: str) -> bytes:
+        rendered["markdown"] = markdown
+        return b"panel-image"
+
+    class RecordingUniMessage(_FakeUniMessage):
+        async def send(self, **_kwargs: object) -> None:
+            sent["message"] = self
+
+    monkeypatch.setattr(trade_main, "md_to_pic", fake_md_to_pic)
+    monkeypatch.setattr(trade_main, "UniMessage", RecordingUniMessage)
+    finished = AsyncMock()
+    monkeypatch.setattr(trade_main.trade, "finish", finished)
+
+    await trade_main.send_panel(MagicMock(), MagicMock(), "panel-user", make_panel_data(), b"chart-image")
+
+    assert "## 📈 Moonlark 证券交易所" in rendered["markdown"]
+    assert sent["message"].images == [b"panel-image", b"chart-image"]
+    finished.assert_awaited()
+
+
+@pytest.mark.asyncio
+async def test_send_panel_falls_back_to_text_when_image_render_fails(monkeypatch: pytest.MonkeyPatch):
+    from nonebot_plugin_trade import __main__ as trade_main
+
+    async def broken_md_to_pic(_markdown: str) -> bytes:
+        raise RuntimeError("browser not available")
+
+    fallback = AsyncMock()
+    monkeypatch.setattr(trade_main, "md_to_pic", broken_md_to_pic)
+    monkeypatch.setattr(trade_main, "send_plain_panel", fallback)
+
+    await trade_main.send_panel(MagicMock(), MagicMock(), "panel-user", make_panel_data(), None)
+
+    fallback.assert_awaited()
+
+
+@pytest.mark.asyncio
+async def test_send_panel_appends_chart_image_markdown_for_qq(monkeypatch: pytest.MonkeyPatch):
+    from nonebot_plugin_trade import __main__ as trade_main
+
+    class FakeQQBot:
+        pass
+
+    sent: dict[str, str] = {}
+
+    async def fake_create_image_markdown(_chart: bytes, _bot: object) -> str:
+        return "![K 线](qqbot-media://example)"
+
+    async def fake_send_trade_text_with_keyboard(_bot: object, _event: object, _user_id: str, text: str) -> None:
+        sent["text"] = text
+
+    monkeypatch.setattr(trade_main, "QQBot", FakeQQBot)
+    monkeypatch.setattr(trade_main, "create_image_markdown", fake_create_image_markdown)
+    monkeypatch.setattr(trade_main, "send_trade_text_with_keyboard", fake_send_trade_text_with_keyboard)
+
+    await trade_main.send_panel(FakeQQBot(), MagicMock(), "panel-user", make_panel_data(), b"chart")
+
+    assert sent["text"].startswith("## 📈 Moonlark 证券交易所")
+    assert sent["text"].endswith("![K 线](qqbot-media://example)")
+
+
+def test_panel_change_uses_previous_close_when_gap_down():
+    """跳空低开且价格低于昨收：按昨收计显示下跌；若按今开计会误显示上涨"""
+    data = make_panel_data({"price": 9.9, "day_open": 9.7, "prev_close": 10.0})
+
+    assert data.change == "-0.10"
+    assert data.change_pct == "-1.00%"
+    assert data.gap_pct == "-3.00%"
+    assert data.trend == "▼"
+
+
+@pytest.mark.asyncio
+async def test_tick_keeps_trade_extremes():
+    """tick 的布朗桥只扩展、不覆盖成交写入的 high/low"""
+    from nonebot_plugin_trade.market import apply_tick, update_candle_on_trade
+    from nonebot_plugin_trade.models import Candle
+
+    session = FakeSession()
+    state = make_state(price=10.5, target_minute=720, label1="up", label2="up")
+    await update_candle_on_trade(session, state, datetime(2026, 11, 19, 8, 55), 10.0, 10.5, 100)
+    candle = session.objects[(Candle, (TRADE_DAY, 11))]
+    assert candle.high == pytest.approx(10.5)
+    assert candle.low == pytest.approx(10.0)
+
+    with (
+        patch("nonebot_plugin_trade.market._rand_float", side_effect=[0.999, 1.0]),
+        patch("nonebot_plugin_trade.market._rand_normal", return_value=-2.0),
+    ):
+        await apply_tick(state, datetime(2026, 11, 19, 9, 0), session)
+
+    assert candle.high == pytest.approx(10.5)
+    assert candle.low == pytest.approx(10.0)
+    assert candle.close == pytest.approx(10.395)
+
+
+def test_chart_reference_outside_visible_range_skips_label(monkeypatch: pytest.MonkeyPatch):
+    """参考价落到可视区间外时只跳过虚线与标签，不应留下悬浮的画布外数字"""
+    from matplotlib.axes import Axes
+
+    from nonebot_plugin_trade.chart import CandlePoint, render_kline_chart
+
+    points = [CandlePoint(day=date(2026, 11, 19), slot=0, open=10.0, high=10.1, low=9.9, close=10.05)]
+    labels: list[tuple] = []
+    original_text = Axes.text
+
+    def spy_text(self, *args, **kwargs):
+        labels.append(args)
+        return original_text(self, *args, **kwargs)
+
+    monkeypatch.setattr(Axes, "text", spy_text)
+
+    outside = render_kline_chart(
+        date(2026, 11, 19),
+        points,
+        "test",
+        "empty",
+        reference_price=99.0,
+        visible_candles=8,
+    )
+    assert outside.startswith(b"\x89PNG\r\n\x1a\n")
+    assert labels == []
+
+    labels.clear()
+    inside = render_kline_chart(
+        date(2026, 11, 19),
+        points,
+        "test",
+        "empty",
+        reference_price=10.05,
+        visible_candles=8,
+    )
+    assert inside.startswith(b"\x89PNG\r\n\x1a\n")
+    assert len(labels) == 1
