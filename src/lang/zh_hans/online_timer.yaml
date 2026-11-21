@@ -1,15 +1,32 @@
 duration:
   minute: "{}分钟"
   hr: "{}小时{}分钟"
+  day: "{}天{}小时"
 image:
   title: "{} 的在线时间统计"
   user_id: "用户ID: {}"
   three_day: "近三天总在线时间: {}"
   today: "今日在线时间: {}"
+heatmap:
+  title: "近 {} 天的在线概率"
+  low: 低
+  high: 高
+  weekday1: 周一
+  weekday2: 周二
+  weekday3: 周三
+  weekday4: 周四
+  weekday5: 周五
+  weekday6: 周六
+  weekday7: 周日
+  now_probability: "现在在线概率: {:.0%}"
+  now_probability_basis: "（近 {} 天{} {}-{} 的同期记录）"
+  last_seen: "最近在线: {}前"
+  last_seen_just_now: "最近在线: 刚刚"
+  last_seen_none: "最近在线: 暂无记录"
 rank:
     title: 近三天在线时间排行（分钟）
 help:
-  details: 查询 Moonlark 记录的群友在线时间段
+  details: 查询 Moonlark 记录的群友在线时间段，以及某个时间点在线的概率
   description: 在线时间段
   usage1: online-timer [@用户]
   usage2: online-timer rank (在线排行)
