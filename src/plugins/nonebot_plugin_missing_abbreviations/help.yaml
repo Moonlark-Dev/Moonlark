@@ -1,0 +1,3 @@
+plugin: 'missing_abbreviations'
+commands:
+  'missing-abbreviations': help;5;game
