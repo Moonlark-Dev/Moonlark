@@ -16,7 +16,7 @@ from nonebot_plugin_orm import get_session, AsyncSession
 
 languages: dict[str, LanguageData] = {}
 config = get_plugin_config(Config)
-builtin_format = {"__prefix__": config.command_start[0]}
+builtin_format = {"__prefix__": config.command_prefix or config.command_start[0]}
 
 
 @get_driver().on_startup
