@@ -238,11 +238,11 @@ class LLMRequestSession(Generic[T2]):
                     "type": "function",
                     "function": {"name": state["name"], "arguments": state["arguments"]},
                 }
-                for state in tool_calls.values()
+                for _, state in sorted(tool_calls.items())
             ]
         self.messages.append(assistant_message)
         if tool_calls:
-            for state in tool_calls.values():
+            for _, state in sorted(tool_calls.items()):
                 await self.call_function(state["id"], state["name"], json.loads(state["arguments"]))
             if not self._content_yielded and self.on_tool_round_complete:
                 await self.on_tool_round_complete()
