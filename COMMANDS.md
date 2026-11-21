@@ -214,7 +214,7 @@ Moonlark 权限控制 (仅 SUPERUSER 可用)
 - `/bag usage <INDEX> / bag use <INDEX> (查看物品的使用指令，QQ 平台可点击按钮快速填入指令)`
 ## `gal-mode`: 私聊备选回复
 
-开启后，私聊中的回复会延迟一条发送，并在每轮结束时附带 1~3 条备选回复按钮，点击按钮即可发送对应内容。该功能与私聊流式发送（chat stream）互斥。
+开启后，私聊中的回复会延迟一条发送，并在每轮结束时附带 1~3 条备选回复按钮，点击按钮即可发送对应内容。该功能与私聊流式发送（chat stream，实验性）互斥。
 - `/gal-mode on (开启私聊备选回复)`
 - `/gal-mode off (关闭私聊备选回复)`
 ## `id`: 查询用户 ID
@@ -413,7 +413,7 @@ Moonlark 投票
 - `/cave-prompt on|off (开启/关闭私聊图片投稿询问)`
 ## `chat`: 主动水群
 
-基于 LLM 的主动水群功能，可以尝试用于活跃群气氛。（启用后将会收集、处理、并储存启用群聊的聊天记录和群员的昵称；在私聊中使用 chat on / chat off 可以开关私聊 Chat）在群聊中可通过 chat enhance 开关启用回复增强：开启后 Moonlark 发送的每条消息都会先按当前 Chat 提示词与最近对话重写一次（仅 OpenAI Provider 生效）。私聊中默认开启流式发送（chat stream），回复会随模型输出逐字出现，与 gal-mode 互斥。
+基于 LLM 的主动水群功能，可以尝试用于活跃群气氛。（启用后将会收集、处理、并储存启用群聊的聊天记录和群员的昵称；在私聊中使用 chat on / chat off 可以开关私聊 Chat）在群聊中可通过 chat enhance 开关启用回复增强：开启后 Moonlark 发送的每条消息都会先按当前 Chat 提示词与最近对话重写一次（仅 OpenAI Provider 生效）。私聊中可用 chat stream 开启实验性的流式发送（默认关闭），回复会随模型输出逐字出现，与 gal-mode 互斥。
 - `/chat switch (切换功能启用状态)`
 - `/chat on (启用功能)`
 - `/chat off (禁用功能)`
@@ -435,7 +435,7 @@ Moonlark 投票
 - `/chat model [openai|gemini] [会话ID] (查看或设置模型 Provider，省略会话ID时设置全局默认[SU])`
 - `/chat model default [会话ID] (恢复全局默认模型 Provider，带会话ID时该会话恢复跟随全局[SU])`
 - `/chat enhance <on|off> (在群聊中开启或关闭回复增强)`
-- `/chat stream <on|off> (在私聊中开启或关闭流式发送，与 gal-mode 互斥)`
+- `/chat stream <on|off> (在私聊中开启或关闭实验性流式发送，默认关闭，与 gal-mode 互斥)`
 ## `decision`: 虚假处分通知
 
 根据群内最近 300 条消息，对指定群员生成一份符合公文格式的虚假处分通知（整活用）。

@@ -292,8 +292,8 @@ async def test_chat_stream_command_toggles_and_disables_gal_mode(monkeypatch: py
     assert finished == ["command.stream.disabled"]
 
 
-async def test_chat_stream_command_shows_default_on_state(monkeypatch: pytest.MonkeyPatch) -> None:
-    """没有配置记录时展示默认开启状态，不写库"""
+async def test_chat_stream_command_shows_default_off_state(monkeypatch: pytest.MonkeyPatch) -> None:
+    """没有配置记录时展示默认关闭状态（实验性功能），不写库"""
     from nonebot_plugin_chat.matcher import chat as module
 
     class _Stop(Exception):
@@ -322,7 +322,7 @@ async def test_chat_stream_command_shows_default_on_state(monkeypatch: pytest.Mo
     with pytest.raises(_Stop):
         await handler.handle_stream()
 
-    assert finished == ["command.stream.current_on"]
+    assert finished == ["command.stream.current_off"]
     handler.session.merge.assert_not_awaited()
 
 

@@ -466,14 +466,15 @@ class CommandHandler:
             await lang.finish("command.stream.private_only", self.user_id)
         action = self.argv[1].strip().lower() if len(self.argv) > 1 else ""
         if action not in ("on", "off"):
-            enabled = self.private_config.stream if self.private_config is not None else True
+            # 实验性功能，没有配置记录时按默认关闭处理
+            enabled = self.private_config.stream if self.private_config is not None else False
             key = "command.stream.current_on" if enabled else "command.stream.current_off"
             await lang.finish(key, self.user_id)
 
         enabled = action == "on"
         config = self.private_config
         if config is None:
-            # 私聊 Chat 与流式发送都默认开启
+            # 私聊 Chat 默认开启；流式发送是实验性功能，按用户这次选择写入
             config = PrivateChatConfig(user_id=self.user_id, enabled=True, stream=enabled)
         else:
             config.stream = enabled
