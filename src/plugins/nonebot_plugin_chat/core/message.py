@@ -77,6 +77,9 @@ class MessageQueue:
         messages = await self.context.build_openai_messages()
         functions = await self.processor.tool_manager.select_tools("group")
         provider = await get_model_provider(self.processor.session.session_id)
+        # 私聊流式发送只对 OpenAI Provider 生效；Gemini 插件没有流式接口
+        stream = provider != "gemini" and self.processor.stream_mode.should_stream()
+        on_stream_chunk = self.processor.stream_mode.handle_stream_chunk if stream else None
         if provider == "gemini":
             from nonebot_plugin_gemini.utils.chat import MessageFetcher as GeminiMessageFetcher
 
@@ -100,6 +103,8 @@ class MessageQueue:
                 pre_function_call=self.processor.send_function_call_feedback,
                 post_function_call=self.processor.send_function_call_result,
                 reasoning_effort="medium",
+                stream=stream,
+                on_stream_chunk=on_stream_chunk,
             )
         fetcher.session.set_custom_trace_id(self.context.thread_id)
         return fetcher
@@ -109,6 +114,9 @@ class MessageQueue:
         gal_mode = getattr(self.processor, "gal_mode", None)
         if gal_mode is not None:
             gal_mode.abort_round()
+        stream_mode = getattr(self.processor, "stream_mode", None)
+        if stream_mode is not None:
+            await stream_mode.abort_round()
         if self.fetcher_task:
             self.fetcher_task.cancel()
 
@@ -136,12 +144,18 @@ class MessageQueue:
             # 避免并发的非重要请求把这次的额度清掉。
             self.processor.important_turn_quota = important
             gal_mode = getattr(self.processor, "gal_mode", None)
+            stream_mode = getattr(self.processor, "stream_mode", None)
             gal_round = False
+            stream_round = False
             try:
                 # 私聊备选回复在每轮回复开始时记录回复前的对话快照与开关状态
                 if gal_mode is not None:
                     await gal_mode.begin_round()
                     gal_round = True
+                # 私聊流式发送在每轮回复开始时读取开关与流式消息发送目标
+                if stream_mode is not None:
+                    await stream_mode.begin_round()
+                    stream_round = True
                 self.fetcher_task = asyncio.create_task(self._fetch_reply())
                 try:
                     status = await self.fetcher_task
@@ -158,6 +172,9 @@ class MessageQueue:
             if gal_round and gal_mode is not None:
                 # 本轮结束后才生成备选回复并发出缓存中的最后一条消息
                 await gal_mode.finish_round()
+            if stream_round and stream_mode is not None:
+                # 收尾尚未结束的流式消息（正常路径下已在 finish_reason 分片收尾）
+                await stream_mode.finish_round()
 
         if self.continuous_response and self.processor.session.get_session_type() == "group":
             self.continuous_response = False

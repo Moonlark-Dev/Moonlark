@@ -30,11 +30,18 @@ async def _(
         await lang.finish(key, user_id)
 
     enabled = action == "on"
+    disabled_stream = enabled
     if config is None:
-        # 新记录同时承载私聊 Chat 开关，默认值为开启
-        config = PrivateChatConfig(user_id=user_id, enabled=True, gal_mode=enabled)
+        # 新记录同时承载私聊 Chat 开关，默认值为开启；开启备选回复时关闭流式发送
+        config = PrivateChatConfig(user_id=user_id, enabled=True, gal_mode=enabled, stream=not enabled)
     else:
+        disabled_stream = enabled and getattr(config, "stream", False)
         config.gal_mode = enabled
+        if enabled:
+            # 流式发送与私聊备选回复互斥：开启备选回复时关闭流式发送
+            config.stream = False
     await session.merge(config)
     await session.commit()
+    if disabled_stream:
+        await lang.finish("command.gal_mode.enabled_stream_disabled", user_id)
     await lang.finish("command.gal_mode.enabled" if enabled else "command.gal_mode.disabled", user_id)
