@@ -1,10 +1,15 @@
 """私聊流式发送
 
 开关打开后（默认开启），私聊中 Chat 主模型的请求会改用流式传输（见
-``nonebot_plugin_openai.utils.chat.MessageFetcher``）。模型流式输出
-``send_message`` 工具调用的参数分片时，这里从参数 JSON 中增量解析出消息正文，
-再通过 QQ 官方机器人的「流式发送单聊消息」接口同步发送消息片段，让用户看到回复
-逐字出现的效果。
+``nonebot_plugin_openai.utils.chat.MessageFetcher`` 与
+``nonebot_plugin_gemini.utils.chat.MessageFetcher``，两者都按 OpenAI 的分片形状
+回调 ``on_stream_chunk``）。模型流式输出 ``send_message`` 工具调用的参数分片时，
+这里从参数 JSON 中增量解析出消息正文，再通过 QQ 官方机器人的「流式发送单聊消息」
+接口同步发送消息片段，让用户看到回复逐字出现的效果。
+
+注意两个 Provider 的粒度不同：OpenAI 会把工具参数分片下发，正文能逐字更新；
+Gemini API 不下发 ``partial_args``（只有 Vertex AI 支持），``function_call`` 的参数
+整段到达，因此 Gemini 会话只会收到一个完整分片，视觉效果与普通发送一致。
 
 接口文档：
 https://bot.q.qq.com/wiki/develop/api-v2/autogen/api/v2_users_user_openid_stream_messages.post.html
