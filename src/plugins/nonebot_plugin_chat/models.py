@@ -4,7 +4,7 @@ from typing_extensions import TypedDict
 
 from nonebot_plugin_orm import Model
 from pydantic import BaseModel, Field
-from sqlalchemy import Boolean, DateTime, Float, Integer, LargeBinary, String, Text, false, func
+from sqlalchemy import Boolean, DateTime, Float, Integer, LargeBinary, String, Text, false, func, true
 from sqlalchemy.dialects.mysql import MEDIUMBLOB, MEDIUMTEXT
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -166,6 +166,8 @@ class PrivateChatConfig(Model):
     enabled: Mapped[bool] = mapped_column(default=True)
     # 私聊备选回复开关，默认关闭（见 core/gal_mode.py）
     gal_mode: Mapped[bool] = mapped_column(Boolean(), default=False, server_default=false())
+    # 私聊流式发送开关，默认开启；与 gal_mode 互斥（见 core/stream_mode.py）
+    stream: Mapped[bool] = mapped_column(Boolean(), default=True, server_default=true())
 
 
 class ChatGlobalSetting(Model):
