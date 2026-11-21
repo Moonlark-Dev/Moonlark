@@ -5,6 +5,17 @@
 ::: tip "为了保证一致性，任何可以接入的地方都应该接入本地化。" ——xxtg666
 :::
 
+## 配置
+
+| 环境变量 | 默认值 | 说明 |
+| --- | --- | --- |
+| `COMMAND_START` | `["/"]` | NoneBot 的指令前缀集合 |
+| `COMMAND_PREFIX` | 空 | 填充本地化文本中 `{__prefix__}` 的指令前缀。必须是 `COMMAND_START` 中的一个前缀，且只能设置一个；留空时使用 `COMMAND_START` 的第一个前缀 |
+
+::: tip
+`COMMAND_PREFIX` 只决定 LarkLang 在文本里填入的 `{__prefix__}`，不改变指令的解析规则。当 `COMMAND_START` 配置了多个前缀时，可以用它把展示出来的前缀固定为其中一个。
+:::
+
 ## 语言操作类 `LangHelper`
 
 ### `__init__`
