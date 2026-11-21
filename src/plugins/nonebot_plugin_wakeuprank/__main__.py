@@ -1,4 +1,4 @@
-from datetime import date, datetime, time, timedelta
+from datetime import date, datetime, timedelta
 from typing import Optional
 
 from nonebot import on_message
@@ -15,12 +15,10 @@ from nonebot_plugin_ranking.types import RankingData
 from nonebot_plugin_userinfo import EventUserInfo, UserInfo
 from sqlalchemy import delete, func, select
 
+from .constants import GLOBAL_SESSION_ID, WAKE_END, WAKE_START
+from .image import build_timeline_points, generate_timeline_image
 from .lang import lang
 from .models import RiseData
-
-GLOBAL_SESSION_ID = "global"
-WAKE_START = time(4, 0, 0)
-WAKE_END = time(14, 0, 0)
 
 recorder = on_message(block=False, priority=90)
 
@@ -313,5 +311,7 @@ async def _(
         await lang.finish("wakeuprank.no_data", user_id)
 
     title = await lang.text("wakeuprank.today_title", user_id)
-    image = await generate_image(ranked_data, user_id, title, limit=9999)
+    # 今日展示的是一条时间轴而不是排行榜：谁在 4:00-14:00 的哪个位置第一次出现
+    points = await build_timeline_points(ranked_data, user_id)
+    image = await generate_timeline_image(points, user_id, title)
     await wakeuprank.finish(await UniMessage().image(raw=image, name="image.png").export())
