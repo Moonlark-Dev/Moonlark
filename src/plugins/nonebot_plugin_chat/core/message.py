@@ -77,10 +77,8 @@ class MessageQueue:
         messages = await self.context.build_openai_messages()
         functions = await self.processor.tool_manager.select_tools("group")
         provider = await get_model_provider(self.processor.session.session_id)
-        # 两个 Provider 都支持流式请求。区别在工具调用的粒度：OpenAI 会把参数分片下发，
-        # 正文可以逐字更新；Gemini API 不下发 partial_args，function_call 的参数整段到达，
-        # 因此流式消息只会收到一个完整分片（见 nonebot_plugin_gemini.utils.chat）
-        stream = self.processor.stream_mode.should_stream()
+        # 私聊流式发送只对 OpenAI Provider 生效；Gemini 插件没有流式接口
+        stream = provider != "gemini" and self.processor.stream_mode.should_stream()
         on_stream_chunk = self.processor.stream_mode.handle_stream_chunk if stream else None
         if provider == "gemini":
             from nonebot_plugin_gemini.utils.chat import MessageFetcher as GeminiMessageFetcher
@@ -95,8 +93,6 @@ class MessageQueue:
                 reasoning_effort="medium",
                 # 图片被 Gemini 安全策略拦截时，把图片换成 Image Describe 模型的描述后重试
                 on_image_blocked=self.handle_blocked_images,
-                stream=stream,
-                on_stream_chunk=on_stream_chunk,
             )
         else:
             fetcher = await MessageFetcher.create(
