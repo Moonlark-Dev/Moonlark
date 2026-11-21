@@ -80,6 +80,7 @@ plugins = [
     "nonebot_plugin_turn_off_lights",
     "nonebot_plugin_github",
     "nonebot_plugin_has_or_not",
+    "nonebot_plugin_missing_abbreviations",
     "nonebot_plugin_schedule",
     "nonebot_plugin_wordle",
     "nonebot_plugin_message_summary",

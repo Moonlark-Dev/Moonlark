@@ -1,0 +1,75 @@
+help:
+  description: 缩略
+  details: |
+    通过缩略词中被缩略的部分猜出缩略词的文字推理小游戏。
+
+    每局选定一个常见原词（全称）及其公认缩略词（简称），将原词中构成缩略词的字或字母抽走，只把被省略的剩余部分按原顺序拼接展示为题面。例如题面给出「林匹克动」，对应原词「奥林匹克运动会」，玩家需要提交被抽走的那部分缩略词「奥运会」作答（注意提交的是缩略词本身而非原词全称；误填原词全称会收到提醒且不扣作答次数）。
+    遇到困难可发送「提示」免费解锁提示（第 1 条为 ○ 骨架掩码提示，标明缩略词在原词中的位置与长度；部分题目配有第 2 条领域或语境提示），使用提示不扣作答次数也不减少奖励。
+    每局最多可作答 10 次，猜中奖励 3 VimCoin；连续三分钟无任何消息时自动公布答案并结束本局。支持指令别名「缩略」「ma」。
+    灵感来源：https://pqr.pkupuzzle.art/missing-abbreviations/
+  usage1: missing-abbreviations (开始一局游戏)
+  usage2: missing-abbreviations <答案> (提交缩略词作答)
+  usage3: missing-abbreviations 提示 (免费解锁下一条提示)
+  usage4: missing-abbreviations 查看答案 (查看答案并结束本局)
+  usage5: missing-abbreviations 规则说明 (查看玩法规则)
+
+button:
+  start: 开始一局
+  guess: 作答
+  hint: 提示
+  next_hint: 继续提示
+  reveal: 查看答案
+  rules: 规则说明
+  again: 再来一局
+
+game:
+  preparing: 正在生成题目，请稍候……
+  preparing_short: 题目还在生成中，请稍候再试。
+  generate_failed: 出题失败了，请稍后再试。
+  error: 游戏出错了，本局已结束。
+  rules: |
+    「缩略」规则说明
+    1. 题目结构：每局选定一个常见原词（全称）及其缩略词（简称），将原词中构成缩略词的字或字母抽走，只把被省略的剩余部分按原顺序拼接展示为题面。
+    2. 作答要求：根据题面还原原词，并提交「被抽走的那部分缩略词」（注意不要填原词全称；误填原词全称会收到提醒且不扣次数）。
+       示例：题面「林匹克动」→ 原词「[奥]林匹克[运]动[会]」→ 答案是「奥运会」。
+    3. 免费提示：发送 {__prefix__}missing-abbreviations 提示 可免费解锁提示（提示 1 用 ○ 标出缩略词在原词中的位置与长度，部分题目另有提示 2 点明领域或语境），不扣作答次数也不减少奖励。
+    4. 次数与奖励：每局最多作答 {0} 次（忽略大小写与空格，英文缩写请留意缩写点等标点），猜中可获得 {1} VimCoin；连续三分钟没有任何消息会自动公布答案。
+    5. 常用指令（支持别名「缩略」「ma」）：
+       - 开始游戏：{__prefix__}missing-abbreviations
+       - 提交答案：{__prefix__}missing-abbreviations <答案>（QQ 官方机器人下本局所有成员均可作答，其他平台仅发起者可作答）
+       - 免费提示：{__prefix__}missing-abbreviations 提示
+       - 公布答案：{__prefix__}missing-abbreviations 查看答案（提前结束本局）
+    灵感来源：https://pqr.pkupuzzle.art/missing-abbreviations/
+  rules_markdown: |
+    ### 「缩略」规则说明
+    1. **题目结构**：选定一个常见**原词（全称）**及其**缩略词（简称）**，将原词中构成缩略词的字或字母抽走，只把被省略的剩余部分按原顺序拼接展示为题面。
+    2. **作答要求**：还原原词后，提交**被抽走的那部分缩略词**（注意**不要填原词全称**；误填原词全称会收到提醒且不扣次数）。
+
+    | 题面 | 原词拆解 | 正确答案（缩略词） | 提示 1（骨架掩码） |
+    | ----------- | ----------- | ----------- | ----------- |
+    | 林匹克动 | 【奥】林匹克【运】动【会】 | 奥运会 | ○林匹克○动○ |
+    | 而没有什么用 | 【然】而【并】没有什么【卵】用 | 然并卵 | ○而○没有什么○用 |
+
+    3. **免费提示**：点击「提示」按钮或发送 `{__prefix__}missing-abbreviations 提示` 可免费解锁提示（提示 1 用 `○` 标出缩略词在原词中的位置与长度，部分题目另有提示 2 点明领域或语境），**不扣作答次数，也不减少猜中奖励**。
+    4. **次数与奖励**：每局最多作答 **{0}** 次（忽略大小写与空格，英文缩写请留意缩写点等标点），猜中奖励 **{1} VimCoin**；连续三分钟无任何消息将自动公布答案。
+    5. **操作方式**：点击下方按钮，或发送 `{__prefix__}missing-abbreviations 答案`（别名 `缩略`、`ma`）作答（本局所有成员均可参与）、发送 `{__prefix__}missing-abbreviations 查看答案` 提前结束本局。
+
+    灵感来源：https://pqr.pkupuzzle.art/missing-abbreviations/
+  not_playing_start: 当前会话没有正在进行的「缩略」，请先发送 {__prefix__}missing-abbreviations（或 {__prefix__}缩略）开始一局。
+  already_playing: 当前会话已经有一局「缩略」了，发送 {__prefix__}missing-abbreviations <答案> 作答，发送 {__prefix__}missing-abbreviations 提示 解锁提示，或发送 {__prefix__}missing-abbreviations 查看答案 结束本局。
+  only_owner: 当前适配器下只有发起这局游戏的人可以作答。
+  hint_mask: "💡 提示 1（骨架掩码）：{}"
+  hint_extra: "💡 提示 {}：{}"
+  hint_unlocked: "已免费解锁提示（不扣作答次数）：\n{}"
+  all_hints_revealed: "本题提示已全部解锁（不扣作答次数）：\n{}"
+  no_hints_configured: 本题没有配置额外提示（不扣作答次数）。
+  full_word_remind: "💡「{}」是原词全称哦！本题需要提交被抽走的那部分「缩略词」（本次不扣次数，还剩 {} 次作答机会）。"
+  correct: "🎉 猜对了！答案是「{}」（原词：{}），获得 {} VimCoin。"
+  correct_no_reward: "🎉 猜对了！答案是「{}」（原词：{}）。（VimCoin 奖励发放失败）"
+  wrong: "❌「{}」不对，还剩 {} 次作答机会。"
+  reveal_timeout: "⌛ 三分钟没有任何消息，游戏结束。答案是「{}」（原词：{}）。"
+  reveal_manual: "已查看答案，游戏结束。答案是「{}」（原词：{}）。"
+  reveal_attempts: "作答机会用完了，游戏结束。答案是「{}」（原词：{}）。"
+  reveal_before_question: 题目还没生成出来，本局已结束。
+  again_hint: 发送 {__prefix__}missing-abbreviations（或 {__prefix__}缩略）可以再来一局。
+  hint: 发送 {__prefix__}missing-abbreviations <答案>（或 {__prefix__}缩略 <答案>）提交缩略词作答（仅发起者可作答）；发送 {__prefix__}missing-abbreviations 提示 免费解锁提示；发送 {__prefix__}missing-abbreviations 规则说明 查看规则；发送 {__prefix__}missing-abbreviations 查看答案 可直接公布答案。
