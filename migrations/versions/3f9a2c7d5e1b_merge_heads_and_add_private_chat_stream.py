@@ -57,7 +57,12 @@ def _disable_stream_for_gal_mode_users() -> None:
     columns = {column["name"] for column in inspector.get_columns(TABLE_NAME)}
     if not {"stream", "gal_mode"}.issubset(columns):
         return
-    op.get_bind().execute(sa.text(f"UPDATE {TABLE_NAME} SET stream = 0 WHERE gal_mode = 1"))
+    config_table = sa.table(
+        TABLE_NAME,
+        sa.column("stream", sa.Boolean()),
+        sa.column("gal_mode", sa.Boolean()),
+    )
+    op.get_bind().execute(config_table.update().where(config_table.c.gal_mode == sa.true()).values(stream=sa.false()))
 
 
 def downgrade(name: str = "") -> None:
