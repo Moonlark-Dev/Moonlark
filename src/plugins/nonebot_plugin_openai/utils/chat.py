@@ -54,6 +54,8 @@ class LLMRequestSession(Generic[T2]):
         reasoning_effort: Optional[ReasoningEffort] = None,
         response_format: Optional[type[T2]] = None,
         on_tool_round_complete: Optional[Callable[[], Awaitable[None]]] = None,
+        stream: bool = False,
+        on_stream_chunk: Optional[Callable[[Any], Awaitable[None]]] = None,
     ) -> None:
         self.messages: Messages = messages
         self.identify = identify
@@ -79,6 +81,10 @@ class LLMRequestSession(Generic[T2]):
         self._in_request: bool = False
         self._this_round_success = False
         self.last_response: Optional[ChatCompletion] = None
+        # 流式模式：只有不需要结构化输出（response_format）时才启用。开启后
+        # request() 逐片 yield 正文增量，并在每个分片到达时回调 on_stream_chunk。
+        self.stream = bool(stream and response_format is None)
+        self.on_stream_chunk = on_stream_chunk
 
     def set_custom_trace_id(self, trace_id: str) -> None:
         self.trace_id = trace_id
@@ -156,8 +162,101 @@ class LLMRequestSession(Generic[T2]):
             headers[header] = self.trace_id
         return headers
 
+    async def _create_stream_completion(self) -> Any:
+        """构造流式 chat completions 请求"""
+        self._sanitize_messages()
+        tool_choice = self.tool_choice if self.func_list else "none"
+        messages = strip_tool_call_extras(strip_nul(self.messages))
+        tools = strip_nul(self.func_list)
+        return await client.chat.completions.create(
+            messages=messages,  # type: ignore
+            model=self.model,
+            tools=tools,
+            tool_choice=tool_choice,
+            extra_headers=self._build_extra_headers(),
+            timeout=self.timeout_per_request,
+            reasoning_effort=self.reasoning_effort or openai.omit,  # type: ignore
+            stream=True,
+            **self.kwargs,
+        )
+
+    async def _request_stream(self) -> AsyncGenerator[T2 | str, None]:
+        """流式请求：逐片 yield 正文增量，结束后执行工具调用
+
+        与 :meth:`request` 的收尾行为保持一致：把累积出的 assistant 消息追加进
+        ``self.messages``，再按非流式路径的方式执行工具调用 / 结束会话。
+        """
+        self._this_round_success = False
+        self._content_yielded = False
+        content_parts: list[str] = []
+        reasoning_parts: list[str] = []
+        tool_calls: dict[int, dict[str, str]] = {}
+        logger.info(f"[{self.identify}] 正在流式请求模型 {self.model} ...")
+        stream = await self._create_stream_completion()
+        async for chunk in stream:
+            if self.on_stream_chunk is not None:
+                await self.on_stream_chunk(chunk)
+            choices = getattr(chunk, "choices", None) or []
+            if not choices:
+                continue
+            delta = getattr(choices[0], "delta", None)
+            if delta is None:
+                continue
+            # 部分 Provider（DeepSeek 等）在流式 delta 里带 reasoning_content，
+            # 保留到 assistant 消息里，供聊天记录与决策判定读取
+            reasoning = getattr(delta, "reasoning_content", None)
+            if reasoning:
+                reasoning_parts.append(str(reasoning))
+            content = getattr(delta, "content", None)
+            if content:
+                content_parts.append(content)
+                self._content_yielded = True
+                self._this_round_success = True
+                yield content
+            for tool_call in getattr(delta, "tool_calls", None) or []:
+                state = tool_calls.setdefault(
+                    int(getattr(tool_call, "index", 0) or 0),
+                    {"id": "", "name": "", "arguments": ""},
+                )
+                if getattr(tool_call, "id", None):
+                    state["id"] = str(tool_call.id)
+                function = getattr(tool_call, "function", None)
+                if function is not None:
+                    if getattr(function, "name", None):
+                        state["name"] = str(function.name)
+                    if getattr(function, "arguments", None):
+                        state["arguments"] += str(function.arguments)
+                self._this_round_success = True
+        logger.debug(f"{content_parts=} {tool_calls=}")
+        assistant_message: dict[str, Any] = {"role": "assistant", "content": "".join(content_parts) or None}
+        if reasoning_parts:
+            assistant_message["reasoning_content"] = "".join(reasoning_parts)
+        if tool_calls:
+            assistant_message["tool_calls"] = [
+                {
+                    "id": state["id"],
+                    "type": "function",
+                    "function": {"name": state["name"], "arguments": state["arguments"]},
+                }
+                for _, state in sorted(tool_calls.items())
+            ]
+        self.messages.append(assistant_message)
+        if tool_calls:
+            for _, state in sorted(tool_calls.items()):
+                await self.call_function(state["id"], state["name"], json.loads(state["arguments"]))
+            if not self._content_yielded and self.on_tool_round_complete:
+                await self.on_tool_round_complete()
+        elif not self.insert_message_queue:
+            self.stop = True
+        self.messages.extend(self.insert_message_queue)
+        self.insert_message_queue.clear()
+
     async def request(self) -> AsyncGenerator[T2 | str, None]:
         self._this_round_success = False
+        if self.stream:
+            async for message in self._request_stream():
+                yield message
+            return
         try:
             logger.info(f"[{self.identify}] 正在请求模型 {self.model} ...")
             completion = await self.create_completion()
@@ -255,6 +354,8 @@ class MessageFetcher(Generic[T2]):
         reasoning_effort: Optional[ReasoningEffort] = None,
         response_format: Optional[type[T2]] = None,
         on_tool_round_complete: Optional[Callable[[], Awaitable[None]]] = None,
+        stream: bool = False,
+        on_stream_chunk: Optional[Callable[[Any], Awaitable[None]]] = None,
         **kwargs,
     ) -> None:
         logger.debug(f"{identify=}")
@@ -278,6 +379,8 @@ class MessageFetcher(Generic[T2]):
             reasoning_effort,
             response_format,
             on_tool_round_complete,
+            stream,
+            on_stream_chunk,
         )
 
     @classmethod
@@ -297,6 +400,8 @@ class MessageFetcher(Generic[T2]):
         reasoning_effort: Optional[ReasoningEffort] = None,
         response_format: Optional[type[T2]] = None,
         on_tool_round_complete: Optional[Callable[[], Awaitable[None]]] = None,
+        stream: bool = False,
+        on_stream_chunk: Optional[Callable[[Any], Awaitable[None]]] = None,
         **kwargs,
     ) -> "MessageFetcher":
         """异步创建 MessageFetcher 实例，正确处理模型配置获取"""
@@ -322,6 +427,8 @@ class MessageFetcher(Generic[T2]):
             reasoning_effort,
             response_format,
             on_tool_round_complete,
+            stream,
+            on_stream_chunk,
             **kwargs,
         )
 

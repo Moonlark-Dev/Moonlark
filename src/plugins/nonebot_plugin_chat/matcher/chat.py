@@ -54,7 +54,7 @@ from ..utils.provider import (
 )
 from ..utils.timing_stats import timing_stats_manager
 
-PRIVATE_CHAT_COMMANDS = ("switch", "on", "off", "reset", "model")
+PRIVATE_CHAT_COMMANDS = ("switch", "on", "off", "reset", "model", "stream")
 GROUP_ONLY_CHAT_COMMANDS = ("enhance",)
 
 
@@ -460,6 +460,35 @@ class CommandHandler:
         await reset_session(self.group_id)
         await lang.finish("command.mode.changed", self.user_id, mode_name)
 
+    async def handle_stream(self) -> None:
+        """处理私聊流式发送开关：不带参数时展示当前状态，用户只能设置自己的"""
+        if not self.is_private_chat:
+            await lang.finish("command.stream.private_only", self.user_id)
+        action = self.argv[1].strip().lower() if len(self.argv) > 1 else ""
+        if action not in ("on", "off"):
+            enabled = self.private_config.stream if self.private_config is not None else True
+            key = "command.stream.current_on" if enabled else "command.stream.current_off"
+            await lang.finish(key, self.user_id)
+
+        enabled = action == "on"
+        config = self.private_config
+        if config is None:
+            # 私聊 Chat 与流式发送都默认开启
+            config = PrivateChatConfig(user_id=self.user_id, enabled=True, stream=enabled)
+        else:
+            config.stream = enabled
+        # 流式发送与私聊备选回复互斥：开启流式发送时关闭备选回复
+        disabled_gal_mode = enabled and config.gal_mode
+        if disabled_gal_mode:
+            config.gal_mode = False
+        self.private_config = config
+        await self.session.merge(config)
+        await self.session.commit()
+        logger.info(f"用户 {self.user_id} 的私聊流式发送已{'开启' if enabled else '关闭'}")
+        if disabled_gal_mode:
+            await lang.finish("command.stream.enabled_gal_disabled", self.user_id)
+        await lang.finish("command.stream.enabled" if enabled else "command.stream.disabled", self.user_id)
+
     async def handle_enhance(self) -> None:
         """处理群聊回复增强开关：不带参数时展示当前状态"""
         if self.is_private_chat:
@@ -554,6 +583,8 @@ class CommandHandler:
                 await self.handle_mode()
             case "model":
                 await self.handle_model()
+            case "stream":
+                await self.handle_stream()
             case "enhance":
                 await self.handle_enhance()
             case "compact":
