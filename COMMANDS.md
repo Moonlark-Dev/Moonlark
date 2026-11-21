@@ -98,6 +98,20 @@
 
 查看 Moonlark 中游玩玩法的用户的排名
 - `/minigame-rank`
+## `missing-abbreviations`: 缩略
+
+根据缩略词中被省略的部分，逆向猜出缩略词的文字推理小游戏。
+
+每局抽走原词中构成缩略词的字或字母，只展示剩下部分作为题面。例如题面「林匹克动」来自「[奥]林匹克[运]动[会]」，正确答案是缩略词「奥运会」（不是原词全称；误填全称会提醒且不扣次数）。
+卡关时可发送「提示」依次查看位置提示（用 ○ 标出缩略词的位置与字数）与领域提示，查看提示不扣次数也不减少奖励。
+每局最多作答 10 次，猜中奖励 3 VimCoin；连续三分钟无消息将自动公布答案。支持别名「缩略」「ma」。
+
+灵感来源：https://pqr.pkupuzzle.art/missing-abbreviations/
+- `/missing-abbreviations (开始一局游戏)`
+- `/missing-abbreviations <答案> (提交缩略词作答)`
+- `/missing-abbreviations 提示 (查看下一条提示)`
+- `/missing-abbreviations 查看答案 (公布答案并结束本局)`
+- `/missing-abbreviations 规则说明 (查看玩法规则)`
 ## `quick-math`: 快速数学
 
 以计算为核心的玩法。找到问题的答案，并在排行榜中获取更高的积分。（指令别名：qm）
