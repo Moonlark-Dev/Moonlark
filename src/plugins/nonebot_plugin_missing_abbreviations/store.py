@@ -281,10 +281,11 @@ def format_question(
     escaper = escape_markdown if escape else _identity
     q_text = escaper(question.question.strip())
     stars = format_difficulty(question.difficulty)
+    shown = min(max(revealed_hints, 0), len(question.hint))
+    meta = f"难度：{stars}" if shown > 0 else f"难度：{stars} · 提示 {len(question.hint)} 条"
     lines = [
-        "【缩略】",
-        f"题面：{q_text}",
-        f"难度：{stars}",
+        f"【缩略】{q_text}",
+        meta,
     ]
     if question.tags:
         tag_items: list[str] = []
@@ -294,12 +295,8 @@ def format_question(
             tag_items.append(f"【{tag_name}】{tag_desc}" if tag_desc else f"【{tag_name}】")
         lines.append("标签：" + "；".join(tag_items))
 
-    shown = min(max(revealed_hints, 0), len(question.hint))
-    if shown > 0:
-        for idx, hint_text in enumerate(question.hint[:shown], start=1):
-            lines.append(f"💡 提示 {idx}：{escaper(hint_text.strip())}")
-    else:
-        lines.append(f"可用提示：{len(question.hint)} 条（免费）")
+    for idx, hint_text in enumerate(question.hint[:shown], start=1):
+        lines.append(f"💡 提示 {idx}：{escaper(hint_text.strip())}")
     return "\n".join(lines)
 
 
@@ -308,36 +305,32 @@ def format_question_markdown(
     revealed_hints: int = 0,
     escape: bool = True,
 ) -> str:
-    """按 Markdown 表格与段落样式渲染题目（用于 QQ 官方消息与非 QQ 平台图片渲染，严禁输出裸 ``<`` 或 ``>``）。"""
+    """按大标题卡片样式渲染题目（用于 QQ 官方消息与非 QQ 平台图片渲染，严禁输出裸 ``<`` 或 ``>``）。"""
     escaper = escape_markdown if escape else _identity
     q_text = escaper(question.question.strip())
     stars = format_difficulty(question.difficulty)
+    shown = min(max(revealed_hints, 0), len(question.hint))
+    meta = f"难度 {stars}" if shown > 0 else f"难度 {stars} · 提示 {len(question.hint)} 条"
     lines = [
         "### 缩略",
         "",
-        "| 题面 | 难度 |",
-        "| :--- | :--- |",
-        f"| **{q_text}** | {stars} |",
+        f"## {q_text}",
         "",
+        meta,
     ]
     if question.tags:
+        lines.append("")
         for name, desc in question.tags.items():
             tag_name = escaper(name.strip())
             tag_desc = escaper(desc.strip())
-            if tag_desc:
-                lines.append(f"- **【{tag_name}】**：{tag_desc}")
-            else:
-                lines.append(f"- **【{tag_name}】**")
-        lines.append("")
+            lines.append(f"- **{tag_name}**：{tag_desc}" if tag_desc else f"- **{tag_name}**")
 
-    shown = min(max(revealed_hints, 0), len(question.hint))
     if shown > 0:
+        lines.append("")
         for idx, hint_text in enumerate(question.hint[:shown], start=1):
-            lines.extend((f"**💡 提示 {idx}**：{escaper(hint_text.strip())}", ""))
-    else:
-        lines.extend((f"**💡 可用提示**：{len(question.hint)} 条（免费）", ""))
+            lines.append(f"- 💡 提示 {idx}：{escaper(hint_text.strip())}")
 
-    lines.append("请还原原词，作答被抽走的「缩略词」（提示免费不扣次数）")
+    lines.extend(("", "还原原词，作答被抽走的「缩略词」"))
     return "\n".join(lines)
 
 

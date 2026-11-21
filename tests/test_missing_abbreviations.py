@@ -368,19 +368,20 @@ def test_format_question_markdown_and_answer_summary() -> None:
 
     standard = make_question(tags=["精选"])
     plain = format_question(standard, revealed_hints=0)
-    assert "【缩略】" in plain
-    assert "题面：民代表会" in plain
-    assert "可用提示：2 条（免费）" in plain
+    assert "【缩略】民代表会" in plain
+    assert "难度：★★☆☆☆ (2/5) · 提示 2 条" in plain
+    assert "免费" not in plain
 
     md_unrevealed = format_question_markdown(standard, revealed_hints=0)
-    assert "| 题面 | 难度 |" in md_unrevealed
-    assert "**民代表会**" in md_unrevealed
-    assert "**💡 可用提示**：2 条（免费）" in md_unrevealed
+    assert "### 缩略" in md_unrevealed
+    assert "## 民代表会" in md_unrevealed
+    assert "难度 ★★☆☆☆ (2/5) · 提示 2 条" in md_unrevealed
+    assert "免费" not in md_unrevealed
     assert "<" not in md_unrevealed
     assert ">" not in md_unrevealed
 
     md_revealed = format_question_markdown(standard, revealed_hints=1)
-    assert "**💡 提示 1**：○民代表○会" in md_revealed
+    assert "- 💡 提示 1：○民代表○会" in md_revealed
     assert "<" not in md_revealed
     assert ">" not in md_revealed
 
@@ -1296,6 +1297,7 @@ async def test_real_lang_helper_and_prompt_compliance() -> None:
     rendered_prompt = await get_message("system", "missing_abbreviations/system.md.jinja")
     rendered_prompt_content = str(rendered_prompt["content"])
 
+    assert "免费" not in yaml_raw
     for forbidden in ("北京大学", "P&KU", "谜协"):
         assert forbidden not in yaml_raw
         assert forbidden not in prompt_raw
