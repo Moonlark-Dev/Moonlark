@@ -278,13 +278,14 @@ class MissingAbbreviationsGame:  # pylint: disable=too-many-instance-attributes
                     logger.opt(exception=True).warning("缩略：发送 QQ Markdown 题目失败，退回纯文本")
                     await self.send_text(format_question(self.question, revealed_hints=self.hints_revealed))
             return
-        markdown = format_question(self.question, revealed_hints=self.hints_revealed)
+        markdown = format_question_markdown(self.question, revealed_hints=self.hints_revealed)
+        plain = format_question(self.question, revealed_hints=self.hints_revealed)
         hint = await lang.text("game.hint", self.owner)
         try:
             image = await md_to_pic(markdown)
         except Exception:
             logger.opt(exception=True).warning("缩略：题目图片渲染失败，退回纯文本")
-            await self.send_text(f"{markdown}\n{hint}")
+            await self.send_text(f"{plain}\n{hint}")
             return
         await (UniMessage().image(raw=image) + UniMessage().text(hint)).send(target=self.last_event, bot=self.bot)
 

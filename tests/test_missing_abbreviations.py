@@ -367,15 +367,15 @@ def test_format_question_markdown_and_answer_summary() -> None:
     assert format_difficulty(9) == "★★★★★ (5/5)"
 
     standard = make_question(tags=["精选"])
-    plain = format_question(standard, revealed_hints=0, escape=False)
-    assert "**缩略**" in plain
+    plain = format_question(standard, revealed_hints=0)
+    assert "【缩略】" in plain
     assert "题面：民代表会" in plain
-    assert "可用提示：2 条" in plain
+    assert "可用提示：2 条（免费）" in plain
 
     md_unrevealed = format_question_markdown(standard, revealed_hints=0)
     assert "| 题面 | 难度 |" in md_unrevealed
-    assert "「民代表会」" in md_unrevealed
-    assert "**💡 可用提示**：2 条" in md_unrevealed
+    assert "**民代表会**" in md_unrevealed
+    assert "**💡 可用提示**：2 条（免费）" in md_unrevealed
     assert "<" not in md_unrevealed
     assert ">" not in md_unrevealed
 
@@ -605,38 +605,19 @@ def test_get_question_store_uses_localstore_and_build_extra() -> None:
     assert "人大" in extra
 
 
-# ---------- 5. 模型解析与题目生成（resolve_generation_model & generate_questions） ----------
+# ---------- 5. 题目生成参数（identify、超时与数据结构） ----------
+
+
+def test_config_does_not_hardcode_model_and_uses_600s_timeout() -> None:
+    from nonebot_plugin_missing_abbreviations.config import Config
+
+    default_cfg = Config()
+    assert not hasattr(default_cfg, "missing_abbreviations_model")
+    assert default_cfg.missing_abbreviations_generate_timeout == 600
 
 
 @pytest.mark.asyncio
-async def test_resolve_generation_model_default_and_superuser_override(monkeypatch: pytest.MonkeyPatch) -> None:
-    from nonebot_plugin_missing_abbreviations import store as store_module
-
-    seen_identifies: list[str] = []
-
-    async def default_true(identify: str) -> bool:
-        seen_identifies.append(identify)
-        return True
-
-    monkeypatch.setattr(store_module, "is_default_model_for_identify", default_true)
-    assert await store_module.resolve_generation_model() == "google/gemini-4-hydrogen"
-    assert seen_identifies == ["Missing Abbreviations (Generate)"]
-
-    async def default_false(identify: str) -> bool:
-        seen_identifies.append(identify)
-        return False
-
-    async def custom_model(identify: str) -> str:
-        assert identify == "Missing Abbreviations (Generate)"
-        return "anthropic/claude-custom-override"
-
-    monkeypatch.setattr(store_module, "is_default_model_for_identify", default_false)
-    monkeypatch.setattr(store_module, "get_model_for_identify", custom_model)
-    assert await store_module.resolve_generation_model() == "anthropic/claude-custom-override"
-
-
-@pytest.mark.asyncio
-async def test_generate_questions_passes_model_identify_and_schema_to_fetch_json(
+async def test_generate_questions_passes_identify_timeout_and_schema_to_fetch_json(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from nonebot_plugin_missing_abbreviations import store as store_module
@@ -644,10 +625,6 @@ async def test_generate_questions_passes_model_identify_and_schema_to_fetch_json
 
     sample = make_question()
     captured: dict[str, Any] = {}
-
-    async def fake_is_default(identify: str) -> bool:
-        assert identify == "Missing Abbreviations (Generate)"
-        return True
 
     async def fake_get_message(role: str, name: str) -> Any:
         return store_module.generate_message(f"{role}:{name}", "system")
@@ -658,7 +635,6 @@ async def test_generate_questions_passes_model_identify_and_schema_to_fetch_json
         captured["kwargs"] = kwargs
         return [sample]
 
-    monkeypatch.setattr(store_module, "is_default_model_for_identify", fake_is_default)
     monkeypatch.setattr(store_module, "get_message", fake_get_message)
     monkeypatch.setattr(store_module, "fetch_json", fake_fetch_json)
 
@@ -669,8 +645,9 @@ async def test_generate_questions_passes_model_identify_and_schema_to_fetch_json
     assert "人民代表大会" in captured["messages"][1]["content"]
     assert "人大" in captured["messages"][1]["content"]
     assert captured["response_format"] == list[GeneratedQuestion]
-    assert captured["kwargs"]["model"] == "google/gemini-4-hydrogen"
+    assert "model" not in captured["kwargs"]
     assert captured["kwargs"]["identify"] == "Missing Abbreviations (Generate)"
+    assert captured["kwargs"]["timeout"] == 600
 
 
 # ---------- 6. 纯本地判题（judge_guess） ----------
@@ -1219,16 +1196,12 @@ async def test_alconna_special_inputs_race_guard_and_validation_tightening(
         hint=["○xempli ○ratia"],
     )
 
-    async def fake_is_default(_identify: str) -> bool:
-        return True
-
     async def fake_get_msg(role: str, name: str) -> Any:
         return store_module.generate_message(f"{role}:{name}", "system")
 
     async def fake_fetch(_msgs: list[Any], _fmt: Any, **_kwargs: Any) -> list[GeneratedQuestion]:
         return [dotted]
 
-    monkeypatch.setattr(store_module, "is_default_model_for_identify", fake_is_default)
     monkeypatch.setattr(store_module, "get_message", fake_get_msg)
     monkeypatch.setattr(store_module, "fetch_json", fake_fetch)
     generated = await store_module.generate_questions([], [], 5)

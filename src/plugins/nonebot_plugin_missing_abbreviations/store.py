@@ -13,7 +13,6 @@ from nonebot_plugin_larkutils import escape_markdown
 from nonebot_plugin_localstore import get_data_file
 from nonebot_plugin_openai import fetch_json, generate_message
 from nonebot_plugin_openai.utils.message import get_message
-from nonebot_plugin_openai.utils.model_config import get_model_for_identify, is_default_model_for_identify
 
 from .config import config
 from .types import GeneratedQuestion, QuestionStoreData
@@ -276,14 +275,14 @@ def format_difficulty(difficulty: int) -> str:
 def format_question(
     question: GeneratedQuestion,
     revealed_hints: int = 0,
-    escape: bool = True,
+    escape: bool = False,
 ) -> str:
-    """按通用多行格式渲染题目（用于非 QQ 官方适配器的图片渲染与纯文本回退）。"""
+    """按通用多行纯文本格式渲染题目（用于纯文本回退）。"""
     escaper = escape_markdown if escape else _identity
     q_text = escaper(question.question.strip())
     stars = format_difficulty(question.difficulty)
     lines = [
-        "**缩略**",
+        "【缩略】",
         f"题面：{q_text}",
         f"难度：{stars}",
     ]
@@ -300,7 +299,7 @@ def format_question(
         for idx, hint_text in enumerate(question.hint[:shown], start=1):
             lines.append(f"💡 提示 {idx}：{escaper(hint_text.strip())}")
     else:
-        lines.append(f"可用提示：{len(question.hint)} 条")
+        lines.append(f"可用提示：{len(question.hint)} 条（免费）")
     return "\n".join(lines)
 
 
@@ -309,7 +308,7 @@ def format_question_markdown(
     revealed_hints: int = 0,
     escape: bool = True,
 ) -> str:
-    """按 QQ 官方机器人的 GFM 表格与加粗段落样式渲染题目（严禁输出裸 ``<`` 或 ``>``）。"""
+    """按 Markdown 表格与段落样式渲染题目（用于 QQ 官方消息与非 QQ 平台图片渲染，严禁输出裸 ``<`` 或 ``>``）。"""
     escaper = escape_markdown if escape else _identity
     q_text = escaper(question.question.strip())
     stars = format_difficulty(question.difficulty)
@@ -318,7 +317,7 @@ def format_question_markdown(
         "",
         "| 题面 | 难度 |",
         "| :--- | :--- |",
-        f"| 「{q_text}」 | {stars} |",
+        f"| **{q_text}** | {stars} |",
         "",
     ]
     if question.tags:
@@ -336,9 +335,9 @@ def format_question_markdown(
         for idx, hint_text in enumerate(question.hint[:shown], start=1):
             lines.extend((f"**💡 提示 {idx}**：{escaper(hint_text.strip())}", ""))
     else:
-        lines.extend((f"**💡 可用提示**：{len(question.hint)} 条", ""))
+        lines.extend((f"**💡 可用提示**：{len(question.hint)} 条（免费）", ""))
 
-    lines.append("请还原原词并作答被抽走的「缩略词」")
+    lines.append("请还原原词，作答被抽走的「缩略词」（提示免费不扣次数）")
     return "\n".join(lines)
 
 
@@ -355,13 +354,6 @@ def format_answer_summary(question: GeneratedQuestion) -> tuple[str, str]:
     else:
         origin_display = f"{full_word} → {breakdown}" if full_word and breakdown else (full_word or breakdown)
     return answers_display, origin_display
-
-
-async def resolve_generation_model() -> str:
-    """若管理员为本玩法单独配置了模型则优先采用，否则使用插件默认模型。"""
-    if not await is_default_model_for_identify(_GENERATION_IDENTIFY):
-        return await get_model_for_identify(_GENERATION_IDENTIFY)
-    return config.missing_abbreviations_model
 
 
 def build_generation_extra(
@@ -410,7 +402,7 @@ async def generate_questions(
     excluded_answers: list[str],
     count: int,
 ) -> list[GeneratedQuestion]:
-    """调用 OpenAI 插件批量生成《缩略》题目。"""
+    """调用 OpenAI 插件批量生成《缩略》题目（模型由 ``/model`` 按应用标识配置）。"""
     messages = [
         await get_message("system", "missing_abbreviations/system.md.jinja"),
         generate_message(build_generation_extra(excluded_full_words, excluded_answers, count), "user"),
@@ -418,7 +410,6 @@ async def generate_questions(
     generated = await fetch_json(
         messages,
         list[GeneratedQuestion],
-        model=await resolve_generation_model(),
         identify=_GENERATION_IDENTIFY,
         timeout=config.missing_abbreviations_generate_timeout,
     )
