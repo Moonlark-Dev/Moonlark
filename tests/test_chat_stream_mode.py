@@ -180,6 +180,71 @@ async def test_send_message_skips_delivery_for_streamed_content() -> None:
     processor._record_sent_message.assert_awaited_once_with("你好", "stream-id")
 
 
+def _make_send_processor(*, streaming: bool) -> SimpleNamespace:
+    """构造一个只走到普通发送分支的 processor，用于检查 reply_message_id 的去留"""
+    return SimpleNamespace(
+        stream_mode=SimpleNamespace(
+            consume_streamed_message=AsyncMock(return_value=None),
+            streaming=streaming,
+        ),
+        gal_mode=SimpleNamespace(should_buffer=lambda: False),
+        session=SimpleNamespace(
+            get_session_type=lambda: "private",
+            text=AsyncMock(return_value="ok"),
+            last_activate=None,
+        ),
+        consecutive_message_count=0,
+        _record_sent_message=AsyncMock(),
+        _record_reply_timing=lambda *_, **__: None,
+        _send_and_report=AsyncMock(return_value="ok"),
+    )
+
+
+async def test_send_message_drops_reply_message_id_while_streaming() -> None:
+    """正文会走流式消息时，普通发送不再带 reply_message_id，避免同一条内容出现两条消息"""
+    from nonebot_plugin_chat.core.processor import MessageProcessor
+
+    processor = _make_send_processor(streaming=True)
+
+    await MessageProcessor.send_message(processor, "你好", "msg-1")
+
+    processor._send_and_report.assert_awaited_once_with("你好", None, 0, enhanced=False)
+
+
+async def test_send_message_keeps_reply_message_id_when_not_streaming() -> None:
+    """正文不会走流式消息（开关关闭 / Gemini / 非 QQ 官方私聊）时照常引用"""
+    from nonebot_plugin_chat.core.processor import MessageProcessor
+
+    processor = _make_send_processor(streaming=False)
+
+    await MessageProcessor.send_message(processor, "你好", "msg-1")
+
+    processor._send_and_report.assert_awaited_once_with("你好", "msg-1", 0, enhanced=False)
+
+
+async def test_stream_manager_streaming_requires_supported_provider_and_platform() -> None:
+    """只有「开关打开 + QQ 官方私聊 + Provider 支持流式」才算正文会走流式消息"""
+    from nonebot_plugin_chat.core.stream_mode import StreamModeManager
+
+    manager = StreamModeManager(SimpleNamespace(session=SimpleNamespace()))
+    manager._enabled = True
+    manager._sender_ready = True
+
+    manager._provider = "openai"
+    assert manager.streaming
+
+    manager._provider = "gemini"
+    assert not manager.streaming
+
+    manager._provider = "openai"
+    manager._sender_ready = False
+    assert not manager.streaming
+
+    manager._sender_ready = True
+    manager._enabled = False
+    assert not manager.streaming
+
+
 async def test_chat_stream_command_toggles_and_disables_gal_mode(monkeypatch: pytest.MonkeyPatch) -> None:
     """``/chat stream on`` 写入 stream 并关闭 gal_mode，反之只写 stream"""
     from nonebot_plugin_chat.matcher import chat as module

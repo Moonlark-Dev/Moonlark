@@ -30,6 +30,7 @@ from nonebot_plugin_larkutils.subaccount import get_main_account
 from nonebot_plugin_orm import get_session
 
 from ..models import PrivateChatConfig
+from ..utils.provider import get_model_provider
 
 if TYPE_CHECKING:
     from .processor import MessageProcessor
@@ -200,6 +201,7 @@ class StreamModeManager:
         self._enabled = False
         self._active = False
         self._sender_ready = False
+        self._provider = ""
         self._openid = ""
         self._reply_message_id = ""
         self._msg_seq: Optional[int] = None
@@ -220,12 +222,24 @@ class StreamModeManager:
         """本轮 Chat 主模型请求是否改用流式传输"""
         return self._enabled
 
+    @property
+    def streaming(self) -> bool:
+        """本轮正文是否真的会作为流式消息发出
+
+        需要同时满足：开关打开（``/chat stream``）、当前会话是 QQ 官方私聊
+        （``_sender_ready``）、Provider 支持流式请求（Gemini 没有流式接口）。
+        正文真的走流式消息时，这条消息本身已经是对触发消息的被动回复，
+        ``send_message`` 据此吞掉 ``reply_message_id``，避免同一条内容出现两条消息。
+        """
+        return self._enabled and self._sender_ready and self._provider != "gemini"
+
     async def begin_round(self) -> None:
         """一轮回复开始：加载开关状态并检查当前会话能否分片发送"""
         self._reset_round_state()
         self._enabled = await self._load_enabled()
         if not self._enabled:
             return
+        self._provider = await self._load_provider()
         session = self.session
         self._active = session.get_session_type() == "private"
         bot = session.bot
@@ -421,9 +435,18 @@ class StreamModeManager:
             logger.warning(f"读取私聊流式发送开关失败: {e}")
             return False
 
+    async def _load_provider(self) -> str:
+        """读取当前会话的 Chat Provider；读取失败时按 OpenAI 处理（与默认值一致）"""
+        try:
+            return await get_model_provider(self.session.session_id)
+        except Exception as e:
+            logger.warning(f"读取会话 Provider 失败，按 openai 处理: {e}")
+            return "openai"
+
     def _reset_round_state(self) -> None:
         self._active = False
         self._sender_ready = False
+        self._provider = ""
         self._openid = ""
         self._reply_message_id = ""
         self._msg_seq = None

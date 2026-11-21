@@ -645,6 +645,11 @@ class MessageProcessor:
                 len(message_content),
                 self.consecutive_message_count,
             )
+        if stream_mode is not None and getattr(stream_mode, "streaming", False):
+            # 本轮正文真的会以流式消息发出（见 StreamModeManager.streaming）：流式消息
+            # 本身就是对触发消息的被动回复，这里如果还按 reply_message_id 再发一条引用
+            # 回复，同一条内容会以「流式消息 + 引用回复」两条消息出现，所以直接把引用吞掉。
+            reply_message_id = None
         if self.gal_mode.should_buffer():
             # 开启备选回复后，消息先进入发送缓存：当前消息留下，把上一条挤出去的消息发出。
             # 缓存里最后一条会在本轮结束时以 markdown（附带备选回复按钮）的形式发出。
