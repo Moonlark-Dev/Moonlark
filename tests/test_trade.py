@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -460,6 +460,63 @@ def test_chart_renders_png():
     assert empty.startswith(b"\x89PNG\r\n\x1a\n")
 
 
+def test_daily_chart_renders_png():
+    from nonebot_plugin_trade.chart import DailyCandlePoint, render_daily_kline_chart
+
+    points = [
+        DailyCandlePoint(day=date(2026, 11, 18), open=9.9, high=10.1, low=9.8, close=10.0, volume=100),
+        DailyCandlePoint(day=date(2026, 11, 19), open=10.2, high=10.5, low=10.0, close=10.3, volume=250),
+    ]
+    data = render_daily_kline_chart(points, "test", "empty", visible_candles=60)
+    assert data.startswith(b"\x89PNG\r\n\x1a\n")
+    empty = render_daily_kline_chart([], "test", "empty")
+    assert empty.startswith(b"\x89PNG\r\n\x1a\n")
+
+
+def test_daily_chart_keeps_candles_adjacent_when_data_insufficient(monkeypatch: pytest.MonkeyPatch):
+    """数据不足时蜡烛仍按 1 个 slot 紧挨着排在右侧，不在横轴方向上拉开空隙"""
+    from matplotlib.axes import Axes
+
+    from nonebot_plugin_trade.chart import DailyCandlePoint, render_daily_kline_chart
+
+    positions: list[float] = []
+    original = Axes.vlines
+
+    def spy_vlines(self, x: float, ymin: float, ymax: float, *args: object, **kwargs: object) -> object:
+        positions.append(x)
+        return original(self, x, ymin, ymax, *args, **kwargs)
+
+    monkeypatch.setattr(Axes, "vlines", spy_vlines)
+    points = [
+        DailyCandlePoint(
+            day=date(2026, 11, 17) + timedelta(days=index),
+            open=10.0,
+            high=10.5,
+            low=9.5,
+            close=10.2,
+        )
+        for index in range(3)
+    ]
+
+    render_daily_kline_chart(points, "test", "empty", visible_candles=60)
+
+    # total=60、只有 3 根：位置是 57/58/59，左侧留白而不是把 3 根蜡烛铺满整条横轴
+    assert positions == [57, 58, 59]
+
+
+def test_day_tick_indexes_skip_overlapping_labels():
+    from itertools import pairwise
+
+    from nonebot_plugin_trade.chart import _day_tick_indexes
+
+    # 只有 3 根蜡烛时，相邻日期标签会重叠，只保留最新一根的日期
+    assert _day_tick_indexes(3, 60) == [2]
+
+    indexes = _day_tick_indexes(60, 60)
+    assert indexes[-1] == 59
+    assert all(right - left >= 3 for left, right in pairwise(indexes))
+
+
 @pytest.mark.asyncio
 async def test_load_recent_candles_spans_days_in_ascending_order():
     from nonebot_plugin_trade.market import load_recent_candles
@@ -476,6 +533,47 @@ async def test_load_recent_candles_spans_days_in_ascending_order():
         (date(2026, 11, 19), 0),
         (date(2026, 11, 19), 1),
     ]
+
+
+@pytest.mark.asyncio
+async def test_load_daily_candles_aggregates_ohlc_and_volume():
+    from nonebot_plugin_trade.market import DailyCandle, load_daily_candles
+    from nonebot_plugin_trade.models import Candle
+
+    session = FakeSession()
+    session.add(Candle(day=date(2026, 11, 17), slot=0, open=10.0, high=10.4, low=9.8, close=10.2))
+    session.add(Candle(day=date(2026, 11, 17), slot=1, open=10.2, high=10.6, low=10.1, close=10.5, volume=30))
+    session.add(Candle(day=date(2026, 11, 18), slot=0, open=10.5, high=10.9, low=10.4, close=10.8, volume=20))
+    session.add(Candle(day=date(2026, 11, 18), slot=1, open=10.8, high=11.0, low=10.7, close=10.9, volume=5))
+
+    daily = await load_daily_candles(session, 2)
+
+    assert daily == [
+        DailyCandle(day=date(2026, 11, 17), open=10.0, high=10.6, low=9.8, close=10.5, volume=30),
+        DailyCandle(day=date(2026, 11, 18), open=10.5, high=11.0, low=10.4, close=10.9, volume=25),
+    ]
+
+    # limit 只保留最近若干交易日；非正数直接返回空
+    assert [candle.day for candle in await load_daily_candles(session, 1)] == [date(2026, 11, 18)]
+    assert await load_daily_candles(session, 0) == []
+
+
+@pytest.mark.asyncio
+async def test_history_caption_and_render_use_named_placeholders():
+    from nonebot_plugin_trade.__main__ import build_history_caption, render_daily_chart
+    from nonebot_plugin_trade.chart import DailyCandlePoint
+
+    points = [
+        DailyCandlePoint(day=date(2026, 11, 18), open=10.0, high=10.4, low=9.8, close=10.2),
+        DailyCandlePoint(day=date(2026, 11, 19), open=10.2, high=10.6, low=10.1, close=10.5),
+    ]
+    caption = await build_history_caption("tester", points)
+    assert "2026-11-19" in caption
+    assert "10.50" in caption
+    assert "已积累 2 个交易日" in caption
+
+    with patch("nonebot_plugin_trade.__main__.render_daily_kline_chart", return_value=b"png"):
+        assert await render_daily_chart("tester", points) == b"png"
 
 
 def test_help_does_not_expose_internal_mechanism():
@@ -734,6 +832,90 @@ async def test_send_panel_falls_back_to_text_when_image_render_fails(monkeypatch
     await trade_main.send_panel(MagicMock(), MagicMock(), "panel-user", make_panel_data(), None)
 
     fallback.assert_awaited()
+
+
+class _FakeHistoryMessage(_FakeUniMessage):
+    """记录 text 段与 image 段的 UniMessage 替身"""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.texts: list[str] = []
+
+    def text(self, content: str = "", **_kwargs: object) -> "_FakeHistoryMessage":
+        self.texts.append(content)
+        return self
+
+    def __add__(self, other: "_FakeHistoryMessage") -> "_FakeHistoryMessage":
+        merged = type(self)()
+        merged.texts = self.texts + other.texts
+        merged.images = self.images + other.images
+        return merged
+
+
+@pytest.mark.asyncio
+async def test_send_history_chart_sends_caption_and_image_for_other_adapters(monkeypatch: pytest.MonkeyPatch):
+    from nonebot_plugin_trade import __main__ as trade_main
+
+    sent: dict[str, _FakeHistoryMessage] = {}
+
+    class RecordingUniMessage(_FakeHistoryMessage):
+        async def send(self, **_kwargs: object) -> None:
+            sent["message"] = self
+
+    monkeypatch.setattr(trade_main, "UniMessage", RecordingUniMessage)
+    finished = AsyncMock()
+    monkeypatch.setattr(trade_main.trade, "finish", finished)
+
+    await trade_main.send_history_chart(MagicMock(), MagicMock(), "日 K 说明", b"chart-image")
+
+    assert sent["message"].texts == ["日 K 说明"]
+    assert sent["message"].images == [b"chart-image"]
+    finished.assert_awaited()
+
+
+@pytest.mark.asyncio
+async def test_send_history_chart_uses_markdown_image_for_qq(monkeypatch: pytest.MonkeyPatch):
+    from nonebot_plugin_trade import __main__ as trade_main
+
+    class FakeQQBot:
+        pass
+
+    record: dict[str, object] = {}
+
+    class FakeMessage:
+        def style(self, text: str, _kind: str) -> "FakeMessage":
+            record["text"] = text
+            return self
+
+        async def send(self, **_kwargs: object) -> None:
+            record["sent"] = True
+
+    async def fake_create_image_markdown(_chart: bytes, _bot: object) -> str:
+        return "![日 K](qqbot-media://example)"
+
+    monkeypatch.setattr(trade_main, "QQBot", FakeQQBot)
+    monkeypatch.setattr(trade_main, "create_image_markdown", fake_create_image_markdown)
+    monkeypatch.setattr(trade_main, "UniMessage", FakeMessage)
+    finished = AsyncMock()
+    monkeypatch.setattr(trade_main.trade, "finish", finished)
+
+    await trade_main.send_history_chart(FakeQQBot(), MagicMock(), "日 K 说明", b"chart")
+
+    assert record["text"] == "日 K 说明\n\n![日 K](qqbot-media://example)"
+    assert record["sent"] is True
+    finished.assert_awaited()
+
+
+@pytest.mark.asyncio
+async def test_send_history_chart_falls_back_to_caption(monkeypatch: pytest.MonkeyPatch):
+    from nonebot_plugin_trade import __main__ as trade_main
+
+    finished = AsyncMock()
+    monkeypatch.setattr(trade_main.trade, "finish", finished)
+
+    await trade_main.send_history_chart(MagicMock(), MagicMock(), "暂无日 K 数据", None)
+
+    finished.assert_awaited_once_with("暂无日 K 数据")
 
 
 @pytest.mark.asyncio
