@@ -145,6 +145,7 @@ packages = [
     { include = "nonebot_plugin_md", from = "./plugins" },
     { include = "nonebot_plugin_sticker_dl", from = "./plugins" },
     { include = "nonebot_plugin_sweet_potato", from = "./plugins" },
+    { include = "nonebot_plugin_turtle_soup", from = "./plugins" },
 ]
 
 

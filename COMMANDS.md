@@ -188,6 +188,20 @@
 - `/trade sell <股数> (按股数卖出，如填 100 卖出 100 股)`
 - `/trade sell all (卖出当前全部可卖股票)`
 - `/trade history (查看日 K 线历史，影线取自实际成交数据)`
+## `turtle-soup`: 海龟汤
+
+AI 主持的「海龟汤」（情境猜谜）游戏。
+系统会给出一个离奇的情境描述（汤面），你只能提出可以用「是 / 不是 / 不重要」回答的问题，
+通过一步步提问推理出完整的故事真相（汤底）。群里所有人都可以提问，一局默认最多 50 个问题，
+本局默认在 36 小时内都有效；期间 Moonlark 的闲聊会被暂时收起，专心当主持人。
+- `/turtle-soup (开始一局海龟汤)`
+- `/turtle-soup 〈问题〉 (向主持人提问)`
+- `/turtle-soup progress (查看当前进度)`
+- `/turtle-soup hint (获取一条提示)`
+- `/turtle-soup recalculate (重新计算当前进度)`
+- `/turtle-soup give-up (放弃本局并公布汤底)`
+- `/turtle-soup rank (查看正确作答数排行)`
+- `/turtle-soup help (查看玩法说明)`
 ## `wordle`: WORDLE
 
 猜单词的游戏，支持多人游玩。

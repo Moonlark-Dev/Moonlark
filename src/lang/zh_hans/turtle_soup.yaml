@@ -1,0 +1,131 @@
+help:
+  description: 海龟汤
+  details: |
+    AI 主持的「海龟汤」（情境猜谜）游戏。
+    系统会给出一个离奇的情境描述（汤面），你只能提出可以用「是 / 不是 / 不重要」回答的问题，
+    通过一步步提问推理出完整的故事真相（汤底）。群里所有人都可以提问，一局默认最多 50 个问题，
+    本局默认在 36 小时内都有效；期间 Moonlark 的闲聊会被暂时收起，专心当主持人。
+  usage1: turtle-soup (开始一局海龟汤)
+  usage2: turtle-soup 〈问题〉 (向主持人提问)
+  usage3: turtle-soup progress (查看当前进度)
+  usage4: turtle-soup hint (获取一条提示)
+  usage5: turtle-soup recalculate (重新计算当前进度)
+  usage6: turtle-soup give-up (放弃本局并公布汤底)
+  usage7: turtle-soup rank (查看正确作答数排行)
+  usage8: turtle-soup help (查看玩法说明)
+
+button:
+  ask: 提问
+  progress: 查看进度
+  hint: 获取提示
+  give-up: 放弃
+  again: 再来一局
+  rank: 排行榜
+
+label:
+  title: 题目
+  puzzle: 汤面
+  solution: 汤底
+  supplementary: 附加信息
+  question: 你的问题
+  answer: 回答
+  progress: 进度
+  asked: 已提问
+  solved_by: 解出者
+
+announce:
+  start: 🐢 海龟汤开始
+  ask: 💬 海龟汤
+  progress: 📈 海龟汤 · 当前进度
+  hint: 💡 海龟汤 · 提示
+  solved: 🎉 汤底揭晓
+  given-up: 📖 汤底揭晓
+  rules: 📜 海龟汤玩法
+  rank: 🍲 海龟汤正确作答数排行
+
+message:
+  start_hint: |
+    直接发送 {__prefix__}turtle-soup 〈你的问题〉 就可以提问，问题要能用「是 / 不是 / 不重要」回答。
+    （QQ 官方机器人也可以点击下方按钮提问、查看进度、要提示或放弃。）
+  ask_hint: 继续发送 {__prefix__}turtle-soup 〈你的问题〉 提问。
+  end_hint: 发送 {__prefix__}turtle-soup 可以再来一局。
+  hint_line: 第 {0}/{1} 条提示
+  recalculated: 进度已重新核算为 {0}%。
+  rank_item: '{0}. {1} —— 答对 {2} 题'
+  rank_me: 你当前的排名是第 {0} 名，共答对 {1} 题。
+  rules: |
+    规则说明
+    1. 主持人只会回答「是」「不是」「不重要」，不会给出额外解释。
+    2. 提问要尽量是封闭式问题，例如「这个人是故意的吗？」「事情发生在室内吗？」。
+    3. 当你的提问复述出汤底的主要真相时，主持人会直接公布汤底，本局结束。
+    4. 群里所有人都可以提问；同一会话同时只能有一局。
+    5. 一局最多 {0} 个问题，本局默认在 36 小时内有效。
+    常用指令：
+    - 开始：{__prefix__}turtle-soup
+    - 提问：{__prefix__}turtle-soup 〈你的问题〉
+    - 查看进度：{__prefix__}turtle-soup progress
+    - 获取提示：{__prefix__}turtle-soup hint
+    - 放弃并公布汤底：{__prefix__}turtle-soup give-up
+    - 正确作答数排行：{__prefix__}turtle-soup rank
+
+status:
+  not_playing: 当前会话没有进行中的海龟汤，发送 {__prefix__}turtle-soup 开始一局吧。
+  already_playing: 当前会话已经有一局海龟汤了，直接发送 {__prefix__}turtle-soup 〈你的问题〉 提问，或者发送 {__prefix__}turtle-soup give-up 放弃本局。
+  generating: 正在生成新的海龟汤，请稍候……
+  generate_failed: 出题失败了，请稍后再试。
+  question_limit: 本局的 {0} 个问题已经用完了，发送 {__prefix__}turtle-soup give-up 可以查看汤底。
+  judge_failed: 主持人走神了一下，这个问题没有判出来，请再问一次。
+  no_hint: 这道题没有可用的提示。
+  all_hints: 所有提示都已经展示完了，共 {0} 条。
+  recalculate_failed: 重新计算进度失败了，请稍后再试。
+  rank_empty: 还没有人成功解开过海龟汤，快去创造第一个记录吧。
+  empty_question: 请输入你的问题，例如 {__prefix__}turtle-soup 这个人是故意的吗
+  recalculating: 正在重新计算进度……
+
+reply:
+  'yes': 是
+  'no': 不是
+  irrelevant: 不重要
+  solved: 恭喜你，推理非常精彩！
+
+judge:
+  decision:
+    answer_instructions: |
+      根据谜题与玩家的最新提问，判断应该回答「是」「不是」还是「不重要」。
+      玩家陈述的内容与谜题事实一致时选 yes；与谜题事实冲突时选 no；
+      与谜题无关、对解谜没有帮助或无法用是/否回答时选 irrelevant。
+      只做三选一，不要考虑进度。
+    answer_yes: 玩家最新提问或陈述与谜题事实一致，应回答「是」。
+    answer_no: 玩家最新提问或陈述与谜题事实冲突，应回答「不是」。
+    answer_irrelevant: 提问与谜题无关、无法用是/否回答，或对解谜没有帮助，应回答「不重要」。
+    solved_instructions: |
+      判断玩家最新的提问或陈述是否已经完整复述出汤底的核心真相（不只是接近，而是基本说中）。
+      如果玩家只是在猜测或只说到部分线索，请选 false。
+    solved_true: 玩家已经基本说出汤底的核心真相，本局可以结束。
+    solved_false: 玩家还没有说出汤底的核心真相，本局继续。
+    progress_instructions: |
+      评估玩家目前距离揭开汤底有多近，按 0 到 10 的整数等级打分：
+      0 表示完全没有进展，10 表示已经完整说出汤底。
+      以汤底的关键要素被揭示的比例为准，不要因为提问数量多就给高分。
+      只要汤底还没有被完整复述，最高只给 9。
+    progress_level_0: 完全没有进展，问题和谜题几乎没有关系。
+    progress_level_1: 只确认了场景里最基础、最明显的事实。
+    progress_level_2: 摸到了一点方向，但仍停留在谜题表面。
+    progress_level_3: 排除了若干明显错误的方向。
+    progress_level_4: 已经确认了一部分关键背景事实。
+    progress_level_5: 掌握了汤底的一半线索，方向基本正确。
+    progress_level_6: 关键要素中的一部分已经被明确揭示。
+    progress_level_7: 大部分关键要素已经被揭示，只差最后的串联。
+    progress_level_8: 已非常接近真相，只差一个核心细节。
+    progress_level_9: 几乎说出汤底，但仍有重要细节没有确认。
+    progress_level_10: 已经完整说出汤底的核心真相。
+
+chat:
+  event_solved: |
+    【海龟汤】刚刚有一局海龟汤被解开了。
+    汤面：{0}
+    汤底：{1}
+  event_given_up: |
+    【海龟汤】刚刚有一局海龟汤被放弃了，汤底已经公布。
+    汤面：{0}
+    汤底：{1}

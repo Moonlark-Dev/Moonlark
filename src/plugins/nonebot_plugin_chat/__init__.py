@@ -33,3 +33,4 @@ from .core import proactive_chat as _proactive_chat
 
 # 导出供其他插件使用的接口
 from .core.session import post_group_event
+from .utils.suppression import is_chat_suspended, resume_chat, suspend_chat
