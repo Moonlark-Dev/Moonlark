@@ -421,14 +421,14 @@ yarl = "*"
 
 [[package]]
 name = "bilichat-request"
-version = "0.5.12"
+version = "0.5.13"
 description = "Default template for PDM package"
 optional = false
 python-versions = "<4.0,>=3.10"
 groups = ["main"]
 files = [
-    {file = "bilichat_request-0.5.12-py3-none-any.whl", hash = "sha256:28449f4abf786b300da1ea06c5d6a523c3ff3e32f159bf13cfbf1fe61fec0c6e"},
-    {file = "bilichat_request-0.5.12.tar.gz", hash = "sha256:b629bdd067c7ca15bc55345efe90ffe40e696ce8af43abd17002979b08c79be0"},
+    {file = "bilichat_request-0.5.13-py3-none-any.whl", hash = "sha256:349a34dcedf581507c0187c2a1934685e5f2ca1a6671efaa4f89f0f12ea3a31d"},
+    {file = "bilichat_request-0.5.13.tar.gz", hash = "sha256:a5c88dee087bea756f8956d21eeba04cdff943fef2489514d8214c6055207571"},
 ]
 
 [package.dependencies]
