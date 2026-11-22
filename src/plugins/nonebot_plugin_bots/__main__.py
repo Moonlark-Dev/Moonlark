@@ -1,6 +1,8 @@
 import time
 from nonebot.adapters.onebot.v11.bot import Bot as V11Bot
+from nonebot.adapters.onebot.v11.event import HeartbeatMetaEvent as V11HeartbeatMetaEvent
 from nonebot.adapters.onebot.v12.bot import Bot as V12Bot
+from nonebot.adapters.onebot.v12.event import HeartbeatMetaEvent as V12HeartbeatMetaEvent
 from nonebot.adapters.qq import Bot as QQBot
 from nonebot_plugin_apscheduler import scheduler
 from nonebot import logger
@@ -287,7 +289,14 @@ class ToMeProcessor:
 
 
 @event_preprocessor
-async def _(bot: Bot, event: Event, session_id: str = get_group_id()) -> None:
+async def preprocess_event(bot: Bot, event: Event, session_id: str = get_group_id()) -> None:
+    # OneBot 心跳元事件不含用户与会话上下文：get_user_id() / get_session_id() 都会抛
+    # ValueError，session_id 为空字符串。若不在此跳过，每次心跳（线上约每 5 秒一次）
+    # 都会走一遍绑定检测与会话处理，把空会话写进 sessions 并刷出一条
+    # 「已将会话  分配给 …」的 INFO 日志。
+    if isinstance(event, (V11HeartbeatMetaEvent, V12HeartbeatMetaEvent)):
+        return
+
     try:
         user_id = event.get_user_id()
     except ValueError:
