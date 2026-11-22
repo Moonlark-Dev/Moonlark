@@ -17,6 +17,7 @@ EXPECTED_RANKING_IDS = {
     "jrrp",
     "rua",
     "mvp",
+    "turtle-soup",
 }
 
 

@@ -1,0 +1,3 @@
+plugin: 'turtle_soup'
+commands:
+  turtle-soup: help;8;game

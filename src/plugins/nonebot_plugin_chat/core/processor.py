@@ -459,8 +459,19 @@ class MessageProcessor:
         await self.session.mute()
 
     async def generate_reply(self, important: bool = False, is_event: bool = False) -> None:
+        # 被其他插件（如海龟汤）临时屏蔽时直接放弃回复：消息照常入上下文，
+        # 但普通消息、事件、定时器、冷群接话与主动私聊都不会开口。
+        from ..utils.suppression import is_chat_suspended
+
+        if is_chat_suspended(self.session.session_id):
+            logger.debug(f"会话 {self.session.session_id} 处于屏蔽状态，跳过本次回复")
+            return
         if not important:
             await asyncio.sleep(5)
+            # 等待期间可能刚好被屏蔽（游戏开局），醒来后再确认一次
+            if is_chat_suspended(self.session.session_id):
+                logger.debug(f"会话 {self.session.session_id} 处于屏蔽状态，跳过本次回复")
+                return
         # 延迟导入以避免循环导入
         from .ego import moonlark_main
 
