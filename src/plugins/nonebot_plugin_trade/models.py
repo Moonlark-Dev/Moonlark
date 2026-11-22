@@ -18,8 +18,8 @@ class MarketState(Model):
     day_open: Mapped[float] = mapped_column(Float(), default=0.0)
     # 前一交易日收盘价
     prev_close: Mapped[float] = mapped_column(Float(), default=0.0)
-    # 当日行情序列，开盘前一次性抽好，JSON 数组：[{"label": "up", "ticks": 5}, ...]
-    segments: Mapped[Optional[str]] = mapped_column(Text(), nullable=True)
+    # CandleBridge 随机过程状态（JSON：rng_state / volatility / regime / remaining / direction）
+    engine_state: Mapped[Optional[str]] = mapped_column(Text(), nullable=True)
     # 市场当前持有的流通股
     float_shares: Mapped[int] = mapped_column(Integer(), default=0)
     # 最近一次已处理的 tick 时间

@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 import math
 import re
-import secrets
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta, timezone
 from typing import TYPE_CHECKING, Literal, Optional
@@ -14,6 +13,7 @@ if TYPE_CHECKING:
     from nonebot_plugin_larkuser import MoonlarkUser
     from nonebot_plugin_orm import AsyncSession
 
+from .candlebridge import ModelParameters, PathState, simulate_bar
 from .config import config
 from .models import Candle, Holding, MarketState
 
@@ -24,23 +24,12 @@ OPEN_MINUTE = 8 * 60
 CLOSE_MINUTE = 24 * 60
 LAST_TICK_MINUTE = CLOSE_MINUTE - TICK_MINUTES
 PRICE_FLOOR = 0.01
-LABEL_UP = "up"
-LABEL_DOWN = "down"
-LABEL_FLAT = "flat"
-LABELS = (LABEL_UP, LABEL_DOWN, LABEL_FLAT)
-# 段内进度对涨跌概率的最大偏移：进度 1 时 p_up = 0.95 / 0.05
-MAX_BIAS = 0.45
-# 布朗桥插值的采样点数：每两根 tick 之间补出的盘中路径
-BRIDGE_STEPS = 16
-# 每天开盘前循环抽取行情段时，每段持续时间（tick 数）的下限与上限
-MIN_SEGMENT_TICKS = 3
-MAX_SEGMENT_TICKS = 15
-# 交易时段 08:00–24:00 的 tick 总数；08:00 的开市跳空 tick 不占用当日分配
+PRICE_DECIMALS = 6
+# 交易时段 08:00–24:00 的 tick 总数；08:00 为开市跳空 tick
 DAY_TICKS = (CLOSE_MINUTE - OPEN_MINUTE) // TICK_MINUTES
 INTRADAY_TICKS = DAY_TICKS - 1
 # 单个交易日最多落库的 5 分钟 K 线根数；批量读取日 K 时据此估算查询上限
 MAX_CANDLES_PER_DAY = DAY_TICKS
-_RANDOM_SCALE = 1_000_000_000
 _BUY_SHARES_PATTERN = re.compile(r"\d+")
 _SELL_SHARES_PATTERN = re.compile(r"\d+")
 
@@ -52,14 +41,6 @@ class TradeError(Exception):
         super().__init__(key)
         self.key = key
         self.format_args = format_args
-
-
-@dataclass(frozen=True)
-class Segment:
-    """当日行情序列的一段：标签与它持续的 tick 数"""
-
-    label: str
-    ticks: int
 
 
 @dataclass(frozen=True)
@@ -145,162 +126,89 @@ def trade_candle_slot(minute: int) -> Optional[int]:
     return (minute - OPEN_MINUTE) // TICK_MINUTES
 
 
-def _rand_unit() -> float:
-    """[0, 1) 均匀分布，底层使用 urandom"""
-    return secrets.randbelow(_RANDOM_SCALE) / _RANDOM_SCALE
+def build_model_parameters() -> ModelParameters:
+    """根据当前插件配置构建 CandleBridge 模型参数（连续市场模式关闭终点锁定）"""
+    return ModelParameters(
+        fine_seconds=config.trade_fine_seconds,
+        df=config.trade_df,
+        decay=config.trade_decay,
+        base_volatility=config.trade_base_volatility,
+        jump_probability=config.trade_jump_probability,
+        jump_minimum=config.trade_jump_minimum,
+        jump_maximum=config.trade_jump_maximum,
+        shock=config.trade_shock,
+        low_multiplier=config.trade_low_multiplier,
+        high_multiplier=config.trade_high_multiplier,
+        trend_multiplier=config.trade_trend_multiplier,
+        state_minimum=config.trade_state_minimum,
+        state_maximum=config.trade_state_maximum,
+        trend_strength=config.trade_trend_strength,
+        intensity=config.trade_intensity,
+        lock_target=False,
+    )
 
 
-def _rand_float() -> float:
-    """[0, 1) 均匀分布；测试通过打桩它控制 tick 的方向与幅度"""
-    return _rand_unit()
+def encode_engine_state(engine: PathState) -> str:
+    """把 CandleBridge 随机过程状态序列化为 JSON，存进 MarketState.engine_state"""
+    return json.dumps(engine.to_dict(), separators=(",", ":"))
 
 
-def _rand_normal() -> float:
-    """标准正态随机数（Box-Muller），用于布朗桥插值"""
-    u1 = max(_rand_unit(), 1e-12)
-    u2 = _rand_unit()
-    return math.sqrt(-2.0 * math.log(u1)) * math.cos(2.0 * math.pi * u2)
-
-
-def _brownian_bridge_extremes(start: float, end: float, volatility: float) -> tuple[float, float]:
-    """在两个 tick 的价格之间用布朗桥补出盘中路径，返回 (最高价, 最低价)
-
-    布朗桥的起点、终点分别固定为两根 tick 的价格，中间采样点按
-    ``B(t) = start + (end - start) * t + Z * volatility * sqrt(t * (1 - t))`` 生成，
-    这样即使开收盘价相同，K 线也会出现合理的上下影线。
-    """
-    high = max(start, end)
-    low = min(start, end)
-    spread = max(PRICE_FLOOR, end) * volatility
-    if spread <= 0:
-        return high, low
-    for step in range(1, BRIDGE_STEPS):
-        t = step / BRIDGE_STEPS
-        deviation = max(-3.0, min(3.0, _rand_normal())) * spread * math.sqrt(t * (1.0 - t))
-        point = max(PRICE_FLOOR, start + (end - start) * t + deviation)
-        high = max(high, point)
-        low = min(low, point)
-    return high, low
-
-
-def _random_label() -> str:
-    return secrets.choice(LABELS)
-
-
-def allocate_segments(tick_count: int = INTRADAY_TICKS) -> list[Segment]:
-    """循环抽取标签与持续时间，直到把 tick_count 个 tick 完整分配
-
-    每轮抽一个标签和一个 MIN_SEGMENT_TICKS~MAX_SEGMENT_TICKS 的持续时间；
-    剩下的 tick 不足以再抽一段时直接并进最后一段，保证每段都不短于下限。
-    """
-    segments: list[Segment] = []
-    remaining = tick_count
-    while remaining > 0:
-        if remaining <= MAX_SEGMENT_TICKS:
-            ticks = remaining
-        else:
-            span = MAX_SEGMENT_TICKS - MIN_SEGMENT_TICKS + 1
-            ticks = min(MAX_SEGMENT_TICKS, MIN_SEGMENT_TICKS + int(_rand_float() * span))
-            if remaining - ticks < MIN_SEGMENT_TICKS:
-                ticks = remaining - MIN_SEGMENT_TICKS
-        segments.append(Segment(_random_label(), ticks))
-        remaining -= ticks
-    return segments
-
-
-def encode_segments(segments: list[Segment]) -> str:
-    """把当日行情序列序列化成 JSON，存进 MarketState.segments"""
-    return json.dumps([{"label": segment.label, "ticks": segment.ticks} for segment in segments])
-
-
-def decode_segments(raw: Optional[str]) -> list[Segment]:
-    """解析行情序列；空值或损坏的 JSON 一律视为尚未分配"""
+def decode_engine_state(raw: Optional[str]) -> Optional[PathState]:
+    """解析随机过程状态；空值、损坏 JSON 或非法字段一律视为尚未初始化"""
     if not raw:
-        return []
+        return None
     try:
         data = json.loads(raw)
     except (TypeError, ValueError):
-        return []
-    if not isinstance(data, list):
-        return []
-    segments: list[Segment] = []
-    for item in data:
-        if not isinstance(item, dict):
-            continue
-        label = item.get("label")
-        ticks = item.get("ticks")
-        if label in LABELS and isinstance(ticks, int) and ticks > 0:
-            segments.append(Segment(label, ticks))
-    return segments
+        return None
+    return PathState.from_dict(data)
 
 
-def get_segments(state: MarketState) -> list[Segment]:
-    """读取当日行情序列"""
-    return decode_segments(state.segments)
+def get_engine_state(state: MarketState) -> Optional[PathState]:
+    """读取当前市场保存的 CandleBridge 状态"""
+    return decode_engine_state(state.engine_state)
+
+
+def ensure_engine_state(state: MarketState, model: Optional[ModelParameters] = None) -> PathState:
+    """读取或按随机种子初始化 CandleBridge 状态，并写回 ``state.engine_state``"""
+    engine = get_engine_state(state)
+    if engine is not None:
+        return engine
+    engine = PathState.create(model or build_model_parameters())
+    state.engine_state = encode_engine_state(engine)
+    return engine
 
 
 def _round_price(price: float) -> float:
-    return round(max(PRICE_FLOOR, price), 6)
-
-
-def up_probability(label: str, progress: float) -> float:
-    """标签 + 段内进度 -> 本次 tick 上涨概率"""
-    if label == LABEL_UP:
-        return 0.5 + MAX_BIAS * progress
-    if label == LABEL_DOWN:
-        return 0.5 - MAX_BIAS * progress
-    return 0.5
-
-
-def _tick_price(old_price: float, label: str, progress: float) -> float:
-    """按标签与段内进度走一个 tick：方向按概率抽，幅度不超过 trade_sigma"""
-    p_up = up_probability(label, progress)
-    direction = 1 if _rand_float() < p_up else -1
-    magnitude = _rand_float() * config.trade_sigma
-    return _round_price(old_price * (1 + direction * magnitude))
+    return round(max(PRICE_FLOOR, price), PRICE_DECIMALS)
 
 
 def init_day(state: MarketState, day: date) -> None:
-    """开市初始化：开盘价暂取前一交易日收盘价
-
-    当天全天的行情序列在处理 08:00 的 tick 时一次性抽好，先于当日任何一个 tick。
-    """
+    """开市初始化：开盘价暂取前一交易日收盘价，并保留 CandleBridge 状态跨日延续"""
     state.prev_close = state.price
     state.day_open = state.price
     state.day = day
-    state.segments = encode_segments(allocate_segments())
+    ensure_engine_state(state)
 
 
-def last_segment_label(state: MarketState) -> str:
-    """当日行情序列最后一个标签；序列还没分配时按持平处理"""
-    segments = get_segments(state)
-    return segments[-1].label if segments else LABEL_FLAT
-
-
-def apply_open_gap(state: MarketState, last_label: str) -> None:
-    """开市跳空：按前一交易日最后一个标签再走一个 tick，形成不写 K 线的缺口"""
-    state.day_open = _tick_price(state.price, last_label, 1.0)
-    state.price = state.day_open
-
-
-def segment_label_and_progress(state: MarketState, minute: int) -> tuple[str, float]:
-    """返回当前 tick 所属段落的标签与段内进度（0~1）
-
-    08:00 的开市跳空 tick 由前一交易日最后一个标签决定，不占用当日分配，
-    当日分配的第一个 tick 是 08:05。
-    """
-    segments = get_segments(state)
-    if not segments:
-        return LABEL_FLAT, 0.5
-    total_ticks = sum(segment.ticks for segment in segments)
-    position = max(0, min((minute - OPEN_MINUTE) // TICK_MINUTES - 1, total_ticks - 1))
-    start = 0
-    for segment in segments:
-        if position < start + segment.ticks:
-            progress = (position - start) / max(1, segment.ticks - 1)
-            return segment.label, progress
-        start += segment.ticks
-    return segments[-1].label, 1.0
+def apply_open_gap(state: MarketState) -> None:
+    """开市跳空：沿用前一交易日尾盘的 CandleBridge 状态演进隔夜区间，不写 K 线"""
+    gap_minutes = config.trade_open_gap_minutes
+    if gap_minutes <= 0:
+        return
+    model = build_model_parameters()
+    engine = ensure_engine_state(state, model)
+    bar = simulate_bar(
+        engine,
+        state.price,
+        gap_minutes * 60,
+        model,
+        price_floor=PRICE_FLOOR,
+        price_decimals=PRICE_DECIMALS,
+    )
+    state.engine_state = encode_engine_state(engine)
+    state.day_open = bar.close
+    state.price = bar.close
 
 
 def impact_rate(shares: int) -> float:
@@ -312,34 +220,41 @@ def impact_rate(shares: int) -> float:
 
 
 async def apply_tick(state: MarketState, tick: datetime, session: AsyncSession) -> None:
-    """应用一次 tick：按段内概率决定方向，幅度不超过 sigma"""
+    """应用一次 5 分钟 tick：按 CandleBridge 细步随机路径生成该根 K 线的 OHLC"""
     minute = tick.hour * 60 + tick.minute
-    label, progress = segment_label_and_progress(state, minute)
-    old_price = state.price
-    new_price = _tick_price(old_price, label, progress)
-    state.price = new_price
+    model = build_model_parameters()
+    engine = ensure_engine_state(state, model)
+    bar = simulate_bar(
+        engine,
+        state.price,
+        TICK_MINUTES * 60,
+        model,
+        price_floor=PRICE_FLOOR,
+        price_decimals=PRICE_DECIMALS,
+    )
+    state.engine_state = encode_engine_state(engine)
+    state.price = bar.close
 
     slot = candle_slot(minute)
     if slot is None:
         return
-    high, low = _brownian_bridge_extremes(old_price, new_price, config.trade_sigma * config.trade_bridge_vol)
     candle = await session.get(Candle, (tick.date(), slot))
     if candle is None:
         session.add(
             Candle(
                 day=tick.date(),
                 slot=slot,
-                open=old_price,
-                high=high,
-                low=low,
-                close=new_price,
+                open=bar.open,
+                high=bar.high,
+                low=bar.low,
+                close=bar.close,
                 volume=0,
             ),
         )
         return
-    candle.high = max(candle.high, high)
-    candle.low = min(candle.low, low)
-    candle.close = new_price
+    candle.high = max(candle.high, bar.high)
+    candle.low = min(candle.low, bar.low)
+    candle.close = bar.close
 
 
 async def ensure_market(session: AsyncSession, now: Optional[datetime] = None) -> MarketState:
@@ -353,7 +268,7 @@ async def ensure_market(session: AsyncSession, now: Optional[datetime] = None) -
             price=initial_price,
             day_open=initial_price,
             prev_close=initial_price,
-            segments=None,
+            engine_state=None,
             float_shares=config.trade_total_shares,
             last_tick_at=None,
         )
@@ -369,9 +284,9 @@ async def ensure_market(session: AsyncSession, now: Optional[datetime] = None) -
             day = trading_day(now)
             init_day(state, day)
             state.last_tick_at = datetime.combine(day, time(23, 55))
-    elif not get_segments(state):
-        # 从旧版本升级上来：当天还没有行情序列，先补齐再继续补算 tick
-        state.segments = encode_segments(allocate_segments())
+    elif get_engine_state(state) is None:
+        # 从旧版本升级上来：还没有 CandleBridge 状态，先补齐再继续补算 tick
+        ensure_engine_state(state)
 
     target = target_tick_time(now)
     while state.last_tick_at < target:
@@ -379,10 +294,8 @@ async def ensure_market(session: AsyncSession, now: Optional[datetime] = None) -
         if tick > target:
             break
         if tick.hour * 60 + tick.minute == OPEN_MINUTE:
-            # 隔夜跳空按前一交易日最后一个标签再走一个 tick，所以要在换日前取
-            last_label = last_segment_label(state)
             init_day(state, tick.date())
-            apply_open_gap(state, last_label)
+            apply_open_gap(state)
         else:
             await apply_tick(state, tick, session)
         state.last_tick_at = tick
