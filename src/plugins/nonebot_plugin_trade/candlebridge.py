@@ -261,6 +261,61 @@ def validate_limits(limits: GeneratorLimits) -> None:
         raise CandleBridgeError("INVALID_PARAMETERS", "Invalid generator limit configuration.")
 
 
+_DAILY_DF_CHOICES: tuple[int, ...] = (4, 5, 6, 8, 10)
+_DAILY_MODEL_FIELDS: tuple[str, ...] = (
+    "intensity",
+    "base_volatility",
+    "df",
+    "decay",
+    "shock",
+    "jump_probability",
+    "jump_minimum",
+    "jump_maximum",
+    "low_multiplier",
+    "high_multiplier",
+    "trend_multiplier",
+    "state_minimum",
+    "state_maximum",
+    "trend_strength",
+)
+
+
+def _model_to_overrides(model: ModelParameters) -> dict[str, object]:
+    return {field: getattr(model, field) for field in _DAILY_MODEL_FIELDS}
+
+
+def _model_from_overrides(data: object) -> Optional[ModelParameters]:
+    if not isinstance(data, dict):
+        return None
+    kwargs: dict[str, object] = {}
+    for field in _DAILY_MODEL_FIELDS:
+        if field not in data:
+            return None
+        kwargs[field] = data[field]
+    try:
+        model = ModelParameters(
+            intensity=kwargs["intensity"],  # type: ignore[arg-type]
+            base_volatility=float(kwargs["base_volatility"]),  # type: ignore[arg-type]
+            df=kwargs["df"],  # type: ignore[arg-type]
+            decay=float(kwargs["decay"]),  # type: ignore[arg-type]
+            shock=float(kwargs["shock"]),  # type: ignore[arg-type]
+            jump_probability=float(kwargs["jump_probability"]),  # type: ignore[arg-type]
+            jump_minimum=float(kwargs["jump_minimum"]),  # type: ignore[arg-type]
+            jump_maximum=float(kwargs["jump_maximum"]),  # type: ignore[arg-type]
+            low_multiplier=float(kwargs["low_multiplier"]),  # type: ignore[arg-type]
+            high_multiplier=float(kwargs["high_multiplier"]),  # type: ignore[arg-type]
+            trend_multiplier=float(kwargs["trend_multiplier"]),  # type: ignore[arg-type]
+            state_minimum=float(kwargs["state_minimum"]),  # type: ignore[arg-type]
+            state_maximum=float(kwargs["state_maximum"]),  # type: ignore[arg-type]
+            trend_strength=float(kwargs["trend_strength"]),  # type: ignore[arg-type]
+            lock_target=False,
+        )
+        validate_model_parameters(model)
+    except (TypeError, ValueError, CandleBridgeError):
+        return None
+    return model
+
+
 @dataclass
 class PathState:
     """CandleBridge 随机过程的完整马尔可夫状态，可序列化落库实现断点续算。"""
@@ -270,6 +325,7 @@ class PathState:
     regime: int = 0
     remaining: int = 0
     direction: int = 1
+    daily_model: Optional[ModelParameters] = None
 
     @classmethod
     def create(cls, model: ModelParameters = DEFAULT_MODEL, seed: Optional[int] = None) -> PathState:
@@ -281,16 +337,20 @@ class PathState:
             regime=0,
             remaining=0,
             direction=1,
+            daily_model=None,
         )
 
-    def to_dict(self) -> dict[str, int | float]:
-        return {
+    def to_dict(self) -> dict[str, object]:
+        payload: dict[str, object] = {
             "rng_state": self.rng_state,
             "volatility": self.volatility,
             "regime": self.regime,
             "remaining": self.remaining,
             "direction": self.direction,
         }
+        if self.daily_model is not None:
+            payload["model"] = _model_to_overrides(self.daily_model)
+        return payload
 
     @classmethod
     def from_dict(cls, data: object) -> Optional[PathState]:
@@ -320,13 +380,74 @@ class PathState:
             or direction not in (-1, 1)
         ):
             return None
+        daily_model: Optional[ModelParameters] = None
+        if "model" in data and data["model"] is not None:
+            daily_model = _model_from_overrides(data["model"])
+            if daily_model is None:
+                return None
         return cls(
             rng_state=rng_state,
             volatility=float(volatility),
             regime=regime,
             remaining=remaining,
             direction=direction,
+            daily_model=daily_model,
         )
+
+
+def sample_daily_model(state: PathState, base: ModelParameters = DEFAULT_MODEL) -> ModelParameters:
+    """使用 ``state`` 的确定性随机流为当日抽取一组差异化的 CandleBridge 模型参数。
+
+    以 ``base.base_volatility`` 为基准按比例浮动，并在合法区间内随机抽取波动强度、
+    肥尾自由度、波动聚类/冲击系数、跳跃频率与幅度、三态倍率与持续时长及趋势强度，
+    使每个交易日呈现不同的市场性格（平静盘整 / 活跃震荡 / 趋势突破 / 事件跳跃）。
+    """
+    validate_model_parameters(base)
+    rng = Mulberry32(state.rng_state)
+
+    def uniform(low: float, high: float) -> float:
+        return low + rng() * (high - low)
+
+    pick = rng()
+    intensity: Intensity = "low" if pick < 0.20 else ("medium" if pick < 0.70 else "high")
+    df = _DAILY_DF_CHOICES[int(rng() * len(_DAILY_DF_CHOICES))]
+    state_minimum = round(uniform(15.0, 40.0), 2)
+    state_maximum = round(max(state_minimum + 30.0, uniform(90.0, 240.0)), 2)
+    jump_minimum = round(uniform(0.3, 0.6), 4)
+    jump_maximum = round(max(jump_minimum + 0.5, uniform(1.4, 3.2)), 4)
+    base_volatility = round(_clamp(base.base_volatility * uniform(0.75, 1.55), 0.01, 5.0), 6)
+
+    sampled = replace(
+        base,
+        intensity=intensity,
+        base_volatility=base_volatility,
+        df=df,
+        decay=round(uniform(0.82, 0.95), 4),
+        shock=round(uniform(0.25, 0.65), 4),
+        jump_probability=round(uniform(0.01, 0.08), 5),
+        jump_minimum=jump_minimum,
+        jump_maximum=jump_maximum,
+        low_multiplier=round(uniform(0.4, 0.7), 4),
+        high_multiplier=round(uniform(1.8, 2.8), 4),
+        trend_multiplier=round(uniform(0.95, 1.35), 4),
+        state_minimum=state_minimum,
+        state_maximum=state_maximum,
+        trend_strength=round(uniform(0.005, 0.018), 6),
+        lock_target=False,
+    )
+    validate_model_parameters(sampled)
+    state.rng_state = rng.state
+    return sampled
+
+
+def sample_gap_minutes(state: PathState, base_minutes: int) -> int:
+    """围绕 ``base_minutes`` 随机抽取当日隔夜跳空等效演进时长（0.5x ~ 3.5x）。"""
+    if base_minutes <= 0:
+        return 0
+    rng = Mulberry32(state.rng_state)
+    factor = 0.5 + rng() * 3.0
+    state.rng_state = rng.state
+    return max(5, _js_round_positive(base_minutes * factor))
 
 
 def _sample_fine_returns(

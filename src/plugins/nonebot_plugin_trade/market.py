@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import math
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date, datetime, time, timedelta, timezone
 from typing import TYPE_CHECKING, Literal, Optional
 
@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from nonebot_plugin_larkuser import MoonlarkUser
     from nonebot_plugin_orm import AsyncSession
 
-from .candlebridge import ModelParameters, PathState, simulate_bar
+from .candlebridge import ModelParameters, PathState, sample_daily_model, sample_gap_minutes, simulate_bar
 from .config import config
 from .models import Candle, Holding, MarketState
 
@@ -127,7 +127,7 @@ def trade_candle_slot(minute: int) -> Optional[int]:
 
 
 def build_model_parameters() -> ModelParameters:
-    """根据当前插件配置构建 CandleBridge 模型参数（连续市场模式关闭终点锁定）"""
+    """根据当前插件配置构建 CandleBridge 基准模型参数（连续市场模式关闭终点锁定）"""
     return ModelParameters(
         fine_seconds=config.trade_fine_seconds,
         df=config.trade_df,
@@ -146,6 +146,13 @@ def build_model_parameters() -> ModelParameters:
         intensity=config.trade_intensity,
         lock_target=False,
     )
+
+
+def active_model_parameters(engine: PathState) -> ModelParameters:
+    """返回当前生效的 CandleBridge 模型参数：开启动态随机时优先使用当日抽取的参数"""
+    if config.trade_randomize_daily_model and engine.daily_model is not None:
+        return replace(engine.daily_model, fine_seconds=config.trade_fine_seconds, lock_target=False)
+    return build_model_parameters()
 
 
 def encode_engine_state(engine: PathState) -> str:
@@ -174,7 +181,10 @@ def ensure_engine_state(state: MarketState, model: Optional[ModelParameters] = N
     engine = get_engine_state(state)
     if engine is not None:
         return engine
-    engine = PathState.create(model or build_model_parameters())
+    base_model = model or build_model_parameters()
+    engine = PathState.create(base_model)
+    if config.trade_randomize_daily_model:
+        engine.daily_model = sample_daily_model(engine, base_model)
     state.engine_state = encode_engine_state(engine)
     return engine
 
@@ -184,25 +194,34 @@ def _round_price(price: float) -> float:
 
 
 def init_day(state: MarketState, day: date) -> None:
-    """开市初始化：开盘价暂取前一交易日收盘价，并保留 CandleBridge 状态跨日延续"""
+    """开市初始化：开盘价暂取前一交易日收盘价，保留状态延续并按配置抽取当日参数"""
     state.prev_close = state.price
     state.day_open = state.price
     state.day = day
-    ensure_engine_state(state)
+    base_model = build_model_parameters()
+    engine = ensure_engine_state(state, base_model)
+    if config.trade_randomize_daily_model:
+        engine.daily_model = sample_daily_model(engine, base_model)
+    else:
+        engine.daily_model = None
+    state.engine_state = encode_engine_state(engine)
 
 
-def apply_open_gap(state: MarketState) -> None:
+def apply_open_gap(state: MarketState, model: Optional[ModelParameters] = None) -> None:
     """开市跳空：沿用前一交易日尾盘的 CandleBridge 状态演进隔夜区间，不写 K 线"""
-    gap_minutes = config.trade_open_gap_minutes
-    if gap_minutes <= 0:
+    base_gap_minutes = config.trade_open_gap_minutes
+    if base_gap_minutes <= 0:
         return
-    model = build_model_parameters()
-    engine = ensure_engine_state(state, model)
+    engine = ensure_engine_state(state)
+    active_model = model or active_model_parameters(engine)
+    gap_minutes = (
+        sample_gap_minutes(engine, base_gap_minutes) if config.trade_randomize_daily_model else base_gap_minutes
+    )
     bar = simulate_bar(
         engine,
         state.price,
         gap_minutes * 60,
-        model,
+        active_model,
         price_floor=PRICE_FLOOR,
         price_decimals=PRICE_DECIMALS,
     )
@@ -222,8 +241,8 @@ def impact_rate(shares: int) -> float:
 async def apply_tick(state: MarketState, tick: datetime, session: AsyncSession) -> None:
     """应用一次 5 分钟 tick：按 CandleBridge 细步随机路径生成该根 K 线的 OHLC"""
     minute = tick.hour * 60 + tick.minute
-    model = build_model_parameters()
-    engine = ensure_engine_state(state, model)
+    engine = ensure_engine_state(state)
+    model = active_model_parameters(engine)
     bar = simulate_bar(
         engine,
         state.price,
@@ -294,8 +313,10 @@ async def ensure_market(session: AsyncSession, now: Optional[datetime] = None) -
         if tick > target:
             break
         if tick.hour * 60 + tick.minute == OPEN_MINUTE:
+            # 隔夜跳空沿用前一交易日尾盘参数，再切换至新交易日随机抽取的参数
+            prev_model = active_model_parameters(ensure_engine_state(state))
             init_day(state, tick.date())
-            apply_open_gap(state)
+            apply_open_gap(state, model=prev_model)
         else:
             await apply_tick(state, tick, session)
         state.last_tick_at = tick

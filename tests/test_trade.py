@@ -244,13 +244,29 @@ def test_candlebridge_validation_and_streaming_consistency():
 
 
 def test_engine_state_serialization_roundtrip():
-    from nonebot_plugin_trade.candlebridge import PathState
+    from nonebot_plugin_trade.candlebridge import DEFAULT_MODEL, PathState, sample_daily_model
     from nonebot_plugin_trade.market import decode_engine_state, encode_engine_state, get_engine_state
 
     original = PathState(rng_state=123456789, volatility=0.00042, regime=2, remaining=180, direction=-1)
     raw = encode_engine_state(original)
     assert decode_engine_state(raw) == original
     assert get_engine_state(make_state(engine_state=raw)) == original
+
+    # 携带每日随机抽样的 daily_model 也能完整往返序列化
+    sampled_model = sample_daily_model(PathState.create(DEFAULT_MODEL, seed=20261122), DEFAULT_MODEL)
+    with_model = PathState(
+        rng_state=987654321,
+        volatility=0.00051,
+        regime=1,
+        remaining=90,
+        direction=1,
+        daily_model=sampled_model,
+    )
+    raw_with_model = encode_engine_state(with_model)
+    restored = decode_engine_state(raw_with_model)
+    assert restored == with_model
+    assert restored is not None and restored.daily_model is not None
+    assert restored.daily_model.lock_target is False
 
     # 空值、损坏 JSON、非对象或非法字段一律按未初始化处理
     assert decode_engine_state(None) is None
@@ -270,6 +286,38 @@ def test_engine_state_serialization_roundtrip():
     assert (
         decode_engine_state('{"rng_state": 1, "volatility": 0.1, "regime": 0, "remaining": 0, "direction": 0}') is None
     )
+    assert (
+        decode_engine_state(
+            '{"rng_state": 1, "volatility": 0.1, "regime": 0, "remaining": 0, "direction": 1, "model": {"df": 1}}',
+        )
+        is None
+    )
+
+
+def test_daily_model_randomization_varies_across_days():
+    """每天开盘重新抽取当日 CandleBridge 参数，同一种子可复现、不同交易日各具波动特征"""
+    from nonebot_plugin_trade.candlebridge import DEFAULT_MODEL, PathState, sample_daily_model, sample_gap_minutes
+    from nonebot_plugin_trade.market import get_engine_state, init_day
+
+    state_a = make_state(engine_state=make_engine_state(seed=20261122))
+    state_b = make_state(engine_state=make_engine_state(seed=20261122))
+    init_day(state_a, TRADE_DAY)
+    init_day(state_b, TRADE_DAY)
+    engine_a = get_engine_state(state_a)
+    engine_b = get_engine_state(state_b)
+    assert engine_a is not None and engine_b is not None
+    assert engine_a.daily_model is not None
+    assert engine_a == engine_b
+
+    # 连续多日抽样应出现不同的波动参数与跳空时长
+    stream = PathState.create(DEFAULT_MODEL, seed=20261122)
+    models = [sample_daily_model(stream, DEFAULT_MODEL) for _ in range(10)]
+    gaps = [sample_gap_minutes(stream, 30) for _ in range(10)]
+    assert len({m.base_volatility for m in models}) > 1
+    assert len({m.intensity for m in models}) > 1
+    assert len(set(gaps)) > 1
+    assert all(15 <= gap <= 105 for gap in gaps)
+    assert sample_gap_minutes(stream, 0) == 0
 
 
 def test_open_gap_uses_candlebridge_state(monkeypatch: pytest.MonkeyPatch):
@@ -277,11 +325,14 @@ def test_open_gap_uses_candlebridge_state(monkeypatch: pytest.MonkeyPatch):
     from nonebot_plugin_trade import config as trade_config_module
     from nonebot_plugin_trade.market import apply_open_gap, get_engine_state
 
+    # 默认开启动态随机时，同一种子与状态仍完全可复现
     state_a = make_state(
-        price=10.0, engine_state=make_engine_state(seed=20261007, regime=2, remaining=600, direction=1)
+        price=10.0,
+        engine_state=make_engine_state(seed=20261007, regime=2, remaining=1500, direction=1),
     )
     state_b = make_state(
-        price=10.0, engine_state=make_engine_state(seed=20261007, regime=2, remaining=600, direction=1)
+        price=10.0,
+        engine_state=make_engine_state(seed=20261007, regime=2, remaining=1500, direction=1),
     )
     before = get_engine_state(state_a)
     assert before is not None
@@ -290,15 +341,24 @@ def test_open_gap_uses_candlebridge_state(monkeypatch: pytest.MonkeyPatch):
     apply_open_gap(state_b)
     after = get_engine_state(state_a)
     assert after is not None
-    # 同一种子与状态完全可复现
     assert state_a.day_open == state_b.day_open
     assert state_a.price == state_a.day_open
     assert state_a.engine_state == state_b.engine_state
-    # 随机数与剩余态步数沿尾盘状态连续推进（30 分钟 / 5 秒 = 360 细步）
     assert after.rng_state != before.rng_state
     assert after.regime == 2
     assert after.direction == 1
-    assert after.remaining == 600 - 360
+    assert after.remaining < before.remaining
+
+    # 关闭动态随机时，严格按 trade_open_gap_minutes（30 分钟 / 5 秒 = 360 细步）演进
+    monkeypatch.setattr(trade_config_module.config, "trade_randomize_daily_model", False)
+    fixed_state = make_state(
+        price=10.0,
+        engine_state=make_engine_state(seed=20261007, regime=2, remaining=600, direction=1),
+    )
+    apply_open_gap(fixed_state)
+    fixed_after = get_engine_state(fixed_state)
+    assert fixed_after is not None
+    assert fixed_after.remaining == 600 - 360
 
     # 关闭跳空（trade_open_gap_minutes=0）时保持原价不变
     monkeypatch.setattr(trade_config_module.config, "trade_open_gap_minutes", 0)

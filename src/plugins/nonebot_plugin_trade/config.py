@@ -47,8 +47,10 @@ class Config(BaseModel):
     trade_state_maximum: float = 360.0
     # CandleBridge 趋势态每分钟漂移强度（百分比）
     trade_trend_strength: float = 0.0075
-    # 08:00 隔夜跳空等效演进时长（分钟），0 表示不跳空
+    # 08:00 隔夜跳空基准等效演进时长（分钟），0 表示不跳空
     trade_open_gap_minutes: int = 30
+    # 每天开盘时是否围绕基准配置随机抽取当日 CandleBridge 参数与跳空时长（增加行情多样性）
+    trade_randomize_daily_model: bool = True
 
 
 config = get_plugin_config(Config)
