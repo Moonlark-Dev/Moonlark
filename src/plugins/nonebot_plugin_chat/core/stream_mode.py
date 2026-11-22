@@ -1,6 +1,7 @@
-"""私聊流式发送
+"""私聊流式发送（实验性功能）
 
-开关打开后（默认开启），私聊中 Chat 主模型的请求会改用流式传输（见
+实验性功能，**默认关闭**，需要用户用 ``/chat stream on`` 显式开启。开关打开后，
+私聊中 Chat 主模型的请求会改用流式传输（见
 ``nonebot_plugin_openai.utils.chat.MessageFetcher``）。模型流式输出
 ``send_message`` 工具调用的参数分片时，这里从参数 JSON 中增量解析出消息正文，
 再通过 QQ 官方机器人的「流式发送单聊消息」接口同步发送消息片段，让用户看到回复
@@ -413,7 +414,7 @@ class StreamModeManager:
         self._calls.clear()
 
     async def _load_enabled(self) -> bool:
-        """读取当前私聊用户的开关状态（群聊恒为关闭，没有记录时默认开启）"""
+        """读取当前私聊用户的开关状态（群聊恒为关闭，没有记录时默认关闭）"""
         if self.session.get_session_type() != "private":
             return False
         adapter_user_id = getattr(self.session, "adapter_user_id", None)
@@ -424,8 +425,8 @@ class StreamModeManager:
             async with get_session() as db_session:
                 config = await db_session.get(PrivateChatConfig, {"user_id": user_id})
                 if config is None:
-                    # 私聊流式发送默认开启：还没有配置记录的用户视为开启
-                    return True
+                    # 私聊流式发送是实验性功能，默认关闭：还没有配置记录的用户视为关闭
+                    return False
                 if config.gal_mode:
                     # 历史数据或异常情况下两者同时为真时，让备选回复优先，避免重复发送
                     logger.warning(f"用户 {user_id} 同时开启了流式发送与私聊备选回复，本轮按备选回复处理")

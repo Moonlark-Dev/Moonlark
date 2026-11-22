@@ -208,7 +208,7 @@ async def test_gal_mode_command_persists_switch(monkeypatch: pytest.MonkeyPatch)
     assert config.user_id == "123"
     assert config.enabled is True
     assert config.gal_mode is True
-    # 流式发送与备选回复互斥：新记录默认开启流式发送，开启备选回复时要一并关掉
+    # 流式发送与备选回复互斥：新记录在开启备选回复时流式发送保持关闭
     assert config.stream is False
     assert finished[0][0] == "command.gal_mode.enabled_stream_disabled"
 
