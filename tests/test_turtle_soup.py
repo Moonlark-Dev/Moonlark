@@ -3,7 +3,7 @@
 覆盖：
 1. 指令解析（控制词 / 自由提问 / 无参数）；
 2. QQ 官方的快捷按钮：提问是 input、其余是完整指令，且都能被 Alconna 解析；
-3. Markdown / 纯文本消息渲染；
+3. Markdown / 纯文本消息渲染：汤面只在开局出现，指令提示不随带按钮的消息重复；
 4. decision 判定置信度过低或未配置时退回 LLM；
 5. 36 小时过期静默清理并恢复 Chat 屏蔽；
 6. 正确作答数排行榜的数据查询；
@@ -138,14 +138,62 @@ async def test_send_rendered_builds_markdown_with_buttons(monkeypatch: pytest.Mo
     assert len(sent) == 1
     text = next(segment for segment in sent[0] if isinstance(segment, Text))
     assert any("markdown" in styles for styles in text.styles.values())
+    # 有按钮时不再重复指令提示（按钮本身就是指令入口）
+    assert "text::message.start_hint" not in text.text
     keyboard = next(segment for segment in sent[0] if isinstance(segment, Keyboard))
     assert len(keyboard.children) == 4
+
+
+async def test_send_rendered_omits_hint_only_when_buttons_exist(monkeypatch: pytest.MonkeyPatch) -> None:
+    """QQ 带按钮的消息不追加指令提示；纯文本平台没有按钮，提示必须补回去。"""
+    from nonebot.adapters.qq import Bot as QQBot
+    from nonebot.exception import FinishedException
+    from nonebot_plugin_alconna import Text, UniMessage
+    from nonebot_plugin_turtle_soup.matcher import send_rendered
+    from nonebot_plugin_turtle_soup.messages import build_ask_message
+
+    sent: list[UniMessage] = []
+
+    async def fake_send(self: UniMessage, *_args: object, **_kwargs: object) -> MagicMock:
+        sent.append(self)
+        return MagicMock()
+
+    monkeypatch.setattr(UniMessage, "send", fake_send)
+
+    async def fake_finish(*_args: object, **_kwargs: object) -> None:
+        raise FinishedException
+
+    rendered = await build_ask_message(_puzzle(), "10", question="他很高吗", answer="不是", percent=30, asked=3)
+    assert rendered.hint == "text::message.ask_hint"
+
+    matcher = MagicMock()
+    matcher.finish = fake_finish
+    with pytest.raises(FinishedException):
+        await send_rendered(matcher, MagicMock(spec=QQBot), MagicMock(), rendered)
+
+    text = next(segment for segment in sent[0] if isinstance(segment, Text))
+    assert "text::message.ask_hint" not in text.text
+
+    plain_sent: list[str] = []
+
+    async def fake_plain_send(message: object, **_kwargs: object) -> None:
+        plain_sent.append(str(message))
+
+    matcher = MagicMock()
+    matcher.send = fake_plain_send
+    matcher.finish = fake_finish
+    with pytest.raises(FinishedException):
+        await send_rendered(matcher, MagicMock(), MagicMock(), rendered)
+
+    assert len(plain_sent) == 1
+    assert "text::message.ask_hint" in plain_sent[0]
 
 
 async def test_build_plain_and_markdown_messages() -> None:
     from nonebot_plugin_turtle_soup.messages import (
         build_ask_message,
         build_end_message,
+        build_progress_message,
         build_rank_message,
         build_start_message,
     )
@@ -155,11 +203,23 @@ async def test_build_plain_and_markdown_messages() -> None:
     start = await build_start_message(puzzle, "10")
     assert puzzle.puzzle_setting in start.plain
     assert "text::label.puzzle" in start.markdown
+    assert start.hint == "text::message.start_hint"
 
     ask = await build_ask_message(puzzle, "10", question="他很高吗", answer="不是", percent=30, asked=3)
     assert "他很高吗" in ask.plain
     assert "不是" in ask.plain
     assert "30%" in ask.markdown
+    # 汤面只在开局消息里发送一次，回答提问时不再重复
+    assert puzzle.puzzle_setting not in ask.plain
+    assert "text::label.puzzle" not in ask.markdown
+    # 指令提示不拼进正文，由发送层按平台决定是否追加
+    assert "text::message.ask_hint" not in ask.plain
+    assert ask.hint == "text::message.ask_hint"
+
+    progress = await build_progress_message(puzzle, "10", percent=30, asked=3, recent=[("他很高吗", "不是")])
+    assert puzzle.puzzle_setting not in progress.plain
+    assert "他很高吗" in progress.plain
+    assert progress.hint == "text::message.ask_hint"
 
     end = await build_end_message(
         EndOutcome(
@@ -177,6 +237,7 @@ async def test_build_plain_and_markdown_messages() -> None:
     assert puzzle.solution in end.plain
     assert puzzle.supplementary_info[0] in end.plain
     assert puzzle.solution in end.markdown
+    assert end.hint == "text::message.end_hint"
 
     rank = await build_rank_message([("小明", 3), ("小红", 2)], "10", my_index=2, my_count=2)
     assert "小明" in rank.plain
