@@ -55,15 +55,18 @@ class FakeUser:
         self.vimcoin += amount
 
 
-def make_segments(*specs: tuple[str, int]) -> str:
-    """把 (标签, tick 数) 列表序列化成 MarketState.segments 的 JSON"""
-    from nonebot_plugin_trade.market import Segment, encode_segments
+def make_engine_state(seed: int = 20261007, **overrides: object) -> str:
+    """构建并序列化一个确定性的 CandleBridge PathState，存进 MarketState.engine_state"""
+    from nonebot_plugin_trade.candlebridge import PathState
+    from nonebot_plugin_trade.market import build_model_parameters, encode_engine_state
 
-    return encode_segments([Segment(label, ticks) for label, ticks in specs])
+    engine = PathState.create(build_model_parameters(), seed=seed)
+    for key, value in overrides.items():
+        setattr(engine, key, value)
+    return encode_engine_state(engine)
 
 
 def make_state(**overrides):
-    from nonebot_plugin_trade.market import INTRADAY_TICKS
     from nonebot_plugin_trade.models import MarketState
 
     values = {
@@ -72,7 +75,7 @@ def make_state(**overrides):
         "day": TRADE_DAY,
         "day_open": 10.0,
         "prev_close": 10.0,
-        "segments": make_segments(("up", INTRADAY_TICKS)),
+        "engine_state": make_engine_state(),
         "float_shares": 100000,
         "last_tick_at": datetime(2026, 11, 19, 10, 0),
     }
@@ -111,115 +114,260 @@ def test_trading_time_boundaries():
     assert next_tick_time(datetime(2026, 11, 19, 23, 55)) == datetime(2026, 11, 20, 8, 0)
 
 
-def test_segment_and_probability():
-    """当日分配：08:05 起按段推进，段内进度从 0 线性涨到 1"""
-    from nonebot_plugin_trade.market import segment_label_and_progress, up_probability
+def test_candlebridge_reference_hashes():
+    """与上游 slwyts/candlebridge compatibility.test.ts 的三组参考哈希逐位一致"""
+    import hashlib
+    import json
+    from dataclasses import replace
 
-    # up 5 tick -> flat 3 tick -> down 4 tick -> 剩下 179 tick 全归最后一段
-    state = make_state(segments=make_segments(("up", 5), ("flat", 3), ("down", 4), ("up", 179)))
+    from nonebot_plugin_trade.candlebridge import DEFAULT_MODEL, generate_candles
 
-    label, progress = segment_label_and_progress(state, 485)  # 08:05，第一个分配到的 tick
-    assert label == "up"
-    assert progress == 0.0
-    assert up_probability(label, progress) == 0.5
+    def js_number(value: float) -> int | float:
+        return int(value) if isinstance(value, float) and value.is_integer() else value
 
-    label, progress = segment_label_and_progress(state, 505)  # 08:25，up 段最后一个 tick
-    assert label == "up"
-    assert progress == pytest.approx(1.0)
-    assert up_probability(label, progress) == pytest.approx(0.95)
+    cases = [
+        ({}, "dcfa394c1ceddfcc0165e4d7b5fcd7a3204cf9175c3374e7a88edaaeb3171518"),
+        (
+            {"fine_seconds": 1, "fat_tail": False, "memory": False, "jumps": False, "regimes": False},
+            "ee63a7fb2a70bc0ae5dc402795463150cd4d02f99960e3acbb39a3e5a58e09a1",
+        ),
+        (
+            {"lock_target": False, "df": 4, "jump_probability": 1.0, "state_minimum": 1.0, "state_maximum": 3.0},
+            "c2e277f2cd7f9f429a61a6bfdbbe8b9bfb1e16baf281eae625b8cafac016e60c",
+        ),
+    ]
+    for overrides, expected_digest in cases:
+        candles = generate_candles(
+            start_price=100,
+            end_price=102.4,
+            count=35,
+            interval_seconds=300,
+            start_time=1_800_000_000_000,
+            minimum_price=75,
+            maximum_price=135,
+            intensity="medium",
+            seed=401,
+            model=replace(DEFAULT_MODEL, **overrides),
+        )
+        rows = [
+            [
+                candle.open_time,
+                candle.close_time,
+                js_number(candle.open),
+                js_number(candle.high),
+                js_number(candle.low),
+                js_number(candle.close),
+                [[offset_ms, js_number(price)] for offset_ms, price in candle.points],
+            ]
+            for candle in candles
+        ]
+        digest = hashlib.sha256(json.dumps(rows, separators=(",", ":")).encode("utf-8")).hexdigest()
+        assert digest == expected_digest
 
-    label, progress = segment_label_and_progress(state, 510)  # 08:30，进入 flat 段
-    assert label == "flat"
-    assert progress == 0.0
-    assert up_probability(label, progress) == 0.5
 
-    label, progress = segment_label_and_progress(state, 525)  # 08:45，进入 down 段
-    assert label == "down"
-    assert progress == 0.0
-    assert up_probability(label, progress) == 0.5
+def test_candlebridge_validation_and_streaming_consistency():
+    """流式 simulate_bar 与批量自由路径一致，且参数边界校验抛出对应错误码"""
+    from dataclasses import replace
 
-    label, progress = segment_label_and_progress(state, 540)  # 09:00，down 段最后一个 tick
-    assert label == "down"
-    assert progress == pytest.approx(1.0)
-    assert up_probability(label, progress) == pytest.approx(0.05)
-
-    # 08:00 的开市跳空 tick 不在当日分配里，兜底取第一段开头；收盘后夹到最后一段末尾
-    assert segment_label_and_progress(state, 480) == ("up", 0.0)
-    assert segment_label_and_progress(state, 1440) == ("up", 1.0)
-
-    # 还没分配（旧数据/空值）时按持平处理
-    assert segment_label_and_progress(make_state(segments=None), 600) == ("flat", 0.5)
-
-    assert up_probability("up", 0.0) == 0.5
-    assert up_probability("up", 1.0) == pytest.approx(0.95)
-    assert up_probability("down", 1.0) == pytest.approx(0.05)
-
-
-def test_allocate_segments_covers_whole_day():
-    """循环抽取：(标签, 3~15 tick) 一段段铺满全天，每轮都重新抽标签"""
-    from nonebot_plugin_trade.market import (
-        INTRADAY_TICKS,
-        LABELS,
-        MAX_SEGMENT_TICKS,
-        MIN_SEGMENT_TICKS,
-        allocate_segments,
+    from nonebot_plugin_trade.candlebridge import (
+        DEFAULT_MODEL,
+        CandleBridgeError,
+        PathState,
+        generate_candles,
+        simulate_bar,
     )
 
-    for value in (0.0, 0.5, 0.999):
-        with patch("nonebot_plugin_trade.market._rand_float", return_value=value):
-            segments = allocate_segments()
-        # 整天的 tick 被完整分配，不多不少
-        assert sum(segment.ticks for segment in segments) == INTRADAY_TICKS
-        assert len(segments) > 1
-        for segment in segments:
-            assert MIN_SEGMENT_TICKS <= segment.ticks <= MAX_SEGMENT_TICKS
-            assert segment.label in LABELS
+    free_model = replace(DEFAULT_MODEL, lock_target=False, seed=402)
+    batch = generate_candles(
+        start_price=10.0,
+        end_price=10.0,
+        count=12,
+        interval_seconds=300,
+        start_time=1_800_000_000_000,
+        minimum_price=1.0,
+        maximum_price=100.0,
+        seed=402,
+        model=free_model,
+    )
 
-    # 末尾剩 1、2 个 tick 时回退当前段长度，保证最后一段也不短于下限
-    with patch("nonebot_plugin_trade.market._rand_float", return_value=0.999):
-        assert [segment.ticks for segment in allocate_segments(16)] == [13, 3]
-    with patch("nonebot_plugin_trade.market._rand_float", return_value=0.0):
-        assert [segment.ticks for segment in allocate_segments(5)] == [5]
+    stream_state = PathState.create(free_model, seed=402)
+    price = 10.0
+    streamed = []
+    for _ in range(12):
+        bar = simulate_bar(stream_state, price, 300, free_model, price_floor=0.01, price_decimals=8)
+        streamed.append(bar)
+        price = bar.close
+
+    for ref, bar in zip(batch, streamed, strict=True):
+        assert bar.open == pytest.approx(ref.open, abs=1e-6)
+        assert bar.high == pytest.approx(ref.high, abs=1e-6)
+        assert bar.low == pytest.approx(ref.low, abs=1e-6)
+        assert bar.close == pytest.approx(ref.close, abs=1e-6)
+
+    # 非法参数抛出带错误码的结构化异常
+    with pytest.raises(CandleBridgeError) as error:
+        generate_candles(
+            start_price=0,
+            end_price=10,
+            count=5,
+            interval_seconds=300,
+            start_time=1_800_000_000_000,
+            minimum_price=5,
+            maximum_price=15,
+        )
+    assert error.value.code == "INVALID_PRICE_RANGE"
+
+    with pytest.raises(CandleBridgeError) as error:
+        generate_candles(
+            start_price=10,
+            end_price=10,
+            count=5,
+            interval_seconds=45,
+            start_time=1_800_000_000_000,
+            minimum_price=5,
+            maximum_price=15,
+        )
+    assert error.value.code == "INVALID_INTERVAL"
+
+    with pytest.raises(CandleBridgeError) as error:
+        generate_candles(
+            start_price=10,
+            end_price=10,
+            count=5,
+            interval_seconds=300,
+            start_time=1_800_000_000_000,
+            minimum_price=5,
+            maximum_price=15,
+            model=replace(DEFAULT_MODEL, df=2),
+        )
+    assert error.value.code == "INVALID_PARAMETERS"
 
 
-def test_segments_serialization_roundtrip():
-    from nonebot_plugin_trade.market import Segment, decode_segments, encode_segments, get_segments
+def test_engine_state_serialization_roundtrip():
+    from nonebot_plugin_trade.candlebridge import DEFAULT_MODEL, PathState, sample_daily_model
+    from nonebot_plugin_trade.market import decode_engine_state, encode_engine_state, get_engine_state
 
-    raw = encode_segments([Segment("up", 3), Segment("flat", 15)])
-    assert decode_segments(raw) == [Segment("up", 3), Segment("flat", 15)]
-    assert get_segments(make_state(segments=raw)) == [Segment("up", 3), Segment("flat", 15)]
+    original = PathState(rng_state=123456789, volatility=0.00042, regime=2, remaining=180, direction=-1)
+    raw = encode_engine_state(original)
+    assert decode_engine_state(raw) == original
+    assert get_engine_state(make_state(engine_state=raw)) == original
 
-    # 空值、损坏的 JSON、非列表、非法条目都按「尚未分配/丢弃该条」处理
-    assert decode_segments(None) == []
-    assert decode_segments("") == []
-    assert decode_segments("not json") == []
-    assert decode_segments('{"label": "up", "ticks": 3}') == []
-    assert decode_segments(
-        '[{"label": "up", "ticks": 3}, {"label": "sideways", "ticks": 5}, {"label": "down", "ticks": 0}, 42]',
-    ) == [Segment("up", 3)]
+    # 携带每日随机抽样的 daily_model 也能完整往返序列化
+    sampled_model = sample_daily_model(PathState.create(DEFAULT_MODEL, seed=20261122), DEFAULT_MODEL)
+    with_model = PathState(
+        rng_state=987654321,
+        volatility=0.00051,
+        regime=1,
+        remaining=90,
+        direction=1,
+        daily_model=sampled_model,
+    )
+    raw_with_model = encode_engine_state(with_model)
+    restored = decode_engine_state(raw_with_model)
+    assert restored == with_model
+    assert restored is not None and restored.daily_model is not None
+    assert restored.daily_model.lock_target is False
+
+    # 空值、损坏 JSON、非对象或非法字段一律按未初始化处理
+    assert decode_engine_state(None) is None
+    assert decode_engine_state("") is None
+    assert decode_engine_state("not json") is None
+    assert decode_engine_state("[]") is None
+    assert (
+        decode_engine_state('{"rng_state": -1, "volatility": 0.1, "regime": 0, "remaining": 0, "direction": 1}') is None
+    )
+    assert decode_engine_state('{"rng_state": 1, "volatility": 0, "regime": 0, "remaining": 0, "direction": 1}') is None
+    assert (
+        decode_engine_state('{"rng_state": 1, "volatility": 0.1, "regime": 3, "remaining": 0, "direction": 1}') is None
+    )
+    assert (
+        decode_engine_state('{"rng_state": 1, "volatility": 0.1, "regime": 0, "remaining": -1, "direction": 1}') is None
+    )
+    assert (
+        decode_engine_state('{"rng_state": 1, "volatility": 0.1, "regime": 0, "remaining": 0, "direction": 0}') is None
+    )
+    assert (
+        decode_engine_state(
+            '{"rng_state": 1, "volatility": 0.1, "regime": 0, "remaining": 0, "direction": 1, "model": {"df": 1}}',
+        )
+        is None
+    )
 
 
-def test_open_gap_follows_previous_last_label():
-    """隔夜跳空 = 按前一日最后一个标签再走一个 tick"""
-    from nonebot_plugin_trade.market import apply_open_gap, last_segment_label
+def test_daily_model_randomization_varies_across_days():
+    """每天开盘重新抽取当日 CandleBridge 参数，同一种子可复现、不同交易日各具波动特征"""
+    from nonebot_plugin_trade.candlebridge import DEFAULT_MODEL, PathState, sample_daily_model, sample_gap_minutes
+    from nonebot_plugin_trade.market import get_engine_state, init_day
 
-    state = make_state(price=10.0, segments=make_segments(("flat", 188), ("up", 3)))
-    assert last_segment_label(state) == "up"
-    with patch("nonebot_plugin_trade.market._rand_float", side_effect=[0.0, 0.5]):
-        apply_open_gap(state, "up")
-    # up 段末尾 p_up = 0.95，rand 0.0 命中上涨；幅度 0.5 * trade_sigma
-    assert state.day_open == pytest.approx(10.05)
-    assert state.price == pytest.approx(10.05)
+    state_a = make_state(engine_state=make_engine_state(seed=20261122))
+    state_b = make_state(engine_state=make_engine_state(seed=20261122))
+    init_day(state_a, TRADE_DAY)
+    init_day(state_b, TRADE_DAY)
+    engine_a = get_engine_state(state_a)
+    engine_b = get_engine_state(state_b)
+    assert engine_a is not None and engine_b is not None
+    assert engine_a.daily_model is not None
+    assert engine_a == engine_b
 
-    state = make_state(price=10.0, segments=make_segments(("up", 188), ("down", 3)))
-    assert last_segment_label(state) == "down"
-    with patch("nonebot_plugin_trade.market._rand_float", side_effect=[0.9, 0.5]):
-        apply_open_gap(state, "down")
-    # down 段末尾 p_up = 0.05，rand 0.9 落到下跌
-    assert state.day_open == pytest.approx(9.95)
+    # 连续多日抽样应出现不同的波动参数与跳空时长
+    stream = PathState.create(DEFAULT_MODEL, seed=20261122)
+    models = [sample_daily_model(stream, DEFAULT_MODEL) for _ in range(10)]
+    gaps = [sample_gap_minutes(stream, 30) for _ in range(10)]
+    assert len({m.base_volatility for m in models}) > 1
+    assert len({m.intensity for m in models}) > 1
+    assert len(set(gaps)) > 1
+    assert all(15 <= gap <= 105 for gap in gaps)
+    assert sample_gap_minutes(stream, 0) == 0
 
-    # 序列还没分配时按持平处理
-    assert last_segment_label(make_state(segments=None)) == "flat"
+
+def test_open_gap_uses_candlebridge_state(monkeypatch: pytest.MonkeyPatch):
+    """隔夜跳空沿用前一日尾盘的 CandleBridge 状态演进，不写 K 线，并保留状态续算"""
+    from nonebot_plugin_trade import config as trade_config_module
+    from nonebot_plugin_trade.market import apply_open_gap, get_engine_state
+
+    # 默认开启动态随机时，同一种子与状态仍完全可复现
+    state_a = make_state(
+        price=10.0,
+        engine_state=make_engine_state(seed=20261007, regime=2, remaining=1500, direction=1),
+    )
+    state_b = make_state(
+        price=10.0,
+        engine_state=make_engine_state(seed=20261007, regime=2, remaining=1500, direction=1),
+    )
+    before = get_engine_state(state_a)
+    assert before is not None
+
+    apply_open_gap(state_a)
+    apply_open_gap(state_b)
+    after = get_engine_state(state_a)
+    assert after is not None
+    assert state_a.day_open == state_b.day_open
+    assert state_a.price == state_a.day_open
+    assert state_a.engine_state == state_b.engine_state
+    assert after.rng_state != before.rng_state
+    assert after.regime == 2
+    assert after.direction == 1
+    assert after.remaining < before.remaining
+
+    # 关闭动态随机时，严格按 trade_open_gap_minutes（30 分钟 / 5 秒 = 360 细步）演进
+    monkeypatch.setattr(trade_config_module.config, "trade_randomize_daily_model", False)
+    fixed_state = make_state(
+        price=10.0,
+        engine_state=make_engine_state(seed=20261007, regime=2, remaining=600, direction=1),
+    )
+    apply_open_gap(fixed_state)
+    fixed_after = get_engine_state(fixed_state)
+    assert fixed_after is not None
+    assert fixed_after.remaining == 600 - 360
+
+    # 关闭跳空（trade_open_gap_minutes=0）时保持原价不变
+    monkeypatch.setattr(trade_config_module.config, "trade_open_gap_minutes", 0)
+    unchanged = make_state(price=10.0)
+    before_raw = unchanged.engine_state
+    apply_open_gap(unchanged)
+    assert unchanged.day_open == pytest.approx(10.0)
+    assert unchanged.price == pytest.approx(10.0)
+    assert unchanged.engine_state == before_raw
 
 
 def test_candle_slot():
@@ -250,83 +398,44 @@ def test_impact_rate():
 
 
 @pytest.mark.asyncio
-async def test_tick_price_and_floor():
-    from nonebot_plugin_trade.market import apply_tick
+async def test_tick_generates_candlebridge_ohlc_and_respects_floor():
+    from nonebot_plugin_trade.market import PRICE_FLOOR, apply_tick, get_engine_state
+    from nonebot_plugin_trade.models import Candle
 
     session = FakeSession()
-    state = make_state(price=10.0)
+    state = make_state(price=10.0, engine_state=make_engine_state(seed=401))
+    before = get_engine_state(state)
 
-    with patch("nonebot_plugin_trade.market._rand_float", side_effect=[0.0, 1.0]):
-        await apply_tick(state, datetime(2026, 11, 19, 9, 0), session)
-    assert state.price == pytest.approx(10.1)
-
-    with patch("nonebot_plugin_trade.market._rand_float", side_effect=[0.999, 1.0]):
-        await apply_tick(state, datetime(2026, 11, 19, 9, 5), session)
-    assert state.price == pytest.approx(9.999)
-
-    state.price = 0.01
-    with patch("nonebot_plugin_trade.market._rand_float", side_effect=[0.999, 1.0]):
-        await apply_tick(state, datetime(2026, 11, 19, 9, 10), session)
-    assert state.price == 0.01
-
-    from nonebot_plugin_trade.models import Candle
+    await apply_tick(state, datetime(2026, 11, 19, 9, 0), session)
+    after = get_engine_state(state)
+    assert after is not None and before is not None
+    assert after.rng_state != before.rng_state
 
     first_candle = session.objects[(Candle, (TRADE_DAY, 11))]
     assert first_candle.open == pytest.approx(10.0)
-    assert first_candle.close == pytest.approx(10.1)
+    assert first_candle.close == pytest.approx(state.price)
+    # 5 分钟内含 60 个 5 秒细步，天然形成上下影线
     assert first_candle.high >= max(first_candle.open, first_candle.close)
     assert first_candle.low <= min(first_candle.open, first_candle.close)
+    assert first_candle.high > first_candle.low
 
-
-@pytest.mark.asyncio
-async def test_tick_generates_wicks_with_brownian_bridge():
-    from nonebot_plugin_trade.market import apply_tick
-    from nonebot_plugin_trade.models import Candle
-
-    session = FakeSession()
-    state = make_state(price=10.0)
-
-    with (
-        patch("nonebot_plugin_trade.market._rand_float", side_effect=[0.0, 1.0]),
-        patch("nonebot_plugin_trade.market._rand_normal", return_value=2.0),
-    ):
-        await apply_tick(state, datetime(2026, 11, 19, 9, 0), session)
-
-    candle = session.objects[(Candle, (TRADE_DAY, 11))]
-    assert candle.close == pytest.approx(10.1)
-    # 布朗桥在开收盘价之间补出盘中路径，影线会超出实体
-    assert candle.high > candle.close
-    assert candle.low == pytest.approx(10.0)
-
-
-def test_brownian_bridge_extremes():
-    from nonebot_plugin_trade.market import _brownian_bridge_extremes
-
-    with patch("nonebot_plugin_trade.market._rand_normal", side_effect=[2.0, -2.0] + [0.0] * 13):
-        high, low = _brownian_bridge_extremes(10.0, 10.0, 0.005)
-    assert high > 10.0
-    assert low < 10.0
-    # 偏离上限为 3σ√(t(1-t))，不会生成夸张的影线
-    assert high - 10.0 <= 3.0 * 0.005 * 10.0 * 0.5 + 1e-9
-    assert 10.0 - low <= 3.0 * 0.005 * 10.0 * 0.5 + 1e-9
-
-    # 价格贴近地板价时，布朗桥采样点同样不会低于 0.01
-    with patch("nonebot_plugin_trade.market._rand_normal", return_value=-3.0):
-        _, low = _brownian_bridge_extremes(0.02, 0.01, 1.0)
-    assert low == pytest.approx(0.01)
+    # 价格贴近地板价时，细步路径和收盘价均不会跌破 0.01
+    state.price = PRICE_FLOOR
+    await apply_tick(state, datetime(2026, 11, 19, 9, 5), session)
+    floor_candle = session.objects[(Candle, (TRADE_DAY, 12))]
+    assert state.price >= PRICE_FLOOR
+    assert floor_candle.low >= PRICE_FLOOR
+    assert floor_candle.high >= floor_candle.close >= PRICE_FLOOR
 
 
 @pytest.mark.asyncio
 async def test_ensure_market_cross_day():
-    from nonebot_plugin_trade.market import INTRADAY_TICKS, apply_open_gap, ensure_market, get_segments
+    from nonebot_plugin_trade.market import PRICE_FLOOR, apply_open_gap, ensure_market, get_engine_state
     from nonebot_plugin_trade.models import Candle
 
     session = FakeSession()
     with (
-        # 只抽到 up 段：隔夜跳空一定落在 up 段末尾（p_up = 0.95）
-        patch("nonebot_plugin_trade.market._random_label", return_value="up"),
-        # 方向与幅度固定：p_up > 0.5 的 tick 全部上涨，幅度 0.5 * trade_sigma
-        patch("nonebot_plugin_trade.market._rand_float", return_value=0.5),
+        patch("nonebot_plugin_trade.candlebridge.random_seed", return_value=20261007),
         patch("nonebot_plugin_trade.market.apply_open_gap", wraps=apply_open_gap) as gap,
     ):
         state = await ensure_market(session, datetime(2026, 11, 19, 14, 0))
@@ -337,11 +446,8 @@ async def test_ensure_market_cross_day():
         assert state.day_open == pytest.approx(10.0)
         assert state.last_tick_at == datetime(2026, 11, 19, 14, 0)
         assert len([key for key in session.objects if key[0] is Candle]) == 72
-        assert state.price > 0
-        # 开盘前已把当天全天抽好：整天的 tick 被完整分配
-        segments = get_segments(state)
-        assert sum(segment.ticks for segment in segments) == INTRADAY_TICKS
-        assert all(segment.label == "up" for segment in segments)
+        assert state.price >= PRICE_FLOOR
+        assert get_engine_state(state) is not None
 
         await ensure_market(session, datetime(2026, 11, 19, 23, 59))
         assert gap.call_count == 0
@@ -349,18 +455,20 @@ async def test_ensure_market_cross_day():
         assert state.last_tick_at == datetime(2026, 11, 19, 23, 55)
         assert len([key for key in session.objects if key[0] is Candle]) == 191
         close_price = state.price
+        eod_engine = get_engine_state(state)
+        assert eod_engine is not None
 
         await ensure_market(session, datetime(2026, 11, 20, 8, 0))
-        # 08:00 按前一交易日最后一个标签再走一个 tick：up 段末尾上涨 0.5%
+        # 08:00 沿用前一日尾盘的 CandleBridge 状态跳空，不写 K 线
         assert gap.call_count == 1
-        assert gap.call_args.args[-1] == "up"
         assert state.day == date(2026, 11, 20)
-        # 08:00 的跳空 tick 只更新价格，不写 K 线，缺口保留在昨收与今开之间
         assert state.prev_close == pytest.approx(close_price)
-        assert state.day_open == pytest.approx(round(close_price * 1.005, 6))
         assert state.price == pytest.approx(state.day_open)
         assert state.last_tick_at == datetime(2026, 11, 20, 8, 0)
         assert len([key for key in session.objects if key[0] is Candle]) == 191
+        open_engine = get_engine_state(state)
+        assert open_engine is not None
+        assert open_engine.rng_state != eod_engine.rng_state
 
         # 跳空每天只发生一次，08:05 起恢复正常 tick；当日首根 K 线从今开起步
         day_open = state.day_open
@@ -377,20 +485,20 @@ async def test_ensure_market_cross_day():
         assert gap.call_count == 3
         assert state.day == date(2026, 11, 22)
         assert state.last_tick_at == datetime(2026, 11, 22, 10, 0)
-        assert state.price > 0
-        # 每天换日时都用前一日序列的最后一个标签
-        assert all(call.args[-1] == "up" for call in gap.call_args_list)
+        assert state.price >= PRICE_FLOOR
 
 
 @pytest.mark.asyncio
-async def test_segments_persist_through_orm():
-    """segments 以 JSON 文本落库：走真实 ORM 会话验证列类型与读写"""
+async def test_engine_state_persist_through_orm():
+    """engine_state 以 JSON 文本落库：走真实 ORM 会话验证列类型与读写"""
     from nonebot_plugin_orm import get_session
 
-    from nonebot_plugin_trade.market import Segment, encode_segments, get_segments
+    from nonebot_plugin_trade.candlebridge import PathState
+    from nonebot_plugin_trade.market import encode_engine_state, get_engine_state
     from nonebot_plugin_trade.models import MarketState
 
-    raw = encode_segments([Segment("down", 7), Segment("flat", 12)])
+    engine = PathState(rng_state=20261007, volatility=0.00031, regime=1, remaining=42, direction=-1)
+    raw = encode_engine_state(engine)
     async with get_session() as session:
         await session.merge(
             MarketState(
@@ -398,7 +506,7 @@ async def test_segments_persist_through_orm():
                 price=10.0,
                 day_open=10.0,
                 prev_close=10.0,
-                segments=raw,
+                engine_state=raw,
                 float_shares=100000,
             ),
         )
@@ -407,28 +515,22 @@ async def test_segments_persist_through_orm():
     async with get_session() as session:
         state = await session.get(MarketState, 1)
         assert state is not None
-        assert state.segments == raw
-        assert get_segments(state) == [Segment("down", 7), Segment("flat", 12)]
+        assert state.engine_state == raw
+        assert get_engine_state(state) == engine
 
 
 @pytest.mark.asyncio
-async def test_ensure_market_allocates_segments_for_legacy_row():
-    """从旧版本升级上来（当天只有价格、没有行情序列）时补抽当天序列"""
-    from nonebot_plugin_trade.market import INTRADAY_TICKS, ensure_market, get_segments
+async def test_ensure_market_initializes_engine_state_for_legacy_row():
+    """从旧版本升级上来（engine_state 为空）时自动初始化 CandleBridge 状态并继续补算"""
+    from nonebot_plugin_trade.market import ensure_market, get_engine_state
 
     session = FakeSession()
-    session.add(make_state(segments=None, last_tick_at=datetime(2026, 11, 19, 10, 0)))
+    session.add(make_state(engine_state=None, last_tick_at=datetime(2026, 11, 19, 10, 0)))
 
-    with (
-        patch("nonebot_plugin_trade.market._random_label", return_value="down"),
-        patch("nonebot_plugin_trade.market._rand_float", return_value=0.5),
-    ):
+    with patch("nonebot_plugin_trade.candlebridge.random_seed", return_value=20261007):
         state = await ensure_market(session, datetime(2026, 11, 19, 10, 5))
 
-    segments = get_segments(state)
-    assert sum(segment.ticks for segment in segments) == INTRADAY_TICKS
-    assert all(segment.label == "down" for segment in segments)
-    # 当天序列补齐后照常补算 tick
+    assert get_engine_state(state) is not None
     assert state.last_tick_at == datetime(2026, 11, 19, 10, 5)
     assert state.day == TRADE_DAY
 
@@ -1107,7 +1209,8 @@ def test_panel_change_uses_previous_close_when_gap_down():
 
 @pytest.mark.asyncio
 async def test_tick_keeps_trade_extremes():
-    """tick 的布朗桥只扩展、不覆盖成交写入的 high/low"""
+    """tick 的 CandleBridge 路径只扩展、不覆盖成交写入的 high/low"""
+    from nonebot_plugin_trade.candlebridge import SimulatedBar
     from nonebot_plugin_trade.market import apply_tick, update_candle_on_trade
     from nonebot_plugin_trade.models import Candle
 
@@ -1118,9 +1221,9 @@ async def test_tick_keeps_trade_extremes():
     assert candle.high == pytest.approx(10.5)
     assert candle.low == pytest.approx(10.0)
 
-    with (
-        patch("nonebot_plugin_trade.market._rand_float", side_effect=[0.999, 1.0]),
-        patch("nonebot_plugin_trade.market._rand_normal", return_value=-2.0),
+    with patch(
+        "nonebot_plugin_trade.market.simulate_bar",
+        return_value=SimulatedBar(open=10.5, high=10.48, low=10.2, close=10.395),
     ):
         await apply_tick(state, datetime(2026, 11, 19, 9, 0), session)
 
