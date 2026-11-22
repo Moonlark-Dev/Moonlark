@@ -14,7 +14,7 @@ from nonebot.exception import FinishedException
 from nonebot.matcher import Matcher  # ruff: ignore[typing-only-third-party-import]
 from nonebot_plugin_alconna import Alconna, Args, Arparma, MultiVar, UniMessage, on_alconna
 from nonebot_plugin_larkuser.utils.matcher import patch_matcher
-from nonebot_plugin_larkutils import get_group_id, get_user_id
+from nonebot_plugin_larkutils import create_image_markdown, get_group_id, get_user_id
 from nonebot_plugin_ranking import generate_image
 
 from .game import (
@@ -40,6 +40,7 @@ from .messages import (
     build_rank_message,
     build_start_message,
     build_status_message,
+    home_buttons,
 )
 from .rank import get_rank_display, get_ranking_data
 from .types import EndOutcome
@@ -126,14 +127,6 @@ async def send_rendered(matcher: Matcher, bot: Bot, event: Event, rendered: Rend
 
 async def _handle_rank(matcher: Matcher, bot: Bot, event: Event, user_id: str) -> None:
     top, my_index, my_count = await get_rank_display(user_id)
-    if isinstance(bot, QQBot):
-        await send_rendered(
-            matcher,
-            bot,
-            event,
-            await build_rank_message(top, user_id, my_index=my_index, my_count=my_count),
-        )
-        return
     if not top:
         await send_rendered(
             matcher,
@@ -154,6 +147,20 @@ async def _handle_rank(matcher: Matcher, bot: Bot, event: Event, user_id: str) -
             await build_rank_message(top, user_id, my_index=my_index, my_count=my_count),
         )
         return
+    if isinstance(bot, QQBot):
+        # QQ 官方图片消息（msg_type 7）无法携带按钮：先上传素材库，
+        # 再用 markdown 内嵌图片并把「再来一局 / 排行榜」按钮放在同一条消息里
+        try:
+            message = (
+                UniMessage()
+                .style(await create_image_markdown(image, bot), "markdown")
+                .keyboard(*await home_buttons(user_id))
+            )
+            await message.send(target=event, bot=bot)
+        except Exception:
+            logger.opt(exception=True).warning("海龟汤：QQ 排行榜 markdown 发送失败，退回普通图片消息")
+        else:
+            await matcher.finish()
     await matcher.finish(UniMessage().image(raw=image, name="turtle-soup-rank.png"))
 
 

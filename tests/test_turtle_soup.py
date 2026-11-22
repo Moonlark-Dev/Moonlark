@@ -184,6 +184,53 @@ async def test_build_plain_and_markdown_messages() -> None:
     assert "text::message.rank_me|2|2" in rank.plain
 
 
+async def test_rank_on_qq_embeds_image_with_buttons(monkeypatch: pytest.MonkeyPatch) -> None:
+    """QQ 官方排行榜使用图片（素材库 + markdown 内嵌），并保留快捷按钮。"""
+    from nonebot.adapters.qq import Bot as QQBot
+    from nonebot.exception import FinishedException
+    from nonebot_plugin_alconna import Keyboard, Text, UniMessage
+    from nonebot_plugin_turtle_soup import matcher as matcher_module
+
+    async def fake_display(_user_id: str):
+        return [("小明", 3)], 1, 3
+
+    async def fake_data():
+        return [{"user_id": "100", "data": 3, "info": None}]
+
+    async def fake_image(*_args: object, **_kwargs: object) -> bytes:
+        return b"png-bytes"
+
+    async def fake_markdown(*_args: object, **_kwargs: object) -> str:
+        return "![rank](qqbot-media://rank)"
+
+    monkeypatch.setattr(matcher_module, "get_rank_display", fake_display)
+    monkeypatch.setattr(matcher_module, "get_ranking_data", fake_data)
+    monkeypatch.setattr(matcher_module, "generate_image", fake_image)
+    monkeypatch.setattr(matcher_module, "create_image_markdown", fake_markdown)
+
+    sent: list[UniMessage] = []
+
+    async def fake_send(self: UniMessage, *_args: object, **_kwargs: object) -> MagicMock:
+        sent.append(self)
+        return MagicMock()
+
+    monkeypatch.setattr(UniMessage, "send", fake_send)
+
+    async def fake_finish(*_args: object, **_kwargs: object) -> None:
+        raise FinishedException
+
+    matcher = MagicMock()
+    matcher.finish = fake_finish
+    with pytest.raises(FinishedException):
+        await matcher_module._handle_rank(matcher, MagicMock(spec=QQBot), MagicMock(), "10")
+
+    assert len(sent) == 1
+    text = next(segment for segment in sent[0] if isinstance(segment, Text))
+    assert "qqbot-media://rank" in text.text
+    keyboard = next(segment for segment in sent[0] if isinstance(segment, Keyboard))
+    assert len(keyboard.children) == 2
+
+
 # ---------- 判定 ----------
 
 
