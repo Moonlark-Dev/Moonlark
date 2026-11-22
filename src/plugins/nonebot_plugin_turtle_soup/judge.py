@@ -298,6 +298,7 @@ async def judge_question(
     try:
         return await _judge_with_llm(puzzle, history, percent, question, user_id)
     except Exception as e:
+        logger.opt(exception=True).warning("海龟汤：LLM 判定失败")
         raise JudgeError(f"判定失败: {e}") from e
 
 
@@ -375,4 +376,5 @@ async def recalculate_progress(
     try:
         return await _recalculate_with_llm(puzzle, history, percent)
     except Exception as e:
+        logger.opt(exception=True).warning("海龟汤：LLM 重算进度失败")
         raise JudgeError(f"重算进度失败: {e}") from e

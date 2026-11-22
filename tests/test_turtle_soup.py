@@ -231,6 +231,51 @@ async def test_rank_on_qq_embeds_image_with_buttons(monkeypatch: pytest.MonkeyPa
     assert len(keyboard.children) == 2
 
 
+def test_lang_keys_referenced_by_code_exist() -> None:
+    """代码里引用的每个语言键都必须存在（含 YAML 未加引号的 yes/no 被解析成布尔值的坑）。"""
+    import ast
+    from pathlib import Path
+
+    import yaml
+
+    data = yaml.safe_load(Path("src/lang/zh_hans/turtle_soup.yaml").read_text(encoding="utf-8"))
+    flat: dict[str, str] = {}
+
+    def walk(node: object, prefix: str = "") -> None:
+        if not isinstance(node, dict):
+            return
+        for key, value in node.items():
+            path = f"{prefix}{key}"
+            if isinstance(value, dict):
+                walk(value, f"{path}.")
+            else:
+                flat[path] = str(value)
+
+    walk(data)
+    keys: set[str] = set()
+    for file in Path("src/plugins/nonebot_plugin_turtle_soup").glob("*.py"):
+        for node in ast.walk(ast.parse(file.read_text(encoding="utf-8"))):
+            if (
+                isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Attribute)
+                and node.func.attr == "text"
+                and node.args
+                and isinstance(node.args[0], ast.Constant)
+                and isinstance(node.args[0].value, str)
+            ):
+                keys.add(node.args[0].value)
+    keys.update(f"judge.decision.progress_level_{level}" for level in range(11))
+    keys.update(f"reply.{key}" for key in ("yes", "no", "irrelevant"))
+    keys.update({"announce.solved", "announce.given-up", "chat.event_solved", "chat.event_given_up"})
+    assert not sorted(key for key in keys if key not in flat)
+
+    # 占位符与调用参数数量一致，避免线上显示未格式化的 {0}
+    assert flat["status.question_limit"].format(50, __prefix__="/").endswith("。")
+    assert flat["message.rules"].format(50, __prefix__="/").count("{") == 0
+    assert flat["message.hint_line"].format(1, 3) == "第 1/3 条提示"
+    assert flat["reply.no"] == "不是"
+
+
 # ---------- 判定 ----------
 
 

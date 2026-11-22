@@ -83,8 +83,8 @@ status:
   recalculating: 正在重新计算进度……
 
 reply:
-  yes: 是
-  no: 不是
+  'yes': 是
+  'no': 不是
   irrelevant: 不重要
   solved: 恭喜你，推理非常精彩！
 
