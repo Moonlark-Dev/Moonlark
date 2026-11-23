@@ -118,19 +118,32 @@ def _is_self_bot_message(user_id: str) -> bool:
     return False
 
 
-async def _lookup_bind_by_ob11_group(session_id: str) -> Optional[GroupBind]:
-    """通过 OB11 的 session_id 查找 GroupBind"""
+async def get_group_bind_by_ob11_group(group_qq_number: str) -> Optional[GroupBind]:
+    """通过 OneBot 11 群号查询群绑定记录，未绑定时返回 None"""
     from sqlalchemy import select
 
+    async with get_session() as db_session:
+        result = await db_session.execute(select(GroupBind).where(GroupBind.group_qq_number == group_qq_number))
+        return result.scalar_one_or_none()
+
+
+async def get_group_bind_by_qqbot_group(group_openid: str) -> Optional[GroupBind]:
+    """通过 QQ 官方 bot 的 group_openid 查询群绑定记录，未绑定时返回 None"""
+    from sqlalchemy import select
+
+    async with get_session() as db_session:
+        result = await db_session.execute(select(GroupBind).where(GroupBind.group_openid == group_openid))
+        return result.scalar_one_or_none()
+
+
+async def _lookup_bind_by_ob11_group(session_id: str) -> Optional[GroupBind]:
+    """通过 OB11 的 session_id 查找 GroupBind"""
     # OB11 session_id 格式: qq_{qq_group_number}（get_group_id 依赖 nonebot_plugin_session，platform 为 qq）
     # 群号为纯数字，可与 QQ 官方 bot 的 group_openid（字母数字串）区分
     try:
         parts = session_id.rsplit("_", 1)
         if len(parts) == 2 and parts[0] == "qq" and parts[1].isdigit():
-            group_qq = parts[1]
-            async with get_session() as db_session:
-                result = await db_session.execute(select(GroupBind).where(GroupBind.group_qq_number == group_qq))
-                return result.scalar_one_or_none()
+            return await get_group_bind_by_ob11_group(parts[1])
     except Exception:
         pass
     return None
@@ -138,15 +151,10 @@ async def _lookup_bind_by_ob11_group(session_id: str) -> Optional[GroupBind]:
 
 async def _lookup_bind_by_qqbot_group(session_id: str) -> Optional[GroupBind]:
     """通过 QQBot 的 session_id 查找 GroupBind"""
-    from sqlalchemy import select
-
     try:
         # QQBot session_id 格式: qq_{group_openid}（openid 为字母数字串，非纯数字）
         if session_id.startswith("qq_") and not session_id[3:].isdigit():
-            group_oid = session_id[3:]
-            async with get_session() as db_session:
-                result = await db_session.execute(select(GroupBind).where(GroupBind.group_openid == group_oid))
-                return result.scalar_one_or_none()
+            return await get_group_bind_by_qqbot_group(session_id[3:])
     except Exception:
         pass
     return None
