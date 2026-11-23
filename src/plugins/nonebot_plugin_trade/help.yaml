@@ -11,4 +11,5 @@ commands:
       - help.usage5
       - help.usage6
       - help.usage7
+      - help.usage8
     category: game

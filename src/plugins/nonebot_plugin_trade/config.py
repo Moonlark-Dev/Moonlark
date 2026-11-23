@@ -21,6 +21,8 @@ class Config(BaseModel):
     trade_chart_candles: int = 120
     # 日 K 线历史固定展示的交易日数量（不足时所有蜡烛挤在右侧）
     trade_history_candles: int = 60
+    # 收益排行榜展示的上榜人数
+    trade_rank_size: int = 10
     # CandleBridge 波动强度预设（low / medium / high）
     trade_intensity: Literal["low", "medium", "high"] = "medium"
     # CandleBridge 细步分辨率（1 或 5 秒）

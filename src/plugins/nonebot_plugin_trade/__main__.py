@@ -23,6 +23,7 @@ from .market import (
     execute_sell,
     get_holding,
     load_daily_candles,
+    load_ranking,
     load_recent_candles,
     now_local,
     trading_day,
@@ -30,11 +31,12 @@ from .market import (
 from .panel import PanelData, build_panel_data, build_panel_markdown, build_panel_text
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
     from datetime import date
 
     from typing import Optional
 
-    from .market import TradeResult
+    from .market import RankingEntry, TradeResult
 
 logger = getLogger(__name__)
 lang = LangHelper()
@@ -46,6 +48,7 @@ trade = on_alconna(
         Subcommand("buy", Args["amount?", str, ""]),
         Subcommand("sell", Args["amount?", str, ""]),
         Subcommand("history"),
+        Subcommand("rank", alias=["ranking"]),
     ),
 )
 patch_matcher(trade)
@@ -53,6 +56,12 @@ patch_matcher(trade)
 
 def _fmt(value: float) -> str:
     return f"{value:.2f}"
+
+
+def _fmt_signed(value: float) -> str:
+    if abs(value) < 0.005:
+        value = 0.0
+    return f"{value:+.2f}"
 
 
 async def render_chart(
@@ -252,6 +261,77 @@ async def cap_note(side: str, user_id: str, result: TradeResult) -> str:
     return ""
 
 
+def _fmt_money(value: float) -> str:
+    return f"{value:,.2f}"
+
+
+_RANK_MEDALS = {1: "🥇", 2: "🥈", 3: "🥉"}
+
+
+def _rank_label(rank: int) -> str:
+    medal = _RANK_MEDALS.get(rank)
+    return f"{medal} {rank}." if medal else f"{rank}."
+
+
+def _rate_text(entry: RankingEntry) -> str:
+    return f"{_fmt_signed(entry.return_rate * 100)}%"
+
+
+async def build_rank_text(user_id: str, entries: list[RankingEntry], nicknames: Mapping[str, str]) -> str:
+    """构建收益排行榜文本：只展示前若干名，并附带发起者自己的排名"""
+    if not entries:
+        return await lang.text("rank.empty", user_id)
+    size = max(1, config.trade_rank_size)
+    visible = entries[:size]
+    lines = [
+        await lang.text(
+            "rank.entry",
+            user_id,
+            label=_rank_label(entry.rank),
+            nickname=nicknames.get(entry.user_id, entry.user_id),
+            rate=_rate_text(entry),
+            profit=_fmt_signed(entry.profit),
+            bought=_fmt_money(entry.total_bought),
+            sold=_fmt_money(entry.total_sold),
+        )
+        for entry in visible
+    ]
+    blocks = [
+        await lang.text("rank.title", user_id),
+        await lang.text("rank.metric", user_id),
+        "\n".join(lines),
+    ]
+    if len(entries) > size:
+        blocks.append(await lang.text("rank.hidden", user_id, count=size, total=len(entries)))
+    me = next((entry for entry in entries if entry.user_id == user_id), None)
+    if me is None:
+        blocks.append(await lang.text("rank.me_none", user_id))
+    else:
+        blocks.append(
+            await lang.text(
+                "rank.me",
+                user_id,
+                rank=me.rank,
+                rate=_rate_text(me),
+                profit=_fmt_signed(me.profit),
+                bought=_fmt_money(me.total_bought),
+                sold=_fmt_money(me.total_sold),
+            ),
+        )
+    return "\n".join(blocks)
+
+
+async def send_rank_text(user_id: str, entries: list[RankingEntry]) -> None:
+    """取排行榜所需昵称（只取上榜者与发起者）并发送文本"""
+    nicknames: dict[str, str] = {}
+    for entry in entries[: max(1, config.trade_rank_size)]:
+        nicknames[entry.user_id] = (await get_user(entry.user_id)).get_nickname()
+    me = next((entry for entry in entries if entry.user_id == user_id), None)
+    if me is not None and me.user_id not in nicknames:
+        nicknames[me.user_id] = (await get_user(me.user_id)).get_nickname()
+    await trade.finish(await build_rank_text(user_id, entries, nicknames))
+
+
 @trade.assign("$main")
 async def handle_trade_main(bot: Bot, event: Event, user_id: str = get_user_id()) -> None:
     now = now_local()
@@ -305,6 +385,17 @@ async def handle_trade_history(bot: Bot, event: Event, user_id: str = get_user_i
         return
     chart = await render_daily_chart(user_id, points)
     await send_history_chart(bot, event, caption, chart)
+
+
+@trade.assign("rank")
+async def handle_trade_rank(user_id: str = get_user_id()) -> None:
+    now = now_local()
+    async with _market_lock:
+        async with get_session() as session:
+            state = await ensure_market(session, now)
+            entries = await load_ranking(session, state.price)
+            await session.commit()
+    await send_rank_text(user_id, entries)
 
 
 @trade.assign("buy")

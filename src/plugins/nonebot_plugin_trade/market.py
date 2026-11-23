@@ -10,6 +10,8 @@ from typing import TYPE_CHECKING, Literal, Optional
 from sqlalchemy import select
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
     from nonebot_plugin_larkuser import MoonlarkUser
     from nonebot_plugin_orm import AsyncSession
 
@@ -78,6 +80,64 @@ class DailyCandle:
     low: float
     close: float
     volume: int
+
+
+@dataclass(frozen=True)
+class RankingEntry:
+    """收益排行榜中的一行
+
+    总收益率 =（累计卖出 + 当前持仓市值）/ 累计买入 - 1：
+    仍持股的用户按当前价给未卖出的股票估值，未实现盈亏也计入收益率，
+    这样持仓玩家与已清仓玩家的收益率可以直接比较，不会因为「没卖」而少算收益。
+    """
+
+    user_id: str
+    rank: int
+    total_bought: float
+    total_sold: float
+    market_value: float
+    profit: float
+    return_rate: float
+
+
+def rank_holdings(holdings: Iterable[Holding], price: float) -> list[RankingEntry]:
+    """把持仓记录聚合为按总收益率降序排列的排行榜（累计买入为 0 的记录不参与）"""
+    rows: list[tuple[str, float, float, float, float, float]] = []
+    for holding in holdings:
+        if holding.total_bought <= 0:
+            continue
+        market_value = holding.shares * price
+        profit = holding.total_sold + market_value - holding.total_bought
+        rows.append(
+            (
+                holding.user_id,
+                holding.total_bought,
+                holding.total_sold,
+                market_value,
+                profit,
+                profit / holding.total_bought,
+            ),
+        )
+    # 收益率相同时由盈亏金额、最后按 user_id 决出先后，保证排名稳定
+    rows.sort(key=lambda row: (-row[5], -row[4], row[0]))
+    return [
+        RankingEntry(
+            user_id=user_id,
+            rank=index,
+            total_bought=total_bought,
+            total_sold=total_sold,
+            market_value=market_value,
+            profit=profit,
+            return_rate=return_rate,
+        )
+        for index, (user_id, total_bought, total_sold, market_value, profit, return_rate) in enumerate(rows, start=1)
+    ]
+
+
+async def load_ranking(session: AsyncSession, price: float) -> list[RankingEntry]:
+    """读取所有有过买入记录的用户并生成收益排行榜"""
+    holdings = await session.scalars(select(Holding).where(Holding.total_bought > 0))
+    return rank_holdings(holdings, price)
 
 
 def now_local() -> datetime:
@@ -336,6 +396,8 @@ async def get_holding(session: AsyncSession, user_id: str, day: date) -> Holding
             last_active_day=day,
             daily_bought=0,
             daily_sold=0,
+            total_bought=0.0,
+            total_sold=0.0,
         )
         session.add(holding)
         return holding
@@ -489,6 +551,7 @@ async def execute_buy(
     holding.shares += shares
     holding.frozen_shares += shares
     holding.cost_basis = round(holding.cost_basis + amount, 2)
+    holding.total_bought = round(holding.total_bought + amount, 2)
     holding.daily_bought += shares
     state.float_shares -= shares
 
@@ -558,6 +621,7 @@ async def execute_sell(
     holding.shares -= shares
     if holding.shares == 0:
         holding.cost_basis = 0.0
+    holding.total_sold = round(holding.total_sold + amount, 2)
     holding.daily_sold += shares
     state.float_shares += shares
 

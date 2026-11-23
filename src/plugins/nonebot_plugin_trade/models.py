@@ -51,3 +51,7 @@ class Holding(Model):
     last_active_day: Mapped[Optional[date]] = mapped_column(Date(), nullable=True)
     daily_bought: Mapped[int] = mapped_column(Integer(), default=0)
     daily_sold: Mapped[int] = mapped_column(Integer(), default=0)
+    # 累计买入支出（含手续费），用于收益排行榜
+    total_bought: Mapped[float] = mapped_column(Float(), default=0.0)
+    # 累计卖出到账（已扣手续费），用于收益排行榜
+    total_sold: Mapped[float] = mapped_column(Float(), default=0.0)

@@ -94,6 +94,8 @@ def make_holding(**overrides):
         "last_active_day": TRADE_DAY,
         "daily_bought": 0,
         "daily_sold": 0,
+        "total_bought": 0.0,
+        "total_sold": 0.0,
     }
     values.update(overrides)
     return Holding(**values)
@@ -562,6 +564,8 @@ async def test_buy_fee_and_impact():
     holding = session.objects[(Holding, FakeUser.user_id)]
     assert holding.shares == 100
     assert holding.cost_basis == pytest.approx(1010.0)
+    assert holding.total_bought == pytest.approx(1010.0)
+    assert holding.total_sold == pytest.approx(0.0)
 
     candle = session.objects[(Candle, (TRADE_DAY, 24))]
     assert candle.open == pytest.approx(10.0)
@@ -650,6 +654,7 @@ async def test_sell_t_plus_1_and_daily_cap():
     assert result.new_price == pytest.approx(9.99)
     assert result.shares_after == 0
     assert holding.cost_basis == 0.0
+    assert holding.total_sold == pytest.approx(990.0)
     assert state.float_shares == 100000
     assert user.vimcoin == pytest.approx(990.0)
 
@@ -660,6 +665,164 @@ async def test_sell_t_plus_1_and_daily_cap():
     result = await execute_sell(session, state, user, "all", datetime(2026, 11, 19, 10, 0))
     assert result.shares == 50
     assert result.capped_reason == "daily"
+
+
+@pytest.mark.asyncio
+async def test_trade_totals_accumulate_across_rounds():
+    """累计买入/卖出金额跨交易日累加，排行榜口径与逐笔记账一致"""
+    from nonebot_plugin_trade.market import execute_buy, execute_sell
+    from nonebot_plugin_trade.models import Holding
+
+    session = FakeSession()
+    state = make_state()
+    user = FakeUser(2000)
+    await execute_buy(session, state, user, "100", datetime(2026, 11, 19, 10, 0))
+    holding = session.objects[(Holding, FakeUser.user_id)]
+    assert holding.total_bought == pytest.approx(1010.0)
+    assert holding.total_sold == pytest.approx(0.0)
+
+    # 次日解冻后按当日价格清仓：累计卖出记录扣完手续费后的到账金额
+    result = await execute_sell(session, state, user, "all", datetime(2026, 11, 20, 10, 0))
+    assert result.amount == pytest.approx(990.99)
+    assert holding.shares == 0
+    assert holding.total_bought == pytest.approx(1010.0)
+    assert holding.total_sold == pytest.approx(990.99)
+
+
+def test_rank_holdings_values_open_positions_at_market_price():
+    """持仓按当前价估值：未卖出的股票也计入收益率，不会因为没卖而被当成亏损"""
+    from nonebot_plugin_trade.market import rank_holdings
+
+    holdings = [
+        make_holding(user_id="rank-holder", shares=100, cost_basis=1010.0, total_bought=1010.0),
+        make_holding(user_id="rank-closed", shares=0, cost_basis=0.0, total_bought=1000.0, total_sold=1500.0),
+        make_holding(user_id="rank-idle"),
+    ]
+    entries = rank_holdings(holdings, 12.0)
+
+    assert [entry.user_id for entry in entries] == ["rank-closed", "rank-holder"]
+    closed, holder = entries
+    assert closed.rank == 1
+    assert closed.market_value == pytest.approx(0.0)
+    assert closed.profit == pytest.approx(500.0)
+    assert closed.return_rate == pytest.approx(0.5)
+
+    assert holder.rank == 2
+    assert holder.market_value == pytest.approx(1200.0)
+    assert holder.profit == pytest.approx(190.0)
+    assert holder.return_rate == pytest.approx(190.0 / 1010.0)
+
+    # 累计买入为 0 的用户（从未交易）不参与排行
+    assert all(entry.user_id != "rank-idle" for entry in entries)
+
+
+def test_rank_holdings_tie_break_is_stable():
+    from nonebot_plugin_trade.market import rank_holdings
+
+    holdings = [
+        make_holding(user_id="rank-b", total_bought=100.0, total_sold=120.0),
+        make_holding(user_id="rank-a", total_bought=100.0, total_sold=120.0),
+    ]
+    assert [entry.user_id for entry in rank_holdings(holdings, 10.0)] == ["rank-a", "rank-b"]
+
+
+@pytest.mark.asyncio
+async def test_load_ranking_uses_orm_rows_and_skips_untraded():
+    from nonebot_plugin_orm import get_session
+    from sqlalchemy import delete
+
+    from nonebot_plugin_trade.market import load_ranking
+    from nonebot_plugin_trade.models import Holding
+
+    user_ids = ["rank-orm-holder", "rank-orm-closed", "rank-orm-idle"]
+    async with get_session() as session:
+        await session.execute(delete(Holding).where(Holding.user_id.in_(user_ids)))
+        session.add(
+            Holding(
+                user_id="rank-orm-holder",
+                shares=100,
+                frozen_shares=0,
+                cost_basis=1010.0,
+                total_bought=1010.0,
+                total_sold=0.0,
+            ),
+        )
+        session.add(
+            Holding(
+                user_id="rank-orm-closed",
+                shares=0,
+                frozen_shares=0,
+                cost_basis=0.0,
+                total_bought=1000.0,
+                total_sold=1500.0,
+            ),
+        )
+        session.add(
+            Holding(
+                user_id="rank-orm-idle",
+                shares=0,
+                frozen_shares=0,
+                cost_basis=0.0,
+                total_bought=0.0,
+                total_sold=0.0,
+            ),
+        )
+        await session.commit()
+
+    async with get_session() as session:
+        entries = await load_ranking(session, 10.0)
+
+    by_id = {entry.user_id: entry for entry in entries}
+    assert "rank-orm-idle" not in by_id
+    assert by_id["rank-orm-closed"].return_rate == pytest.approx(0.5)
+    assert by_id["rank-orm-holder"].return_rate == pytest.approx(-10.0 / 1010.0)
+    assert by_id["rank-orm-closed"].rank < by_id["rank-orm-holder"].rank
+    assert [entry.return_rate for entry in entries] == sorted(
+        (entry.return_rate for entry in entries),
+        reverse=True,
+    )
+
+
+@pytest.mark.asyncio
+async def test_rank_text_lists_top_and_my_rank(monkeypatch: pytest.MonkeyPatch):
+    from nonebot_plugin_trade import config as trade_config_module
+    from nonebot_plugin_trade.__main__ import build_rank_text
+    from nonebot_plugin_trade.market import rank_holdings
+
+    monkeypatch.setattr(trade_config_module.config, "trade_rank_size", 2)
+    entries = rank_holdings(
+        [
+            make_holding(user_id="rank-u1", total_bought=1000.0, total_sold=1500.0),
+            make_holding(user_id="rank-u2", total_bought=1000.0, total_sold=1200.0),
+            make_holding(user_id="rank-me", total_bought=1000.0, total_sold=1100.0),
+        ],
+        10.0,
+    )
+    text = await build_rank_text(
+        "rank-me",
+        entries,
+        {"rank-u1": "小满", "rank-u2": "阿岚", "rank-me": "我"},
+    )
+
+    assert "📊 Moonlark 证券交易所 · 收益排行榜" in text
+    assert "🥇 1. 小满  +50.00% · 盈亏 +500.00（买入 1,000.00 / 卖出 1,500.00）" in text
+    assert "2. 阿岚  +20.00% · 盈亏 +200.00（买入 1,000.00 / 卖出 1,200.00）" in text
+    assert "仅显示前 2 名，共 3 人上榜。" in text
+    assert "你的排名：第 3 名 · +10.00%（盈亏 +100.00，买入 1,000.00 / 卖出 1,100.00）" in text
+
+
+@pytest.mark.asyncio
+async def test_rank_text_handles_empty_ranking_and_untraded_user():
+    from nonebot_plugin_trade.__main__ import build_rank_text
+    from nonebot_plugin_trade.market import rank_holdings
+
+    empty = await build_rank_text("rank-nobody", [], {})
+    assert empty == "暂时还没有人交易，开市后买入股票就能登上收益排行榜。"
+
+    entries = rank_holdings([make_holding(user_id="rank-someone", total_bought=1000.0, total_sold=1200.0)], 10.0)
+    untraded = await build_rank_text("rank-newbie", entries, {"rank-someone": "小满"})
+    assert "1. 小满  +20.00%" in untraded
+    assert "你还没有交易记录，买入股票后才会进入排行榜。" in untraded
 
 
 def test_parse_amounts():
@@ -828,6 +991,16 @@ async def test_history_caption_and_render_use_named_placeholders():
 
     with patch("nonebot_plugin_trade.__main__.render_daily_kline_chart", return_value=b"png"):
         assert await render_daily_chart("tester", points) == b"png"
+
+
+def test_rank_subcommand_parses():
+    """新增 rank 子命令及其别名都必须能被 Alconna 解析，否则指令会静默无响应"""
+    from nonebot_plugin_trade.__main__ import trade
+
+    command = trade.command()
+    assert command.parse("/trade rank").matched
+    assert command.parse("/trade ranking").matched
+    assert command.parse("/trade").matched
 
 
 def test_help_does_not_expose_internal_mechanism():
