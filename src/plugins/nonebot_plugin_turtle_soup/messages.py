@@ -12,9 +12,11 @@ from nonebot_plugin_larkutils.command import get_command_prefix
 
 from .config import config
 from .lang import lang
+from .wallet import format_vimcoin
 
 if TYPE_CHECKING:
     from .types import EndOutcome, HintOutcome, Puzzle
+    from .wallet import InsufficientVimcoinError
 
 COMMAND = "turtle-soup"
 
@@ -100,6 +102,13 @@ async def build_start_message(puzzle: Puzzle, user_id: str) -> Rendered:
     title = await lang.text("announce.start", user_id)
     fields = await _fields(user_id, puzzle, percent=0, asked=0)
     footer = await lang.text("message.start_hint", user_id)
+    if config.turtle_soup_generate_cost > 0:
+        cost = await lang.text(
+            "message.start_cost",
+            user_id,
+            format_vimcoin(config.turtle_soup_generate_cost),
+        )
+        footer = f"{cost}\n{footer}"
     plain, markdown = _render_fields(title, fields, footer)
     return Rendered(plain=plain, markdown=markdown, buttons=await in_game_buttons(user_id))
 
@@ -146,6 +155,9 @@ async def build_progress_message(
 async def build_hint_message(user_id: str, hint: HintOutcome) -> Rendered:
     title = await lang.text("announce.hint", user_id)
     footer = await lang.text("message.ask_hint", user_id)
+    if not hint.finished and hint.cost > 0:
+        cost = await lang.text("message.hint_cost", user_id, format_vimcoin(hint.cost))
+        footer = f"{cost}\n{footer}"
     if hint.finished:
         text = await lang.text("status.all_hints", user_id, hint.total)
         plain = f"{title}\n{text}\n{footer}"
@@ -182,6 +194,8 @@ async def build_end_message(end: EndOutcome, user_id: str) -> Rendered:
         except Exception:
             nickname = end.solved_by
         await add("label.solved_by", nickname)
+    if end.solved and end.reward > 0:
+        await add("label.reward", f"{format_vimcoin(end.reward)} vi")
     footer = await lang.text("message.end_hint", user_id)
     lines_plain.append(footer)
     lines_markdown.append(footer)
@@ -216,9 +230,32 @@ async def build_status_message(user_id: str, text: str, *, in_game: bool) -> Ren
     return Rendered(plain=plain, markdown=markdown, buttons=buttons)
 
 
+async def build_insufficient_message(
+    user_id: str,
+    error: InsufficientVimcoinError,
+    *,
+    in_game: bool,
+) -> Rendered:
+    """余额不足的提示，沿用当前是否在对局中的那套按钮。"""
+    text = await lang.text(
+        "status.insufficient_vimcoin",
+        user_id,
+        format_vimcoin(error.cost),
+        format_vimcoin(error.balance),
+    )
+    return await build_status_message(user_id, text, in_game=in_game)
+
+
 async def build_help_message(user_id: str) -> Rendered:
     title = await lang.text("announce.rules", user_id)
-    rules = await lang.text("message.rules", user_id, max(1, config.turtle_soup_max_questions))
+    rules = await lang.text(
+        "message.rules",
+        user_id,
+        max(1, config.turtle_soup_max_questions),
+        format_vimcoin(config.turtle_soup_generate_cost),
+        format_vimcoin(config.turtle_soup_hint_cost),
+        format_vimcoin(config.turtle_soup_reward),
+    )
     plain = f"{title}\n{rules}"
     markdown = f"### {title}\n\n{rules}"
     return Rendered(plain=plain, markdown=markdown, buttons=await home_buttons(user_id))

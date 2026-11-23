@@ -21,7 +21,7 @@ from nonebot_plugin_orm import get_session
 from sqlalchemy import delete, select, update
 from sqlalchemy.exc import IntegrityError
 
-from . import chat_bridge
+from . import chat_bridge, wallet
 from .config import config
 from .judge import generate_puzzle, judge_question, recalculate_progress
 from .models import TurtleSoupGame, TurtleSoupPlayer
@@ -153,7 +153,8 @@ class Game:  # pylint: disable=too-many-instance-attributes
                 supplementary_info=self.puzzle.supplementary_info if result.solved else [],
             )
             if result.solved:
-                await self.finish(solved=True, solved_by=user_id, bot=bot, event=event)
+                end = await self.finish(solved=True, solved_by=user_id, bot=bot, event=event)
+                outcome.reward = end.reward
             return outcome
 
     def ensure_alive(self) -> None:
@@ -208,6 +209,9 @@ class Game:  # pylint: disable=too-many-instance-attributes
                 await record_correct(solved_by)
             except Exception:
                 logger.opt(exception=True).error(f"海龟汤：更新正确作答数失败: {solved_by}")
+            reward = await wallet.reward(solved_by, config.turtle_soup_reward)
+        else:
+            reward = 0.0
         return EndOutcome(
             solved=solved,
             percent=100 if solved else self.percent,
@@ -217,10 +221,11 @@ class Game:  # pylint: disable=too-many-instance-attributes
             solution=self.puzzle.solution,
             supplementary_info=self.puzzle.supplementary_info,
             solved_by=solved_by if solved else "",
+            reward=reward,
         )
 
-    async def next_hint(self) -> HintOutcome:
-        """按顺序取出一条提示（附加信息）。"""
+    async def next_hint(self, user_id: str) -> HintOutcome:
+        """按顺序取出一条提示（附加信息），成功取到时向 ``user_id`` 收取提示费用。"""
         async with self.lock:
             self.ensure_alive()
             hints = self.puzzle.supplementary_info
@@ -228,14 +233,23 @@ class Game:  # pylint: disable=too-many-instance-attributes
                 return HintOutcome(finished=True, total=0)
             if self.hint_index >= len(hints):
                 return HintOutcome(current=self.hint_index, total=len(hints), finished=True)
+            # 没有提示可取时不收费：只有真的拿到提示才扣 VimCoin
+            cost = config.turtle_soup_hint_cost
+            await wallet.charge(user_id, cost)
             hint = hints[self.hint_index]
             self.hint_index += 1
-            await self.save()
+            try:
+                await self.save()
+            except Exception:
+                # 记录没写成时退回提示费用，避免收了钱却没给提示
+                await wallet.refund(user_id, cost, "提示没能保存")
+                raise
             return HintOutcome(
                 hint=hint,
                 current=self.hint_index,
                 total=len(hints),
                 finished=False,
+                cost=cost,
             )
 
     async def recalculate(self, user_id: str) -> int:
@@ -303,11 +317,23 @@ async def get_active_game(session_id: str) -> Optional[Game]:
 async def start_game(session_id: str, owner_id: str, theme: str = "") -> Game:
     """开始新的一局。
 
-    先插入占位记录再生成谜题：``session_id`` 上的唯一索引保证并发开局只有一个人
-    能真正出题，另一个直接拿到 :class:`GameAlreadyPlayingError`，不会白跑两次模型。
+    先扣开局费用（``turtle_soup_generate_cost``，向发起者收取），再插入占位记录并生成谜题：
+    ``session_id`` 上的唯一索引保证并发开局只有一个人能真正出题，另一个直接拿到
+    :class:`GameAlreadyPlayingError`，不会白跑两次模型。开局没有成功（余额之外的一切失败）
+    时费用原额退回，玩家不为一局没开起来的游戏付钱。
     """
     if await get_active_game(session_id) is not None:
         raise GameAlreadyPlayingError("当前会话已经有一局进行中的海龟汤")
+    cost = config.turtle_soup_generate_cost
+    await wallet.charge(owner_id, cost)
+    try:
+        return await _create_game(session_id, owner_id, theme)
+    except Exception:
+        await wallet.refund(owner_id, cost, "开局失败")
+        raise
+
+
+async def _create_game(session_id: str, owner_id: str, theme: str) -> Game:
     now = datetime.now()
     async with get_session() as session:
         row = TurtleSoupGame(
@@ -367,7 +393,7 @@ async def start_game(session_id: str, owner_id: str, theme: str = "") -> Game:
 
 
 async def abort_game(game: Game) -> None:
-    """开局的开始消息没能发出去时回滚：结束本局、恢复 Chat、删除记录。"""
+    """开局的开始消息没能发出去时回滚：结束本局、恢复 Chat、删除记录并退回开局费用。"""
     game.finished = True
     games.pop(game.session_id, None)
     chat_bridge.resume(game.session_id)
@@ -375,6 +401,8 @@ async def abort_game(game: Game) -> None:
         await game.delete_row()
     except Exception:
         logger.opt(exception=True).warning(f"海龟汤：回滚对局记录失败: {game.session_id}")
+    # 本局作废就退钱：玩家没有真正玩到这一局
+    await wallet.refund(game.owner_id, config.turtle_soup_generate_cost, "开局消息发送失败")
 
 
 async def record_correct(user_id: str) -> None:

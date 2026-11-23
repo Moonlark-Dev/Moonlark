@@ -95,15 +95,17 @@ class AskOutcome(BaseModel):
     puzzle_setting: str = ""
     solution: str = ""
     supplementary_info: list[str] = []
+    reward: float = 0.0
 
 
 class HintOutcome(BaseModel):
-    """获取提示的结果。"""
+    """获取提示的结果。``cost`` 是本次提示实际扣除的 VimCoin。"""
 
     hint: str = ""
     current: int = 0
     total: int = 0
     finished: bool = False
+    cost: float = 0.0
 
 
 class EndOutcome(BaseModel):
@@ -117,3 +119,4 @@ class EndOutcome(BaseModel):
     solution: str
     supplementary_info: list[str]
     solved_by: str = ""
+    reward: float = 0.0

@@ -23,6 +23,12 @@ class Config(BaseModel):
     turtle_soup_solved_threshold: float = 0.6
     # Decisions API 判定的最低置信度：低于该值（或判定缺少有效答案时）退回 LLM 判定
     turtle_soup_decision_min_confidence: float = 0.5
+    # 开一局扣除的 VimCoin（向发起者收取，出题失败时原额退回）
+    turtle_soup_generate_cost: float = 10.0
+    # 每获取一条提示扣除的 VimCoin（向要提示的人收取）
+    turtle_soup_hint_cost: float = 2.0
+    # 解开本局奖励给解出者的 VimCoin
+    turtle_soup_reward: float = 20.0
 
 
 config = get_plugin_config(Config)

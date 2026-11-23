@@ -5,6 +5,7 @@ help:
     系统会给出一个离奇的情境描述（汤面），你只能提出可以用「是 / 不是 / 不重要」回答的问题，
     通过一步步提问推理出完整的故事真相（汤底）。群里所有人都可以提问，一局默认最多 50 个问题，
     本局默认在 36 小时内都有效；期间 Moonlark 的闲聊会被暂时收起，专心当主持人。
+    开局、获取提示与答对奖励都用 VimCoin 结算，具体金额见「turtle-soup help」。
   usage1: turtle-soup (开始一局海龟汤)
   usage2: turtle-soup 〈问题〉 (向主持人提问)
   usage3: turtle-soup progress (查看当前进度)
@@ -32,6 +33,7 @@ label:
   progress: 进度
   asked: 已提问
   solved_by: 解出者
+  reward: 奖励
 
 announce:
   start: 🐢 海龟汤开始
@@ -44,12 +46,14 @@ announce:
   rank: 🍲 海龟汤正确作答数排行
 
 message:
+  start_cost: 本局开局花费 {0} vi。
   start_hint: |
     直接发送 {__prefix__}turtle-soup 〈你的问题〉 就可以提问，问题要能用「是 / 不是 / 不重要」回答。
     （QQ 官方机器人也可以点击下方按钮提问、查看进度、要提示或放弃。）
   ask_hint: 继续发送 {__prefix__}turtle-soup 〈你的问题〉 提问。
   end_hint: 发送 {__prefix__}turtle-soup 可以再来一局。
   hint_line: 第 {0}/{1} 条提示
+  hint_cost: 本提示花费 {0} vi。
   recalculated: 进度已重新核算为 {0}%。
   rank_item: '{0}. {1} —— 答对 {2} 题'
   rank_me: 你当前的排名是第 {0} 名，共答对 {1} 题。
@@ -60,6 +64,7 @@ message:
     3. 当你的提问复述出汤底的主要真相时，主持人会直接公布汤底，本局结束。
     4. 群里所有人都可以提问；同一会话同时只能有一局。
     5. 一局最多 {0} 个问题，本局默认在 36 小时内有效。
+    6. 开局花费 {1} vi，每获取一条提示花费 {2} vi，解开本局奖励解出者 {3} vi。
     常用指令：
     - 开始：{__prefix__}turtle-soup
     - 提问：{__prefix__}turtle-soup 〈你的问题〉
@@ -81,6 +86,7 @@ status:
   rank_empty: 还没有人成功解开过海龟汤，快去创造第一个记录吧。
   empty_question: 请输入你的问题，例如 {__prefix__}turtle-soup 这个人是故意的吗
   recalculating: 正在重新计算进度……
+  insufficient_vimcoin: 你的 VimCoin 不足，需要 {0} vi，当前只有 {1} vi。
 
 reply:
   'yes': 是
