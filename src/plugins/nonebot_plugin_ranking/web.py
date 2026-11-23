@@ -43,7 +43,8 @@ class WebRanking(ABC):
             "users": [
                 {
                     "user_id": user["user_id"],
-                    "data": user["data"],
+                    # 与 find_user 保持一致：有 display 时 Web 端也展示格式化后的值
+                    "data": user.get("display", user["data"]),
                     "info": user["info"],
                     "index": offset + (index := index + 1),
                     "nickname": (await get_user(user["user_id"])).get_nickname(),

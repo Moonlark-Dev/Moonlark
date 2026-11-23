@@ -784,6 +784,28 @@ async def test_load_ranking_uses_orm_rows_and_skips_untraded():
 
 
 @pytest.mark.asyncio
+async def test_legacy_holding_sold_after_launch_keeps_backfilled_cost():
+    """排行上线前的旧仓：迁移回填的买入成本必须参与卖出后的收益率计算"""
+    from nonebot_plugin_trade.market import execute_sell, rank_holdings
+
+    session = FakeSession()
+    # 模拟迁移后的旧仓：total_bought 已按 cost_basis 回填
+    holding = make_holding(shares=100, frozen_shares=0, cost_basis=1010.0, total_bought=1010.0)
+    session.add(holding)
+    state = make_state(price=12.0, float_shares=99900)
+    user = FakeUser()
+
+    result = await execute_sell(session, state, user, "all", datetime(2026, 11, 19, 10, 0))
+
+    assert result.amount == pytest.approx(1188.0)
+    assert holding.total_bought == pytest.approx(1010.0)
+    assert holding.total_sold == pytest.approx(1188.0)
+    entry = rank_holdings([holding], 12.0)[0]
+    # 收益率以“卖出到账 / 上线前买入成本”计算，而不是只把卖出值当成收益
+    assert entry.return_rate == pytest.approx(1188.0 / 1010.0 - 1)
+
+
+@pytest.mark.asyncio
 async def test_rank_text_lists_top_and_my_rank(monkeypatch: pytest.MonkeyPatch):
     from nonebot_plugin_trade import config as trade_config_module
     from nonebot_plugin_trade.__main__ import build_rank_text
@@ -823,6 +845,129 @@ async def test_rank_text_handles_empty_ranking_and_untraded_user():
     untraded = await build_rank_text("rank-newbie", entries, {"rank-someone": "小满"})
     assert "1. 小满  +20.00%" in untraded
     assert "你还没有交易记录，买入股票后才会进入排行榜。" in untraded
+
+
+@pytest.mark.asyncio
+async def test_ranking_entry_data_uses_display_and_info():
+    """ranking 插件用 data 排序、display 展示，info 作为昵称下方的说明"""
+    from nonebot_plugin_trade.market import rank_holdings
+    from nonebot_plugin_trade.ranking import ranking_entry_data
+
+    entry = rank_holdings(
+        [make_holding(user_id="rank-image", total_bought=1000.0, total_sold=1200.0)],
+        10.0,
+    )[0]
+    data = await ranking_entry_data(entry, "tester")
+
+    assert data["user_id"] == "rank-image"
+    assert data["data"] == pytest.approx(20.0)
+    assert data["display"] == "+20.00%"
+    assert data["info"] == "买入 1,000.00 / 卖出 1,200.00"
+
+
+@pytest.mark.asyncio
+async def test_render_ranking_image_uses_ranking_plugin(monkeypatch: pytest.MonkeyPatch):
+    from nonebot_plugin_trade import ranking as trade_ranking
+    from nonebot_plugin_trade.market import rank_holdings
+
+    captured: dict[str, object] = {}
+
+    async def fake_generate_image(
+        ranked_data: list[dict[str, object]],
+        user_id: str,
+        title: str,
+        limit: int = 7,
+    ) -> bytes:
+        captured.update(ranked_data=ranked_data, user_id=user_id, title=title, limit=limit)
+        return b"rank-png"
+
+    monkeypatch.setattr(trade_ranking, "generate_image", fake_generate_image)
+    entries = rank_holdings(
+        [make_holding(user_id="rank-image", total_bought=1000.0, total_sold=1200.0)],
+        10.0,
+    )
+    image = await trade_ranking.render_ranking_image(entries, "tester")
+
+    assert image == b"rank-png"
+    assert captured["user_id"] == "tester"
+    assert captured["limit"] == 10
+    assert "收益排行榜" in str(captured["title"])
+    assert captured["ranked_data"] == [
+        {
+            "user_id": "rank-image",
+            "data": 20.0,
+            "display": "+20.00%",
+            "info": "买入 1,000.00 / 卖出 1,200.00",
+        },
+    ]
+
+
+@pytest.mark.asyncio
+async def test_render_ranking_image_falls_back_when_render_fails(monkeypatch: pytest.MonkeyPatch):
+    from nonebot_plugin_trade import ranking as trade_ranking
+    from nonebot_plugin_trade.market import rank_holdings
+
+    async def broken_generate_image(*_args: object, **_kwargs: object) -> bytes:
+        raise RuntimeError("browser not available")
+
+    monkeypatch.setattr(trade_ranking, "generate_image", broken_generate_image)
+    entries = rank_holdings(
+        [make_holding(user_id="rank-image", total_bought=1000.0, total_sold=1200.0)],
+        10.0,
+    )
+    assert await trade_ranking.render_ranking_image(entries, "tester") is None
+
+
+@pytest.mark.asyncio
+async def test_web_ranking_handle_returns_display_value(monkeypatch: pytest.MonkeyPatch):
+    """Web API 的 users / me 都应展示 display（+20.00%），不能退化成裸数字"""
+    from nonebot_plugin_ranking import generator, web
+
+    from nonebot_plugin_trade import ranking as trade_ranking
+    from nonebot_plugin_trade.market import rank_holdings
+
+    entries = rank_holdings(
+        [make_holding(user_id="rank-web", total_bought=1000.0, total_sold=1200.0)],
+        10.0,
+    )
+
+    async def fake_entries():
+        return entries
+
+    fake_user = MagicMock()
+    fake_user.get_nickname.return_value = "小满"
+    monkeypatch.setattr(trade_ranking, "load_ranking_entries", fake_entries)
+    monkeypatch.setattr(web, "get_user", AsyncMock(return_value=fake_user))
+    monkeypatch.setattr(generator, "get_user", AsyncMock(return_value=fake_user))
+
+    response = await trade_ranking.trade_ranking.handle(MagicMock(), offset=0, limit=20, user_id="rank-web")
+
+    assert response["total"] == 1
+    assert response["users"][0]["data"] == "+20.00%"
+    assert response["me"] is not None
+    assert response["me"]["data"] == "+20.00%"
+
+
+@pytest.mark.asyncio
+async def test_web_ranking_exposes_same_ranking_data(monkeypatch: pytest.MonkeyPatch):
+    from nonebot_plugin_trade import ranking as trade_ranking
+    from nonebot_plugin_trade.market import rank_holdings
+
+    entries = rank_holdings(
+        [make_holding(user_id="rank-web", total_bought=1000.0, total_sold=1200.0)],
+        10.0,
+    )
+
+    async def fake_entries():
+        return entries
+
+    monkeypatch.setattr(trade_ranking, "load_ranking_entries", fake_entries)
+    data = await trade_ranking.trade_ranking.get_sorted_data("tester")
+
+    assert data[0]["user_id"] == "rank-web"
+    assert data[0]["data"] == pytest.approx(20.0)
+    assert data[0]["display"] == "+20.00%"
+    assert data[0]["info"] == "买入 1,000.00 / 卖出 1,200.00"
 
 
 def test_parse_amounts():
@@ -1343,6 +1488,50 @@ async def test_send_history_chart_falls_back_to_caption(monkeypatch: pytest.Monk
     await trade_main.send_history_chart(MagicMock(), MagicMock(), "暂无日 K 数据", None)
 
     finished.assert_awaited_once_with("暂无日 K 数据")
+
+
+@pytest.mark.asyncio
+async def test_send_rank_image_sends_image_for_other_adapters(monkeypatch: pytest.MonkeyPatch):
+    from nonebot_plugin_trade import __main__ as trade_main
+
+    sent: dict[str, _FakeUniMessage] = {}
+
+    class RecordingUniMessage(_FakeUniMessage):
+        async def send(self, **_kwargs: object) -> None:
+            sent["message"] = self
+
+    monkeypatch.setattr(trade_main, "UniMessage", RecordingUniMessage)
+    finished = AsyncMock()
+    monkeypatch.setattr(trade_main.trade, "finish", finished)
+
+    await trade_main.send_rank_image(MagicMock(), MagicMock(), "rank-user", [], b"rank-image")
+
+    assert sent["message"].images == [b"rank-image"]
+    finished.assert_awaited()
+
+
+@pytest.mark.asyncio
+async def test_send_rank_image_uses_markdown_for_qq(monkeypatch: pytest.MonkeyPatch):
+    from nonebot_plugin_trade import __main__ as trade_main
+
+    class FakeQQBot:
+        pass
+
+    sent: dict[str, str] = {}
+
+    async def fake_create_image_markdown(_image: bytes, _bot: object) -> str:
+        return "![收益排行](qqbot-media://rank)"
+
+    async def fake_send_trade_text_with_keyboard(_bot: object, _event: object, _user_id: str, text: str) -> None:
+        sent["text"] = text
+
+    monkeypatch.setattr(trade_main, "QQBot", FakeQQBot)
+    monkeypatch.setattr(trade_main, "create_image_markdown", fake_create_image_markdown)
+    monkeypatch.setattr(trade_main, "send_trade_text_with_keyboard", fake_send_trade_text_with_keyboard)
+
+    await trade_main.send_rank_image(FakeQQBot(), MagicMock(), "rank-user", [], b"rank-image")
+
+    assert sent["text"] == "![收益排行](qqbot-media://rank)"
 
 
 @pytest.mark.asyncio

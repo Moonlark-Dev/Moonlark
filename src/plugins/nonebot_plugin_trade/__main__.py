@@ -23,12 +23,13 @@ from .market import (
     execute_sell,
     get_holding,
     load_daily_candles,
-    load_ranking,
     load_recent_candles,
+    market_lock,
     now_local,
     trading_day,
 )
 from .panel import PanelData, build_panel_data, build_panel_markdown, build_panel_text
+from .ranking import load_ranking_entries, render_ranking_image
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -40,7 +41,6 @@ if TYPE_CHECKING:
 
 logger = getLogger(__name__)
 lang = LangHelper()
-_market_lock = asyncio.Lock()
 
 trade = on_alconna(
     Alconna(
@@ -335,7 +335,7 @@ async def send_rank_text(user_id: str, entries: list[RankingEntry]) -> None:
 @trade.assign("$main")
 async def handle_trade_main(bot: Bot, event: Event, user_id: str = get_user_id()) -> None:
     now = now_local()
-    async with _market_lock:
+    async with market_lock:
         async with get_session() as session:
             state = await ensure_market(session, now)
             holding = await get_holding(session, user_id, trading_day(now))
@@ -363,7 +363,7 @@ async def handle_trade_main(bot: Bot, event: Event, user_id: str = get_user_id()
 @trade.assign("history")
 async def handle_trade_history(bot: Bot, event: Event, user_id: str = get_user_id()) -> None:
     now = now_local()
-    async with _market_lock:
+    async with market_lock:
         async with get_session() as session:
             await ensure_market(session, now)
             candles = await load_daily_candles(session, max(1, config.trade_history_candles))
@@ -387,15 +387,40 @@ async def handle_trade_history(bot: Bot, event: Event, user_id: str = get_user_i
     await send_history_chart(bot, event, caption, chart)
 
 
+async def send_rank_image(
+    bot: Bot,
+    event: Event,
+    user_id: str,
+    entries: list[RankingEntry],
+    image: bytes,
+) -> None:
+    """发送 ranking 插件绘制的排行榜：QQ 官方用 markdown 图床，其它适配器直接发图"""
+    if isinstance(bot, QQBot):
+        try:
+            text = await create_image_markdown(image, bot)
+        except Exception:
+            logger.exception("上传收益排行榜图片失败，回退到文本消息")
+            await send_rank_text(user_id, entries)
+            return
+        await send_trade_text_with_keyboard(bot, event, user_id, text)
+        return
+    try:
+        await UniMessage().image(raw=image).send(target=event, bot=bot)
+    except Exception:
+        logger.exception("发送收益排行榜图片失败，回退到文本消息")
+        await send_rank_text(user_id, entries)
+        return
+    await trade.finish()
+
+
 @trade.assign("rank")
-async def handle_trade_rank(user_id: str = get_user_id()) -> None:
-    now = now_local()
-    async with _market_lock:
-        async with get_session() as session:
-            state = await ensure_market(session, now)
-            entries = await load_ranking(session, state.price)
-            await session.commit()
-    await send_rank_text(user_id, entries)
+async def handle_trade_rank(bot: Bot, event: Event, user_id: str = get_user_id()) -> None:
+    entries = await load_ranking_entries()
+    image = await render_ranking_image(entries, user_id)
+    if image is None:
+        await send_rank_text(user_id, entries)
+        return
+    await send_rank_image(bot, event, user_id, entries, image)
 
 
 @trade.assign("buy")
@@ -404,7 +429,7 @@ async def handle_trade_buy(bot: Bot, event: Event, amount: str, user_id: str = g
         await lang.finish("error.usage_buy", user_id)
     now = now_local()
     user = await get_user(user_id)
-    async with _market_lock:
+    async with market_lock:
         async with get_session() as session:
             state = await ensure_market(session, now)
             try:
@@ -440,7 +465,7 @@ async def handle_trade_sell(bot: Bot, event: Event, amount: str, user_id: str = 
         await lang.finish("error.usage_sell", user_id)
     now = now_local()
     user = await get_user(user_id)
-    async with _market_lock:
+    async with market_lock:
         async with get_session() as session:
             state = await ensure_market(session, now)
             try:

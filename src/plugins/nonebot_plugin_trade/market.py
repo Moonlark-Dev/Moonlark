@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import math
 import re
@@ -18,6 +19,9 @@ if TYPE_CHECKING:
 from .candlebridge import ModelParameters, PathState, sample_daily_model, sample_gap_minutes, simulate_bar
 from .config import config
 from .models import Candle, Holding, MarketState
+
+# 行情补算、下单与排行榜读取共用同一把锁，避免并发请求把 MarketState 的 tick 补算交错执行
+market_lock = asyncio.Lock()
 
 # 中国标准时间；交易时间按 UTC+8 的本地时间解释
 TZ = timezone(timedelta(hours=8))

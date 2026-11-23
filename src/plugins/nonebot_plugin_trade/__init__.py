@@ -16,6 +16,8 @@ require("nonebot_plugin_htmlrender")
 require("nonebot_plugin_larklang")
 require("nonebot_plugin_larkutils")
 require("nonebot_plugin_larkuser")
+require("nonebot_plugin_ranking")
 
 from . import models  # ruff: ignore[unused-import, module-import-not-at-top-of-file] - 确保 ORM 模型被注册
 from . import __main__ as __main__  # ruff: ignore[unused-import, module-import-not-at-top-of-file]
+from . import ranking as ranking  # ruff: ignore[unused-import, module-import-not-at-top-of-file] - 注册 WebRanking
