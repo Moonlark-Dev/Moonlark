@@ -66,13 +66,6 @@ def test_build_latex_row_pads_empty_row():
     assert r"\textcolor{gray}" in row
 
 
-def test_build_plain_row():
-    from nonebot_plugin_wordle.panel import build_plain_row
-
-    assert build_plain_row("crane", "crane", 5) == "C🟩 R🟩 A🟩 N🟩 E🟩"
-    assert build_plain_row("", "crane", 5) == "⬜⬜⬜⬜⬜"
-
-
 def test_normalize_guess_strips_prefix_and_whitespace():
     from nonebot_plugin_larkutils.command import get_command_prefix
     from nonebot_plugin_wordle.panel import normalize_guess
@@ -84,19 +77,19 @@ def test_normalize_guess_strips_prefix_and_whitespace():
 
 def test_build_board_pads_to_max_attempts():
     from nonebot_plugin_wordle import Wordle
-    from nonebot_plugin_wordle.panel import MAX_ATTEMPTS, build_plain_row
+    from nonebot_plugin_wordle.panel import MAX_ATTEMPTS, build_latex_row
 
     game = Wordle("crane", "user", "", "group", None, None)  # type: ignore[arg-type]
     game.history = [list("crane")]
-    rows = game.build_board(build_plain_row)
+    rows = game.build_board(build_latex_row)
     assert len(rows) == MAX_ATTEMPTS
-    assert rows[0] == "C🟩 R🟩 A🟩 N🟩 E🟩"
-    assert rows[1] == "⬜⬜⬜⬜⬜"
+    assert rows[0].count(r"\colorbox{green}") == 5
+    assert rows[1].count(r"\colorbox{gray}") == 5
 
     # 获胜的那一次作答还没写进 history，通过 extra_guess 展示
-    rows = game.build_board(build_plain_row, extra_guess="nacre")
+    rows = game.build_board(build_latex_row, extra_guess="nacre")
     assert len(rows) == MAX_ATTEMPTS
-    assert rows[1].startswith("N")
+    assert r"\colorbox{green}{\textcolor{black}{\text{E}}}" in rows[1]
 
 
 def _qq_bot() -> Any:
@@ -133,17 +126,26 @@ async def test_qq_panel_uses_latex_markdown_and_buttons(wordle_templates):
     assert buttons[1].text == "q"
 
 
-async def test_plain_panel_uses_emoji_board(wordle_templates):
+async def test_other_adapters_keep_image_rendering(monkeypatch, wordle_templates):
+    import nonebot_plugin_wordle
+
+    calls: dict[str, Any] = {}
+
+    async def fake_render_template(template: str, title: str, user_id: str, **kwargs: Any) -> bytes:
+        calls.update(template=template, title=title, user_id=user_id, **kwargs)
+        return b"png-bytes"
+
+    monkeypatch.setattr(nonebot_plugin_wordle, "render_template", fake_render_template)
     message = await _build_panel(None, ["nacre"])
-    text = str(message)
-    assert "WORDLE · 5 个字母" in text
-    assert "第 2/6 次尝试" in text
-    assert "N🟨 A🟨 C🟨 R🟨 E🟩" in text
-    assert "⬜⬜⬜⬜⬜" in text
-    assert "\\colorbox" not in text
+    assert calls["template"] == "wordle.html.jinja"
+    assert calls["title"] == "WORDLE"
+    assert calls["templates"]["correct_answer"] == "crane"
+    assert calls["templates"]["history"] == [list("nacre")]
+    assert len(message) == 1 and message[0].raw == b"png-bytes"
 
 
 async def test_qq_result_panel_shows_final_board(wordle_templates):
+    from nonebot_plugin_larkutils.command import get_command_prefix
     from nonebot_plugin_wordle import Wordle
 
     game = Wordle("crane", "u", "", "g", _qq_bot(), None)  # type: ignore[arg-type]
@@ -153,3 +155,8 @@ async def test_qq_result_panel_shows_final_board(wordle_templates):
     text = message[0].text
     assert text.count(r"\colorbox{green}") == 6  # nacre 的 e + 猜中的整行 crane
     assert "回答正确！" in text
+
+    buttons = message[1].children
+    assert [str(button.label) for button in buttons] == ["再来一局"]
+    assert buttons[0].flag == "enter"
+    assert buttons[0].text == f"{get_command_prefix()}wordle 5"

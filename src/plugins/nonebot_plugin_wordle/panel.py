@@ -1,7 +1,7 @@
 """WORDLE 作答面板的渲染工具。
 
-作答记录不再渲染成图片：QQ 官方机器人使用带 LaTeX 色块的 Markdown 面板，
-其他适配器（如 OneBot V11）没有 Markdown 与 LaTeX，改为等价的纯文本色块面板。
+QQ 官方机器人不使用渲染图片，而是使用带 LaTeX 色块的 Markdown 面板；
+其他适配器保持原来的渲染图片行为，不使用本模块的渲染函数。
 本模块只放与 NoneBot 无关的纯函数，方便单元测试。
 """
 
@@ -19,14 +19,6 @@ TILE_COLORS: dict[str, tuple[str, str]] = {
     "absent": ("gray", "white"),
     # 未作答的占位格：字母与底色同色，只剩一个与字母等宽的灰色块
     "empty": ("gray", "gray"),
-}
-
-# 纯文本面板使用的色块；未作答的格子与「字母不存在」共用白色方块
-TILE_EMOJI: dict[str, str] = {
-    "correct": "🟩",
-    "present": "🟨",
-    "absent": "⬜",
-    "empty": "⬜",
 }
 
 
@@ -73,12 +65,3 @@ def build_latex_row(letters: str, answer: str, length: int) -> str:
     else:
         tiles = [latex_tile("A", "empty") for _ in range(length)]
     return "$" + "".join(tiles) + "$"
-
-
-def build_plain_row(letters: str, answer: str, length: int) -> str:
-    """把一行作答渲染为纯文本：每个字母后跟一个色块，例如 ``C🟩 R🟨 A⬜ N⬜ E⬜``。"""
-    if not letters:
-        return TILE_EMOJI["empty"] * length
-    return " ".join(
-        f"{letter.upper()}{TILE_EMOJI[state]}" for letter, state in zip(letters, evaluate_guess(letters, answer))
-    )

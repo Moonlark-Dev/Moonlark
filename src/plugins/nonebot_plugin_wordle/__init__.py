@@ -12,6 +12,7 @@ require("nonebot_plugin_larklang")
 require("nonebot_plugin_larkutils")
 require("nonebot_plugin_alconna")
 require("nonebot_plugin_larkuser")
+require("nonebot_plugin_render")
 
 from collections.abc import Callable
 
@@ -27,12 +28,13 @@ from nonebot_plugin_larkutils import LatestEvent, get_user_id
 from nonebot_plugin_larkutils.command import get_command_prefix
 from nonebot_plugin_larkutils.group import get_group_id
 from nonebot_plugin_minigame_api import create_minigame_session
+from nonebot_plugin_render import render_template
 
 from datetime import datetime
 import traceback
 
 from . import dictionary
-from .panel import MAX_ATTEMPTS, QUIT_KEYWORD, build_latex_row, build_plain_row, normalize_guess
+from .panel import MAX_ATTEMPTS, QUIT_KEYWORD, build_latex_row, normalize_guess
 from .waiter import Waiter3
 
 lang = LangHelper()
@@ -109,7 +111,7 @@ class Wordle:
         """构建本回合的作答面板。
 
         QQ 官方机器人下使用 Markdown + LaTeX 色块展示作答情况，并附带「作答」「放弃」
-        按钮；其他适配器没有 Markdown/LaTeX，改用纯文本色块面板。
+        按钮；其他适配器保持原来的渲染图片行为。
         """
         if isinstance(self.bot, QQBot):
             content = "\n\n".join(
@@ -130,20 +132,24 @@ class Wordle:
                     row=2,
                 )
             )
-        return UniMessage(
-            "\n".join(
-                [
-                    await lang.text("panel.title", self.user_id, self.answer_length),
-                    await lang.text("panel.attempts", self.user_id, self.attempts_used(), MAX_ATTEMPTS),
-                    *self.build_board(build_plain_row),
-                    await lang.text("panel.legend", self.user_id),
-                    await lang.text("panel.hint", self.user_id),
-                ]
-            )
+        image = await render_template(
+            "wordle.html.jinja",
+            await lang.text("title", self.user_id),
+            self.user_id,
+            templates={
+                "correct_answer": self.correct_answer,
+                "history": self.history,
+                "len": len,
+                "answer_length": self.answer_length,
+            },
         )
+        return UniMessage().image(raw=image)
 
     async def build_result(self, text: str, extra_guess: str = "") -> str | UniMessage:
-        """构建结算消息：QQ 官方机器人附上完整的 LaTeX 棋盘，其他适配器保持纯文本。"""
+        """构建结算消息。
+
+        QQ 官方机器人附上完整的 LaTeX 棋盘与「再来一局」按钮，其他适配器保持纯文本。
+        """
         if not isinstance(self.bot, QQBot):
             return text
         content = "\n\n".join(
@@ -153,7 +159,17 @@ class Wordle:
                 text,
             ]
         )
-        return UniMessage().style(content, "markdown")
+        return (
+            UniMessage()
+            .style(content, "markdown")
+            .keyboard(
+                Button(
+                    "enter",
+                    await lang.text("button.again", self.user_id),
+                    text=f"{get_command_prefix()}wordle {self.answer_length}",
+                )
+            )
+        )
 
     async def send_result(self, text: str, extra_guess: str = "") -> None:
         message = await self.build_result(text, extra_guess)

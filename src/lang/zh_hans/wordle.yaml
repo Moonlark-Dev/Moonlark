@@ -12,9 +12,7 @@ error: |
 playing: 当前群聊已经有一个正在进行的 WORDLE 啦！
 
 panel:
-  title: WORDLE · {} 个字母
   title_md: '### WORDLE · {} 个字母'
-  attempts: 第 {}/{} 次尝试
   attempts_md: 第 **{}** / **{}** 次尝试
   legend: 🟩 位置正确　🟨 字母存在但位置不对　⬜ 字母不存在
   hint: 直接回复一个单词作答，发送 q 放弃本局。
@@ -22,6 +20,7 @@ panel:
 button:
   guess: 作答
   give_up: 放弃
+  again: 再来一局
 
 help:
   description: WORDLE
