@@ -269,6 +269,10 @@ Guidelines:
 - Attach the keyboard with `.keyboard(*buttons)`; the button "enter" type triggers a normal message that the alconna matcher will match.
 - `UniMessage.send()` is for messages that carry a keyboard — it does NOT finish the handler, so always write `matcher.finish()` separately afterwards; extract the message id from the returned `Receipt.msg_ids` when needed.
 - To mention a user, prepend `<qqbot-at-user id="{user_id}" />` inside the markdown content.
+- Do NOT repeat the "send /xxx ..." command hint in the body of a message that carries buttons: the buttons
+  already are the command entry point, so repeating the hint is noise. Keep the hint out of the rendered body
+  and append it only when the platform has no buttons (see `nonebot_plugin_turtle_soup`'s `Rendered.hint` +
+  `send_rendered`; `nonebot_plugin_quick_math`'s main menu does the same with `append_commands=False`).
 - Non-QQ platforms (no keyboard) keep plain text: `matcher.send(text, at_sender=True)`.
 
 ### Code Style
