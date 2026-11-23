@@ -11,10 +11,24 @@ error: |
   答案是: {} ({})
 playing: 当前群聊已经有一个正在进行的 WORDLE 啦！
 
+panel:
+  title: WORDLE · {} 个字母
+  title_md: '### WORDLE · {} 个字母'
+  attempts: 第 {}/{} 次尝试
+  attempts_md: 第 **{}** / **{}** 次尝试
+  legend: 🟩 位置正确　🟨 字母存在但位置不对　⬜ 字母不存在
+  hint: 直接回复一个单词作答，发送 q 放弃本局。
+
+button:
+  guess: 作答
+  give_up: 放弃
+
 help:
   description: WORDLE
   details: |
     猜单词的游戏，支持多人游玩。
+
+    按「位置正确 / 字母存在 / 字母不存在」的提示逐行排除，6 次之内猜中即获胜；发送 q 可以放弃本局。
 
     游玩提示：为了避免干扰使用，不成功的匹配不会被提示，也不能在一个会话中同时开启多个 WORDLE 游戏。
   usage1: wordle [长度=5]
