@@ -12,7 +12,8 @@ class RankingData(TypedDict):
 class UserDataWithIndex(TypedDict):
     user_id: str
     nickname: str
-    data: int | float
+    # Web 端优先展示 display，因此 data 可能是格式化后的字符串（如 "+50.00%"）
+    data: int | float | str
     index: int
     info: Optional[str]
     display: NotRequired[str]
