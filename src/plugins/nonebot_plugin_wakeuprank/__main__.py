@@ -3,17 +3,20 @@ from typing import Optional
 
 from nonebot import on_message
 from nonebot.adapters import Bot, Event
+from nonebot.log import logger
 from nonebot.matcher import Matcher
 from nonebot_plugin_alconna import Alconna, Arparma, Option, Subcommand, UniMessage, on_alconna
 from nonebot_plugin_apscheduler import scheduler
 from nonebot_plugin_larkuser import ensure_registered, get_registered_user_ids
 from nonebot_plugin_larkutils import get_group_id, get_user_id
+from nonebot_plugin_larkutils.sql import is_retryable_db_conflict
 from nonebot_plugin_last_seen.models import LastSeenRecord
 from nonebot_plugin_orm import get_session
 from nonebot_plugin_ranking import generate_image
 from nonebot_plugin_ranking.types import RankingData
 from nonebot_plugin_userinfo import EventUserInfo, UserInfo
 from sqlalchemy import delete, func, select
+from sqlalchemy.exc import IntegrityError, OperationalError
 
 from .constants import GLOBAL_SESSION_ID, WAKE_END, WAKE_START
 from .image import build_timeline_points, generate_timeline_image
@@ -21,6 +24,49 @@ from .lang import lang
 from .models import RiseData
 
 recorder = on_message(block=False, priority=90)
+
+
+async def has_rise_record(user_id: str, record_date: date) -> bool:
+    """判断某个用户当天是否已经有一条早起记录."""
+    async with get_session() as session:
+        return (
+            await session.scalar(
+                select(RiseData.user_id).where(
+                    RiseData.user_id == user_id,
+                    RiseData.record_date == record_date,
+                ),
+            )
+        ) is not None
+
+
+async def record_rise(user_id: str, record_date: date, wake_time: datetime) -> None:
+    """写入一条早起记录，同一主键已被并发写入时视为已经记录.
+
+    同一个群可能同时接了 OneBot 与 QQ 官方两个账号，同一条消息会被两个 Bot 各处理
+    一次，于是两个处理器会并发写入同一个 ``(user_id, record_date)``。原来的实现把
+    「查当日记录」和「插入」放在同一个事务里：两个事务都读到「今天还没有记录」，后
+    插入的一方在 MySQL / MariaDB 上收到的不是重复主键，而是 1020 (ER_CHECKREAD,
+    Record has changed since last read in table)，异常一路抛到消息处理器并进 Sentry。
+
+    这里查询已经拆到独立事务（``has_rise_record``），写入事务本身只做一次 INSERT；
+    并发冲突只在「记录确实已经在库里」时才吞掉，真正的写失败仍然抛出。
+    """
+    async with get_session() as session:
+        last_seen = await session.scalar(
+            select(LastSeenRecord.last_seen).where(
+                LastSeenRecord.user_id == user_id,
+                LastSeenRecord.session_id == GLOBAL_SESSION_ID,
+            ),
+        )
+        valid = last_seen is None or wake_time - last_seen > timedelta(hours=1)
+        session.add(RiseData(user_id=user_id, record_date=record_date, wake_time=wake_time, valid=valid))
+        try:
+            await session.commit()
+        except (IntegrityError, OperationalError) as error:
+            await session.rollback()
+            if not is_retryable_db_conflict(error) or not await has_rise_record(user_id, record_date):
+                raise
+            logger.debug("早起记录已由并发的处理器写入，忽略本次冲突: {}", error)
 
 
 @recorder.handle()
@@ -31,28 +77,10 @@ async def _(bot: Bot, event: Event, user_id: str = get_user_id()) -> None:
         return
 
     today = now.date()
-    async with get_session() as session:
-        result = await session.scalar(
-            select(RiseData).where(RiseData.user_id == user_id, RiseData.record_date == today),
-        )
-        if result is not None:
-            return
-
-        last_seen = await session.scalar(
-            select(LastSeenRecord.last_seen).where(
-                LastSeenRecord.user_id == user_id,
-                LastSeenRecord.session_id == GLOBAL_SESSION_ID,
-            ),
-        )
-        if last_seen is None:
-            valid = True
-        else:
-            delta = now - last_seen
-            valid = delta > timedelta(hours=1)
-
-        record = RiseData(user_id=user_id, record_date=today, wake_time=now, valid=valid)
-        session.add(record)
-        await session.commit()
+    # 快路径：当天已记过时直接返回，4:00-14:00 窗口内的每条消息都会走到这里。
+    if await has_rise_record(user_id, today):
+        return
+    await record_rise(user_id, today, now)
 
 
 @scheduler.scheduled_job("cron", hour=4, minute=0, id="wakeuprank_cleanup")
