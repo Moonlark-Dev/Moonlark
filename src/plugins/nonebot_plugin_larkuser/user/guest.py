@@ -22,8 +22,8 @@ from ..models import GuestUser
 
 class MoonlarkGuestUser(MoonlarkRegisteredUser):
 
-    def __init__(self, user_id: str):
-        super().__init__(user_id)
+    def __init__(self, user_id: str, *, writable: bool = False):
+        super().__init__(user_id, writable=writable)
         self.original_user_id = user_id
         self.user_has_nickname = False
 
