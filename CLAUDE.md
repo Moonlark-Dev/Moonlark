@@ -269,7 +269,28 @@ Guidelines:
 - Attach the keyboard with `.keyboard(*buttons)`; the button "enter" type triggers a normal message that the alconna matcher will match.
 - `UniMessage.send()` is for messages that carry a keyboard — it does NOT finish the handler, so always write `matcher.finish()` separately afterwards; extract the message id from the returned `Receipt.msg_ids` when needed.
 - To mention a user, prepend `<qqbot-at-user id="{user_id}" />` inside the markdown content.
+- Do NOT repeat the "send /xxx ..." command hint in the body of a message that carries buttons: the buttons
+  already are the command entry point, so repeating the hint is noise. Keep the hint out of the rendered body
+  and append it only when the platform has no buttons (see `nonebot_plugin_turtle_soup`'s `Rendered.hint` +
+  `send_rendered`; `nonebot_plugin_quick_math`'s main menu does the same with `append_commands=False`).
 - Non-QQ platforms (no keyboard) keep plain text: `matcher.send(text, at_sender=True)`.
+
+### 排行榜（Ranking）
+
+所有面向用户的排行榜统一使用 `nonebot_plugin_ranking` 绘制并接入 Web 端，**不要自己拼接文本榜单**：
+
+- 指令侧调用 `generate_image(ranked_data, user_id, title, limit)` 生成统一风格的排行榜图片；QQ 官方
+  用 `create_image_markdown` 发送，其它适配器直接发图片，渲染失败时再回退到文本。
+- 同一份排序数据必须注册为 `WebRanking`：`register(MyRanking("id", "lang.key", lang))`。Web 端
+  `/api/rankings` 会自动发现它，前端排行榜页面无需为本插件单独改代码。
+- `RankingData.data` 用于排序与默认展示；需要自定义展示时用 `display`（如 `+50.00%`），`info` 是昵称
+  下方的第二行说明。
+- 插件需 `require("nonebot_plugin_ranking")`，并在 `__init__.py` 中导入注册 WebRanking 的模块。
+- 榜单依赖累计数据时，上线前必须用迁移回填历史数据，否则旧数据在榜单里会失真：例如 trade 的收益排行
+  用旧持仓成本回填 `total_bought`，这样排行上线后卖出旧仓仍能按原成本计算收益。无法还原的历史（已清仓
+  用户）应在迁移说明与 PR 中明确排除规则。
+- 参考实现：`nonebot_plugin_jrrp/ranking.py`、`nonebot_plugin_message_summary/ranking.py`、
+  `nonebot_plugin_trade/ranking.py`。
 
 ### Code Style
 

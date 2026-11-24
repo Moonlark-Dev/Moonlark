@@ -2,6 +2,7 @@ from ..utils.avatar import is_user_avatar_updated, update_user_avatar
 from ..utils.user import get_user
 from nonebot import on_message
 from nonebot.log import logger
+from nonebot_plugin_larkutils import get_main_account
 from nonebot_plugin_orm import async_scoped_session
 from nonebot_plugin_userinfo import EventUserInfo, UserInfo
 from sqlalchemy.exc import NoResultFound
@@ -19,10 +20,17 @@ async def checker_guest(user: UserInfo = EventUserInfo()) -> bool:
     return u.is_main_account() and not u.is_registered()
 
 
-@on_message(block=False, priority=5, rule=checker_registered).handle()
-async def _(session: async_scoped_session, user: UserInfo = EventUserInfo()) -> None:
+async def record_registered_user(session: async_scoped_session, user: UserInfo) -> None:
+    """记录已注册用户的平台昵称与头像。
+
+    ``UserInfo.user_id`` 是适配器原生 ID：QQ 官方 Bot 下是 OpenID，而用户数据统一以
+    **主账号 ID** 为主键存储（QQ 号，或没有映射时的 OpenID 本身）。只按原生 ID 查
+    ``UserData`` 会在已有主账号映射时查不到这一行，昵称与头像就永远不会更新，
+    所以这里先解析主账号再读写。
+    """
+    main_account_id = await get_main_account(user.user_id)
     try:
-        user_data = await session.get_one(UserData, {"user_id": user.user_id})
+        user_data = await session.get_one(UserData, {"user_id": main_account_id})
     except NoResultFound:
         return
     config = json.loads(user_data.config)
@@ -34,11 +42,21 @@ async def _(session: async_scoped_session, user: UserInfo = EventUserInfo()) -> 
         config.pop("nick_source", None)  # 清除自动补全标识，标记为通过自身消息更新
         user_data.config = json.dumps(config)
     if user.user_avatar and user_data.register_time and not config.get("lock_avatar"):
-        avatar = await user.user_avatar.get_image()
-        if await is_user_avatar_updated(user_data.user_id, avatar):
-            await update_user_avatar(user_data.user_id, avatar)
-            logger.info(f"注册用户 {user_data.user_id} 更新了其头像")
+        try:
+            avatar = await user.user_avatar.get_image()
+        except Exception:
+            # 拉取头像依赖外部图床，失败不应影响昵称更新与本次消息的处理。
+            logger.warning(f"获取用户 {user_data.user_id} 的头像失败")
+        else:
+            if await is_user_avatar_updated(user_data.user_id, avatar):
+                await update_user_avatar(user_data.user_id, avatar)
+                logger.info(f"注册用户 {user_data.user_id} 更新了其头像")
     await session.commit()
+
+
+@on_message(block=False, priority=5, rule=checker_registered).handle()
+async def _(session: async_scoped_session, user: UserInfo = EventUserInfo()) -> None:
+    await record_registered_user(session, user)
 
 
 @on_message(block=False, priority=10, rule=checker_guest).handle()

@@ -24,21 +24,23 @@ from .market import (
     get_holding,
     load_daily_candles,
     load_recent_candles,
+    market_lock,
     now_local,
     trading_day,
 )
 from .panel import PanelData, build_panel_data, build_panel_markdown, build_panel_text
+from .ranking import load_ranking_entries, render_ranking_image
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
     from datetime import date
 
     from typing import Optional
 
-    from .market import TradeResult
+    from .market import RankingEntry, TradeResult
 
 logger = getLogger(__name__)
 lang = LangHelper()
-_market_lock = asyncio.Lock()
 
 trade = on_alconna(
     Alconna(
@@ -46,6 +48,7 @@ trade = on_alconna(
         Subcommand("buy", Args["amount?", str, ""]),
         Subcommand("sell", Args["amount?", str, ""]),
         Subcommand("history"),
+        Subcommand("rank", alias=["ranking"]),
     ),
 )
 patch_matcher(trade)
@@ -53,6 +56,12 @@ patch_matcher(trade)
 
 def _fmt(value: float) -> str:
     return f"{value:.2f}"
+
+
+def _fmt_signed(value: float) -> str:
+    if abs(value) < 0.005:
+        value = 0.0
+    return f"{value:+.2f}"
 
 
 async def render_chart(
@@ -252,10 +261,81 @@ async def cap_note(side: str, user_id: str, result: TradeResult) -> str:
     return ""
 
 
+def _fmt_money(value: float) -> str:
+    return f"{value:,.2f}"
+
+
+_RANK_MEDALS = {1: "🥇", 2: "🥈", 3: "🥉"}
+
+
+def _rank_label(rank: int) -> str:
+    medal = _RANK_MEDALS.get(rank)
+    return f"{medal} {rank}." if medal else f"{rank}."
+
+
+def _rate_text(entry: RankingEntry) -> str:
+    return f"{_fmt_signed(entry.return_rate * 100)}%"
+
+
+async def build_rank_text(user_id: str, entries: list[RankingEntry], nicknames: Mapping[str, str]) -> str:
+    """构建收益排行榜文本：只展示前若干名，并附带发起者自己的排名"""
+    if not entries:
+        return await lang.text("rank.empty", user_id)
+    size = max(1, config.trade_rank_size)
+    visible = entries[:size]
+    lines = [
+        await lang.text(
+            "rank.entry",
+            user_id,
+            label=_rank_label(entry.rank),
+            nickname=nicknames.get(entry.user_id, entry.user_id),
+            rate=_rate_text(entry),
+            profit=_fmt_signed(entry.profit),
+            bought=_fmt_money(entry.total_bought),
+            sold=_fmt_money(entry.total_sold),
+        )
+        for entry in visible
+    ]
+    blocks = [
+        await lang.text("rank.title", user_id),
+        await lang.text("rank.metric", user_id),
+        "\n".join(lines),
+    ]
+    if len(entries) > size:
+        blocks.append(await lang.text("rank.hidden", user_id, count=size, total=len(entries)))
+    me = next((entry for entry in entries if entry.user_id == user_id), None)
+    if me is None:
+        blocks.append(await lang.text("rank.me_none", user_id))
+    else:
+        blocks.append(
+            await lang.text(
+                "rank.me",
+                user_id,
+                rank=me.rank,
+                rate=_rate_text(me),
+                profit=_fmt_signed(me.profit),
+                bought=_fmt_money(me.total_bought),
+                sold=_fmt_money(me.total_sold),
+            ),
+        )
+    return "\n".join(blocks)
+
+
+async def send_rank_text(user_id: str, entries: list[RankingEntry]) -> None:
+    """取排行榜所需昵称（只取上榜者与发起者）并发送文本"""
+    nicknames: dict[str, str] = {}
+    for entry in entries[: max(1, config.trade_rank_size)]:
+        nicknames[entry.user_id] = (await get_user(entry.user_id)).get_nickname()
+    me = next((entry for entry in entries if entry.user_id == user_id), None)
+    if me is not None and me.user_id not in nicknames:
+        nicknames[me.user_id] = (await get_user(me.user_id)).get_nickname()
+    await trade.finish(await build_rank_text(user_id, entries, nicknames))
+
+
 @trade.assign("$main")
 async def handle_trade_main(bot: Bot, event: Event, user_id: str = get_user_id()) -> None:
     now = now_local()
-    async with _market_lock:
+    async with market_lock:
         async with get_session() as session:
             state = await ensure_market(session, now)
             holding = await get_holding(session, user_id, trading_day(now))
@@ -283,7 +363,7 @@ async def handle_trade_main(bot: Bot, event: Event, user_id: str = get_user_id()
 @trade.assign("history")
 async def handle_trade_history(bot: Bot, event: Event, user_id: str = get_user_id()) -> None:
     now = now_local()
-    async with _market_lock:
+    async with market_lock:
         async with get_session() as session:
             await ensure_market(session, now)
             candles = await load_daily_candles(session, max(1, config.trade_history_candles))
@@ -307,13 +387,49 @@ async def handle_trade_history(bot: Bot, event: Event, user_id: str = get_user_i
     await send_history_chart(bot, event, caption, chart)
 
 
+async def send_rank_image(
+    bot: Bot,
+    event: Event,
+    user_id: str,
+    entries: list[RankingEntry],
+    image: bytes,
+) -> None:
+    """发送 ranking 插件绘制的排行榜：QQ 官方用 markdown 图床，其它适配器直接发图"""
+    if isinstance(bot, QQBot):
+        try:
+            text = await create_image_markdown(image, bot)
+        except Exception:
+            logger.exception("上传收益排行榜图片失败，回退到文本消息")
+            await send_rank_text(user_id, entries)
+            return
+        await send_trade_text_with_keyboard(bot, event, user_id, text)
+        return
+    try:
+        await UniMessage().image(raw=image).send(target=event, bot=bot)
+    except Exception:
+        logger.exception("发送收益排行榜图片失败，回退到文本消息")
+        await send_rank_text(user_id, entries)
+        return
+    await trade.finish()
+
+
+@trade.assign("rank")
+async def handle_trade_rank(bot: Bot, event: Event, user_id: str = get_user_id()) -> None:
+    entries = await load_ranking_entries()
+    image = await render_ranking_image(entries, user_id)
+    if image is None:
+        await send_rank_text(user_id, entries)
+        return
+    await send_rank_image(bot, event, user_id, entries, image)
+
+
 @trade.assign("buy")
 async def handle_trade_buy(bot: Bot, event: Event, amount: str, user_id: str = get_user_id()) -> None:
     if not amount.strip():
         await lang.finish("error.usage_buy", user_id)
     now = now_local()
     user = await get_user(user_id)
-    async with _market_lock:
+    async with market_lock:
         async with get_session() as session:
             state = await ensure_market(session, now)
             try:
@@ -349,7 +465,7 @@ async def handle_trade_sell(bot: Bot, event: Event, amount: str, user_id: str = 
         await lang.finish("error.usage_sell", user_id)
     now = now_local()
     user = await get_user(user_id)
-    async with _market_lock:
+    async with market_lock:
         async with get_session() as session:
             state = await ensure_market(session, now)
             try:

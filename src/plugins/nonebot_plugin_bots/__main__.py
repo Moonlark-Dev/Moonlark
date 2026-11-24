@@ -1,6 +1,8 @@
 import time
 from nonebot.adapters.onebot.v11.bot import Bot as V11Bot
+from nonebot.adapters.onebot.v11.event import HeartbeatMetaEvent as V11HeartbeatMetaEvent
 from nonebot.adapters.onebot.v12.bot import Bot as V12Bot
+from nonebot.adapters.onebot.v12.event import HeartbeatMetaEvent as V12HeartbeatMetaEvent
 from nonebot.adapters.qq import Bot as QQBot
 from nonebot_plugin_apscheduler import scheduler
 from nonebot import logger
@@ -118,19 +120,32 @@ def _is_self_bot_message(user_id: str) -> bool:
     return False
 
 
-async def _lookup_bind_by_ob11_group(session_id: str) -> Optional[GroupBind]:
-    """通过 OB11 的 session_id 查找 GroupBind"""
+async def get_group_bind_by_ob11_group(group_qq_number: str) -> Optional[GroupBind]:
+    """通过 OneBot 11 群号查询群绑定记录，未绑定时返回 None"""
     from sqlalchemy import select
 
+    async with get_session() as db_session:
+        result = await db_session.execute(select(GroupBind).where(GroupBind.group_qq_number == group_qq_number))
+        return result.scalar_one_or_none()
+
+
+async def get_group_bind_by_qqbot_group(group_openid: str) -> Optional[GroupBind]:
+    """通过 QQ 官方 bot 的 group_openid 查询群绑定记录，未绑定时返回 None"""
+    from sqlalchemy import select
+
+    async with get_session() as db_session:
+        result = await db_session.execute(select(GroupBind).where(GroupBind.group_openid == group_openid))
+        return result.scalar_one_or_none()
+
+
+async def _lookup_bind_by_ob11_group(session_id: str) -> Optional[GroupBind]:
+    """通过 OB11 的 session_id 查找 GroupBind"""
     # OB11 session_id 格式: qq_{qq_group_number}（get_group_id 依赖 nonebot_plugin_session，platform 为 qq）
     # 群号为纯数字，可与 QQ 官方 bot 的 group_openid（字母数字串）区分
     try:
         parts = session_id.rsplit("_", 1)
         if len(parts) == 2 and parts[0] == "qq" and parts[1].isdigit():
-            group_qq = parts[1]
-            async with get_session() as db_session:
-                result = await db_session.execute(select(GroupBind).where(GroupBind.group_qq_number == group_qq))
-                return result.scalar_one_or_none()
+            return await get_group_bind_by_ob11_group(parts[1])
     except Exception:
         pass
     return None
@@ -138,15 +153,10 @@ async def _lookup_bind_by_ob11_group(session_id: str) -> Optional[GroupBind]:
 
 async def _lookup_bind_by_qqbot_group(session_id: str) -> Optional[GroupBind]:
     """通过 QQBot 的 session_id 查找 GroupBind"""
-    from sqlalchemy import select
-
     try:
         # QQBot session_id 格式: qq_{group_openid}（openid 为字母数字串，非纯数字）
         if session_id.startswith("qq_") and not session_id[3:].isdigit():
-            group_oid = session_id[3:]
-            async with get_session() as db_session:
-                result = await db_session.execute(select(GroupBind).where(GroupBind.group_openid == group_oid))
-                return result.scalar_one_or_none()
+            return await get_group_bind_by_qqbot_group(session_id[3:])
     except Exception:
         pass
     return None
@@ -287,7 +297,14 @@ class ToMeProcessor:
 
 
 @event_preprocessor
-async def _(bot: Bot, event: Event, session_id: str = get_group_id()) -> None:
+async def preprocess_event(bot: Bot, event: Event, session_id: str = get_group_id()) -> None:
+    # OneBot 心跳元事件不含用户与会话上下文：get_user_id() / get_session_id() 都会抛
+    # ValueError，session_id 为空字符串。若不在此跳过，每次心跳（线上约每 5 秒一次）
+    # 都会走一遍绑定检测与会话处理，把空会话写进 sessions 并刷出一条
+    # 「已将会话  分配给 …」的 INFO 日志。
+    if isinstance(event, (V11HeartbeatMetaEvent, V12HeartbeatMetaEvent)):
+        return
+
     try:
         user_id = event.get_user_id()
     except ValueError:

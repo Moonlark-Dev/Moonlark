@@ -43,11 +43,21 @@ async def _collect_email_list(user_id: str) -> list[dict]:
     return email_list
 
 
+def _to_blockquote(text: str) -> str:
+    """把邮件正文转换成 markdown 引用块，与邮件的元信息区分开
+
+    逐行加 ``>`` 前缀；空行写成单独的 ``>``，否则正文里的空行会把引用块截断成
+    互不相连的几段。正文自身的换行与空行都原样保留。
+    """
+    return "\n".join(f"> {line}" if line.strip() else ">" for line in text.splitlines())
+
+
 async def _build_markdown_email_list(user_id: str, email_list: list[dict]) -> str:
     """构建 QQ 官方机器人的邮件列表 markdown
 
-    纯 markdown 展示邮件正文与附件物品，不再渲染邮件列表图片；一键领取/全部已读
-    由键盘按钮承载，因此这里既不内嵌 <qqbot-cmd-input>，也不展示用法说明。
+    纯 markdown 展示邮件正文与附件物品，正文用引用块与元信息区分，不再渲染邮件
+    列表图片；一键领取/全部已读由键盘按钮承载，因此这里既不内嵌
+    <qqbot-cmd-input>，也不展示用法说明。
     """
     lines = [await lang.text("email_list.title_md", user_id, len(email_list)), ""]
     if not email_list:
@@ -58,7 +68,7 @@ async def _build_markdown_email_list(user_id: str, email_list: list[dict]) -> st
         lines.append(await lang.text("email_list.from", user_id, data["author"]))
         lines.append(await lang.text("email_list.email_id", user_id, data["id"]))
         if data["content"]:
-            lines.extend(["", data["content"]])
+            lines.extend(["", _to_blockquote(data["content"])])
         if data["item_list"]:
             lines.extend(["", await lang.text("email_list.items", user_id)])
             if data["is_claimed"]:

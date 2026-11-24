@@ -23,11 +23,17 @@ COMMAND = "turtle-soup"
 
 @dataclass(slots=True)
 class Rendered:
-    """一条待发送的回复：纯文本、Markdown 与快捷按钮。"""
+    """一条待发送的回复：纯文本、Markdown 与快捷按钮。
+
+    ``hint`` 是指令提示（例如「继续发送 /turtle-soup <你的问题> 提问」），
+    不直接拼进正文：QQ 官方机器人带按钮时由按钮承担指令入口，重复显示提示
+    只是噪音，因此由发送层按平台决定是否追加（见 ``matcher.send_rendered``）。
+    """
 
     plain: str
     markdown: str
     buttons: list[Button] = field(default_factory=list)
+    hint: str = ""
 
     @property
     def row(self) -> int | None:
@@ -64,11 +70,16 @@ async def _fields(
     asked: int,
     question: str = "",
     answer: str = "",
+    include_puzzle: bool = True,
 ) -> list[tuple[str, str]]:
-    fields = [
-        (await lang.text("label.title", user_id), puzzle.title),
-        (await lang.text("label.puzzle", user_id), puzzle.puzzle_setting),
-    ]
+    """构建「标签：内容」字段。
+
+    ``include_puzzle`` 为 ``False`` 时不带汤面：汤面只在开局消息里发送一次，
+    之后的提问与进度回复不再重复。
+    """
+    fields = [(await lang.text("label.title", user_id), puzzle.title)]
+    if include_puzzle:
+        fields.append((await lang.text("label.puzzle", user_id), puzzle.puzzle_setting))
     if question:
         fields.append((await lang.text("label.question", user_id), question))
     if answer:
@@ -85,32 +96,42 @@ async def _fields(
     return fields
 
 
-def _render_fields(title: str, fields: list[tuple[str, str]], footer: str = "") -> tuple[str, str]:
+def _render_fields(title: str, fields: list[tuple[str, str]]) -> tuple[str, str]:
     """把标题 + 若干「标签：内容」渲染成（纯文本, Markdown）。"""
     plain = [title]
     markdown = [f"### {title}"]
     for label, value in fields:
         plain.append(f"{label}：{value}")
         markdown.append(f"**{label}**：{escape_markdown(str(value))}")
-    if footer:
-        plain.append(footer)
-        markdown.append(footer)
     return "\n".join(plain), "\n\n".join(markdown)
+
+
+def _append_note(plain: str, markdown: str, note: str) -> tuple[str, str]:
+    """把一句正式说明（如本次花费）追加到正文末尾。
+
+    与 ``Rendered.hint`` 不同，这类说明必须随正文一起发送：QQ 官方机器人在带按钮时
+    会省略指令提示，但扣费金额是玩家需要看到的信息，不能一起被省略。
+    """
+    return f"{plain}\n{note}", f"{markdown}\n\n{note}"
 
 
 async def build_start_message(puzzle: Puzzle, user_id: str) -> Rendered:
     title = await lang.text("announce.start", user_id)
     fields = await _fields(user_id, puzzle, percent=0, asked=0)
-    footer = await lang.text("message.start_hint", user_id)
+    plain, markdown = _render_fields(title, fields)
     if config.turtle_soup_generate_cost > 0:
         cost = await lang.text(
             "message.start_cost",
             user_id,
             format_vimcoin(config.turtle_soup_generate_cost),
         )
-        footer = f"{cost}\n{footer}"
-    plain, markdown = _render_fields(title, fields, footer)
-    return Rendered(plain=plain, markdown=markdown, buttons=await in_game_buttons(user_id))
+        plain, markdown = _append_note(plain, markdown, cost)
+    return Rendered(
+        plain=plain,
+        markdown=markdown,
+        buttons=await in_game_buttons(user_id),
+        hint=await lang.text("message.start_hint", user_id),
+    )
 
 
 async def build_ask_message(
@@ -123,10 +144,18 @@ async def build_ask_message(
     asked: int,
 ) -> Rendered:
     title = await lang.text("announce.ask", user_id)
-    fields = await _fields(user_id, puzzle, percent=percent, asked=asked, question=question, answer=answer)
-    footer = await lang.text("message.ask_hint", user_id) if asked < max(1, config.turtle_soup_max_questions) else ""
-    plain, markdown = _render_fields(title, fields, footer)
-    return Rendered(plain=plain, markdown=markdown, buttons=await in_game_buttons(user_id))
+    fields = await _fields(
+        user_id,
+        puzzle,
+        percent=percent,
+        asked=asked,
+        question=question,
+        answer=answer,
+        include_puzzle=False,
+    )
+    hint = await lang.text("message.ask_hint", user_id) if asked < max(1, config.turtle_soup_max_questions) else ""
+    plain, markdown = _render_fields(title, fields)
+    return Rendered(plain=plain, markdown=markdown, buttons=await in_game_buttons(user_id), hint=hint)
 
 
 async def build_progress_message(
@@ -138,34 +167,42 @@ async def build_progress_message(
     recent: list[tuple[str, str]],
 ) -> Rendered:
     title = await lang.text("announce.progress", user_id)
-    fields = await _fields(user_id, puzzle, percent=percent, asked=asked)
+    fields = await _fields(user_id, puzzle, percent=percent, asked=asked, include_puzzle=False)
     lines_plain: list[str] = []
     lines_markdown: list[str] = []
     if recent:
         for index, (question, answer) in enumerate(recent, 1):
             lines_plain.append(f"{index}. Q: {question} / A: {answer}")
             lines_markdown.append(f"{index}. **Q**：{escape_markdown(question)} **A**：{escape_markdown(answer)}")
-    footer = await lang.text("message.ask_hint", user_id)
     plain, markdown = _render_fields(title, fields)
-    plain = "\n".join([plain, *lines_plain, footer])
-    markdown = "\n\n".join([markdown, *lines_markdown, footer])
-    return Rendered(plain=plain, markdown=markdown, buttons=await in_game_buttons(user_id))
+    plain = "\n".join([plain, *lines_plain])
+    markdown = "\n\n".join([markdown, *lines_markdown])
+    return Rendered(
+        plain=plain,
+        markdown=markdown,
+        buttons=await in_game_buttons(user_id),
+        hint=await lang.text("message.ask_hint", user_id),
+    )
 
 
 async def build_hint_message(user_id: str, hint: HintOutcome) -> Rendered:
     title = await lang.text("announce.hint", user_id)
-    footer = await lang.text("message.ask_hint", user_id)
-    if not hint.finished and hint.cost > 0:
-        cost = await lang.text("message.hint_cost", user_id, format_vimcoin(hint.cost))
-        footer = f"{cost}\n{footer}"
     if hint.finished:
         text = await lang.text("status.all_hints", user_id, hint.total)
-        plain = f"{title}\n{text}\n{footer}"
-        markdown = f"### {title}\n\n{text}\n\n{footer}"
-        return Rendered(plain=plain, markdown=markdown, buttons=await in_game_buttons(user_id))
-    label = await lang.text("message.hint_line", user_id, hint.current, hint.total)
-    plain, markdown = _render_fields(title, [(label, hint.hint)], footer)
-    return Rendered(plain=plain, markdown=markdown, buttons=await in_game_buttons(user_id))
+        plain = f"{title}\n{text}"
+        markdown = f"### {title}\n\n{text}"
+    else:
+        label = await lang.text("message.hint_line", user_id, hint.current, hint.total)
+        plain, markdown = _render_fields(title, [(label, hint.hint)])
+    if not hint.finished and hint.cost > 0:
+        cost = await lang.text("message.hint_cost", user_id, format_vimcoin(hint.cost))
+        plain, markdown = _append_note(plain, markdown, cost)
+    return Rendered(
+        plain=plain,
+        markdown=markdown,
+        buttons=await in_game_buttons(user_id),
+        hint=await lang.text("message.ask_hint", user_id),
+    )
 
 
 async def build_end_message(end: EndOutcome, user_id: str) -> Rendered:
@@ -197,12 +234,11 @@ async def build_end_message(end: EndOutcome, user_id: str) -> Rendered:
     if end.solved and end.reward > 0:
         await add("label.reward", f"{format_vimcoin(end.reward)} vi")
     footer = await lang.text("message.end_hint", user_id)
-    lines_plain.append(footer)
-    lines_markdown.append(footer)
     return Rendered(
         plain="\n".join(lines_plain),
         markdown="\n\n".join(lines_markdown),
         buttons=await home_buttons(user_id),
+        hint=footer,
     )
 
 

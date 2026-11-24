@@ -24,6 +24,7 @@ __plugin_meta__ = PluginMetadata(
     usage="",
 )
 
+require("nonebot_plugin_bots")
 require("nonebot_plugin_larkuser")
 require("nonebot_plugin_larkutils")
 require("nonebot_plugin_userinfo")
