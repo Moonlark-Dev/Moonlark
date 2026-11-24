@@ -110,9 +110,17 @@ def parse_input(words: tuple[str, ...]) -> tuple[str, str]:
 
 
 async def send_rendered(matcher: Matcher, bot: Bot, event: Event, rendered: Rendered) -> None:
-    """QQ 官方机器人发送 Markdown + 按钮，其他适配器发送纯文本。"""
+    """发送一条渲染好的回复。
+
+    QQ 官方机器人发送 Markdown + 快捷按钮：按钮本身就是指令入口，再拼上
+    「发送 /turtle-soup …」的指令提示只是重复的噪音，所以带按钮时不追加
+    ``rendered.hint``。其他适配器没有按钮，把指令提示补回纯文本末尾。
+    """
     if isinstance(bot, QQBot):
-        message = UniMessage().style(rendered.markdown, "markdown")
+        markdown = rendered.markdown
+        if not rendered.buttons and rendered.hint:
+            markdown = f"{markdown}\n\n{rendered.hint}"
+        message = UniMessage().style(markdown, "markdown")
         if rendered.buttons:
             message = message.keyboard(*rendered.buttons, row=rendered.row)
         try:
@@ -121,7 +129,10 @@ async def send_rendered(matcher: Matcher, bot: Bot, event: Event, rendered: Rend
             logger.opt(exception=True).warning("海龟汤：发送 Markdown 消息失败，回退纯文本")
         else:
             await matcher.finish()
-    await matcher.send(rendered.plain, at_sender=True)
+    plain = rendered.plain
+    if rendered.hint:
+        plain = f"{plain}\n{rendered.hint}"
+    await matcher.send(plain, at_sender=True)
     await matcher.finish()
 
 
