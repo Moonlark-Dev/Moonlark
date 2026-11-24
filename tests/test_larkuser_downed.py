@@ -69,7 +69,7 @@ async def _load(factory, user_id: str):
 async def _make_user(user_id: str):
     from nonebot_plugin_larkuser.user.registered import MoonlarkRegisteredUser
 
-    user = MoonlarkRegisteredUser(user_id)
+    user = MoonlarkRegisteredUser(user_id, writable=True)
     await user.setup_user()
     return user
 

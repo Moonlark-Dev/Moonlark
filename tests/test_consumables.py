@@ -75,7 +75,7 @@ async def test_cake_heals_full(monkeypatch: pytest.MonkeyPatch) -> None:
 
     import nonebot_plugin_larkuser
 
-    async def fake_get_user(_user_id: str):
+    async def fake_get_user(_user_id: str, *, writable: bool = False):
         return fake_user
 
     monkeypatch.setattr(nonebot_plugin_larkuser, "get_user", fake_get_user)

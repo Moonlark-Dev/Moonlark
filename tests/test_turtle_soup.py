@@ -73,7 +73,7 @@ def fake_users(monkeypatch: pytest.MonkeyPatch) -> dict[str, _FakeUser]:
 
     users: dict[str, _FakeUser] = {}
 
-    async def fake_get_user(user_id: str) -> _FakeUser:
+    async def fake_get_user(user_id: str, *, writable: bool = False) -> _FakeUser:
         return users.setdefault(user_id, _FakeUser())
 
     monkeypatch.setattr(wallet, "get_user", fake_get_user)
