@@ -486,7 +486,7 @@ class MissingAbbreviationsGame:  # pylint: disable=too-many-instance-attributes
 async def grant_reward(user_id: str) -> float:
     """向猜中的玩家发放 VimCoin 奖励。"""
     try:
-        user = await get_user(user_id)
+        user = await get_user(user_id, writable=True)
         await user.add_vimcoin(config.missing_abbreviations_reward)
     except Exception:
         logger.opt(exception=True).warning(f"缩略：向 {user_id} 发放 VimCoin 失败")

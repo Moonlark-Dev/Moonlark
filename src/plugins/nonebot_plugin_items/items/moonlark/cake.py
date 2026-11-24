@@ -28,7 +28,7 @@ class Cake(GiftItem, ConsumableItem):
         from nonebot_plugin_larkuser import get_user
         from nonebot_plugin_larkuser.user.base import MAX_HEALTH
 
-        user = await get_user(stack.user_id)
+        user = await get_user(stack.user_id, writable=True)
         if not user.is_registered():
             return await self.getText("cake.use_unregistered", stack.user_id)
         before = user.get_health()

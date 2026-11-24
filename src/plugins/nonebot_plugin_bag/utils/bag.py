@@ -19,7 +19,7 @@ from typing import Any
 
 
 async def give_special_item(user_id: str, name: str, count: int, data: dict[str, Any]) -> None:
-    user = await get_user(user_id)
+    user = await get_user(user_id, writable=True)
     match name:
         case "experience":
             await user.add_experience(count)

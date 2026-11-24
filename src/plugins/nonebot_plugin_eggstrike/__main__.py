@@ -163,7 +163,7 @@ async def apply_egg_hit(victim_id: str, egg_type: EggTypeData, count: int) -> fl
     if count <= 0:
         return 0.0
     hp_lost = 0.0
-    victim = await get_user(victim_id)
+    victim = await get_user(victim_id, writable=True)
     if victim.is_registered():
         before_hp = victim.get_health()
         await victim.damage(round(count * egg_type.damage, 1))

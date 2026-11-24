@@ -43,7 +43,7 @@ async def charge(user_id: str, cost: float) -> None:
     """扣除费用；余额不足时抛 :class:`InsufficientVimcoinError`，不会产生半笔扣费。"""
     if cost <= 0:
         return
-    user = await get_user(user_id)
+    user = await get_user(user_id, writable=True)
     if not await user.use_vimcoin(cost):
         raise InsufficientVimcoinError(cost, user.get_vimcoin())
 
@@ -53,7 +53,7 @@ async def refund(user_id: str, cost: float, reason: str) -> None:
     if cost <= 0:
         return
     try:
-        user = await get_user(user_id)
+        user = await get_user(user_id, writable=True)
         await user.add_vimcoin(cost)
     except Exception:
         logger.opt(exception=True).error(
@@ -66,7 +66,7 @@ async def reward(user_id: str, amount: float) -> float:
     if amount <= 0:
         return 0.0
     try:
-        user = await get_user(user_id)
+        user = await get_user(user_id, writable=True)
         await user.add_vimcoin(amount)
     except Exception:
         logger.opt(exception=True).error(f"海龟汤：向 {user_id} 发放 {format_vimcoin(amount)} vi 奖励失败")

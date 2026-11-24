@@ -67,8 +67,8 @@ async def _(
     target_adapter_id = target.result.target
     target_id = await get_main_account(target_adapter_id)
     nickname = await get_nickname(target_adapter_id, bot, event)
-    rescuer = await get_user(user_id)
-    downed_user = await get_user(target_id)
+    rescuer = await get_user(user_id, writable=True)
+    downed_user = await get_user(target_id, writable=True)
     pay_prompt = await build_pay_message(bot, user_id, nickname)
     choice = await prompt(
         pay_prompt,

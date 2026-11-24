@@ -147,7 +147,7 @@ async def _(
     gift_item: GiftItem = item.stack.item
     item_name = await item.stack.getName()
 
-    user = await get_user(user_id)
+    user = await get_user(user_id, writable=True)
 
     # 部分礼物有每日赠送上限（如蛋糕每天只能送一个）
     daily_limit = gift_item.daily_gift_limit

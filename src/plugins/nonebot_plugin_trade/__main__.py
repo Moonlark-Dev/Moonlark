@@ -428,7 +428,7 @@ async def handle_trade_buy(bot: Bot, event: Event, amount: str, user_id: str = g
     if not amount.strip():
         await lang.finish("error.usage_buy", user_id)
     now = now_local()
-    user = await get_user(user_id)
+    user = await get_user(user_id, writable=True)
     async with market_lock:
         async with get_session() as session:
             state = await ensure_market(session, now)
@@ -464,7 +464,7 @@ async def handle_trade_sell(bot: Bot, event: Event, amount: str, user_id: str = 
     if not amount.strip():
         await lang.finish("error.usage_sell", user_id)
     now = now_local()
-    user = await get_user(user_id)
+    user = await get_user(user_id, writable=True)
     async with market_lock:
         async with get_session() as session:
             state = await ensure_market(session, now)

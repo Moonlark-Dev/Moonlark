@@ -281,7 +281,7 @@ class HasOrNotGame:  # pylint: disable=too-many-instance-attributes
 
     async def grant_reward(self, user_id: str) -> float:
         try:
-            user = await get_user(user_id)
+            user = await get_user(user_id, writable=True)
             await user.add_vimcoin(config.has_or_not_reward)
             return config.has_or_not_reward
         except Exception:

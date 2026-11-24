@@ -53,7 +53,7 @@ async def write_friends_file(data: dict[str, float]) -> None:
 
 @friend_add_qq.handle()
 async def _(bot: BotQQ, event: FriendAddEvent, user_id: str = get_user_id()) -> None:
-    user = await get_user(user_id)
+    user = await get_user(user_id, writable=True)
     if user_id not in (friends := await get_friends()):
         if user.is_registered():
             await user.add_fav(config.friend_add_award_fav)
@@ -86,7 +86,7 @@ async def _(bot: BotOB, event: FriendRequestEvent, user_id: str = get_user_id())
 @friend_add_ob12.handle()
 @friend_add_ob.handle()
 async def _(user_id: str = get_user_id()) -> None:
-    user = await get_user(user_id)
+    user = await get_user(user_id, writable=True)
     if user_id not in (friends := await get_friends()):
         await user.add_fav(config.friend_add_award_fav)
         friends[user_id] = datetime.now().timestamp()

@@ -9,7 +9,7 @@ from .bag import give_item, give_special_item
 
 
 async def give_item_by_data(user_id: str, items: GivenItemsData) -> None:
-    user = await get_user(user_id)
+    user = await get_user(user_id, writable=True)
     await user.add_vimcoin(items["vimcoin"])
     await user.add_experience(items["experience"])
     for item_data in items["items"]:

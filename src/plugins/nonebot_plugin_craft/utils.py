@@ -106,7 +106,7 @@ async def try_upgrade(user_id: str) -> tuple[int, int, int]:
 
     from nonebot_plugin_larkuser import get_user
 
-    user = await get_user(user_id)
+    user = await get_user(user_id, writable=True)
     if not await user.has_vimcoin(cost):
         raise NotEnoughVimcoin(cost, round(user.get_vimcoin(), 1))
     if not await user.use_vimcoin(cost):
@@ -157,7 +157,7 @@ async def start_job(user_id: str, recipe: Recipe) -> JobInfo:
 
     from nonebot_plugin_larkuser import get_user
 
-    user = await get_user(user_id)
+    user = await get_user(user_id, writable=True)
     if not await user.has_vimcoin(recipe.vimcoin):
         raise NotEnoughVimcoin(recipe.vimcoin, round(user.get_vimcoin(), 1))
     if not await user.use_vimcoin(recipe.vimcoin):

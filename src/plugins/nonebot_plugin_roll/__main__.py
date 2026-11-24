@@ -126,7 +126,7 @@ async def _(bot: Bot, user_id: str = get_user_id(), count: int = 1) -> None:
     if count > MAX_COUNT:
         await lang.finish("too_many", user_id, MAX_COUNT)
 
-    user = await get_user(user_id)
+    user = await get_user(user_id, writable=True)
     # 消耗背包中对应数量的二十面骰子（不足时询问购买后重试）
     if (error := await consume_dice(user_id, count, bot)) is not None:
         await lang.finish("not_enough", user_id, error.need, error.have)

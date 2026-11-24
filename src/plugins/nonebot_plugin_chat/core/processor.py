@@ -220,7 +220,7 @@ class MessageProcessor:
         users = await self.session.get_users()
         if not (user_id := users.get(nickname)):
             return await self.session.text("judge.user_not_found", nickname), False
-        user = await get_user(user_id)
+        user = await get_user(user_id, writable=True)
         if user.get_register_time() is None:
             return await self.session.text("judge.user_not_registered", nickname), False
         # 限制分数范围
