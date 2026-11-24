@@ -140,7 +140,7 @@ async def test_qq_email_list_is_markdown_with_keyboard(
     assert "时间: 2026-10-14 08:30:00" in markdown
     assert "来自: Moonlark" in markdown
     assert "邮件 ID: 7" in markdown
-    assert "第一行\n第二行" in markdown
+    assert "> 第一行\n> 第二行" in markdown
     assert "包含的物品" in markdown
     assert "- 鸡蛋 ×3" in markdown
     assert not markdown.endswith("\n")
@@ -184,6 +184,31 @@ async def test_qq_empty_email_list_shows_empty_hint(
     assert "> 暂无未读邮件。" in markdown
     assert "包含的物品" not in markdown
     assert [button.text for button in _buttons_of(sent[0])] == ["/email claim all", "/email read all"]
+
+
+@pytest.mark.asyncio
+async def test_qq_email_body_uses_blockquote(
+    email_env, finish_mock: AsyncMock, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """QQ 官方：邮件正文整体进引用块，正文里的空行用单独的 > 续上，不截断引用块"""
+    from nonebot.adapters.qq import Bot as QQBot
+
+    module = email_env
+
+    async def multi_line_unread(_user_id: str):
+        yield _fake_email(content="第一行\n\n# 不是标题\n第二段落")
+
+    monkeypatch.setattr(module, "get_unread_email", multi_line_unread)
+    sent = _capture_sent(monkeypatch)
+    monkeypatch.setattr(module.email, "finish", finish_mock)
+
+    with pytest.raises(_Finished):
+        await module._(bot=MagicMock(spec=QQBot), event=MagicMock(), user_id="10")
+
+    markdown = _markdown_of(sent[0])
+    assert "\n\n> 第一行\n>\n> # 不是标题\n> 第二段落\n" in markdown
+    # 正文不再以裸文本形式混在元信息里
+    assert "\n第一行\n" not in markdown
 
 
 @pytest.mark.asyncio
