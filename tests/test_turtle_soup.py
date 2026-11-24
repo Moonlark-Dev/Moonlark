@@ -44,6 +44,42 @@ def clear_games():
     suppression._suspenders.clear()  # ruff: ignore[private-member-access]
 
 
+class _FakeUser:
+    """只实现海龟汤用到的 VimCoin 接口，测试不碰真实用户数据。"""
+
+    def __init__(self, vimcoin: float = 100.0) -> None:
+        self.vimcoin = vimcoin
+
+    def get_vimcoin(self) -> float:
+        return self.vimcoin
+
+    async def has_vimcoin(self, count: float) -> bool:
+        return self.vimcoin >= count
+
+    async def use_vimcoin(self, count: float) -> bool:
+        if self.vimcoin < count:
+            return False
+        self.vimcoin -= count
+        return True
+
+    async def add_vimcoin(self, count: float) -> None:
+        self.vimcoin += count
+
+
+@pytest.fixture(autouse=True)
+def fake_users(monkeypatch: pytest.MonkeyPatch) -> dict[str, _FakeUser]:
+    """把 VimCoin 读写换成内存记账。"""
+    from nonebot_plugin_turtle_soup import wallet
+
+    users: dict[str, _FakeUser] = {}
+
+    async def fake_get_user(user_id: str) -> _FakeUser:
+        return users.setdefault(user_id, _FakeUser())
+
+    monkeypatch.setattr(wallet, "get_user", fake_get_user)
+    return users
+
+
 def _puzzle():
     from nonebot_plugin_turtle_soup.types import Puzzle
 
@@ -332,7 +368,8 @@ def test_lang_keys_referenced_by_code_exist() -> None:
 
     # 占位符与调用参数数量一致，避免线上显示未格式化的 {0}
     assert flat["status.question_limit"].format(50, __prefix__="/").endswith("。")
-    assert flat["message.rules"].format(50, __prefix__="/").count("{") == 0
+    assert flat["message.rules"].format(50, "10", "2", "20", __prefix__="/").count("{") == 0
+    assert "vi" in flat["message.rules"]
     assert flat["message.hint_line"].format(1, 3) == "第 1/3 条提示"
     assert flat["reply.no"] == "不是"
 
@@ -563,7 +600,10 @@ async def test_started_game_persists_and_expires_silently(monkeypatch: pytest.Mo
     assert remaining == []
 
 
-async def test_finish_publishes_event_and_counts_correct(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_finish_publishes_event_and_counts_correct(
+    monkeypatch: pytest.MonkeyPatch,
+    fake_users: dict[str, _FakeUser],
+) -> None:
     """解开时把汤面与汤底投递给 Chat，并给解出者记一次正确作答。"""
     from nonebot_plugin_turtle_soup import game as game_module
 
@@ -607,12 +647,18 @@ async def test_finish_publishes_event_and_counts_correct(monkeypatch: pytest.Mon
     monkeypatch.setattr(game_module, "record_correct", fake_record)
 
     game = await game_module.start_game("qq_t2", "10", "")
-    await game.finish(solved=True, solved_by="10002", bot=MagicMock(), event=MagicMock())
+    end = await game.finish(solved=True, solved_by="10002", bot=MagicMock(), event=MagicMock())
 
     assert published == [("qq_t2", "10002", True, _puzzle().solution)]
     assert counted == ["10002"]
     assert resumed == ["qq_t2"]
     assert "qq_t2" not in game_module.games
+    # 解开本局给解出者发奖励（开局费用只扣发起者）
+    from nonebot_plugin_turtle_soup.config import config
+
+    assert end.reward == config.turtle_soup_reward
+    assert fake_users["10002"].vimcoin == pytest.approx(100.0 + config.turtle_soup_reward)
+    assert fake_users["10"].vimcoin == pytest.approx(100.0 - config.turtle_soup_generate_cost)
 
 
 async def test_finish_still_resumes_chat_when_publish_fails(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -645,7 +691,10 @@ async def test_finish_still_resumes_chat_when_publish_fails(monkeypatch: pytest.
     assert "qq_t3" not in game_module.games
 
 
-async def test_concurrent_start_only_one_game(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_concurrent_start_only_one_game(
+    monkeypatch: pytest.MonkeyPatch,
+    fake_users: dict[str, _FakeUser],
+) -> None:
     """并发开局时唯一索引保证只有一个人真正出题，另一个收到「已有一局」。"""
     import asyncio
 
@@ -672,9 +721,19 @@ async def test_concurrent_start_only_one_game(monkeypatch: pytest.MonkeyPatch) -
     assert len(successes) == 1
     assert len(already) == 1
     assert "qq_t4" in game_module.games
+    # 只收一份开局费用：并发失败的一方原额退回
+    from nonebot_plugin_turtle_soup.config import config
+
+    assert sorted(user.vimcoin for user in fake_users.values()) == [
+        100.0 - config.turtle_soup_generate_cost,
+        100.0,
+    ]
 
 
-async def test_next_hint_advances_and_saves(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_next_hint_advances_and_saves(
+    monkeypatch: pytest.MonkeyPatch,
+    fake_users: dict[str, _FakeUser],
+) -> None:
     from nonebot_plugin_turtle_soup import game as game_module
 
     _engine, factory = await _make_engine()
@@ -686,16 +745,26 @@ async def test_next_hint_advances_and_saves(monkeypatch: pytest.MonkeyPatch) -> 
     monkeypatch.setattr(game_module, "generate_puzzle", fake_generate)
     monkeypatch.setattr(game_module.chat_bridge, "suspend", lambda _session_id: None)
 
+    from nonebot_plugin_turtle_soup.config import config
+
     game = await game_module.start_game("qq_t5", "10", "")
-    first = await game.next_hint()
-    second = await game.next_hint()
-    exhausted = await game.next_hint()
+    first = await game.next_hint("10")
+    second = await game.next_hint("11")
+    exhausted = await game.next_hint("12")
 
     assert first.hint == _puzzle().supplementary_info[0]
     assert first.current == 1
+    assert first.cost == config.turtle_soup_hint_cost
     assert second.hint == _puzzle().supplementary_info[1]
     assert exhausted.finished
     assert exhausted.current == len(_puzzle().supplementary_info)
+    # 提示费用按人要：发起者付开局 + 第一条提示，第二个人只付第二条提示，
+    # 提示已经发完时再要一次不收费（连余额都不查）
+    assert fake_users["10"].vimcoin == pytest.approx(
+        100.0 - config.turtle_soup_generate_cost - config.turtle_soup_hint_cost,
+    )
+    assert fake_users["11"].vimcoin == pytest.approx(100.0 - config.turtle_soup_hint_cost)
+    assert "12" not in fake_users
 
 
 async def test_ranking_counts_correct_answers(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -712,6 +781,260 @@ async def test_ranking_counts_correct_answers(monkeypatch: pytest.MonkeyPatch) -
 
     data = await rank_module.get_ranking_data()
     assert [(item["user_id"], item["data"]) for item in data] == [("10001", 2), ("10002", 1)]
+
+
+# ---------- VimCoin 收支 ----------
+
+
+def test_default_vimcoin_prices() -> None:
+    """开局 10 vi、提示 2 vi、答对奖励 20 vi。"""
+    from nonebot_plugin_turtle_soup.config import Config
+
+    model = Config()
+    assert model.turtle_soup_generate_cost == pytest.approx(10.0)
+    assert model.turtle_soup_hint_cost == pytest.approx(2.0)
+    assert model.turtle_soup_reward == pytest.approx(20.0)
+
+
+async def test_start_charges_generate_cost(monkeypatch: pytest.MonkeyPatch, fake_users: dict[str, _FakeUser]) -> None:
+    from nonebot_plugin_turtle_soup import game as game_module
+    from nonebot_plugin_turtle_soup.config import config
+
+    _engine, factory = await _make_engine()
+    monkeypatch.setattr(game_module, "get_session", lambda **_: factory())
+
+    async def fake_generate(_theme: str):
+        return _puzzle()
+
+    monkeypatch.setattr(game_module, "generate_puzzle", fake_generate)
+    monkeypatch.setattr(game_module.chat_bridge, "suspend", lambda _session_id: None)
+
+    await game_module.start_game("qq_c1", "10", "")
+
+    assert fake_users["10"].vimcoin == pytest.approx(100.0 - config.turtle_soup_generate_cost)
+
+
+async def test_start_refused_when_insufficient_vimcoin(fake_users: dict[str, _FakeUser]) -> None:
+    """余额不足时连占位记录都不该留下，也不扣一分钱。"""
+    from nonebot_plugin_turtle_soup import game as game_module
+    from nonebot_plugin_turtle_soup.wallet import InsufficientVimcoinError
+
+    fake_users["10"] = _FakeUser(5.0)
+    with pytest.raises(InsufficientVimcoinError):
+        await game_module.start_game("qq_c2", "10", "")
+
+    assert fake_users["10"].vimcoin == pytest.approx(5.0)
+    assert "qq_c2" not in game_module.games
+
+
+async def test_start_refunds_when_generate_fails(
+    monkeypatch: pytest.MonkeyPatch,
+    fake_users: dict[str, _FakeUser],
+) -> None:
+    """出题失败时退回开局费用，玩家不为一局没开起来的游戏付钱。"""
+    from nonebot_plugin_turtle_soup import game as game_module
+    from nonebot_plugin_turtle_soup.models import TurtleSoupGame
+
+    _engine, factory = await _make_engine()
+    monkeypatch.setattr(game_module, "get_session", lambda **_: factory())
+
+    async def broken_generate(_theme: str):
+        raise RuntimeError("模型挂了")
+
+    monkeypatch.setattr(game_module, "generate_puzzle", broken_generate)
+    monkeypatch.setattr(game_module.chat_bridge, "suspend", lambda _session_id: None)
+
+    with pytest.raises(RuntimeError):
+        await game_module.start_game("qq_c3", "10", "")
+
+    assert fake_users["10"].vimcoin == pytest.approx(100.0)
+    assert "qq_c3" not in game_module.games
+    async with factory() as session:
+        assert (await session.scalars(game_module.select(TurtleSoupGame))).all() == []
+
+
+async def test_abort_game_refunds_generate_cost(
+    monkeypatch: pytest.MonkeyPatch,
+    fake_users: dict[str, _FakeUser],
+) -> None:
+    """开局消息没发出去、本局作废时，开局费用要退回。"""
+    from nonebot_plugin_turtle_soup import game as game_module
+
+    _engine, factory = await _make_engine()
+    monkeypatch.setattr(game_module, "get_session", lambda **_: factory())
+
+    async def fake_generate(_theme: str):
+        return _puzzle()
+
+    monkeypatch.setattr(game_module, "generate_puzzle", fake_generate)
+    monkeypatch.setattr(game_module.chat_bridge, "suspend", lambda _session_id: None)
+    monkeypatch.setattr(game_module.chat_bridge, "resume", lambda _session_id: None)
+
+    game = await game_module.start_game("qq_c6", "10", "")
+    await game_module.abort_game(game)
+
+    assert fake_users["10"].vimcoin == pytest.approx(100.0)
+    assert "qq_c6" not in game_module.games
+
+
+async def test_hint_refused_when_insufficient_vimcoin(
+    monkeypatch: pytest.MonkeyPatch,
+    fake_users: dict[str, _FakeUser],
+) -> None:
+    """付不起提示费时不消耗提示位，也不扣钱。"""
+    from nonebot_plugin_turtle_soup import game as game_module
+    from nonebot_plugin_turtle_soup.wallet import InsufficientVimcoinError
+
+    _engine, factory = await _make_engine()
+    monkeypatch.setattr(game_module, "get_session", lambda **_: factory())
+
+    async def fake_generate(_theme: str):
+        return _puzzle()
+
+    monkeypatch.setattr(game_module, "generate_puzzle", fake_generate)
+    monkeypatch.setattr(game_module.chat_bridge, "suspend", lambda _session_id: None)
+
+    game = await game_module.start_game("qq_c4", "10", "")
+    fake_users["10"] = _FakeUser(1.0)
+
+    with pytest.raises(InsufficientVimcoinError):
+        await game.next_hint("10")
+
+    assert game.hint_index == 0
+    assert fake_users["10"].vimcoin == pytest.approx(1.0)
+
+
+async def test_hint_refunds_when_record_cannot_be_saved(
+    monkeypatch: pytest.MonkeyPatch,
+    fake_users: dict[str, _FakeUser],
+) -> None:
+    """提示已经扣费但记录没写成时，费用要退回去。"""
+    from nonebot_plugin_turtle_soup import game as game_module
+    from nonebot_plugin_turtle_soup.config import config
+
+    _engine, factory = await _make_engine()
+    monkeypatch.setattr(game_module, "get_session", lambda **_: factory())
+
+    async def fake_generate(_theme: str):
+        return _puzzle()
+
+    monkeypatch.setattr(game_module, "generate_puzzle", fake_generate)
+    monkeypatch.setattr(game_module.chat_bridge, "suspend", lambda _session_id: None)
+
+    game = await game_module.start_game("qq_c5", "10", "")
+
+    async def broken_save(_self: object) -> None:
+        raise RuntimeError("数据库不可用")
+
+    monkeypatch.setattr(game_module.Game, "save", broken_save)
+
+    with pytest.raises(RuntimeError):
+        await game.next_hint("10")
+
+    assert fake_users["10"].vimcoin == pytest.approx(100.0 - config.turtle_soup_generate_cost)
+
+
+async def test_vimcoin_amounts_are_rendered_in_messages() -> None:
+    """开局 / 提示 / 结算消息里都能看到对应的金额。"""
+    from nonebot_plugin_turtle_soup.config import config
+    from nonebot_plugin_turtle_soup.messages import build_end_message, build_hint_message, build_start_message
+    from nonebot_plugin_turtle_soup.types import EndOutcome, HintOutcome
+
+    puzzle = _puzzle()
+    start = await build_start_message(puzzle, "10")
+    assert f"text::message.start_cost|{int(config.turtle_soup_generate_cost)}" in start.plain
+
+    hint = HintOutcome(hint=puzzle.supplementary_info[0], current=1, total=2, cost=config.turtle_soup_hint_cost)
+    hinted = await build_hint_message("10", hint)
+    assert f"text::message.hint_cost|{int(config.turtle_soup_hint_cost)}" in hinted.plain
+
+    end = EndOutcome(
+        solved=True,
+        percent=100,
+        asked=3,
+        title=puzzle.title,
+        puzzle_setting=puzzle.puzzle_setting,
+        solution=puzzle.solution,
+        supplementary_info=puzzle.supplementary_info,
+        solved_by="10",
+        reward=config.turtle_soup_reward,
+    )
+    ended = await build_end_message(end, "10")
+    assert f"text::label.reward：{int(config.turtle_soup_reward)} vi" in ended.plain
+
+
+async def test_start_handler_reports_insufficient_vimcoin(
+    monkeypatch: pytest.MonkeyPatch,
+    fake_users: dict[str, _FakeUser],
+) -> None:
+    """开局余额不足时直接发提示，不再进入出题流程。"""
+    from nonebot_plugin_turtle_soup import matcher as matcher_module
+
+    fake_users["10"] = _FakeUser(0.0)
+    rendered: list[object] = []
+    started: list[object] = []
+
+    async def fake_send_rendered(_matcher: object, _bot: object, _event: object, message: object) -> None:
+        rendered.append(message)
+
+    async def fake_get_active_game(_session_id: str):
+        return None
+
+    async def fake_start_game(*args: object):
+        started.append(args)
+        raise AssertionError("余额不足时不应进入出题流程")
+
+    monkeypatch.setattr(matcher_module, "send_rendered", fake_send_rendered)
+    monkeypatch.setattr(matcher_module, "get_active_game", fake_get_active_game)
+    monkeypatch.setattr(matcher_module, "start_game", fake_start_game)
+
+    # ruff: ignore[private-member-access] - 直接调用处理器验证余额不足分支
+    await matcher_module._handle_start(MagicMock(), MagicMock(), MagicMock(), "10", "qq_m1", "")
+
+    assert started == []
+    assert len(rendered) == 1
+    assert "text::status.insufficient_vimcoin|10|0" in rendered[0].plain  # type: ignore[attr-defined]
+
+
+async def test_hint_handler_reports_insufficient_vimcoin(
+    monkeypatch: pytest.MonkeyPatch,
+    fake_users: dict[str, _FakeUser],
+) -> None:
+    """/turtle-soup hint 处理链路上余额不足的提示能真正发出去。"""
+    from nonebot_plugin_turtle_soup import game as game_module
+    from nonebot_plugin_turtle_soup import matcher as matcher_module
+
+    _engine, factory = await _make_engine()
+    monkeypatch.setattr(game_module, "get_session", lambda **_: factory())
+
+    async def fake_generate(_theme: str):
+        return _puzzle()
+
+    monkeypatch.setattr(game_module, "generate_puzzle", fake_generate)
+    monkeypatch.setattr(game_module.chat_bridge, "suspend", lambda _session_id: None)
+
+    game = await game_module.start_game("qq_m2", "10", "")
+    fake_users["10"] = _FakeUser(0.0)
+
+    rendered: list[object] = []
+
+    async def fake_send_rendered(_matcher: object, _bot: object, _event: object, message: object) -> None:
+        rendered.append(message)
+
+    async def fake_get_active_game(_session_id: str):
+        return game
+
+    monkeypatch.setattr(matcher_module, "send_rendered", fake_send_rendered)
+    monkeypatch.setattr(matcher_module, "get_active_game", fake_get_active_game)
+
+    result = matcher_module.turtle_soup.command().parse("/turtle-soup hint")
+    assert result.matched
+    # ruff: ignore[private-member-access] - 直接调用处理器验证提示扣费分支
+    await matcher_module._(MagicMock(), MagicMock(), MagicMock(), result, user_id="10", group_id="qq_m2")
+
+    assert len(rendered) == 1
+    assert "text::status.insufficient_vimcoin|2|0" in rendered[0].plain  # type: ignore[attr-defined]
+    assert game.hint_index == 0
 
 
 # ---------- 时限与 Chat 屏蔽 ----------

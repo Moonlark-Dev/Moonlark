@@ -17,6 +17,7 @@ from nonebot_plugin_larkuser.utils.matcher import patch_matcher
 from nonebot_plugin_larkutils import create_image_markdown, get_group_id, get_user_id
 from nonebot_plugin_ranking import generate_image
 
+from .config import config
 from .game import (
     GameAlreadyPlayingError,
     GameError,
@@ -35,6 +36,7 @@ from .messages import (
     build_end_message,
     build_help_message,
     build_hint_message,
+    build_insufficient_message,
     build_no_game_message,
     build_progress_message,
     build_rank_message,
@@ -44,6 +46,7 @@ from .messages import (
 )
 from .rank import get_rank_display, get_ranking_data
 from .types import EndOutcome
+from .wallet import InsufficientVimcoinError, ensure_affordable
 
 COMMAND = "turtle-soup"
 
@@ -179,11 +182,21 @@ async def _handle_start(matcher: Matcher, bot: Bot, event: Event, user_id: str, 
     if await get_active_game(group_id) is not None:
         await send_rendered(matcher, bot, event, await build_already_playing_message(user_id))
         return
+    # 先确认付得起再发「正在生成」：不然玩家要先看一句正在生成，才知道自己余额不足
+    try:
+        await ensure_affordable(user_id, config.turtle_soup_generate_cost)
+    except InsufficientVimcoinError as e:
+        await send_rendered(matcher, bot, event, await build_insufficient_message(user_id, e, in_game=False))
+        return
     await matcher.send(await lang.text("status.generating", user_id))
     try:
         game = await start_game(group_id, user_id, theme)
     except GameAlreadyPlayingError:
         await send_rendered(matcher, bot, event, await build_already_playing_message(user_id))
+        return
+    except InsufficientVimcoinError as e:
+        # 并发下余额可能在检查之后变化，扣费仍可能失败
+        await send_rendered(matcher, bot, event, await build_insufficient_message(user_id, e, in_game=False))
         return
     except Exception:
         logger.opt(exception=True).error("海龟汤：生成谜题失败")
@@ -276,6 +289,7 @@ async def _handle_ask(
             solution=outcome.solution,
             supplementary_info=outcome.supplementary_info,
             solved_by=user_id,
+            reward=outcome.reward,
         )
         await send_rendered(matcher, bot, event, await build_end_message(end, user_id))
         return
@@ -340,7 +354,10 @@ async def _(
         return
     if action == "hint":
         try:
-            hint = await game.next_hint()
+            hint = await game.next_hint(user_id)
+        except InsufficientVimcoinError as e:
+            await send_rendered(matcher, bot, event, await build_insufficient_message(user_id, e, in_game=True))
+            return
         except GameError:
             await send_rendered(matcher, bot, event, await build_no_game_message(user_id))
             return
