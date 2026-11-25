@@ -30,6 +30,7 @@ from ..config import config
 from ..models import ChatGroup, PreTriggerSignals, UserProfile
 from ..types import CachedMessage
 from ..utils.ai_agent import AskAISession
+from ..utils.bot_sender import is_bot_sender
 from ..utils.emoji import QQ_EMOJI_MAP
 from ..utils.fav_judge import decide_favor_change, get_favor_judge_state, record_favor_change
 from ..utils.image import query_image_content
@@ -421,6 +422,10 @@ class MessageProcessor:
             if "@Moonlark" not in text and mentioned and self.session.get_session_type() == "group":
                 text = f"@Moonlark {text}"
 
+            # 机器人账号（目前只有 QQ 官方适配器能给出发送者的 bot 标记）的消息照常进入
+            # 上下文并在 additional_info 中标注，但绝不触发回复：即使它 @ 了 Moonlark。
+            sender_is_bot = is_bot_sender(event, self.session.bot)
+
             msg_dict: CachedMessage = {
                 "content": text,
                 "nickname": nickname,
@@ -433,8 +438,9 @@ class MessageProcessor:
                 "to_me": mentioned,
                 "triggered_reply": False,
                 "fake_rich_text": fake_rich_text,
+                "is_bot": sender_is_bot,
             }
-            trigger_mode = "all" if mentioned else "probability"
+            trigger_mode = "none" if sender_is_bot else ("all" if mentioned else "probability")
             await self.process_messages(msg_dict, trigger_mode)
             await self.session.on_cache_posted()
         logger.debug(f"{trigger_mode=} {self.blocked=}")
@@ -445,6 +451,7 @@ class MessageProcessor:
                 ("event", "none"): 0.2,
                 ("message", "probability"): 0.5,
                 ("message", "all"): 1,
+                ("message", "none"): 0.0,
             }[item[0], trigger_mode],
         )
         if (
@@ -908,6 +915,7 @@ class MessageProcessor:
                 msg_dict["user_id"],
                 msg_dict.get("fake_rich_text", []),
                 nickname=msg_dict["nickname"],
+                sender_is_bot=bool(msg_dict.get("is_bot", False)),
             )
             msg_dict["mq_text"] = msg_str
 
@@ -923,7 +931,8 @@ class MessageProcessor:
 
         if not self.blocked and not msg_dict["self"]:
             content = msg_dict.get("content", "")
-            if isinstance(content, str) and content:
+            # 机器人的发言不计入触发概率：否则它刷屏后，下一条真人消息会直接命中高概率
+            if isinstance(content, str) and content and not msg_dict.get("is_bot", False):
                 cleaned = re.sub(r"\[.*?\]", "", content)
                 cleaned = re.sub(r"\s+", " ", cleaned).strip()
                 self.session.accumulated_text_length += len(cleaned)
@@ -1005,6 +1014,7 @@ class MessageProcessor:
         sender_id: str,
         fake_rich_text: Optional[list[str]] = None,
         nickname: Optional[str] = None,
+        sender_is_bot: bool = False,
     ) -> str:
         note_manager = await get_context_notes(self.session.session_id)
         sender = await get_user(sender_id)
@@ -1040,6 +1050,7 @@ class MessageProcessor:
             state=state,
             pending_notes=pending_notes_text or None,
             fake_rich_text=fake_rich_text or None,
+            sender_is_bot=sender_is_bot,
         )
 
     async def filter_info_lines(self, lines: list[str]) -> list[str]:

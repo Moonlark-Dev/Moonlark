@@ -165,6 +165,7 @@ class GroupSession(BaseSession):
         if (
             wait_threshold < time_to_last_message
             and not self.cached_messages[-1]["self"]
+            and not self.cached_messages[-1].get("is_bot", False)
             and self.cached_messages[-1] is not self.cached_latest_message
             and recent_message_count < 26
         ):
