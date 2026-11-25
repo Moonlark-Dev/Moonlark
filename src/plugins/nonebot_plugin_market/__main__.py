@@ -215,7 +215,7 @@ async def handle_market_sell(bag_index: int, count: int, price: str, user_id: st
 async def handle_market_buy(name: str, count: int, user_id: str = get_user_id()) -> None:
     if count <= 0:
         await lang.finish("buy.wrong_count", user_id)
-    user = await get_user(user_id)
+    user = await get_user(user_id, writable=True)
     bought_count = 0
     used_vimcoin = 0.0
     async with get_session() as session:
@@ -231,10 +231,10 @@ async def handle_market_buy(name: str, count: int, user_id: str = get_user_id())
             if take <= 0:
                 continue
             total_price = round(data.price * take, 2)
-            if not await user.has_vimcoin(total_price):
+            # 扣费是带锁的原子操作（余额不足返回 False），不能再先查快照后扣费
+            if not await user.use_vimcoin(total_price):
                 continue
-            await user.use_vimcoin(total_price)
-            await (await get_user(data.user_id)).add_vimcoin(round(total_price * (1 - SELL_FEE_RATE), 2))
+            await (await get_user(data.user_id, writable=True)).add_vimcoin(round(total_price * (1 - SELL_FEE_RATE), 2))
             await give_market_item(take, data, user_id)
             await record_sell(session, data.item_namespace, take, data.price)
             data.remain_count -= take

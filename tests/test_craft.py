@@ -32,7 +32,7 @@ def fake_user(monkeypatch: pytest.MonkeyPatch) -> _FakeUser:
 
     user = _FakeUser()
 
-    async def fake_get_user(_user_id: str):
+    async def fake_get_user(_user_id: str, *, writable: bool = False):
         return user
 
     monkeypatch.setattr(nonebot_plugin_larkuser, "get_user", fake_get_user)

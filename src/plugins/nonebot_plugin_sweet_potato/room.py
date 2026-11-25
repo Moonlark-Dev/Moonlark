@@ -418,7 +418,7 @@ class HotPotatoRoom:
     async def apply_settlement(self) -> None:
         """结算：被爆者 -10 HP，所有玩家统一发放本局累计的 vi。"""
         for player in self.players:
-            user = await get_user(player.user_id)
+            user = await get_user(player.user_id, writable=True)
             if player is self.burned:
                 await user.damage(BURN_HP_PENALTY)
             reward = self.rewards.get(player.user_id, 0)

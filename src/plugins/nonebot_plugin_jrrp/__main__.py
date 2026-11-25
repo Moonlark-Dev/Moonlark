@@ -177,7 +177,7 @@ async def _reroll_handler(bot: Bot, event: Event, user_id: str = get_user_id(), 
     max_reroll_count = config.jrrp_reroll_max_count
 
     # 获取用户数据
-    user = await get_user(user_id)
+    user = await get_user(user_id, writable=True)
 
     # 获取当前人品值和已重算次数
     current_luck, reroll_count = await get_luck_value_with_reroll_count(user_id)
@@ -189,12 +189,9 @@ async def _reroll_handler(bot: Bot, event: Event, user_id: str = get_user_id(), 
     # 计算本次重算所需费用
     cost = config.jrrp_reroll_base_cost * (reroll_count + 1)
 
-    # 检查用户是否有足够的 vimcoin
-    if not await user.has_vimcoin(cost):
+    # 余额检查与扣费在同一次加锁修改里完成，避免并发时白嫖一次重算
+    if not await user.use_vimcoin(cost):
         await lang.finish("reroll.insufficient_vimcoin", user_id, cost, round(user.get_vimcoin(), 2), at_sender=True)
-
-    # 扣除 vimcoin
-    await user.use_vimcoin(cost)
 
     # 重新计算人品值
     result = await reroll_luck_value(user_id, max_reroll_count)

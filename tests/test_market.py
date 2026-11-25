@@ -549,7 +549,7 @@ async def test_handle_market_buy_pays_seller_and_records_sell(market_env: Any, m
     given: list[tuple[int, int, str]] = []
     finish = _finished_mock()
 
-    async def fake_get_user(user_id: str) -> _FakeUser:
+    async def fake_get_user(user_id: str, *, writable: bool = False) -> _FakeUser:
         return users[user_id]
 
     async def fake_get_market_item(_user_id: str, data: Any) -> _FakeStack:

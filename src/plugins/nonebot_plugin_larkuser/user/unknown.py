@@ -15,12 +15,21 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 
-from typing import Optional, NoReturn
+from typing import Any, Awaitable, Callable, NoReturn, Optional
 
+from nonebot_plugin_larkuser.models import UserData
 from nonebot_plugin_larkuser.user.base import MoonlarkUser, _UNSET, UnsetValue
 
 
 class MoonlarkUnknownUser(MoonlarkUser):
+    async def update(
+        self,
+        mutator: Callable[[UserData], Awaitable[Any] | Any],
+        *,
+        require_writable: bool = True,
+    ) -> NoReturn:
+        raise TypeError("无法对未知用户（-1）执行此操作！")
+
     async def set_data(
         self,
         user_id: str,

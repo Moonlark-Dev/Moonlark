@@ -15,16 +15,15 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ##############################################################################
 from datetime import datetime
-from typing import Optional
+import json
+from typing import Any, Awaitable, Callable, Optional
 
 from nonebot_plugin_orm import get_session
 
-from nonebot_plugin_larkuser.exceptions import UserNotRegistered
 from nonebot_plugin_larkuser.models import UserData
 from nonebot_plugin_larkuser.user.base import MoonlarkUser, UnsetValue, _UNSET, _is_set
 from nonebot_plugin_larkuser.utils.avatar import get_user_avatar
 from nonebot_plugin_larkutils import get_main_account
-import json
 
 guest_users = {}
 
@@ -42,26 +41,21 @@ class MoonlarkRegisteredUser(MoonlarkUser):
         config: Optional[dict] = None,
         downed_at: UnsetValue = _UNSET,
     ) -> None:
-        if self.get_register_time() is None:
-            raise UserNotRegistered
-        async with get_session() as session:
-            user = await session.get(UserData, self.user_id)
-            if user is None:
-                session.add(user := UserData(user_id=user_id, nickname=""))
+        def _write(row: UserData) -> None:
             if experience is not None:
-                user.experience = experience
+                row.experience = experience
             if vimcoin is not None:
-                user.vimcoin = vimcoin
+                row.vimcoin = vimcoin
             if health is not None:
-                user.health = health
+                row.health = health
             if favorability is not None:
-                user.favorability = favorability
+                row.favorability = favorability
             if config is not None:
-                user.config = json.dumps(config)
+                row.config = json.dumps(config)
             if _is_set(downed_at):
-                user.downed_at = downed_at
-            await session.commit()
-        await self.setup_user()
+                row.downed_at = downed_at
+
+        await self.update(_write)
 
     async def setup_user_id(self) -> None:
         main_account = await get_main_account(self.user_id)
@@ -76,15 +70,8 @@ class MoonlarkRegisteredUser(MoonlarkUser):
             if user is None:
                 self.user_has_nickname = False
                 return
-            self.nickname = user.nickname
-            self.register_time = user.register_time
-            self.vimcoin = user.vimcoin
-            self.experience = user.experience
-            self.health = user.health
-            self.downed_at = user.downed_at
-            self.fav = user.favorability
-            self.avatar = await get_user_avatar(self.user_id)
-            self.config = json.loads(user.config)
+            self._apply_values(self._row_values(user))
+        self.avatar = await get_user_avatar(self.user_id)
         if not self.nickname:
             self.nickname = f"用户-{self.user_id}"
             self.user_has_nickname = False
@@ -94,6 +81,16 @@ class MoonlarkRegisteredUser(MoonlarkUser):
 
 
 class MoonlarkRegisteredGuest(MoonlarkUser):
+    async def update(
+        self,
+        mutator: Callable[[UserData], Awaitable[Any] | Any],
+        *,
+        require_writable: bool = True,
+    ) -> None:
+        """游客数据只存在内存中、不落库，写操作保持原有的空实现语义。"""
+        if require_writable:
+            self.require_writable()
+
     async def set_data(
         self,
         user_id: str,

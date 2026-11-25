@@ -122,7 +122,7 @@ async def _get_hitokoto(user_id: str) -> str:
 
 async def _calc_sign_exp(user_id: str, sign_days: int) -> dict:
     """计算并增加签到经验值。返回 (text, origin, add, now)。"""
-    user = await get_user(user_id)
+    user = await get_user(user_id, writable=True)
     level = user.get_level()
     origin_exp = user.get_experience()
     exp = round(random.random() * level / 2 * max(user.get_fav(), 0.1) * min(sign_days + 1, 15) + 1)
@@ -155,7 +155,7 @@ def _expected_sign_vim(level: int, fav: float, sign_days: int) -> float:
 
 async def _calc_sign_vim(user_id: str, sign_days: int) -> dict:
     """计算并增加签到虚拟币。返回 (text, origin, add, now)。"""
-    user = await get_user(user_id)
+    user = await get_user(user_id, writable=True)
     origin = user.get_vimcoin()
     roll = random.random()  # nosec B311
     luck_roll = random.random()  # nosec B311
@@ -178,7 +178,7 @@ def _display_number(value: float) -> float | int:
 
 async def _calc_sign_fav(user_id: str) -> dict:
     """计算并增加签到好感度。返回 (text, origin, add, now)。"""
-    user = await get_user(user_id)
+    user = await get_user(user_id, writable=True)
     origin = user.get_display_fav()
     # 霉运 buff：签到获得的好感度按层数减半
     fav = 0.001 * await get_bad_luck_multiplier(user_id)
@@ -253,7 +253,7 @@ async def perform_sign(
 
             # 补签先扣费；余额不足时按未补签处理（重置连续签到）
             if do_resign and days_since > 1:
-                user = await get_user(user_id)
+                user = await get_user(user_id, writable=True)
                 if resign_cost is None:
                     resign_cost = get_resign_cost(user, missed_days)
                 if not await user.use_vimcoin(resign_cost):
@@ -300,7 +300,7 @@ async def perform_sign(
             day_count = offset + 1  # 第一天从 1 开始计
             got_vim += (await _calc_sign_vim(user_id, day_count))["add"]
             got_exp += (await _calc_sign_exp(user_id, day_count))["add"]
-        user = await get_user(user_id)
+        user = await get_user(user_id, writable=True)
         await user.add_fav(0.001 * missed_days * await get_bad_luck_multiplier(user_id))
         resign_result = {"days": missed_days, "vim": round(got_vim, 1), "exp": got_exp, "cost": resign_cost or 0}
 

@@ -755,7 +755,7 @@ async def test_game_full_word_trap_free_hints_wrong_and_full_reward(monkeypatch:
         async def add_vimcoin(self, amount: float) -> None:
             awarded_amounts.append(amount)
 
-    async def fake_get_user(_user_id: str) -> FakeUser:
+    async def fake_get_user(_user_id: str, *, writable: bool = False) -> FakeUser:
         return FakeUser()
 
     monkeypatch.setattr(game, "send_text", fake_send_text)

@@ -64,7 +64,7 @@ async def buy_goods(user_id: str, item_id: str, count: int) -> dict[str, int] | 
     price = get_goods_price(item_id)
     if price is None or count <= 0:
         return None
-    user = await get_user(user_id)
+    user = await get_user(user_id, writable=True)
     if not await user.use_vimcoin(price * count):
         return None
 

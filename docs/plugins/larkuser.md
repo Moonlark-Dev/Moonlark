@@ -37,14 +37,31 @@ async def prompt(
 ## 获取用户信息 `get_user`
 
 ```python
-async def get_user(user_id: str) -> MoonlarkUser:
+async def get_user(user_id: str, writable: bool = False) -> MoonlarkUser:
 ```
 
 获取 Moonlark 用户对象，根据用户是否注册返回不同类型的用户对象。
 
+返回的对象持有读取时的一份数据快照。**修改 VimCoin、经验、好感度、血量等数值时，必须
+传入 `writable=True` 显式声明写意图**，否则写方法会抛出 `UserNotWritable`：
+
+```python
+user = await get_user(user_id, writable=True)
+await user.add_vimcoin(10)
+```
+
+写操作会在该用户的异步写锁内重新读取数据库中的最新值再修改，同一用户的并发写入会被
+串行化，因此多个响应器同时给同一个用户加减 VimCoin 时不会丢失更新。只读场景（展示
+昵称、余额、排行榜等）保持默认的 `writable=False` 即可。
+
+需要「读取 + 条件写入」原子完成的场景（例如先判断余额是否足够再扣费），使用
+`user.update(callback)`：回调在锁内收到最新的 `UserData` 行，可以直接判断并修改，
+回调的返回值会原样返回。
+
 ### 参数
 
 - `user_id`: 用户 ID。
+- `writable`: 是否允许修改该用户的数值数据，默认 `False`。
 
 ### 返回
 
@@ -162,6 +179,12 @@ class MoonlarkUser(ABC):
     def get_register_time(self) -> Optional[datetime]:
     def get_level(self) -> int:
     def is_registered(self) -> bool:
+    async def update(
+        self,
+        mutator: Callable[[UserData], Awaitable[Any] | Any],
+        *,
+        require_writable: bool = True,
+    ) -> Any:
     async def set_data(
         self,
         user_id: str,
@@ -185,6 +208,7 @@ Moonlark 用户操作基类，定义了用户相关的各种操作方法。
 ### 属性
 
 - `user_id`: 用户 ID。
+- `writable`: 该句柄是否被标记为可写（见 `get_user` 的 `writable` 参数）。
 - `register_time`: 注册时间。
 - `avatar`: 用户头像字节数据。
 - `nickname`: 用户昵称。
@@ -201,6 +225,9 @@ Moonlark 用户操作基类，定义了用户相关的各种操作方法。
 - `setup_user`: 设置用户信息。
 - `setup_user_id`: 设置用户 ID。
 - `is_main_account`: 检查是否为主账号。
+- `is_writable`: 检查句柄是否可写。
+- `require_writable`: 句柄不可写时抛出 `UserNotWritable`。
+- `update`: 在用户写锁内读取最新数据行并应用回调（可在回调里完成条件写入）。
 - `get_nickname`: 获取用户昵称。
 - `has_nickname`: 检查用户是否有昵称。
 - `get_avatar`: 获取用户头像字节数据。
@@ -214,11 +241,11 @@ Moonlark 用户操作基类，定义了用户相关的各种操作方法。
 - `get_level`: 获取用户等级。
 - `get_fav_level`: 获取本地化后的好感等级名称。
 - `is_registered`: 检查用户是否已注册。
-- `set_data`: 设置用户数据。
+- `set_data`: 设置用户数据（需要可写句柄）。
 - `add_fav`: 增加用户好感度。
 - `add_experience`: 增加用户经验值。
 - `add_vimcoin`: 增加用户 VimCoin 数量。
-- `use_vimcoin`: 使用用户 VimCoin。
+- `use_vimcoin`: 使用用户 VimCoin；余额判断与扣费在同一把锁内完成，余额不足返回 `False`。
 - `has_vimcoin`: 检查用户是否有足够的 VimCoin。
 - `get_config_key`: 获取用户配置项。
 - `set_config_key`: 设置用户配置项。

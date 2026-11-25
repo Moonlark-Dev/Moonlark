@@ -70,7 +70,7 @@ class GiftManager:
 
         # 获取用户信息
         user_id = stack.user_id
-        user = await get_user(user_id)
+        user = await get_user(user_id, writable=True)
 
         # 增加好感度
         fav_value = item.fav_value * stack.count

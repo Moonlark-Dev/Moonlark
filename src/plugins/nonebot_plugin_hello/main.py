@@ -68,7 +68,7 @@ async def _(event: Event, user_id: str = get_user_id(), session_id: str = get_gr
     if is_chat_enabled(event, session_id):
         return
     await complete_schedule(user_id, "at")
-    user = await get_user(user_id)
+    user = await get_user(user_id, writable=True)
     fav = user.get_fav()
     if fav < 0.007 or not user.is_registered():
         await lang.finish("at.unregistered", user_id)
