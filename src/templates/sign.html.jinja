@@ -121,6 +121,13 @@
             width: 80px;
         }
 
+        /* 新用户福利说明：附在 VimCoin 行下面的整行小字 */
+        .sign-table .sign-bonus {
+            color: #4caf50;
+            font-size: 12px;
+            padding-top: 0;
+        }
+
         .sign-sep {
             border: none;
             border-top: 1px solid #e0e0e0;
@@ -187,6 +194,11 @@
                 <td class="col-new">{{ vim.now }}</td>
                 <td class="col-diff">(+{{ vim.add }})</td>
             </tr>
+            {% if bonus %}
+            <tr>
+                <td colspan="5" class="sign-bonus">{{ bonus }}</td>
+            </tr>
+            {% endif %}
             <tr>
                 <td class="col-label">{{ exp.text }}</td>
                 <td class="col-old">{{ exp.origin }}</td>

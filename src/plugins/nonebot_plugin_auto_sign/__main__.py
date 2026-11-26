@@ -64,6 +64,9 @@ async def send_result_email(user_id: str, result: dict[str, Any]) -> None:
     ]
     if result["ticket_gained"]:
         lines.append(await lang.text("email.ticket_gained", user_id, result["sign_days"]))
+    if (bonus := result["vim"]["bonus"]) > 0:
+        # 新用户福利：VimCoin 的 +N 里已经含这笔固定奖励，这里单独说明来源
+        lines.append(await lang.text("email.new_user_bonus", user_id, f"{bonus:g}"))
     lines.append(await lang.text("email.consumed", user_id))
     await send_email([user_id], await lang.text("email.subject", user_id), "\n".join(lines))
 

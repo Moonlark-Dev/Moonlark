@@ -56,6 +56,11 @@ AUTO_SIGN_TICKET_REWARD_DAYS = 5
 # 签到 VimCoin 公式中连续签到天数的封顶值
 SIGN_VIM_DAY_CAP = 15
 
+# 新用户签到福利：前 SIGN_NEW_USER_BONUS_TIMES 次使用签到（按累计签到次数算，不受断签影响），
+# 每次额外获得 SIGN_NEW_USER_BONUS_VIM VimCoin。此前已经注册但从未签到的用户同样算新用户。
+SIGN_NEW_USER_BONUS_TIMES = 3
+SIGN_NEW_USER_BONUS_VIM = 100
+
 # 补签的 VimCoin 回收率：只补 1 天可收回 50%，补满 15 天只能收回 10%，中间线性递减。
 # 补签费用 = 补签奖励的期望值 / 回收率，因此补的天数越多，花掉的 VimCoin 越亏。
 # 注意：补签只允许漏签 14 天以内（距上次签到 15 天），因此实际最高回收率约 12.9%，
@@ -153,8 +158,12 @@ def _expected_sign_vim(level: int, fav: float, sign_days: int) -> float:
     return _sign_vim_formula(level, fav, sign_days, 0.5, 0.5)
 
 
-async def _calc_sign_vim(user_id: str, sign_days: int) -> dict:
-    """计算并增加签到虚拟币。返回 (text, origin, add, now)。"""
+async def _calc_sign_vim(user_id: str, sign_days: int, bonus: float = 0.0) -> dict:
+    """计算并增加签到虚拟币。返回 (text, origin, add, now)。
+
+    bonus 是固定额外奖励（新用户福利），不参与随机公式、也不受霉运 buff 影响；
+    它单独记在 ``bonus`` 字段里，并计入 ``add``（``add`` 始终等于本次实际入账总和）。
+    """
     user = await get_user(user_id, writable=True)
     origin = user.get_vimcoin()
     roll = random.random()  # nosec B311
@@ -163,9 +172,13 @@ async def _calc_sign_vim(user_id: str, sign_days: int) -> dict:
     # 霉运 buff：签到获得的 VimCoin 按层数减半
     vim = round(vim * await get_bad_luck_multiplier(user_id), 1)
     await user.add_vimcoin(vim)
+    if bonus > 0:
+        await user.add_vimcoin(bonus)
     return {
         "text": await lang.text("image.vim", user_id),
-        "add": vim,
+        "add": round(vim + bonus, 1),
+        "formula": vim,
+        "bonus": round(bonus, 1),
         "origin": round(origin, 1),
         "now": round(user.get_vimcoin(), 1),
     }
@@ -275,6 +288,10 @@ async def perform_sign(
                 sd.auto_count += 1
                 sd.auto_used += 1
 
+            # 累计签到次数：新用户福利按「使用签到的次数」发放，不受断签/补签影响
+            sd.total_sign_count += 1
+            total_sign_count = sd.total_sign_count
+
             # 排名（基于当前已签到人数）
             signed_today = (
                 (await session.execute(select(SignData.user_id).where(SignData.last_sign == date.today())))
@@ -287,8 +304,10 @@ async def perform_sign(
             await session.commit()
 
     # ====== 当天奖励（用户数据，不涉及 SignData 锁） ======
+    # 新用户福利：前 3 次使用签到每次额外奖励固定数量的 VimCoin
+    bonus_vim = SIGN_NEW_USER_BONUS_VIM if total_sign_count <= SIGN_NEW_USER_BONUS_TIMES else 0
     exp = await _calc_sign_exp(user_id, final_sign_days)
-    vim = await _calc_sign_vim(user_id, final_sign_days)
+    vim = await _calc_sign_vim(user_id, final_sign_days, bonus_vim)
     fav = await _calc_sign_fav(user_id)
 
     # ====== 补签奖励：逐天累加 ======
@@ -318,6 +337,7 @@ async def perform_sign(
         "fav": fav,
         "ticket_gained": ticket_gained,
         "resign": resign_result,
+        "total_sign_count": total_sign_count,
     }
 
 
@@ -447,6 +467,16 @@ class SignHandler:
                 "text": await lang.text("image.ticket", self.user_id),
                 "value": await lang.text("image.ticket_text", self.user_id, self._result["ticket_gained"]),
             }
+        if (bonus := self._result["vim"]["bonus"]) > 0:
+            # 新用户福利：说明这次额外的 100vi 是从哪来的
+            self._templates["bonus"] = await lang.text(
+                "image.new_user_bonus",
+                self.user_id,
+                SIGN_NEW_USER_BONUS_TIMES,
+                _display_number(bonus),
+                self._result["total_sign_count"],
+                SIGN_NEW_USER_BONUS_TIMES,
+            )
         user = await get_user(self.user_id)
         self._templates["nickname"] = user.nickname
         self._templates["uid"] = await lang.text("image.uid", self.user_id, self.user_id)
