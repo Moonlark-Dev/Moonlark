@@ -1083,7 +1083,7 @@ class MessageProcessor:
         return False
 
     async def generate_event_additional_info(self) -> str:
-        """生成事件的 additional_info，包含 token 和当前状态"""
+        """生成事件的 additional_info，包含当前状态（群聊额外包含剩余 Token）"""
         from .ego import moonlark_main
 
         status_manager = get_status_manager()
@@ -1101,12 +1101,22 @@ class MessageProcessor:
 
         pending_notes_text = self._get_pending_notes_text()
 
-        return await self.session.text(
-            "prompt.event_additional_info",
-            round(self.token_bucket.get(), 2),
-            state,
-            tiredness,
-        ) + (f"\n待定笔记:\n{pending_notes_text}" if pending_notes_text else "")
+        # Token 池只在群聊中生效，私聊的 additional_info 不展示剩余 Token
+        if self.session.get_session_type() == "group":
+            additional_info = await self.session.text(
+                "prompt.event_additional_info",
+                round(self.token_bucket.get(), 2),
+                state,
+                tiredness,
+            )
+        else:
+            additional_info = await self.session.text(
+                "prompt.event_additional_info_private",
+                state,
+                tiredness,
+            )
+
+        return additional_info + (f"\n待定笔记:\n{pending_notes_text}" if pending_notes_text else "")
 
     async def get_interaction_mode(self) -> str:
         async with get_session() as db_session:
