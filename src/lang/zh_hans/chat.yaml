@@ -280,6 +280,11 @@ prompt:
     {}
     困倦度：{}%
     </additional_info>
+  event_additional_info_private: |
+    <additional_info>
+    {}
+    困倦度：{}%
+    </additional_info>
   note:
     format: "- {} (#{}，创建于 {})"
     none: "暂无"
