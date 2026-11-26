@@ -16,13 +16,13 @@ from nonebot_plugin_schedule.utils import complete_schedule
 from nonebot_plugin_chat.core.session import post_group_event
 from nonebot_plugin_larkuser.utils.nickname import get_nickname
 from nonebot_plugin_alconna import Args, Alconna, Button, Subcommand, UniMessage, on_alconna
-from nonebot_plugin_larkutils.jrrp import get_luck_value, reroll_luck_value, get_luck_value_with_reroll_count
+from nonebot_plugin_larkutils.jrrp import get_luck_value, get_luck_value_with_reroll_count
 
 from .lang import lang
 from .config import config
 from .trend import render_luck_trend_chart
 from .card import render_luck_card
-from .utils import get_luck_trend, save_luck_trend, get_luck_message
+from .utils import get_luck_trend, save_luck_trend, get_luck_message, perform_reroll
 
 logger = getLogger(__name__)
 
@@ -176,39 +176,37 @@ async def _reroll_handler(bot: Bot, event: Event, user_id: str = get_user_id(), 
     """重新计算今日人品值."""
     max_reroll_count = config.jrrp_reroll_max_count
 
-    # 获取用户数据
+    # 读次数、计费、扣费、重算在同一把用户级锁内完成，并发重算才会按 1/2/3 次逐档计费
     user = await get_user(user_id, writable=True)
+    outcome = await perform_reroll(user, user_id, max_reroll_count, config.jrrp_reroll_base_cost)
 
-    # 获取当前人品值和已重算次数
-    current_luck, reroll_count = await get_luck_value_with_reroll_count(user_id)
-
-    # 检查是否已达到重算上限
-    if reroll_count >= max_reroll_count:
+    if outcome.status == "max_reached":
         await lang.finish("reroll.max_reached", user_id, max_reroll_count, at_sender=True)
-
-    # 计算本次重算所需费用
-    cost = config.jrrp_reroll_base_cost * (reroll_count + 1)
-
-    # 余额检查与扣费在同一次加锁修改里完成，避免并发时白嫖一次重算
-    if not await user.use_vimcoin(cost):
-        await lang.finish("reroll.insufficient_vimcoin", user_id, cost, round(user.get_vimcoin(), 2), at_sender=True)
-
-    # 重新计算人品值
-    result = await reroll_luck_value(user_id, max_reroll_count)
-    if result is None:
-        if current_luck > 100:
-            await lang.finish("reroll.beyond_perfect", user_id, at_sender=True)
-        elif current_luck == 100:
-            await lang.finish("reroll.perfect_luck", user_id, at_sender=True)
-        await lang.finish("reroll.max_reached", user_id, max_reroll_count, at_sender=True)
-
-    new_luck, new_reroll_count = result
+    if outcome.status == "beyond_perfect":
+        await lang.finish("reroll.beyond_perfect", user_id, at_sender=True)
+    if outcome.status == "perfect_luck":
+        await lang.finish("reroll.perfect_luck", user_id, at_sender=True)
+    if outcome.status == "insufficient_vimcoin":
+        await lang.finish(
+            "reroll.insufficient_vimcoin",
+            user_id,
+            outcome.cost,
+            round(outcome.balance, 2),
+            at_sender=True,
+        )
 
     # 记录重算后的人品走势
-    await save_luck_trend(user_id, new_luck, new_reroll_count)
+    await save_luck_trend(user_id, outcome.luck_value, outcome.reroll_count)
 
     # 发送结果
-    await lang.send("reroll.success", user_id, new_reroll_count, max_reroll_count, cost, at_sender=True)
+    await lang.send(
+        "reroll.success",
+        user_id,
+        outcome.reroll_count,
+        max_reroll_count,
+        outcome.cost,
+        at_sender=True,
+    )
 
     await process_jrrp_command(group_id, user_id, bot, event)
 
