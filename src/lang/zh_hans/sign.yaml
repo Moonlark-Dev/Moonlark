@@ -10,6 +10,7 @@ image:
   uid: 'UID: {}'
   fortune: 运势
   fav: 好感
+  new_user_bonus: 新人福利：前 {} 次签到额外 +{}vi（第 {}/{} 次）
   ticket: 自动签到券
   ticket_text: 'x{}'
   hitokoto: 剑阁峥嵘而崔嵬，一夫当关，万夫莫开。

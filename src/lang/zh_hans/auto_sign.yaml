@@ -8,4 +8,5 @@ email:
   vim: VimCoin：+{}（当前 {}）
   fav: 好感：+{}‰
   ticket_gained: 连续签到已满 {} 天，获得自动签到券 x1！
+  new_user_bonus: 新人福利：本次签到额外获得 +{} VimCoin（前 3 次签到福利）
   consumed: 本次消耗：自动签到券 x1

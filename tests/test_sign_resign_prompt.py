@@ -165,9 +165,10 @@ async def test_render_result_remembers_setu_image_id(monkeypatch: pytest.MonkeyP
         "sign_days": 3,
         "rank": 1,
         "exp": {"text": "", "origin": 0, "now": 1, "add": 1},
-        "vim": {"text": "", "add": 1, "origin": 0, "now": 1},
+        "vim": {"text": "", "add": 1, "origin": 0, "now": 1, "formula": 1, "bonus": 0},
         "fav": {"text": "", "add": 1, "now": 1, "origin": 0},
         "ticket_gained": 0,
+        "total_sign_count": 1,
     }
     handler.send_card = AsyncMock()  # type: ignore[method-assign]
 
