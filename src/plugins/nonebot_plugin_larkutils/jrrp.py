@@ -97,6 +97,11 @@ async def get_luck_value_with_reroll_count(user_id: str) -> Tuple[int, int]:
     return await _get_today_luck_value(user_id)
 
 
+def get_max_luck_value(today: Optional[date] = None) -> int:
+    """今日可抽到的人品值上限（6 月 1-15 日有 +50 偏移）"""
+    return 100 + _get_june_bias(today)
+
+
 async def reroll_luck_value(user_id: str, max_reroll_count: int) -> Optional[Tuple[int, int]]:
     """
     重新计算今日人品值
@@ -114,7 +119,7 @@ async def reroll_luck_value(user_id: str, max_reroll_count: int) -> Optional[Tup
     """
     today = date.today()
     bias = _get_june_bias(today)
-    max_luck = 100 + bias
+    max_luck = get_max_luck_value(today)
 
     async def reroll() -> Optional[Tuple[int, int]]:
         async with get_session() as session:

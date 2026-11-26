@@ -1,6 +1,16 @@
+from asyncio import Lock
+from contextlib import asynccontextmanager
+from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta, timezone
+from typing import AsyncGenerator, Literal
 
-from nonebot_plugin_larkutils.jrrp import get_luck_value
+from nonebot_plugin_larkuser import MoonlarkUser
+from nonebot_plugin_larkutils.jrrp import (
+    get_luck_value,
+    get_luck_value_with_reroll_count,
+    get_max_luck_value,
+    reroll_luck_value,
+)
 from nonebot_plugin_larkutils.sql import retry_on_db_conflict
 from nonebot_plugin_orm import get_session
 from sqlalchemy import select
@@ -86,3 +96,86 @@ async def get_luck_trend(
             .order_by(LuckTrend.record_date.asc()),
         )
         return list(result.all())
+
+
+# 同一用户的重算必须串行执行：「读已重算次数 → 计费 → 扣费 → 写回次数」之间有多个
+# await，并发时几个协程会基于同一份「第 1 次」快照各自按首档价格扣费，最后写回的
+# reroll_count 还会互相覆盖（SQLite 会忽略 with_for_update，单进程内也能复现）。
+# 这里用一把按用户回收的锁把整段临界区串行化；跨进程仍由 LuckValue 的
+# SELECT ... FOR UPDATE 与 retry_on_db_conflict 兜底。
+_reroll_locks: dict[str, Lock] = {}
+_reroll_waiters: dict[str, int] = {}
+
+
+@asynccontextmanager
+async def _reroll_lock(user_id: str) -> AsyncGenerator[None, None]:
+    lock = _reroll_locks.get(user_id)
+    if lock is None:
+        lock = _reroll_locks[user_id] = Lock()
+    _reroll_waiters[user_id] = _reroll_waiters.get(user_id, 0) + 1
+    try:
+        async with lock:
+            yield
+    finally:
+        remaining = _reroll_waiters[user_id] - 1
+        if remaining > 0:
+            _reroll_waiters[user_id] = remaining
+        else:
+            _reroll_waiters.pop(user_id, None)
+            _reroll_locks.pop(user_id, None)
+
+
+RerollStatus = Literal["ok", "max_reached", "beyond_perfect", "perfect_luck", "insufficient_vimcoin"]
+
+
+@dataclass(frozen=True)
+class RerollOutcome:
+    """一次重算的结果，调用方据此决定提示文案。"""
+
+    status: RerollStatus
+    luck_value: int = 0
+    reroll_count: int = 0
+    cost: int = 0
+    balance: float = 0.0
+
+
+async def perform_reroll(
+    user: MoonlarkUser,
+    user_id: str,
+    max_reroll_count: int,
+    base_cost: int,
+) -> RerollOutcome:
+    """在用户级锁内完成「读次数 → 判上限 → 计费 → 扣费 → 重算」。
+
+    费用必须与真正消耗掉的那一次重算对应，所以读次数、扣费、写回次数要在同一个临界区
+    里：并发重算才会依次拿到 1/2/3 次和逐档递增的价格，而不是全按首档计费。
+    """
+    async with _reroll_lock(user_id):
+        current_luck, reroll_count = await get_luck_value_with_reroll_count(user_id)
+
+        if reroll_count >= max_reroll_count:
+            return RerollOutcome(status="max_reached")
+
+        # 人品值已经到顶时不能再重算。先判上限再扣费，避免扣了钱却没能重算
+        if current_luck >= get_max_luck_value():
+            return RerollOutcome(status="beyond_perfect" if current_luck > 100 else "perfect_luck")
+
+        cost = base_cost * (reroll_count + 1)
+
+        # 余额检查与扣费在同一次加锁修改里完成，避免并发时白嫖一次重算
+        if not await user.use_vimcoin(cost):
+            return RerollOutcome(status="insufficient_vimcoin", cost=cost, balance=user.get_vimcoin())
+
+        result = await reroll_luck_value(user_id, max_reroll_count)
+        if result is None:
+            # 锁内刚检查过次数与上限，正常不会走到这里；真发生了就把钱退回去
+            await user.add_vimcoin(cost)
+            return RerollOutcome(status="max_reached")
+
+        new_luck, new_reroll_count = result
+        return RerollOutcome(
+            status="ok",
+            luck_value=new_luck,
+            reroll_count=new_reroll_count,
+            cost=cost,
+        )

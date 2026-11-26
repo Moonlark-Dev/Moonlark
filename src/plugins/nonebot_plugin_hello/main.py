@@ -65,7 +65,8 @@ from nonebot_plugin_chat.utils.group import enabled_group as is_chat_enabled
 async def _(event: Event, user_id: str = get_user_id(), session_id: str = get_group_id()) -> None:
     if event.get_plaintext():
         return
-    if is_chat_enabled(event, session_id):
+    # enabled_group 是协程：漏掉 await 会拿到一个恒为真的协程对象，@Bot 将永远不回复
+    if await is_chat_enabled(event, session_id):
         return
     await complete_schedule(user_id, "at")
     user = await get_user(user_id, writable=True)

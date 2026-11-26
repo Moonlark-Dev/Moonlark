@@ -73,18 +73,25 @@ async def render_luck_trend_chart(
     # 为每个数据点设置颜色
     point_colors = [_get_luck_color(v) for v in values]
 
-    # 绘制折线
+    # 绘制折线；圆点单独用 scatter 画，才能逐点配色
     ax.plot(
         date_nums,
         values,
         color="#6C5CE7",
         linewidth=2,
-        marker="o",
-        markersize=8,
-        markerfacecolor=point_colors,
-        markeredgecolor="#2D3436",
-        markeredgewidth=1,
         zorder=3,
+    )
+    # ``markerfacecolor`` 只接受单个颜色，传颜色列表会被 matplotlib 当作 RGBA 序列
+    # 解析并在 savefig 时抛 ``ValueError: Invalid RGBA argument``——就是 ``/jrrp t``
+    # 一条消息都发不出来的原因。scatter 的 ``c`` 支持颜色列表，逐点配色用它。
+    ax.scatter(
+        date_nums,
+        values,
+        s=64,
+        c=point_colors,
+        edgecolors="#2D3436",
+        linewidths=1,
+        zorder=4,
     )
 
     # 绘制平均值线
