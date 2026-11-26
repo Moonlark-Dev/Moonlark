@@ -1,0 +1,20 @@
+description: |
+  抽取塔罗牌并进行占卜，返回每个位置的牌名、正逆位与牌义。
+  **何时使用**: 当群友想抽塔罗牌、问运势、问感情/事业/选择，或明确提到“塔罗”“抽牌”“占卜”时调用。
+  **使用说明**:
+  - `spread` 选择牌型：single（单张牌，快速指引）、three（三张牌，过去/现在/未来）、celtic_cross（凯尔特十字，十张牌，全面分析）。
+  - `question` 原样填写提问者的问题，不要改写、概括或补充；工具会在结果中原样返回该问题。
+  - 返回值已经包含每个位置的牌与含义。请结合牌义和问题给出解读，不要虚构没有抽到的牌。
+parameters:
+  - name: spread
+    description: "牌型：single=单张牌（快速指引），three=三张牌（过去/现在/未来），celtic_cross=凯尔特十字（十张牌，全面分析）。"
+    type: string
+    required: true
+    enum:
+      - single
+      - three
+      - celtic_cross
+  - name: question
+    description: "提问者的问题，原样填写，不要改写或概括。"
+    type: string
+    required: true

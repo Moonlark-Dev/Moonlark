@@ -48,6 +48,7 @@ from .tools import (
     get_weather,
     download_image,
     ImageDownloadError,
+    draw_tarot_cards,
 )
 from ..utils.emoji import QQ_EMOJI_MAP
 from .portrait import PORTRAIT_FILE_NAME, PORTRAIT_MIME_TYPE, get_moonlark_portrait
@@ -184,6 +185,18 @@ class ToolManager:
             f"[图片] 这是你通过 request_image 加载的图片（来源：{url}），请查看其内容。",
         )
         return "图片已加入当前对话，你可以在接下来的回复中直接查看"
+
+    async def draw_tarot(self, spread: str, question: str) -> str:
+        """抽取塔罗牌并返回各个位置的牌与含义
+
+        Args:
+            spread: 牌型（single / three / celtic_cross）
+            question: 提问者的问题，会原样出现在返回结果中
+
+        Returns:
+            各位置的牌名、正逆位与牌义
+        """
+        return await draw_tarot_cards(spread, question, self.text)
 
     async def calculate_luck_value(self, nickname: str) -> str:
         """计算用户的人品值
@@ -346,6 +359,9 @@ class ToolManager:
 
             # draw_image
             tools.append(self.draw_image)
+
+            # draw_tarot
+            tools.append(self.draw_tarot)
 
             # calculate_luck_value
             tools.append(self.calculate_luck_value)

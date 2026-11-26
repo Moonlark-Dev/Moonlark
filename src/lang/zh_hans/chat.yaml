@@ -645,6 +645,24 @@ weather:
     湿度：{}%
     数据更新时间：{}
 
+tarot:
+  header: |
+    🔮 塔罗牌占卜
+    问题：{}
+    牌型：{}
+  item: |
+    - {}（{}）：{}（{}）· {}
+      含义：{}
+  upright: "正位"
+  reversed: "逆位"
+  spread:
+    single: "单张牌（快速指引）"
+    three: "三张牌（过去 / 现在 / 未来）"
+    celtic_cross: "凯尔特十字（十张牌）"
+  invalid_spread: |
+    未知的牌型「{}」。可用牌型：{}。
+    问题：{}
+
 abbreviation:
   success: "可能的含义如下：\n{}"
   not_found: "未找到该缩写的含义"
