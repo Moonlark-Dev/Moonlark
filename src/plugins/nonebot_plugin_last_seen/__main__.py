@@ -4,7 +4,7 @@ from nonebot import on_message, logger
 from nonebot.adapters import Bot, Event
 from nonebot_plugin_alconna import Alconna, Args, on_alconna, Match, At
 from nonebot_plugin_larkuser.utils.nickname import get_nickname
-from nonebot_plugin_larkutils import get_user_id, get_group_id, is_private_message
+from nonebot_plugin_larkutils import get_main_account, get_user_id, get_group_id, is_private_message
 from nonebot_plugin_larklang import LangHelper
 from nonebot_plugin_orm import get_session
 from sqlalchemy import select
@@ -135,13 +135,17 @@ async def handle_lastseen(
 ) -> None:
     """Handle the /lastseen command"""
     # Determine target user
-    target_user_id = sender_id
+    raw_target_user_id = sender_id
     if user.available:
         if isinstance(user.result, At):
-            target_user_id = user.result.target
+            raw_target_user_id = user.result.target
         else:
-            target_user_id = str(user.result).strip()
-    nickname = await get_nickname(target_user_id, bot, event)
+            raw_target_user_id = str(user.result).strip()
+    # 昵称要按适配器原生 ID 取（QQ 官方适配器下 At 的目标是 openid，平台接口只认它）
+    nickname = await get_nickname(raw_target_user_id, bot, event)
+    # 记录以主账号 ID（QQ 号）为键存储，而 QQ 官方适配器的 At 目标 / 用户 ID 是 openid，
+    # 直接拿原生 ID 查询会读到映射前遗留的旧 openid 记录（看起来“不更新”）或查不到记录。
+    target_user_id = await get_main_account(raw_target_user_id)
     global_info = await get_last_seen_info(sender_id, target_user_id, GLOBAL_SESSION_ID, "global")
 
     items = []
