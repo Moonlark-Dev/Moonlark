@@ -130,23 +130,23 @@ async def build_history_caption(user_id: str, points: list[DailyCandlePoint]) ->
 async def send_history_chart(
     bot: Bot,
     event: Event,
+    user_id: str,
     caption: str,
     chart: Optional[bytes],
 ) -> None:
-    """发送日 K 线历史：QQ 官方用 markdown 图床，其它适配器直接发图片"""
-    if chart is None:
-        await trade.finish(caption)
-        return
+    """发送日 K 线历史：QQ 官方用 markdown 图床 + 键盘，其它适配器直接发图片"""
     if isinstance(bot, QQBot):
         text = caption
-        try:
-            text = f"{text}\n\n{await create_image_markdown(chart, bot)}"
-        except Exception:
-            logger.exception("上传日 K 线图失败，回退到文本消息")
-            await trade.finish(caption)
-            return
-        await UniMessage().style(text, "markdown").send(target=event, bot=bot)
-        await trade.finish()
+        if chart is not None:
+            try:
+                text = f"{text}\n\n{await create_image_markdown(chart, bot)}"
+            except Exception:
+                logger.exception("上传日 K 线图失败，回退到文本消息")
+                text = caption
+        await send_trade_keyboard(bot, event, text, await build_history_keyboard(user_id))
+        return
+    if chart is None:
+        await trade.finish(caption)
         return
     try:
         await (UniMessage().text(caption) + UniMessage().image(raw=chart)).send(target=event, bot=bot)
@@ -157,33 +157,73 @@ async def send_history_chart(
     await trade.finish()
 
 
-def _keyboard_row(button_count: int) -> int | None:
-    """按钮超过 3 个时分两行，每行最多 3 个，避免 QQ 标签被截断"""
-    return (button_count + 1) // 2 if button_count > 3 else None
-
-
-async def build_trade_keyboard(user_id: str) -> list[Button]:
+# QQ 官方适配器把「没有 row 参数的 Keyboard 段」当作一行按钮，所以每行单独 append 一个 Keyboard 段，
+# 而不是把全部按钮塞进一段再用 row 平均分行——两者渲染出来的行分组并不一样。
+# 每行最多 3 个按钮，避免按钮标签被截断。
+async def build_trade_keyboard(user_id: str) -> list[list[Button]]:
+    """交易面板键盘（3 行）：买入、卖出各一行，行情导航占一行"""
     prefix = get_command_prefix()
     return [
-        # 股数由用户自行填写，所以用 input 类型：点击后把 `/trade buy `、`/trade sell ` 预填进输入框，
-        # 用户补上股数（买入还可填 50%、all）再发送；enter 类型会直接发出固定股数，改不了数量。
-        Button("input", await lang.text("button.buy", user_id), text=f"{prefix}trade buy "),
-        Button("enter", await lang.text("button.buy_all", user_id), text=f"{prefix}trade buy all"),
-        Button("input", await lang.text("button.sell", user_id), text=f"{prefix}trade sell "),
-        Button("enter", await lang.text("button.sell_all", user_id), text=f"{prefix}trade sell all"),
-        Button("enter", await lang.text("button.refresh", user_id), text=f"{prefix}trade"),
+        [
+            # 股数由用户自行填写，所以用 input 类型：点击后把 `/trade buy `、`/trade sell ` 预填进输入框，
+            # 用户补上股数（买入还可填 50%、all）再发送；enter 类型会直接发出固定股数，改不了数量。
+            Button("input", await lang.text("button.buy", user_id), text=f"{prefix}trade buy "),
+            Button("enter", await lang.text("button.buy_all", user_id), text=f"{prefix}trade buy all"),
+        ],
+        [
+            Button("input", await lang.text("button.sell", user_id), text=f"{prefix}trade sell "),
+            Button("enter", await lang.text("button.sell_all", user_id), text=f"{prefix}trade sell all"),
+        ],
+        [
+            Button("enter", await lang.text("button.refresh", user_id), text=f"{prefix}trade"),
+            Button("enter", await lang.text("button.daily_kline", user_id), text=f"{prefix}trade history"),
+            Button("enter", await lang.text("button.rank", user_id), text=f"{prefix}trade rank"),
+        ],
     ]
 
 
-async def send_trade_text_with_keyboard(bot: Bot, event: Event, user_id: str, text: str) -> None:
-    buttons = await build_trade_keyboard(user_id)
-    await (
-        UniMessage()
-        .style(text, "markdown")
-        .keyboard(*buttons, row=_keyboard_row(len(buttons)))
-        .send(target=event, bot=bot)
-    )
+async def build_trade_result_keyboard(user_id: str) -> list[list[Button]]:
+    """买入/卖出结果消息的键盘：沿用原来的 5 个按钮（第一行 3 个，第二行 2 个）"""
+    prefix = get_command_prefix()
+    return [
+        [
+            Button("input", await lang.text("button.buy", user_id), text=f"{prefix}trade buy "),
+            Button("enter", await lang.text("button.buy_all", user_id), text=f"{prefix}trade buy all"),
+            Button("input", await lang.text("button.sell", user_id), text=f"{prefix}trade sell "),
+        ],
+        [
+            Button("enter", await lang.text("button.sell_all", user_id), text=f"{prefix}trade sell all"),
+            Button("enter", await lang.text("button.refresh", user_id), text=f"{prefix}trade"),
+        ],
+    ]
+
+
+async def build_history_keyboard(user_id: str) -> list[list[Button]]:
+    """日 K 线历史键盘（2 行）：盈亏排行、五分钟 K 线各占一行"""
+    prefix = get_command_prefix()
+    return [
+        [Button("enter", await lang.text("button.rank", user_id), text=f"{prefix}trade rank")],
+        [Button("enter", await lang.text("button.chart_5m", user_id), text=f"{prefix}trade")],
+    ]
+
+
+async def build_rank_keyboard(user_id: str) -> list[list[Button]]:
+    """收益排行榜键盘（1 行）：回到交易面板查看行情"""
+    prefix = get_command_prefix()
+    return [[Button("enter", await lang.text("button.market", user_id), text=f"{prefix}trade")]]
+
+
+async def send_trade_keyboard(bot: Bot, event: Event, text: str, rows: list[list[Button]]) -> None:
+    """发送带键盘的 markdown 消息；``rows`` 的每个元素是一行按钮"""
+    message = UniMessage().style(text, "markdown")
+    for row in rows:
+        message = message.keyboard(*row)
+    await message.send(target=event, bot=bot)
     await trade.finish()
+
+
+async def send_trade_text_with_keyboard(bot: Bot, event: Event, user_id: str, text: str) -> None:
+    await send_trade_keyboard(bot, event, text, await build_trade_result_keyboard(user_id))
 
 
 async def send_plain_panel(
@@ -224,7 +264,7 @@ async def send_panel(
                 text = f"{text}\n\n{await create_image_markdown(chart, bot)}"
             except Exception:
                 logger.exception("发送 K 线图失败，回退到文本消息")
-        await send_trade_text_with_keyboard(bot, event, user_id, text)
+        await send_trade_keyboard(bot, event, text, await build_trade_keyboard(user_id))
         return
 
     try:
@@ -321,7 +361,7 @@ async def build_rank_text(user_id: str, entries: list[RankingEntry], nicknames: 
     return "\n".join(blocks)
 
 
-async def send_rank_text(user_id: str, entries: list[RankingEntry]) -> None:
+async def send_rank_text(bot: Bot, event: Event, user_id: str, entries: list[RankingEntry]) -> None:
     """取排行榜所需昵称（只取上榜者与发起者）并发送文本"""
     nicknames: dict[str, str] = {}
     for entry in entries[: max(1, config.trade_rank_size)]:
@@ -329,7 +369,11 @@ async def send_rank_text(user_id: str, entries: list[RankingEntry]) -> None:
     me = next((entry for entry in entries if entry.user_id == user_id), None)
     if me is not None and me.user_id not in nicknames:
         nicknames[me.user_id] = (await get_user(me.user_id)).get_nickname()
-    await trade.finish(await build_rank_text(user_id, entries, nicknames))
+    text = await build_rank_text(user_id, entries, nicknames)
+    if isinstance(bot, QQBot):
+        await send_trade_keyboard(bot, event, text, await build_rank_keyboard(user_id))
+        return
+    await trade.finish(text)
 
 
 @trade.assign("$main")
@@ -380,11 +424,8 @@ async def handle_trade_history(bot: Bot, event: Event, user_id: str = get_user_i
             ]
             await session.commit()
     caption = await build_history_caption(user_id, points)
-    if not points:
-        await trade.finish(caption)
-        return
-    chart = await render_daily_chart(user_id, points)
-    await send_history_chart(bot, event, caption, chart)
+    chart = await render_daily_chart(user_id, points) if points else None
+    await send_history_chart(bot, event, user_id, caption, chart)
 
 
 async def send_rank_image(
@@ -400,15 +441,15 @@ async def send_rank_image(
             text = await create_image_markdown(image, bot)
         except Exception:
             logger.exception("上传收益排行榜图片失败，回退到文本消息")
-            await send_rank_text(user_id, entries)
+            await send_rank_text(bot, event, user_id, entries)
             return
-        await send_trade_text_with_keyboard(bot, event, user_id, text)
+        await send_trade_keyboard(bot, event, text, await build_rank_keyboard(user_id))
         return
     try:
         await UniMessage().image(raw=image).send(target=event, bot=bot)
     except Exception:
         logger.exception("发送收益排行榜图片失败，回退到文本消息")
-        await send_rank_text(user_id, entries)
+        await send_rank_text(bot, event, user_id, entries)
         return
     await trade.finish()
 
@@ -418,7 +459,7 @@ async def handle_trade_rank(bot: Bot, event: Event, user_id: str = get_user_id()
     entries = await load_ranking_entries()
     image = await render_ranking_image(entries, user_id)
     if image is None:
-        await send_rank_text(user_id, entries)
+        await send_rank_text(bot, event, user_id, entries)
         return
     await send_rank_image(bot, event, user_id, entries, image)
 

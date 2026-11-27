@@ -122,3 +122,7 @@ button:
   sell: 卖出
   sell_all: 卖出全部
   refresh: 刷新行情
+  daily_kline: 日K线
+  rank: 盈亏排行
+  chart_5m: 五分钟K线
+  market: 查看行情
