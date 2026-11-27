@@ -1179,14 +1179,6 @@ def test_help_does_not_expose_internal_mechanism():
         assert usage[: match.start()].strip().startswith("trade")
 
 
-def test_keyboard_row():
-    from nonebot_plugin_trade.__main__ import _keyboard_row
-
-    assert _keyboard_row(3) is None
-    assert _keyboard_row(4) == 2
-    assert _keyboard_row(5) == 3
-
-
 @pytest.mark.asyncio
 async def test_trade_keyboard_buttons():
     from nonebot_plugin_trade import __main__ as trade_main
@@ -1195,19 +1187,98 @@ async def test_trade_keyboard_buttons():
         patch.object(trade_main.lang, "text", new=AsyncMock(return_value="按钮")),
         patch.object(trade_main, "get_command_prefix", return_value="/"),
     ):
-        buttons = await trade_main.build_trade_keyboard("10001")
+        rows = await trade_main.build_trade_keyboard("10001")
 
-    assert [button.text for button in buttons] == [
+    # 交易面板键盘 3 行：买入、卖出各一行，刷新行情/日 K 线/盈亏排行占一行
+    assert [[button.text for button in row] for row in rows] == [
+        ["/trade buy ", "/trade buy all"],
+        ["/trade sell ", "/trade sell all"],
+        ["/trade", "/trade history", "/trade rank"],
+    ]
+    # 买入/卖出按钮改成 input 类型：点击只预填指令，股数由用户自己填（enter 会直接发出固定数量）
+    assert [[button.flag for button in row] for row in rows] == [
+        ["input", "enter"],
+        ["input", "enter"],
+        ["enter", "enter", "enter"],
+    ]
+    assert rows[0][0].label == "按钮"
+    assert rows[1][0].label == "按钮"
+
+
+@pytest.mark.asyncio
+async def test_trade_result_keyboard_keeps_original_buttons():
+    """买入/卖出结果消息的键盘保持原样：5 个按钮分两行（3 + 2）"""
+    from nonebot_plugin_trade import __main__ as trade_main
+
+    with (
+        patch.object(trade_main.lang, "text", new=AsyncMock(return_value="按钮")),
+        patch.object(trade_main, "get_command_prefix", return_value="/"),
+    ):
+        rows = await trade_main.build_trade_result_keyboard("10001")
+
+    assert [len(row) for row in rows] == [3, 2]
+    assert [button.text for row in rows for button in row] == [
         "/trade buy ",
         "/trade buy all",
         "/trade sell ",
         "/trade sell all",
         "/trade",
     ]
-    # 买入/卖出按钮改成 input 类型：点击只预填指令，股数由用户自己填（enter 会直接发出固定数量）
-    assert [button.flag for button in buttons] == ["input", "enter", "input", "enter", "enter"]
-    assert buttons[0].label == "按钮"
-    assert buttons[2].label == "按钮"
+
+
+@pytest.mark.asyncio
+async def test_history_and_rank_keyboards_use_one_button_per_row():
+    """日 K 线历史键盘 2 行、收益排行榜键盘 1 行：每行只放一个按钮"""
+    from nonebot_plugin_trade import __main__ as trade_main
+
+    with (
+        patch.object(trade_main.lang, "text", new=AsyncMock(return_value="按钮")),
+        patch.object(trade_main, "get_command_prefix", return_value="/"),
+    ):
+        history_rows = await trade_main.build_history_keyboard("10001")
+        rank_rows = await trade_main.build_rank_keyboard("10001")
+
+    assert [[button.text for button in row] for row in history_rows] == [["/trade rank"], ["/trade"]]
+    assert [len(row) for row in history_rows] == [1, 1]
+    assert [[button.text for button in row] for row in rank_rows] == [["/trade"]]
+
+
+@pytest.mark.asyncio
+async def test_send_trade_keyboard_appends_one_segment_per_row(monkeypatch: pytest.MonkeyPatch):
+    """键盘按行分段发送：一个 Keyboard 段就是 QQ 的一行，不会被 row 参数重新平均分行"""
+    from nonebot_plugin_trade import __main__ as trade_main
+
+    recorded: dict[str, object] = {}
+
+    class FakeMessage:
+        def __init__(self) -> None:
+            self.text = ""
+            self.rows: list[list[str]] = []
+
+        def style(self, text: str, _kind: str) -> "FakeMessage":
+            self.text = text
+            return self
+
+        def keyboard(self, *buttons: object, **_kwargs: object) -> "FakeMessage":
+            self.rows.append([button.text for button in buttons])  # type: ignore[attr-defined]
+            return self
+
+        async def send(self, **_kwargs: object) -> None:
+            recorded["message"] = self
+
+    monkeypatch.setattr(trade_main, "UniMessage", FakeMessage)
+    finished = AsyncMock()
+    monkeypatch.setattr(trade_main.trade, "finish", finished)
+
+    rows = [
+        [trade_main.Button("enter", "甲", text="/trade")],
+        [trade_main.Button("enter", "乙", text="/trade"), trade_main.Button("enter", "丙", text="/trade")],
+    ]
+    await trade_main.send_trade_keyboard(MagicMock(), MagicMock(), "面板文本", rows)
+
+    assert recorded["message"].text == "面板文本"  # type: ignore[attr-defined]
+    assert recorded["message"].rows == [["/trade"], ["/trade", "/trade"]]  # type: ignore[attr-defined]
+    finished.assert_awaited()
 
 
 @pytest.mark.asyncio
@@ -1438,7 +1509,7 @@ async def test_send_history_chart_sends_caption_and_image_for_other_adapters(mon
     finished = AsyncMock()
     monkeypatch.setattr(trade_main.trade, "finish", finished)
 
-    await trade_main.send_history_chart(MagicMock(), MagicMock(), "日 K 说明", b"chart-image")
+    await trade_main.send_history_chart(MagicMock(), MagicMock(), "10001", "日 K 说明", b"chart-image")
 
     assert sent["message"].texts == ["日 K 说明"]
     assert sent["message"].images == [b"chart-image"]
@@ -1455,12 +1526,20 @@ async def test_send_history_chart_uses_markdown_image_for_qq(monkeypatch: pytest
     record: dict[str, object] = {}
 
     class FakeMessage:
+        def __init__(self) -> None:
+            self.rows: list[list[str]] = []
+
         def style(self, text: str, _kind: str) -> "FakeMessage":
             record["text"] = text
             return self
 
+        def keyboard(self, *buttons: object, **_kwargs: object) -> "FakeMessage":
+            self.rows.append([button.text for button in buttons])  # type: ignore[attr-defined]
+            return self
+
         async def send(self, **_kwargs: object) -> None:
             record["sent"] = True
+            record["rows"] = self.rows
 
     async def fake_create_image_markdown(_chart: bytes, _bot: object) -> str:
         return "![日 K](qqbot-media://example)"
@@ -1468,12 +1547,54 @@ async def test_send_history_chart_uses_markdown_image_for_qq(monkeypatch: pytest
     monkeypatch.setattr(trade_main, "QQBot", FakeQQBot)
     monkeypatch.setattr(trade_main, "create_image_markdown", fake_create_image_markdown)
     monkeypatch.setattr(trade_main, "UniMessage", FakeMessage)
+    monkeypatch.setattr(trade_main.lang, "text", AsyncMock(return_value="按钮"))
     finished = AsyncMock()
     monkeypatch.setattr(trade_main.trade, "finish", finished)
 
-    await trade_main.send_history_chart(FakeQQBot(), MagicMock(), "日 K 说明", b"chart")
+    await trade_main.send_history_chart(FakeQQBot(), MagicMock(), "10001", "日 K 说明", b"chart")
 
     assert record["text"] == "日 K 说明\n\n![日 K](qqbot-media://example)"
+    # 键盘 2 行：盈亏排行、五分钟 K 线各占一行
+    assert record["rows"] == [["/trade rank"], ["/trade"]]
+    assert record["sent"] is True
+    finished.assert_awaited()
+
+
+@pytest.mark.asyncio
+async def test_send_history_chart_keeps_keyboard_when_image_upload_fails(monkeypatch: pytest.MonkeyPatch):
+    """图床上传失败时仍然发带键盘的说明文本，用户不至于没法切到别的界面"""
+    from nonebot_plugin_trade import __main__ as trade_main
+
+    class FakeQQBot:
+        pass
+
+    record: dict[str, object] = {}
+
+    class FakeMessage:
+        def style(self, text: str, _kind: str) -> "FakeMessage":
+            record["text"] = text
+            return self
+
+        def keyboard(self, *buttons: object, **_kwargs: object) -> "FakeMessage":
+            record["buttons"] = len(buttons)
+            return self
+
+        async def send(self, **_kwargs: object) -> None:
+            record["sent"] = True
+
+    async def broken_create_image_markdown(_chart: bytes, _bot: object) -> str:
+        raise RuntimeError("media upload failed")
+
+    monkeypatch.setattr(trade_main, "QQBot", FakeQQBot)
+    monkeypatch.setattr(trade_main, "create_image_markdown", broken_create_image_markdown)
+    monkeypatch.setattr(trade_main, "UniMessage", FakeMessage)
+    monkeypatch.setattr(trade_main.lang, "text", AsyncMock(return_value="按钮"))
+    finished = AsyncMock()
+    monkeypatch.setattr(trade_main.trade, "finish", finished)
+
+    await trade_main.send_history_chart(FakeQQBot(), MagicMock(), "10001", "日 K 说明", b"chart")
+
+    assert record["text"] == "日 K 说明"
     assert record["sent"] is True
     finished.assert_awaited()
 
@@ -1485,7 +1606,7 @@ async def test_send_history_chart_falls_back_to_caption(monkeypatch: pytest.Monk
     finished = AsyncMock()
     monkeypatch.setattr(trade_main.trade, "finish", finished)
 
-    await trade_main.send_history_chart(MagicMock(), MagicMock(), "暂无日 K 数据", None)
+    await trade_main.send_history_chart(MagicMock(), MagicMock(), "10001", "暂无日 K 数据", None)
 
     finished.assert_awaited_once_with("暂无日 K 数据")
 
@@ -1522,16 +1643,19 @@ async def test_send_rank_image_uses_markdown_for_qq(monkeypatch: pytest.MonkeyPa
     async def fake_create_image_markdown(_image: bytes, _bot: object) -> str:
         return "![收益排行](qqbot-media://rank)"
 
-    async def fake_send_trade_text_with_keyboard(_bot: object, _event: object, _user_id: str, text: str) -> None:
+    async def fake_send_trade_keyboard(_bot: object, _event: object, text: str, rows: list) -> None:
         sent["text"] = text
+        sent["rows"] = [[button.text for button in row] for row in rows]  # type: ignore[assignment]
 
     monkeypatch.setattr(trade_main, "QQBot", FakeQQBot)
     monkeypatch.setattr(trade_main, "create_image_markdown", fake_create_image_markdown)
-    monkeypatch.setattr(trade_main, "send_trade_text_with_keyboard", fake_send_trade_text_with_keyboard)
+    monkeypatch.setattr(trade_main, "send_trade_keyboard", fake_send_trade_keyboard)
 
     await trade_main.send_rank_image(FakeQQBot(), MagicMock(), "rank-user", [], b"rank-image")
 
     assert sent["text"] == "![收益排行](qqbot-media://rank)"
+    # 收益排行榜键盘 1 行：「查看行情」回到交易面板
+    assert sent["rows"] == [["/trade"]]
 
 
 @pytest.mark.asyncio
@@ -1541,22 +1665,30 @@ async def test_send_panel_appends_chart_image_markdown_for_qq(monkeypatch: pytes
     class FakeQQBot:
         pass
 
-    sent: dict[str, str] = {}
+    sent: dict[str, object] = {}
 
     async def fake_create_image_markdown(_chart: bytes, _bot: object) -> str:
         return "![K 线](qqbot-media://example)"
 
-    async def fake_send_trade_text_with_keyboard(_bot: object, _event: object, _user_id: str, text: str) -> None:
+    async def fake_send_trade_keyboard(_bot: object, _event: object, text: str, rows: list) -> None:
         sent["text"] = text
+        sent["rows"] = [[button.text for button in row] for row in rows]
 
     monkeypatch.setattr(trade_main, "QQBot", FakeQQBot)
     monkeypatch.setattr(trade_main, "create_image_markdown", fake_create_image_markdown)
-    monkeypatch.setattr(trade_main, "send_trade_text_with_keyboard", fake_send_trade_text_with_keyboard)
+    monkeypatch.setattr(trade_main, "send_trade_keyboard", fake_send_trade_keyboard)
+    monkeypatch.setattr(trade_main.lang, "text", AsyncMock(return_value="按钮"))
 
     await trade_main.send_panel(FakeQQBot(), MagicMock(), "panel-user", make_panel_data(), b"chart")
 
     assert sent["text"].startswith("## 📈 Moonlark 证券交易所")
     assert sent["text"].endswith("![K 线](qqbot-media://example)")
+    # 交易面板键盘 3 行：买入 / 卖出 / 行情导航
+    assert sent["rows"] == [
+        ["/trade buy ", "/trade buy all"],
+        ["/trade sell ", "/trade sell all"],
+        ["/trade", "/trade history", "/trade rank"],
+    ]
 
 
 def test_panel_change_uses_previous_close_when_gap_down():
