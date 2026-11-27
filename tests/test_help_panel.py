@@ -87,6 +87,60 @@ def test_apply_hot_data_deduplicate():
     assert set(cats) == {"tools", "new"}
 
 
+def test_apply_hot_data_keeps_truncated_hot_name():
+    """热门卡片放不下的长指令名仍保留在下方总表，能放下的照旧从列表剔除"""
+    panel = _panel()
+    long_name = "larkhelp-generate-some-really-long-command-name"
+    rows = [
+        panel.Cmd("sign", "签到", "game"),
+        panel.Cmd(long_name, "生成帮助文档", "tools"),
+    ]
+    shown, hot, by_name = panel.apply_hot_data(rows, [("sign", 100), (long_name, 90)])
+    assert [n for n, _ in hot] == ["sign", long_name]
+    # 前提：这个名字确实会被热门卡片截断，短名字不会
+    assert panel.fit_text(long_name, panel.HOT_NAME_LADDER, panel.hot_name_limit())[2]
+    assert not panel.fit_text("sign", panel.HOT_NAME_LADDER, panel.hot_name_limit())[2]
+    # 短名字仍从列表剔除，长名字留在总表里，热门指令不会从总表整条消失
+    assert {c.name for c in shown} == {long_name}
+    assert by_name[long_name].desc == "生成帮助文档"
+
+
+def test_draw_panel_total_counts_unique_commands(monkeypatch):
+    """同一指令同时出现在热门条带与总表时，封面总数只算一次"""
+    panel = _panel()
+    seen = {}
+    real_cover = panel.draw_cover_logo
+
+    def capture(canvas, texts, card_x, card_w, cy, ch, total, logo):
+        seen["total"] = total
+        real_cover(canvas, texts, card_x, card_w, cy, ch, total, logo)
+
+    monkeypatch.setattr(panel, "draw_cover_logo", capture)
+    texts = panel.PanelTexts(
+        title="",
+        eyebrow="",
+        subtitle="",
+        hint="",
+        badge="条指令",
+        hot_title="热门指令",
+        hot_note="",
+        hot_count="{} 次",
+        row_count="{} 条",
+        cont="",
+        footer="",
+        logo_alt="",
+        logo_alt_sub="",
+    )
+    rows = [
+        panel.Cmd("sign", "", "game"),
+        panel.Cmd("help", "", "tools"),
+        panel.Cmd("missing-abbreviations", "", "tools"),
+    ]
+    # missing-abbreviations 放不进热门卡片，会同时出现在条带与总表里
+    panel.draw_panel(rows, [("missing-abbreviations", 10), ("sign", 5)], texts, None)
+    assert seen["total"] == len(rows)
+
+
 def test_hot_provider_graceful_degradation():
     """未注册 provider 或 provider 报错时返回空热门，面板省略热门分区而不是报错"""
     panel = _panel()

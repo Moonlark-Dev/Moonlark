@@ -125,6 +125,16 @@ LOGO_RATIO = 1264 / 848  # 3:2，LOGO 预留位
 LOGO_H = 168
 W = 2 * PAD + COLS * COL_W + (COLS - 1) * GUTTER  # 1068
 
+# 热门条带：三张卡片并排，卡片内指令名左侧是排名圆、右侧是次数文本
+HOT_GAP = 21  # 卡片间距
+HOT_CARD_H = 86
+HOT_CARD_PAD = 52  # 条带左右内边距合计
+HOT_NAME_LADDER = (19, 17, 16)  # 指令名字号阶梯
+HOT_NAME_RESERVE = 150  # 卡片内被排名圆与次数文本占掉、指令名不能用的宽度
+HOT_DESC_LADDER = (13, 12)  # 卡片内说明文字的字号阶梯
+HOT_DESC_RESERVE = 116  # 说明文字被左侧内边距与分类名占掉的宽度
+
+
 # 模拟粗体的同色描边宽度（设备像素）。设计稿 build_demo.py 用 SVG stroke-width=0.9，
 # 但 Pillow 的 stroke_width 是单侧描边：取 2 时 11px 的小字号中文（热门卡片右下角的
 # 分类名最明显）笔画会粘连成一团，与设计稿 demo 逐处对照后取 1。
@@ -178,6 +188,16 @@ def fit_text(text: str, ladder: tuple[int, ...], limit: float) -> tuple[str, int
     while text and text_width(text + ell, size) > limit:
         text = text[:-1]
     return text + ell, size, True
+
+
+def hot_card_width(card_w: float) -> float:
+    """热门条带里单张卡片的宽度。"""
+    return (card_w - HOT_CARD_PAD - 2 * HOT_GAP) / 3
+
+
+def hot_name_limit(card_w: float = W - 2 * PAD) -> float:
+    """热门卡片里指令名可用的宽度（扣掉排名圆与次数文本的占位）。"""
+    return hot_card_width(card_w) - HOT_NAME_RESERVE
 
 
 # --------------------------------------------------------------------------
@@ -273,10 +293,15 @@ def apply_hot_data(
     rows: list[Cmd],
     hot_raw: list[tuple[str, int]],
 ) -> tuple[list[Cmd], list[tuple[str, int]], dict[str, Cmd]]:
-    """热门去重：只保留仍在帮助列表里的指令，并从下方列表中剔除前三名。"""
+    """热门去重：只保留仍在帮助列表里的指令，并从下方列表中剔除前三名。
+
+    只剔除卡片上能完整显示的指令名：卡片放不下、只能省略号截断的名字仍留在下方总表里，
+    否则热门指令会在总表中整条消失，只剩卡片上那个截断后的名字。
+    """
     by_name = {c.name: c for c in rows}
     hot = [(n, cnt) for n, cnt in hot_raw if n in by_name][:3]
-    hot_names = {n for n, _ in hot}
+    limit = hot_name_limit()
+    hot_names = {n for n, _ in hot if not fit_text(n, HOT_NAME_LADDER, limit)[2]}
     shown = [c for c in rows if c.name not in hot_names]
     return shown, hot, by_name
 
@@ -779,9 +804,9 @@ def draw_hot(
     flame(canvas, card_x + 40, hot_y + 36, 13, PINK, inner=True)
     canvas.text(card_x + 62, hot_y + 36, texts.hot_title, 21, TITLE_C, weight=700)
     canvas.text(card_x + card_w - 26, hot_y + 36, texts.hot_note, 13, MUTED, anchor="end")
-    gap = 21
-    hcard_w = (card_w - 52 - 2 * gap) / 3
-    hcard_h = 86
+    gap = HOT_GAP
+    hcard_w = hot_card_width(card_w)
+    hcard_h = HOT_CARD_H
     for i, (name, count) in enumerate(hot):
         cmd = by_name[name]
         medal, tint = MEDALS[i]
@@ -793,12 +818,12 @@ def draw_hot(
         # 排名用裸数字：①-⑨ 小字号下圆圈套圆圈，辨识度不如裸数字
         canvas.text(cx + 34, cy + 32, str(i + 1), 20, medal, weight=700, anchor="middle")
         # 指令名：不加 pill 底色，靠字号 + 奖牌色 + 字重撑起主次
-        ntext, nsize, _ = fit_text(name, (19, 17, 16), hcard_w - 150)
+        ntext, nsize, _ = fit_text(name, HOT_NAME_LADDER, hot_name_limit(card_w))
         name_w = text_width(ntext, nsize)
         canvas.text(cx + 62, cy + 32, ntext, nsize, medal, weight=600)
         canvas.text(cx + 62 + name_w + 13, cy + 33, texts.hot_count.format(f"{count:,}"), 12, MUTED)
         # 第二行：说明 + 右对齐的分类名
-        dtext, dsize, _ = fit_text(cmd.desc, (13, 12), hcard_w - 116)
+        dtext, dsize, _ = fit_text(cmd.desc, HOT_DESC_LADDER, hcard_w - HOT_DESC_RESERVE)
         canvas.text(cx + 16, cy + 62, dtext, dsize, BODY_C)
         cat_text = texts.cat_names.get(cmd.cat, cmd.cat)
         canvas.text(
@@ -926,7 +951,8 @@ def draw_panel(
     # 封面
     shadow(canvas, card_x, cover_y, card_w, HEADER_H, 28)
     canvas.rect(card_x, cover_y, card_w, HEADER_H, SURFACE, rx=28, stroke=BORDER)
-    draw_cover_logo(canvas, texts, card_x, card_w, cover_y, HEADER_H, len(shown) + len(hot), logo)
+    # 总数按唯一指令计：长名字的热门指令同时出现在条带与总表里，不能再把两处相加
+    draw_cover_logo(canvas, texts, card_x, card_w, cover_y, HEADER_H, len(rows), logo)
 
     # 背景装饰：只落在卡片之外或留白区，绝不压字
     petal(canvas, PAD + 46, 46, 15, PINK, opacity=0.4)
@@ -1086,7 +1112,7 @@ async def render_help_panel(
     """渲染帮助面板（方案 A），返回 WebP 字节。
 
     help_list 是 larkhelp 主模块维护的 {指令名: CommandHelp} 映射；
-    superuser 分类不参与渲染，热门前三名会从列表里移出。
+    superuser 分类不参与渲染，热门前三名会从列表里移出（指令名过长、卡片上放不下的除外）。
     启用缓存时直接按用户语言读取磁盘缓存（无需收集全部指令文案或查库）；
     未命中或绕过缓存时在线程池里绘制整图，不阻塞事件循环。
     """
