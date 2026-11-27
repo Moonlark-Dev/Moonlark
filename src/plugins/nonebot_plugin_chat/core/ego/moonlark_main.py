@@ -259,11 +259,25 @@ class MoonlarkMain:
         events = await event_collector.get_session_events(session_id)
         if events:
             event_texts = []
+            now = datetime.now()
+            today = now.strftime("%Y-%m-%d")
+            yesterday = (now - timedelta(days=1)).strftime("%Y-%m-%d")
             for e in events:
                 # 只取事件 JSON 里的 events，不再把整段 JSON 塞进 meta 消息
                 content = format_events_only(e.content)
-                if content:
-                    event_texts.append(f"[{e.created_at.strftime('%H:%M')}] {content}")
+                if not content:
+                    continue
+                # 事件范围是「前一天 0:00 至今」，只写时分会让模型分不清一件事
+                # 发生在昨天还是今天，因此每条事件都标出所属日期
+                event_date = e.created_at.strftime("%Y-%m-%d")
+                if event_date == today:
+                    date_label = "今天早些时候"
+                elif event_date == yesterday:
+                    date_label = "前一天"
+                else:
+                    # 正常不会出现更早的事件；万一有就直接写日期，不要猜
+                    date_label = event_date
+                event_texts.append(f"[{date_label} {e.created_at.strftime('%H:%M')}] {content}")
             if event_texts:
                 parts.append("## 此前的事件\n" + "\n".join(event_texts))
 
