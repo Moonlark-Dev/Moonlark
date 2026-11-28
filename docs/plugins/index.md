@@ -15,6 +15,7 @@ Moonlark 内置了一些 Library 型插件，以下是这些插件的说明及�
 - [LarkHelp](larkhelp): 插件帮助
 - [OpenAI](openai): GPT 相关
 - [Ranking](ranking): 排行榜制作工具
+- [Broadcast](broadcast): 广播推送与 HTTP 触发接口
 
 ## 玩法类
 

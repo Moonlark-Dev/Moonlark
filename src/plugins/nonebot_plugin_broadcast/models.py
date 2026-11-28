@@ -5,6 +5,18 @@ from nonebot_plugin_orm import Model
 from sqlalchemy import Boolean, DateTime, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
 
+# 一次广播的处理状态：
+# - queued：HTTP 接口已受理，等待后台任务开始（仅 HTTP 触发会停留在此状态）；
+# - running：正在向各群发送；
+# - done：发送流程结束（包含失败的群，逐群结果看 BroadcastPushEvent）；
+# - failed：发送流程因意外异常中断。
+BROADCAST_STATUS_QUEUED = "queued"
+BROADCAST_STATUS_RUNNING = "running"
+BROADCAST_STATUS_DONE = "done"
+BROADCAST_STATUS_FAILED = "failed"
+# 仍占用「同一时间只允许一次广播」名额的状态
+BROADCAST_ACTIVE_STATUSES = (BROADCAST_STATUS_QUEUED, BROADCAST_STATUS_RUNNING)
+
 
 class BroadcastGroup(Model):
     """bc 自己维护的群列表
@@ -44,6 +56,9 @@ class BroadcastRecord(Model):
 
     被动补发可能发生在广播提交几分钟之后，届时 ``cached_broadcast_content``
     可能已经被新的广播覆盖，因此每次广播都保留一份内容与按钮快照。
+
+    HTTP 接口（``POST /api/broadcast``）的广播在后台发送，调用方通过
+    ``GET /api/broadcast/{id}`` 查询进度，因此额外记录处理状态与目标数量。
     """
 
     __tablename__ = "nonebot_plugin_broadcast_record"
@@ -53,6 +68,14 @@ class BroadcastRecord(Model):
     # 按钮的 JSON 快照：[{"label": ..., "text": ...}]
     buttons: Mapped[str] = mapped_column(Text, default="[]")
     submitter: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    # HTTP 幂等键：同一个 Idempotency-Key 只会产生一次广播
+    request_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, unique=True, index=True)
+    # 请求指纹（内容 + 按钮 + 目标群的哈希）：同一个幂等键配了不同内容时拒绝请求
+    request_hash: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    # 处理状态，见上方 BROADCAST_STATUS_* 常量
+    status: Mapped[str] = mapped_column(String(16), default=BROADCAST_STATUS_DONE, server_default=BROADCAST_STATUS_DONE)
+    # 计划推送的群数（每个群只推一次），用于判断进度
+    total: Mapped[int] = mapped_column(default=0, server_default="0")
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
 
