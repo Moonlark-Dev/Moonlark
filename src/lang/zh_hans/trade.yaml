@@ -36,6 +36,9 @@ main:
     {hint}
   hint: 发送 {__prefix__}trade buy 买入、{__prefix__}trade sell 卖出（详见 {__prefix__}help trade）。
   hint_closed: 休市期间无法交易，开市后可继续操作（详见 {__prefix__}help trade）。
+holding:
+  cost: 持仓均价：{average_cost} VimCoin/股（含手续费）
+  cost_empty: 持仓均价：—
 panel:
   title: "## 📈 Moonlark 证券交易所"
   status_open: "> 🟢 **交易中** · 每日 08:00–24:00"
@@ -62,6 +65,7 @@ buy:
     手续费：{fee} VimCoin
     总支出：{amount} VimCoin
     当前持股：{shares_after} 股（可卖 {sellable_after} 股，冻结 {frozen_after} 股）
+    {holding_cost}
     今日买入：{daily_bought}/{daily_limit} 股
     当前余额：{balance_after} VimCoin
     {note}
@@ -76,6 +80,7 @@ sell:
     手续费：{fee} VimCoin
     实际到账：{amount} VimCoin
     当前持股：{shares_after} 股（可卖 {sellable_after} 股，冻结 {frozen_after} 股）
+    {holding_cost}
     今日卖出：{daily_sold}/{daily_limit} 股
     当前余额：{balance_after} VimCoin
     {note}

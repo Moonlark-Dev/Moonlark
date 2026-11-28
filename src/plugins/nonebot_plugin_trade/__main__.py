@@ -261,6 +261,13 @@ async def cap_note(side: str, user_id: str, result: TradeResult) -> str:
     return ""
 
 
+async def holding_cost_line(user_id: str, result: TradeResult) -> str:
+    """买卖结果里的持仓均价行；清仓后没有均价可展示，用占位符代替"""
+    if result.shares_after <= 0:
+        return await lang.text("holding.cost_empty", user_id)
+    return await lang.text("holding.cost", user_id, average_cost=_fmt(result.average_cost_after))
+
+
 def _fmt_money(value: float) -> str:
     return f"{value:,.2f}"
 
@@ -439,6 +446,7 @@ async def handle_trade_buy(bot: Bot, event: Event, amount: str, user_id: str = g
                 await lang.finish(error.key, user_id, *error.format_args)
             await session.commit()
     note = await cap_note("buy", user_id, result)
+    holding_cost = await holding_cost_line(user_id, result)
     await send_trade_result(
         bot,
         event,
@@ -452,6 +460,7 @@ async def handle_trade_buy(bot: Bot, event: Event, amount: str, user_id: str = g
         shares_after=result.shares_after,
         sellable_after=result.sellable_after,
         frozen_after=result.frozen_after,
+        holding_cost=holding_cost,
         daily_bought=result.daily_bought,
         daily_limit=config.trade_daily_limit,
         balance_after=_fmt(result.balance_after),
@@ -475,6 +484,7 @@ async def handle_trade_sell(bot: Bot, event: Event, amount: str, user_id: str = 
                 await lang.finish(error.key, user_id, *error.format_args)
             await session.commit()
     note = await cap_note("sell", user_id, result)
+    holding_cost = await holding_cost_line(user_id, result)
     await send_trade_result(
         bot,
         event,
@@ -488,6 +498,7 @@ async def handle_trade_sell(bot: Bot, event: Event, amount: str, user_id: str = 
         shares_after=result.shares_after,
         sellable_after=result.sellable_after,
         frozen_after=result.frozen_after,
+        holding_cost=holding_cost,
         daily_sold=result.daily_sold,
         daily_limit=config.trade_daily_limit,
         balance_after=_fmt(result.balance_after),

@@ -559,6 +559,8 @@ async def test_buy_fee_and_impact():
     assert result.sellable_after == 0
     assert result.daily_bought == 100
     assert result.balance_after == pytest.approx(990.0)
+    # 持仓均价按含手续费的总支出摊薄：1010 / 100 股
+    assert result.average_cost_after == pytest.approx(10.10)
     assert state.float_shares == 99900
 
     holding = session.objects[(Holding, FakeUser.user_id)]
@@ -653,18 +655,73 @@ async def test_sell_t_plus_1_and_daily_cap():
     assert result.impact == pytest.approx(0.001)
     assert result.new_price == pytest.approx(9.99)
     assert result.shares_after == 0
+    assert result.average_cost_after == pytest.approx(0.0)
     assert holding.cost_basis == 0.0
     assert holding.total_sold == pytest.approx(990.0)
     assert state.float_shares == 100000
     assert user.vimcoin == pytest.approx(990.0)
 
     session = FakeSession()
-    session.add(make_holding(shares=100, frozen_shares=0, cost_basis=1010.0, daily_sold=950))
+    holding = make_holding(shares=100, frozen_shares=0, cost_basis=1010.0, daily_sold=950)
+    session.add(holding)
     state = make_state(float_shares=99900)
     user = FakeUser()
     result = await execute_sell(session, state, user, "all", datetime(2026, 11, 19, 10, 0))
     assert result.shares == 50
     assert result.capped_reason == "daily"
+    # 卖出只按均价结转成本，剩余 50 股的均价保持不变
+    assert result.average_cost_after == pytest.approx(10.10)
+    assert holding.cost_basis == pytest.approx(505.0)
+
+
+@pytest.mark.asyncio
+async def test_trade_result_shows_holding_average_cost():
+    """买卖结果要带持仓均价（含手续费）；清仓后没有均价可展示"""
+    from nonebot_plugin_trade import __main__ as trade_main
+
+    line = await trade_main.holding_cost_line("tester", MagicMock(shares_after=100, average_cost_after=10.1))
+    assert line == "持仓均价：10.10 VimCoin/股（含手续费）"
+
+    empty = await trade_main.holding_cost_line("tester", MagicMock(shares_after=0, average_cost_after=0.0))
+    assert empty == "持仓均价：—"
+
+    buy_text = await trade_main.lang.text(
+        "buy.success",
+        "tester",
+        price="10.00",
+        shares=100,
+        gross="1000.00",
+        fee="10.00",
+        amount="1010.00",
+        shares_after=100,
+        sellable_after=0,
+        frozen_after=100,
+        holding_cost=line,
+        daily_bought=100,
+        daily_limit=1000,
+        balance_after="990.00",
+        note="",
+    )
+    assert line in buy_text.splitlines()
+
+    sell_text = await trade_main.lang.text(
+        "sell.success",
+        "tester",
+        price="10.00",
+        shares=100,
+        gross="1000.00",
+        fee="10.00",
+        amount="990.00",
+        shares_after=50,
+        sellable_after=50,
+        frozen_after=0,
+        holding_cost=line,
+        daily_sold=100,
+        daily_limit=1000,
+        balance_after="990.00",
+        note="",
+    )
+    assert line in sell_text.splitlines()
 
 
 @pytest.mark.asyncio
