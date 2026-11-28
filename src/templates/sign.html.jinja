@@ -213,9 +213,9 @@
         {# 分割线 #}
         <hr class="sign-sep" />
 
-        {# 排名与运势 #}
+        {# 连续签到天数、排名与运势 #}
         <div class="sign-footer-row">
-            <span class="sign-rank">{{ rank.text }}：{{ rank.value }}</span>
+            <span class="sign-rank">{{ signdays.value }} · {{ rank.text }}：{{ rank.value }}</span>
             {% set fortune_text = fortune.value %}
             {% if fortune_text == '大吉' %}
                 <span class="sign-fortune-badge fortune-warning">{{ fortune.text }}：{{ fortune_text }}</span>
