@@ -23,6 +23,7 @@ from . import groups  # noqa: E402, F401 - 注册群列表跟踪的 event_prepro
 from . import web  # noqa: E402, F401 - 注册更新公告 Web 接口
 from . import __main__
 from .__main__ import get_available_groups
+from . import api  # noqa: E402, F401 - 注册广播 HTTP 接口（依赖 __main__，必须放在其后）
 from .announcement import has_new_update, load_announcement, mark_update_read  # noqa: E402
 from .groups import list_group_snapshots, record_group_message, refresh_group_bot_state  # noqa: E402
 
