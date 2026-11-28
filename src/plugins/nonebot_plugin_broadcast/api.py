@@ -288,6 +288,11 @@ async def _run_scheduled_broadcast(
     """后台发送任务：把已受理的广播真正发出去"""
     logger.info(f"广播 #{broadcast_id} 开始发送：{principal.submitter}（{principal.source}），目标 {len(groups)} 群")
     try:
+        # 与 bcsu submit 保持一致，让 /bc 能看到最后一次广播；这里失败不影响发送
+        await set_latest_broadcast_content(content)
+    except Exception:
+        logger.warning(f"广播 #{broadcast_id} 更新 /bc 展示内容失败")
+    try:
         result = await run_broadcast(broadcast_id, groups, content, buttons)
     except Exception:
         # run_broadcast 已把记录标为 failed，这里只吞掉异常避免任务告警
@@ -364,8 +369,6 @@ async def create_broadcast(
             total=len(groups),
             status=BROADCAST_STATUS_QUEUED,
         )
-        # 与 bcsu submit 保持一致：/bc 能看到最后一次广播的内容
-        await set_latest_broadcast_content(normalized.content)
         task = asyncio.create_task(
             _run_scheduled_broadcast(broadcast_id, groups, normalized.content, buttons, principal),
         )
