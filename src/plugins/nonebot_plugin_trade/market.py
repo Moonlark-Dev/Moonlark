@@ -68,6 +68,7 @@ class TradeResult:
     shares_after: int
     frozen_after: int
     sellable_after: int
+    average_cost_after: float
     daily_bought: int
     daily_sold: int
     balance_after: float
@@ -413,6 +414,13 @@ async def get_holding(session: AsyncSession, user_id: str, day: date) -> Holding
     return holding
 
 
+def _average_cost(holding: Holding) -> float:
+    """持仓均价：成本总额（含买入手续费）摊到每股；清仓后没有均价，返回 0"""
+    if holding.shares <= 0:
+        return 0.0
+    return holding.cost_basis / holding.shares
+
+
 def parse_buy_amount(raw: str) -> AmountSpec:
     text = raw.strip()
     if not text:
@@ -576,6 +584,7 @@ async def execute_buy(
         shares_after=holding.shares,
         frozen_after=holding.frozen_shares,
         sellable_after=holding.shares - holding.frozen_shares,
+        average_cost_after=_average_cost(holding),
         daily_bought=holding.daily_bought,
         daily_sold=holding.daily_sold,
         balance_after=user.get_vimcoin(),
@@ -646,6 +655,7 @@ async def execute_sell(
         shares_after=holding.shares,
         frozen_after=holding.frozen_shares,
         sellable_after=holding.shares - holding.frozen_shares,
+        average_cost_after=_average_cost(holding),
         daily_bought=holding.daily_bought,
         daily_sold=holding.daily_sold,
         balance_after=user.get_vimcoin(),
